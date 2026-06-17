@@ -14,7 +14,7 @@ spring:
         - id: community-service
           uri: ${COMMUNITY_SERVICE_URL:http://localhost:8082}
           predicates:
-            - Path=/api/v1/study-servers/**
+            - Path=/api/v1/study-servers/**,/api/v1/cohorts/**,/api/v1/course-channels/**
       globalcors:
         corsConfigurations:
           '[/**]':
