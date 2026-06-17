@@ -23,9 +23,9 @@ Vertical slices (#11–#24):
 
 | # | Title | Start when unblocked |
 |---|---|---|
-| 11 | Monorepo And Local Infrastructure Bootstrap | **Start here** |
-| 12 | Slice: Create A Study Server | after #11 |
-| 13 | Slice: Create Course, Cohort, And Enroll Learner | after #12 |
+| 11 | Monorepo And Local Infrastructure Bootstrap | Done |
+| 12 | Slice: Create A Study Server | Done |
+| 13 | Slice: Create Course, Cohort, And Enroll Learner | **Start here** |
 | 14 | Slice: Join A Voice Channel | after #12 |
 | 15 | Slice: Send Friend Request And Direct Message | after #11 |
 | 16 | Slice: Post A Support Question In A Course Channel | after #13 |

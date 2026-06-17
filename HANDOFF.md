@@ -35,12 +35,13 @@ Important files:
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 - `HANDOFF.md`: this file.
 
-Bootstrap (#11) is merged on `main`. Application services beyond health-check stubs are not built yet.
+Bootstrap (#11) and Study Server creation (#12) are merged on `main`. The next implementation slice is #13: Create Course, Cohort, And Enroll Learner.
 
 ## Active Implementation
 
 - **#11 Monorepo bootstrap** — merged (PR #25)
-- **Next: #12** — [Create A Study Server](https://github.com/Vinosaamaa/chanter/issues/12) (TDD)
+- **#12 Create A Study Server** — merged (PR #26)
+- **Next: #13** — [Create Course, Cohort, And Enroll Learner](https://github.com/Vinosaamaa/chanter/issues/13) (TDD)
 - **Handoff:** `/tmp/chanter-handoff-2026-06-17.md`
 
 ## Major Decisions Made
@@ -229,19 +230,20 @@ GitHub issues published (2026-06-17):
 - Milestone: https://github.com/Vinosaamaa/chanter/milestone/1
 - Project board: https://github.com/users/Vinosaamaa/projects/1
 - **#11 Monorepo bootstrap — CLOSED** (merged PR #25)
-- **Active: #12 Create A Study Server** — https://github.com/Vinosaamaa/chanter/issues/12
+- **#12 Create A Study Server — CLOSED** (merged PR #26)
+- **Active: #13 Create Course, Cohort, And Enroll Learner** — https://github.com/Vinosaamaa/chanter/issues/13
 
 Implementation on `main`:
 
-- `backend/` — gateway (:8080), auth (:8081), `common`; other services are README stubs
-- `frontend/` — Vite bootstrap page with gateway/auth health checks (not product UI yet)
+- `backend/` — gateway (:8080), auth (:8081), community (:8082), `common`; other services are README stubs
+- `frontend/` — Vite Study Server creation shell with gateway/auth/community health checks
 - `infra/docker-compose.yml` — local Postgres, Redis, Redpanda, MinIO
 - CI: backend `mvn verify`, frontend lint + build
 
 Pending:
 
 - Branch protection on `main` (optional, after owner enables)
-- Epic #2+ work begins with #12
+- Epic #2 continues with #13
 
 Confirmed decision:
 
@@ -249,10 +251,10 @@ Confirmed decision:
 - Start with the education market and SaaS model.
 - Position Chanter as Discord for learning communities, with AI teaching assistants and instructor operations built in.
 
-After bootstrap (#11, merged), build toward the education MVP:
+After bootstrap (#11) and Study Server creation (#12), build toward the education MVP:
 
-- **#12 (next):** Study Server Owner creates a Study Server with default Study Server Channels — use TDD
-- Then Courses/Cohorts (#13), voice, DMs, AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`
+- **#13 (next):** Owner creates a Course and Cohort; Instructor enrolls a learner; learner gains Course Channel access only through Enrollment — use TDD.
+- Then voice (#14), DMs (#15), and AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`.
 
 Current issue #12 documentation artifacts:
 
@@ -266,10 +268,10 @@ Use this prompt after reloading Cursor or starting a new chat:
 ```text
 Read HANDOFF.md, CONTEXT.md, and /tmp/chanter-handoff-2026-06-17.md.
 
-Issue #11 is merged on main. Start #12 (Create A Study Server) on branch feature/12-create-study-server using TDD.
+Issues #11 and #12 are merged on main. Start #13 (Create Course, Cohort, And Enroll Learner) on branch feature/13-create-course-cohort-enroll-learner using TDD.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/12
+Issue: https://github.com/Vinosaamaa/chanter/issues/13
 ```
 
 ## Notes For Future Agent
