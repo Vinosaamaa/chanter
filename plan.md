@@ -452,6 +452,16 @@ Milestone 8: SaaS plans, voice agents, and marketplace foundation
 - Add paid agent billing readiness after SaaS plan metering is stable.
 - Add creator/listing review workflow before public marketplace publishing.
 
+Milestone 9: Social Hub and DM voice (post Education MVP slices #16–#24)
+
+Tracked as GitHub milestone **Social Hub & Realtime** and architecture doc `docs/architecture/social-hub-and-dm-voice.md`.
+
+- Bootstrap `realtime-service`: authenticated WebSocket, Redis presence, reconnect/resubscribe.
+- **#31** Friends Hub: accepted-friends list, online/offline presence, DM conversation panel, live DM fan-out (replaces #15 demo harness).
+- Voice Channel WebRTC/LiveKit transport for Study Server voice rooms (prerequisite media plane).
+- **#32** DM voice: 1:1 friend calls with signaling over realtime-service and short-lived LiveKit tokens after friendship/block checks.
+- Education policy hooks: cross-role DM restrictions, block/report, optional server-level DM disable (HITL where required).
+
 Milestone 9: Hardening
 
 - Add observability stack or lightweight metrics dashboard.

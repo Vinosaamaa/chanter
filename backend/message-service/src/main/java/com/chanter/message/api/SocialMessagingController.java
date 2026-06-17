@@ -66,6 +66,22 @@ public class SocialMessagingController {
         return ResponseEntity.status(201).build();
     }
 
+    @GetMapping("/friendships/status")
+    public FriendshipStatusResponse findFriendshipStatus(
+            @RequestParam UUID userId,
+            @RequestParam UUID peerUserId
+    ) {
+        return FriendshipStatusResponse.from(
+                socialMessagingService.findFriendshipStatus(userId, peerUserId)
+        );
+    }
+
+    @PostMapping("/friendships/removal")
+    public ResponseEntity<Void> removeFriendship(@Valid @RequestBody RemoveFriendshipRequest request) {
+        socialMessagingService.removeFriendship(request.requesterUserId(), request.friendUserId());
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/direct-messages")
     public ResponseEntity<DirectMessageResponse> sendDirectMessage(
             @Valid @RequestBody CreateDirectMessageRequest request

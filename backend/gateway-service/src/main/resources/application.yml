@@ -18,7 +18,7 @@ spring:
         - id: message-service
           uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/v1/friend-requests/**,/api/v1/direct-messages/**,/api/v1/user-blocks/**
+            - Path=/api/v1/friend-requests/**,/api/v1/friendships/**,/api/v1/direct-messages/**,/api/v1/user-blocks/**
       globalcors:
         corsConfigurations:
           '[/**]':

@@ -10,15 +10,15 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 ## Current Status
 
-Milestone 0 (monorepo bootstrap) through [issue #14](https://github.com/Vinosaamaa/chanter/issues/14) (Join A Voice Channel) are merged on `main`. The active education MVP slice is [issue #15](https://github.com/Vinosaamaa/chanter/issues/15), Send Friend Request And Direct Message, on branch `feature/15-send-friend-request-and-dm`. Auth hardening is tracked in [issue #30](https://github.com/Vinosaamaa/chanter/issues/30).
+Milestone 0 (monorepo bootstrap) through [issue #14](https://github.com/Vinosaamaa/chanter/issues/14) (Join A Voice Channel) are merged on `main`. [Issue #15](https://github.com/Vinosaamaa/chanter/issues/15) (Send Friend Request And Direct Message) is implemented on `feature/15-send-friend-request-and-dm` with `message-service` and a Friends/DM demo panel. Auth hardening is tracked in [issue #30](https://github.com/Vinosaamaa/chanter/issues/30). Post-MVP Discord-like social UX is tracked in [issues #31–#32](https://github.com/Vinosaamaa/chanter/issues/31).
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`  
 Project board: `https://github.com/users/Vinosaamaa/projects/1`
 
 Implemented bootstrap:
 
-- `backend/` — Maven multi-module Spring Boot (`gateway-service`, `auth-service`, `community-service`, `common`; other service dirs reserved)
-- `frontend/` — React + TypeScript + Vite shell for creating and viewing a Study Server
+- `backend/` — Maven multi-module Spring Boot (`gateway-service`, `auth-service`, `community-service`, `message-service`, `common`; other service dirs reserved)
+- `frontend/` — React + TypeScript + Vite shell for Study Server setup, voice presence, and Friends/DM API demo
 - `infra/docker-compose.yml` — PostgreSQL, Redis, Redpanda, MinIO
 - `.github/workflows/ci.yml` — backend + frontend build checks
 

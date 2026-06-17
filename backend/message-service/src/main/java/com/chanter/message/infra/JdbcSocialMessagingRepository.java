@@ -4,6 +4,8 @@ import com.chanter.message.application.SocialMessagingRepository;
 import com.chanter.message.domain.DirectMessage;
 import com.chanter.message.domain.FriendRequest;
 import com.chanter.message.domain.FriendRequestStatus;
+import com.chanter.message.domain.FriendshipSnapshot;
+import com.chanter.message.domain.FriendshipState;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -93,6 +95,97 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
                 .single();
 
         return acceptedCount > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasPendingFriendRequest(UUID firstUserId, UUID secondUserId) {
+        Integer pendingCount = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM friend_requests
+                        WHERE status = 'PENDING'
+                        AND (
+                            (sender_user_id = :firstUserId AND recipient_user_id = :secondUserId)
+                            OR (sender_user_id = :secondUserId AND recipient_user_id = :firstUserId)
+                        )
+                        """)
+                .param("firstUserId", firstUserId)
+                .param("secondUserId", secondUserId)
+                .query(Integer.class)
+                .single();
+
+        return pendingCount > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FriendshipSnapshot findFriendshipSnapshot(UUID firstUserId, UUID secondUserId) {
+        if (areFriends(firstUserId, secondUserId)) {
+            return jdbcClient.sql("""
+                            SELECT id, sender_user_id, recipient_user_id
+                            FROM friend_requests
+                            WHERE status = 'ACCEPTED'
+                            AND (
+                                (sender_user_id = :firstUserId AND recipient_user_id = :secondUserId)
+                                OR (sender_user_id = :secondUserId AND recipient_user_id = :firstUserId)
+                            )
+                            ORDER BY created_at DESC
+                            LIMIT 1
+                            """)
+                    .param("firstUserId", firstUserId)
+                    .param("secondUserId", secondUserId)
+                    .query((rs, rowNum) -> new FriendshipSnapshot(
+                            FriendshipState.ACCEPTED,
+                            Optional.of(rs.getObject("id", UUID.class)),
+                            Optional.of(rs.getObject("sender_user_id", UUID.class)),
+                            Optional.of(rs.getObject("recipient_user_id", UUID.class))
+                    ))
+                    .optional()
+                    .orElseGet(() -> new FriendshipSnapshot(
+                            FriendshipState.ACCEPTED,
+                            Optional.empty(),
+                            Optional.empty(),
+                            Optional.empty()
+                    ));
+        }
+
+        return jdbcClient.sql("""
+                        SELECT id, sender_user_id, recipient_user_id
+                        FROM friend_requests
+                        WHERE status = 'PENDING'
+                        AND (
+                            (sender_user_id = :firstUserId AND recipient_user_id = :secondUserId)
+                            OR (sender_user_id = :secondUserId AND recipient_user_id = :firstUserId)
+                        )
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """)
+                .param("firstUserId", firstUserId)
+                .param("secondUserId", secondUserId)
+                .query((rs, rowNum) -> new FriendshipSnapshot(
+                        FriendshipState.PENDING,
+                        Optional.of(rs.getObject("id", UUID.class)),
+                        Optional.of(rs.getObject("sender_user_id", UUID.class)),
+                        Optional.of(rs.getObject("recipient_user_id", UUID.class))
+                ))
+                .optional()
+                .orElse(FriendshipSnapshot.none());
+    }
+
+    @Override
+    @Transactional
+    public void removeFriendship(UUID firstUserId, UUID secondUserId) {
+        jdbcClient.sql("""
+                        DELETE FROM friend_requests
+                        WHERE status = 'ACCEPTED'
+                        AND (
+                            (sender_user_id = :firstUserId AND recipient_user_id = :secondUserId)
+                            OR (sender_user_id = :secondUserId AND recipient_user_id = :firstUserId)
+                        )
+                        """)
+                .param("firstUserId", firstUserId)
+                .param("secondUserId", secondUserId)
+                .update();
     }
 
     @Override

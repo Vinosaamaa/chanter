@@ -35,7 +35,7 @@ Important files:
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 - `HANDOFF.md`: this file.
 
-Bootstrap (#11) through voice presence (#14) are merged on `main`. The active implementation slice is #15: Send Friend Request And Direct Message on branch `feature/15-send-friend-request-and-dm`. Cross-cutting auth hardening is tracked in #30.
+Bootstrap (#11) through voice presence (#14) are merged on `main`. Issue #15 (Send Friend Request And Direct Message) is implemented on branch `feature/15-send-friend-request-and-dm` and open for PR review. Cross-cutting auth hardening is tracked in #30. Post-MVP social UX is tracked in #31–#32.
 
 ## Active Implementation
 
@@ -43,7 +43,7 @@ Bootstrap (#11) through voice presence (#14) are merged on `main`. The active im
 - **#12 Create A Study Server** — merged (PR #26)
 - **#13 Create Course, Cohort, And Enroll Learner** — merged (PR #28)
 - **#14 Join A Voice Channel** — merged (PR #29)
-- **Active: #15** — [Send Friend Request And Direct Message](https://github.com/Vinosaamaa/chanter/issues/15) on `feature/15-send-friend-request-and-dm` (TDD)
+- **#15 Send Friend Request And Direct Message** — https://github.com/Vinosaamaa/chanter/issues/15 (PR open on `feature/15-send-friend-request-and-dm`)
 - **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — deferred until after vertical slices or before production hardening
 
 ## Major Decisions Made
@@ -238,11 +238,15 @@ GitHub issues published (2026-06-17):
 - **#14 Join A Voice Channel — CLOSED** (merged PR #29)
 - **Active: #15 Send Friend Request And Direct Message** — https://github.com/Vinosaamaa/chanter/issues/15
 - **Cross-cutting: #30 Wire Auth Service Principal** — https://github.com/Vinosaamaa/chanter/issues/30
+- **Post-MVP: #31 Friends Hub And Live DM** — https://github.com/Vinosaamaa/chanter/issues/31
+- **Post-MVP: #32 DM Voice Call** — https://github.com/Vinosaamaa/chanter/issues/32
+
+Architecture for social UX: `docs/architecture/social-hub-and-dm-voice.md`
 
 Implementation on `main`:
 
-- `backend/` — gateway (:8080), auth (:8081), community (:8082), `common`; message-service and other dirs are README stubs
-- `frontend/` — Vite Study Server shell with voice channel join/leave demo flow
+- `backend/` — gateway (:8080), auth (:8081), community (:8082), message (:8083), `common`
+- `frontend/` — Vite shell with Study Server, voice presence, and Friends/DM demo panel
 - `infra/docker-compose.yml` — local Postgres, Redis, Redpanda, MinIO
 - CI: backend `mvn verify`, frontend lint + build
 
@@ -259,9 +263,10 @@ Confirmed decision:
 
 After bootstrap (#11) through voice presence (#14), build toward the education MVP:
 
-- **#15 (active):** Friend Requests and Direct Messages — use TDD in `message-service`.
-- Then support questions (#16), resources (#17), and AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`.
+- **#15 (PR review):** Friend Requests and Direct Messages — `message-service` + demo frontend panel.
+- **#16 next:** Support Questions per `docs/issues/education-mvp-issue-breakdown.md`.
 - **#30 (cross-cutting):** wire Auth Service principal when ready to replace `TODO(#auth)` on #12–#14 endpoints.
+- **Post-MVP social (#31–#32):** Friends Hub with presence and live DM panel, then DM voice calls—after `realtime-service` and WebRTC/LiveKit transport. See `docs/architecture/social-hub-and-dm-voice.md`.
 
 Recent operations documentation artifacts:
 
@@ -281,7 +286,7 @@ Use this prompt after reloading Cursor or starting a new chat:
 ```text
 Read HANDOFF.md and CONTEXT.md.
 
-Issues #11–#14 are merged on main. Continue #15 (Send Friend Request And Direct Message) on branch feature/15-send-friend-request-and-dm using TDD.
+Issues #11–#14 are merged on main. Issue #15 PR is open on `feature/15-send-friend-request-and-dm`.
 
 Auth hardening: https://github.com/Vinosaamaa/chanter/issues/30 (defer unless prioritizing before #15).
 

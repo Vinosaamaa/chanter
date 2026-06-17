@@ -73,6 +73,47 @@ const createUserId = () => {
   return '00000000-0000-4000-8000-000000000001'
 }
 
+const DEMO_USERS_STORAGE_KEY = 'chanter-demo-user-ids'
+
+type DemoUserIds = {
+  owner: string
+  instructor: string
+  learner: string
+  nonEnrolled: string
+}
+
+type FriendshipStatus = 'NONE' | 'PENDING' | 'ACCEPTED' | 'DECLINED'
+
+const loadDemoUserIds = (): DemoUserIds => {
+  try {
+    const raw = sessionStorage.getItem(DEMO_USERS_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<DemoUserIds>
+      if (parsed.owner && parsed.instructor && parsed.learner && parsed.nonEnrolled) {
+        return {
+          owner: parsed.owner,
+          instructor: parsed.instructor,
+          learner: parsed.learner,
+          nonEnrolled: parsed.nonEnrolled,
+        }
+      }
+    }
+  } catch {
+    // Fall through to fresh demo identities.
+  }
+
+  const ids = {
+    owner: createUserId(),
+    instructor: createUserId(),
+    learner: createUserId(),
+    nonEnrolled: createUserId(),
+  }
+  sessionStorage.setItem(DEMO_USERS_STORAGE_KEY, JSON.stringify(ids))
+  return ids
+}
+
+const truncateId = (id: string) => `${id.slice(0, 8)}…`
+
 function App() {
   const [health, setHealth] = useState<HealthState>({
     gateway: 'checking',
@@ -80,10 +121,12 @@ function App() {
     community: 'checking',
     message: 'checking',
   })
-  const [ownerUserId] = useState(createUserId)
-  const [instructorUserId] = useState(createUserId)
-  const [learnerUserId] = useState(createUserId)
-  const [nonEnrolledUserId] = useState(createUserId)
+  const [demoUserIds] = useState(loadDemoUserIds)
+  const ownerUserId = demoUserIds.owner
+  const instructorUserId = demoUserIds.instructor
+  const learnerUserId = demoUserIds.learner
+  const nonEnrolledUserId = demoUserIds.nonEnrolled
+  const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus>('NONE')
   const [serverName, setServerName] = useState('Java Spring Study Group')
   const [courseTitle, setCourseTitle] = useState('Spring Boot Foundations')
   const [cohortName, setCohortName] = useState('Summer 2026')
@@ -108,8 +151,92 @@ function App() {
   const [isRefreshingDirectMessages, setIsRefreshingDirectMessages] = useState(false)
   const [isCheckingDirectMessageAccess, setIsCheckingDirectMessageAccess] = useState(false)
   const [isBlockingUser, setIsBlockingUser] = useState(false)
+  const [isRemovingFriendship, setIsRemovingFriendship] = useState(false)
   const [socialResult, setSocialResult] = useState<string | null>(null)
+  const [socialError, setSocialError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const refreshDirectMessages = async () => {
+    setIsRefreshingDirectMessages(true)
+    setSocialError(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/direct-messages?viewerUserId=${learnerUserId}&peerUserId=${ownerUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Direct Message refresh failed with ${response.status}`)
+      }
+
+      const data: { messages: DirectMessage[] } = await response.json()
+      setDirectMessages(data.messages)
+      return data.messages
+    } catch (caught) {
+      setSocialError(caught instanceof Error ? caught.message : 'Unable to refresh Direct Messages')
+      return []
+    } finally {
+      setIsRefreshingDirectMessages(false)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadFriendshipState = async () => {
+      try {
+        const response = await fetch(
+          `/api/v1/friendships/status?userId=${ownerUserId}&peerUserId=${learnerUserId}`,
+        )
+
+        if (!response.ok || cancelled) {
+          return
+        }
+
+        const data: {
+          status: FriendshipStatus
+          friendRequestId: string | null
+          senderUserId: string | null
+          recipientUserId: string | null
+        } = await response.json()
+
+        if (cancelled) {
+          return
+        }
+
+        setFriendshipStatus(data.status === 'DECLINED' ? 'NONE' : data.status)
+
+        if (data.friendRequestId && data.senderUserId && data.recipientUserId && data.status !== 'NONE') {
+          setFriendRequest({
+            id: data.friendRequestId,
+            senderUserId: data.senderUserId,
+            recipientUserId: data.recipientUserId,
+            status: data.status,
+          })
+        } else {
+          setFriendRequest(null)
+        }
+
+        if (data.status === 'ACCEPTED') {
+          const messagesResponse = await fetch(
+            `/api/v1/direct-messages?viewerUserId=${learnerUserId}&peerUserId=${ownerUserId}`,
+          )
+          if (messagesResponse.ok && !cancelled) {
+            const messagesData: { messages: DirectMessage[] } = await messagesResponse.json()
+            setDirectMessages(messagesData.messages)
+          }
+        }
+      } catch {
+        // Demo status sync is best-effort on load.
+      }
+    }
+
+    void loadFriendshipState()
+
+    return () => {
+      cancelled = true
+    }
+  }, [ownerUserId, learnerUserId])
 
   useEffect(() => {
     fetch('/actuator/health')
@@ -365,33 +492,9 @@ function App() {
     }
   }
 
-  const refreshDirectMessages = async () => {
-    setIsRefreshingDirectMessages(true)
-    setError(null)
-
-    try {
-      const response = await fetch(
-        `/api/v1/direct-messages?viewerUserId=${learnerUserId}&peerUserId=${ownerUserId}`,
-      )
-
-      if (!response.ok) {
-        throw new Error(`Direct Message refresh failed with ${response.status}`)
-      }
-
-      const data: { messages: DirectMessage[] } = await response.json()
-      setDirectMessages(data.messages)
-      return data.messages
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to refresh Direct Messages')
-      return []
-    } finally {
-      setIsRefreshingDirectMessages(false)
-    }
-  }
-
   const sendFriendRequest = async () => {
     setIsSendingFriendRequest(true)
-    setError(null)
+    setSocialError(null)
     setSocialResult(null)
 
     try {
@@ -404,17 +507,22 @@ function App() {
         }),
       })
 
+      if (response.status === 409) {
+        setSocialError('Already friends or a request is pending. Remove friendship first if you want to re-test.')
+        return
+      }
+
       if (!response.ok) {
         throw new Error(`Friend Request failed with ${response.status}`)
       }
 
       const created: FriendRequest = await response.json()
       setFriendRequest(created)
-      setDirectMessages([])
+      setFriendshipStatus('PENDING')
       setSocialResult(`Friend Request sent (${created.status}).`)
       setHealth((current) => ({ ...current, message: 'ok' }))
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to send Friend Request')
+      setSocialError(caught instanceof Error ? caught.message : 'Unable to send Friend Request')
     } finally {
       setIsSendingFriendRequest(false)
     }
@@ -426,7 +534,7 @@ function App() {
     }
 
     setIsAcceptingFriendRequest(true)
-    setError(null)
+    setSocialError(null)
     setSocialResult(null)
 
     try {
@@ -442,9 +550,10 @@ function App() {
 
       const accepted: FriendRequest = await response.json()
       setFriendRequest(accepted)
+      setFriendshipStatus('ACCEPTED')
       setSocialResult('Friend Request accepted. Users can now Direct Message.')
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to accept Friend Request')
+      setSocialError(caught instanceof Error ? caught.message : 'Unable to accept Friend Request')
     } finally {
       setIsAcceptingFriendRequest(false)
     }
@@ -456,7 +565,7 @@ function App() {
     }
 
     setIsDecliningFriendRequest(true)
-    setError(null)
+    setSocialError(null)
     setSocialResult(null)
 
     try {
@@ -472,18 +581,49 @@ function App() {
 
       const declined: FriendRequest = await response.json()
       setFriendRequest(declined)
+      setFriendshipStatus('NONE')
       setDirectMessages([])
       setSocialResult('Friend Request declined.')
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to decline Friend Request')
+      setSocialError(caught instanceof Error ? caught.message : 'Unable to decline Friend Request')
     } finally {
       setIsDecliningFriendRequest(false)
     }
   }
 
+  const removeFriendship = async () => {
+    setIsRemovingFriendship(true)
+    setSocialError(null)
+    setSocialResult(null)
+
+    try {
+      const response = await fetch('/api/v1/friendships/removal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterUserId: ownerUserId,
+          friendUserId: learnerUserId,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Remove friendship failed with ${response.status}`)
+      }
+
+      setFriendRequest(null)
+      setFriendshipStatus('NONE')
+      setDirectMessages([])
+      setSocialResult('Friendship removed. Send a new request to become friends again.')
+    } catch (caught) {
+      setSocialError(caught instanceof Error ? caught.message : 'Unable to remove friendship')
+    } finally {
+      setIsRemovingFriendship(false)
+    }
+  }
+
   const sendDirectMessage = async () => {
     setIsSendingDirectMessage(true)
-    setError(null)
+    setSocialError(null)
     setSocialResult(null)
 
     try {
@@ -502,9 +642,9 @@ function App() {
       }
 
       await refreshDirectMessages()
-      setSocialResult('Direct Message sent between friends.')
+      setSocialResult('Direct Message sent. Inbox refreshed as Learner.')
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to send Direct Message')
+      setSocialError(caught instanceof Error ? caught.message : 'Unable to send Direct Message')
     } finally {
       setIsSendingDirectMessage(false)
     }
@@ -512,7 +652,7 @@ function App() {
 
   const verifyNonFriendCannotDirectMessage = async () => {
     setIsCheckingDirectMessageAccess(true)
-    setError(null)
+    setSocialError(null)
     setSocialResult(null)
 
     try {
@@ -532,7 +672,9 @@ function App() {
 
       setSocialResult('Non-friend Direct Message is blocked.')
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to verify Direct Message permissions')
+      setSocialError(
+        caught instanceof Error ? caught.message : 'Unable to verify Direct Message permissions',
+      )
     } finally {
       setIsCheckingDirectMessageAccess(false)
     }
@@ -540,7 +682,7 @@ function App() {
 
   const blockSender = async () => {
     setIsBlockingUser(true)
-    setError(null)
+    setSocialError(null)
     setSocialResult(null)
 
     try {
@@ -559,7 +701,7 @@ function App() {
 
       setSocialResult('Learner blocked Owner from Direct Messages.')
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to block user')
+      setSocialError(caught instanceof Error ? caught.message : 'Unable to block user')
     } finally {
       setIsBlockingUser(false)
     }
@@ -567,7 +709,7 @@ function App() {
 
   const verifyBlockedUserCannotDirectMessage = async () => {
     setIsCheckingDirectMessageAccess(true)
-    setError(null)
+    setSocialError(null)
     setSocialResult(null)
 
     try {
@@ -587,124 +729,232 @@ function App() {
 
       setSocialResult('Blocked user cannot send Direct Messages.')
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to verify block behavior')
+      setSocialError(caught instanceof Error ? caught.message : 'Unable to verify block behavior')
     } finally {
       setIsCheckingDirectMessageAccess(false)
     }
   }
 
+  const demoUsers = [
+    { label: 'Owner', id: ownerUserId },
+    { label: 'Instructor', id: instructorUserId },
+    { label: 'Learner', id: learnerUserId },
+    { label: 'Non-friend', id: nonEnrolledUserId },
+  ]
+
+  const canSendFriendRequest = friendshipStatus === 'NONE'
+  const canSendDirectMessage = friendshipStatus === 'ACCEPTED'
+
   return (
     <main className="app-shell">
       <aside className="workspace-panel" aria-label="Study Server setup">
-        <div>
+        <header className="sidebar-header">
           <p className="eyebrow">Chanter</p>
           <h1>Study Servers</h1>
-        </div>
+          <p className="sidebar-lead">Developer demo — simulates multiple users in one browser until login ships (#30).</p>
+        </header>
 
-        <form className="create-form" onSubmit={createStudyServer}>
-          <label htmlFor="server-name">Study Server name</label>
-          <input
-            id="server-name"
-            name="server-name"
-            value={serverName}
-            onChange={(event) => setServerName(event.target.value)}
-            maxLength={120}
-            required
-          />
-          <button type="submit" disabled={isCreating}>
-            {isCreating ? 'Creating...' : 'Create Study Server'}
-          </button>
-          {error ? <p className="form-error">{error}</p> : null}
-        </form>
+        <div className="sidebar-scroll">
+          <section className="panel-card">
+            <h2 className="panel-title">Create Study Server</h2>
+            <form className="create-form" onSubmit={createStudyServer}>
+              <label htmlFor="server-name">Study Server name</label>
+              <input
+                id="server-name"
+                name="server-name"
+                value={serverName}
+                onChange={(event) => setServerName(event.target.value)}
+                maxLength={120}
+                required
+              />
+              <button type="submit" className="btn btn-primary" disabled={isCreating}>
+                {isCreating ? 'Creating...' : 'Create Study Server'}
+              </button>
+              {error ? <p className="form-error">{error}</p> : null}
+            </form>
+          </section>
 
-        <div className="owner-block">
-          <span>Owner</span>
-          <code>{ownerUserId}</code>
-          <span>Instructor</span>
-          <code>{instructorUserId}</code>
-          <span>Learner</span>
-          <code>{learnerUserId}</code>
-          <span>Non-friend</span>
-          <code>{nonEnrolledUserId}</code>
-        </div>
-
-        <section className="social-summary">
-          <div>
-            <p className="eyebrow">Direct Messages</p>
-            <h3>Friend Requests</h3>
-          </div>
-          <div className="social-actions">
-            <button type="button" onClick={sendFriendRequest} disabled={isSendingFriendRequest}>
-              {isSendingFriendRequest ? 'Sending...' : 'Send Request'}
-            </button>
-            <button
-              type="button"
-              onClick={acceptFriendRequest}
-              disabled={isAcceptingFriendRequest || !friendRequest || friendRequest.status !== 'PENDING'}
-            >
-              {isAcceptingFriendRequest ? 'Accepting...' : 'Accept'}
-            </button>
-            <button
-              type="button"
-              onClick={declineFriendRequest}
-              disabled={isDecliningFriendRequest || !friendRequest || friendRequest.status !== 'PENDING'}
-            >
-              {isDecliningFriendRequest ? 'Declining...' : 'Decline'}
-            </button>
-          </div>
-          {friendRequest ? (
-            <p className="social-meta">
-              Request <code>{friendRequest.id}</code> is {friendRequest.status}.
+          <section className="panel-card panel-card--callout">
+            <h2 className="panel-title">No login yet — demo mode</h2>
+            <p className="demo-copy">
+              This page is a <strong>developer test harness</strong>, not the real product. There is no sign-up,
+              sign-in, or second person in another browser. One tab pretends to be several users so we can test the
+              backend APIs before auth (#30) and the Discord-like friends UI (#31).
             </p>
-          ) : null}
-          <label htmlFor="direct-message-body">Direct Message body</label>
-          <input
-            id="direct-message-body"
-            value={directMessageBody}
-            onChange={(event) => setDirectMessageBody(event.target.value)}
-            maxLength={2000}
-          />
-          <div className="social-actions social-actions-wide">
-            <button type="button" onClick={sendDirectMessage} disabled={isSendingDirectMessage}>
-              {isSendingDirectMessage ? 'Sending...' : 'Send DM'}
-            </button>
-            <button type="button" onClick={refreshDirectMessages} disabled={isRefreshingDirectMessages}>
-              {isRefreshingDirectMessages ? 'Refreshing...' : 'Refresh DMs'}
-            </button>
-            <button
-              type="button"
-              onClick={verifyNonFriendCannotDirectMessage}
-              disabled={isCheckingDirectMessageAccess}
-            >
-              {isCheckingDirectMessageAccess ? 'Checking...' : 'Check Non-Friend'}
-            </button>
-          </div>
-          <div className="social-actions">
-            <button type="button" onClick={blockSender} disabled={isBlockingUser}>
-              {isBlockingUser ? 'Blocking...' : 'Block Owner'}
-            </button>
-            <button
-              type="button"
-              onClick={verifyBlockedUserCannotDirectMessage}
-              disabled={isCheckingDirectMessageAccess}
-            >
-              {isCheckingDirectMessageAccess ? 'Checking...' : 'Check Blocked DM'}
-            </button>
-          </div>
-          {socialResult ? <p className="system-line">{socialResult}</p> : null}
-          <div className="direct-message-list" aria-label="Direct Messages">
-            {directMessages.length > 0 ? (
-              directMessages.map((message) => (
-                <div className="direct-message-row" key={message.id}>
-                  <code>{message.senderUserId}</code>
-                  <span>{message.body}</span>
-                </div>
-              ))
-            ) : (
-              <p>No Direct Messages yet.</p>
-            )}
-          </div>
-        </section>
+            <ol className="demo-flow">
+              <li>
+                <span className="flow-step">1</span>
+                <span>
+                  <strong>Send request</strong> — Owner asks Learner to be friends.
+                </span>
+              </li>
+              <li>
+                <span className="flow-step">2</span>
+                <span>
+                  <strong>Accept</strong> — you play Learner in the same tab and accept.
+                </span>
+              </li>
+              <li>
+                <span className="flow-step">3</span>
+                <span>
+                  <strong>Send DM</strong> — Owner messages Learner; <strong>Refresh</strong> loads the thread as
+                  Learner.
+                </span>
+              </li>
+            </ol>
+            <p className="demo-copy demo-copy--muted">
+              To test with a real second person you would need two accounts, two browsers, and login — planned for
+              later issues.
+            </p>
+          </section>
+
+          <section className="panel-card panel-card--compact">
+            <h2 className="panel-title">Simulated users (this browser)</h2>
+            <p className="demo-copy demo-copy--muted">
+              Demo user IDs stay the same for this browser tab (session storage) so refresh does not break your test.
+            </p>
+            <ul className="identity-list">
+              {demoUsers.map((user) => (
+                <li key={user.label}>
+                  <span>{user.label}</span>
+                  <code title={user.id}>{truncateId(user.id)}</code>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="panel-card">
+            <div className="panel-heading">
+              <p className="eyebrow">Issue #15 API test</p>
+              <h2 className="panel-title">Friends &amp; DMs</h2>
+            </div>
+
+            {socialError ? <p className="form-error">{socialError}</p> : null}
+            {socialResult ? <p className="system-line">{socialResult}</p> : null}
+
+            <p className="meta-line">
+              Friendship status: <span className="status-chip">{friendshipStatus}</span>
+            </p>
+
+            <div className="subsection">
+              <h3 className="subsection-title">Friend request</h3>
+              <p className="action-hint">Owner → Learner</p>
+              <div className="button-grid">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={sendFriendRequest}
+                  disabled={isSendingFriendRequest || !canSendFriendRequest}
+                  title={canSendFriendRequest ? undefined : 'Remove friendship first if you want to send again'}
+                >
+                  {isSendingFriendRequest ? 'Sending...' : 'Send (as Owner)'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={acceptFriendRequest}
+                  disabled={isAcceptingFriendRequest || !friendRequest || friendRequest.status !== 'PENDING'}
+                >
+                  {isAcceptingFriendRequest ? 'Accepting...' : 'Accept (as Learner)'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={declineFriendRequest}
+                  disabled={isDecliningFriendRequest || !friendRequest || friendRequest.status !== 'PENDING'}
+                >
+                  {isDecliningFriendRequest ? 'Declining...' : 'Decline (as Learner)'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={removeFriendship}
+                  disabled={isRemovingFriendship || friendshipStatus !== 'ACCEPTED'}
+                >
+                  {isRemovingFriendship ? 'Removing...' : 'Remove friend'}
+                </button>
+              </div>
+              {friendRequest ? (
+                <p className="meta-line">
+                  Request <code title={friendRequest.id}>{truncateId(friendRequest.id)}</code> is{' '}
+                  <span className="status-chip">{friendRequest.status}</span>
+                </p>
+              ) : null}
+            </div>
+
+            <div className="subsection">
+              <h3 className="subsection-title">Direct message</h3>
+              <p className="action-hint">Owner → Learner (after accept)</p>
+              <label htmlFor="direct-message-body">Message</label>
+              <textarea
+                id="direct-message-body"
+                className="message-input"
+                value={directMessageBody}
+                onChange={(event) => setDirectMessageBody(event.target.value)}
+                maxLength={2000}
+                rows={3}
+              />
+              <div className="button-grid">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={sendDirectMessage}
+                  disabled={isSendingDirectMessage || !canSendDirectMessage}
+                >
+                  {isSendingDirectMessage ? 'Sending...' : 'Send (as Owner)'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={refreshDirectMessages}
+                  disabled={isRefreshingDirectMessages || !canSendDirectMessage}
+                >
+                  {isRefreshingDirectMessages ? 'Refreshing...' : 'Refresh (as Learner)'}
+                </button>
+              </div>
+            </div>
+
+            <div className="subsection">
+              <h3 className="subsection-title">Guards</h3>
+              <p className="action-hint">Negative tests with Non-friend &amp; block rules</p>
+              <div className="button-grid">
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={verifyNonFriendCannotDirectMessage}
+                  disabled={isCheckingDirectMessageAccess}
+                >
+                  {isCheckingDirectMessageAccess ? 'Checking...' : 'Non-friend block'}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={blockSender} disabled={isBlockingUser}>
+                  {isBlockingUser ? 'Blocking...' : 'Block owner'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={verifyBlockedUserCannotDirectMessage}
+                  disabled={isCheckingDirectMessageAccess}
+                >
+                  {isCheckingDirectMessageAccess ? 'Checking...' : 'Blocked DM'}
+                </button>
+              </div>
+            </div>
+
+            <div className="direct-message-list" aria-label="Direct Messages">
+              <h3 className="subsection-title">Inbox</h3>
+              {directMessages.length > 0 ? (
+                directMessages.map((message) => (
+                  <div className="direct-message-row" key={message.id}>
+                    <code title={message.senderUserId}>{truncateId(message.senderUserId)}</code>
+                    <span>{message.body}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="empty-copy">No direct messages yet.</p>
+              )}
+            </div>
+          </section>
+        </div>
       </aside>
 
       <section className="server-surface" aria-live="polite">
@@ -817,7 +1067,7 @@ function App() {
                       {voicePresences.length > 0 ? (
                         voicePresences.map((presence) => (
                           <div className="voice-presence-row" key={presence.memberUserId}>
-                            <code>{presence.memberUserId}</code>
+                            <code title={presence.memberUserId}>{truncateId(presence.memberUserId)}</code>
                             <span>{presence.canSpeak ? 'Speak' : 'Muted'}</span>
                             <span>{presence.canListen ? 'Listen' : 'Deafened'}</span>
                           </div>

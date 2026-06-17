@@ -3,6 +3,7 @@ package com.chanter.message.application;
 import com.chanter.message.domain.DirectMessage;
 import com.chanter.message.domain.FriendRequest;
 import com.chanter.message.domain.FriendRequestStatus;
+import com.chanter.message.domain.FriendshipSnapshot;
 import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +25,12 @@ public class SocialMessagingService {
     public FriendRequest sendFriendRequest(UUID senderUserId, UUID recipientUserId) {
         if (senderUserId.equals(recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot send Friend Requests to themselves");
+        }
+        if (repository.areFriends(senderUserId, recipientUserId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Users are already friends");
+        }
+        if (repository.hasPendingFriendRequest(senderUserId, recipientUserId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A Friend Request is already pending between these users");
         }
 
         return repository.saveFriendRequest(new FriendRequest(
@@ -55,6 +62,25 @@ public class SocialMessagingService {
         }
 
         return repository.updateFriendRequestStatus(friendRequestId, FriendRequestStatus.DECLINED);
+    }
+
+    public FriendshipSnapshot findFriendshipStatus(UUID firstUserId, UUID secondUserId) {
+        if (firstUserId.equals(secondUserId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot query friendship with themselves");
+        }
+
+        return repository.findFriendshipSnapshot(firstUserId, secondUserId);
+    }
+
+    public void removeFriendship(UUID requesterUserId, UUID friendUserId) {
+        if (requesterUserId.equals(friendUserId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot remove themselves as a friend");
+        }
+        if (!repository.areFriends(requesterUserId, friendUserId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users are not friends");
+        }
+
+        repository.removeFriendship(requesterUserId, friendUserId);
     }
 
     public void blockUser(UUID blockerUserId, UUID blockedUserId) {

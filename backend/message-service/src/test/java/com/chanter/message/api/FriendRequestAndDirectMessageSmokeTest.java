@@ -177,6 +177,88 @@ class FriendRequestAndDirectMessageSmokeTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void cannotSendFriendRequestWhenUsersAreAlreadyFriends() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+
+        MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "senderUserId", userA.toString(),
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        FriendRequestResponse friendRequest = objectMapper.readValue(
+                friendRequestResult.getResponse().getContentAsString(),
+                FriendRequestResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/acceptance", friendRequest.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/friend-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "senderUserId", userA.toString(),
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void usersCanRemoveFriendshipAndMustReRequestBeforeDirectMessages() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+
+        MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "senderUserId", userA.toString(),
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        FriendRequestResponse friendRequest = objectMapper.readValue(
+                friendRequestResult.getResponse().getContentAsString(),
+                FriendRequestResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/acceptance", friendRequest.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/friendships/status")
+                        .param("userId", userA.toString())
+                        .param("peerUserId", userB.toString()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/friendships/removal")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "requesterUserId", userA.toString(),
+                                "friendUserId", userB.toString()
+                        ))))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/direct-messages")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "senderUserId", userA.toString(),
+                                "recipientUserId", userB.toString(),
+                                "body", "Hello again?"
+                        ))))
+                .andExpect(status().isForbidden());
+    }
+
     private record FriendRequestResponse(
             UUID id,
             UUID senderUserId,
