@@ -23,11 +23,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class JdbcStudyServerRepository implements StudyServerRepository {
 
     private final JdbcClient jdbcClient;
-    private final boolean postgresDatabase;
+    private final DataSource dataSource;
+    private volatile Boolean postgresDatabase;
 
     public JdbcStudyServerRepository(JdbcClient jdbcClient, DataSource dataSource) {
         this.jdbcClient = jdbcClient;
-        this.postgresDatabase = isPostgresDatabase(dataSource);
+        this.dataSource = dataSource;
+    }
+
+    private boolean usePostgresUpsert() {
+        if (postgresDatabase == null) {
+            synchronized (this) {
+                if (postgresDatabase == null) {
+                    postgresDatabase = isPostgresDatabase(dataSource);
+                }
+            }
+        }
+        return postgresDatabase;
     }
 
     private static boolean isPostgresDatabase(DataSource dataSource) {
@@ -165,7 +177,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     @Transactional
     public VoicePresence saveVoicePresence(UUID channelId, UUID memberUserId) {
         OffsetDateTime joinedAt = OffsetDateTime.now(ZoneOffset.UTC);
-        if (postgresDatabase) {
+        if (usePostgresUpsert()) {
             jdbcClient.sql("""
                             INSERT INTO voice_channel_presences (channel_id, member_user_id, joined_at)
                             VALUES (:channelId, :memberUserId, :joinedAt)
