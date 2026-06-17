@@ -351,10 +351,12 @@ function App() {
 }
 
 function StatusRow({ label, value }: { label: string; value: string }) {
+  const displayValue = String(value)
+
   return (
     <div className="status-row">
       <span>{label}</span>
-      <strong className={`status ${value.toLowerCase()}`}>{value}</strong>
+      <strong className={`status ${displayValue.toLowerCase()}`}>{displayValue}</strong>
     </div>
   )
 }

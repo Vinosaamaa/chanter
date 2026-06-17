@@ -197,6 +197,7 @@ What changed:
 - Gateway now forwards Study Server, Cohort, and Course Channel API paths to `community-service`.
 - Frontend shell can create a Course and Cohort after creating a Study Server.
 - Frontend shell can enroll a learner and show the access check result.
+- Browser smoke testing hardened the service status row so transient numeric backend error statuses do not crash rendering.
 
 Snippet:
 
@@ -215,6 +216,12 @@ const outsiderAccess = await fetch(
 )
 ```
 
+Snippet:
+
+```typescript
+const displayValue = String(value)
+```
+
 ## Verification
 
 Red:
@@ -229,3 +236,13 @@ Green:
 - `JAVA_HOME=/Users/wenkxu/Library/Java/JavaVirtualMachines/corretto-21.0.5/Contents/Home mvn verify` — pass.
 - `npm run lint` — pass.
 - `npm run build` — pass.
+
+Browser smoke:
+
+- Reset local Docker Postgres data after Flyway reported the known local-only V1 checksum mismatch from issue #12.
+- Started auth-service, community-service, gateway-service, and frontend locally.
+- Opened `http://127.0.0.1:5173/`.
+- Clicked `Create Study Server`.
+- Clicked `Create Course + Cohort`.
+- Clicked `Enroll Learner`.
+- Verified the visible success text: `Learner can access Course Channels; non-enrolled user is blocked.`
