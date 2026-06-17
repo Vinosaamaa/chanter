@@ -25,8 +25,8 @@ Vertical slices (#11–#24):
 |---|---|---|
 | 11 | Monorepo And Local Infrastructure Bootstrap | Done |
 | 12 | Slice: Create A Study Server | Done |
-| 13 | Slice: Create Course, Cohort, And Enroll Learner | Implemented in PR #28; merge pending |
-| 14 | Slice: Join A Voice Channel | **Next after #13 merge** |
+| 13 | Slice: Create Course, Cohort, And Enroll Learner | Done |
+| 14 | Slice: Join A Voice Channel | **Active** |
 | 15 | Slice: Send Friend Request And Direct Message | after #11 |
 | 16 | Slice: Post A Support Question In A Course Channel | after #13 |
 | 17 | Slice: Upload An Approved Course Resource | after #13 |

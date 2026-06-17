@@ -35,14 +35,14 @@ Important files:
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 - `HANDOFF.md`: this file.
 
-Bootstrap (#11) and Study Server creation (#12) are merged on `main`. Issue #13, Create Course, Cohort, And Enroll Learner, is implemented in PR #28 and ready for owner merge. After #13 merges and `main` is synced, the next implementation slice is #14: Join A Voice Channel.
+Bootstrap (#11), Study Server creation (#12), and Course/Cohort/Enrollment (#13) are merged on `main`. The active implementation slice is #14: Join A Voice Channel on branch `feature/14-join-voice-channel`.
 
 ## Active Implementation
 
 - **#11 Monorepo bootstrap** — merged (PR #25)
 - **#12 Create A Study Server** — merged (PR #26)
-- **#13 Create Course, Cohort, And Enroll Learner** — implemented in PR #28; merge pending owner approval
-- **Next after #13 merge: #14** — [Join A Voice Channel](https://github.com/Vinosaamaa/chanter/issues/14) (TDD)
+- **#13 Create Course, Cohort, And Enroll Learner** — merged (PR #28)
+- **Active: #14** — [Join A Voice Channel](https://github.com/Vinosaamaa/chanter/issues/14) on `feature/14-join-voice-channel` (TDD)
 - **Handoff:** `/tmp/chanter-handoff-2026-06-17.md`
 
 ## Major Decisions Made
@@ -233,8 +233,8 @@ GitHub issues published (2026-06-17):
 - Project board: https://github.com/users/Vinosaamaa/projects/1
 - **#11 Monorepo bootstrap — CLOSED** (merged PR #25)
 - **#12 Create A Study Server — CLOSED** (merged PR #26)
-- **#13 Create Course, Cohort, And Enroll Learner — implemented, merge pending** — https://github.com/Vinosaamaa/chanter/issues/13
-- **Next after #13 merge: #14 Join A Voice Channel** — https://github.com/Vinosaamaa/chanter/issues/14
+- **#13 Create Course, Cohort, And Enroll Learner — CLOSED** (merged PR #28)
+- **Active: #14 Join A Voice Channel** — https://github.com/Vinosaamaa/chanter/issues/14
 
 Implementation on `main`:
 
@@ -246,8 +246,8 @@ Implementation on `main`:
 Pending:
 
 - Branch protection on `main` (optional, after owner enables)
-- Epic #2 implementation for #13 is complete pending PR #28 merge
-- Epic #3 begins with #14 after #13 is merged and `main` is synced
+- Epic #2 implementation for #13 is merged
+- Epic #3 begins with #14 on `feature/14-join-voice-channel`
 
 Confirmed decision:
 
@@ -255,9 +255,9 @@ Confirmed decision:
 - Start with the education market and SaaS model.
 - Position Chanter as Discord for learning communities, with AI teaching assistants and instructor operations built in.
 
-After bootstrap (#11), Study Server creation (#12), and Course/Cohort/Enrollment implementation (#13), build toward the education MVP:
+After bootstrap (#11), Study Server creation (#12), and Course/Cohort/Enrollment (#13), build toward the education MVP:
 
-- **#14 (next after #13 merge):** user joins a Voice Channel — use TDD.
+- **#14 (active):** user joins a Voice Channel — use TDD.
 - Then DMs (#15), support questions (#16), resources (#17), and AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`.
 
 Recent operations documentation artifacts:
@@ -267,6 +267,8 @@ Recent operations documentation artifacts:
 - `docs/operations/issue-11-greptile-fix.md`: Greptile review feedback and fixes for PR #25.
 - `docs/operations/issue-12-greptile-fix.md`: Greptile review feedback and fixes for PR #26.
 - `docs/operations/issue-13-greptile-fix.md`: Greptile review feedback and fixes for PR #28.
+- `docs/operations/issue-14-change-log.md`: issue #14 voice presence implementation log with representative snippets.
+- `docs/operations/issue-14-debug-log.md`: issue #14 local Maven/dev-server debug log.
 
 ## New Chat Startup Prompt
 
@@ -275,7 +277,7 @@ Use this prompt after reloading Cursor or starting a new chat:
 ```text
 Read HANDOFF.md, CONTEXT.md, and /tmp/chanter-handoff-2026-06-17.md.
 
-Issues #11 and #12 are merged on main. Issue #13 (Create Course, Cohort, And Enroll Learner) is implemented in PR #28. After PR #28 is merged, sync main and start #14 (Join A Voice Channel) on branch feature/14-join-voice-channel using TDD.
+Issues #11, #12, and #13 are merged on main. Continue #14 (Join A Voice Channel) on branch feature/14-join-voice-channel using TDD.
 
 Repo: https://github.com/Vinosaamaa/chanter
 Issue: https://github.com/Vinosaamaa/chanter/issues/14

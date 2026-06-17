@@ -6,6 +6,7 @@ import com.chanter.community.domain.OwnerRole;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerRole;
+import com.chanter.community.domain.VoicePresence;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -99,18 +100,110 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
 
     private List<StudyServerChannel> channelsFor(UUID studyServerId) {
         return jdbcClient.sql("""
-                        SELECT id, name, kind, position
+                        SELECT id, study_server_id, name, kind, position
                         FROM study_server_channels
                         WHERE study_server_id = :studyServerId
                         ORDER BY position
                         """)
                 .param("studyServerId", studyServerId)
-                .query((rs, rowNum) -> new StudyServerChannel(
-                        rs.getObject("id", UUID.class),
+                .query((rs, rowNum) -> mapStudyServerChannel(rs.getObject("id", UUID.class),
+                        rs.getObject("study_server_id", UUID.class),
                         rs.getString("name"),
-                        ChannelKind.valueOf(rs.getString("kind")),
-                        rs.getInt("position")
+                        rs.getString("kind"),
+                        rs.getInt("position")))
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<StudyServerChannel> findChannelById(UUID channelId) {
+        return jdbcClient.sql("""
+                        SELECT id, study_server_id, name, kind, position
+                        FROM study_server_channels
+                        WHERE id = :channelId
+                        """)
+                .param("channelId", channelId)
+                .query((rs, rowNum) -> mapStudyServerChannel(rs.getObject("id", UUID.class),
+                        rs.getObject("study_server_id", UUID.class),
+                        rs.getString("name"),
+                        rs.getString("kind"),
+                        rs.getInt("position")))
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isStudyServerMember(UUID studyServerId, UUID userId) {
+        Integer roleCount = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM study_server_roles
+                        WHERE study_server_id = :studyServerId
+                        AND user_id = :userId
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("userId", userId)
+                .query(Integer.class)
+                .single();
+
+        return roleCount > 0;
+    }
+
+    @Override
+    @Transactional
+    public VoicePresence saveVoicePresence(UUID channelId, UUID memberUserId) {
+        deleteVoicePresence(channelId, memberUserId);
+
+        jdbcClient.sql("""
+                        INSERT INTO voice_channel_presences (channel_id, member_user_id, joined_at)
+                        VALUES (:channelId, :memberUserId, :joinedAt)
+                        """)
+                .param("channelId", channelId)
+                .param("memberUserId", memberUserId)
+                .param("joinedAt", OffsetDateTime.now(ZoneOffset.UTC))
+                .update();
+
+        return new VoicePresence(channelId, memberUserId, true, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VoicePresence> findVoicePresences(UUID channelId) {
+        return jdbcClient.sql("""
+                        SELECT channel_id, member_user_id
+                        FROM voice_channel_presences
+                        WHERE channel_id = :channelId
+                        ORDER BY joined_at, member_user_id
+                        """)
+                .param("channelId", channelId)
+                .query((rs, rowNum) -> new VoicePresence(
+                        rs.getObject("channel_id", UUID.class),
+                        rs.getObject("member_user_id", UUID.class),
+                        true,
+                        true
                 ))
                 .list();
+    }
+
+    @Override
+    @Transactional
+    public void deleteVoicePresence(UUID channelId, UUID memberUserId) {
+        jdbcClient.sql("""
+                        DELETE FROM voice_channel_presences
+                        WHERE channel_id = :channelId
+                        AND member_user_id = :memberUserId
+                        """)
+                .param("channelId", channelId)
+                .param("memberUserId", memberUserId)
+                .update();
+    }
+
+    private StudyServerChannel mapStudyServerChannel(
+            UUID id,
+            UUID studyServerId,
+            String name,
+            String kind,
+            int position
+    ) {
+        return new StudyServerChannel(id, studyServerId, name, ChannelKind.valueOf(kind), position);
     }
 }

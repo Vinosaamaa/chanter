@@ -10,7 +10,7 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 ## Current Status
 
-Milestone 0 (monorepo bootstrap) and [issue #12](https://github.com/Vinosaamaa/chanter/issues/12) (Create A Study Server) are merged on `main`. [Issue #13](https://github.com/Vinosaamaa/chanter/issues/13), Create Course, Cohort, And Enroll Learner, is implemented in PR #28 and ready for owner merge. After #13 is merged and `main` is synced, the next education MVP slice is [issue #14](https://github.com/Vinosaamaa/chanter/issues/14), Join A Voice Channel.
+Milestone 0 (monorepo bootstrap), [issue #12](https://github.com/Vinosaamaa/chanter/issues/12) (Create A Study Server), and [issue #13](https://github.com/Vinosaamaa/chanter/issues/13) (Create Course, Cohort, And Enroll Learner) are merged on `main`. The active education MVP slice is [issue #14](https://github.com/Vinosaamaa/chanter/issues/14), Join A Voice Channel, on branch `feature/14-join-voice-channel`.
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`  
 Project board: `https://github.com/users/Vinosaamaa/projects/1`
@@ -82,4 +82,4 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-Next after PR #28 merges: [#14 Join A Voice Channel](https://github.com/Vinosaamaa/chanter/issues/14).
+Active: [#14 Join A Voice Channel](https://github.com/Vinosaamaa/chanter/issues/14).

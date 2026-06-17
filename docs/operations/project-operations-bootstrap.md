@@ -15,7 +15,7 @@ Create a clean development operating model for an enterprise-grade microservice 
 
 - The workspace is initialized as a local git repository on `main`.
 - Private GitHub repository exists at `https://github.com/Vinosaamaa/chanter`, and local `main` tracks `origin/main`.
-- Application code has been bootstrapped. Issues #11 and #12 are merged on `main`; issue #13 is implemented in PR #28 and ready for owner merge.
+- Application code has been bootstrapped. Issues #11, #12, and #13 are merged on `main`; issue #14 is active on `feature/14-join-voice-channel`.
 - Existing files include planning/design docs, the education MVP PRD, GitHub-ready local issue breakdown, editable draw.io diagrams, local repository metadata/templates, Spring Boot services, a React/Vite frontend, CI, and local Docker infrastructure.
 - The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and `greploop`.
 - Draw.io diagram sources and embedded PNG exports live in `docs/diagrams/`; use `/drawio-skill` for future diagram revisions.

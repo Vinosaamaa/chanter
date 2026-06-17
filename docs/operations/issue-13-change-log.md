@@ -3,7 +3,7 @@
 Date: 2026-06-17  
 Branch: `feature/13-create-course-cohort-enroll-learner`  
 Issue: `#13 Slice: Create Course, Cohort, And Enroll Learner`  
-Commit status: implementation complete in PR #28; merge pending owner approval.
+Commit status: merged on `main` via PR #28.
 
 ## Acceptance Criteria Covered
 
