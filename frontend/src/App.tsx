@@ -44,10 +44,25 @@ type VoicePresence = {
   canListen: boolean
 }
 
+type FriendRequest = {
+  id: string
+  senderUserId: string
+  recipientUserId: string
+  status: string
+}
+
+type DirectMessage = {
+  id: string
+  senderUserId: string
+  recipientUserId: string
+  body: string
+}
+
 type HealthState = {
   gateway: string
   auth: string
   community: string
+  message: string
 }
 
 const createUserId = () => {
@@ -63,6 +78,7 @@ function App() {
     gateway: 'checking',
     auth: 'checking',
     community: 'checking',
+    message: 'checking',
   })
   const [ownerUserId] = useState(createUserId)
   const [instructorUserId] = useState(createUserId)
@@ -82,6 +98,17 @@ function App() {
   const [accessResult, setAccessResult] = useState<string | null>(null)
   const [voiceResult, setVoiceResult] = useState<string | null>(null)
   const [voicePresences, setVoicePresences] = useState<VoicePresence[]>([])
+  const [friendRequest, setFriendRequest] = useState<FriendRequest | null>(null)
+  const [directMessageBody, setDirectMessageBody] = useState('Want to study together?')
+  const [directMessages, setDirectMessages] = useState<DirectMessage[]>([])
+  const [isSendingFriendRequest, setIsSendingFriendRequest] = useState(false)
+  const [isAcceptingFriendRequest, setIsAcceptingFriendRequest] = useState(false)
+  const [isDecliningFriendRequest, setIsDecliningFriendRequest] = useState(false)
+  const [isSendingDirectMessage, setIsSendingDirectMessage] = useState(false)
+  const [isRefreshingDirectMessages, setIsRefreshingDirectMessages] = useState(false)
+  const [isCheckingDirectMessageAccess, setIsCheckingDirectMessageAccess] = useState(false)
+  const [isBlockingUser, setIsBlockingUser] = useState(false)
+  const [socialResult, setSocialResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -103,7 +130,16 @@ function App() {
         }))
       })
       .catch(() => setHealth((current) => ({ ...current, community: 'unreachable' })))
-  }, [])
+
+    fetch(`/api/v1/direct-messages?viewerUserId=${ownerUserId}&peerUserId=${learnerUserId}`)
+      .then((response) => {
+        setHealth((current) => ({
+          ...current,
+          message: response.status === 403 || response.ok ? 'ok' : 'unknown',
+        }))
+      })
+      .catch(() => setHealth((current) => ({ ...current, message: 'unreachable' })))
+  }, [ownerUserId, learnerUserId])
 
   const textChannels = useMemo(
     () => studyServer?.channels.filter((channel) => channel.kind === 'TEXT') ?? [],
@@ -329,6 +365,234 @@ function App() {
     }
   }
 
+  const refreshDirectMessages = async () => {
+    setIsRefreshingDirectMessages(true)
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/direct-messages?viewerUserId=${learnerUserId}&peerUserId=${ownerUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Direct Message refresh failed with ${response.status}`)
+      }
+
+      const data: { messages: DirectMessage[] } = await response.json()
+      setDirectMessages(data.messages)
+      return data.messages
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to refresh Direct Messages')
+      return []
+    } finally {
+      setIsRefreshingDirectMessages(false)
+    }
+  }
+
+  const sendFriendRequest = async () => {
+    setIsSendingFriendRequest(true)
+    setError(null)
+    setSocialResult(null)
+
+    try {
+      const response = await fetch('/api/v1/friend-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderUserId: ownerUserId,
+          recipientUserId: learnerUserId,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Friend Request failed with ${response.status}`)
+      }
+
+      const created: FriendRequest = await response.json()
+      setFriendRequest(created)
+      setDirectMessages([])
+      setSocialResult(`Friend Request sent (${created.status}).`)
+      setHealth((current) => ({ ...current, message: 'ok' }))
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to send Friend Request')
+    } finally {
+      setIsSendingFriendRequest(false)
+    }
+  }
+
+  const acceptFriendRequest = async () => {
+    if (!friendRequest) {
+      return
+    }
+
+    setIsAcceptingFriendRequest(true)
+    setError(null)
+    setSocialResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/friend-requests/${friendRequest.id}/acceptance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientUserId: learnerUserId }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Friend Request accept failed with ${response.status}`)
+      }
+
+      const accepted: FriendRequest = await response.json()
+      setFriendRequest(accepted)
+      setSocialResult('Friend Request accepted. Users can now Direct Message.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to accept Friend Request')
+    } finally {
+      setIsAcceptingFriendRequest(false)
+    }
+  }
+
+  const declineFriendRequest = async () => {
+    if (!friendRequest) {
+      return
+    }
+
+    setIsDecliningFriendRequest(true)
+    setError(null)
+    setSocialResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/friend-requests/${friendRequest.id}/decline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientUserId: learnerUserId }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Friend Request decline failed with ${response.status}`)
+      }
+
+      const declined: FriendRequest = await response.json()
+      setFriendRequest(declined)
+      setDirectMessages([])
+      setSocialResult('Friend Request declined.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to decline Friend Request')
+    } finally {
+      setIsDecliningFriendRequest(false)
+    }
+  }
+
+  const sendDirectMessage = async () => {
+    setIsSendingDirectMessage(true)
+    setError(null)
+    setSocialResult(null)
+
+    try {
+      const response = await fetch('/api/v1/direct-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderUserId: ownerUserId,
+          recipientUserId: learnerUserId,
+          body: directMessageBody,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Direct Message send failed with ${response.status}`)
+      }
+
+      await refreshDirectMessages()
+      setSocialResult('Direct Message sent between friends.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to send Direct Message')
+    } finally {
+      setIsSendingDirectMessage(false)
+    }
+  }
+
+  const verifyNonFriendCannotDirectMessage = async () => {
+    setIsCheckingDirectMessageAccess(true)
+    setError(null)
+    setSocialResult(null)
+
+    try {
+      const response = await fetch('/api/v1/direct-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderUserId: nonEnrolledUserId,
+          recipientUserId: learnerUserId,
+          body: 'Can we talk?',
+        }),
+      })
+
+      if (response.status !== 403) {
+        throw new Error(`Expected non-friend DM to fail with 403, got ${response.status}`)
+      }
+
+      setSocialResult('Non-friend Direct Message is blocked.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to verify Direct Message permissions')
+    } finally {
+      setIsCheckingDirectMessageAccess(false)
+    }
+  }
+
+  const blockSender = async () => {
+    setIsBlockingUser(true)
+    setError(null)
+    setSocialResult(null)
+
+    try {
+      const response = await fetch('/api/v1/user-blocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blockerUserId: learnerUserId,
+          blockedUserId: ownerUserId,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Block user failed with ${response.status}`)
+      }
+
+      setSocialResult('Learner blocked Owner from Direct Messages.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to block user')
+    } finally {
+      setIsBlockingUser(false)
+    }
+  }
+
+  const verifyBlockedUserCannotDirectMessage = async () => {
+    setIsCheckingDirectMessageAccess(true)
+    setError(null)
+    setSocialResult(null)
+
+    try {
+      const response = await fetch('/api/v1/direct-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderUserId: ownerUserId,
+          recipientUserId: learnerUserId,
+          body: 'Are you there?',
+        }),
+      })
+
+      if (response.status !== 403) {
+        throw new Error(`Expected blocked DM to fail with 403, got ${response.status}`)
+      }
+
+      setSocialResult('Blocked user cannot send Direct Messages.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to verify block behavior')
+    } finally {
+      setIsCheckingDirectMessageAccess(false)
+    }
+  }
+
   return (
     <main className="app-shell">
       <aside className="workspace-panel" aria-label="Study Server setup">
@@ -360,7 +624,87 @@ function App() {
           <code>{instructorUserId}</code>
           <span>Learner</span>
           <code>{learnerUserId}</code>
+          <span>Non-friend</span>
+          <code>{nonEnrolledUserId}</code>
         </div>
+
+        <section className="social-summary">
+          <div>
+            <p className="eyebrow">Direct Messages</p>
+            <h3>Friend Requests</h3>
+          </div>
+          <div className="social-actions">
+            <button type="button" onClick={sendFriendRequest} disabled={isSendingFriendRequest}>
+              {isSendingFriendRequest ? 'Sending...' : 'Send Request'}
+            </button>
+            <button
+              type="button"
+              onClick={acceptFriendRequest}
+              disabled={isAcceptingFriendRequest || !friendRequest || friendRequest.status !== 'PENDING'}
+            >
+              {isAcceptingFriendRequest ? 'Accepting...' : 'Accept'}
+            </button>
+            <button
+              type="button"
+              onClick={declineFriendRequest}
+              disabled={isDecliningFriendRequest || !friendRequest || friendRequest.status !== 'PENDING'}
+            >
+              {isDecliningFriendRequest ? 'Declining...' : 'Decline'}
+            </button>
+          </div>
+          {friendRequest ? (
+            <p className="social-meta">
+              Request <code>{friendRequest.id}</code> is {friendRequest.status}.
+            </p>
+          ) : null}
+          <label htmlFor="direct-message-body">Direct Message body</label>
+          <input
+            id="direct-message-body"
+            value={directMessageBody}
+            onChange={(event) => setDirectMessageBody(event.target.value)}
+            maxLength={2000}
+          />
+          <div className="social-actions social-actions-wide">
+            <button type="button" onClick={sendDirectMessage} disabled={isSendingDirectMessage}>
+              {isSendingDirectMessage ? 'Sending...' : 'Send DM'}
+            </button>
+            <button type="button" onClick={refreshDirectMessages} disabled={isRefreshingDirectMessages}>
+              {isRefreshingDirectMessages ? 'Refreshing...' : 'Refresh DMs'}
+            </button>
+            <button
+              type="button"
+              onClick={verifyNonFriendCannotDirectMessage}
+              disabled={isCheckingDirectMessageAccess}
+            >
+              {isCheckingDirectMessageAccess ? 'Checking...' : 'Check Non-Friend'}
+            </button>
+          </div>
+          <div className="social-actions">
+            <button type="button" onClick={blockSender} disabled={isBlockingUser}>
+              {isBlockingUser ? 'Blocking...' : 'Block Owner'}
+            </button>
+            <button
+              type="button"
+              onClick={verifyBlockedUserCannotDirectMessage}
+              disabled={isCheckingDirectMessageAccess}
+            >
+              {isCheckingDirectMessageAccess ? 'Checking...' : 'Check Blocked DM'}
+            </button>
+          </div>
+          {socialResult ? <p className="system-line">{socialResult}</p> : null}
+          <div className="direct-message-list" aria-label="Direct Messages">
+            {directMessages.length > 0 ? (
+              directMessages.map((message) => (
+                <div className="direct-message-row" key={message.id}>
+                  <code>{message.senderUserId}</code>
+                  <span>{message.body}</span>
+                </div>
+              ))
+            ) : (
+              <p>No Direct Messages yet.</p>
+            )}
+          </div>
+        </section>
       </aside>
 
       <section className="server-surface" aria-live="polite">
@@ -501,6 +845,7 @@ function App() {
         <StatusRow label="Gateway" value={health.gateway} />
         <StatusRow label="Auth" value={health.auth} />
         <StatusRow label="Community" value={health.community} />
+        <StatusRow label="Message" value={health.message} />
       </aside>
     </main>
   )

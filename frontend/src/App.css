@@ -280,6 +280,67 @@ code {
   font-weight: 800;
 }
 
+.social-summary,
+.voice-summary,
+.course-summary {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #d9dee8;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.social-summary label,
+.social-meta,
+.direct-message-list p {
+  color: #69707d;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.social-summary input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.social-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.social-actions-wide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.social-meta code {
+  word-break: break-all;
+}
+
+.direct-message-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.direct-message-row {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #f6f8fb;
+}
+
+.direct-message-row span {
+  color: #22252b;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .system-line {
   color: #0f766e;
   font-weight: 800;
@@ -347,7 +408,9 @@ code {
   }
 
   .voice-actions,
-  .voice-presence-row {
+  .voice-presence-row,
+  .social-actions,
+  .social-actions-wide {
     grid-template-columns: 1fr;
   }
 }
