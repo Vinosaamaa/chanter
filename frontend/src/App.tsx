@@ -37,6 +37,13 @@ type Course = {
   channels: Channel[]
 }
 
+type VoicePresence = {
+  channelId: string
+  memberUserId: string
+  canSpeak: boolean
+  canListen: boolean
+}
+
 type HealthState = {
   gateway: string
   auth: string
@@ -69,7 +76,12 @@ function App() {
   const [isCreating, setIsCreating] = useState(false)
   const [isCreatingCourse, setIsCreatingCourse] = useState(false)
   const [isEnrolling, setIsEnrolling] = useState(false)
+  const [isJoiningVoice, setIsJoiningVoice] = useState(false)
+  const [isCheckingVoiceAccess, setIsCheckingVoiceAccess] = useState(false)
+  const [isLeavingVoice, setIsLeavingVoice] = useState(false)
   const [accessResult, setAccessResult] = useState<string | null>(null)
+  const [voiceResult, setVoiceResult] = useState<string | null>(null)
+  const [voicePresences, setVoicePresences] = useState<VoicePresence[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -101,6 +113,7 @@ function App() {
     () => studyServer?.channels.filter((channel) => channel.kind === 'VOICE') ?? [],
     [studyServer],
   )
+  const selectedVoiceChannel = voiceChannels[0] ?? null
 
   const createStudyServer = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -128,6 +141,8 @@ function App() {
       setStudyServer(await viewedResponse.json())
       setCourse(null)
       setAccessResult(null)
+      setVoiceResult(null)
+      setVoicePresences([])
       setHealth((current) => ({ ...current, community: 'ok' }))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to create Study Server')
@@ -207,6 +222,110 @@ function App() {
       setError(caught instanceof Error ? caught.message : 'Unable to enroll learner')
     } finally {
       setIsEnrolling(false)
+    }
+  }
+
+  const refreshVoicePresences = async (channelId: string) => {
+    const response = await fetch(
+      `/api/v1/study-server-channels/${channelId}/voice-presences?viewerUserId=${ownerUserId}`,
+    )
+
+    if (!response.ok) {
+      throw new Error(`Voice presence refresh failed with ${response.status}`)
+    }
+
+    const data: { presences: VoicePresence[] } = await response.json()
+    setVoicePresences(data.presences)
+    return data.presences
+  }
+
+  const joinVoiceChannel = async () => {
+    if (!selectedVoiceChannel) {
+      return
+    }
+
+    setIsJoiningVoice(true)
+    setError(null)
+    setVoiceResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberUserId: ownerUserId }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Voice join failed with ${response.status}`)
+      }
+
+      await refreshVoicePresences(selectedVoiceChannel.id)
+      setVoiceResult('Owner joined the Voice Channel and can speak/listen.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to join Voice Channel')
+    } finally {
+      setIsJoiningVoice(false)
+    }
+  }
+
+  const verifyNonMemberCannotJoinVoice = async () => {
+    if (!selectedVoiceChannel) {
+      return
+    }
+
+    setIsCheckingVoiceAccess(true)
+    setError(null)
+    setVoiceResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberUserId: nonEnrolledUserId }),
+      })
+
+      if (response.status !== 403) {
+        throw new Error(`Expected non-member voice join to fail with 403, got ${response.status}`)
+      }
+
+      await refreshVoicePresences(selectedVoiceChannel.id)
+      setVoiceResult('Non-member is blocked from joining the Voice Channel.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to verify Voice Channel permissions')
+    } finally {
+      setIsCheckingVoiceAccess(false)
+    }
+  }
+
+  const leaveVoiceChannel = async () => {
+    if (!selectedVoiceChannel) {
+      return
+    }
+
+    setIsLeavingVoice(true)
+    setError(null)
+    setVoiceResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memberUserId: ownerUserId }),
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`Voice leave failed with ${response.status}`)
+      }
+
+      await refreshVoicePresences(selectedVoiceChannel.id)
+      setVoiceResult('Owner left the Voice Channel.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to leave Voice Channel')
+    } finally {
+      setIsLeavingVoice(false)
     }
   }
 
@@ -326,6 +445,43 @@ function App() {
                       {isEnrolling ? 'Enrolling...' : 'Enroll Learner'}
                     </button>
                     {accessResult ? <p className="system-line">{accessResult}</p> : null}
+                  </section>
+                ) : null}
+                {selectedVoiceChannel ? (
+                  <section className="voice-summary">
+                    <div>
+                      <p className="eyebrow">Voice Channel</p>
+                      <h3>{selectedVoiceChannel.name}</h3>
+                    </div>
+                    <div className="voice-actions">
+                      <button type="button" onClick={joinVoiceChannel} disabled={isJoiningVoice}>
+                        {isJoiningVoice ? 'Joining...' : 'Join'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={verifyNonMemberCannotJoinVoice}
+                        disabled={isCheckingVoiceAccess}
+                      >
+                        {isCheckingVoiceAccess ? 'Checking...' : 'Check Non-Member'}
+                      </button>
+                      <button type="button" onClick={leaveVoiceChannel} disabled={isLeavingVoice}>
+                        {isLeavingVoice ? 'Leaving...' : 'Leave'}
+                      </button>
+                    </div>
+                    {voiceResult ? <p className="system-line">{voiceResult}</p> : null}
+                    <div className="voice-presence-list" aria-label="Voice Channel presence">
+                      {voicePresences.length > 0 ? (
+                        voicePresences.map((presence) => (
+                          <div className="voice-presence-row" key={presence.memberUserId}>
+                            <code>{presence.memberUserId}</code>
+                            <span>{presence.canSpeak ? 'Speak' : 'Muted'}</span>
+                            <span>{presence.canListen ? 'Listen' : 'Deafened'}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p>No one is in voice.</p>
+                      )}
+                    </div>
                   </section>
                 ) : null}
               </article>

@@ -365,8 +365,8 @@ Current implementation status as of 2026-06-17:
 
 - Milestone 0 / issue #11, Monorepo And Local Infrastructure Bootstrap, is merged on `main`.
 - Issue #12, Create A Study Server, is merged on `main` via PR #26.
-- Issue #13, Create Course, Cohort, And Enroll Learner, is implemented in PR #28 and ready for owner merge.
-- After PR #28 merges and `main` is synced, the next implementation slice is issue #14, Join A Voice Channel. Use branch `feature/14-join-voice-channel` and TDD.
+- Issue #13, Create Course, Cohort, And Enroll Learner, is merged on `main` via PR #28.
+- The active implementation slice is issue #14, Join A Voice Channel. Use branch `feature/14-join-voice-channel` and TDD.
 
 Milestone -1: Project operations bootstrap
 
@@ -474,9 +474,9 @@ Milestone 9: Hardening
 
 ## Next Build Step
 
-The first implementation path has started: the monorepo/bootstrap work is merged, the first vertical slice lets a Study Server Owner create a Study Server with default Study Server Channels and Owner role, and the Course/Cohort/Enrollment slice is implemented in PR #28.
+The first implementation path has started: the monorepo/bootstrap work is merged, the first vertical slice lets a Study Server Owner create a Study Server with default Study Server Channels and Owner role, and the Course/Cohort/Enrollment slice is merged in PR #28.
 
-After PR #28 merges and `main` is synced, implement issue #14: user joins a Voice Channel. Use TDD and keep the issue-scoped change/debug/Greptile-fix log practice in `docs/operations/`.
+Now implement issue #14: user joins a Voice Channel. Use TDD and keep the issue-scoped change/debug/Greptile-fix log practice in `docs/operations/`.
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 
