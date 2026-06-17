@@ -35,13 +35,13 @@ Important files:
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 - `HANDOFF.md`: this file.
 
-No application services beyond bootstrap are complete yet. Milestone 0 monorepo bootstrap is in progress (issue #11): `backend/` (gateway + auth), `frontend/`, `infra/docker-compose.yml`, CI workflow.
+Bootstrap (#11) is merged on `main`. Application services beyond health-check stubs are not built yet.
 
 ## Active Implementation
 
-- **Issue #11:** Monorepo And Local Infrastructure Bootstrap — in progress locally
-- **Next:** [#12 Create A Study Server](https://github.com/Vinosaamaa/chanter/issues/12)
-- **Handoff:** `/tmp/chanter-implementation-handoff-2026-06-17.md`
+- **#11 Monorepo bootstrap** — merged (PR #25)
+- **Next: #12** — [Create A Study Server](https://github.com/Vinosaamaa/chanter/issues/12) (TDD)
+- **Handoff:** `/tmp/chanter-handoff-2026-06-17.md`
 
 ## Major Decisions Made
 
@@ -225,9 +225,21 @@ Pending user confirmation:
 GitHub issues published (2026-06-17):
 
 - Milestone: https://github.com/Vinosaamaa/chanter/milestone/1
-- Project board: https://github.com/users/Vinosaamaa/projects/1 (all 24 issues added)
-- 10 epics (#1–#10) and 14 stories (#11–#24)
-- **Start implementation with issue #11** (Monorepo And Local Infrastructure Bootstrap)
+- Project board: https://github.com/users/Vinosaamaa/projects/1
+- **#11 Monorepo bootstrap — CLOSED** (merged PR #25)
+- **Active: #12 Create A Study Server** — https://github.com/Vinosaamaa/chanter/issues/12
+
+Implementation on `main`:
+
+- `backend/` — gateway (:8080), auth (:8081), `common`; other services are README stubs
+- `frontend/` — Vite bootstrap page with gateway/auth health checks (not product UI yet)
+- `infra/docker-compose.yml` — local Postgres, Redis, Redpanda, MinIO
+- CI: backend `mvn verify`, frontend lint + build
+
+Pending:
+
+- Branch protection on `main` (optional, after owner enables)
+- Epic #2+ work begins with #12
 
 Confirmed decision:
 
@@ -235,25 +247,22 @@ Confirmed decision:
 - Start with the education market and SaaS model.
 - Position Chanter as Discord for learning communities, with AI teaching assistants and instructor operations built in.
 
-After that, start Milestone 0 and build toward the education MVP:
+After bootstrap (#11, merged), build toward the education MVP:
 
-- Bootstrap monorepo layout.
-- Initialize Spring Boot services.
-- Initialize React Vite frontend.
-- Add Docker Compose with PostgreSQL, Redis, Redpanda, and MinIO.
-- First implementation vertical slice after bootstrap: educator creates a Study Server with default course channels and instructor/TA/learner roles.
+- **#12 (next):** Study Server Owner creates a Study Server with default Study Server Channels — use TDD
+- Then Courses/Cohorts (#13), voice, DMs, AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`
 
 ## New Chat Startup Prompt
 
 Use this prompt after reloading Cursor or starting a new chat:
 
 ```text
-Read HANDOFF.md, CONTEXT.md, and /tmp/chanter-implementation-handoff-2026-06-17.md.
+Read HANDOFF.md, CONTEXT.md, and /tmp/chanter-handoff-2026-06-17.md.
 
-Continue Chanter implementation. Finish/merge issue #11 bootstrap if needed, then implement #12 (Create A Study Server).
+Issue #11 is merged on main. Start #12 (Create A Study Server) on branch feature/12-create-study-server using TDD.
 
-make backend-auth && make backend-gateway && make frontend-dev
 Repo: https://github.com/Vinosaamaa/chanter
+Issue: https://github.com/Vinosaamaa/chanter/issues/12
 ```
 
 ## Notes For Future Agent
