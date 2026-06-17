@@ -3,7 +3,7 @@
 Date: 2026-06-17  
 Branch: `feature/14-join-voice-channel`  
 PR: https://github.com/Vinosaamaa/chanter/pull/29  
-Final Greptile confidence: pending final review after iteration 5
+Final Greptile confidence: `4/5`
 
 ## Summary
 
@@ -107,4 +107,6 @@ Unresolved follow-up:
 
 - Greptile initial summary: `3/5`
 - Greptile after iterations 1–4: `4/5`, 6 review threads resolved
-- Greptile after iteration 5: pending re-review
+- Greptile after iteration 5: `4/5`, 0 unresolved review threads
+- Remaining Greptile concern: caller identity is request-supplied until `#auth` lands (acknowledged `TODO(#auth)`, consistent with issues #12–#13)
+- Greploop iterations: 5 (max)
