@@ -292,7 +292,7 @@ Issue: https://github.com/Vinosaamaa/chanter/issues/15
 ## Notes For Future Agent
 
 - Do not assume the user wants to code immediately; they have been exploring system design and enterprise workflow.
-- **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for feature work.
+- **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
 - Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 - **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.

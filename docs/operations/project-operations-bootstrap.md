@@ -15,7 +15,7 @@ Create a clean development operating model for an enterprise-grade microservice 
 
 - The workspace is initialized as a local git repository on `main`.
 - Private GitHub repository exists at `https://github.com/Vinosaamaa/chanter`, and local `main` tracks `origin/main`.
-- Application code has been bootstrapped. Issues #11, #12, and #13 are merged on `main`; issue #14 is active on `feature/14-join-voice-channel`.
+- Application code has been bootstrapped. Issues #11–#14 are merged on `main`; issue #15 is active on `feature/15-send-friend-request-and-dm`.
 - Existing files include planning/design docs, the education MVP PRD, GitHub-ready local issue breakdown, editable draw.io diagrams, local repository metadata/templates, Spring Boot services, a React/Vite frontend, CI, and local Docker infrastructure.
 - The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and `greploop`.
 - Draw.io diagram sources and embedded PNG exports live in `docs/diagrams/`; use `/drawio-skill` for future diagram revisions.
@@ -43,9 +43,11 @@ Decision status: confirmed.
 - [x] Create the GitHub repository: `https://github.com/Vinosaamaa/chanter`.
 - [x] Push the current planning docs and repository metadata.
 - [x] Create repository labels: `epic`, `story`, `ready-for-agent`, `docs`, `architecture`, `backend`, `frontend`, `infra`, `realtime`, `security`, `education`, `ai-agent`, `billing`, `analytics`, `ops`.
-- [ ] Enable branch protection for `main` after the first CI workflow exists.
-- [ ] Require pull requests for `main`.
-- [ ] Require status checks once tests/typechecks exist.
+- [x] Add first CI workflow (`backend`, `frontend` checks on pull requests).
+- [ ] Enable GitHub branch protection for `main` (requires **GitHub Pro** on private repos — see below).
+- [x] Add local `pre-push` hook to block direct pushes to `main` (`make setup-git-hooks`).
+- [ ] Require pull requests for `main` on GitHub (after Pro upgrade or if repo is public).
+- [ ] Require `backend` and `frontend` status checks on GitHub (after Pro upgrade).
 - [ ] Add CODEOWNERS after real ownership exists.
 - [x] Create the GitHub Projects board: [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) (issues #1–#24 added).
 - [x] Convert `docs/issues/education-mvp-issue-breakdown.md` into GitHub epics and vertical-slice stories.
@@ -92,6 +94,36 @@ Recommended PR rules:
 - Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 - Do not merge code that bypasses backend permission enforcement for protected actions.
 - Do not commit secrets, local credentials, generated dependency folders, or local runtime data.
+
+## Protecting `main`
+
+**Never push directly to `main`.** Documentation-only changes use the same branch → PR → merge flow as feature code.
+
+### Local (available now)
+
+```bash
+make setup-git-hooks
+```
+
+Installs `.githooks/pre-push`, which rejects `git push` to `main`.
+
+### GitHub (requires GitHub Pro on private repos)
+
+GitHub returns `403` for branch protection and rulesets on this private repository while on the free plan. After upgrading to **GitHub Pro** (or making the repository public), run:
+
+```bash
+chmod +x scripts/enable-github-branch-protection.sh
+./scripts/enable-github-branch-protection.sh
+```
+
+That enables:
+
+- Required pull request before merge (1 approval)
+- Required status checks: `backend`, `frontend`
+- No force-push or branch deletion on `main`
+- Rules apply to admins
+
+Manual alternative: **Settings → Branches → Add branch protection rule** for `main`.
 
 ## Commit Message Style
 

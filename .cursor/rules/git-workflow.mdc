@@ -1,0 +1,33 @@
+---
+description: Git branch and push workflow — never push directly to main
+alwaysApply: true
+---
+
+# Git Workflow
+
+**Never push directly to `main`.** All changes reach `main` only through an approved pull request.
+
+## Required flow
+
+1. One GitHub issue → one feature branch (e.g. `feature/15-send-friend-request-and-dm`)
+2. Commit and push the **feature branch** only
+3. Open a PR targeting `main`
+4. Merge only after the repository owner approves
+
+## Forbidden
+
+- `git push origin main`
+- `git push origin HEAD:main`
+- Committing feature or doc work directly on `main` then pushing
+
+## Doc-only changes
+
+Documentation and handoff updates use the same rule: branch → PR → merge. Do not treat docs as an exception.
+
+## Local enforcement
+
+Run `make setup-git-hooks` once per clone to block accidental `git push` to `main`.
+
+## GitHub enforcement
+
+Branch protection on private repos requires **GitHub Pro**. Run `scripts/enable-github-branch-protection.sh` after upgrading, or enable protection in GitHub Settings → Branches.
