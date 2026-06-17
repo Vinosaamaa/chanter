@@ -1,0 +1,185 @@
+package com.chanter.message.infra;
+
+import com.chanter.message.application.SocialMessagingRepository;
+import com.chanter.message.domain.DirectMessage;
+import com.chanter.message.domain.FriendRequest;
+import com.chanter.message.domain.FriendRequestStatus;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+@Repository
+public class JdbcSocialMessagingRepository implements SocialMessagingRepository {
+
+    private final JdbcClient jdbcClient;
+
+    public JdbcSocialMessagingRepository(JdbcClient jdbcClient) {
+        this.jdbcClient = jdbcClient;
+    }
+
+    @Override
+    @Transactional
+    public FriendRequest saveFriendRequest(FriendRequest friendRequest) {
+        jdbcClient.sql("""
+                        INSERT INTO friend_requests (id, sender_user_id, recipient_user_id, status, created_at)
+                        VALUES (:id, :senderUserId, :recipientUserId, :status, :createdAt)
+                        """)
+                .param("id", friendRequest.id())
+                .param("senderUserId", friendRequest.senderUserId())
+                .param("recipientUserId", friendRequest.recipientUserId())
+                .param("status", friendRequest.status().name())
+                .param("createdAt", toOffsetDateTime(friendRequest.createdAt()))
+                .update();
+
+        return friendRequest;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<FriendRequest> findFriendRequestById(UUID friendRequestId) {
+        return jdbcClient.sql("""
+                        SELECT id, sender_user_id, recipient_user_id, status, created_at
+                        FROM friend_requests
+                        WHERE id = :friendRequestId
+                        """)
+                .param("friendRequestId", friendRequestId)
+                .query((rs, rowNum) -> new FriendRequest(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("sender_user_id", UUID.class),
+                        rs.getObject("recipient_user_id", UUID.class),
+                        FriendRequestStatus.valueOf(rs.getString("status")),
+                        rs.getObject("created_at", OffsetDateTime.class).toInstant()
+                ))
+                .optional();
+    }
+
+    @Override
+    @Transactional
+    public FriendRequest updateFriendRequestStatus(UUID friendRequestId, FriendRequestStatus status) {
+        jdbcClient.sql("""
+                        UPDATE friend_requests
+                        SET status = :status
+                        WHERE id = :friendRequestId
+                        """)
+                .param("status", status.name())
+                .param("friendRequestId", friendRequestId)
+                .update();
+
+        return findFriendRequestById(friendRequestId)
+                .orElseThrow(() -> new IllegalStateException("Friend Request not found after update"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean areFriends(UUID firstUserId, UUID secondUserId) {
+        Integer acceptedCount = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM friend_requests
+                        WHERE status = 'ACCEPTED'
+                        AND (
+                            (sender_user_id = :firstUserId AND recipient_user_id = :secondUserId)
+                            OR (sender_user_id = :secondUserId AND recipient_user_id = :firstUserId)
+                        )
+                        """)
+                .param("firstUserId", firstUserId)
+                .param("secondUserId", secondUserId)
+                .query(Integer.class)
+                .single();
+
+        return acceptedCount > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isBlocked(UUID senderUserId, UUID recipientUserId) {
+        Integer blockCount = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM user_blocks
+                        WHERE (blocker_user_id = :recipientUserId AND blocked_user_id = :senderUserId)
+                        OR (blocker_user_id = :senderUserId AND blocked_user_id = :recipientUserId)
+                        """)
+                .param("senderUserId", senderUserId)
+                .param("recipientUserId", recipientUserId)
+                .query(Integer.class)
+                .single();
+
+        return blockCount > 0;
+    }
+
+    @Override
+    @Transactional
+    public void saveUserBlock(UUID blockerUserId, UUID blockedUserId) {
+        Integer existingCount = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM user_blocks
+                        WHERE blocker_user_id = :blockerUserId
+                        AND blocked_user_id = :blockedUserId
+                        """)
+                .param("blockerUserId", blockerUserId)
+                .param("blockedUserId", blockedUserId)
+                .query(Integer.class)
+                .single();
+
+        if (existingCount > 0) {
+            return;
+        }
+
+        jdbcClient.sql("""
+                        INSERT INTO user_blocks (blocker_user_id, blocked_user_id, created_at)
+                        VALUES (:blockerUserId, :blockedUserId, :createdAt)
+                        """)
+                .param("blockerUserId", blockerUserId)
+                .param("blockedUserId", blockedUserId)
+                .param("createdAt", OffsetDateTime.now(ZoneOffset.UTC))
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public DirectMessage saveDirectMessage(DirectMessage directMessage) {
+        jdbcClient.sql("""
+                        INSERT INTO direct_messages (id, sender_user_id, recipient_user_id, body, sent_at)
+                        VALUES (:id, :senderUserId, :recipientUserId, :body, :sentAt)
+                        """)
+                .param("id", directMessage.id())
+                .param("senderUserId", directMessage.senderUserId())
+                .param("recipientUserId", directMessage.recipientUserId())
+                .param("body", directMessage.body())
+                .param("sentAt", toOffsetDateTime(directMessage.sentAt()))
+                .update();
+
+        return directMessage;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DirectMessage> findDirectMessages(UUID viewerUserId, UUID peerUserId) {
+        return jdbcClient.sql("""
+                        SELECT id, sender_user_id, recipient_user_id, body, sent_at
+                        FROM direct_messages
+                        WHERE (sender_user_id = :viewerUserId AND recipient_user_id = :peerUserId)
+                        OR (sender_user_id = :peerUserId AND recipient_user_id = :viewerUserId)
+                        ORDER BY sent_at, id
+                        """)
+                .param("viewerUserId", viewerUserId)
+                .param("peerUserId", peerUserId)
+                .query((rs, rowNum) -> new DirectMessage(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("sender_user_id", UUID.class),
+                        rs.getObject("recipient_user_id", UUID.class),
+                        rs.getString("body"),
+                        rs.getObject("sent_at", OffsetDateTime.class).toInstant()
+                ))
+                .list();
+    }
+
+    private static OffsetDateTime toOffsetDateTime(Instant instant) {
+        return OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
+    }
+}
