@@ -21,6 +21,52 @@ The initial product is a Study Server:
 
 The system should not begin as a full LMS replacement. Gradebooks, SCORM import, accreditation workflows, public agent marketplace, enterprise SSO/compliance, and voice agents are later phases.
 
+Later course-commerce direction: once Study Servers prove value, instructors should be able to sell courses inside a Study Server. A course purchase can unlock the correct Study Server, course channels, resources, live classes, recordings, office-hours policies, and AI Study Assistant access. This should be treated as a later creator-commerce layer, not part of the first MVP, because payments, refunds, tax handling, creator trust, fraud prevention, content moderation, and live-video reliability add significant scope.
+
+## Identity, Organizations, And Social Model
+
+Chanter should use global user accounts with scoped roles. A person is not globally a "teacher" or "student" everywhere. Instead, a user can be an instructor in one Study Server, a learner in another, a TA in a bootcamp cohort, and an owner of a private study group.
+
+Recommended hierarchy:
+
+```text
+Global User Account
+  -> optional Organization or Workspace
+    -> Study Server
+      -> Channels
+      -> Members
+      -> Roles
+      -> Permissions
+```
+
+Default role model:
+
+- `Owner`: created the Study Server or owns the organization workspace.
+- `Instructor`: manages course content, assistant access, office hours, FAQs, and analytics.
+- `TA`: helps answer questions, manage office-hours queues, and moderate selected channels.
+- `Learner`: participates in channels, asks questions, joins office hours, and views allowed resources.
+- `Alumni`: keeps limited access after a course ends if the owner allows it.
+- `Guest`: temporary or restricted participant.
+
+Roles are assigned by the Study Server owner/admin or organization policy. A learner cannot self-promote into an instructor role. A global profile may show a verified educator badge later, but that badge should not grant permissions inside a Study Server by itself.
+
+Teacher/student verification should start simple and become stronger over time:
+
+- MVP: Study Server owner/admin assigns instructor, TA, and learner roles.
+- Near-term: invite links, enrollment codes, and email-domain allowlists.
+- Organization tier: Google Workspace or Microsoft login, institution domains, roster import, and SSO later.
+- Public creator tier: optional verified educator badge based on manual review, payment identity, or linked organization.
+
+Friends and direct messages can exist, but they are not the core MVP. Education DMs need policy controls:
+
+- Users can send friend or DM requests, but recipients must accept.
+- Teachers/TAs can disable or restrict learner DMs.
+- Study Server owners can disable cross-role DMs or require course-scoped messaging.
+- Organization workspaces can enforce stricter policies for minors, schools, or compliance-sensitive programs.
+- Abuse reports and blocks should be available before broad DM rollout.
+
+The first version should prioritize Study Server channels, office-hours queues, and instructor/TA workflows over a broad social network. Universal self-serve registration is still useful: anyone can create a Study Server, but trustworthy instructor powers come from server ownership, admin assignment, or later organization verification.
+
 ## Architecture Layers
 
 ### Client And Edge Layer
@@ -35,8 +81,8 @@ The backend uses Spring Boot microservices. Each service owns one business capab
 
 - Gateway Service owns public REST routing, CORS, edge rate limiting coordination, request correlation, and routing to internal services.
 - Auth Service owns registration, login, password hashing, access tokens, refresh token rotation, sessions, and logout.
-- User Service owns profiles, display names, avatars metadata, user settings, and account status.
-- Community Service owns Study Servers, course/module channels, members, instructor/TA/learner roles, permissions, invites, and canonical permission evaluation.
+- User Service owns profiles, display names, avatars metadata, user settings, account status, social graph preferences, friend requests, blocks, and verified educator profile signals.
+- Community Service owns organizations/workspaces, Study Servers, course/module channels, members, instructor/TA/learner roles, permissions, invites, and canonical permission evaluation.
 - Message Command Service owns message writes, edit/delete commands, question markers, reactions, read receipts, idempotency keys, and durable message creation.
 - Message Query Service owns message reads, pagination, history lookup, query-optimized message views, and course-channel history views.
 - Realtime WebSocket Gateway owns connected clients, subscriptions, channel authorization, reconnects, typing indicators, and presence fan-out.
@@ -51,7 +97,8 @@ The backend uses Spring Boot microservices. Each service owns one business capab
 - Voice Agent Service owns voice agent sessions, speech-to-text, text-to-speech, voice room participation, and transcript events.
 - Memory Service owns opt-in agent memory, summaries, embeddings, retrieval, retention policy, and deletion workflows.
 - Marketplace Service owns agent listings, creator publishing, installs, versioning, reviews, and marketplace governance.
-- Billing Service owns SaaS plans, credits, subscriptions, AI usage metering, quotas, provider cost attribution, and paid agent purchases later.
+- Marketplace Service later owns course listings, creator storefronts, public/private publishing, listing review, marketplace governance, and paid agent listings.
+- Billing Service owns SaaS plans, credits, subscriptions, AI usage metering, quotas, provider cost attribution, course purchases, refunds, creator payouts, and paid agent purchases later.
 - Safety Service owns prompt-injection detection, content policy checks, output review hooks, abuse signals, and agent evaluation records.
 
 ### Event Plane
@@ -62,9 +109,16 @@ Important events include:
 
 - `UserRegistered`
 - `UserProfileUpdated`
+- `FriendRequestCreated`
+- `FriendRequestAccepted`
+- `UserBlocked`
+- `OrganizationCreated`
+- `OrganizationMemberAdded`
 - `ServerCreated`
 - `StudyServerCreated`
 - `MemberJoinedServer`
+- `StudyServerRoleAssigned`
+- `InstructorVerified`
 - `RoleChanged`
 - `ChannelCreated`
 - `CourseResourceApproved`
@@ -92,6 +146,13 @@ Important events include:
 - `AgentMemoryCreated`
 - `AgentMemoryDeleted`
 - `AiUsageMetered`
+- `CourseListingPublished`
+- `CoursePurchaseCompleted`
+- `CourseEnrollmentCreated`
+- `CourseAccessGranted`
+- `LiveClassScheduled`
+- `LiveClassStarted`
+- `LiveClassRecordingPublished`
 - `VoiceAgentJoined`
 - `VoiceAgentTranscriptCreated`
 - `MarketplaceAgentPublished`
@@ -106,18 +167,19 @@ Consumers must be idempotent because events can be delivered more than once.
 Each service owns its own database or storage system. Other services do not query that database directly.
 
 - Auth data is partitioned by `userId`.
-- User profile data is partitioned by `userId`.
-- Community data is partitioned by `serverId`.
+- User profile, social preferences, friend requests, blocks, and verified educator profile signals are partitioned by `userId`.
+- Organization and Study Server data is partitioned by `organizationId` where present and `serverId` for Study Server-local data.
 - Message data is partitioned by `channelId`, with time buckets for hot channels.
 - Notification data is partitioned by `userId`.
 - Search data is stored in a search cluster or search read model.
 - Analytics data is stored in a data lake or OLAP system.
 - Media binaries are stored in object storage, while metadata stays in Media Service storage.
 - Agent configuration is stored by server, channel, installed listing version, and permission grant.
-- Education MVP data is owned by the service responsible for the action: Study Server structure and roles live in Community Service, durable questions and messages live in Message Service, course resource metadata lives in Media Service, FAQ/search read models live in Search Service, instructor insight read models live in Analytics Service, assistant installs/grants live in Agent Service, grounded answer attempts live in Agent Runtime Service, and plan/quota state lives in Billing Service.
+- Education MVP data is owned by the service responsible for the action: organizations, Study Server structure, membership, and roles live in Community Service; user profiles, friend requests, and blocks live in User Service; durable questions and messages live in Message Service; course resource metadata lives in Media Service; FAQ/search read models live in Search Service; instructor insight read models live in Analytics Service; assistant installs/grants live in Agent Service; grounded answer attempts live in Agent Runtime Service; and plan/quota state lives in Billing Service.
 - Agent memory is stored in a scoped vector store and summary store with explicit retention and deletion policies.
 - Marketplace data stores listings, versions, creator profiles, installs, reviews, and governance state.
-- Billing data stores usage meters, credit balances, subscriptions, provider costs, and budget limits.
+- Later course-commerce data is split by ownership: Marketplace Service owns course listings, storefront metadata, creator profiles, and listing review state; Billing Service owns purchases, refunds, invoices, creator payouts, and platform take-rate records; Community Service owns enrollment-derived Study Server membership and channel access grants; Media Service owns recording metadata and storage authorization.
+- Billing data stores usage meters, credit balances, subscriptions, provider costs, budget limits, course purchases, refund requests, creator payouts, and platform fee records.
 - Safety audit data stores policy decisions, prompt-injection signals, model evaluations, and tool-use audit records.
 - Redis stores cache, sessions, rate limit counters, presence, and typing state.
 
@@ -183,6 +245,8 @@ The important rule is that agent responses become normal durable messages throug
 Editable source: [`system-voice-agent-path.drawio`](docs/diagrams/system-voice-agent-path.drawio) | PNG export: [`system-voice-agent-path.drawio.png`](docs/diagrams/system-voice-agent-path.drawio.png)
 
 Voice agents should be introduced carefully because they add privacy, latency, and cost concerns. A voice room must clearly show when an agent is present, whether transcription is enabled, and whether summaries or memories are being saved.
+
+Live classes are a related but separate later capability. A live class is a scheduled cohort session tied to a course listing or Study Server. It needs enrollment-based access control, instructor/TA controls, recording consent, transcript/summarization policy, and post-class resource publishing. The first implementation should design the LiveClassSession and access model before adding WebRTC/video complexity.
 
 ### Agent Memory And Tools
 
@@ -307,6 +371,8 @@ Strong consistency is required for:
 - Password and account security changes.
 - Membership changes.
 - Role and permission changes.
+- Organization membership and Study Server role assignment.
+- Friend requests, blocks, and DM consent/preferences.
 - Channel access checks.
 - Message writes within a channel.
 - Moderation actions that restrict access.

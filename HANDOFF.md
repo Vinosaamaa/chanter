@@ -10,7 +10,8 @@ Chanter is planned as an enterprise-grade, education-first Discord-like learning
 - A Spring Boot microservice backend rather than a monolith.
 - A React + TypeScript + Vite frontend.
 - A future AI Agent Platform where agents are installable, permissioned members of Study Servers/channels.
-- Later voice agents and a marketplace for agent personas, assistants, voice packs, prompt packs, tools, and paid agents.
+- Later creator course commerce where instructors can sell courses inside a Study Server, learners can buy/enroll, course purchases unlock the right channels/resources/live classes, and instructors can run cohort sessions with community support in the same product.
+- Later voice agents and a marketplace for agent personas, assistants, voice packs, prompt packs, tools, course offerings, and paid agents.
 
 Current product positioning:
 
@@ -25,6 +26,8 @@ Important files:
 - `System Design.md`: detailed backend/system architecture explanation and diagrams.
 - `docs/product/education-mvp-prd.md`: PRD for the education-focused Study Server MVP.
 - `docs/issues/education-mvp-issue-breakdown.md`: GitHub-ready epics and vertical-slice stories for the education MVP.
+- `CONTEXT.md`: canonical product glossary from the active `/grill-with-docs` session.
+- `docs/sessions/2026-06-16-product-strategy-grill-session.md`: readable recap of the product strategy discussion and active `/grill-with-docs` decision tree.
 - `docs/diagrams/`: editable draw.io diagram sources plus embedded PNG exports referenced from `plan.md` and `System Design.md`.
 - `docs/operations/project-operations-bootstrap.md`: Milestone -1 operating model, tracker recommendation, bootstrap checklist, initial epics, and branch/PR conventions.
 - `.github/PULL_REQUEST_TEMPLATE.md`: PR checklist aligned with architecture, security, testing, and operations expectations.
@@ -32,7 +35,13 @@ Important files:
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 - `HANDOFF.md`: this file.
 
-No application code has been bootstrapped yet. The repo currently contains planning/design assets, the education MVP PRD, GitHub-ready local issue breakdown, editable draw.io architecture diagrams, local repository metadata/templates, and an operations bootstrap doc. The local `main` branch tracks `origin/main` at `https://github.com/Vinosaamaa/chanter`.
+No application services beyond bootstrap are complete yet. Milestone 0 monorepo bootstrap is in progress (issue #11): `backend/` (gateway + auth), `frontend/`, `infra/docker-compose.yml`, CI workflow.
+
+## Active Implementation
+
+- **Issue #11:** Monorepo And Local Infrastructure Bootstrap — in progress locally
+- **Next:** [#12 Create A Study Server](https://github.com/Vinosaamaa/chanter/issues/12)
+- **Handoff:** `/tmp/chanter-implementation-handoff-2026-06-17.md`
 
 ## Major Decisions Made
 
@@ -83,6 +92,17 @@ Education MVP product direction:
 - First product: Study Server.
 - First agent: AI Study Assistant.
 - First operational value: reduce repeated questions, improve answer quality, preserve learning knowledge, route unresolved questions to human help, and give instructors actionable analytics.
+- Market reality: Discord is better for casual free chat; Chanter must win by solving paid education operations pain such as repeated questions, buried course knowledge, office-hours logistics, weak analytics, fragmented resources, and unsafe/uncontrolled bots.
+- Later monetization direction: creator course commerce. Chanter can evolve into a community-native course platform where instructors sell courses, host live classes, publish recordings/transcripts/summaries, and keep learner support inside the Study Server. Keep this out of the first MVP because payments, refunds, tax handling, creator trust, fraud prevention, content moderation, and live-video reliability add major scope.
+
+Identity and social model:
+
+- Users have global accounts.
+- Organizations/workspaces are optional at first and become important later for schools, bootcamps, SSO, domain verification, roster import, centralized billing, and policy enforcement.
+- Roles use a layered model: Study Server Owner for governance; Instructor at Course scope; TA at Cohort scope; Learner through Enrollment. A user can hold different learning roles in different Courses or Cohorts within the same Study Server.
+- A user can be an instructor in one Study Server and a learner in another.
+- Instructor and TA powers are assigned by Study Server Owner or Course Instructor—not by self-declaration.
+- Friend requests and DMs can exist later, but education deployments need consent, block/report controls, and policy settings for student-teacher messaging.
 
 Scale direction:
 
@@ -94,6 +114,10 @@ Scale direction:
 
 Use installed Cursor workflow skills directly rather than the deleted local `chanter-engineering-workflow` skill.
 
+**Git workflow (required):** one branch per GitHub issue → pull request → merge only after owner approval. See `docs/operations/project-operations-bootstrap.md`.
+
+**Testing workflow:** infrastructure bootstrap (#11) may use smoke tests; **domain features from #12 onward use TDD** (red → green → refactor) for permissions, enrollment, and learning-support workflows.
+
 The expected workflow includes:
 
 - Deep planning and docs before large changes.
@@ -104,7 +128,7 @@ The expected workflow includes:
 - Zoom-out architecture review after milestones.
 - Prototyping for uncertain UX/system flows.
 - Pre-commit and CI-style quality gates once code exists.
-- Greploop later for PR review loops after GitHub and Greptile are configured.
+- Greploop later for PR review loops after GitHub PRs and Greptile review integration are configured.
 
 Use these installed skills by name when relevant:
 
@@ -117,6 +141,11 @@ Use these installed skills by name when relevant:
 - `prototype`: explore uncertain UI or system flows before production implementation.
 - `setup-pre-commit`: add quality gates after runnable code exists.
 - `greploop`: use later for PR review loops after GitHub and Greptile are configured.
+
+Installed external skill note:
+
+- `greploop` was installed from `https://github.com/greptileai/skills` into `~/.agents/skills/greploop`.
+- It requires authenticated `gh`, an open PR, and Greptile installed/enabled on the repository before it can run usefully.
 
 Diagram workflow:
 
@@ -168,14 +197,37 @@ Current Milestone -1 local progress:
 - Confirmed education-first product strategy: Study Servers for learning communities, AI Study Assistant, instructor operations, and SaaS model.
 - Added `docs/product/education-mvp-prd.md`.
 - Added `docs/issues/education-mvp-issue-breakdown.md`.
+- Added `docs/sessions/2026-06-16-product-strategy-grill-session.md` as a readable session recap.
 - Updated `README.md`, `plan.md`, and `System Design.md` for the education MVP direction.
 - Created private GitHub repository `https://github.com/Vinosaamaa/chanter`.
 - Pushed initial planning/scaffolding commit to `origin/main`.
 
+Active `/grill-with-docs` progress:
+
+- **Complete.** Canonical glossary in `CONTEXT.md` (28 terms).
+- Session log: `docs/sessions/2026-06-16-product-strategy-grill-session.md`.
+- PRD aligned: `docs/product/education-mvp-prd.md`.
+- Issue breakdown aligned: `docs/issues/education-mvp-issue-breakdown.md` (10 epics, 13 vertical slices).
+
+Key grill outcomes for implementation:
+
+- Layered roles: Owner (Study Server), Instructor (Course), TA (Cohort), Learner (Cohort Enrollment).
+- Enrollment is primarily to a Cohort.
+- MVP includes Discord-style Friend Requests, Direct Messages, and Study Server Voice Channels.
+- Built-in Live Class video is post-MVP.
+- TA Queue (async) plus Office Hours (scheduled live) for human support.
+- Study Server Owner pays SaaS Plan.
+
 Pending user confirmation:
 
-- Whether to configure repository labels and branch protection now.
-- Whether to create the GitHub Projects board and initial issues now.
+- Whether to enable branch protection after first CI exists.
+
+GitHub issues published (2026-06-17):
+
+- Milestone: https://github.com/Vinosaamaa/chanter/milestone/1
+- Project board: https://github.com/users/Vinosaamaa/projects/1 (all 24 issues added)
+- 10 epics (#1–#10) and 14 stories (#11–#24)
+- **Start implementation with issue #11** (Monorepo And Local Infrastructure Bootstrap)
 
 Confirmed decision:
 
@@ -196,16 +248,19 @@ After that, start Milestone 0 and build toward the education MVP:
 Use this prompt after reloading Cursor or starting a new chat:
 
 ```text
-Read HANDOFF.md, plan.md, and System Design.md.
+Read HANDOFF.md, CONTEXT.md, and /tmp/chanter-implementation-handoff-2026-06-17.md.
 
-Use installed workflow skills directly as needed: grill-with-docs, to-prd, to-issues, tdd, diagnose, zoom-out, improve-codebase-architecture, prototype, setup-pre-commit, and greploop.
+Continue Chanter implementation. Finish/merge issue #11 bootstrap if needed, then implement #12 (Create A Study Server).
 
-Continue the Chanter project. We are building an education-first Discord-like learning community SaaS app with Spring Boot microservices, React + TypeScript + Vite, Docker Compose local deployment, Study Servers, course resources, office-hours workflows, instructor analytics, and a first-party AI Study Assistant. The private GitHub repository is `https://github.com/Vinosaamaa/chanter`, and local `main` tracks `origin/main`. The next likely step is project operations bootstrap: configure repository labels/branch protection, then create the GitHub Projects board and initial issues from `docs/issues/education-mvp-issue-breakdown.md` before writing application code.
+make backend-auth && make backend-gateway && make frontend-dev
+Repo: https://github.com/Vinosaamaa/chanter
 ```
 
 ## Notes For Future Agent
 
 - Do not assume the user wants to code immediately; they have been exploring system design and enterprise workflow.
+- **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for feature work.
+- **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
 - Keep explanations beginner-friendly but production-oriented.
 - Preserve and update the docs when architecture or process decisions change.
 - Ask before creating remote repositories, pushing code, creating tickets, or installing third-party integrations.

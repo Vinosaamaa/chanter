@@ -1,6 +1,46 @@
 # Chanter Education MVP Issue Breakdown
 
-This document converts `docs/product/education-mvp-prd.md` into GitHub-ready epics and vertical-slice stories. It is a local issue source until the GitHub repository and GitHub Projects board exist.
+## GitHub Issues Published
+
+Milestone: [Education MVP](https://github.com/Vinosaamaa/chanter/milestone/1)
+
+Epics (#1–#10):
+
+| # | Title |
+|---|---|
+| 1 | Epic: Education Product Foundation |
+| 2 | Epic: Study Server, Course, Cohort, And Enrollment |
+| 3 | Epic: Channels, Voice, And Study Server Membership |
+| 4 | Epic: Friends And Direct Messages |
+| 5 | Epic: Course Resources And Search |
+| 6 | Epic: AI Study Assistant MVP |
+| 7 | Epic: Support Questions, Approved FAQs, And Channel Summaries |
+| 8 | Epic: TA Queue And Office Hours |
+| 9 | Epic: Instructor Dashboard And Learning Analytics |
+| 10 | Epic: SaaS Plans, Quotas, And Billing Readiness |
+
+Vertical slices (#11–#24):
+
+| # | Title | Start when unblocked |
+|---|---|---|
+| 11 | Monorepo And Local Infrastructure Bootstrap | **Start here** |
+| 12 | Slice: Create A Study Server | after #11 |
+| 13 | Slice: Create Course, Cohort, And Enroll Learner | after #12 |
+| 14 | Slice: Join A Voice Channel | after #12 |
+| 15 | Slice: Send Friend Request And Direct Message | after #11 |
+| 16 | Slice: Post A Support Question In A Course Channel | after #13 |
+| 17 | Slice: Upload An Approved Course Resource | after #13 |
+| 18 | Slice: Install The AI Study Assistant | after #13, #17 (HITL) |
+| 19 | Slice: Answer A Grounded Support Question | after #18 |
+| 20 | Slice: Promote Repeated Support Question To Approved FAQ | after #19 |
+| 21 | Slice: Route Low-Confidence Answer To TA Queue | after #19 |
+| 22 | Slice: Run Office Hours For A Cohort | after #13, #21 |
+| 23 | Slice: Show Instructor Dashboard | after #20, #21 |
+| 24 | Slice: Enforce SaaS Plan Limits | after #23 |
+
+All issues: https://github.com/Vinosaamaa/chanter/issues
+
+Project board: [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) — all 24 issues added; repo linked.
 
 Recommended labels:
 
@@ -12,6 +52,7 @@ Recommended labels:
 - `backend`
 - `frontend`
 - `infra`
+- `realtime`
 - `security`
 - `billing`
 - `analytics`
@@ -20,324 +61,436 @@ Recommended labels:
 
 ## What to build
 
-Establish Chanter's first product wedge as an education-focused Study Server SaaS product. This epic creates the product language, local demo expectations, and first vertical slices that make Chanter more than a generic Discord clone.
+Establish Chanter's education-first Study Server SaaS wedge. Align implementation milestones with `CONTEXT.md` and the PRD demo path.
 
 ## Acceptance criteria
 
-- [ ] Product docs consistently describe Chanter as education-first for the initial MVP.
-- [ ] The first implementation milestones prioritize Study Server creation, course channels, learner/instructor roles, and AI Study Assistant readiness.
-- [ ] Non-goals are explicit: marketplace, voice agents, enterprise SSO/compliance, and full LMS replacement are later phases.
+- [ ] Product docs use canonical domain language from `CONTEXT.md`.
+- [ ] First milestones prioritize Study Server, Course/Cohort Enrollment, channels, voice, DMs, AI Study Assistant, Support Questions, TA Queue, Office Hours, and Instructor Dashboard.
+- [ ] Non-goals are explicit: built-in Live Class video, marketplace, voice agents, Organization SSO, and creator commerce are later phases.
 
 ## Blocked by
 
 None - can start immediately.
 
-## Epic 2: Study Server And Course Channels
+## Epic 2: Study Server, Course, Cohort, And Enrollment
 
 ## What to build
 
-Let an educator create a Study Server with course/module channels, learner/instructor/TA roles, and permissions that can later constrain messages, resources, and AI assistant access.
+Let a Study Server Owner create a Study Server, add Courses and Cohorts, enroll learners in a Cohort, and assign layered roles: Study Server Owner, Course Instructor, Cohort TA, and Cohort Learner.
 
 ## Acceptance criteria
 
-- [ ] An educator can create a Study Server and see it in the frontend.
-- [ ] An educator can create channels for modules, general discussion, announcements, and support.
-- [ ] The system supports instructor, TA, learner, and admin roles.
-- [ ] Backend permission checks protect Study Server and channel management actions.
-- [ ] Unit/integration tests cover role assignment and protected channel administration.
+- [ ] Study Server Owner can create a Study Server and become Owner.
+- [ ] Owner can create Courses and Cohorts inside the Study Server.
+- [ ] Owner can assign Instructors to Courses.
+- [ ] Instructor can enroll learners in a Cohort and assign Cohort TAs.
+- [ ] Enrollment grants Cohort and parent Course access only—not blanket Study Server access beyond membership rules.
+- [ ] Same user can hold different roles across Courses/Cohorts in one Study Server.
+- [ ] Tests cover enrollment boundaries and cross-role combinations.
 
 ## Blocked by
 
 Project operations bootstrap and monorepo/service skeleton.
 
-## Epic 3: Course Resources And Knowledge Base
+## Epic 3: Channels, Voice, And Study Server Membership
 
 ## What to build
 
-Allow instructors to attach approved course resources to a Study Server or channel, then make those resources searchable and available to the AI Study Assistant through explicit grants.
+Support Study Server Channels, Course Channels, optional Cohort Channels, Voice Channels, and Study Server membership via invite or Cohort Enrollment.
 
 ## Acceptance criteria
 
-- [ ] An instructor can upload or register a course resource for a Study Server/channel.
-- [ ] Learners can view resources that they are allowed to access.
-- [ ] The system records which resources are approved for AI use.
-- [ ] Search/retrieval boundaries respect channel and role permissions.
-- [ ] Tests verify that private resources are not returned to unauthorized learners or agents.
+- [ ] Study Server Owner/Instructor can create Study Server Channels, Course Channels, and opt-in Cohort Channels.
+- [ ] Study Server Members can access server-wide channels per membership rules.
+- [ ] Enrolled learners can access permitted Course and Cohort channels.
+- [ ] Members can join and leave Voice Channels with visible presence.
+- [ ] Backend permission checks protect channel administration and access.
+- [ ] Tests cover channel scoping, enrollment-based access, and voice join permissions.
 
 ## Blocked by
 
-Study Server And Course Channels.
+Study Server, Course, Cohort, And Enrollment.
 
-## Epic 4: AI Study Assistant MVP
+## Epic 4: Friends And Direct Messages
 
 ## What to build
 
-Install a first-party AI Study Assistant into selected Study Server channels. The assistant answers learner questions using approved resources and visible channel context, while remaining permissioned, auditable, and bounded by safety rules.
+Discord-style social messaging: Friend Requests, accept/decline, Direct Messages, and block/report basics.
 
 ## Acceptance criteria
 
-- [ ] An instructor can enable the AI Study Assistant in selected channels.
-- [ ] Learners can mention or ask the assistant a course question.
-- [ ] The assistant answers from approved resources or recent allowed context.
-- [ ] Low-confidence or out-of-scope questions are declined or routed to human help.
-- [ ] Assistant presence and channel access are visible to users.
-- [ ] Audit records capture assistant invocation, resources used, response state, and safety decisions.
-- [ ] Tests cover permission denial, grounded answer success, low-confidence handling, and audit logging.
+- [ ] User can send, accept, and decline Friend Requests.
+- [ ] Friends can exchange Direct Messages platform-wide.
+- [ ] User can block another user and stop receiving messages.
+- [ ] DM and friend flows are separate from Course Channel learning-support workflows.
+- [ ] Tests cover accept/decline, unauthorized messaging, and block behavior.
 
 ## Blocked by
 
-Study Server And Course Channels; Course Resources And Knowledge Base.
+Project operations bootstrap and monorepo/service skeleton.
 
-## Epic 5: Question Workflow And FAQ Generation
+## Epic 5: Course Resources And Search
 
 ## What to build
 
-Turn chat questions into a managed learning-support workflow. Detect repeated questions, unresolved questions, human answers, and FAQ candidates that instructors can approve.
+Let Instructors attach Course Resources to a Course and make them searchable for permitted learners and future AI grounding.
 
 ## Acceptance criteria
 
-- [ ] Questions can be marked as answered, unanswered, duplicate, or FAQ candidate.
-- [ ] Similar questions are suggested before or after a learner asks.
-- [ ] Instructors/TAs can approve or edit generated FAQ entries.
-- [ ] Approved FAQ entries are searchable and available to the AI Study Assistant.
-- [ ] Tests cover repeated-question detection, FAQ approval, and unauthorized FAQ edits.
+- [ ] Instructor can upload or register a Course Resource for a Course.
+- [ ] Cohort-specific resources can be attached where needed.
+- [ ] Learners see only resources their Enrollment allows.
+- [ ] System records which resources are approved for AI Study Assistant use.
+- [ ] Search respects enrollment and role permissions.
+- [ ] Tests verify unauthorized resource and search access denial.
+
+## Blocked by
+
+Study Server, Course, Cohort, And Enrollment.
+
+## Epic 6: AI Study Assistant MVP
+
+## What to build
+
+Install one AI Study Assistant per Study Server with explicit grants per channel, Course, Cohort, and Course Resource. Answer Support Questions with grounded, auditable responses.
+
+## Acceptance criteria
+
+- [ ] Instructor can install the assistant and configure channel/Course/Cohort/resource grants.
+- [ ] Learner can ask a Support Question in a granted channel.
+- [ ] Assistant answers from approved Course Resources and Approved FAQs or declines with low-confidence handoff.
+- [ ] Assistant presence and grants are visible to users.
+- [ ] Audit records capture invocation, sources used, confidence, and safety decisions.
+- [ ] Tests cover grant boundaries, grounded success, low-confidence routing, and audit logging.
+
+## Blocked by
+
+Channels, Voice, And Study Server Membership; Course Resources And Search.
+
+## Epic 7: Support Questions, Approved FAQs, And Channel Summaries
+
+## What to build
+
+Track Support Questions through AI-answered, human-answered, unanswered, duplicate, and FAQ-candidate states. Let Instructors approve FAQs and generate Channel Summaries.
+
+## Acceptance criteria
+
+- [ ] Support Questions are created from learner messages in Course Channels.
+- [ ] Similar Support Questions are detected and surfaced.
+- [ ] Instructor can approve or edit Approved FAQs.
+- [ ] Approved FAQs are searchable and available to the AI Study Assistant.
+- [ ] Channel Summaries can be generated for Course Channels over a time window.
+- [ ] Tests cover workflow states, FAQ approval permissions, and summary access boundaries.
 
 ## Blocked by
 
 AI Study Assistant MVP.
 
-## Epic 6: Office-Hours Queue And TA Handoff
+## Epic 8: TA Queue And Office Hours
 
 ## What to build
 
-Give learners a structured way to request live support and give TAs/instructors a manageable queue for office hours, including handoff from AI to human help.
+Async TA Queue for a Cohort plus scheduled Office Hours live support, including handoff from low-confidence AI answers.
 
 ## Acceptance criteria
 
-- [ ] A learner can join and leave an office-hours queue.
-- [ ] A TA/instructor can call the next learner and mark the support request as resolved.
-- [ ] AI-declined or low-confidence questions can become queue items.
-- [ ] Queue events are auditable.
-- [ ] Tests cover queue order, permissions, cancellation, and resolution.
+- [ ] Learner can add a Support Question to the TA Queue for their Cohort.
+- [ ] TA can view, pick up, resolve, and cancel queue items.
+- [ ] Instructor can schedule Office Hours for a Cohort.
+- [ ] Learner can join Office Hours during the scheduled window.
+- [ ] Low-confidence AI responses offer TA Queue and Office Hours paths.
+- [ ] Queue and Office Hours events are auditable.
+- [ ] Tests cover queue order, Cohort scoping, Office Hours window rules, and permissions.
 
 ## Blocked by
 
-Study Server And Course Channels; Question Workflow And FAQ Generation.
+Support Questions, Approved FAQs, And Channel Summaries.
 
-## Epic 7: Instructor Dashboard And Learning Analytics
+## Epic 9: Instructor Dashboard And Learning Analytics
 
 ## What to build
 
-Create an instructor dashboard that summarizes unanswered questions, repeated questions, common misconceptions, active topics, engagement trends, AI usage, and office-hours load.
+Instructor Dashboard for unanswered Support Questions, repeated questions, Approved FAQs, TA Queue load, Office Hours load, engagement signals, and AI usage.
 
 ## Acceptance criteria
 
-- [ ] Instructors can view unanswered and repeated questions by Study Server/channel.
-- [ ] Instructors can view AI Study Assistant usage and quota/cost indicators.
-- [ ] Instructors can see office-hours queue volume and resolution trends.
-- [ ] Analytics are built through event-driven read models, not cross-service database reads.
-- [ ] Tests verify aggregate correctness from representative events.
+- [ ] Instructor or Study Server Owner can view the dashboard for permitted Courses/Study Servers.
+- [ ] Dashboard shows unanswered questions, repeated questions, FAQ candidates, queue load, Office Hours load, and AI usage.
+- [ ] Aggregates are built from event-driven read models.
+- [ ] Tests verify aggregate correctness and unauthorized access denial.
 
 ## Blocked by
 
-Question Workflow And FAQ Generation; Office-Hours Queue And TA Handoff.
+Support Questions, Approved FAQs, And Channel Summaries; TA Queue And Office Hours.
 
-## Epic 8: SaaS Plans, Quotas, And Billing Readiness
+## Epic 10: SaaS Plans, Quotas, And Billing Readiness
 
 ## What to build
 
-Add plan-aware limits for education SaaS packaging: Starter, Pro, and Organization. Track AI usage, Study Server limits, resource limits, and quota exhaustion behavior.
+SaaS Plans paid by Study Server Owner: Starter, Pro, and Organization-ready tiers with AI metering and quota exhaustion behavior.
 
 ## Acceptance criteria
 
-- [ ] Study Servers have an associated plan tier.
+- [ ] Study Server has an associated SaaS Plan tier paid by the Study Server Owner.
 - [ ] AI usage is metered per Study Server.
-- [ ] Plan limits control AI usage, resource capacity, and advanced analytics access.
-- [ ] Quota exhaustion is visible to instructors and fails gracefully.
+- [ ] Plan limits control AI usage, resource capacity, and advanced dashboard access.
+- [ ] Quota exhaustion is visible on the Instructor Dashboard and fails gracefully.
 - [ ] Tests cover plan enforcement, metering, and quota-denied assistant calls.
 
 ## Blocked by
 
 AI Study Assistant MVP; Instructor Dashboard And Learning Analytics.
 
-## Vertical Slice 1: Create A Study Server
+---
+
+## Vertical Slices
+
+### Vertical Slice 1: Create A Study Server
 
 Type: AFK
 
 ## What to build
 
-Create the smallest end-to-end path where an educator can create a Study Server, land in the server shell, and see default channels and roles.
+Smallest end-to-end path: Study Server Owner creates a Study Server and lands in the server shell with default Study Server Channels.
 
 ## Acceptance criteria
 
-- [ ] Educator can create a Study Server from the frontend.
-- [ ] Backend persists the Study Server through the owning service.
-- [ ] Default channels and roles are created.
-- [ ] Protected actions require instructor/admin permissions.
-- [ ] A smoke test verifies the create-and-view path.
+- [ ] User can create a Study Server from the frontend.
+- [ ] Backend persists the Study Server and Owner role.
+- [ ] Default Study Server Channels are created.
+- [ ] Smoke test verifies create-and-view path.
 
 ## Blocked by
 
 Project operations bootstrap and monorepo/service skeleton.
 
-## Vertical Slice 2: Ask A Question In A Course Channel
+### Vertical Slice 2: Create Course, Cohort, And Enroll Learner
 
 Type: AFK
 
 ## What to build
 
-Let a learner post a question in a course channel and let the system classify it as a question that can later be answered, deduplicated, or surfaced to instructors.
+Owner creates a Course and Cohort; Instructor enrolls a learner in the Cohort; learner gains access to Course Channels only through Enrollment.
 
 ## Acceptance criteria
 
-- [ ] Learner can post a message in an allowed course channel.
-- [ ] Message creation is durable and idempotent.
-- [ ] Question-like messages create a question workflow record or event.
-- [ ] Instructor/TA can see unanswered questions.
-- [ ] Tests cover unauthorized channel posting and duplicate send protection.
+- [ ] Owner can create a Course and Cohort.
+- [ ] Instructor can enroll a learner in the Cohort.
+- [ ] Enrolled learner can access Course Channels; non-enrolled user cannot.
+- [ ] Tests cover enrollment boundaries.
 
 ## Blocked by
 
 Create A Study Server.
 
-## Vertical Slice 3: Upload An Approved Course Resource
+### Vertical Slice 3: Join A Voice Channel
 
 Type: AFK
 
 ## What to build
 
-Let an instructor attach an approved resource to a course channel and make it available for learner search and future AI grounding.
+Study Server Member can join and leave a Voice Channel with visible presence.
 
 ## Acceptance criteria
 
-- [ ] Instructor can upload or register a resource.
-- [ ] Resource metadata records Study Server, channel scope, owner, and AI-approved status.
-- [ ] Learner can see resources they are permitted to access.
+- [ ] Study Server has at least one Voice Channel.
+- [ ] Member can join, speak/listen, and leave the Voice Channel.
+- [ ] Non-members cannot join.
+- [ ] Tests cover join permissions and presence updates.
+
+## Blocked by
+
+Create A Study Server.
+
+### Vertical Slice 4: Send Friend Request And Direct Message
+
+Type: AFK
+
+## What to build
+
+User sends Friend Request; recipient accepts; users exchange Direct Messages.
+
+## Acceptance criteria
+
+- [ ] User can send and accept Friend Requests.
+- [ ] Friends can send Direct Messages.
+- [ ] Non-friends cannot DM without acceptance.
+- [ ] Tests cover accept/decline and block behavior.
+
+## Blocked by
+
+Project operations bootstrap and monorepo/service skeleton.
+
+### Vertical Slice 5: Post A Support Question In A Course Channel
+
+Type: AFK
+
+## What to build
+
+Enrolled learner posts a Support Question in a Course Channel; system tracks it as unanswered.
+
+## Acceptance criteria
+
+- [ ] Learner can post in permitted Course Channel.
+- [ ] Message is durable and idempotent.
+- [ ] Support Question workflow record/event is created.
+- [ ] Instructor/TA can see unanswered Support Questions.
+- [ ] Tests cover unauthorized posting.
+
+## Blocked by
+
+Create Course, Cohort, And Enroll Learner.
+
+### Vertical Slice 6: Upload An Approved Course Resource
+
+Type: AFK
+
+## What to build
+
+Instructor attaches a Course Resource approved for AI use.
+
+## Acceptance criteria
+
+- [ ] Instructor can upload/register a Course Resource on a Course.
+- [ ] Resource metadata records Course scope and AI-approved status.
+- [ ] Enrolled learner can view permitted resources.
 - [ ] Unauthorized users and agents cannot access private resources.
-- [ ] Tests cover upload authorization and scoped resource access.
 
 ## Blocked by
 
-Create A Study Server.
+Create Course, Cohort, And Enroll Learner.
 
-## Vertical Slice 4: Install The AI Study Assistant
+### Vertical Slice 7: Install The AI Study Assistant
 
 Type: HITL
 
 ## What to build
 
-Define and implement the first install flow for the first-party AI Study Assistant, including visible permissions, channel bindings, resource access, and admin approval.
+First install flow for the AI Study Assistant with visible grants for channels, Courses, Cohorts, and Course Resources.
 
 ## Acceptance criteria
 
-- [ ] Instructor can review requested assistant permissions before install.
-- [ ] Instructor can select allowed channels and approved resources.
-- [ ] Users can see that the assistant is present and what it can access.
-- [ ] Backend stores channel bindings and permission grants.
-- [ ] Tests cover install approval, denial, and channel/resource access boundaries.
+- [ ] Instructor reviews and confirms assistant grants before install.
+- [ ] Users see assistant presence and allowed scope.
+- [ ] Backend stores install and grant records.
+- [ ] Tests cover grant boundaries.
 
 ## Blocked by
 
-Create A Study Server; Upload An Approved Course Resource.
+Create Course, Cohort, And Enroll Learner; Upload An Approved Course Resource.
 
-## Vertical Slice 5: Answer A Grounded Course Question
+### Vertical Slice 8: Answer A Grounded Support Question
 
 Type: AFK
 
 ## What to build
 
-Let a learner ask the AI Study Assistant a question and receive an answer grounded in approved resources or allowed context.
+Learner asks the AI Study Assistant; assistant returns grounded answer or low-confidence handoff.
 
 ## Acceptance criteria
 
-- [ ] Learner can invoke the assistant in an enabled channel.
-- [ ] Assistant retrieves only approved resources and permitted context.
-- [ ] Assistant returns an answer or a clear low-confidence/handoff response.
-- [ ] Final assistant response is persisted as a normal durable message.
-- [ ] Audit records capture invocation, resource scope, safety state, and usage.
-- [ ] Tests cover successful answer, denied resource access, low-confidence response, and durable persistence.
+- [ ] Learner invokes assistant in granted Course Channel.
+- [ ] Assistant uses only approved resources/FAQs and permitted context.
+- [ ] Response is persisted; audit record created.
+- [ ] Low-confidence path routes to human help.
+- [ ] Tests cover success, denial, and handoff.
 
 ## Blocked by
 
 Install The AI Study Assistant.
 
-## Vertical Slice 6: Promote Repeated Questions Into FAQ
+### Vertical Slice 9: Promote Repeated Support Question To Approved FAQ
 
 Type: AFK
 
 ## What to build
 
-Detect repeated learner questions, suggest an FAQ entry, and let an instructor approve it for future search and assistant use.
+Detect repeated Support Questions; Instructor approves Approved FAQ for search and assistant use.
 
 ## Acceptance criteria
 
-- [ ] Similar questions are grouped as repeated-question candidates.
-- [ ] Instructor can review, edit, and approve an FAQ entry.
-- [ ] Approved FAQ entries become searchable and assistant-accessible.
-- [ ] Learners can discover the approved FAQ before asking again.
-- [ ] Tests cover duplicate grouping, approval permissions, and FAQ retrieval.
+- [ ] Similar Support Questions are grouped.
+- [ ] Instructor can approve/edit Approved FAQ.
+- [ ] Approved FAQ is searchable and assistant-accessible.
+- [ ] Tests cover permissions and retrieval.
 
 ## Blocked by
 
-Answer A Grounded Course Question.
+Answer A Grounded Support Question.
 
-## Vertical Slice 7: Route Low-Confidence Questions To Office Hours
+### Vertical Slice 10: Route Low-Confidence Answer To TA Queue
 
 Type: AFK
 
 ## What to build
 
-When the assistant cannot answer confidently, let the learner add the question to an office-hours queue for TA/instructor support.
+Low-confidence assistant response lets learner add Support Question to Cohort TA Queue; TA resolves it.
 
 ## Acceptance criteria
 
-- [ ] Low-confidence assistant responses offer a human-help path.
-- [ ] Learner can add the question to the office-hours queue.
-- [ ] TA/instructor can call, resolve, or cancel queue items.
-- [ ] Queue activity is visible and auditable.
-- [ ] Tests cover queue transitions, permissions, and duplicate queue entries.
+- [ ] Learner can add question to TA Queue from handoff UI.
+- [ ] Cohort TA can pick up and resolve queue items.
+- [ ] Queue activity is auditable.
+- [ ] Tests cover Cohort scoping and permissions.
 
 ## Blocked by
 
-Answer A Grounded Course Question.
+Answer A Grounded Support Question.
 
-## Vertical Slice 8: Show Instructor Insights
+### Vertical Slice 11: Run Office Hours For A Cohort
 
 Type: AFK
 
 ## What to build
 
-Create the first instructor dashboard that shows actionable course operations: unanswered questions, repeated questions, approved FAQs, office-hours load, and AI usage.
+Instructor schedules Office Hours; enrolled learners join during the window; TA manages live support flow.
 
 ## Acceptance criteria
 
-- [ ] Instructor can view the dashboard for a Study Server.
-- [ ] Dashboard includes unanswered questions, repeated questions, FAQ candidates, office-hours load, and AI usage.
-- [ ] Aggregates are built from events/read models.
-- [ ] Dashboard enforces instructor/admin access.
-- [ ] Tests cover aggregate correctness and unauthorized access denial.
+- [ ] Instructor can schedule Office Hours for a Cohort.
+- [ ] Enrolled learner can join only during the window.
+- [ ] TA can run the live support session.
+- [ ] Tests cover schedule boundaries and enrollment checks.
 
 ## Blocked by
 
-Promote Repeated Questions Into FAQ; Route Low-Confidence Questions To Office Hours.
+Create Course, Cohort, And Enroll Learner; Route Low-Confidence Answer To TA Queue.
 
-## Vertical Slice 9: Enforce SaaS Plan Limits
+### Vertical Slice 12: Show Instructor Dashboard
 
 Type: AFK
 
 ## What to build
 
-Add Starter, Pro, and Organization plan limits for AI usage, resource capacity, Study Server scale, and advanced dashboard access.
+First Instructor Dashboard with unanswered/repeated Support Questions, Approved FAQs, queue load, Office Hours load, and AI usage.
 
 ## Acceptance criteria
 
-- [ ] Study Server has a plan tier.
-- [ ] AI usage is metered against the plan.
-- [ ] Quota exhaustion blocks or degrades assistant use with clear instructor-facing messaging.
-- [ ] Plan-gated dashboard/resource capabilities are enforced on the backend.
-- [ ] Tests cover metering, plan limit checks, and user-visible quota behavior.
+- [ ] Instructor views dashboard for permitted Study Server/Course.
+- [ ] Aggregates come from events/read models.
+- [ ] Unauthorized users are denied.
+- [ ] Tests cover aggregate correctness.
 
 ## Blocked by
 
-Show Instructor Insights.
+Promote Repeated Support Question To Approved FAQ; Route Low-Confidence Answer To TA Queue.
 
+### Vertical Slice 13: Enforce SaaS Plan Limits
+
+Type: AFK
+
+## What to build
+
+Study Server Owner's SaaS Plan limits AI usage and surfaces quota exhaustion.
+
+## Acceptance criteria
+
+- [ ] Study Server has plan tier.
+- [ ] AI usage meters against plan.
+- [ ] Quota exhaustion blocks/degrades assistant with clear messaging.
+- [ ] Tests cover metering and enforcement.
+
+## Blocked by
+
+Show Instructor Dashboard.
