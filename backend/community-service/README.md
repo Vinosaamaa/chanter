@@ -1,5 +1,10 @@
 # community-service
 
-Planned microservice boundary for Chanter. See `plan.md` and `System Design.md`.
+Owns Study Server community state for the education MVP.
 
-Bootstrap status: not implemented yet. Active work starts after issue #11 (monorepo bootstrap) and follows vertical slices in `docs/issues/education-mvp-issue-breakdown.md`.
+Implemented slice:
+
+- `POST /api/v1/study-servers` creates a Study Server, persists the Owner role, and creates default Study Server Channels.
+- `GET /api/v1/study-servers/{id}` returns the created Study Server shell.
+
+Local port: `8082`.
