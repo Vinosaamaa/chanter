@@ -35,13 +35,14 @@ Important files:
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 - `HANDOFF.md`: this file.
 
-Bootstrap (#11) and Study Server creation (#12) are merged on `main`. The next implementation slice is #13: Create Course, Cohort, And Enroll Learner.
+Bootstrap (#11) and Study Server creation (#12) are merged on `main`. Issue #13, Create Course, Cohort, And Enroll Learner, is implemented in PR #28 and ready for owner merge. After #13 merges and `main` is synced, the next implementation slice is #14: Join A Voice Channel.
 
 ## Active Implementation
 
 - **#11 Monorepo bootstrap** — merged (PR #25)
 - **#12 Create A Study Server** — merged (PR #26)
-- **Next: #13** — [Create Course, Cohort, And Enroll Learner](https://github.com/Vinosaamaa/chanter/issues/13) (TDD)
+- **#13 Create Course, Cohort, And Enroll Learner** — implemented in PR #28; merge pending owner approval
+- **Next after #13 merge: #14** — [Join A Voice Channel](https://github.com/Vinosaamaa/chanter/issues/14) (TDD)
 - **Handoff:** `/tmp/chanter-handoff-2026-06-17.md`
 
 ## Major Decisions Made
@@ -232,7 +233,8 @@ GitHub issues published (2026-06-17):
 - Project board: https://github.com/users/Vinosaamaa/projects/1
 - **#11 Monorepo bootstrap — CLOSED** (merged PR #25)
 - **#12 Create A Study Server — CLOSED** (merged PR #26)
-- **Active: #13 Create Course, Cohort, And Enroll Learner** — https://github.com/Vinosaamaa/chanter/issues/13
+- **#13 Create Course, Cohort, And Enroll Learner — implemented, merge pending** — https://github.com/Vinosaamaa/chanter/issues/13
+- **Next after #13 merge: #14 Join A Voice Channel** — https://github.com/Vinosaamaa/chanter/issues/14
 
 Implementation on `main`:
 
@@ -244,7 +246,8 @@ Implementation on `main`:
 Pending:
 
 - Branch protection on `main` (optional, after owner enables)
-- Epic #2 continues with #13
+- Epic #2 implementation for #13 is complete pending PR #28 merge
+- Epic #3 begins with #14 after #13 is merged and `main` is synced
 
 Confirmed decision:
 
@@ -252,10 +255,10 @@ Confirmed decision:
 - Start with the education market and SaaS model.
 - Position Chanter as Discord for learning communities, with AI teaching assistants and instructor operations built in.
 
-After bootstrap (#11) and Study Server creation (#12), build toward the education MVP:
+After bootstrap (#11), Study Server creation (#12), and Course/Cohort/Enrollment implementation (#13), build toward the education MVP:
 
-- **#13 (next):** Owner creates a Course and Cohort; Instructor enrolls a learner; learner gains Course Channel access only through Enrollment — use TDD.
-- Then voice (#14), DMs (#15), and AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`.
+- **#14 (next after #13 merge):** user joins a Voice Channel — use TDD.
+- Then DMs (#15), support questions (#16), resources (#17), and AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`.
 
 Recent operations documentation artifacts:
 
@@ -272,16 +275,17 @@ Use this prompt after reloading Cursor or starting a new chat:
 ```text
 Read HANDOFF.md, CONTEXT.md, and /tmp/chanter-handoff-2026-06-17.md.
 
-Issues #11 and #12 are merged on main. Start #13 (Create Course, Cohort, And Enroll Learner) on branch feature/13-create-course-cohort-enroll-learner using TDD.
+Issues #11 and #12 are merged on main. Issue #13 (Create Course, Cohort, And Enroll Learner) is implemented in PR #28. After PR #28 is merged, sync main and start #14 (Join A Voice Channel) on branch feature/14-join-voice-channel using TDD.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/13
+Issue: https://github.com/Vinosaamaa/chanter/issues/14
 ```
 
 ## Notes For Future Agent
 
 - Do not assume the user wants to code immediately; they have been exploring system design and enterprise workflow.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for feature work.
+- Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 - **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
