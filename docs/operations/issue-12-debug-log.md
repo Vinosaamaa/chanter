@@ -144,3 +144,23 @@ Final browser verification:
   - Community: `8082`
 - Always run local Spring services with Java 21 for this repository.
 - If Vite shows `http proxy error: ECONNREFUSED`, the frontend is alive but the target backend is not.
+- If an unmerged Flyway migration is edited after it has already run against local Docker Postgres, the local database can keep the old migration checksum. Before re-running Community Service in that case, reset the local Postgres volume or use Flyway repair only when you intentionally want to preserve local data.
+
+## Local Flyway Checksum Note
+
+During Greptile review, the issue #12 migration changed before merge:
+
+```sql
+created_at TIMESTAMP WITH TIME ZONE NOT NULL
+```
+
+If your local Docker Postgres already ran the older `V1__create_study_server_tables.sql`, restarting Community Service may fail Flyway validation because the checksum in `flyway_schema_history` no longer matches the file on disk.
+
+For local development, the cleanest fix is to reset local Docker data and start infra again:
+
+```bash
+docker compose -f infra/docker-compose.yml down -v
+make infra-up
+```
+
+Only use `flyway repair` if you understand that it updates migration metadata for the existing local database. For this early branch, dropping the local volume is simpler and safer.

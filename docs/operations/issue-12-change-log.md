@@ -317,3 +317,16 @@ Browser verification:
 - Opened `http://127.0.0.1:5173/`.
 - Clicked `Create Study Server`.
 - Confirmed the UI rendered the created Study Server shell with Owner role and default channels.
+
+## Local Migration Note
+
+The initial Community Service Flyway migration was edited during PR review before merge. If local Docker Postgres already ran the older migration, Flyway may report a checksum mismatch on restart.
+
+For local development, reset the local infra volume and re-run migrations:
+
+```bash
+docker compose -f infra/docker-compose.yml down -v
+make infra-up
+```
+
+This is safe only for local development data. Do not use this approach for shared or production databases.
