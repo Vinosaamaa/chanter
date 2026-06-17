@@ -1,9 +1,12 @@
 .PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth frontend-install frontend-dev frontend-build verify
 
-export JAVA_HOME ?= $(shell /usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 23 2>/dev/null || echo "")
+ifeq ($(shell uname -s),Darwin)
+export JAVA_HOME ?= $(shell /usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 23 2>/dev/null)
+endif
 
 infra-up:
-	docker compose -f infra/docker-compose.yml up -d
+	@test -f .env || cp .env.example .env
+	docker compose -f infra/docker-compose.yml --env-file .env up -d
 
 infra-down:
 	docker compose -f infra/docker-compose.yml down
