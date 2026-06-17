@@ -2,7 +2,7 @@ CREATE TABLE study_servers (
     id UUID PRIMARY KEY,
     name VARCHAR(120) NOT NULL,
     owner_user_id UUID NOT NULL,
-    created_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 CREATE TABLE study_server_roles (

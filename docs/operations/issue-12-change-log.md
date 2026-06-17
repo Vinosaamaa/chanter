@@ -3,7 +3,7 @@
 Date: 2026-06-17  
 Branch: `feature/12-create-study-server`  
 Issue: `#12 Slice: Create A Study Server`  
-Commit status: not committed yet at the time this log was created.
+Commit status: implemented in PR #26; Greptile follow-up fixes are tracked in this log.
 
 ## Acceptance Criteria Covered
 
@@ -151,6 +151,7 @@ Files:
 What changed:
 
 - Added `study_servers`, `study_server_roles`, and `study_server_channels` tables.
+- Stores `created_at` as `TIMESTAMP WITH TIME ZONE` so persisted creation times remain absolute across JVM and deployment time zones.
 - Configured PostgreSQL for local runtime and H2 for tests.
 - Implemented JDBC save and read.
 - Refactored read path so the returned Owner role comes from the role table.
@@ -164,6 +165,15 @@ CREATE TABLE study_server_roles (
     role VARCHAR(64) NOT NULL,
     PRIMARY KEY (study_server_id, user_id, role)
 );
+```
+
+Snippet:
+
+```java
+@Transactional(readOnly = true)
+public Optional<StudyServer> findById(UUID id) {
+    // Reads Study Server, Owner role, and channels in one read-only transaction.
+}
 ```
 
 Snippet:

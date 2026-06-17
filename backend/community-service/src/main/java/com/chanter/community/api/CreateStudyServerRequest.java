@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record CreateStudyServerRequest(
         @NotBlank @Size(max = 120) String name,
+        // TODO(#auth): replace caller-supplied owner ids with the authenticated principal.
         @NotNull UUID ownerUserId
 ) {
 }

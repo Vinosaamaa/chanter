@@ -6,7 +6,8 @@ import com.chanter.community.domain.OwnerRole;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerRole;
-import java.sql.Timestamp;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,7 +34,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                 .param("id", studyServer.id())
                 .param("name", studyServer.name())
                 .param("ownerUserId", studyServer.ownerRole().userId())
-                .param("createdAt", Timestamp.from(studyServer.createdAt()))
+                .param("createdAt", OffsetDateTime.ofInstant(studyServer.createdAt(), ZoneOffset.UTC))
                 .update();
 
         jdbcClient.sql("""
@@ -62,6 +63,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<StudyServer> findById(UUID id) {
         return jdbcClient.sql("""
                         SELECT id, name, owner_user_id, created_at
@@ -74,7 +76,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                         rs.getString("name"),
                         ownerRoleFor(id),
                         channelsFor(id),
-                        rs.getTimestamp("created_at").toInstant()
+                        rs.getObject("created_at", OffsetDateTime.class).toInstant()
                 ))
                 .optional();
     }
