@@ -7,8 +7,10 @@ import com.chanter.message.domain.FriendshipSnapshot;
 import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -22,6 +24,7 @@ public class SocialMessagingService {
         this.clock = clock;
     }
 
+    @Transactional
     public FriendRequest sendFriendRequest(UUID senderUserId, UUID recipientUserId) {
         if (senderUserId.equals(recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot send Friend Requests to themselves");
@@ -33,13 +36,17 @@ public class SocialMessagingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "A Friend Request is already pending between these users");
         }
 
-        return repository.saveFriendRequest(new FriendRequest(
-                UUID.randomUUID(),
-                senderUserId,
-                recipientUserId,
-                FriendRequestStatus.PENDING,
-                clock.instant()
-        ));
+        try {
+            return repository.saveFriendRequest(new FriendRequest(
+                    UUID.randomUUID(),
+                    senderUserId,
+                    recipientUserId,
+                    FriendRequestStatus.PENDING,
+                    clock.instant()
+            ));
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A Friend Request is already pending between these users");
+        }
     }
 
     public FriendRequest acceptFriendRequest(UUID friendRequestId, UUID recipientUserId) {
@@ -114,6 +121,9 @@ public class SocialMessagingService {
     public List<DirectMessage> findDirectMessages(UUID viewerUserId, UUID peerUserId) {
         if (!repository.areFriends(viewerUserId, peerUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Messages require an accepted Friend Request");
+        }
+        if (repository.isBlocked(viewerUserId, peerUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Messages are blocked between these users");
         }
 
         return repository.findDirectMessages(viewerUserId, peerUserId);

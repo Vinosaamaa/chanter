@@ -12,6 +12,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +23,31 @@ import org.springframework.transaction.annotation.Transactional;
 public class JdbcSocialMessagingRepository implements SocialMessagingRepository {
 
     private final JdbcClient jdbcClient;
+    private final DataSource dataSource;
+    private volatile Boolean postgresDatabase;
 
-    public JdbcSocialMessagingRepository(JdbcClient jdbcClient) {
+    public JdbcSocialMessagingRepository(JdbcClient jdbcClient, DataSource dataSource) {
         this.jdbcClient = jdbcClient;
+        this.dataSource = dataSource;
+    }
+
+    private boolean usePostgresUpsert() {
+        if (postgresDatabase == null) {
+            synchronized (this) {
+                if (postgresDatabase == null) {
+                    postgresDatabase = isPostgresDatabase(dataSource);
+                }
+            }
+        }
+        return postgresDatabase;
+    }
+
+    private static boolean isPostgresDatabase(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection()) {
+            return connection.getMetaData().getDatabaseProductName().toLowerCase().contains("postgres");
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Unable to detect database product", ex);
+        }
     }
 
     @Override
@@ -208,28 +233,28 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
     @Override
     @Transactional
     public void saveUserBlock(UUID blockerUserId, UUID blockedUserId) {
-        Integer existingCount = jdbcClient.sql("""
-                        SELECT COUNT(*)
-                        FROM user_blocks
-                        WHERE blocker_user_id = :blockerUserId
-                        AND blocked_user_id = :blockedUserId
-                        """)
-                .param("blockerUserId", blockerUserId)
-                .param("blockedUserId", blockedUserId)
-                .query(Integer.class)
-                .single();
-
-        if (existingCount > 0) {
+        OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+        if (usePostgresUpsert()) {
+            jdbcClient.sql("""
+                            INSERT INTO user_blocks (blocker_user_id, blocked_user_id, created_at)
+                            VALUES (:blockerUserId, :blockedUserId, :createdAt)
+                            ON CONFLICT (blocker_user_id, blocked_user_id) DO NOTHING
+                            """)
+                    .param("blockerUserId", blockerUserId)
+                    .param("blockedUserId", blockedUserId)
+                    .param("createdAt", createdAt)
+                    .update();
             return;
         }
 
         jdbcClient.sql("""
-                        INSERT INTO user_blocks (blocker_user_id, blocked_user_id, created_at)
+                        MERGE INTO user_blocks (blocker_user_id, blocked_user_id, created_at)
+                        KEY (blocker_user_id, blocked_user_id)
                         VALUES (:blockerUserId, :blockedUserId, :createdAt)
                         """)
                 .param("blockerUserId", blockerUserId)
                 .param("blockedUserId", blockedUserId)
-                .param("createdAt", OffsetDateTime.now(ZoneOffset.UTC))
+                .param("createdAt", createdAt)
                 .update();
     }
 
