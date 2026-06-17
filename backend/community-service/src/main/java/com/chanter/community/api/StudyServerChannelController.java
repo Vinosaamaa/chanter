@@ -50,13 +50,12 @@ public class StudyServerChannelController {
         return VoicePresenceListResponse.from(studyServerService.findVoicePresences(channelId, viewerUserId));
     }
 
-    @DeleteMapping("/{channelId}/voice-presences/{memberUserId}")
+    @DeleteMapping("/{channelId}/voice-presences")
     public ResponseEntity<Void> leaveVoiceChannel(
             @PathVariable UUID channelId,
-            @PathVariable UUID memberUserId,
-            @RequestParam UUID actingUserId
+            @Valid @RequestBody CreateVoicePresenceRequest request
     ) {
-        studyServerService.leaveVoiceChannel(channelId, actingUserId, memberUserId);
+        studyServerService.leaveVoiceChannel(channelId, request.memberUserId());
         return ResponseEntity.noContent().build();
     }
 }

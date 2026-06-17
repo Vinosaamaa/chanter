@@ -308,8 +308,12 @@ function App() {
 
     try {
       const response = await fetch(
-        `/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences/${ownerUserId}?actingUserId=${ownerUserId}`,
-        { method: 'DELETE' },
+        `/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memberUserId: ownerUserId }),
+        },
       )
 
       if (!response.ok) {

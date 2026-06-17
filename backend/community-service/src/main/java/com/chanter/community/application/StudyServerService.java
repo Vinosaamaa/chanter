@@ -60,17 +60,9 @@ public class StudyServerService {
         return repository.findVoicePresences(channelId);
     }
 
-    public void leaveVoiceChannel(UUID channelId, UUID actingUserId, UUID memberUserId) {
-        // Interim MVP: caller identity comes from request params until Auth Service supplies a principal.
-        if (!actingUserId.equals(memberUserId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Members can only remove their own voice presence"
-            );
-        }
-
+    public void leaveVoiceChannel(UUID channelId, UUID memberUserId) {
         StudyServerChannel channel = requireVoiceChannel(channelId);
-        requireStudyServerMember(channel.studyServerId(), actingUserId);
+        requireStudyServerMember(channel.studyServerId(), memberUserId);
 
         repository.deleteVoicePresence(channelId, memberUserId);
     }

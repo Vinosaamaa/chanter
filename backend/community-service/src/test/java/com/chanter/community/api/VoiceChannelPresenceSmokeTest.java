@@ -95,17 +95,23 @@ class VoiceChannelPresenceSmokeTest {
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(delete(
-                        "/api/v1/study-server-channels/{channelId}/voice-presences/{memberUserId}",
-                        voiceChannel.id(),
-                        ownerUserId
-                ).param("actingUserId", nonMemberUserId.toString()))
+                        "/api/v1/study-server-channels/{channelId}/voice-presences",
+                        voiceChannel.id()
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "memberUserId", nonMemberUserId.toString()
+                        ))))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(delete(
-                        "/api/v1/study-server-channels/{channelId}/voice-presences/{memberUserId}",
-                        voiceChannel.id(),
-                        ownerUserId
-                ).param("actingUserId", ownerUserId.toString()))
+                        "/api/v1/study-server-channels/{channelId}/voice-presences",
+                        voiceChannel.id()
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "memberUserId", ownerUserId.toString()
+                        ))))
                 .andExpect(status().isNoContent());
 
         MvcResult afterLeaveResult = mockMvc.perform(get(
