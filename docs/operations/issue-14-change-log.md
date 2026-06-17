@@ -3,7 +3,7 @@
 Date: 2026-06-17  
 Branch: `feature/14-join-voice-channel`  
 Issue: `#14 Slice: Join A Voice Channel`  
-Commit status: in progress on feature branch.
+Commit status: complete on feature branch; browser smoke test verified locally.
 
 ## Acceptance Criteria Covered
 
