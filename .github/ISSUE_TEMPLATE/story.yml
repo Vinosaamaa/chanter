@@ -1,0 +1,47 @@
+name: Story
+description: Define a vertical slice with acceptance criteria and tests.
+title: "[Story] "
+labels:
+  - story
+body:
+  - type: textarea
+    id: user-outcome
+    attributes:
+      label: User Or Operator Outcome
+      description: Describe the concrete outcome this story delivers.
+      placeholder: As a user, I can...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: List observable behaviors required for this story to be done.
+      placeholder: |
+        - Given...
+        - When...
+        - Then...
+    validations:
+      required: true
+  - type: textarea
+    id: implementation-notes
+    attributes:
+      label: Implementation Notes
+      description: Mention affected services, frontend areas, data model, API/event contracts, and migration needs.
+    validations:
+      required: false
+  - type: textarea
+    id: security-privacy
+    attributes:
+      label: Security And Privacy
+      description: Note auth, permission, agent visibility, memory, billing, or data-retention concerns.
+    validations:
+      required: false
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: Test Plan
+      description: Identify required unit, integration, contract, E2E, Docker smoke, or accessibility checks.
+    validations:
+      required: true
+

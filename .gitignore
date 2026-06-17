@@ -1,0 +1,52 @@
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Java and Spring Boot
+target/
+build/
+out/
+*.class
+*.jar
+*.war
+*.ear
+.gradle/
+gradle-app.setting
+
+# Node, React, and Vite
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test and tooling caches
+.pytest_cache/
+.cache/
+.turbo/
+.eslintcache
+
+# Docker and local runtime data
+docker-data/
+data/
+tmp/
+logs/
+
+# Generated artifacts
+generated/
+

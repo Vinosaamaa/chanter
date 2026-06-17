@@ -1,0 +1,53 @@
+name: Bug
+description: Report a defect, regression, or flaky behavior.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed Behavior
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction Steps
+      description: Provide the smallest scenario that reproduces the issue.
+      placeholder: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Note affected users, services, data, security, privacy, cost, or reliability risk.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add logs, screenshots, traces, request IDs, or test output if available.
+    validations:
+      required: false
+  - type: textarea
+    id: regression-test
+    attributes:
+      label: Regression Test
+      description: What test should fail before the fix and pass after it?
+    validations:
+      required: false
+

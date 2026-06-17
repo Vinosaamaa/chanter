@@ -1,0 +1,45 @@
+name: Epic
+description: Track a large Chanter milestone or product capability.
+title: "[Epic] "
+labels:
+  - epic
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What product, technical, or operational problem does this epic solve?
+    validations:
+      required: true
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals
+      description: List the outcomes this epic must deliver.
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: What is intentionally out of scope?
+    validations:
+      required: true
+  - type: textarea
+    id: slices
+    attributes:
+      label: Vertical Slices
+      description: Break this epic into independently testable user or operator outcomes.
+      placeholder: |
+        - [ ] Slice 1:
+        - [ ] Slice 2:
+    validations:
+      required: true
+  - type: textarea
+    id: architecture
+    attributes:
+      label: Architecture Impact
+      description: Note service boundaries, APIs, events, data ownership, security, observability, and ADR needs.
+    validations:
+      required: true
+
