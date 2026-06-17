@@ -26,8 +26,8 @@ Vertical slices (#11–#24):
 | 11 | Monorepo And Local Infrastructure Bootstrap | Done |
 | 12 | Slice: Create A Study Server | Done |
 | 13 | Slice: Create Course, Cohort, And Enroll Learner | Done |
-| 14 | Slice: Join A Voice Channel | **Active** |
-| 15 | Slice: Send Friend Request And Direct Message | after #11 |
+| 14 | Slice: Join A Voice Channel | Done |
+| 15 | Slice: Send Friend Request And Direct Message | **Active** |
 | 16 | Slice: Post A Support Question In A Course Channel | after #13 |
 | 17 | Slice: Upload An Approved Course Resource | after #13 |
 | 18 | Slice: Install The AI Study Assistant | after #13, #17 (HITL) |
@@ -37,6 +37,12 @@ Vertical slices (#11–#24):
 | 22 | Slice: Run Office Hours For A Cohort | after #13, #21 |
 | 23 | Slice: Show Instructor Dashboard | after #20, #21 |
 | 24 | Slice: Enforce SaaS Plan Limits | after #23 |
+
+Cross-cutting (post-MVP vertical slices):
+
+| # | Title | Notes |
+|---|---|---|
+| 30 | Slice: Wire Auth Service Principal Into Protected Endpoints | Replaces `TODO(#auth)` on #12–#14; see `docs/operations/issue-14-greptile-fix.md` |
 
 All issues: https://github.com/Vinosaamaa/chanter/issues
 

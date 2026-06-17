@@ -366,7 +366,9 @@ Current implementation status as of 2026-06-17:
 - Milestone 0 / issue #11, Monorepo And Local Infrastructure Bootstrap, is merged on `main`.
 - Issue #12, Create A Study Server, is merged on `main` via PR #26.
 - Issue #13, Create Course, Cohort, And Enroll Learner, is merged on `main` via PR #28.
-- The active implementation slice is issue #14, Join A Voice Channel. Use branch `feature/14-join-voice-channel` and TDD.
+- Issue #14, Join A Voice Channel, is merged on `main` via PR #29.
+- The active implementation slice is issue #15, Send Friend Request And Direct Message. Use branch `feature/15-send-friend-request-and-dm` and TDD.
+- Cross-cutting auth hardening is tracked in issue #30.
 
 Milestone -1: Project operations bootstrap
 
@@ -474,9 +476,9 @@ Milestone 9: Hardening
 
 ## Next Build Step
 
-The first implementation path has started: the monorepo/bootstrap work is merged, the first vertical slice lets a Study Server Owner create a Study Server with default Study Server Channels and Owner role, and the Course/Cohort/Enrollment slice is merged in PR #28.
+The first implementation path has started: bootstrap (#11), Study Server creation (#12), Course/Cohort/Enrollment (#13), and voice presence (#14) are merged on `main`.
 
-Now implement issue #14: user joins a Voice Channel. Use TDD and keep the issue-scoped change/debug/Greptile-fix log practice in `docs/operations/`.
+Now implement issue #15: Friend Requests and Direct Messages in `message-service`. Use TDD and keep the issue-scoped change/debug/Greptile-fix log practice in `docs/operations/`.
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

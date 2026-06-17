@@ -35,15 +35,16 @@ Important files:
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 - `HANDOFF.md`: this file.
 
-Bootstrap (#11), Study Server creation (#12), and Course/Cohort/Enrollment (#13) are merged on `main`. The active implementation slice is #14: Join A Voice Channel on branch `feature/14-join-voice-channel`.
+Bootstrap (#11) through voice presence (#14) are merged on `main`. The active implementation slice is #15: Send Friend Request And Direct Message on branch `feature/15-send-friend-request-and-dm`. Cross-cutting auth hardening is tracked in #30.
 
 ## Active Implementation
 
 - **#11 Monorepo bootstrap** — merged (PR #25)
 - **#12 Create A Study Server** — merged (PR #26)
 - **#13 Create Course, Cohort, And Enroll Learner** — merged (PR #28)
-- **Active: #14** — [Join A Voice Channel](https://github.com/Vinosaamaa/chanter/issues/14) on `feature/14-join-voice-channel` (TDD)
-- **Handoff:** `/tmp/chanter-handoff-2026-06-17.md`
+- **#14 Join A Voice Channel** — merged (PR #29)
+- **Active: #15** — [Send Friend Request And Direct Message](https://github.com/Vinosaamaa/chanter/issues/15) on `feature/15-send-friend-request-and-dm` (TDD)
+- **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — deferred until after vertical slices or before production hardening
 
 ## Major Decisions Made
 
@@ -234,20 +235,21 @@ GitHub issues published (2026-06-17):
 - **#11 Monorepo bootstrap — CLOSED** (merged PR #25)
 - **#12 Create A Study Server — CLOSED** (merged PR #26)
 - **#13 Create Course, Cohort, And Enroll Learner — CLOSED** (merged PR #28)
-- **Active: #14 Join A Voice Channel** — https://github.com/Vinosaamaa/chanter/issues/14
+- **#14 Join A Voice Channel — CLOSED** (merged PR #29)
+- **Active: #15 Send Friend Request And Direct Message** — https://github.com/Vinosaamaa/chanter/issues/15
+- **Cross-cutting: #30 Wire Auth Service Principal** — https://github.com/Vinosaamaa/chanter/issues/30
 
 Implementation on `main`:
 
-- `backend/` — gateway (:8080), auth (:8081), community (:8082), `common`; other services are README stubs
-- `frontend/` — Vite Study Server creation shell with gateway/auth/community health checks
+- `backend/` — gateway (:8080), auth (:8081), community (:8082), `common`; message-service and other dirs are README stubs
+- `frontend/` — Vite Study Server shell with voice channel join/leave demo flow
 - `infra/docker-compose.yml` — local Postgres, Redis, Redpanda, MinIO
 - CI: backend `mvn verify`, frontend lint + build
 
 Pending:
 
 - Branch protection on `main` (optional, after owner enables)
-- Epic #2 implementation for #13 is merged
-- Epic #3 begins with #14 on `feature/14-join-voice-channel`
+- Epic #4 begins with #15 on `feature/15-send-friend-request-and-dm`
 
 Confirmed decision:
 
@@ -255,10 +257,11 @@ Confirmed decision:
 - Start with the education market and SaaS model.
 - Position Chanter as Discord for learning communities, with AI teaching assistants and instructor operations built in.
 
-After bootstrap (#11), Study Server creation (#12), and Course/Cohort/Enrollment (#13), build toward the education MVP:
+After bootstrap (#11) through voice presence (#14), build toward the education MVP:
 
-- **#14 (active):** user joins a Voice Channel — use TDD.
-- Then DMs (#15), support questions (#16), resources (#17), and AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`.
+- **#15 (active):** Friend Requests and Direct Messages — use TDD in `message-service`.
+- Then support questions (#16), resources (#17), and AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`.
+- **#30 (cross-cutting):** wire Auth Service principal when ready to replace `TODO(#auth)` on #12–#14 endpoints.
 
 Recent operations documentation artifacts:
 
@@ -269,18 +272,21 @@ Recent operations documentation artifacts:
 - `docs/operations/issue-13-greptile-fix.md`: Greptile review feedback and fixes for PR #28.
 - `docs/operations/issue-14-change-log.md`: issue #14 voice presence implementation log with representative snippets.
 - `docs/operations/issue-14-debug-log.md`: issue #14 local Maven/dev-server debug log.
+- `docs/operations/issue-14-greptile-fix.md`: Greptile review feedback and fixes for PR #29.
 
 ## New Chat Startup Prompt
 
 Use this prompt after reloading Cursor or starting a new chat:
 
 ```text
-Read HANDOFF.md, CONTEXT.md, and /tmp/chanter-handoff-2026-06-17.md.
+Read HANDOFF.md and CONTEXT.md.
 
-Issues #11, #12, and #13 are merged on main. Continue #14 (Join A Voice Channel) on branch feature/14-join-voice-channel using TDD.
+Issues #11–#14 are merged on main. Continue #15 (Send Friend Request And Direct Message) on branch feature/15-send-friend-request-and-dm using TDD.
+
+Auth hardening: https://github.com/Vinosaamaa/chanter/issues/30 (defer unless prioritizing before #15).
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/14
+Issue: https://github.com/Vinosaamaa/chanter/issues/15
 ```
 
 ## Notes For Future Agent
