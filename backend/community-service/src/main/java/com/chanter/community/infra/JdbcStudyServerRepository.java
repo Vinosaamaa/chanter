@@ -12,7 +12,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.dao.DataIntegrityViolationException;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +23,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class JdbcStudyServerRepository implements StudyServerRepository {
 
     private final JdbcClient jdbcClient;
+    private final boolean postgresDatabase;
 
-    public JdbcStudyServerRepository(JdbcClient jdbcClient) {
+    public JdbcStudyServerRepository(JdbcClient jdbcClient, DataSource dataSource) {
         this.jdbcClient = jdbcClient;
+        this.postgresDatabase = isPostgresDatabase(dataSource);
+    }
+
+    private static boolean isPostgresDatabase(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection()) {
+            return connection.getMetaData().getDatabaseProductName().toLowerCase().contains("postgres");
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Unable to detect database product", ex);
+        }
     }
 
     @Override
@@ -153,21 +165,22 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     @Transactional
     public VoicePresence saveVoicePresence(UUID channelId, UUID memberUserId) {
         OffsetDateTime joinedAt = OffsetDateTime.now(ZoneOffset.UTC);
-        try {
+        if (postgresDatabase) {
             jdbcClient.sql("""
                             INSERT INTO voice_channel_presences (channel_id, member_user_id, joined_at)
                             VALUES (:channelId, :memberUserId, :joinedAt)
+                            ON CONFLICT (channel_id, member_user_id)
+                            DO UPDATE SET joined_at = EXCLUDED.joined_at
                             """)
                     .param("channelId", channelId)
                     .param("memberUserId", memberUserId)
                     .param("joinedAt", joinedAt)
                     .update();
-        } catch (DataIntegrityViolationException ex) {
+        } else {
             jdbcClient.sql("""
-                            UPDATE voice_channel_presences
-                            SET joined_at = :joinedAt
-                            WHERE channel_id = :channelId
-                            AND member_user_id = :memberUserId
+                            MERGE INTO voice_channel_presences (channel_id, member_user_id, joined_at)
+                            KEY (channel_id, member_user_id)
+                            VALUES (:channelId, :memberUserId, :joinedAt)
                             """)
                     .param("channelId", channelId)
                     .param("memberUserId", memberUserId)

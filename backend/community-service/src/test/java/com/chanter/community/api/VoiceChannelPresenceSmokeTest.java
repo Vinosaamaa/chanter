@@ -80,6 +80,16 @@ class VoiceChannelPresenceSmokeTest {
                 )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
+                                "memberUserId", ownerUserId.toString()
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post(
+                        "/api/v1/study-server-channels/{channelId}/voice-presences",
+                        voiceChannel.id()
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
                                 "memberUserId", nonMemberUserId.toString()
                         ))))
                 .andExpect(status().isForbidden());
