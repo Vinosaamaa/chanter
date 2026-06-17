@@ -14,7 +14,7 @@ Create a clean development operating model for an enterprise-grade microservice 
 ## Current State
 
 - The workspace is initialized as a local git repository on `main`.
-- No remote GitHub repository exists from this workspace yet.
+- Private GitHub repository exists at `https://github.com/Vinosaamaa/chanter`, and local `main` tracks `origin/main`.
 - No application code has been bootstrapped.
 - Existing files are planning/design docs, the education MVP PRD, GitHub-ready local issue breakdown, editable draw.io diagrams, and local repository metadata/templates.
 - The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and `greploop`.
@@ -40,8 +40,8 @@ Decision status: confirmed.
 ## Bootstrap Checklist
 
 - [x] Initialize local git with `main` as the default branch.
-- [ ] Create the GitHub repository, likely `chanter`.
-- [ ] Push the current planning docs and repository metadata.
+- [x] Create the GitHub repository: `https://github.com/Vinosaamaa/chanter`.
+- [x] Push the current planning docs and repository metadata.
 - [ ] Create repository labels: `epic`, `story`, `bug`, `docs`, `architecture`, `backend`, `frontend`, `infra`, `security`, `education`, `ai-agent`, `billing`, `analytics`, `observability`.
 - [ ] Enable branch protection for `main` after the first CI workflow exists.
 - [ ] Require pull requests for `main`.

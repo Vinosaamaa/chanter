@@ -12,6 +12,8 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 The repository is in the planning and operations-bootstrap stage. Application code has not been generated yet.
 
+GitHub repository: `https://github.com/Vinosaamaa/chanter`
+
 Key planning files:
 
 - `plan.md`: product roadmap, implementation milestones, testing strategy, scale direction, and AI-agent roadmap.

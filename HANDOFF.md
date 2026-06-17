@@ -32,7 +32,7 @@ Important files:
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 - `HANDOFF.md`: this file.
 
-No application code has been bootstrapped yet. The repo currently contains planning/design assets, the education MVP PRD, GitHub-ready local issue breakdown, editable draw.io architecture diagrams, local repository metadata/templates, and an operations bootstrap doc.
+No application code has been bootstrapped yet. The repo currently contains planning/design assets, the education MVP PRD, GitHub-ready local issue breakdown, editable draw.io architecture diagrams, local repository metadata/templates, and an operations bootstrap doc. The local `main` branch tracks `origin/main` at `https://github.com/Vinosaamaa/chanter`.
 
 ## Major Decisions Made
 
@@ -136,9 +136,8 @@ Recommended enterprise workflow:
 
 Recommended next setup phase:
 
-- Create a GitHub repository, probably `chanter`.
-- Push existing docs and local repository metadata/templates.
-- Add protected `main`, PR requirements, and status checks.
+- Configure repository labels.
+- Add protected `main`, PR requirements, and status checks once checks exist.
 - Create a GitHub Projects board for work tracking.
 - Create initial GitHub issues/epics from `docs/issues/education-mvp-issue-breakdown.md`.
 
@@ -170,11 +169,13 @@ Current Milestone -1 local progress:
 - Added `docs/product/education-mvp-prd.md`.
 - Added `docs/issues/education-mvp-issue-breakdown.md`.
 - Updated `README.md`, `plan.md`, and `System Design.md` for the education MVP direction.
+- Created private GitHub repository `https://github.com/Vinosaamaa/chanter`.
+- Pushed initial planning/scaffolding commit to `origin/main`.
 
 Pending user confirmation:
 
-- Whether to create/push a GitHub repository.
-- Whether to create the GitHub Projects board and initial issues after the remote exists.
+- Whether to configure repository labels and branch protection now.
+- Whether to create the GitHub Projects board and initial issues now.
 
 Confirmed decision:
 
@@ -199,7 +200,7 @@ Read HANDOFF.md, plan.md, and System Design.md.
 
 Use installed workflow skills directly as needed: grill-with-docs, to-prd, to-issues, tdd, diagnose, zoom-out, improve-codebase-architecture, prototype, setup-pre-commit, and greploop.
 
-Continue the Chanter project. We are building an education-first Discord-like learning community SaaS app with Spring Boot microservices, React + TypeScript + Vite, Docker Compose local deployment, Study Servers, course resources, office-hours workflows, instructor analytics, and a first-party AI Study Assistant. The next likely step is project operations bootstrap: create/push the GitHub repository, then create the GitHub Projects board and initial issues from docs/issues/education-mvp-issue-breakdown.md before writing application code.
+Continue the Chanter project. We are building an education-first Discord-like learning community SaaS app with Spring Boot microservices, React + TypeScript + Vite, Docker Compose local deployment, Study Servers, course resources, office-hours workflows, instructor analytics, and a first-party AI Study Assistant. The private GitHub repository is `https://github.com/Vinosaamaa/chanter`, and local `main` tracks `origin/main`. The next likely step is project operations bootstrap: configure repository labels/branch protection, then create the GitHub Projects board and initial issues from `docs/issues/education-mvp-issue-breakdown.md` before writing application code.
 ```
 
 ## Notes For Future Agent
