@@ -63,6 +63,9 @@ public class CourseService {
     }
 
     public void enrollLearner(UUID cohortId, UUID instructorUserId, UUID learnerUserId) {
+        if (!courseRepository.cohortExists(cohortId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
+        }
         if (!courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can enroll learners");
         }
@@ -71,6 +74,10 @@ public class CourseService {
     }
 
     public Optional<CourseChannel> findAccessibleChannel(UUID channelId, UUID viewerUserId) {
+        if (!courseRepository.courseChannelExists(channelId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Channel not found");
+        }
+
         return courseRepository.findAccessibleChannel(channelId, viewerUserId);
     }
 }

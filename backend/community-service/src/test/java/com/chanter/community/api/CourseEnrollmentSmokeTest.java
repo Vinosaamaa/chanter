@@ -64,6 +64,18 @@ class CourseEnrollmentSmokeTest {
                         .param("viewerUserId", instructorUserId.toString()))
                 .andExpect(status().isOk());
 
+        mockMvc.perform(get("/api/v1/course-channels/{channelId}", UUID.randomUUID())
+                        .param("viewerUserId", instructorUserId.toString()))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "instructorUserId", instructorUserId.toString(),
+                                "learnerUserId", learnerUserId.toString()
+                        ))))
+                .andExpect(status().isNotFound());
+
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(

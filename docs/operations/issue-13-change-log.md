@@ -10,8 +10,10 @@ Commit status: in progress on feature branch.
 - Owner can create a Course and Cohort inside a Study Server.
 - Instructor can enroll a learner in the Cohort.
 - Non-Instructor users cannot enroll learners in the Cohort.
+- Nonexistent Cohorts return `404` before Instructor authorization is evaluated.
 - Enrolled learner can access Course Channels.
 - Non-enrolled user cannot access Course Channels.
+- Nonexistent Course Channels return `404` before Course Channel access authorization is evaluated.
 - Tests cover the Course Channel access boundary.
 
 ## 1. Added TDD Smoke Test For Enrollment Boundary
@@ -27,6 +29,8 @@ What changed:
 - Creates a Course, Cohort, Instructor role, and default Course Channels.
 - Enrolls a learner and verifies the enrolled learner can read a Course Channel while a non-enrolled user receives `403`.
 - Verifies a non-Instructor receives `403` when trying to enroll a learner.
+- Verifies a nonexistent Cohort returns `404` for Enrollment creation.
+- Verifies a nonexistent Course Channel returns `404` for Course Channel lookup.
 
 Snippet:
 
@@ -95,6 +99,7 @@ What changed:
 - Added application service methods to create a Course with a Cohort, enroll a learner, and read an accessible Course Channel.
 - Enforced Study Server Owner authorization for Course creation.
 - Enforced Course Instructor authorization for Enrollment.
+- Separated `404 Not Found` resource misses from `403 Forbidden` authorization failures for Cohort enrollment and Course Channel access.
 
 Snippet:
 
@@ -109,6 +114,14 @@ Snippet:
 ```java
 if (!courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can enroll learners");
+}
+```
+
+Snippet:
+
+```java
+if (!courseRepository.courseChannelExists(channelId)) {
+    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Channel not found");
 }
 ```
 
@@ -153,6 +166,7 @@ What changed:
 - Added tables for Courses, Course roles, Cohorts, Course Channels, and Cohort Enrollments.
 - Added JDBC persistence for Course creation and Enrollment.
 - Added Course Channel access lookup through either Course Instructor role or Cohort Enrollment.
+- Added Cohort and Course Channel existence queries so callers receive `404` for missing resources.
 
 Snippet:
 

@@ -12,7 +12,11 @@ public interface CourseRepository {
 
     void enrollLearner(UUID cohortId, UUID learnerUserId, UUID enrolledByUserId, Instant enrolledAt);
 
+    boolean cohortExists(UUID cohortId);
+
     boolean cohortHasInstructor(UUID cohortId, UUID instructorUserId);
+
+    boolean courseChannelExists(UUID channelId);
 
     Optional<CourseChannel> findAccessibleChannel(UUID channelId, UUID viewerUserId);
 }

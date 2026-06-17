@@ -97,6 +97,19 @@ public class JdbcCourseRepository implements CourseRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean cohortExists(UUID cohortId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM cohorts
+                        WHERE id = :cohortId
+                        """)
+                .param("cohortId", cohortId)
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean cohortHasInstructor(UUID cohortId, UUID instructorUserId) {
         return jdbcClient.sql("""
                         SELECT COUNT(*)
@@ -109,6 +122,19 @@ public class JdbcCourseRepository implements CourseRepository {
                 .param("cohortId", cohortId)
                 .param("instructorUserId", instructorUserId)
                 .param("role", CourseRole.INSTRUCTOR.name())
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean courseChannelExists(UUID channelId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM course_channels
+                        WHERE id = :channelId
+                        """)
+                .param("channelId", channelId)
                 .query(Integer.class)
                 .single() > 0;
     }
