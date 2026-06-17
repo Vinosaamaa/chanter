@@ -128,6 +128,7 @@ The expected workflow includes:
 - Diagnose loop for bugs and regressions.
 - Issue-scoped change logs for non-trivial implementation slices.
 - Issue-scoped debug logs for meaningful local/browser failures.
+- Issue-scoped Greptile fix logs for every Greptile/GrepTile/Grep tile suggestion that changes code or records an explicit follow-up.
 - Zoom-out architecture review after milestones.
 - Prototyping for uncertain UX/system flows.
 - Pre-commit and CI-style quality gates once code exists.
@@ -256,10 +257,13 @@ After bootstrap (#11) and Study Server creation (#12), build toward the educatio
 - **#13 (next):** Owner creates a Course and Cohort; Instructor enrolls a learner; learner gains Course Channel access only through Enrollment — use TDD.
 - Then voice (#14), DMs (#15), and AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`.
 
-Current issue #12 documentation artifacts:
+Recent operations documentation artifacts:
 
 - `docs/operations/issue-12-change-log.md`: change-by-change implementation log with representative code snippets.
 - `docs/operations/issue-12-debug-log.md`: local browser 502/403 debug log and final verification notes.
+- `docs/operations/issue-11-greptile-fix.md`: Greptile review feedback and fixes for PR #25.
+- `docs/operations/issue-12-greptile-fix.md`: Greptile review feedback and fixes for PR #26.
+- `docs/operations/issue-13-greptile-fix.md`: Greptile review feedback and fixes for PR #28.
 
 ## New Chat Startup Prompt
 
@@ -281,6 +285,7 @@ Issue: https://github.com/Vinosaamaa/chanter/issues/13
 - **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
+- For every Greptile/GrepTile/Grep tile suggestion that is fixed, create or update `docs/operations/issue-<number>-greptile-fix.md` with the finding, fix, representative snippet, verification, final Greptile confidence, and any unresolved follow-up.
 - Keep explanations beginner-friendly but production-oriented.
 - Preserve and update the docs when architecture or process decisions change.
 - Ask before creating remote repositories, pushing code, creating tickets, or installing third-party integrations.
