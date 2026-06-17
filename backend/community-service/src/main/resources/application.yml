@@ -1,0 +1,21 @@
+server:
+  port: ${COMMUNITY_PORT:8082}
+
+spring:
+  application:
+    name: community-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/chanter_community
+    username: ${POSTGRES_USER:chanter}
+    password: ${POSTGRES_PASSWORD:chanter}
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized

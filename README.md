@@ -10,15 +10,15 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 ## Current Status
 
-Milestone 0 (monorepo bootstrap) is in progress via [issue #11](https://github.com/Vinosaamaa/chanter/issues/11).
+Milestone 0 (monorepo bootstrap) is complete. The active education MVP slice is [issue #12](https://github.com/Vinosaamaa/chanter/issues/12), Create A Study Server.
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`  
 Project board: `https://github.com/users/Vinosaamaa/projects/1`
 
 Implemented bootstrap:
 
-- `backend/` — Maven multi-module Spring Boot (`gateway-service`, `auth-service`, `common`; other service dirs reserved)
-- `frontend/` — React + TypeScript + Vite shell with gateway health checks
+- `backend/` — Maven multi-module Spring Boot (`gateway-service`, `auth-service`, `community-service`, `common`; other service dirs reserved)
+- `frontend/` — React + TypeScript + Vite shell for creating and viewing a Study Server
 - `infra/docker-compose.yml` — PostgreSQL, Redis, Redpanda, MinIO
 - `.github/workflows/ci.yml` — backend + frontend build checks
 
@@ -69,16 +69,17 @@ make infra-up          # PostgreSQL, Redis, Redpanda, MinIO
 make backend-test      # requires JAVA_HOME 21+ (see .java-version)
 make frontend-install
 make backend-auth      # terminal 1 — port 8081
-make backend-gateway   # terminal 2 — port 8080
-make frontend-dev      # terminal 3 — http://localhost:5173
+make backend-community # terminal 2 — port 8082
+make backend-gateway   # terminal 3 — port 8080
+make frontend-dev      # terminal 4 — http://localhost:5173
 ```
 
 The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health endpoints:
 
 - `http://localhost:8080/actuator/health`
 - `http://localhost:8080/api/v1/auth/health`
+- `http://localhost:8080/api/v1/study-servers`
 
 ## Next Milestone
 
-Active: [#12 Create A Study Server](https://github.com/Vinosaamaa/chanter/issues/12) after #11 bootstrap is merged.
-
+Active: [#12 Create A Study Server](https://github.com/Vinosaamaa/chanter/issues/12).

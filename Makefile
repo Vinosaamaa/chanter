@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth frontend-install frontend-dev frontend-build verify
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community frontend-install frontend-dev frontend-build verify
 
 ifeq ($(shell uname -s),Darwin)
 export JAVA_HOME ?= $(shell /usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 23 2>/dev/null)
@@ -25,6 +25,9 @@ backend-gateway:
 
 backend-auth:
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl auth-service spring-boot:run
+
+backend-community:
+	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl community-service spring-boot:run
 
 frontend-install:
 	cd frontend && npm install

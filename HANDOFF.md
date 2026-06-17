@@ -125,6 +125,8 @@ The expected workflow includes:
 - Vertical-slice issue breakdown.
 - TDD for risky logic.
 - Diagnose loop for bugs and regressions.
+- Issue-scoped change logs for non-trivial implementation slices.
+- Issue-scoped debug logs for meaningful local/browser failures.
 - Zoom-out architecture review after milestones.
 - Prototyping for uncertain UX/system flows.
 - Pre-commit and CI-style quality gates once code exists.
@@ -252,6 +254,11 @@ After bootstrap (#11, merged), build toward the education MVP:
 - **#12 (next):** Study Server Owner creates a Study Server with default Study Server Channels — use TDD
 - Then Courses/Cohorts (#13), voice, DMs, AI assistant slices per `docs/issues/education-mvp-issue-breakdown.md`
 
+Current issue #12 documentation artifacts:
+
+- `docs/operations/issue-12-change-log.md`: change-by-change implementation log with representative code snippets.
+- `docs/operations/issue-12-debug-log.md`: local browser 502/403 debug log and final verification notes.
+
 ## New Chat Startup Prompt
 
 Use this prompt after reloading Cursor or starting a new chat:
@@ -270,6 +277,8 @@ Issue: https://github.com/Vinosaamaa/chanter/issues/12
 - Do not assume the user wants to code immediately; they have been exploring system design and enterprise workflow.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for feature work.
 - **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
+- For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
+- For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
 - Keep explanations beginner-friendly but production-oriented.
 - Preserve and update the docs when architecture or process decisions change.
 - Ask before creating remote repositories, pushing code, creating tickets, or installing third-party integrations.
