@@ -359,6 +359,12 @@ Operational controls:
 
 ## Implementation Milestones
 
+Current implementation status as of 2026-06-17:
+
+- Milestone 0 / issue #11, Monorepo And Local Infrastructure Bootstrap, is merged on `main`.
+- Issue #12, Create A Study Server, is merged on `main` via PR #26.
+- The next implementation slice is issue #13, Create Course, Cohort, And Enroll Learner. Use branch `feature/13-create-course-cohort-enroll-learner` and TDD.
+
 Milestone -1: Project operations bootstrap
 
 - Initialize local git when approved.
@@ -463,9 +469,11 @@ Milestone 9: Hardening
 - Course commerce adds payment, tax, refund, fraud, creator trust, and content moderation complexity; it should be designed after the Study Server and AI Study Assistant prove learner/instructor value.
 - Marketplace agents can become an abuse vector; we will require listing review, permission disclosure, versioning, audit logs, and sandboxed tool execution.
 
-## First Build Step After Approval
+## Next Build Step
 
-After project operations bootstrap is complete, the first implementation path should build toward the education MVP: create the monorepo structure, bootstrap the Spring Boot gateway/auth/user/community/message/realtime services and React Vite frontend, wire Docker Compose for local development, then implement the first vertical slice: educator creates a Study Server with default course channels and roles.
+The first implementation path has started: the monorepo/bootstrap work is merged, and the first vertical slice lets a Study Server Owner create a Study Server with default Study Server Channels and Owner role.
+
+Next, implement issue #13: Owner creates a Course and Cohort, Instructor enrolls a learner in the Cohort, and enrolled learners gain access to Course Channels while non-enrolled users do not. Use TDD and keep the issue-scoped change/debug log practice in `docs/operations/`.
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

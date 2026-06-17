@@ -10,7 +10,7 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 ## Current Status
 
-Milestone 0 (monorepo bootstrap) is complete. The active education MVP slice is [issue #12](https://github.com/Vinosaamaa/chanter/issues/12), Create A Study Server.
+Milestone 0 (monorepo bootstrap) and [issue #12](https://github.com/Vinosaamaa/chanter/issues/12) (Create A Study Server) are complete. The next education MVP slice is [issue #13](https://github.com/Vinosaamaa/chanter/issues/13), Create Course, Cohort, And Enroll Learner.
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`  
 Project board: `https://github.com/users/Vinosaamaa/projects/1`
@@ -82,4 +82,4 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-Active: [#12 Create A Study Server](https://github.com/Vinosaamaa/chanter/issues/12).
+Next: [#13 Create Course, Cohort, And Enroll Learner](https://github.com/Vinosaamaa/chanter/issues/13).
