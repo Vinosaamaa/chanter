@@ -15,8 +15,8 @@ Create a clean development operating model for an enterprise-grade microservice 
 
 - The workspace is initialized as a local git repository on `main`.
 - Private GitHub repository exists at `https://github.com/Vinosaamaa/chanter`, and local `main` tracks `origin/main`.
-- No application code has been bootstrapped.
-- Existing files are planning/design docs, the education MVP PRD, GitHub-ready local issue breakdown, editable draw.io diagrams, and local repository metadata/templates.
+- Application code has been bootstrapped. Issues #11 and #12 are merged on `main`; issue #13 is implemented in PR #28 and ready for owner merge.
+- Existing files include planning/design docs, the education MVP PRD, GitHub-ready local issue breakdown, editable draw.io diagrams, local repository metadata/templates, Spring Boot services, a React/Vite frontend, CI, and local Docker infrastructure.
 - The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and `greploop`.
 - Draw.io diagram sources and embedded PNG exports live in `docs/diagrams/`; use `/drawio-skill` for future diagram revisions.
 
@@ -88,6 +88,8 @@ Recommended PR rules:
 - Update `plan.md`, `System Design.md`, `CONTEXT.md`, or ADRs for durable architecture/product decisions.
 - For each non-trivial slice, add an issue-scoped change log under `docs/operations/` that lists what changed, the files touched, representative code snippets, and verification commands.
 - For each meaningful debugging incident, add an issue-scoped debug log under `docs/operations/` that records symptoms, hypotheses, commands run, findings, fixes, and final verification.
+- For every Greptile/GrepTile/Grep tile suggestion that is fixed, add an issue-scoped Greptile fix log under `docs/operations/` with the finding, fix, representative snippet, verification, final Greptile confidence, and any unresolved follow-up.
+- Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 - Do not merge code that bypasses backend permission enforcement for protected actions.
 - Do not commit secrets, local credentials, generated dependency folders, or local runtime data.
 

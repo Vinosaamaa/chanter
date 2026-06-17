@@ -317,6 +317,8 @@ Use an incremental production workflow:
 10. Maintain release notes, change logs, debug logs, and runbooks for local deployment.
 11. For every non-trivial implementation slice, add an issue-scoped change log under `docs/operations/` with the files changed, behavior added, verification commands, and representative code snippets.
 12. For every meaningful local or browser-debugging failure, add an issue-scoped debug log under `docs/operations/` with symptoms, hypotheses, commands run, findings, fixes, and final verification.
+13. For every Greptile/GrepTile/Grep tile suggestion that is fixed, add an issue-scoped Greptile fix log under `docs/operations/` with the finding, fix, representative snippet, verification, final Greptile confidence, and any unresolved follow-up.
+14. Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 
 Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, `setup-pre-commit` for quality gates, and `greploop` later for PR review loops.
 
@@ -325,7 +327,7 @@ Definition of Done for each feature:
 - Backend endpoint/service implemented with validation and permissions.
 - Frontend UI implemented with loading, error, and empty states.
 - Database migrations are reversible or safely forward-only with documented rollback.
-- Issue-scoped change log and any relevant debug log are written under `docs/operations/`.
+- Issue-scoped change log, any relevant debug log, and any relevant Greptile fix log are written under `docs/operations/`.
 - Unit/integration tests added.
 - E2E coverage added for user-critical flows.
 - Logs and metrics added where operationally useful.
@@ -363,7 +365,8 @@ Current implementation status as of 2026-06-17:
 
 - Milestone 0 / issue #11, Monorepo And Local Infrastructure Bootstrap, is merged on `main`.
 - Issue #12, Create A Study Server, is merged on `main` via PR #26.
-- The next implementation slice is issue #13, Create Course, Cohort, And Enroll Learner. Use branch `feature/13-create-course-cohort-enroll-learner` and TDD.
+- Issue #13, Create Course, Cohort, And Enroll Learner, is implemented in PR #28 and ready for owner merge.
+- After PR #28 merges and `main` is synced, the next implementation slice is issue #14, Join A Voice Channel. Use branch `feature/14-join-voice-channel` and TDD.
 
 Milestone -1: Project operations bootstrap
 
@@ -471,9 +474,9 @@ Milestone 9: Hardening
 
 ## Next Build Step
 
-The first implementation path has started: the monorepo/bootstrap work is merged, and the first vertical slice lets a Study Server Owner create a Study Server with default Study Server Channels and Owner role.
+The first implementation path has started: the monorepo/bootstrap work is merged, the first vertical slice lets a Study Server Owner create a Study Server with default Study Server Channels and Owner role, and the Course/Cohort/Enrollment slice is implemented in PR #28.
 
-Next, implement issue #13: Owner creates a Course and Cohort, Instructor enrolls a learner in the Cohort, and enrolled learners gain access to Course Channels while non-enrolled users do not. Use TDD and keep the issue-scoped change/debug log practice in `docs/operations/`.
+After PR #28 merges and `main` is synced, implement issue #14: user joins a Voice Channel. Use TDD and keep the issue-scoped change/debug/Greptile-fix log practice in `docs/operations/`.
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

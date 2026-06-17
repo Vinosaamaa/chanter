@@ -23,6 +23,20 @@ type StudyServer = {
   channels: Channel[]
 }
 
+type Course = {
+  id: string
+  title: string
+  instructorRole: {
+    userId: string
+    role: string
+  }
+  cohort: {
+    id: string
+    name: string
+  }
+  channels: Channel[]
+}
+
 type HealthState = {
   gateway: string
   auth: string
@@ -44,9 +58,18 @@ function App() {
     community: 'checking',
   })
   const [ownerUserId] = useState(createUserId)
+  const [instructorUserId] = useState(createUserId)
+  const [learnerUserId] = useState(createUserId)
+  const [nonEnrolledUserId] = useState(createUserId)
   const [serverName, setServerName] = useState('Java Spring Study Group')
+  const [courseTitle, setCourseTitle] = useState('Spring Boot Foundations')
+  const [cohortName, setCohortName] = useState('Summer 2026')
   const [studyServer, setStudyServer] = useState<StudyServer | null>(null)
+  const [course, setCourse] = useState<Course | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [isCreatingCourse, setIsCreatingCourse] = useState(false)
+  const [isEnrolling, setIsEnrolling] = useState(false)
+  const [accessResult, setAccessResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -103,11 +126,87 @@ function App() {
       }
 
       setStudyServer(await viewedResponse.json())
+      setCourse(null)
+      setAccessResult(null)
       setHealth((current) => ({ ...current, community: 'ok' }))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to create Study Server')
     } finally {
       setIsCreating(false)
+    }
+  }
+
+  const createCourseAndCohort = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!studyServer) {
+      return
+    }
+
+    setIsCreatingCourse(true)
+    setError(null)
+    setAccessResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/study-servers/${studyServer.id}/courses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerUserId,
+          title: courseTitle,
+          instructorUserId,
+          cohortName,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Course create failed with ${response.status}`)
+      }
+
+      setCourse(await response.json())
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to create Course')
+    } finally {
+      setIsCreatingCourse(false)
+    }
+  }
+
+  const enrollLearner = async () => {
+    if (!course) {
+      return
+    }
+
+    setIsEnrolling(true)
+    setError(null)
+    setAccessResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/cohorts/${course.cohort.id}/enrollments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instructorUserId, learnerUserId }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Enroll failed with ${response.status}`)
+      }
+
+      const firstChannel = course.channels[0]
+      const learnerAccess = await fetch(
+        `/api/v1/course-channels/${firstChannel.id}?viewerUserId=${learnerUserId}`,
+      )
+      const outsiderAccess = await fetch(
+        `/api/v1/course-channels/${firstChannel.id}?viewerUserId=${nonEnrolledUserId}`,
+      )
+
+      if (!learnerAccess.ok || outsiderAccess.status !== 403) {
+        throw new Error('Enrollment access check failed')
+      }
+
+      setAccessResult('Learner can access Course Channels; non-enrolled user is blocked.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to enroll learner')
+    } finally {
+      setIsEnrolling(false)
     }
   }
 
@@ -136,8 +235,12 @@ function App() {
         </form>
 
         <div className="owner-block">
-          <span>Current owner</span>
+          <span>Owner</span>
           <code>{ownerUserId}</code>
+          <span>Instructor</span>
+          <code>{instructorUserId}</code>
+          <span>Learner</span>
+          <code>{learnerUserId}</code>
         </div>
       </aside>
 
@@ -172,6 +275,17 @@ function App() {
                     </a>
                   ))}
                 </section>
+                {course ? (
+                  <section>
+                    <h3>Course Channels</h3>
+                    {course.channels.map((channel) => (
+                      <a href={`#${channel.id}`} key={channel.id}>
+                        <span>#</span>
+                        {channel.name}
+                      </a>
+                    ))}
+                  </section>
+                ) : null}
               </nav>
 
               <article className="conversation-pane">
@@ -180,6 +294,40 @@ function App() {
                   The Study Server shell is ready with default Study Server Channels and the creator
                   assigned as Owner.
                 </p>
+                <form className="course-form" onSubmit={createCourseAndCohort}>
+                  <label htmlFor="course-title">Course title</label>
+                  <input
+                    id="course-title"
+                    value={courseTitle}
+                    onChange={(event) => setCourseTitle(event.target.value)}
+                    maxLength={160}
+                    required
+                  />
+                  <label htmlFor="cohort-name">Cohort name</label>
+                  <input
+                    id="cohort-name"
+                    value={cohortName}
+                    onChange={(event) => setCohortName(event.target.value)}
+                    maxLength={120}
+                    required
+                  />
+                  <button type="submit" disabled={isCreatingCourse}>
+                    {isCreatingCourse ? 'Creating...' : 'Create Course + Cohort'}
+                  </button>
+                </form>
+                {course ? (
+                  <section className="course-summary">
+                    <div>
+                      <p className="eyebrow">Created Course</p>
+                      <h3>{course.title}</h3>
+                      <p>{course.cohort.name}</p>
+                    </div>
+                    <button type="button" onClick={enrollLearner} disabled={isEnrolling}>
+                      {isEnrolling ? 'Enrolling...' : 'Enroll Learner'}
+                    </button>
+                    {accessResult ? <p className="system-line">{accessResult}</p> : null}
+                  </section>
+                ) : null}
               </article>
             </div>
           </>
@@ -203,10 +351,12 @@ function App() {
 }
 
 function StatusRow({ label, value }: { label: string; value: string }) {
+  const displayValue = String(value)
+
   return (
     <div className="status-row">
       <span>{label}</span>
-      <strong className={`status ${value.toLowerCase()}`}>{value}</strong>
+      <strong className={`status ${displayValue.toLowerCase()}`}>{displayValue}</strong>
     </div>
   )
 }
