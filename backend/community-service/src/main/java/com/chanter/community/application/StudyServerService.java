@@ -61,6 +61,7 @@ public class StudyServerService {
     }
 
     public void leaveVoiceChannel(UUID channelId, UUID actingUserId, UUID memberUserId) {
+        // Interim MVP: caller identity comes from request params until Auth Service supplies a principal.
         if (!actingUserId.equals(memberUserId)) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,

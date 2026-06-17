@@ -12,6 +12,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -151,16 +152,28 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     @Override
     @Transactional
     public VoicePresence saveVoicePresence(UUID channelId, UUID memberUserId) {
-        deleteVoicePresence(channelId, memberUserId);
-
-        jdbcClient.sql("""
-                        INSERT INTO voice_channel_presences (channel_id, member_user_id, joined_at)
-                        VALUES (:channelId, :memberUserId, :joinedAt)
-                        """)
-                .param("channelId", channelId)
-                .param("memberUserId", memberUserId)
-                .param("joinedAt", OffsetDateTime.now(ZoneOffset.UTC))
-                .update();
+        OffsetDateTime joinedAt = OffsetDateTime.now(ZoneOffset.UTC);
+        try {
+            jdbcClient.sql("""
+                            INSERT INTO voice_channel_presences (channel_id, member_user_id, joined_at)
+                            VALUES (:channelId, :memberUserId, :joinedAt)
+                            """)
+                    .param("channelId", channelId)
+                    .param("memberUserId", memberUserId)
+                    .param("joinedAt", joinedAt)
+                    .update();
+        } catch (DataIntegrityViolationException ex) {
+            jdbcClient.sql("""
+                            UPDATE voice_channel_presences
+                            SET joined_at = :joinedAt
+                            WHERE channel_id = :channelId
+                            AND member_user_id = :memberUserId
+                            """)
+                    .param("channelId", channelId)
+                    .param("memberUserId", memberUserId)
+                    .param("joinedAt", joinedAt)
+                    .update();
+        }
 
         // canSpeak/canListen are deferred until a moderation or media-token slice adds columns.
         return new VoicePresence(channelId, memberUserId, true, true);
