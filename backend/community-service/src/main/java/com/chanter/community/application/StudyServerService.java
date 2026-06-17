@@ -26,14 +26,15 @@ public class StudyServerService {
     }
 
     public StudyServer createStudyServer(String name, UUID ownerUserId) {
+        UUID studyServerId = UUID.randomUUID();
         StudyServer studyServer = new StudyServer(
-                UUID.randomUUID(),
+                studyServerId,
                 name.trim(),
                 new OwnerRole(ownerUserId, StudyServerRole.STUDY_SERVER_OWNER),
                 List.of(
-                        new StudyServerChannel(UUID.randomUUID(), "announcements", ChannelKind.TEXT, 0),
-                        new StudyServerChannel(UUID.randomUUID(), "general", ChannelKind.TEXT, 1),
-                        new StudyServerChannel(UUID.randomUUID(), "study-room", ChannelKind.VOICE, 2)
+                        new StudyServerChannel(UUID.randomUUID(), studyServerId, "announcements", ChannelKind.TEXT, 0),
+                        new StudyServerChannel(UUID.randomUUID(), studyServerId, "general", ChannelKind.TEXT, 1),
+                        new StudyServerChannel(UUID.randomUUID(), studyServerId, "study-room", ChannelKind.VOICE, 2)
                 ),
                 clock.instant()
         );
@@ -59,9 +60,16 @@ public class StudyServerService {
         return repository.findVoicePresences(channelId);
     }
 
-    public void leaveVoiceChannel(UUID channelId, UUID memberUserId) {
+    public void leaveVoiceChannel(UUID channelId, UUID actingUserId, UUID memberUserId) {
+        if (!actingUserId.equals(memberUserId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Members can only remove their own voice presence"
+            );
+        }
+
         StudyServerChannel channel = requireVoiceChannel(channelId);
-        requireStudyServerMember(channel.studyServerId(), memberUserId);
+        requireStudyServerMember(channel.studyServerId(), actingUserId);
 
         repository.deleteVoicePresence(channelId, memberUserId);
     }

@@ -88,7 +88,14 @@ class VoiceChannelPresenceSmokeTest {
                         "/api/v1/study-server-channels/{channelId}/voice-presences/{memberUserId}",
                         voiceChannel.id(),
                         ownerUserId
-                ))
+                ).param("actingUserId", nonMemberUserId.toString()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete(
+                        "/api/v1/study-server-channels/{channelId}/voice-presences/{memberUserId}",
+                        voiceChannel.id(),
+                        ownerUserId
+                ).param("actingUserId", ownerUserId.toString()))
                 .andExpect(status().isNoContent());
 
         MvcResult afterLeaveResult = mockMvc.perform(get(

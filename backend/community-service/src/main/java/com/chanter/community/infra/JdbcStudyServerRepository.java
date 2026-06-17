@@ -162,6 +162,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                 .param("joinedAt", OffsetDateTime.now(ZoneOffset.UTC))
                 .update();
 
+        // canSpeak/canListen are deferred until a moderation or media-token slice adds columns.
         return new VoicePresence(channelId, memberUserId, true, true);
     }
 
@@ -178,7 +179,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                 .query((rs, rowNum) -> new VoicePresence(
                         rs.getObject("channel_id", UUID.class),
                         rs.getObject("member_user_id", UUID.class),
-                        true,
+                        true, // deferred until capability columns exist
                         true
                 ))
                 .list();

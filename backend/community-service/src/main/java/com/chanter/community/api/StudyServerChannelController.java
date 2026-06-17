@@ -53,9 +53,10 @@ public class StudyServerChannelController {
     @DeleteMapping("/{channelId}/voice-presences/{memberUserId}")
     public ResponseEntity<Void> leaveVoiceChannel(
             @PathVariable UUID channelId,
-            @PathVariable UUID memberUserId
+            @PathVariable UUID memberUserId,
+            @RequestParam UUID actingUserId
     ) {
-        studyServerService.leaveVoiceChannel(channelId, memberUserId);
+        studyServerService.leaveVoiceChannel(channelId, actingUserId, memberUserId);
         return ResponseEntity.noContent().build();
     }
 }
