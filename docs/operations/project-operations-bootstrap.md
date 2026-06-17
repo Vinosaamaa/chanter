@@ -86,6 +86,8 @@ Recommended PR rules:
 - Include acceptance criteria and a test plan.
 - Domain features (#12+): prefer **TDD** (red → green → refactor) per `HANDOFF.md`.
 - Update `plan.md`, `System Design.md`, `CONTEXT.md`, or ADRs for durable architecture/product decisions.
+- For each non-trivial slice, add an issue-scoped change log under `docs/operations/` that lists what changed, the files touched, representative code snippets, and verification commands.
+- For each meaningful debugging incident, add an issue-scoped debug log under `docs/operations/` that records symptoms, hypotheses, commands run, findings, fixes, and final verification.
 - Do not merge code that bypasses backend permission enforcement for protected actions.
 - Do not commit secrets, local credentials, generated dependency folders, or local runtime data.
 
@@ -109,4 +111,3 @@ Milestone -1 is done when:
 - Initial epics and first stories are created.
 - `main` has basic PR protection.
 - The next implementation milestone has clear acceptance criteria.
-

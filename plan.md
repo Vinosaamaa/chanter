@@ -312,9 +312,11 @@ Use an incremental production workflow:
 5. Add automated tests with each slice.
 6. **Git:** one GitHub issue → one branch → one pull request → merge to `main` only after owner approval (`docs/operations/project-operations-bootstrap.md`).
 7. **TDD** for domain features from issue #12 onward; infra/bootstrap may use smoke tests only.
-6. Run local Docker smoke tests before considering a feature done.
-7. Review security, performance, observability, and migration impact before release.
-8. Maintain release notes and runbooks for local deployment.
+8. Run local Docker smoke tests before considering a feature done.
+9. Review security, performance, observability, and migration impact before release.
+10. Maintain release notes, change logs, debug logs, and runbooks for local deployment.
+11. For every non-trivial implementation slice, add an issue-scoped change log under `docs/operations/` with the files changed, behavior added, verification commands, and representative code snippets.
+12. For every meaningful local or browser-debugging failure, add an issue-scoped debug log under `docs/operations/` with symptoms, hypotheses, commands run, findings, fixes, and final verification.
 
 Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, `setup-pre-commit` for quality gates, and `greploop` later for PR review loops.
 
@@ -323,6 +325,7 @@ Definition of Done for each feature:
 - Backend endpoint/service implemented with validation and permissions.
 - Frontend UI implemented with loading, error, and empty states.
 - Database migrations are reversible or safely forward-only with documented rollback.
+- Issue-scoped change log and any relevant debug log are written under `docs/operations/`.
 - Unit/integration tests added.
 - E2E coverage added for user-critical flows.
 - Logs and metrics added where operationally useful.
