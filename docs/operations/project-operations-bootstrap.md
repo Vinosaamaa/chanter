@@ -42,13 +42,13 @@ Decision status: confirmed.
 - [x] Initialize local git with `main` as the default branch.
 - [x] Create the GitHub repository: `https://github.com/Vinosaamaa/chanter`.
 - [x] Push the current planning docs and repository metadata.
-- [ ] Create repository labels: `epic`, `story`, `bug`, `docs`, `architecture`, `backend`, `frontend`, `infra`, `security`, `education`, `ai-agent`, `billing`, `analytics`, `observability`.
+- [x] Create repository labels: `epic`, `story`, `ready-for-agent`, `docs`, `architecture`, `backend`, `frontend`, `infra`, `realtime`, `security`, `education`, `ai-agent`, `billing`, `analytics`, `ops`.
 - [ ] Enable branch protection for `main` after the first CI workflow exists.
 - [ ] Require pull requests for `main`.
 - [ ] Require status checks once tests/typechecks exist.
 - [ ] Add CODEOWNERS after real ownership exists.
-- [ ] Create the GitHub Projects board.
-- [ ] Convert `docs/issues/education-mvp-issue-breakdown.md` into GitHub epics and vertical-slice stories.
+- [x] Create the GitHub Projects board: [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) (issues #1–#24 added).
+- [x] Convert `docs/issues/education-mvp-issue-breakdown.md` into GitHub epics and vertical-slice stories.
 
 ## Initial Epics
 
@@ -66,21 +66,26 @@ Decision status: confirmed.
 
 ## Branch And PR Convention
 
-Recommended branch names:
+**Required workflow (confirmed):**
 
-- `docs/<short-topic>`
-- `ops/<short-topic>`
-- `infra/<short-topic>`
-- `backend/<service-or-slice>`
-- `frontend/<feature-or-slice>`
-- `feature/<vertical-slice>`
-- `fix/<bug-summary>`
+1. Create a **new branch per GitHub issue** (one issue → one branch → one PR).
+2. Implement on that branch; run tests locally before pushing.
+3. Open a **pull request** targeting `main` with acceptance criteria and test plan.
+4. **Do not merge to `main` until the PR is approved** by the repository owner.
+5. After merge, the linked issue closes (use `Closes #<number>` in the PR body).
+
+Branch naming:
+
+- `feature/<issue-number>-<short-topic>` — e.g. `feature/11-monorepo-bootstrap`
+- `feature/<issue-number>-<short-topic>` for vertical slices — e.g. `feature/12-create-study-server`
+- `docs/<short-topic>`, `ops/<short-topic>`, `infra/<short-topic>`, `fix/<bug-summary>` when not tied to a numbered story
 
 Recommended PR rules:
 
 - One vertical slice or operational change per PR.
 - Include acceptance criteria and a test plan.
-- Update `plan.md`, `System Design.md`, or ADRs for durable architecture decisions.
+- Domain features (#12+): prefer **TDD** (red → green → refactor) per `HANDOFF.md`.
+- Update `plan.md`, `System Design.md`, `CONTEXT.md`, or ADRs for durable architecture/product decisions.
 - Do not merge code that bypasses backend permission enforcement for protected actions.
 - Do not commit secrets, local credentials, generated dependency folders, or local runtime data.
 

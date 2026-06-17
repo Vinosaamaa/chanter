@@ -10,12 +10,21 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 ## Current Status
 
-The repository is in the planning and operations-bootstrap stage. Application code has not been generated yet.
+Milestone 0 (monorepo bootstrap) is in progress via [issue #11](https://github.com/Vinosaamaa/chanter/issues/11).
 
-GitHub repository: `https://github.com/Vinosaamaa/chanter`
+GitHub repository: `https://github.com/Vinosaamaa/chanter`  
+Project board: `https://github.com/users/Vinosaamaa/projects/1`
+
+Implemented bootstrap:
+
+- `backend/` — Maven multi-module Spring Boot (`gateway-service`, `auth-service`, `common`; other service dirs reserved)
+- `frontend/` — React + TypeScript + Vite shell with gateway health checks
+- `infra/docker-compose.yml` — PostgreSQL, Redis, Redpanda, MinIO
+- `.github/workflows/ci.yml` — backend + frontend build checks
 
 Key planning files:
 
+- `CONTEXT.md`: canonical product glossary.
 - `plan.md`: product roadmap, implementation milestones, testing strategy, scale direction, and AI-agent roadmap.
 - `System Design.md`: backend/system architecture, service boundaries, event flow, consistency model, reliability rules, and agent platform design.
 - `HANDOFF.md`: current state and startup guidance for future Cursor sessions.
@@ -50,15 +59,26 @@ Use `HANDOFF.md` as the first resume point for new agent sessions. Then apply th
 - Education MVP: Study Servers, course/module channels, learner/instructor/TA roles, approved course resources, question workflow, office-hours queue, instructor dashboard, and SaaS plan limits.
 - AI platform: the first agent is a visible, permissioned AI Study Assistant that answers from approved course resources and allowed context. Marketplace, voice, advanced billing, safety, and memory deepen after the Study Assistant is trusted.
 
+## Local Development
+
+Prerequisites: Java 21+, Node 20+, Maven 3.9+, Docker (for infra).
+
+```bash
+cp .env.example .env
+make infra-up          # PostgreSQL, Redis, Redpanda, MinIO
+make backend-test      # requires JAVA_HOME 21+ (see .java-version)
+make frontend-install
+make backend-auth      # terminal 1 — port 8081
+make backend-gateway   # terminal 2 — port 8080
+make frontend-dev      # terminal 3 — http://localhost:5173
+```
+
+The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health endpoints:
+
+- `http://localhost:8080/actuator/health`
+- `http://localhost:8080/api/v1/auth/health`
+
 ## Next Milestone
 
-Milestone -1 is project operations bootstrap:
-
-- Initialize local git and create the GitHub repository.
-- Add branch protection, PR requirements, and status checks once CI exists.
-- Use GitHub Projects as the first tracker.
-- Convert `docs/issues/education-mvp-issue-breakdown.md` into GitHub epics and vertical-slice stories.
-- Decide branch naming, commit style, PR rules, and ownership conventions.
-
-No remote repository, tracker project, or third-party integration should be created without explicit approval.
+Active: [#12 Create A Study Server](https://github.com/Vinosaamaa/chanter/issues/12) after #11 bootstrap is merged.
 

@@ -45,6 +45,25 @@ Positioning:
 
 The initial product is a Study Server: a realtime learning community with course/module channels, roles, course resources, an AI Study Assistant, office-hours workflows, FAQ generation, learning summaries, and instructor analytics. The marketplace, voice agents, and broader enterprise learning features remain later phases after the first-party education workflow is trusted.
 
+Later monetization direction: creator course commerce. After Study Servers prove useful, instructors should be able to sell courses inside a Study Server, let learners purchase/enroll, unlock course channels/resources/live classes automatically, and keep community support in the same product. This would move Chanter toward a community-native course platform: Discord-like community, AI-assisted learning operations, live classes, and Udemy/Circle/Skool-style course sales in one place.
+
+Market reality:
+
+- Discord is the better choice for casual free chat, gaming/social communities, and groups that do not need structured learning operations.
+- Chanter only has a strong business case if it solves buyer pain for educators: repeated questions, buried course knowledge, office-hour logistics, weak analytics, fragmented resources, and unsafe/uncontrolled bots.
+- The first product should sell outcomes, not novelty: lower instructor/TA workload, faster learner support, reusable course knowledge, safer AI assistance, and clearer instructor visibility.
+- Do not compete head-on as a consumer social network. Compete as a paid learning community operations layer with Discord-like familiarity.
+- A later course-commerce layer can make the business stronger by letting instructors sell courses, run live classes, and manage learner community/support in one place. This should come after the education MVP because payments, refunds, taxes, creator trust, fraud, and live-video reliability add significant scope.
+
+Identity direction:
+
+- Users have global accounts.
+- Organizations/workspaces are optional at first and become important for schools, bootcamps, and larger course businesses.
+- Roles are scoped to each Study Server: owner, instructor, TA, learner, alumni, and guest.
+- A user can be an instructor in one Study Server and a learner in another.
+- Instructor powers are assigned by Study Server admins or organization policy, not by self-declaration.
+- Friend requests and DMs can exist later, but education deployments need consent, block/report controls, and policy settings for student-teacher messaging.
+
 Supporting planning docs:
 
 - `docs/product/education-mvp-prd.md`
@@ -84,7 +103,7 @@ Phase 4: AI Study Assistant
 - Low-confidence handoff to office hours or instructor/TA review.
 - FAQ generation, weekly study summaries, and misconception detection.
 - Usage metering and SaaS plan quota enforcement.
-- Voice agent and marketplace later: installable personas, specialized assistants, voice packs, prompt packs, tool integrations, reviews, and paid agents.
+- Course commerce, live classes, voice agent, and marketplace later: paid course listings, live cohorts, installable personas, specialized assistants, voice packs, prompt packs, tool integrations, reviews, and paid agents.
 
 ## Backend Microservice Design
 
@@ -217,6 +236,7 @@ Initial service-owned relational entities:
 - Memory Service: AgentMemory, ChannelSummary, MemoryEmbedding, MemoryRetentionPolicy, MemoryDeletionRequest
 - Marketplace Service: AgentListing, AgentVersion, CreatorProfile, AgentReview, MarketplaceInstall
 - Billing Service: UsageMeter, CreditBalance, Subscription, Invoice, ProviderCostRecord, BudgetLimit, StudyServerPlan, AiUsageQuota
+- Later course-commerce data: CourseListing, CourseEnrollment, CoursePurchase, CourseAccessGrant, LiveClassSession, LiveClassRecording, CreatorPayout, RefundRequest
 - Safety Service: SafetyReview, PromptInjectionSignal, ContentPolicyDecision, AgentEvaluationResult
 
 Design choices:
@@ -290,6 +310,8 @@ Use an incremental production workflow:
 3. API-first design for each backend slice.
 4. Implement backend and frontend in vertical slices, not isolated layers.
 5. Add automated tests with each slice.
+6. **Git:** one GitHub issue → one branch → one pull request → merge to `main` only after owner approval (`docs/operations/project-operations-bootstrap.md`).
+7. **TDD** for domain features from issue #12 onward; infra/bootstrap may use smoke tests only.
 6. Run local Docker smoke tests before considering a feature done.
 7. Review security, performance, observability, and migration impact before release.
 8. Maintain release notes and runbooks for local deployment.
@@ -408,6 +430,8 @@ Milestone 8: SaaS plans, voice agents, and marketplace foundation
 
 - Extend Billing Service support for Starter, Pro, and Organization plan limits.
 - Add AI usage metering, quotas, usage indicators, and quota exhaustion flows.
+- Add course-commerce design for paid course listings, learner enrollment, course access grants, refunds, and creator payouts before implementation.
+- Add live class design for scheduled cohort sessions, recordings, transcripts, summaries, and access control before implementation.
 - Add Voice Agent Service and integrate LiveKit or equivalent local voice infrastructure later.
 - Implement voice transcription, study-room summaries, and spoken Q&A later.
 - Add Marketplace Service with private/internal listings first.
@@ -433,6 +457,7 @@ Milestone 9: Hardening
 - Education-specific AI can give wrong answers; the AI Study Assistant must answer from approved resources when possible, show uncertainty, support human handoff, and remain auditable.
 - Instructor analytics can become vanity metrics; the dashboard should focus on actionable learning operations such as unanswered questions, repeated questions, misconceptions, office-hours load, and AI usage.
 - SaaS AI usage can become expensive; Starter/Pro/Organization plan limits, quotas, and usage visibility should be designed before broad agent usage.
+- Course commerce adds payment, tax, refund, fraud, creator trust, and content moderation complexity; it should be designed after the Study Server and AI Study Assistant prove learner/instructor value.
 - Marketplace agents can become an abuse vector; we will require listing review, permission disclosure, versioning, audit logs, and sandboxed tool execution.
 
 ## First Build Step After Approval
