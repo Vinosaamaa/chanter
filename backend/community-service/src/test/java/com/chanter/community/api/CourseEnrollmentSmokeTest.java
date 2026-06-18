@@ -104,6 +104,53 @@ class CourseEnrollmentSmokeTest {
 
         assertThat(accessibleChannel.name()).isEqualTo("announcements");
 
+        UUID questionsChannelId = course.channels().stream()
+                .filter(channel -> channel.name().equals("questions"))
+                .findFirst()
+                .orElseThrow()
+                .id();
+
+        MvcResult learnerAccessResult = mockMvc.perform(get(
+                        "/api/v1/course-channels/{channelId}/support-question-access", questionsChannelId
+                ).param("userId", learnerUserId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+        SupportQuestionChannelAccessResponse learnerAccess = objectMapper.readValue(
+                learnerAccessResult.getResponse().getContentAsString(),
+                SupportQuestionChannelAccessResponse.class
+        );
+
+        assertThat(learnerAccess.canPostSupportQuestion()).isTrue();
+        assertThat(learnerAccess.canViewUnansweredSupportQuestions()).isFalse();
+
+        UUID announcementsChannelId = course.channels().stream()
+                .filter(channel -> channel.name().equals("announcements"))
+                .findFirst()
+                .orElseThrow()
+                .id();
+
+        mockMvc.perform(get(
+                        "/api/v1/course-channels/{channelId}/support-question-access", announcementsChannelId
+                ).param("userId", learnerUserId.toString()))
+                .andExpect(status().isForbidden());
+
+        MvcResult instructorAccessResult = mockMvc.perform(get(
+                        "/api/v1/course-channels/{channelId}/support-question-access", questionsChannelId
+                ).param("userId", instructorUserId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+        SupportQuestionChannelAccessResponse instructorAccess = objectMapper.readValue(
+                instructorAccessResult.getResponse().getContentAsString(),
+                SupportQuestionChannelAccessResponse.class
+        );
+
+        assertThat(instructorAccess.canPostSupportQuestion()).isFalse();
+        assertThat(instructorAccess.canViewUnansweredSupportQuestions()).isTrue();
+
+        mockMvc.perform(get("/api/v1/course-channels/{channelId}/support-question-access", questionsChannelId)
+                        .param("userId", nonEnrolledUserId.toString()))
+                .andExpect(status().isForbidden());
+
         mockMvc.perform(get("/api/v1/course-channels/{channelId}", course.channels().getFirst().id())
                         .param("viewerUserId", nonEnrolledUserId.toString()))
                 .andExpect(status().isForbidden());
@@ -141,5 +188,14 @@ class CourseEnrollmentSmokeTest {
     }
 
     private record CourseChannelResponse(UUID id, String name, String kind) {
+    }
+
+    private record SupportQuestionChannelAccessResponse(
+            UUID channelId,
+            UUID courseId,
+            String channelName,
+            boolean canPostSupportQuestion,
+            boolean canViewUnansweredSupportQuestions
+    ) {
     }
 }

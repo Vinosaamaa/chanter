@@ -66,8 +66,10 @@ Identity direction:
 
 Supporting planning docs:
 
+- `docs/product-design/` — **product showcase**: target browser UI mockups, `vision.md`, `visibility-and-social-model.md`, user-journey diagram, interactive screen tour (`README.md` is the index)
 - `docs/product/education-mvp-prd.md`
 - `docs/issues/education-mvp-issue-breakdown.md`
+- `CONTEXT.md` — canonical glossary
 
 ## Product Scope
 
@@ -193,10 +195,13 @@ Key backend standards:
 
 Use React + TypeScript + Vite with React Router, TanStack Query, a lightweight state store such as Zustand, and a component library strategy we can choose during implementation.
 
+**Product UI reference (for agents and designers):** [`docs/product-design/README.md`](docs/product-design/README.md) — 19 concept mockups, screen flows, and `vision.md`. **Visibility:** global Friends Hub + enrollment-scoped **My courses** sidebar — [`visibility-and-social-model.md`](docs/product-design/visibility-and-social-model.md). Delivery is a **browser web app** (not a native desktop app for MVP). The running `frontend/` code is still a vertical-slice API demo until Milestone 3 realtime shell lands.
+
 Core frontend areas:
 
 - Auth screens and protected route shell.
-- Server/channel sidebar layout similar to Discord.
+- Server/channel sidebar layout similar to Discord, with **My courses** filtered by enrollment and role (not a full server catalog for learners).
+- Global Friends Hub (separate from server shell) with co-membership-gated friend requests (#31).
 - Message timeline with virtualization, optimistic sending, edit/delete, attachments, mentions.
 - WebSocket client with reconnect, resubscribe, and event reconciliation.
 - Role and permission-aware UI.
@@ -367,7 +372,8 @@ Current implementation status as of 2026-06-17:
 - Issue #12, Create A Study Server, is merged on `main` via PR #26.
 - Issue #13, Create Course, Cohort, And Enroll Learner, is merged on `main` via PR #28.
 - Issue #14, Join A Voice Channel, is merged on `main` via PR #29.
-- The active implementation slice is issue #15, Send Friend Request And Direct Message. Use branch `feature/15-send-friend-request-and-dm` and TDD.
+- Issue #15, Send Friend Request And Direct Message, is merged on `main` via PR #33.
+- The active implementation slice is issue #16, Post A Support Question In A Course Channel. Use branch `feature/16-post-support-question-in-course-channel` and TDD. PR: https://github.com/Vinosaamaa/chanter/pull/34
 - Cross-cutting auth hardening is tracked in issue #30.
 
 Milestone -1: Project operations bootstrap
@@ -486,9 +492,9 @@ Milestone 9: Hardening
 
 ## Next Build Step
 
-The first implementation path has started: bootstrap (#11), Study Server creation (#12), Course/Cohort/Enrollment (#13), and voice presence (#14) are merged on `main`.
+Bootstrap (#11) through Friends/DM API (#15) are merged on `main`. Issue #16 (Support Questions) is in PR review.
 
-Now implement issue #15: Friend Requests and Direct Messages in `message-service`. Use TDD and keep the issue-scoped change/debug/Greptile-fix log practice in `docs/operations/`.
+Next after #16 merges: issue #17 (Course Resources). Use TDD and keep the issue-scoped change/debug/Greptile-fix log practice in `docs/operations/`. For UI intent, align with `docs/product-design/mockups/` and the slice row in `docs/issues/education-mvp-issue-breakdown.md`.
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

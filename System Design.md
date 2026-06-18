@@ -8,6 +8,15 @@ This backend is designed as a cell-based microservice architecture for a real-ti
 
 Editable source: [`system-backend-architecture.drawio`](docs/diagrams/system-backend-architecture.drawio) | PNG export: [`system-backend-architecture.drawio.png`](docs/diagrams/system-backend-architecture.drawio.png)
 
+## Product Design vs Backend Architecture
+
+| Location | Contents | Use when |
+|---|---|---|
+| [`docs/product-design/`](docs/product-design/README.md) | Target **browser UI** mockups, user journeys, `vision.md`, **`visibility-and-social-model.md`**, interactive tour | Frontend routes, stakeholder demos, slice UX scope |
+| [`docs/diagrams/`](docs/diagrams/) | **Engineering** service topology, message paths, agent invocation | Service boundaries, events, scaling, implementation |
+
+The education MVP ships as a **web application** (React SPA in the browser). Native mobile and desktop wrappers are out of scope for the first MVP; see `docs/product-design/vision.md` § Platform.
+
 ## Product Architecture Direction
 
 The initial product is a Study Server:

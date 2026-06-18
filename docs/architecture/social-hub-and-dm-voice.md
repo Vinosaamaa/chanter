@@ -4,6 +4,8 @@ Date: 2026-06-17
 Status: planned (post Education MVP core slices)  
 Tracking: GitHub issues #31 (Friends Hub) and #32 (DM Voice)
 
+> **Target UX mockups:** [`docs/product-design/mockups/friends-hub-dm.png`](../product-design/mockups/friends-hub-dm.png), [`friend-requests.png`](../product-design/mockups/friend-requests.png). Product index: [`docs/product-design/README.md`](../product-design/README.md).
+
 ## Context
 
 Issue #15 delivers the **backend contract** for Friend Requests, friendship checks, blocks, and durable Direct Messages over REST. The current frontend panel is a **manual demo harness**—not the product UX learners expect from Discord.
@@ -15,6 +17,8 @@ The product direction is a familiar social surface:
 - Friends can **call each other** with 1:1 voice after friendship and block checks pass.
 
 Education deployments still treat Course Channels, Support Questions, TA Queue, and Office Hours as the primary learning-support paths. Social messaging remains platform-wide and separate from course workflows.
+
+**Visibility model:** the Friends list and DMs are **global**; course channels and cohort rosters are **enrollment-scoped** (learners see only **My courses** in the server sidebar). Friend requests should require **co-membership** in at least one Study Server. See [`docs/product-design/visibility-and-social-model.md`](../product-design/visibility-and-social-model.md).
 
 ## What Exists Today (#15 MVP slice)
 
@@ -68,7 +72,9 @@ flowchart LR
 
 - Lists accepted friends for the signed-in user (not pending requests—that stays in a separate inbox or badge).
 - Each row shows display name, avatar, and presence pill: `online`, `idle`, `offline` (MVP); `dnd` later if needed.
+- Optional context badge for shared Study Server / course (display only).
 - Row actions: open DM, start voice call (enabled after #32).
+- **Friend requests:** only between users who share at least one Study Server membership (co-membership check via `community-service`).
 
 **DM conversation panel**
 
