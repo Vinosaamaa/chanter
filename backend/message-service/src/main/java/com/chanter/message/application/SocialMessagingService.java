@@ -29,6 +29,9 @@ public class SocialMessagingService {
         if (senderUserId.equals(recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot send Friend Requests to themselves");
         }
+        if (repository.isBlocked(senderUserId, recipientUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Friend Requests are blocked between these users");
+        }
         if (repository.areFriends(senderUserId, recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Users are already friends");
         }
@@ -49,6 +52,7 @@ public class SocialMessagingService {
         }
     }
 
+    @Transactional
     public FriendRequest acceptFriendRequest(UUID friendRequestId, UUID recipientUserId) {
         FriendRequest friendRequest = requireFriendRequest(friendRequestId);
         requireRecipient(friendRequest, recipientUserId);
@@ -57,9 +61,11 @@ public class SocialMessagingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Friend Request is not pending");
         }
 
-        return repository.updateFriendRequestStatus(friendRequestId, FriendRequestStatus.ACCEPTED);
+        return repository.updateFriendRequestStatus(friendRequestId, FriendRequestStatus.ACCEPTED)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Friend Request is no longer pending"));
     }
 
+    @Transactional
     public FriendRequest declineFriendRequest(UUID friendRequestId, UUID recipientUserId) {
         FriendRequest friendRequest = requireFriendRequest(friendRequestId);
         requireRecipient(friendRequest, recipientUserId);
@@ -68,7 +74,8 @@ public class SocialMessagingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Friend Request is not pending");
         }
 
-        return repository.updateFriendRequestStatus(friendRequestId, FriendRequestStatus.DECLINED);
+        return repository.updateFriendRequestStatus(friendRequestId, FriendRequestStatus.DECLINED)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Friend Request is no longer pending"));
     }
 
     public FriendshipSnapshot findFriendshipStatus(UUID firstUserId, UUID secondUserId) {

@@ -64,6 +64,20 @@ Fix:
 - Acknowledged as deferred to Auth Service principal slice (`#auth` / issue #30).
 - Request records already carry `TODO(#auth)` comments, consistent with issues #12–#14.
 
+### 6. Block Guard On Friend Requests And Accept/Decline Races
+
+Greptile finding (iteration 2):
+
+- Blocked users could still send friend requests.
+- `acceptFriendRequest` / `declineFriendRequest` had a TOCTOU race between status check and update.
+
+Fix:
+
+- Reject friend requests with `403 Forbidden` when `isBlocked` is true.
+- Added `@Transactional` on accept and decline.
+- `updateFriendRequestStatus` now updates only rows still `PENDING` and returns empty when another caller already changed status; service maps that to `409 Conflict`.
+- Added `blockedUserCannotSendFriendRequest` smoke test.
+
 ## Verification
 
 - `mvn -pl message-service verify`

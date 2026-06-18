@@ -14,7 +14,7 @@ public interface SocialMessagingRepository {
 
     Optional<FriendRequest> findFriendRequestById(UUID friendRequestId);
 
-    FriendRequest updateFriendRequestStatus(UUID friendRequestId, FriendRequestStatus status);
+    Optional<FriendRequest> updateFriendRequestStatus(UUID friendRequestId, FriendRequestStatus status);
 
     boolean areFriends(UUID firstUserId, UUID secondUserId);
 

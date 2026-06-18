@@ -226,6 +226,28 @@ class FriendRequestAndDirectMessageSmokeTest {
     }
 
     @Test
+    void blockedUserCannotSendFriendRequest() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/v1/user-blocks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "blockerUserId", userB.toString(),
+                                "blockedUserId", userA.toString()
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/friend-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "senderUserId", userA.toString(),
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void cannotSendFriendRequestWhenUsersAreAlreadyFriends() throws Exception {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();

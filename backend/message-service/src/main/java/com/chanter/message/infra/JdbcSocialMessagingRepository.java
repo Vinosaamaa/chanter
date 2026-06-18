@@ -88,18 +88,22 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
 
     @Override
     @Transactional
-    public FriendRequest updateFriendRequestStatus(UUID friendRequestId, FriendRequestStatus status) {
-        jdbcClient.sql("""
+    public Optional<FriendRequest> updateFriendRequestStatus(UUID friendRequestId, FriendRequestStatus status) {
+        int updatedRows = jdbcClient.sql("""
                         UPDATE friend_requests
                         SET status = :status
                         WHERE id = :friendRequestId
+                        AND status = 'PENDING'
                         """)
                 .param("status", status.name())
                 .param("friendRequestId", friendRequestId)
                 .update();
 
-        return findFriendRequestById(friendRequestId)
-                .orElseThrow(() -> new IllegalStateException("Friend Request not found after update"));
+        if (updatedRows == 0) {
+            return Optional.empty();
+        }
+
+        return findFriendRequestById(friendRequestId);
     }
 
     @Override
