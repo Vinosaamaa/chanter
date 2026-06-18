@@ -3,6 +3,7 @@ package com.chanter.media.application;
 import com.chanter.media.domain.CourseResource;
 import java.io.IOException;
 import java.time.Clock;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -86,7 +87,7 @@ public class CourseResourceService {
                 resourceId.toString(),
                 aiApproved,
                 uploaderUserId,
-                clock.instant()
+                clock.instant().truncatedTo(ChronoUnit.MICROS)
         );
 
         repository.save(courseResource);
