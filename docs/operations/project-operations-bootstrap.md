@@ -19,7 +19,7 @@ Create a clean development operating model for an enterprise-grade microservice 
 - Existing files include planning/design docs, the education MVP PRD, **product design showcase** (`docs/product-design/` — UI mockups and vision), GitHub-ready local issue breakdown, editable draw.io architecture diagrams (`docs/diagrams/`), local repository metadata/templates, Spring Boot services, a React/Vite frontend, CI, and local Docker infrastructure.
 - The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and `greploop`.
 - Draw.io **architecture** diagram sources and embedded PNG exports live in `docs/diagrams/`; use `/drawio-skill` for future diagram revisions.
-- **Product UI** mockups, user-journey diagram, and vision walkthrough live in `docs/product-design/`; update when target screens change.
+- **Product UI** mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** live in `docs/product-design/`; update when target screens or visibility rules change.
 
 ## Tracker Choice
 

@@ -13,7 +13,7 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 Milestone 0 (monorepo bootstrap) through [issue #15](https://github.com/Vinosaamaa/chanter/issues/15) (Send Friend Request And Direct Message) are merged on `main`. [Issue #16](https://github.com/Vinosaamaa/chanter/issues/16) (Post A Support Question In A Course Channel) is in review on [PR #34](https://github.com/Vinosaamaa/chanter/pull/34). Auth hardening is tracked in [issue #30](https://github.com/Vinosaamaa/chanter/issues/30). Post-MVP Discord-like social UX is tracked in [issues #31–#32](https://github.com/Vinosaamaa/chanter/issues/31).
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`  
-Project board: `https://github.com/users/Vinosaamaa/projects/1`
+Project board: `https://github.com/users/Vinosaamaa/projects/1` (Education MVP) · Post-MVP: `https://github.com/users/Vinosaamaa/projects/2` (#31–#32)
 
 Implemented bootstrap:
 
@@ -28,7 +28,7 @@ Key planning files:
 |---|---|
 | [`HANDOFF.md`](HANDOFF.md) | **Start here** for new agent sessions — current slice, workflow, startup prompt |
 | [`CONTEXT.md`](CONTEXT.md) | Canonical product glossary (Study Server, Cohort, Support Question, …) |
-| [`docs/product-design/`](docs/product-design/README.md) | **Product showcase** — target UI mockups (19 screens), vision walkthrough, user-journey diagram, interactive screen tour |
+| [`docs/product-design/`](docs/product-design/README.md) | **Product showcase** — target UI mockups (19 screens), vision walkthrough, **visibility and social model**, user-journey diagram, interactive screen tour |
 | [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Education MVP PRD — problem, user stories, out of scope |
 | [`docs/issues/education-mvp-issue-breakdown.md`](docs/issues/education-mvp-issue-breakdown.md) | Epics and vertical slices (#11–#24) |
 | [`plan.md`](plan.md) | Roadmap, milestones, frontend/backend direction, scale and AI-agent phases |
@@ -46,7 +46,7 @@ Diagram workflow:
 
 ## Agent Workflow
 
-Use `HANDOFF.md` as the first resume point for new agent sessions. For **what the finished product should look like**, read [`docs/product-design/README.md`](docs/product-design/README.md) before building UI. Then apply the installed workflow skills by name as needed, especially:
+Use `HANDOFF.md` as the first resume point for new agent sessions. For **what the finished product should look like**, read [`docs/product-design/README.md`](docs/product-design/README.md) and [`docs/product-design/visibility-and-social-model.md`](docs/product-design/visibility-and-social-model.md) before building UI. Then apply the installed workflow skills by name as needed, especially:
 
 - `grill-with-docs` for questioning and tightening docs before major decisions.
 - `to-prd` for turning unclear product ideas into requirements and acceptance criteria.

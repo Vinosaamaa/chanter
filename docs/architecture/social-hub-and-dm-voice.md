@@ -18,6 +18,8 @@ The product direction is a familiar social surface:
 
 Education deployments still treat Course Channels, Support Questions, TA Queue, and Office Hours as the primary learning-support paths. Social messaging remains platform-wide and separate from course workflows.
 
+**Visibility model:** the Friends list and DMs are **global**; course channels and cohort rosters are **enrollment-scoped** (learners see only **My courses** in the server sidebar). Friend requests should require **co-membership** in at least one Study Server. See [`docs/product-design/visibility-and-social-model.md`](../product-design/visibility-and-social-model.md).
+
 ## What Exists Today (#15 MVP slice)
 
 | Capability | Transport | Notes |
@@ -70,7 +72,9 @@ flowchart LR
 
 - Lists accepted friends for the signed-in user (not pending requests—that stays in a separate inbox or badge).
 - Each row shows display name, avatar, and presence pill: `online`, `idle`, `offline` (MVP); `dnd` later if needed.
+- Optional context badge for shared Study Server / course (display only).
 - Row actions: open DM, start voice call (enabled after #32).
+- **Friend requests:** only between users who share at least one Study Server membership (co-membership check via `community-service`).
 
 **DM conversation panel**
 

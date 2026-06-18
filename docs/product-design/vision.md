@@ -4,6 +4,12 @@ This document describes the **finished Education MVP product** — the experienc
 
 Last updated: 2026-06-17
 
+## Visibility and social model
+
+Chanter separates **global social** (friends, DMs) from **enrollment-scoped learning** (courses, `#questions`, TA queue). Learners see **only their courses** in the Study Server sidebar — not every course on the server — while Friends Hub stays one global list.
+
+Full decision record: **[visibility-and-social-model.md](visibility-and-social-model.md)** (sidebar rules, co-membership guardrail for friend requests, cross-course vs cross-server behavior).
+
 ## Platform: website first, not a desktop app
 
 Chanter is planned as a **web application** — a React + TypeScript + Vite single-page app you open in the browser (Chrome, Safari, Firefox). That matches how Discord started and how cohort learners already work: no install step, share a link, join from a laptop.
@@ -46,9 +52,8 @@ Chanter is not a generic Discord clone. It sells to **educators** (bootcamps, co
 
 | Col 1 | Col 2 — channels | Col 3 — conversation | Col 4 — context |
 |---|---|---|---|
-| Server switcher | `#announcements` `#general` (server-wide) | Realtime chat & threads | AI Study Assistant |
-| | `#questions` `#resources` (course) | | TA queue |
-| | `> study-room` (voice) | | Course resources |
+| Server switcher | **Study Server:** `#announcements` `#general` `> study-room` | Realtime chat & threads | AI Study Assistant |
+| | **My courses only** (enrollment/role): e.g. `#questions` `#resources` | | TA queue |
 
 **User story:** *As a learner, I open my cohort's Study Server and everything feels like Discord — but `#questions` has an AI helper that cites our course materials.*
 
@@ -237,7 +242,7 @@ Marketing home → Sign in → Study Server home → Study Server shell
 | Live DM conversation panel | #31 |
 | DM voice call | #32 |
 
-Social messaging is **platform-wide** and intentionally separate from Support Questions and TA Queue.
+Social messaging is **platform-wide** and intentionally separate from Support Questions and TA Queue. Friend requests should require **shared Study Server membership** before #31 ships — see [visibility model](visibility-and-social-model.md).
 
 ## Channel model (defaults)
 
@@ -284,6 +289,7 @@ Dashed boxes in the [user journey diagram](diagrams/user-journey.drawio.png):
 
 ## See also
 
+- [Visibility and social model](visibility-and-social-model.md) — global friends vs enrollment-scoped course UI
 - [Product design showcase README](README.md) — index of all assets
 - [Education MVP PRD](../product/education-mvp-prd.md) — full requirements
 - [Issue breakdown](../issues/education-mvp-issue-breakdown.md) — implementation slices

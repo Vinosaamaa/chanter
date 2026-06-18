@@ -101,11 +101,11 @@ A private text conversation between two users on the platform. Users can message
 _Avoid_: DM thread, private chat
 
 **Friend Request**:
-A request from one user to another to become friends on the platform. The recipient must accept before Direct Messages are available.
+A request from one user to another to become friends on the platform. The recipient must accept before Direct Messages are available. For education deployments, friend requests should be limited to users who share at least one Study Server membership (co-membership); see `docs/product-design/visibility-and-social-model.md`.
 _Avoid_: Connection, follow
 
 **Friends Hub**:
-The platform-wide social sidebar where a user sees accepted friends, their online/offline presence, and opens a Direct Message conversation. Analogous to Discord's friends list and DM panel—not a Study Server or Course Channel.
+The platform-wide social sidebar where a user sees accepted friends, their online/offline presence, and opens a Direct Message conversation. Analogous to Discord's friends list and DM panel—not a Study Server or Course Channel. Course channels and cohort rosters remain enrollment-scoped; the Friends list is global.
 _Avoid_: Contacts, buddy list, social feed
 
 **Friend Presence**:
@@ -136,7 +136,8 @@ _Avoid_: Workspace, tenant, account
 
 | Doc | Role |
 |---|---|
-| [`docs/product-design/README.md`](docs/product-design/README.md) | Target product UI, mockups, screen flows — **what users see** |
+| [`docs/product-design/README.md`](docs/product-design/README.md) | Product showcase index — mockups, vision, journeys |
+| [`docs/product-design/visibility-and-social-model.md`](docs/product-design/visibility-and-social-model.md) | Global friends vs enrollment-scoped course sidebar |
 | [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Requirements and user stories |
 | [`plan.md`](../plan.md) | Implementation milestones and frontend direction |
 | [`System Design.md`](../System Design.md) | Backend services and engineering diagrams |

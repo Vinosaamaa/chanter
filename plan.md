@@ -66,7 +66,7 @@ Identity direction:
 
 Supporting planning docs:
 
-- `docs/product-design/` — **product showcase**: target browser UI mockups, `vision.md`, user-journey diagram, interactive screen tour (`README.md` is the index)
+- `docs/product-design/` — **product showcase**: target browser UI mockups, `vision.md`, `visibility-and-social-model.md`, user-journey diagram, interactive screen tour (`README.md` is the index)
 - `docs/product/education-mvp-prd.md`
 - `docs/issues/education-mvp-issue-breakdown.md`
 - `CONTEXT.md` — canonical glossary
@@ -195,12 +195,13 @@ Key backend standards:
 
 Use React + TypeScript + Vite with React Router, TanStack Query, a lightweight state store such as Zustand, and a component library strategy we can choose during implementation.
 
-**Product UI reference (for agents and designers):** [`docs/product-design/README.md`](docs/product-design/README.md) — 19 concept mockups, screen flows, and `vision.md`. Delivery is a **browser web app** (not a native desktop app for MVP). The running `frontend/` code is still a vertical-slice API demo until Milestone 3 realtime shell lands.
+**Product UI reference (for agents and designers):** [`docs/product-design/README.md`](docs/product-design/README.md) — 19 concept mockups, screen flows, and `vision.md`. **Visibility:** global Friends Hub + enrollment-scoped **My courses** sidebar — [`visibility-and-social-model.md`](docs/product-design/visibility-and-social-model.md). Delivery is a **browser web app** (not a native desktop app for MVP). The running `frontend/` code is still a vertical-slice API demo until Milestone 3 realtime shell lands.
 
 Core frontend areas:
 
 - Auth screens and protected route shell.
-- Server/channel sidebar layout similar to Discord.
+- Server/channel sidebar layout similar to Discord, with **My courses** filtered by enrollment and role (not a full server catalog for learners).
+- Global Friends Hub (separate from server shell) with co-membership-gated friend requests (#31).
 - Message timeline with virtualization, optimistic sending, edit/delete, attachments, mentions.
 - WebSocket client with reconnect, resubscribe, and event reconciliation.
 - Role and permission-aware UI.

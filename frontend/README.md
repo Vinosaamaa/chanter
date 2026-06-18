@@ -14,6 +14,8 @@ The finished **browser web app** UX — Discord-like Study Server layout, Friend
 
 **[`docs/product-design/README.md`](../docs/product-design/README.md)**
 
+**Visibility (global friends + my-courses sidebar):** [`visibility-and-social-model.md`](../docs/product-design/visibility-and-social-model.md)
+
 | Mockup | Slice |
 |---|---|
 | [`app-shell.png`](../docs/product-design/mockups/app-shell.png) | Core channel layout |

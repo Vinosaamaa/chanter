@@ -1,6 +1,7 @@
 # Chanter Education MVP Issue Breakdown
 
-> **Product visuals:** target UI mockups and screen flows for each slice live in [`docs/product-design/`](../product-design/README.md) (see `mockups/README.md` for the gallery).
+> **Product visuals:** target UI mockups and screen flows for each slice live in [`docs/product-design/`](../product-design/README.md) (see `mockups/README.md` for the gallery).  
+> **Visibility:** global friends + enrollment-scoped **My courses** sidebar — [`visibility-and-social-model.md`](../product-design/visibility-and-social-model.md).
 
 ## GitHub Issues Published
 
@@ -46,7 +47,7 @@ Cross-cutting (post-MVP vertical slices):
 |---|---|---|
 | 30 | Slice: Wire Auth Service Principal Into Protected Endpoints | Replaces `TODO(#auth)` on #12–#14; see `docs/operations/issue-14-greptile-fix.md` |
 
-Post-MVP social & realtime (milestone: **Social Hub & Realtime**):
+Post-MVP social & realtime (milestone: [Social Hub & Realtime](https://github.com/Vinosaamaa/chanter/milestone/2), project: [Social Hub & Realtime (Post-MVP)](https://github.com/users/Vinosaamaa/projects/2)):
 
 | # | Title | Start when unblocked |
 |---|---|---|
@@ -57,7 +58,9 @@ Architecture: `docs/architecture/social-hub-and-dm-voice.md`
 
 All issues: https://github.com/Vinosaamaa/chanter/issues
 
-Project board: [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) — all 24 issues added; repo linked.
+Project board: [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) — issues #1–#24 and #30.
+
+Post-MVP project: [Social Hub & Realtime (Post-MVP)](https://github.com/users/Vinosaamaa/projects/2) — issues #31–#32 (milestone 2).
 
 Recommended labels:
 
@@ -121,6 +124,7 @@ Support Study Server Channels, Course Channels, optional Cohort Channels, Voice 
 - [ ] Study Server Owner/Instructor can create Study Server Channels, Course Channels, and opt-in Cohort Channels.
 - [ ] Study Server Members can access server-wide channels per membership rules.
 - [ ] Enrolled learners can access permitted Course and Cohort channels.
+- [ ] Study Server sidebar shows **My courses** filtered by enrollment and role — learners do not see the full server course catalog.
 - [ ] Members can join and leave Voice Channels with visible presence.
 - [ ] Backend permission checks protect channel administration and access.
 - [ ] Tests cover channel scoping, enrollment-based access, and voice join permissions.
@@ -139,6 +143,7 @@ Discord-style social messaging: Friend Requests, accept/decline, Direct Messages
 
 - [ ] User can send, accept, and decline Friend Requests.
 - [ ] Friends can exchange Direct Messages platform-wide (REST persistence in #15).
+- [ ] Friend requests are limited to users who share at least one Study Server membership (co-membership); see `docs/product-design/visibility-and-social-model.md`.
 - [ ] User can block another user and stop receiving messages.
 - [ ] DM and friend flows are separate from Course Channel learning-support workflows.
 - [ ] Tests cover accept/decline, unauthorized messaging, and block behavior.

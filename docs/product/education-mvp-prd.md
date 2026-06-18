@@ -1,6 +1,7 @@
 # Chanter Education MVP PRD
 
-> **Product showcase:** screens, mockups, and click-flow diagrams live in [`docs/product-design/`](../product-design/README.md).
+> **Product showcase:** screens, mockups, and click-flow diagrams live in [`docs/product-design/`](../product-design/README.md).  
+> **Visibility model:** global friends + per-user course sidebar — [`visibility-and-social-model.md`](../product-design/visibility-and-social-model.md).
 
 ## Problem Statement
 
@@ -136,6 +137,7 @@ This is not the first MVP because payments, refunds, taxes, creator trust, conte
 - Study Server membership requires invite or Enrollment in at least one Cohort.
 - Channels: Study Server Channels, Course Channels, optional Cohort Channels, and Voice Channels in Study Server.
 - Direct Messages and Friend Requests are in the MVP with Discord-like accept flow and durable REST messaging (#15). The full Discord-like **Friends Hub** (friends list, online presence, live DM conversation panel) and **DM voice calls** are post-MVP slices #31 and #32 after `realtime-service` and WebRTC/LiveKit transport land. See `docs/architecture/social-hub-and-dm-voice.md`. Channels, TA Queue, and Office Hours remain the primary learning-support paths.
+- **Social vs learning visibility:** Friends and DMs are **platform-wide** (global friend graph). Course channels, resources, Support Questions, and search results are **enrollment- and role-scoped** — learners see only **their courses** in the Study Server sidebar, not every course on the server. Friend requests should require **co-membership** in at least one Study Server before #31. See `docs/product-design/visibility-and-social-model.md`.
 - Organization is post-MVP. Verified Educator is a post-MVP profile badge that does not grant permissions.
 - The first AI capability is a first-party AI Study Assistant installed once per Study Server with explicit grants per channel, Course, Cohort, and Course Resource.
 - Support Questions move through AI-answered, human-answered, unanswered, duplicate, and FAQ-candidate states.

@@ -13,6 +13,7 @@ Start here if you want the **product story** — what Chanter is, what it looks 
 | Asset | What it shows |
 |---|---|
 | [Product vision](vision.md) | Narrative walkthrough with user stories |
+| [Visibility and social model](visibility-and-social-model.md) | Global friends + enrollment-scoped course sidebar |
 | [**Mockup gallery**](mockups/README.md) | **19 UI concept screens** — full visual catalog |
 | [User journey diagram](diagrams/user-journey.drawio.png) | Click-flow map for MVP screens and later phases |
 | [Interactive screen tour](interactive/) | Cursor canvas — click through screens in the IDE |
@@ -35,6 +36,7 @@ Start here if you want the **product story** — what Chanter is, what it looks 
 docs/product-design/
 ├── README.md                 ← you are here
 ├── vision.md                 ← screens, user stories, built vs planned
+├── visibility-and-social-model.md  ← global friends vs my-courses sidebar
 ├── mockups/                  ← 19 UI concept PNGs + gallery README
 ├── diagrams/                 ← editable draw.io + PNG exports
 └── interactive/              ← Cursor canvas source (optional live tour)

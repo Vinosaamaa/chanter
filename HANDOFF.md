@@ -24,7 +24,7 @@ Important files:
 - `README.md`: current project overview and repository entry point.
 - `HANDOFF.md`: this file.
 - `CONTEXT.md`: canonical product glossary from the active `/grill-with-docs` session.
-- `docs/product-design/`: **product showcase for agents and stakeholders** — start at `README.md`; includes `vision.md`, 19 UI mockups in `mockups/`, user-journey diagram in `diagrams/`, and optional interactive tour in `interactive/`.
+- `docs/product-design/`: **product showcase for agents and stakeholders** — start at `README.md`; includes `vision.md`, `visibility-and-social-model.md`, 19 UI mockups in `mockups/`, user-journey diagram in `diagrams/`, and optional interactive tour in `interactive/`.
 - `docs/product/education-mvp-prd.md`: PRD for the education-focused Study Server MVP.
 - `docs/issues/education-mvp-issue-breakdown.md`: GitHub-ready epics and vertical-slice stories for the education MVP.
 - `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
@@ -56,7 +56,7 @@ Frontend:
 - Use React + TypeScript + Vite.
 - Use React Router, TanStack Query, Zustand, and likely Tailwind/shadcn-style UI.
 - Build a Discord-like learning community shell focused on Study Servers, course/module channels, resources, question workflows, office hours, instructor dashboards, and AI Study Assistant controls.
-- **Target product UI** (mockups, screen flows, platform delivery = browser web app): `docs/product-design/`. The current `frontend/src/App.tsx` is a vertical-slice **API demo**, not the production shell.
+- **Target product UI** (mockups, screen flows, platform delivery = browser web app): `docs/product-design/`. **Visibility:** global friends + enrollment-scoped **My courses** sidebar — `docs/product-design/visibility-and-social-model.md`. The current `frontend/src/App.tsx` is a vertical-slice **API demo**, not the production shell.
 
 Backend:
 
@@ -234,7 +234,8 @@ Pending user confirmation:
 GitHub issues published (2026-06-17):
 
 - Milestone: https://github.com/Vinosaamaa/chanter/milestone/1
-- Project board: https://github.com/users/Vinosaamaa/projects/1
+- Project board: https://github.com/users/Vinosaamaa/projects/1 (Education MVP #1–#24, #30)
+- Post-MVP project: https://github.com/users/Vinosaamaa/projects/2 (#31–#32, milestone Social Hub & Realtime)
 - **#11 Monorepo bootstrap — CLOSED** (merged PR #25)
 - **#12 Create A Study Server — CLOSED** (merged PR #26)
 - **#13 Create Course, Cohort, And Enroll Learner — CLOSED** (merged PR #28)
@@ -290,7 +291,7 @@ Use this prompt after reloading Cursor or starting a new chat:
 ```text
 Read HANDOFF.md and CONTEXT.md.
 
-For product/UI intent before frontend work, read docs/product-design/README.md (mockups + vision.md).
+For product/UI intent before frontend work, read docs/product-design/README.md and docs/product-design/visibility-and-social-model.md.
 
 Issues #11–#15 are merged on main. Issue #16 PR: https://github.com/Vinosaamaa/chanter/pull/34
 
@@ -303,7 +304,7 @@ Issue: https://github.com/Vinosaamaa/chanter/issues/16
 ## Notes For Future Agent
 
 - Do not assume the user wants to code immediately; they have been exploring system design and enterprise workflow.
-- **Product showcase:** `docs/product-design/` has target UI mockups, user-journey diagram, and `vision.md`. Use it when implementing frontend routes or explaining scope to stakeholders. `frontend/src/App.tsx` is an API demo, not the final shell.
+- **Product showcase:** `docs/product-design/` has target UI mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** (global friends vs my-courses sidebar). Use it when implementing frontend routes or explaining scope to stakeholders. `frontend/src/App.tsx` is an API demo, not the final shell.
 - **Engineering diagrams:** `docs/diagrams/` is for service architecture — do not put product mockups there.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
 - Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
