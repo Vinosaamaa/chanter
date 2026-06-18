@@ -30,7 +30,7 @@ Fix:
 
 - Added `@Transactional` on `sendFriendRequest`.
 - Added partial unique index `uq_friend_requests_pending_pair` on `(sender_user_id, recipient_user_id) WHERE status = 'PENDING'` in `db/migration-postgresql/` for production PostgreSQL.
-- H2 smoke tests load `db/migration-h2/` with a `(sender_user_id, recipient_user_id, status)` unique index because H2 rejects `WHERE`-filtered indexes even in `MODE=PostgreSQL`.
+- H2 smoke tests load `db/migration-h2/` with a generated `pending_pair_key` column normalized across user-pair direction to mirror the PostgreSQL partial unique constraint.
 - Map `DataIntegrityViolationException` to `409 Conflict`.
 
 ### 3. Block Guard On DM Reads
@@ -79,7 +79,40 @@ Fix:
 - `updateFriendRequestStatus` now updates only rows still `PENDING` and returns empty when another caller already changed status; service maps that to `409 Conflict`.
 - Added `blockedUserCannotSendFriendRequest` smoke test.
 
+### 7. H2 Test Schema Parity And Transactional Mutations
+
+Greptile finding (iterations 3–4):
+
+- H2 test Flyway config skipped pending-request uniqueness enforcement.
+- `sendDirectMessage` and `removeFriendship` lacked `@Transactional`.
+- Decline→resend→decline failed under the first H2 index shape.
+
+Fix:
+
+- Added `db/migration-h2/` with generated `pending_pair_key` unique constraint.
+- Added `@Transactional` to `sendDirectMessage` and `removeFriendship`.
+- Added `usersCanDeclineResendAndDeclineAgain` smoke test.
+
+### 8. Bidirectional Pending Uniqueness
+
+Greptile finding (iteration 5):
+
+- Directional pending unique index allowed cross-direction duplicate `PENDING` rows under concurrency.
+
+Fix:
+
+- PostgreSQL index now keys on `LEAST`/`GREATEST` sender/recipient pair for `PENDING` rows.
+- H2 `pending_pair_key` normalizes pair direction the same way.
+- Added `cannotSendReversePendingFriendRequest` smoke test.
+
 ## Verification
 
-- `mvn -pl message-service verify`
+- `mvn -pl message-service verify` (9 smoke tests)
 - PR #33 CI backend/frontend
+
+## Final Result
+
+- Greptile initial summary: `3/5`
+- Greptile after iteration 5: `4/5`, 0 unresolved review threads (9 resolved)
+- Remaining Greptile concern: caller identity is request-supplied until `#auth` lands (acknowledged `TODO(#auth)`, consistent with issues #12–#14)
+- Greploop iterations: 5 (max)
