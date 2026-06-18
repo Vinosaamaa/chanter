@@ -50,3 +50,10 @@ Pre-Greptile CI failure:
 Fix:
 
 - Compare list items with recursive equality ignoring `createdAt`, then assert microsecond-truncated timestamps match.
+- Truncate `clock.instant()` to microsecond precision when creating resources so upload and list responses stay aligned.
+
+## Greploop Status
+
+Iteration 1 Greptile score: **3/5** with 3 inline comments (2× P1, 1× P2). All three were fixed and threads resolved.
+
+Re-review after fixes was blocked: Greptile reported the repo trial account hit the **50-review limit**, so the summary comment was not refreshed and confidence remains at 3/5 despite zero unresolved threads and green CI.
