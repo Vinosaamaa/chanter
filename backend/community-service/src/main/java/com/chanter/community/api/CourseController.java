@@ -69,4 +69,14 @@ public class CourseController {
                         "Course Channel access requires Cohort Enrollment"
                 ));
     }
+
+    @GetMapping("/course-channels/{channelId}/support-question-access")
+    public SupportQuestionChannelAccessResponse getSupportQuestionChannelAccess(
+            @PathVariable UUID channelId,
+            @RequestParam UUID userId
+    ) {
+        return SupportQuestionChannelAccessResponse.from(
+                courseService.findSupportQuestionChannelAccess(channelId, userId)
+        );
+    }
 }

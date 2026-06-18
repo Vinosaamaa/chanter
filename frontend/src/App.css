@@ -497,7 +497,8 @@ code {
 
 .course-form,
 .course-summary,
-.voice-summary {
+.voice-summary,
+.support-question-summary {
   max-width: 640px;
   padding: 1rem;
   border: 1px solid var(--border);
@@ -507,7 +508,8 @@ code {
 }
 
 .course-summary,
-.voice-summary {
+.voice-summary,
+.support-question-summary {
   display: grid;
   gap: 0.85rem;
 }
@@ -518,6 +520,16 @@ code {
   color: var(--text);
   font-size: 1rem;
   text-transform: none;
+}
+
+.support-question-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+}
+
+.support-question-list li + li {
+  margin-top: 0.35rem;
 }
 
 .course-summary p:last-child {

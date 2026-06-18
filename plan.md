@@ -367,7 +367,7 @@ Current implementation status as of 2026-06-17:
 - Issue #12, Create A Study Server, is merged on `main` via PR #26.
 - Issue #13, Create Course, Cohort, And Enroll Learner, is merged on `main` via PR #28.
 - Issue #14, Join A Voice Channel, is merged on `main` via PR #29.
-- The active implementation slice is issue #15, Send Friend Request And Direct Message. Use branch `feature/15-send-friend-request-and-dm` and TDD.
+- The active implementation slice is issue #16, Post A Support Question In A Course Channel. Use branch `feature/16-post-support-question-in-course-channel` and TDD.
 - Cross-cutting auth hardening is tracked in issue #30.
 
 Milestone -1: Project operations bootstrap

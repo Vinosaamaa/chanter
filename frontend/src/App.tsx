@@ -58,6 +58,15 @@ type DirectMessage = {
   body: string
 }
 
+type SupportQuestion = {
+  id: string
+  channelId: string
+  senderUserId: string
+  body: string
+  status: string
+  idempotencyKey: string
+}
+
 type HealthState = {
   gateway: string
   auth: string
@@ -154,6 +163,12 @@ function App() {
   const [isRemovingFriendship, setIsRemovingFriendship] = useState(false)
   const [socialResult, setSocialResult] = useState<string | null>(null)
   const [socialError, setSocialError] = useState<string | null>(null)
+  const [supportQuestionBody, setSupportQuestionBody] = useState('How do I configure Spring Security?')
+  const [supportQuestions, setSupportQuestions] = useState<SupportQuestion[]>([])
+  const [isPostingSupportQuestion, setIsPostingSupportQuestion] = useState(false)
+  const [isListingSupportQuestions, setIsListingSupportQuestions] = useState(false)
+  const [supportQuestionResult, setSupportQuestionResult] = useState<string | null>(null)
+  const [supportQuestionError, setSupportQuestionError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const refreshDirectMessages = async () => {
@@ -385,6 +400,81 @@ function App() {
       setError(caught instanceof Error ? caught.message : 'Unable to enroll learner')
     } finally {
       setIsEnrolling(false)
+    }
+  }
+
+  const postSupportQuestion = async () => {
+    if (!questionsChannel) {
+      return
+    }
+
+    setIsPostingSupportQuestion(true)
+    setSupportQuestionError(null)
+    setSupportQuestionResult(null)
+
+    try {
+      const idempotencyKey = crypto.randomUUID()
+      const response = await fetch(
+        `/api/v1/course-channels/${questionsChannel.id}/support-questions`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            senderUserId: learnerUserId,
+            body: supportQuestionBody,
+            idempotencyKey,
+          }),
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`Support Question post failed with ${response.status}`)
+      }
+
+      const created: SupportQuestion = await response.json()
+      setSupportQuestions((current) => {
+        if (current.some((question) => question.id === created.id)) {
+          return current
+        }
+        return [...current, created]
+      })
+      setSupportQuestionResult('Learner posted an unanswered Support Question in #questions.')
+    } catch (caught) {
+      setSupportQuestionError(
+        caught instanceof Error ? caught.message : 'Unable to post Support Question',
+      )
+    } finally {
+      setIsPostingSupportQuestion(false)
+    }
+  }
+
+  const listUnansweredSupportQuestions = async () => {
+    if (!questionsChannel) {
+      return
+    }
+
+    setIsListingSupportQuestions(true)
+    setSupportQuestionError(null)
+    setSupportQuestionResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/course-channels/${questionsChannel.id}/support-questions?viewerUserId=${instructorUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Support Question list failed with ${response.status}`)
+      }
+
+      const data: { supportQuestions: SupportQuestion[] } = await response.json()
+      setSupportQuestions(data.supportQuestions)
+      setSupportQuestionResult(`Instructor sees ${data.supportQuestions.length} unanswered Support Question(s).`)
+    } catch (caught) {
+      setSupportQuestionError(
+        caught instanceof Error ? caught.message : 'Unable to list Support Questions',
+      )
+    } finally {
+      setIsListingSupportQuestions(false)
     }
   }
 
@@ -744,6 +834,7 @@ function App() {
 
   const canSendFriendRequest = friendshipStatus === 'NONE'
   const canSendDirectMessage = friendshipStatus === 'ACCEPTED'
+  const questionsChannel = course?.channels.find((channel) => channel.name === 'questions') ?? null
 
   return (
     <main className="app-shell">
@@ -1039,6 +1130,45 @@ function App() {
                       {isEnrolling ? 'Enrolling...' : 'Enroll Learner'}
                     </button>
                     {accessResult ? <p className="system-line">{accessResult}</p> : null}
+                    {accessResult && questionsChannel ? (
+                      <section className="support-question-summary">
+                        <p className="eyebrow">Support Questions (#16)</p>
+                        <label htmlFor="support-question-body">Learner question in #{questionsChannel.name}</label>
+                        <textarea
+                          id="support-question-body"
+                          value={supportQuestionBody}
+                          onChange={(event) => setSupportQuestionBody(event.target.value)}
+                          rows={3}
+                        />
+                        <div className="voice-actions">
+                          <button
+                            type="button"
+                            onClick={postSupportQuestion}
+                            disabled={isPostingSupportQuestion}
+                          >
+                            {isPostingSupportQuestion ? 'Posting...' : 'Post as Learner'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={listUnansweredSupportQuestions}
+                            disabled={isListingSupportQuestions}
+                          >
+                            {isListingSupportQuestions ? 'Loading...' : 'List unanswered (Instructor)'}
+                          </button>
+                        </div>
+                        {supportQuestionResult ? <p className="system-line">{supportQuestionResult}</p> : null}
+                        {supportQuestionError ? <p className="form-error">{supportQuestionError}</p> : null}
+                        {supportQuestions.length > 0 ? (
+                          <ul className="support-question-list">
+                            {supportQuestions.map((question) => (
+                              <li key={question.id}>
+                                <strong>{question.status}</strong> — {question.body}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </section>
+                    ) : null}
                   </section>
                 ) : null}
                 {selectedVoiceChannel ? (

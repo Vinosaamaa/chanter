@@ -27,8 +27,8 @@ Vertical slices (#11–#24):
 | 12 | Slice: Create A Study Server | Done |
 | 13 | Slice: Create Course, Cohort, And Enroll Learner | Done |
 | 14 | Slice: Join A Voice Channel | Done |
-| 15 | Slice: Send Friend Request And Direct Message | **Active** |
-| 16 | Slice: Post A Support Question In A Course Channel | after #13 |
+| 15 | Slice: Send Friend Request And Direct Message | Done |
+| 16 | Slice: Post A Support Question In A Course Channel | **Active** |
 | 17 | Slice: Upload An Approved Course Resource | after #13 |
 | 18 | Slice: Install The AI Study Assistant | after #13, #17 (HITL) |
 | 19 | Slice: Answer A Grounded Support Question | after #18 |

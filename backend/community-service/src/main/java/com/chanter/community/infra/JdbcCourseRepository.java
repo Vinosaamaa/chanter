@@ -5,6 +5,7 @@ import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
+import com.chanter.community.domain.SupportQuestionChannelAccess;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -166,6 +167,66 @@ public class JdbcCourseRepository implements CourseRepository {
                         rs.getString("name"),
                         ChannelKind.valueOf(rs.getString("kind")),
                         rs.getInt("position")
+                ))
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<SupportQuestionChannelAccess> findSupportQuestionChannelAccess(UUID channelId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT
+                            cc.id,
+                            cc.course_id,
+                            cc.name,
+                            CASE
+                                WHEN EXISTS (
+                                    SELECT 1
+                                    FROM cohorts c
+                                    JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                                    WHERE c.course_id = cc.course_id
+                                    AND ce.learner_user_id = :userId
+                                ) THEN TRUE
+                                ELSE FALSE
+                            END AS can_post,
+                            CASE
+                                WHEN EXISTS (
+                                    SELECT 1
+                                    FROM course_roles cr
+                                    WHERE cr.course_id = cc.course_id
+                                    AND cr.user_id = :userId
+                                    AND cr.role = :instructorRole
+                                ) THEN TRUE
+                                ELSE FALSE
+                            END AS can_view
+                        FROM course_channels cc
+                        WHERE cc.id = :channelId
+                        AND (
+                            EXISTS (
+                                SELECT 1
+                                FROM cohorts c
+                                JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                                WHERE c.course_id = cc.course_id
+                                AND ce.learner_user_id = :userId
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM course_roles cr
+                                WHERE cr.course_id = cc.course_id
+                                AND cr.user_id = :userId
+                                AND cr.role = :instructorRole
+                            )
+                        )
+                        """)
+                .param("channelId", channelId)
+                .param("userId", userId)
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .query((rs, rowNum) -> new SupportQuestionChannelAccess(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("course_id", UUID.class),
+                        rs.getString("name"),
+                        rs.getBoolean("can_post"),
+                        rs.getBoolean("can_view")
                 ))
                 .optional();
     }
