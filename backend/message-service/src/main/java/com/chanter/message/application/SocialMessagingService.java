@@ -86,6 +86,7 @@ public class SocialMessagingService {
         return repository.findFriendshipSnapshot(firstUserId, secondUserId);
     }
 
+    @Transactional
     public void removeFriendship(UUID requesterUserId, UUID friendUserId) {
         if (requesterUserId.equals(friendUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot remove themselves as a friend");
@@ -105,6 +106,7 @@ public class SocialMessagingService {
         repository.saveUserBlock(blockerUserId, blockedUserId);
     }
 
+    @Transactional
     public DirectMessage sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {
         if (senderUserId.equals(recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot send Direct Messages to themselves");

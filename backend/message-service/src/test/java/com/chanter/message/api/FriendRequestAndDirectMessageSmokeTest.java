@@ -282,6 +282,52 @@ class FriendRequestAndDirectMessageSmokeTest {
     }
 
     @Test
+    void usersCanDeclineResendAndDeclineAgain() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+
+        MvcResult firstRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "senderUserId", userA.toString(),
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        FriendRequestResponse firstRequest = objectMapper.readValue(
+                firstRequestResult.getResponse().getContentAsString(),
+                FriendRequestResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/decline", firstRequest.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isOk());
+
+        MvcResult secondRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "senderUserId", userA.toString(),
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        FriendRequestResponse secondRequest = objectMapper.readValue(
+                secondRequestResult.getResponse().getContentAsString(),
+                FriendRequestResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/decline", secondRequest.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void usersCanRemoveFriendshipAndMustReRequestBeforeDirectMessages() throws Exception {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
