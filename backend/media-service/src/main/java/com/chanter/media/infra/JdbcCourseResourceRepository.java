@@ -90,6 +90,14 @@ public class JdbcCourseResourceRepository implements CourseResourceRepository {
     }
 
     @Override
+    @Transactional
+    public void deleteById(UUID resourceId) {
+        jdbcClient.sql("DELETE FROM course_resources WHERE id = :resourceId")
+                .param("resourceId", resourceId)
+                .update();
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<CourseResource> findByCourseId(UUID courseId) {
         return jdbcClient.sql("""

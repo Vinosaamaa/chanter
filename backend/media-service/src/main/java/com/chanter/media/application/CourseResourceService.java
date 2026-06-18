@@ -76,12 +76,6 @@ public class CourseResourceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to read uploaded Course Resource");
         }
 
-        try {
-            storage.store(resourceId, content);
-        } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store Course Resource");
-        }
-
         CourseResource courseResource = new CourseResource(
                 resourceId,
                 courseId,
@@ -95,7 +89,16 @@ public class CourseResourceService {
                 clock.instant()
         );
 
-        return repository.save(courseResource);
+        repository.save(courseResource);
+
+        try {
+            storage.store(resourceId, content);
+        } catch (IOException exception) {
+            repository.deleteById(resourceId);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store Course Resource");
+        }
+
+        return courseResource;
     }
 
     @Transactional(readOnly = true)

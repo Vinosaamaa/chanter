@@ -12,4 +12,6 @@ public interface CourseResourceRepository {
     Optional<CourseResource> findById(UUID resourceId);
 
     List<CourseResource> findByCourseId(UUID courseId);
+
+    void deleteById(UUID resourceId);
 }

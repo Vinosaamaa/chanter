@@ -115,7 +115,8 @@ class CourseResourceSmokeTest {
                                 "text/plain",
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
-                        .param("uploaderUserId", instructorUserId.toString()))
+                        .param("uploaderUserId", instructorUserId.toString())
+                        .param("aiApproved", "true"))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/v1/courses/{courseId}/course-resources", courseId)
@@ -137,7 +138,8 @@ class CourseResourceSmokeTest {
                                 "text/plain",
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
-                        .param("uploaderUserId", learnerUserId.toString()))
+                        .param("uploaderUserId", learnerUserId.toString())
+                        .param("aiApproved", "false"))
                 .andExpect(status().isForbidden());
     }
 
@@ -150,7 +152,8 @@ class CourseResourceSmokeTest {
                                 "text/plain",
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
-                        .param("uploaderUserId", UUID.randomUUID().toString()))
+                        .param("uploaderUserId", UUID.randomUUID().toString())
+                        .param("aiApproved", "true"))
                 .andExpect(status().isNotFound());
     }
 }
