@@ -138,6 +138,7 @@ Important docs now include:
 - `plan.md`
 - `System Design.md`
 - `docs/product/education-mvp-prd.md`
+- `docs/product-design/` — product showcase (mockups, vision, user journey); added 2026-06-17
 - `docs/issues/education-mvp-issue-breakdown.md`
 - `docs/operations/project-operations-bootstrap.md`
 - `docs/diagrams/*.drawio`

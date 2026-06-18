@@ -4,6 +4,8 @@ Date: 2026-06-17
 Status: planned (post Education MVP core slices)  
 Tracking: GitHub issues #31 (Friends Hub) and #32 (DM Voice)
 
+> **Target UX mockups:** [`docs/product-design/mockups/friends-hub-dm.png`](../product-design/mockups/friends-hub-dm.png), [`friend-requests.png`](../product-design/mockups/friend-requests.png). Product index: [`docs/product-design/README.md`](../product-design/README.md).
+
 ## Context
 
 Issue #15 delivers the **backend contract** for Friend Requests, friendship checks, blocks, and durable Direct Messages over REST. The current frontend panel is a **manual demo harness**—not the product UX learners expect from Discord.

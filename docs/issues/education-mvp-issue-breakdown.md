@@ -1,5 +1,7 @@
 # Chanter Education MVP Issue Breakdown
 
+> **Product visuals:** target UI mockups and screen flows for each slice live in [`docs/product-design/`](../product-design/README.md) (see `mockups/README.md` for the gallery).
+
 ## GitHub Issues Published
 
 Milestone: [Education MVP](https://github.com/Vinosaamaa/chanter/milestone/1)

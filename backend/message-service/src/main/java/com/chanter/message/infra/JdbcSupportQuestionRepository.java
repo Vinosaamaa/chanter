@@ -69,7 +69,11 @@ public class JdbcSupportQuestionRepository implements SupportQuestionRepository 
                 .param("createdAt", createdAt)
                 .update();
 
-        return supportQuestion;
+        return findByChannelSenderAndIdempotencyKey(
+                supportQuestion.channelId(),
+                supportQuestion.senderUserId(),
+                supportQuestion.idempotencyKey()
+        ).orElseThrow(() -> new IllegalStateException("Support Question was not persisted"));
     }
 
     @Override

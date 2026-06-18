@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# Chanter frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite client for the Chanter education platform.
 
-Currently, two official plugins are available:
+## What this is today
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+`src/App.tsx` is a **vertical-slice API demo** — forms and buttons that exercise backend endpoints for Study Servers, courses, voice presence, Friends/DMs, and support questions. It simulates multiple users in one browser tab until auth ships (#30).
 
-## React Compiler
+It is **not** the production product shell.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Target product UI
 
-## Expanding the ESLint configuration
+The finished **browser web app** UX — Discord-like Study Server layout, Friends hub, instructor dashboard, AI citations, etc. — is documented with **19 concept mockups** here:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+**[`docs/product-design/README.md`](../docs/product-design/README.md)**
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+| Mockup | Slice |
+|---|---|
+| [`app-shell.png`](../docs/product-design/mockups/app-shell.png) | Core channel layout |
+| [`friends-hub-dm.png`](../docs/product-design/mockups/friends-hub-dm.png) | Friends + live DM (#31) |
+| [`ai-support-question.png`](../docs/product-design/mockups/ai-support-question.png) | `#questions` + AI (#16–#19) |
+| [`instructor-dashboard.png`](../docs/product-design/mockups/instructor-dashboard.png) | Instructor ops (#23) |
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Full gallery: [`docs/product-design/mockups/README.md`](../docs/product-design/mockups/README.md)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Planned stack (from `plan.md`)
+
+- React Router, TanStack Query, Zustand
+- WebSocket client via `realtime-service` (Milestone 3)
+- Component library TBD (likely Tailwind / shadcn-style)
+- OpenAPI-typed API client
+
+## Local development
+
+From repo root:
+
+```bash
+make frontend-install
+make frontend-dev   # http://localhost:5173 — proxies /api to gateway :8080
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Requires backend services running — see root [`README.md`](../README.md).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Agent pointers
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **Glossary:** [`CONTEXT.md`](../CONTEXT.md)
+- **Current slice / handoff:** [`HANDOFF.md`](../HANDOFF.md)
+- **Backend contracts:** service READMEs under `backend/`

@@ -1,5 +1,7 @@
 # Chanter Education MVP PRD
 
+> **Product showcase:** screens, mockups, and click-flow diagrams live in [`docs/product-design/`](../product-design/README.md).
+
 ## Problem Statement
 
 Educators who run cohort-based courses, bootcamps, tutoring groups, and large study communities often choose Discord because students already understand realtime chat, channels, voice rooms, roles, and bots. But Discord is not built as a learning product. Course knowledge gets buried in fast-moving channels, students repeat the same questions, office hours become manual queues, instructors cannot easily see which topics are confusing learners, and valuable peer explanations disappear into chat history.

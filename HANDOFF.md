@@ -22,20 +22,22 @@ Current product positioning:
 Important files:
 
 - `README.md`: current project overview and repository entry point.
-- `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
-- `System Design.md`: detailed backend/system architecture explanation and diagrams.
+- `HANDOFF.md`: this file.
+- `CONTEXT.md`: canonical product glossary from the active `/grill-with-docs` session.
+- `docs/product-design/`: **product showcase for agents and stakeholders** — start at `README.md`; includes `vision.md`, 19 UI mockups in `mockups/`, user-journey diagram in `diagrams/`, and optional interactive tour in `interactive/`.
 - `docs/product/education-mvp-prd.md`: PRD for the education-focused Study Server MVP.
 - `docs/issues/education-mvp-issue-breakdown.md`: GitHub-ready epics and vertical-slice stories for the education MVP.
-- `CONTEXT.md`: canonical product glossary from the active `/grill-with-docs` session.
+- `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
+- `System Design.md`: detailed backend/system architecture explanation and diagrams.
+- `docs/diagrams/`: editable draw.io **engineering** diagram sources plus embedded PNG exports referenced from `plan.md` and `System Design.md` (not product UI mockups — those live under `docs/product-design/`).
+- `docs/architecture/social-hub-and-dm-voice.md`: post-MVP Friends Hub and DM voice (#31–#32).
 - `docs/sessions/2026-06-16-product-strategy-grill-session.md`: readable recap of the product strategy discussion and active `/grill-with-docs` decision tree.
-- `docs/diagrams/`: editable draw.io diagram sources plus embedded PNG exports referenced from `plan.md` and `System Design.md`.
 - `docs/operations/project-operations-bootstrap.md`: Milestone -1 operating model, tracker recommendation, bootstrap checklist, initial epics, and branch/PR conventions.
 - `.github/PULL_REQUEST_TEMPLATE.md`: PR checklist aligned with architecture, security, testing, and operations expectations.
 - `.github/ISSUE_TEMPLATE/`: GitHub issue forms for epics, stories, and bugs.
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
-- `HANDOFF.md`: this file.
 
-Bootstrap (#11) through voice presence (#14) are merged on `main`. Issue #15 (Send Friend Request And Direct Message) is implemented on branch `feature/15-send-friend-request-and-dm` and open for PR review. Cross-cutting auth hardening is tracked in #30. Post-MVP social UX is tracked in #31–#32.
+Bootstrap (#11) through Friends/DM API (#15) are merged on `main`. Issue #16 (Post A Support Question In A Course Channel) is in review on [PR #34](https://github.com/Vinosaamaa/chanter/pull/34). Cross-cutting auth hardening is tracked in #30. Post-MVP social UX is tracked in #31–#32.
 
 ## Active Implementation
 
@@ -43,7 +45,8 @@ Bootstrap (#11) through voice presence (#14) are merged on `main`. Issue #15 (Se
 - **#12 Create A Study Server** — merged (PR #26)
 - **#13 Create Course, Cohort, And Enroll Learner** — merged (PR #28)
 - **#14 Join A Voice Channel** — merged (PR #29)
-- **#15 Send Friend Request And Direct Message** — https://github.com/Vinosaamaa/chanter/issues/15 (PR open on `feature/15-send-friend-request-and-dm`)
+- **#15 Send Friend Request And Direct Message** — merged (PR #33)
+- **#16 Post A Support Question In A Course Channel** — https://github.com/Vinosaamaa/chanter/issues/16 ([PR #34](https://github.com/Vinosaamaa/chanter/pull/34))
 - **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — deferred until after vertical slices or before production hardening
 
 ## Major Decisions Made
@@ -53,6 +56,7 @@ Frontend:
 - Use React + TypeScript + Vite.
 - Use React Router, TanStack Query, Zustand, and likely Tailwind/shadcn-style UI.
 - Build a Discord-like learning community shell focused on Study Servers, course/module channels, resources, question workflows, office hours, instructor dashboards, and AI Study Assistant controls.
+- **Target product UI** (mockups, screen flows, platform delivery = browser web app): `docs/product-design/`. The current `frontend/src/App.tsx` is a vertical-slice **API demo**, not the production shell.
 
 Backend:
 
@@ -155,10 +159,9 @@ Installed external skill note:
 
 Diagram workflow:
 
-- Existing Mermaid diagrams in `plan.md` and `System Design.md` were replaced with draw.io PNG embeds.
-- Canonical editable sources live in `docs/diagrams/*.drawio`.
-- PNG exports live beside the sources as `*.drawio.png`.
-- The PNG exports were generated with embedded draw.io XML, so they can also be reopened in draw.io/diagrams.net for editing.
+- **Product UI** (mockups, user journeys): `docs/product-design/` — see `mockups/README.md` for the 19-screen gallery.
+- **Engineering architecture** (services, data flows): `docs/diagrams/*.drawio` referenced from `plan.md` and `System Design.md`.
+- PNG exports live beside draw.io sources as `*.drawio.png`, generated with embedded draw.io XML so they can be reopened for editing.
 - Use `/drawio-skill` for future polished architecture/sequence diagram revisions.
 
 ## GitHub And Project Tracking Direction
@@ -236,7 +239,8 @@ GitHub issues published (2026-06-17):
 - **#12 Create A Study Server — CLOSED** (merged PR #26)
 - **#13 Create Course, Cohort, And Enroll Learner — CLOSED** (merged PR #28)
 - **#14 Join A Voice Channel — CLOSED** (merged PR #29)
-- **Active: #15 Send Friend Request And Direct Message** — https://github.com/Vinosaamaa/chanter/issues/15
+- **#15 Send Friend Request And Direct Message — CLOSED** (merged PR #33)
+- **Active: #16 Post A Support Question In A Course Channel** — https://github.com/Vinosaamaa/chanter/issues/16 ([PR #34](https://github.com/Vinosaamaa/chanter/pull/34))
 - **Cross-cutting: #30 Wire Auth Service Principal** — https://github.com/Vinosaamaa/chanter/issues/30
 - **Post-MVP: #31 Friends Hub And Live DM** — https://github.com/Vinosaamaa/chanter/issues/31
 - **Post-MVP: #32 DM Voice Call** — https://github.com/Vinosaamaa/chanter/issues/32
@@ -246,14 +250,14 @@ Architecture for social UX: `docs/architecture/social-hub-and-dm-voice.md`
 Implementation on `main`:
 
 - `backend/` — gateway (:8080), auth (:8081), community (:8082), message (:8083), `common`
-- `frontend/` — Vite shell with Study Server, voice presence, and Friends/DM demo panel
+- `frontend/` — Vite vertical-slice demo (Study Server, voice, Friends/DM, support questions); target UI in `docs/product-design/mockups/`
 - `infra/docker-compose.yml` — local Postgres, Redis, Redpanda, MinIO
 - CI: backend `mvn verify`, frontend lint + build
 
 Pending:
 
 - Branch protection on `main` (optional, after owner enables)
-- Epic #4 begins with #15 on `feature/15-send-friend-request-and-dm`
+- Merge #16 after review; then #17 Course Resources per issue breakdown
 
 Confirmed decision:
 
@@ -261,12 +265,12 @@ Confirmed decision:
 - Start with the education market and SaaS model.
 - Position Chanter as Discord for learning communities, with AI teaching assistants and instructor operations built in.
 
-After bootstrap (#11) through voice presence (#14), build toward the education MVP:
+After bootstrap (#11) through Friends/DM API (#15), build toward the education MVP:
 
-- **#15 (PR review):** Friend Requests and Direct Messages — `message-service` + demo frontend panel.
-- **#16 next:** Support Questions per `docs/issues/education-mvp-issue-breakdown.md`.
-- **#30 (cross-cutting):** wire Auth Service principal when ready to replace `TODO(#auth)` on #12–#14 endpoints.
-- **Post-MVP social (#31–#32):** Friends Hub with presence and live DM panel, then DM voice calls—after `realtime-service` and WebRTC/LiveKit transport. See `docs/architecture/social-hub-and-dm-voice.md`.
+- **#16 (PR review):** Support Questions in `#questions` — `community-service` access + `message-service` persistence.
+- **#17 next:** Course Resources per `docs/issues/education-mvp-issue-breakdown.md`.
+- **#30 (cross-cutting):** wire Auth Service principal when ready to replace `TODO(#auth)` on protected endpoints.
+- **Post-MVP social (#31–#32):** Friends Hub with presence and live DM panel, then DM voice calls—after `realtime-service` and WebRTC/LiveKit transport. Target UX mockups: `docs/product-design/mockups/friends-hub-dm.png`, `friend-requests.png`. See `docs/architecture/social-hub-and-dm-voice.md`.
 
 Recent operations documentation artifacts:
 
@@ -286,17 +290,21 @@ Use this prompt after reloading Cursor or starting a new chat:
 ```text
 Read HANDOFF.md and CONTEXT.md.
 
-Issues #11–#14 are merged on main. Issue #15 PR is open on `feature/15-send-friend-request-and-dm`.
+For product/UI intent before frontend work, read docs/product-design/README.md (mockups + vision.md).
 
-Auth hardening: https://github.com/Vinosaamaa/chanter/issues/30 (defer unless prioritizing before #15).
+Issues #11–#15 are merged on main. Issue #16 PR: https://github.com/Vinosaamaa/chanter/pull/34
+
+Auth hardening: https://github.com/Vinosaamaa/chanter/issues/30
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/15
+Issue: https://github.com/Vinosaamaa/chanter/issues/16
 ```
 
 ## Notes For Future Agent
 
 - Do not assume the user wants to code immediately; they have been exploring system design and enterprise workflow.
+- **Product showcase:** `docs/product-design/` has target UI mockups, user-journey diagram, and `vision.md`. Use it when implementing frontend routes or explaining scope to stakeholders. `frontend/src/App.tsx` is an API demo, not the final shell.
+- **Engineering diagrams:** `docs/diagrams/` is for service architecture — do not put product mockups there.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
 - Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 - **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.

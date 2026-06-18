@@ -15,10 +15,11 @@ Create a clean development operating model for an enterprise-grade microservice 
 
 - The workspace is initialized as a local git repository on `main`.
 - Private GitHub repository exists at `https://github.com/Vinosaamaa/chanter`, and local `main` tracks `origin/main`.
-- Application code has been bootstrapped. Issues #11–#14 are merged on `main`; issue #15 is active on `feature/15-send-friend-request-and-dm`.
-- Existing files include planning/design docs, the education MVP PRD, GitHub-ready local issue breakdown, editable draw.io diagrams, local repository metadata/templates, Spring Boot services, a React/Vite frontend, CI, and local Docker infrastructure.
+- Application code has been bootstrapped. Issues #11–#15 are merged on `main`; issue #16 is in review on [PR #34](https://github.com/Vinosaamaa/chanter/pull/34).
+- Existing files include planning/design docs, the education MVP PRD, **product design showcase** (`docs/product-design/` — UI mockups and vision), GitHub-ready local issue breakdown, editable draw.io architecture diagrams (`docs/diagrams/`), local repository metadata/templates, Spring Boot services, a React/Vite frontend, CI, and local Docker infrastructure.
 - The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and `greploop`.
-- Draw.io diagram sources and embedded PNG exports live in `docs/diagrams/`; use `/drawio-skill` for future diagram revisions.
+- Draw.io **architecture** diagram sources and embedded PNG exports live in `docs/diagrams/`; use `/drawio-skill` for future diagram revisions.
+- **Product UI** mockups, user-journey diagram, and vision walkthrough live in `docs/product-design/`; update when target screens change.
 
 ## Tracker Choice
 

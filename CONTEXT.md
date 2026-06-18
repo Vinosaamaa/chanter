@@ -131,3 +131,13 @@ _Avoid_: Certified teacher, blue check
 **Organization**:
 An optional container above Study Servers for a school, bootcamp, or tutoring business. Not required for MVP. Added later for centralized billing, policy, roster import, and SSO when customers need it.
 _Avoid_: Workspace, tenant, account
+
+## Related documentation
+
+| Doc | Role |
+|---|---|
+| [`docs/product-design/README.md`](docs/product-design/README.md) | Target product UI, mockups, screen flows — **what users see** |
+| [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Requirements and user stories |
+| [`plan.md`](../plan.md) | Implementation milestones and frontend direction |
+| [`System Design.md`](../System Design.md) | Backend services and engineering diagrams |
+| [`HANDOFF.md`](../HANDOFF.md) | Agent session startup and current slice |

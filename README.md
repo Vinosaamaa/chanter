@@ -10,7 +10,7 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 ## Current Status
 
-Milestone 0 (monorepo bootstrap) through [issue #14](https://github.com/Vinosaamaa/chanter/issues/14) (Join A Voice Channel) are merged on `main`. [Issue #15](https://github.com/Vinosaamaa/chanter/issues/15) (Send Friend Request And Direct Message) is implemented on `feature/15-send-friend-request-and-dm` with `message-service` and a Friends/DM demo panel. Auth hardening is tracked in [issue #30](https://github.com/Vinosaamaa/chanter/issues/30). Post-MVP Discord-like social UX is tracked in [issues #31–#32](https://github.com/Vinosaamaa/chanter/issues/31).
+Milestone 0 (monorepo bootstrap) through [issue #15](https://github.com/Vinosaamaa/chanter/issues/15) (Send Friend Request And Direct Message) are merged on `main`. [Issue #16](https://github.com/Vinosaamaa/chanter/issues/16) (Post A Support Question In A Course Channel) is in review on [PR #34](https://github.com/Vinosaamaa/chanter/pull/34). Auth hardening is tracked in [issue #30](https://github.com/Vinosaamaa/chanter/issues/30). Post-MVP Discord-like social UX is tracked in [issues #31–#32](https://github.com/Vinosaamaa/chanter/issues/31).
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`  
 Project board: `https://github.com/users/Vinosaamaa/projects/1`
@@ -24,13 +24,19 @@ Implemented bootstrap:
 
 Key planning files:
 
-- `CONTEXT.md`: canonical product glossary.
-- `plan.md`: product roadmap, implementation milestones, testing strategy, scale direction, and AI-agent roadmap.
-- `System Design.md`: backend/system architecture, service boundaries, event flow, consistency model, reliability rules, and agent platform design.
-- `HANDOFF.md`: current state and startup guidance for future Cursor sessions.
-- `docs/product/education-mvp-prd.md`: PRD for the education-focused Study Server MVP.
-- `docs/issues/education-mvp-issue-breakdown.md`: GitHub-ready epics and vertical-slice stories for the education MVP.
-- `docs/diagrams/`: editable draw.io sources plus embedded PNG exports used by `plan.md` and `System Design.md`.
+| Path | Purpose |
+|---|---|
+| [`HANDOFF.md`](HANDOFF.md) | **Start here** for new agent sessions — current slice, workflow, startup prompt |
+| [`CONTEXT.md`](CONTEXT.md) | Canonical product glossary (Study Server, Cohort, Support Question, …) |
+| [`docs/product-design/`](docs/product-design/README.md) | **Product showcase** — target UI mockups (19 screens), vision walkthrough, user-journey diagram, interactive screen tour |
+| [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Education MVP PRD — problem, user stories, out of scope |
+| [`docs/issues/education-mvp-issue-breakdown.md`](docs/issues/education-mvp-issue-breakdown.md) | Epics and vertical slices (#11–#24) |
+| [`plan.md`](plan.md) | Roadmap, milestones, frontend/backend direction, scale and AI-agent phases |
+| [`System Design.md`](System Design.md) | Backend architecture, service boundaries, event flows (engineering diagrams in `docs/diagrams/`) |
+| [`docs/diagrams/`](docs/diagrams/) | Editable draw.io **architecture** sources + PNG exports for `plan.md` / `System Design.md` |
+| [`docs/operations/`](docs/operations/) | Issue-scoped change logs, debug logs, Greptile fix logs |
+
+**Product vs engineering visuals:** `docs/product-design/mockups/` = target **browser UI** concepts for educators and learners. `docs/diagrams/` = **system architecture** and data-flow diagrams. Do not confuse the API demo in `frontend/src/App.tsx` with the mockups.
 
 Diagram workflow:
 
@@ -40,7 +46,7 @@ Diagram workflow:
 
 ## Agent Workflow
 
-Use `HANDOFF.md` as the first resume point for new agent sessions. Then apply the installed workflow skills by name as needed, especially:
+Use `HANDOFF.md` as the first resume point for new agent sessions. For **what the finished product should look like**, read [`docs/product-design/README.md`](docs/product-design/README.md) before building UI. Then apply the installed workflow skills by name as needed, especially:
 
 - `grill-with-docs` for questioning and tightening docs before major decisions.
 - `to-prd` for turning unclear product ideas into requirements and acceptance criteria.
@@ -82,4 +88,4 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-Active: [#14 Join A Voice Channel](https://github.com/Vinosaamaa/chanter/issues/14).
+Active: [#16 Post A Support Question In A Course Channel](https://github.com/Vinosaamaa/chanter/issues/16) ([PR #34](https://github.com/Vinosaamaa/chanter/pull/34)).
