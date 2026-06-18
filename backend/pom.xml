@@ -24,6 +24,7 @@
         <module>auth-service</module>
         <module>community-service</module>
         <module>message-service</module>
+        <module>media-service</module>
     </modules>
 
     <properties>

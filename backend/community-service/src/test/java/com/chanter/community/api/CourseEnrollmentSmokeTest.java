@@ -147,6 +147,36 @@ class CourseEnrollmentSmokeTest {
         assertThat(instructorAccess.canPostSupportQuestion()).isFalse();
         assertThat(instructorAccess.canViewUnansweredSupportQuestions()).isTrue();
 
+        MvcResult learnerResourceAccessResult = mockMvc.perform(get(
+                        "/api/v1/courses/{courseId}/resource-access", course.id()
+                ).param("userId", learnerUserId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+        CourseResourceAccessResponse learnerResourceAccess = objectMapper.readValue(
+                learnerResourceAccessResult.getResponse().getContentAsString(),
+                CourseResourceAccessResponse.class
+        );
+
+        assertThat(learnerResourceAccess.canUploadCourseResource()).isFalse();
+        assertThat(learnerResourceAccess.canViewCourseResources()).isTrue();
+
+        MvcResult instructorResourceAccessResult = mockMvc.perform(get(
+                        "/api/v1/courses/{courseId}/resource-access", course.id()
+                ).param("userId", instructorUserId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+        CourseResourceAccessResponse instructorResourceAccess = objectMapper.readValue(
+                instructorResourceAccessResult.getResponse().getContentAsString(),
+                CourseResourceAccessResponse.class
+        );
+
+        assertThat(instructorResourceAccess.canUploadCourseResource()).isTrue();
+        assertThat(instructorResourceAccess.canViewCourseResources()).isTrue();
+
+        mockMvc.perform(get("/api/v1/courses/{courseId}/resource-access", course.id())
+                        .param("userId", nonEnrolledUserId.toString()))
+                .andExpect(status().isForbidden());
+
         mockMvc.perform(get("/api/v1/course-channels/{channelId}/support-question-access", questionsChannelId)
                         .param("userId", nonEnrolledUserId.toString()))
                 .andExpect(status().isForbidden());

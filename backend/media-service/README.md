@@ -1,5 +1,21 @@
 # media-service
 
-Planned microservice boundary for Chanter. See `plan.md` and `System Design.md`.
+Course Resource metadata and local file storage for the Education MVP.
 
-Bootstrap status: not implemented yet. Active work starts after issue #11 (monorepo bootstrap) and follows vertical slices in `docs/issues/education-mvp-issue-breakdown.md`.
+Local port: `8084`.
+
+## APIs
+
+- `POST /api/v1/courses/{courseId}/course-resources` — instructor upload (multipart `file`, `uploaderUserId`, optional `title`, `aiApproved`)
+- `GET /api/v1/courses/{courseId}/course-resources?viewerUserId=` — list resources for enrolled learners and instructors
+- `GET /api/v1/course-resources/{resourceId}/content?viewerUserId=` — download resource bytes
+
+Authorization is delegated to `community-service` via `GET /api/v1/courses/{courseId}/resource-access`.
+
+## Local run
+
+```bash
+make backend-media
+```
+
+Requires PostgreSQL database `chanter_media` (see `infra/postgres/init/01-databases.sql`).

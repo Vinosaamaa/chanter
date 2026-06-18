@@ -5,6 +5,7 @@ import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
+import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -230,6 +231,82 @@ public class JdbcCourseRepository implements CourseRepository {
                         rs.getObject("course_id", UUID.class),
                         rs.getString("name"),
                         rs.getBoolean("can_post"),
+                        rs.getBoolean("can_view")
+                ))
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean courseExists(UUID courseId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM courses
+                        WHERE id = :courseId
+                        """)
+                .param("courseId", courseId)
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CourseResourceAccess> findCourseResourceAccess(UUID courseId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT
+                            c.id AS course_id,
+                            CASE
+                                WHEN EXISTS (
+                                    SELECT 1
+                                    FROM course_roles cr
+                                    WHERE cr.course_id = c.id
+                                    AND cr.user_id = :userId
+                                    AND cr.role = :instructorRole
+                                ) THEN TRUE
+                                ELSE FALSE
+                            END AS can_upload,
+                            CASE
+                                WHEN EXISTS (
+                                    SELECT 1
+                                    FROM course_roles cr
+                                    WHERE cr.course_id = c.id
+                                    AND cr.user_id = :userId
+                                    AND cr.role = :instructorRole
+                                )
+                                OR EXISTS (
+                                    SELECT 1
+                                    FROM cohorts co
+                                    JOIN cohort_enrollments ce ON ce.cohort_id = co.id
+                                    WHERE co.course_id = c.id
+                                    AND ce.learner_user_id = :userId
+                                ) THEN TRUE
+                                ELSE FALSE
+                            END AS can_view
+                        FROM courses c
+                        WHERE c.id = :courseId
+                        AND (
+                            EXISTS (
+                                SELECT 1
+                                FROM course_roles cr
+                                WHERE cr.course_id = c.id
+                                AND cr.user_id = :userId
+                                AND cr.role = :instructorRole
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM cohorts co
+                                JOIN cohort_enrollments ce ON ce.cohort_id = co.id
+                                WHERE co.course_id = c.id
+                                AND ce.learner_user_id = :userId
+                            )
+                        )
+                        """)
+                .param("courseId", courseId)
+                .param("userId", userId)
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .query((rs, rowNum) -> new CourseResourceAccess(
+                        rs.getObject("course_id", UUID.class),
+                        rs.getBoolean("can_upload"),
                         rs.getBoolean("can_view")
                 ))
                 .optional();
