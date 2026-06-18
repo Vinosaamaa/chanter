@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.chanter.media.infra.TestCourseResourceAccessClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,7 +81,13 @@ class CourseResourceSmokeTest {
                 CourseResourceListResponse.class
         );
 
-        assertThat(listed.courseResources()).containsExactly(uploaded);
+        assertThat(listed.courseResources()).hasSize(1);
+        CourseResourceResponse listedResource = listed.courseResources().getFirst();
+        assertThat(listedResource)
+                .usingRecursiveComparison()
+                .ignoringFields("createdAt")
+                .isEqualTo(uploaded);
+        assertThat(listedResource.createdAt()).isEqualTo(uploaded.createdAt().truncatedTo(ChronoUnit.MICROS));
 
         MvcResult downloadResult = mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", uploaded.id())
                         .param("viewerUserId", learnerUserId.toString()))
