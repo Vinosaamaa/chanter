@@ -97,12 +97,24 @@ A generated recap of important discussion in a Course Channel over a time period
 _Avoid_: Digest, recap, transcript
 
 **Direct Message**:
-A private text conversation between two users on the platform. Users can message friends after a friend request is accepted, similar to Discord. Education-specific policy controls for cross-role messaging may be added later.
+A private text conversation between two users on the platform. Users can message friends after a friend request is accepted, similar to Discord. Education-specific policy controls for cross-role messaging may be added later. Live delivery and the conversation UI are implemented in the Friends Hub slice (#31); voice calls between friends are a separate slice (#32).
 _Avoid_: DM thread, private chat
 
 **Friend Request**:
 A request from one user to another to become friends on the platform. The recipient must accept before Direct Messages are available.
 _Avoid_: Connection, follow
+
+**Friends Hub**:
+The platform-wide social sidebar where a user sees accepted friends, their online/offline presence, and opens a Direct Message conversation. Analogous to Discord's friends list and DM panel—not a Study Server or Course Channel.
+_Avoid_: Contacts, buddy list, social feed
+
+**Friend Presence**:
+Platform-wide online state for friends (for example online, idle, offline), distinct from Voice Channel presence in a Study Server. Delivered through the Realtime Service over WebSocket subscriptions.
+_Avoid_: Activity status, last seen (unless explicitly productized later)
+
+**DM Voice Call**:
+A private 1:1 voice conversation between two friends, initiated from the Friends Hub or DM header. Uses WebRTC/LiveKit for audio and the Realtime Service for call signaling; friendship and block checks mirror Direct Message rules.
+_Avoid_: Phone call, meeting, Voice Channel
 
 **Instructor Dashboard**:
 An Instructor-facing view of actionable learning operations for a Study Server or Course: unanswered Support Questions, repeated questions, Approved FAQs, Office Hours and TA Queue load, engagement signals, and AI Study Assistant usage.

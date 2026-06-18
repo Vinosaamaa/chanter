@@ -23,6 +23,7 @@
         <module>gateway-service</module>
         <module>auth-service</module>
         <module>community-service</module>
+        <module>message-service</module>
     </modules>
 
     <properties>

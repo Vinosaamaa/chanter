@@ -1,0 +1,22 @@
+server:
+  port: ${MESSAGE_PORT:8083}
+
+spring:
+  application:
+    name: message-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/chanter_message
+    username: ${POSTGRES_USER:chanter}
+    password: ${POSTGRES_PASSWORD:chanter}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration,classpath:db/migration-postgresql
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized

@@ -133,7 +133,7 @@ This is not the first MVP because payments, refunds, taxes, creator trust, conte
 - Enrollment is primarily to a Cohort. Course channels and shared Course Resources follow from Cohort membership.
 - Study Server membership requires invite or Enrollment in at least one Cohort.
 - Channels: Study Server Channels, Course Channels, optional Cohort Channels, and Voice Channels in Study Server.
-- Direct Messages and Friend Requests are in the MVP with Discord-like accept flow. Channels, TA Queue, and Office Hours remain the primary learning-support paths.
+- Direct Messages and Friend Requests are in the MVP with Discord-like accept flow and durable REST messaging (#15). The full Discord-like **Friends Hub** (friends list, online presence, live DM conversation panel) and **DM voice calls** are post-MVP slices #31 and #32 after `realtime-service` and WebRTC/LiveKit transport land. See `docs/architecture/social-hub-and-dm-voice.md`. Channels, TA Queue, and Office Hours remain the primary learning-support paths.
 - Organization is post-MVP. Verified Educator is a post-MVP profile badge that does not grant permissions.
 - The first AI capability is a first-party AI Study Assistant installed once per Study Server with explicit grants per channel, Course, Cohort, and Course Resource.
 - Support Questions move through AI-answered, human-answered, unanswered, duplicate, and FAQ-candidate states.
@@ -155,6 +155,8 @@ This is not the first MVP because payments, refunds, taxes, creator trust, conte
 - TA Queue and Office Hours tests should cover join, leave, next-learner assignment, TA permissions, and auditability.
 - Voice Channel tests should cover join, leave, permissions, and presence visibility.
 - Direct Message tests should cover friend request accept/decline, block, and unauthorized messaging.
+- Friends Hub tests (#31) should cover friends list scoping, presence fan-out, and live DM delivery over WebSocket.
+- DM voice tests (#32) should cover friendship/block gates, call accept/decline, and short-lived media token scoping.
 - Analytics tests should verify event-driven Instructor Dashboard aggregates.
 - Billing tests should verify SaaS Plan limits, AI metering, and graceful quota exhaustion.
 - E2E tests should cover: learner enrolls in a Cohort, asks a Support Question, receives a grounded assistant answer, joins TA Queue or Office Hours, and Instructor reviews the Instructor Dashboard.
@@ -176,6 +178,6 @@ This is not the first MVP because payments, refunds, taxes, creator trust, conte
 
 The MVP should win by reducing educator workload and making learning communities easier to run. The strongest first demo is: a learner enrolled in a Cohort asks a repeated Support Question, the AI Study Assistant answers from approved Course Resources, the learner gets routed to the TA Queue when confidence is low, and the Instructor promotes the explanation to an Approved FAQ on the Instructor Dashboard.
 
-Learners should still feel the familiar Discord-like surface: channels, voice, friends, and DMs. The buyer value is learning operations: fewer repeated questions, faster support, better knowledge retention, and lower instructor/TA overhead.
+Learners should still feel the familiar Discord-like surface: channels, voice, friends, and DMs. Issue #15 establishes friend/DM backend rules; issues #31–#32 deliver the full social UX (friends list with presence, live DM chat box, friend voice calls). The buyer value is learning operations: fewer repeated questions, faster support, better knowledge retention, and lower instructor/TA overhead.
 
 Domain language is canonical in `CONTEXT.md`. Grill session decisions are logged in `docs/sessions/2026-06-16-product-strategy-grill-session.md`.

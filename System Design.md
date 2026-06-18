@@ -57,7 +57,7 @@ Teacher/student verification should start simple and become stronger over time:
 - Organization tier: Google Workspace or Microsoft login, institution domains, roster import, and SSO later.
 - Public creator tier: optional verified educator badge based on manual review, payment identity, or linked organization.
 
-Friends and direct messages can exist, but they are not the core MVP. Education DMs need policy controls:
+Friends and direct messages can exist, but they are not the core MVP learning workflow. Issue #15 delivers durable Friend Request / Direct Message rules over REST. The Discord-like **Friends Hub** (friends list, online presence, live DM conversation panel) and **DM voice calls** are post-MVP slices **#31** and **#32**, documented in `docs/architecture/social-hub-and-dm-voice.md`. Education DMs need policy controls:
 
 - Users can send friend or DM requests, but recipients must accept.
 - Teachers/TAs can disable or restrict learner DMs.
@@ -85,7 +85,7 @@ The backend uses Spring Boot microservices. Each service owns one business capab
 - Community Service owns organizations/workspaces, Study Servers, course/module channels, members, instructor/TA/learner roles, permissions, invites, and canonical permission evaluation.
 - Message Command Service owns message writes, edit/delete commands, question markers, reactions, read receipts, idempotency keys, and durable message creation.
 - Message Query Service owns message reads, pagination, history lookup, query-optimized message views, and course-channel history views.
-- Realtime WebSocket Gateway owns connected clients, subscriptions, channel authorization, reconnects, typing indicators, and presence fan-out.
+- Realtime WebSocket Gateway owns connected clients, subscriptions, channel authorization, reconnects, typing indicators, presence fan-out, **friend presence subscriptions**, **live DM delivery**, and **DM call signaling** (issues #31–#32).
 - Fanout Service consumes durable events and pushes them to the correct realtime gateway nodes.
 - Notification Service owns mentions, unanswered-question alerts, unread counts, notification preferences, and delivery state.
 - Moderation Service owns bans, kicks, reports, warnings, audit logs, and moderation workflows.
@@ -111,6 +111,10 @@ Important events include:
 - `UserProfileUpdated`
 - `FriendRequestCreated`
 - `FriendRequestAccepted`
+- `UserPresenceChanged`
+- `DirectMessageCreated`
+- `DirectMessageCallInviteSent`
+- `DirectMessageCallEnded`
 - `UserBlocked`
 - `OrganizationCreated`
 - `OrganizationMemberAdded`

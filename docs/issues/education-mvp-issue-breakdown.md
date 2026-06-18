@@ -44,6 +44,15 @@ Cross-cutting (post-MVP vertical slices):
 |---|---|---|
 | 30 | Slice: Wire Auth Service Principal Into Protected Endpoints | Replaces `TODO(#auth)` on #12–#14; see `docs/operations/issue-14-greptile-fix.md` |
 
+Post-MVP social & realtime (milestone: **Social Hub & Realtime**):
+
+| # | Title | Start when unblocked |
+|---|---|---|
+| 31 | Slice: Build Discord-Like Friends Hub And Live DM Conversation | after #15, #30; requires `realtime-service` bootstrap |
+| 32 | Slice: Direct Message Voice Call Between Friends | after #31; requires Voice Channel WebRTC/LiveKit transport |
+
+Architecture: `docs/architecture/social-hub-and-dm-voice.md`
+
 All issues: https://github.com/Vinosaamaa/chanter/issues
 
 Project board: [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) — all 24 issues added; repo linked.
@@ -127,10 +136,11 @@ Discord-style social messaging: Friend Requests, accept/decline, Direct Messages
 ## Acceptance criteria
 
 - [ ] User can send, accept, and decline Friend Requests.
-- [ ] Friends can exchange Direct Messages platform-wide.
+- [ ] Friends can exchange Direct Messages platform-wide (REST persistence in #15).
 - [ ] User can block another user and stop receiving messages.
 - [ ] DM and friend flows are separate from Course Channel learning-support workflows.
 - [ ] Tests cover accept/decline, unauthorized messaging, and block behavior.
+- [ ] Discord-like Friends Hub, live DM delivery, and DM voice are tracked post-MVP in #31 and #32 (see `docs/architecture/social-hub-and-dm-voice.md`).
 
 ## Blocked by
 
