@@ -328,6 +328,28 @@ class FriendRequestAndDirectMessageSmokeTest {
     }
 
     @Test
+    void cannotSendReversePendingFriendRequest() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/v1/friend-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "senderUserId", userA.toString(),
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/friend-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "senderUserId", userB.toString(),
+                                "recipientUserId", userA.toString()
+                        ))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void usersCanRemoveFriendshipAndMustReRequestBeforeDirectMessages() throws Exception {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
