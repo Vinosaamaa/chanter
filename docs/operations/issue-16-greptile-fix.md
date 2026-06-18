@@ -29,7 +29,7 @@ Greptile finding:
 
 Fix:
 
-- Added `SupportQuestionIdempotencyRecovery` with `@Transactional(propagation = REQUIRES_NEW, readOnly = true)` to load the existing support question in a fresh transaction after a unique-constraint race.
+- Added `SupportQuestionWriter` with `@Transactional(propagation = REQUIRES_NEW)` so insert, constraint-violation recovery, and fallback read all run outside the caller transaction.
 
 ### 3. Channel Kind Guard On Support Question Access
 
@@ -52,3 +52,13 @@ Fix:
 
 - Added `@Size(max = 128)` on `CreateSupportQuestionRequest.idempotencyKey`.
 - Introduced `SupportQuestionSummaryResponse` for list responses without `idempotencyKey`; POST still returns the full `SupportQuestionResponse`.
+
+### 5. Isolate Concurrent Create In REQUIRES_NEW Writer (iteration 3)
+
+Greptile finding (iteration 3):
+
+- Catching `DataIntegrityViolationException` inside the outer `@Transactional` post method still left PostgreSQL's caller transaction aborted even with a `REQUIRES_NEW` recovery read.
+
+Fix:
+
+- Replaced recovery helper with `SupportQuestionWriter.createIfAbsent`, running pre-check, insert, and fallback read entirely in a `REQUIRES_NEW` transaction and removing `@Transactional` from `postSupportQuestion`.

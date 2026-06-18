@@ -2,10 +2,8 @@ package com.chanter.message.application;
 
 import com.chanter.message.domain.SupportQuestion;
 import com.chanter.message.domain.SupportQuestionStatus;
-import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,22 +14,18 @@ public class SupportQuestionService {
 
     private final SupportQuestionRepository repository;
     private final CourseChannelAccessClient courseChannelAccessClient;
-    private final SupportQuestionIdempotencyRecovery idempotencyRecovery;
-    private final Clock clock;
+    private final SupportQuestionWriter supportQuestionWriter;
 
     public SupportQuestionService(
             SupportQuestionRepository repository,
             CourseChannelAccessClient courseChannelAccessClient,
-            SupportQuestionIdempotencyRecovery idempotencyRecovery,
-            Clock clock
+            SupportQuestionWriter supportQuestionWriter
     ) {
         this.repository = repository;
         this.courseChannelAccessClient = courseChannelAccessClient;
-        this.idempotencyRecovery = idempotencyRecovery;
-        this.clock = clock;
+        this.supportQuestionWriter = supportQuestionWriter;
     }
 
-    @Transactional
     public SupportQuestion postSupportQuestion(
             UUID channelId,
             UUID senderUserId,
@@ -49,7 +43,12 @@ public class SupportQuestionService {
         }
 
         return repository.findByChannelSenderAndIdempotencyKey(channelId, senderUserId, idempotencyKey)
-                .orElseGet(() -> createSupportQuestion(channelId, senderUserId, normalizedBody, idempotencyKey));
+                .orElseGet(() -> supportQuestionWriter.createIfAbsent(
+                        channelId,
+                        senderUserId,
+                        normalizedBody,
+                        idempotencyKey
+                ));
     }
 
     @Transactional(readOnly = true)
@@ -60,29 +59,5 @@ public class SupportQuestionService {
         }
 
         return repository.findByChannelIdAndStatus(channelId, SupportQuestionStatus.UNANSWERED);
-    }
-
-    private SupportQuestion createSupportQuestion(
-            UUID channelId,
-            UUID senderUserId,
-            String body,
-            String idempotencyKey
-    ) {
-        SupportQuestion supportQuestion = new SupportQuestion(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                channelId,
-                senderUserId,
-                body,
-                SupportQuestionStatus.UNANSWERED,
-                idempotencyKey,
-                clock.instant()
-        );
-
-        try {
-            return repository.saveSupportQuestion(supportQuestion);
-        } catch (DataIntegrityViolationException exception) {
-            return idempotencyRecovery.requireExisting(channelId, senderUserId, idempotencyKey);
-        }
     }
 }
