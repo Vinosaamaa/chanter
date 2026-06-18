@@ -30,3 +30,25 @@ Greptile finding:
 Fix:
 
 - Added `SupportQuestionIdempotencyRecovery` with `@Transactional(propagation = REQUIRES_NEW, readOnly = true)` to load the existing support question in a fresh transaction after a unique-constraint race.
+
+### 3. Channel Kind Guard On Support Question Access
+
+Greptile finding (iteration 2):
+
+- `findSupportQuestionChannelAccess` granted post rights on any enrolled course channel, not only `#questions`.
+
+Fix:
+
+- Restrict access query to `TEXT` channels named `questions`.
+
+### 4. Idempotency Key Validation And List Response Shape
+
+Greptile finding (iteration 2):
+
+- Request DTO lacked `@Size(max = 128)` matching the DB column.
+- `GET /support-questions` exposed learner idempotency keys to instructors.
+
+Fix:
+
+- Added `@Size(max = 128)` on `CreateSupportQuestionRequest.idempotencyKey`.
+- Introduced `SupportQuestionSummaryResponse` for list responses without `idempotencyKey`; POST still returns the full `SupportQuestionResponse`.

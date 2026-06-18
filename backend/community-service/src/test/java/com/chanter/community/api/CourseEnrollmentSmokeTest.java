@@ -123,6 +123,17 @@ class CourseEnrollmentSmokeTest {
         assertThat(learnerAccess.canPostSupportQuestion()).isTrue();
         assertThat(learnerAccess.canViewUnansweredSupportQuestions()).isFalse();
 
+        UUID announcementsChannelId = course.channels().stream()
+                .filter(channel -> channel.name().equals("announcements"))
+                .findFirst()
+                .orElseThrow()
+                .id();
+
+        mockMvc.perform(get(
+                        "/api/v1/course-channels/{channelId}/support-question-access", announcementsChannelId
+                ).param("userId", learnerUserId.toString()))
+                .andExpect(status().isForbidden());
+
         MvcResult instructorAccessResult = mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}/support-question-access", questionsChannelId
                 ).param("userId", instructorUserId.toString()))

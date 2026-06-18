@@ -64,7 +64,7 @@ type SupportQuestion = {
   senderUserId: string
   body: string
   status: string
-  idempotencyKey: string
+  idempotencyKey?: string
 }
 
 type HealthState = {

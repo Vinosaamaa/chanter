@@ -201,6 +201,8 @@ public class JdbcCourseRepository implements CourseRepository {
                             END AS can_view
                         FROM course_channels cc
                         WHERE cc.id = :channelId
+                        AND cc.kind = :textKind
+                        AND cc.name = :questionsChannelName
                         AND (
                             EXISTS (
                                 SELECT 1
@@ -220,6 +222,8 @@ public class JdbcCourseRepository implements CourseRepository {
                         """)
                 .param("channelId", channelId)
                 .param("userId", userId)
+                .param("textKind", ChannelKind.TEXT.name())
+                .param("questionsChannelName", "questions")
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
                 .query((rs, rowNum) -> new SupportQuestionChannelAccess(
                         rs.getObject("id", UUID.class),

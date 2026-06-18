@@ -51,10 +51,10 @@ public class SupportQuestionController {
             @PathVariable UUID channelId,
             @RequestParam UUID viewerUserId
     ) {
-        List<SupportQuestionResponse> supportQuestions = supportQuestionService
+        List<SupportQuestionSummaryResponse> supportQuestions = supportQuestionService
                 .listUnansweredSupportQuestions(channelId, viewerUserId)
                 .stream()
-                .map(SupportQuestionResponse::from)
+                .map(SupportQuestionSummaryResponse::from)
                 .toList();
 
         return new SupportQuestionListResponse(supportQuestions);

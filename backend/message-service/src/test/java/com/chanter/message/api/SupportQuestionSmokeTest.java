@@ -94,7 +94,17 @@ class SupportQuestionSmokeTest {
                 SupportQuestionListResponse.class
         );
 
-        assertThat(listed.supportQuestions()).containsExactly(created);
+        assertThat(listed.supportQuestions()).containsExactly(
+                new SupportQuestionSummaryResponse(
+                        created.id(),
+                        created.channelMessageId(),
+                        created.channelId(),
+                        created.senderUserId(),
+                        created.body(),
+                        created.status(),
+                        created.createdAt()
+                )
+        );
     }
 
     @Test
