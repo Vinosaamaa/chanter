@@ -16,15 +16,18 @@ public class SupportQuestionService {
 
     private final SupportQuestionRepository repository;
     private final CourseChannelAccessClient courseChannelAccessClient;
+    private final SupportQuestionIdempotencyRecovery idempotencyRecovery;
     private final Clock clock;
 
     public SupportQuestionService(
             SupportQuestionRepository repository,
             CourseChannelAccessClient courseChannelAccessClient,
+            SupportQuestionIdempotencyRecovery idempotencyRecovery,
             Clock clock
     ) {
         this.repository = repository;
         this.courseChannelAccessClient = courseChannelAccessClient;
+        this.idempotencyRecovery = idempotencyRecovery;
         this.clock = clock;
     }
 
@@ -79,11 +82,7 @@ public class SupportQuestionService {
         try {
             return repository.saveSupportQuestion(supportQuestion);
         } catch (DataIntegrityViolationException exception) {
-            return repository.findByChannelSenderAndIdempotencyKey(channelId, senderUserId, idempotencyKey)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.CONFLICT,
-                            "Support Question idempotency key is already in use with different content"
-                    ));
+            return idempotencyRecovery.requireExisting(channelId, senderUserId, idempotencyKey);
         }
     }
 }
