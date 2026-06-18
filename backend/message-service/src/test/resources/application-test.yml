@@ -5,4 +5,4 @@ spring:
     password:
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    locations: classpath:db/migration,classpath:db/migration-h2

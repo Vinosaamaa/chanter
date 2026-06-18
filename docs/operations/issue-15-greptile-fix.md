@@ -29,7 +29,8 @@ Greptile finding:
 Fix:
 
 - Added `@Transactional` on `sendFriendRequest`.
-- Added partial unique index `uq_friend_requests_pending_pair` on `(sender_user_id, recipient_user_id) WHERE status = 'PENDING'` in `db/migration-postgresql/` (applied only when Flyway loads `classpath:db/migration-postgresql`; H2 tests use `@Transactional` plus the application-level pending check).
+- Added partial unique index `uq_friend_requests_pending_pair` on `(sender_user_id, recipient_user_id) WHERE status = 'PENDING'` in `db/migration-postgresql/` for production PostgreSQL.
+- H2 smoke tests load `db/migration-h2/` with a `(sender_user_id, recipient_user_id, status)` unique index because H2 rejects `WHERE`-filtered indexes even in `MODE=PostgreSQL`.
 - Map `DataIntegrityViolationException` to `409 Conflict`.
 
 ### 3. Block Guard On DM Reads
