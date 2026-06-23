@@ -79,4 +79,14 @@ public class CourseController {
                 courseService.findSupportQuestionChannelAccess(channelId, userId)
         );
     }
+
+    @GetMapping("/courses/{courseId}/resource-access")
+    public CourseResourceAccessResponse getCourseResourceAccess(
+            @PathVariable UUID courseId,
+            @RequestParam UUID userId
+    ) {
+        return CourseResourceAccessResponse.from(
+                courseService.findCourseResourceAccess(courseId, userId)
+        );
+    }
 }

@@ -67,11 +67,23 @@ type SupportQuestion = {
   idempotencyKey?: string
 }
 
+type CourseResource = {
+  id: string
+  courseId: string
+  title: string
+  fileName: string
+  contentType: string
+  byteSize: number
+  aiApproved: boolean
+  uploadedByUserId: string
+}
+
 type HealthState = {
   gateway: string
   auth: string
   community: string
   message: string
+  media: string
 }
 
 const createUserId = () => {
@@ -129,6 +141,7 @@ function App() {
     auth: 'checking',
     community: 'checking',
     message: 'checking',
+    media: 'checking',
   })
   const [demoUserIds] = useState(loadDemoUserIds)
   const ownerUserId = demoUserIds.owner
@@ -169,6 +182,13 @@ function App() {
   const [isListingSupportQuestions, setIsListingSupportQuestions] = useState(false)
   const [supportQuestionResult, setSupportQuestionResult] = useState<string | null>(null)
   const [supportQuestionError, setSupportQuestionError] = useState<string | null>(null)
+  const [courseResourceTitle, setCourseResourceTitle] = useState('Spring Security Guide')
+  const [courseResourceFile, setCourseResourceFile] = useState<File | null>(null)
+  const [courseResources, setCourseResources] = useState<CourseResource[]>([])
+  const [isUploadingCourseResource, setIsUploadingCourseResource] = useState(false)
+  const [isListingCourseResources, setIsListingCourseResources] = useState(false)
+  const [courseResourceResult, setCourseResourceResult] = useState<string | null>(null)
+  const [courseResourceError, setCourseResourceError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const refreshDirectMessages = async () => {
@@ -281,6 +301,17 @@ function App() {
         }))
       })
       .catch(() => setHealth((current) => ({ ...current, message: 'unreachable' })))
+
+    fetch(
+      `/api/v1/courses/00000000-0000-0000-0000-000000000000/course-resources?viewerUserId=${ownerUserId}`,
+    )
+      .then((response) => {
+        setHealth((current) => ({
+          ...current,
+          media: response.status === 404 || response.status === 403 ? 'ok' : response.ok ? 'ok' : 'unknown',
+        }))
+      })
+      .catch(() => setHealth((current) => ({ ...current, media: 'unreachable' })))
   }, [ownerUserId, learnerUserId])
 
   const textChannels = useMemo(
@@ -475,6 +506,85 @@ function App() {
       )
     } finally {
       setIsListingSupportQuestions(false)
+    }
+  }
+
+  const uploadCourseResource = async () => {
+    if (!course) {
+      return
+    }
+
+    if (!courseResourceFile) {
+      setCourseResourceError('Choose a file before uploading.')
+      return
+    }
+
+    setIsUploadingCourseResource(true)
+    setCourseResourceError(null)
+    setCourseResourceResult(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', courseResourceFile)
+      formData.append('uploaderUserId', instructorUserId)
+      formData.append('title', courseResourceTitle.trim() || courseResourceFile.name)
+      formData.append('aiApproved', 'true')
+
+      const response = await fetch(`/api/v1/courses/${course.id}/course-resources`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Course Resource upload failed with ${response.status}`)
+      }
+
+      const created: CourseResource = await response.json()
+      setCourseResources((current) => {
+        if (current.some((resource) => resource.id === created.id)) {
+          return current
+        }
+        return [...current, created]
+      })
+      setCourseResourceResult(
+        `Instructor uploaded ${created.fileName} (${created.aiApproved ? 'AI-approved' : 'draft'}).`,
+      )
+    } catch (caught) {
+      setCourseResourceError(
+        caught instanceof Error ? caught.message : 'Unable to upload Course Resource',
+      )
+    } finally {
+      setIsUploadingCourseResource(false)
+    }
+  }
+
+  const listCourseResources = async () => {
+    if (!course) {
+      return
+    }
+
+    setIsListingCourseResources(true)
+    setCourseResourceError(null)
+    setCourseResourceResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/courses/${course.id}/course-resources?viewerUserId=${learnerUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Course Resource list failed with ${response.status}`)
+      }
+
+      const data: { courseResources: CourseResource[] } = await response.json()
+      setCourseResources(data.courseResources)
+      setCourseResourceResult(`Learner sees ${data.courseResources.length} Course Resource(s).`)
+    } catch (caught) {
+      setCourseResourceError(
+        caught instanceof Error ? caught.message : 'Unable to list Course Resources',
+      )
+    } finally {
+      setIsListingCourseResources(false)
     }
   }
 
@@ -1169,6 +1279,61 @@ function App() {
                         ) : null}
                       </section>
                     ) : null}
+                    {accessResult ? (
+                      <section className="support-question-summary">
+                        <p className="eyebrow">Course Resources (#17)</p>
+                        <label htmlFor="course-resource-title">Resource title</label>
+                        <input
+                          id="course-resource-title"
+                          value={courseResourceTitle}
+                          onChange={(event) => setCourseResourceTitle(event.target.value)}
+                          maxLength={255}
+                        />
+                        <label htmlFor="course-resource-file">Course resource file</label>
+                        <input
+                          id="course-resource-file"
+                          type="file"
+                          accept=".md,.markdown,.txt,.pdf,text/markdown,text/plain,application/pdf"
+                          onChange={(event) => {
+                            setCourseResourceFile(event.target.files?.[0] ?? null)
+                            setCourseResourceError(null)
+                          }}
+                        />
+                        {courseResourceFile ? (
+                          <p className="system-line">
+                            Selected: {courseResourceFile.name} ({courseResourceFile.type || 'unknown type'})
+                          </p>
+                        ) : null}
+                        <div className="voice-actions">
+                          <button
+                            type="button"
+                            onClick={uploadCourseResource}
+                            disabled={isUploadingCourseResource || !courseResourceFile}
+                          >
+                            {isUploadingCourseResource ? 'Uploading...' : 'Upload as Instructor'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={listCourseResources}
+                            disabled={isListingCourseResources}
+                          >
+                            {isListingCourseResources ? 'Loading...' : 'List as Learner'}
+                          </button>
+                        </div>
+                        {courseResourceResult ? <p className="system-line">{courseResourceResult}</p> : null}
+                        {courseResourceError ? <p className="form-error">{courseResourceError}</p> : null}
+                        {courseResources.length > 0 ? (
+                          <ul className="support-question-list">
+                            {courseResources.map((resource) => (
+                              <li key={resource.id}>
+                                <strong>{resource.aiApproved ? 'AI-approved' : 'Draft'}</strong> — {resource.title}{' '}
+                                <span className="muted-copy">({resource.fileName})</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </section>
+                    ) : null}
                   </section>
                 ) : null}
                 {selectedVoiceChannel ? (
@@ -1226,6 +1391,7 @@ function App() {
         <StatusRow label="Auth" value={health.auth} />
         <StatusRow label="Community" value={health.community} />
         <StatusRow label="Message" value={health.message} />
+        <StatusRow label="Media" value={health.media} />
       </aside>
     </main>
   )

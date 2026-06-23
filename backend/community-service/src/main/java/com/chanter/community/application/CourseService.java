@@ -6,6 +6,7 @@ import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
 import com.chanter.community.domain.InstructorRole;
+import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
 import java.time.Clock;
 import java.util.List;
@@ -91,6 +92,18 @@ public class CourseService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.FORBIDDEN,
                         "Course Channel access requires Cohort Enrollment or Instructor role"
+                ));
+    }
+
+    public CourseResourceAccess findCourseResourceAccess(UUID courseId, UUID userId) {
+        if (!courseRepository.courseExists(courseId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found");
+        }
+
+        return courseRepository.findCourseResourceAccess(courseId, userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Course Resource access requires Cohort Enrollment or Instructor role"
                 ));
     }
 }
