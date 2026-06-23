@@ -17,4 +17,4 @@ Local port: `8085`.
 
 Requires PostgreSQL database `chanter_agent` (see `infra/postgres/init/01-databases.sql`).
 
-Caller identity uses query/body params (`TODO(#auth)`).
+Caller identity uses query/body params for the local demo harness (`TODO(#auth)` — real auth deferred to issue #30).

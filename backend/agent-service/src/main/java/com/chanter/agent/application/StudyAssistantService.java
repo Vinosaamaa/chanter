@@ -95,11 +95,9 @@ public class StudyAssistantService {
         return repository.findInstallByStudyServerId(studyServerId)
                 .map(install -> {
                     List<StudyAssistantGrant> grants = repository.findGrantsByInstallId(install.id());
-                    Map<UUID, UUID> resourceCourseIds = resourceCourseIdsForGrants(
-                            grants,
-                            viewerScope,
-                            viewerUserId
-                    );
+                    Map<UUID, UUID> resourceCourseIds = viewerScope.canViewAllGrants()
+                            ? Map.of()
+                            : resourceCourseIdsForGrants(grants, viewerScope, viewerUserId);
                     List<StudyAssistantGrant> visibleGrants = filterVisibleGrants(
                             grants,
                             viewerScope,

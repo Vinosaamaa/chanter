@@ -59,18 +59,23 @@ public class HttpStudyAssistantGrantCandidatesClient implements StudyAssistantGr
 
             return mapGrantCandidates(response);
         } catch (HttpClientErrorException.NotFound exception) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found", exception);
         } catch (HttpClientErrorException.Forbidden exception) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Grant candidates require Study Server Owner or Course Instructor role"
+                    "Grant candidates require Study Server Owner or Course Instructor role",
+                    exception
             );
         } catch (HttpClientErrorException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service rejected the grant candidates request");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Community Service rejected the grant candidates request",
+                    exception
+            );
         } catch (HttpServerErrorException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service is unavailable");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service is unavailable", exception);
         } catch (RestClientException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Unable to reach Community Service");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Unable to reach Community Service", exception);
         }
     }
 
@@ -93,45 +98,54 @@ public class HttpStudyAssistantGrantCandidatesClient implements StudyAssistantGr
             return new ViewerScope(
                     response.studyServerId(),
                     response.canViewAllGrants(),
-                    Set.copyOf(response.enrolledCourseIds()),
-                    Set.copyOf(response.enrolledCohortIds()),
-                    Set.copyOf(response.accessibleCourseChannelIds())
+                    Set.copyOf(nullToEmpty(response.enrolledCourseIds())),
+                    Set.copyOf(nullToEmpty(response.enrolledCohortIds())),
+                    Set.copyOf(nullToEmpty(response.accessibleCourseChannelIds()))
             );
         } catch (HttpClientErrorException.NotFound exception) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found", exception);
         } catch (HttpClientErrorException.Forbidden exception) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Study Assistant presence requires Study Server membership or enrollment"
+                    "Study Assistant presence requires Study Server membership or enrollment",
+                    exception
             );
         } catch (HttpClientErrorException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service rejected the viewer scope request");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Community Service rejected the viewer scope request",
+                    exception
+            );
         } catch (HttpServerErrorException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service is unavailable");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service is unavailable", exception);
         } catch (RestClientException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Unable to reach Community Service");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Unable to reach Community Service", exception);
         }
     }
 
     private static GrantCandidates mapGrantCandidates(GrantCandidatesResponse response) {
-        List<ChannelCandidate> studyServerChannels = response.studyServerChannels().stream()
+        List<ChannelCandidate> studyServerChannels = nullToEmpty(response.studyServerChannels()).stream()
                 .map(channel -> new ChannelCandidate(channel.id(), channel.name(), channel.kind()))
                 .toList();
 
-        List<CourseCandidate> courses = response.courses().stream()
+        List<CourseCandidate> courses = nullToEmpty(response.courses()).stream()
                 .map(course -> new CourseCandidate(
                         course.id(),
                         course.title(),
-                        course.cohorts().stream()
+                        nullToEmpty(course.cohorts()).stream()
                                 .map(cohort -> new CohortCandidate(cohort.id(), cohort.name()))
                                 .toList(),
-                        course.channels().stream()
+                        nullToEmpty(course.channels()).stream()
                                 .map(channel -> new ChannelCandidate(channel.id(), channel.name(), channel.kind()))
                                 .toList()
                 ))
                 .toList();
 
         return new GrantCandidates(response.studyServerId(), studyServerChannels, courses);
+    }
+
+    private static <T> List<T> nullToEmpty(List<T> values) {
+        return values != null ? values : List.of();
     }
 
     private record GrantCandidatesResponse(

@@ -52,7 +52,11 @@ public class HttpCourseResourceCatalogClient implements CourseResourceCatalogCli
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Media Service returned empty course resources");
             }
 
-            return response.courseResources().stream()
+            List<CourseResourceResponse> courseResources = response.courseResources() != null
+                    ? response.courseResources()
+                    : List.of();
+
+            return courseResources.stream()
                     .filter(CourseResourceResponse::aiApproved)
                     .map(resource -> new CourseResourceSummary(
                             resource.id(),
@@ -63,15 +67,19 @@ public class HttpCourseResourceCatalogClient implements CourseResourceCatalogCli
                     ))
                     .toList();
         } catch (HttpClientErrorException.NotFound exception) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found", exception);
         } catch (HttpClientErrorException.Forbidden exception) {
             return List.of();
         } catch (HttpClientErrorException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Media Service rejected the course resources request");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Media Service rejected the course resources request",
+                    exception
+            );
         } catch (HttpServerErrorException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Media Service is unavailable");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Media Service is unavailable", exception);
         } catch (RestClientException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Unable to reach Media Service");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Unable to reach Media Service", exception);
         }
     }
 

@@ -65,7 +65,8 @@ public class JdbcStudyAssistantRepository implements StudyAssistantRepository {
         } catch (DuplicateKeyException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "AI Study Assistant is already installed in this Study Server"
+                    "AI Study Assistant is already installed in this Study Server",
+                    exception
             );
         }
 

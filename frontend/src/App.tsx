@@ -679,6 +679,11 @@ function App() {
       return
     }
 
+    if (studyAssistantPreview.studyServerId !== studyServer.id) {
+      setStudyAssistantError('Preview is for a different Study Server. Preview again before confirming.')
+      return
+    }
+
     const grants: StudyAssistantGrant[] = [
       ...studyAssistantPreview.candidates.studyServerChannels.map((channel) => ({
         grantType: 'STUDY_SERVER_CHANNEL',
@@ -1529,7 +1534,8 @@ function App() {
                             disabled={
                               isInstallingStudyAssistant ||
                               !studyAssistantPreview ||
-                              studyAssistantPreview.alreadyInstalled
+                              studyAssistantPreview.alreadyInstalled ||
+                              studyAssistantPreview.studyServerId !== studyServer.id
                             }
                           >
                             {isInstallingStudyAssistant ? 'Installing...' : 'Confirm install (HITL)'}

@@ -16,7 +16,10 @@ import com.chanter.community.domain.SupportQuestionChannelAccess;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DuplicateKeyException;
@@ -390,18 +393,75 @@ public class JdbcCourseRepository implements CourseRepository {
                 ))
                 .list();
 
-        List<UUID> courseIds = jdbcClient.sql("""
-                        SELECT id
+        List<CourseRow> courseRows = jdbcClient.sql("""
+                        SELECT id, title
                         FROM courses
                         WHERE study_server_id = :studyServerId
                         ORDER BY title
                         """)
                 .param("studyServerId", studyServerId)
-                .query(UUID.class)
+                .query((rs, rowNum) -> new CourseRow(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("title")
+                ))
                 .list();
 
-        List<GrantCandidateCourse> courses = courseIds.stream()
-                .map(this::grantCandidateCourseFor)
+        if (courseRows.isEmpty()) {
+            return Optional.of(new StudyAssistantGrantCandidates(studyServerId, studyServerChannels, List.of()));
+        }
+
+        Map<UUID, List<GrantCandidateCohort>> cohortsByCourse = new HashMap<>();
+        jdbcClient.sql("""
+                        SELECT co.id, co.name, co.course_id
+                        FROM cohorts co
+                        JOIN courses c ON c.id = co.course_id
+                        WHERE c.study_server_id = :studyServerId
+                        ORDER BY co.course_id, co.name
+                        """)
+                .param("studyServerId", studyServerId)
+                .query((rs, rowNum) -> {
+                    UUID courseId = rs.getObject("course_id", UUID.class);
+                    cohortsByCourse
+                            .computeIfAbsent(courseId, ignored -> new ArrayList<>())
+                            .add(new GrantCandidateCohort(
+                                    rs.getObject("id", UUID.class),
+                                    rs.getString("name")
+                            ));
+                    return null;
+                })
+                .list();
+
+        Map<UUID, List<CourseChannel>> channelsByCourse = new HashMap<>();
+        jdbcClient.sql("""
+                        SELECT cc.id, cc.course_id, cc.name, cc.kind, cc.position
+                        FROM course_channels cc
+                        JOIN courses c ON c.id = cc.course_id
+                        WHERE c.study_server_id = :studyServerId
+                        ORDER BY cc.course_id, cc.position
+                        """)
+                .param("studyServerId", studyServerId)
+                .query((rs, rowNum) -> {
+                    UUID courseId = rs.getObject("course_id", UUID.class);
+                    channelsByCourse
+                            .computeIfAbsent(courseId, ignored -> new ArrayList<>())
+                            .add(new CourseChannel(
+                                    rs.getObject("id", UUID.class),
+                                    courseId,
+                                    rs.getString("name"),
+                                    ChannelKind.valueOf(rs.getString("kind")),
+                                    rs.getInt("position")
+                            ));
+                    return null;
+                })
+                .list();
+
+        List<GrantCandidateCourse> courses = courseRows.stream()
+                .map(course -> new GrantCandidateCourse(
+                        course.id(),
+                        course.title(),
+                        cohortsByCourse.getOrDefault(course.id(), List.of()),
+                        channelsByCourse.getOrDefault(course.id(), List.of())
+                ))
                 .toList();
 
         return Optional.of(new StudyAssistantGrantCandidates(studyServerId, studyServerChannels, courses));
@@ -478,45 +538,6 @@ public class JdbcCourseRepository implements CourseRepository {
         ));
     }
 
-    private GrantCandidateCourse grantCandidateCourseFor(UUID courseId) {
-        String title = jdbcClient.sql("""
-                        SELECT title
-                        FROM courses
-                        WHERE id = :courseId
-                        """)
-                .param("courseId", courseId)
-                .query(String.class)
-                .single();
-
-        List<GrantCandidateCohort> cohorts = jdbcClient.sql("""
-                        SELECT id, name
-                        FROM cohorts
-                        WHERE course_id = :courseId
-                        ORDER BY name
-                        """)
-                .param("courseId", courseId)
-                .query((rs, rowNum) -> new GrantCandidateCohort(
-                        rs.getObject("id", UUID.class),
-                        rs.getString("name")
-                ))
-                .list();
-
-        List<CourseChannel> channels = jdbcClient.sql("""
-                        SELECT id, course_id, name, kind, position
-                        FROM course_channels
-                        WHERE course_id = :courseId
-                        ORDER BY position
-                        """)
-                .param("courseId", courseId)
-                .query((rs, rowNum) -> new CourseChannel(
-                        rs.getObject("id", UUID.class),
-                        rs.getObject("course_id", UUID.class),
-                        rs.getString("name"),
-                        ChannelKind.valueOf(rs.getString("kind")),
-                        rs.getInt("position")
-                ))
-                .list();
-
-        return new GrantCandidateCourse(courseId, title, cohorts, channels);
+    private record CourseRow(UUID id, String title) {
     }
 }

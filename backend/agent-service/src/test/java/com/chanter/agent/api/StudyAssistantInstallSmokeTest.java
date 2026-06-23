@@ -97,6 +97,8 @@ class StudyAssistantInstallSmokeTest {
                 "spring-security-guide.md",
                 true
         ));
+        courseResourceCatalogClient.grantViewerAccess(courseId, instructorUserId);
+        courseResourceCatalogClient.grantViewerAccess(courseId, learnerUserId);
 
         MvcResult previewResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant/install-preview",
@@ -246,6 +248,89 @@ class StudyAssistantInstallSmokeTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(installBody))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void learnerPresenceHidesGrantsOutsideEnrollmentScope() throws Exception {
+        UUID studyServerId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        UUID enrolledCourseId = UUID.randomUUID();
+        UUID otherCourseId = UUID.randomUUID();
+        UUID enrolledCohortId = UUID.randomUUID();
+        UUID studyServerChannelId = UUID.randomUUID();
+
+        grantCandidatesClient.registerGrantCandidates(
+                studyServerId,
+                instructorUserId,
+                new GrantCandidates(
+                        studyServerId,
+                        List.of(new ChannelCandidate(studyServerChannelId, "general", "TEXT")),
+                        List.of(
+                                new CourseCandidate(
+                                        enrolledCourseId,
+                                        "Enrolled Course",
+                                        List.of(new CohortCandidate(enrolledCohortId, "Summer 2026")),
+                                        List.of()
+                                ),
+                                new CourseCandidate(otherCourseId, "Other Course", List.of(), List.of())
+                        )
+                )
+        );
+        grantCandidatesClient.registerViewerScope(
+                studyServerId,
+                instructorUserId,
+                TestStudyAssistantGrantCandidatesClient.instructorScope(studyServerId)
+        );
+        grantCandidatesClient.registerViewerScope(
+                studyServerId,
+                learnerUserId,
+                TestStudyAssistantGrantCandidatesClient.learnerScope(
+                        studyServerId,
+                        Set.of(enrolledCourseId),
+                        Set.of(enrolledCohortId),
+                        Set.of()
+                )
+        );
+
+        mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "instructorUserId", instructorUserId.toString(),
+                                "grants", List.of(
+                                        Map.of(
+                                                "grantType", GrantType.STUDY_SERVER_CHANNEL.name(),
+                                                "grantTargetId", studyServerChannelId.toString()
+                                        ),
+                                        Map.of(
+                                                "grantType", GrantType.COURSE.name(),
+                                                "grantTargetId", enrolledCourseId.toString()
+                                        ),
+                                        Map.of(
+                                                "grantType", GrantType.COURSE.name(),
+                                                "grantTargetId", otherCourseId.toString()
+                                        )
+                                )
+                        ))))
+                .andExpect(status().isCreated());
+
+        MvcResult learnerPresenceResult = mockMvc.perform(get(
+                        "/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId
+                ).param("viewerUserId", learnerUserId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+        StudyAssistantPresenceResponse learnerPresence = objectMapper.readValue(
+                learnerPresenceResult.getResponse().getContentAsString(),
+                StudyAssistantPresenceResponse.class
+        );
+
+        assertThat(learnerPresence.grants())
+                .extracting(StudyAssistantPresenceResponse.GrantResponse::grantType)
+                .contains(GrantType.STUDY_SERVER_CHANNEL, GrantType.COURSE);
+        assertThat(learnerPresence.grants())
+                .filteredOn(grant -> grant.grantType() == GrantType.COURSE)
+                .extracting(StudyAssistantPresenceResponse.GrantResponse::grantTargetId)
+                .containsExactly(enrolledCourseId);
     }
 
     @Test
