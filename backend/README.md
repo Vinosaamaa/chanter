@@ -10,6 +10,7 @@ Java 21 + Spring Boot 3 microservices (Maven multi-module).
 - `community-service` — Study Servers, courses, enrollment, voice presence (port 8082)
 - `message-service` — friend requests, DMs, support questions (port 8083)
 - `media-service` — course resource uploads and downloads (port 8084)
+- `agent-service` — AI Study Assistant install, grants, and presence (port 8085)
 
 ## Commands
 
@@ -19,7 +20,8 @@ make backend-auth       # terminal 1
 make backend-community  # terminal 2
 make backend-message    # terminal 3
 make backend-media      # terminal 4
-make backend-gateway    # terminal 5
+make backend-agent      # terminal 5
+make backend-gateway    # terminal 6
 ```
 
 ## Planned services

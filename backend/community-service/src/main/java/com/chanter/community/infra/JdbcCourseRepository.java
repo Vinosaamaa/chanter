@@ -6,10 +6,20 @@ import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
 import com.chanter.community.domain.CourseResourceAccess;
+import com.chanter.community.domain.GrantCandidateCohort;
+import com.chanter.community.domain.GrantCandidateCourse;
+import com.chanter.community.domain.StudyAssistantGrantCandidates;
+import com.chanter.community.domain.StudyAssistantViewerScope;
+import com.chanter.community.domain.StudyServerChannel;
+import com.chanter.community.domain.StudyServerRole;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DuplicateKeyException;
@@ -310,5 +320,224 @@ public class JdbcCourseRepository implements CourseRepository {
                         rs.getBoolean("can_view")
                 ))
                 .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isStudyServerOwner(UUID studyServerId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM study_server_roles
+                        WHERE study_server_id = :studyServerId
+                        AND user_id = :userId
+                        AND role = :ownerRole
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("userId", userId)
+                .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isInstructorOnAnyCourseInStudyServer(UUID studyServerId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM courses c
+                        JOIN course_roles cr ON cr.course_id = c.id
+                        WHERE c.study_server_id = :studyServerId
+                        AND cr.user_id = :userId
+                        AND cr.role = :instructorRole
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("userId", userId)
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean studyServerExists(UUID studyServerId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM study_servers
+                        WHERE id = :studyServerId
+                        """)
+                .param("studyServerId", studyServerId)
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<StudyAssistantGrantCandidates> findGrantCandidates(UUID studyServerId) {
+        if (!studyServerExists(studyServerId)) {
+            return Optional.empty();
+        }
+
+        List<StudyServerChannel> studyServerChannels = jdbcClient.sql("""
+                        SELECT id, study_server_id, name, kind, position
+                        FROM study_server_channels
+                        WHERE study_server_id = :studyServerId
+                        ORDER BY position
+                        """)
+                .param("studyServerId", studyServerId)
+                .query((rs, rowNum) -> new StudyServerChannel(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("study_server_id", UUID.class),
+                        rs.getString("name"),
+                        ChannelKind.valueOf(rs.getString("kind")),
+                        rs.getInt("position")
+                ))
+                .list();
+
+        List<CourseRow> courseRows = jdbcClient.sql("""
+                        SELECT id, title
+                        FROM courses
+                        WHERE study_server_id = :studyServerId
+                        ORDER BY title
+                        """)
+                .param("studyServerId", studyServerId)
+                .query((rs, rowNum) -> new CourseRow(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("title")
+                ))
+                .list();
+
+        if (courseRows.isEmpty()) {
+            return Optional.of(new StudyAssistantGrantCandidates(studyServerId, studyServerChannels, List.of()));
+        }
+
+        Map<UUID, List<GrantCandidateCohort>> cohortsByCourse = new HashMap<>();
+        jdbcClient.sql("""
+                        SELECT co.id, co.name, co.course_id
+                        FROM cohorts co
+                        JOIN courses c ON c.id = co.course_id
+                        WHERE c.study_server_id = :studyServerId
+                        ORDER BY co.course_id, co.name
+                        """)
+                .param("studyServerId", studyServerId)
+                .query((rs, rowNum) -> {
+                    UUID courseId = rs.getObject("course_id", UUID.class);
+                    cohortsByCourse
+                            .computeIfAbsent(courseId, ignored -> new ArrayList<>())
+                            .add(new GrantCandidateCohort(
+                                    rs.getObject("id", UUID.class),
+                                    rs.getString("name")
+                            ));
+                    return null;
+                })
+                .list();
+
+        Map<UUID, List<CourseChannel>> channelsByCourse = new HashMap<>();
+        jdbcClient.sql("""
+                        SELECT cc.id, cc.course_id, cc.name, cc.kind, cc.position
+                        FROM course_channels cc
+                        JOIN courses c ON c.id = cc.course_id
+                        WHERE c.study_server_id = :studyServerId
+                        ORDER BY cc.course_id, cc.position
+                        """)
+                .param("studyServerId", studyServerId)
+                .query((rs, rowNum) -> {
+                    UUID courseId = rs.getObject("course_id", UUID.class);
+                    channelsByCourse
+                            .computeIfAbsent(courseId, ignored -> new ArrayList<>())
+                            .add(new CourseChannel(
+                                    rs.getObject("id", UUID.class),
+                                    courseId,
+                                    rs.getString("name"),
+                                    ChannelKind.valueOf(rs.getString("kind")),
+                                    rs.getInt("position")
+                            ));
+                    return null;
+                })
+                .list();
+
+        List<GrantCandidateCourse> courses = courseRows.stream()
+                .map(course -> new GrantCandidateCourse(
+                        course.id(),
+                        course.title(),
+                        cohortsByCourse.getOrDefault(course.id(), List.of()),
+                        channelsByCourse.getOrDefault(course.id(), List.of())
+                ))
+                .toList();
+
+        return Optional.of(new StudyAssistantGrantCandidates(studyServerId, studyServerChannels, courses));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<StudyAssistantViewerScope> findViewerScope(UUID studyServerId, UUID userId) {
+        if (!studyServerExists(studyServerId)) {
+            return Optional.empty();
+        }
+
+        boolean canViewAllGrants = isStudyServerOwner(studyServerId, userId)
+                || isInstructorOnAnyCourseInStudyServer(studyServerId, userId);
+
+        List<UUID> enrolledCohortIds = jdbcClient.sql("""
+                        SELECT c.id
+                        FROM cohorts c
+                        JOIN courses co ON co.id = c.course_id
+                        JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                        WHERE co.study_server_id = :studyServerId
+                        AND ce.learner_user_id = :userId
+                        ORDER BY c.name
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("userId", userId)
+                .query(UUID.class)
+                .list();
+
+        List<UUID> enrolledCourseIds = jdbcClient.sql("""
+                        SELECT DISTINCT co.id
+                        FROM courses co
+                        JOIN cohorts c ON c.course_id = co.id
+                        JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                        WHERE co.study_server_id = :studyServerId
+                        AND ce.learner_user_id = :userId
+                        ORDER BY co.id
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("userId", userId)
+                .query(UUID.class)
+                .list();
+
+        if (!canViewAllGrants && enrolledCourseIds.isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<UUID> accessibleCourseChannelIds = enrolledCourseIds.isEmpty()
+                ? List.of()
+                : jdbcClient.sql("""
+                                SELECT cc.id
+                                FROM course_channels cc
+                                WHERE cc.course_id IN (
+                                    SELECT co.id
+                                    FROM courses co
+                                    JOIN cohorts c ON c.course_id = co.id
+                                    JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                                    WHERE co.study_server_id = :studyServerId
+                                    AND ce.learner_user_id = :userId
+                                )
+                                ORDER BY cc.position
+                                """)
+                        .param("studyServerId", studyServerId)
+                        .param("userId", userId)
+                        .query(UUID.class)
+                        .list();
+
+        return Optional.of(new StudyAssistantViewerScope(
+                studyServerId,
+                canViewAllGrants,
+                enrolledCourseIds,
+                enrolledCohortIds,
+                accessibleCourseChannelIds
+        ));
+    }
+
+    private record CourseRow(UUID id, String title) {
     }
 }

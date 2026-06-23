@@ -3,6 +3,8 @@ package com.chanter.community.application;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseResourceAccess;
+import com.chanter.community.domain.StudyAssistantGrantCandidates;
+import com.chanter.community.domain.StudyAssistantViewerScope;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
 import java.time.Instant;
 import java.util.Optional;
@@ -27,4 +29,14 @@ public interface CourseRepository {
     boolean courseExists(UUID courseId);
 
     Optional<CourseResourceAccess> findCourseResourceAccess(UUID courseId, UUID userId);
+
+    boolean isStudyServerOwner(UUID studyServerId, UUID userId);
+
+    boolean isInstructorOnAnyCourseInStudyServer(UUID studyServerId, UUID userId);
+
+    boolean studyServerExists(UUID studyServerId);
+
+    Optional<StudyAssistantGrantCandidates> findGrantCandidates(UUID studyServerId);
+
+    Optional<StudyAssistantViewerScope> findViewerScope(UUID studyServerId, UUID userId);
 }
