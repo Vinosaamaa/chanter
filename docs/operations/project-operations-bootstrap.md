@@ -17,7 +17,7 @@ Create a clean development operating model for an enterprise-grade microservice 
 - Private GitHub repository exists at `https://github.com/Vinosaamaa/chanter`, and local `main` tracks `origin/main`.
 - Application code has been bootstrapped. Issues #11–#15 are merged on `main`; issue #16 is in review on [PR #34](https://github.com/Vinosaamaa/chanter/pull/34).
 - Existing files include planning/design docs, the education MVP PRD, **product design showcase** (`docs/product-design/` — UI mockups and vision), GitHub-ready local issue breakdown, editable draw.io architecture diagrams (`docs/diagrams/`), local repository metadata/templates, Spring Boot services, a React/Vite frontend, CI, and local Docker infrastructure.
-- The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and `greploop`.
+- The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and CodeRabbit review (`docs/operations/coderabbit-review-workflow.md`; replaces Greptile / `greploop`).
 - Draw.io **architecture** diagram sources and embedded PNG exports live in `docs/diagrams/`; use `/drawio-skill` for future diagram revisions.
 - **Product UI** mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** live in `docs/product-design/`; update when target screens or visibility rules change.
 
@@ -91,7 +91,7 @@ Recommended PR rules:
 - Update `plan.md`, `System Design.md`, `CONTEXT.md`, or ADRs for durable architecture/product decisions.
 - For each non-trivial slice, add an issue-scoped change log under `docs/operations/` that lists what changed, the files touched, representative code snippets, and verification commands.
 - For each meaningful debugging incident, add an issue-scoped debug log under `docs/operations/` that records symptoms, hypotheses, commands run, findings, fixes, and final verification.
-- For every Greptile/GrepTile/Grep tile suggestion that is fixed, add an issue-scoped Greptile fix log under `docs/operations/` with the finding, fix, representative snippet, verification, final Greptile confidence, and any unresolved follow-up.
+- For every CodeRabbit suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/coderabbit-review-workflow.md`).
 - Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 - Do not merge code that bypasses backend permission enforcement for protected actions.
 - Do not commit secrets, local credentials, generated dependency folders, or local runtime data.

@@ -34,7 +34,7 @@ Key planning files:
 | [`plan.md`](plan.md) | Roadmap, milestones, frontend/backend direction, scale and AI-agent phases |
 | [`System Design.md`](System Design.md) | Backend architecture, service boundaries, event flows (engineering diagrams in `docs/diagrams/`) |
 | [`docs/diagrams/`](docs/diagrams/) | Editable draw.io **architecture** sources + PNG exports for `plan.md` / `System Design.md` |
-| [`docs/operations/`](docs/operations/) | Issue-scoped change logs, debug logs, Greptile fix logs |
+| [`docs/operations/`](docs/operations/) | Issue-scoped change logs, debug logs, CodeRabbit fix logs |
 
 **Product vs engineering visuals:** `docs/product-design/mockups/` = target **browser UI** concepts for educators and learners. `docs/diagrams/` = **system architecture** and data-flow diagrams. Do not confuse the API demo in `frontend/src/App.tsx` with the mockups.
 
@@ -56,7 +56,7 @@ Use `HANDOFF.md` as the first resume point for new agent sessions. For **what th
 - `zoom-out` or `improve-codebase-architecture` for architecture reviews.
 - `prototype` for uncertain UI or system interaction flows.
 - `setup-pre-commit` after runnable code and checks exist.
-- `greploop` later, after GitHub PRs and the review integration are configured.
+- `coderabbit` for PR review loops — see [`docs/operations/coderabbit-review-workflow.md`](docs/operations/coderabbit-review-workflow.md). Greptile/`greploop` retired (trial expired).
 
 ## Architecture Direction
 

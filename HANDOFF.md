@@ -134,11 +134,11 @@ The expected workflow includes:
 - Diagnose loop for bugs and regressions.
 - Issue-scoped change logs for non-trivial implementation slices.
 - Issue-scoped debug logs for meaningful local/browser failures.
-- Issue-scoped Greptile fix logs for every Greptile/GrepTile/Grep tile suggestion that changes code or records an explicit follow-up.
+- Issue-scoped CodeRabbit fix logs for every CodeRabbit suggestion that changes code or records an explicit follow-up (`docs/operations/issue-<N>-coderabbit-fix.md`). See `docs/operations/coderabbit-review-workflow.md`.
 - Zoom-out architecture review after milestones.
 - Prototyping for uncertain UX/system flows.
 - Pre-commit and CI-style quality gates once code exists.
-- Greploop later for PR review loops after GitHub PRs and Greptile review integration are configured.
+- CodeRabbit PR review loops after GitHub PRs are open (replaces Greptile / `greploop`; trial expired).
 
 Use these installed skills by name when relevant:
 
@@ -150,12 +150,7 @@ Use these installed skills by name when relevant:
 - `zoom-out` or `improve-codebase-architecture`: review architecture boundaries after major changes.
 - `prototype`: explore uncertain UI or system flows before production implementation.
 - `setup-pre-commit`: add quality gates after runnable code exists.
-- `greploop`: use later for PR review loops after GitHub and Greptile are configured.
-
-Installed external skill note:
-
-- `greploop` was installed from `https://github.com/greptileai/skills` into `~/.agents/skills/greploop`.
-- It requires authenticated `gh`, an open PR, and Greptile installed/enabled on the repository before it can run usefully.
+- **CodeRabbit review:** push to PR → GitHub review; or local `coderabbit review --agent --base main`. Fix loop and fix-log naming: `docs/operations/coderabbit-review-workflow.md`.
 
 Diagram workflow:
 
@@ -311,7 +306,7 @@ Issue: https://github.com/Vinosaamaa/chanter/issues/16
 - **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
-- For every Greptile/GrepTile/Grep tile suggestion that is fixed, create or update `docs/operations/issue-<number>-greptile-fix.md` with the finding, fix, representative snippet, verification, final Greptile confidence, and any unresolved follow-up.
+- For every CodeRabbit suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/coderabbit-review-workflow.md`). Historical Greptile logs remain under `issue-*-greptile-fix.md`.
 - Keep explanations beginner-friendly but production-oriented.
 - Preserve and update the docs when architecture or process decisions change.
 - Ask before creating remote repositories, pushing code, creating tickets, or installing third-party integrations.
