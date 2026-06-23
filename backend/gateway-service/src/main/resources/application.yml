@@ -21,6 +21,11 @@ spring:
           order: -1
           predicates:
             - Path=/api/v1/courses/*/course-resources,/api/v1/courses/*/course-resources/**,/api/v1/course-resources/**
+        - id: agent-service-study-assistant
+          uri: ${AGENT_SERVICE_URL:http://localhost:8085}
+          order: -1
+          predicates:
+            - Path=/api/v1/study-servers/*/study-assistant,/api/v1/study-servers/*/study-assistant/**
         - id: community-service
           uri: ${COMMUNITY_SERVICE_URL:http://localhost:8082}
           predicates:

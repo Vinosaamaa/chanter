@@ -78,12 +78,45 @@ type CourseResource = {
   uploadedByUserId: string
 }
 
+type StudyAssistantGrant = {
+  grantType: string
+  grantTargetId: string
+}
+
+type StudyAssistantPreview = {
+  studyServerId: string
+  alreadyInstalled: boolean
+  candidates: {
+    studyServerChannels: Channel[]
+    courses: Array<{
+      id: string
+      title: string
+      cohorts: Array<{ id: string; name: string }>
+      channels: Channel[]
+    }>
+  }
+  courseResources: Array<{
+    id: string
+    courseId: string
+    title: string
+    fileName: string
+    aiApproved: boolean
+  }>
+}
+
+type StudyAssistantPresence = {
+  studyServerId: string
+  installed: boolean
+  grants: StudyAssistantGrant[]
+}
+
 type HealthState = {
   gateway: string
   auth: string
   community: string
   message: string
   media: string
+  agent: string
 }
 
 const createUserId = () => {
@@ -142,6 +175,7 @@ function App() {
     community: 'checking',
     message: 'checking',
     media: 'checking',
+    agent: 'checking',
   })
   const [demoUserIds] = useState(loadDemoUserIds)
   const ownerUserId = demoUserIds.owner
@@ -189,6 +223,13 @@ function App() {
   const [isListingCourseResources, setIsListingCourseResources] = useState(false)
   const [courseResourceResult, setCourseResourceResult] = useState<string | null>(null)
   const [courseResourceError, setCourseResourceError] = useState<string | null>(null)
+  const [studyAssistantPreview, setStudyAssistantPreview] = useState<StudyAssistantPreview | null>(null)
+  const [studyAssistantPresence, setStudyAssistantPresence] = useState<StudyAssistantPresence | null>(null)
+  const [isPreviewingStudyAssistant, setIsPreviewingStudyAssistant] = useState(false)
+  const [isInstallingStudyAssistant, setIsInstallingStudyAssistant] = useState(false)
+  const [isLoadingStudyAssistantPresence, setIsLoadingStudyAssistantPresence] = useState(false)
+  const [studyAssistantResult, setStudyAssistantResult] = useState<string | null>(null)
+  const [studyAssistantError, setStudyAssistantError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const refreshDirectMessages = async () => {
@@ -312,6 +353,17 @@ function App() {
         }))
       })
       .catch(() => setHealth((current) => ({ ...current, media: 'unreachable' })))
+
+    fetch(
+      `/api/v1/study-servers/00000000-0000-0000-0000-000000000000/study-assistant?viewerUserId=${ownerUserId}`,
+    )
+      .then((response) => {
+        setHealth((current) => ({
+          ...current,
+          agent: response.status === 404 || response.status === 403 ? 'ok' : response.ok ? 'ok' : 'unknown',
+        }))
+      })
+      .catch(() => setHealth((current) => ({ ...current, agent: 'unreachable' })))
   }, [ownerUserId, learnerUserId])
 
   const textChannels = useMemo(
@@ -585,6 +637,132 @@ function App() {
       )
     } finally {
       setIsListingCourseResources(false)
+    }
+  }
+
+  const previewStudyAssistantInstall = async () => {
+    if (!studyServer) {
+      return
+    }
+
+    setIsPreviewingStudyAssistant(true)
+    setStudyAssistantError(null)
+    setStudyAssistantResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/study-servers/${studyServer.id}/study-assistant/install-preview?instructorUserId=${instructorUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Study Assistant preview failed with ${response.status}`)
+      }
+
+      const preview: StudyAssistantPreview = await response.json()
+      setStudyAssistantPreview(preview)
+      setStudyAssistantResult(
+        preview.alreadyInstalled
+          ? 'AI Study Assistant is already installed.'
+          : `Preview ready: ${preview.candidates.studyServerChannels.length} server channel(s), ${preview.candidates.courses.length} course(s), ${preview.courseResources.length} AI-approved resource(s).`,
+      )
+    } catch (caught) {
+      setStudyAssistantError(
+        caught instanceof Error ? caught.message : 'Unable to preview Study Assistant install',
+      )
+    } finally {
+      setIsPreviewingStudyAssistant(false)
+    }
+  }
+
+  const confirmStudyAssistantInstall = async () => {
+    if (!studyServer || !studyAssistantPreview || studyAssistantPreview.alreadyInstalled) {
+      return
+    }
+
+    const grants: StudyAssistantGrant[] = [
+      ...studyAssistantPreview.candidates.studyServerChannels.map((channel) => ({
+        grantType: 'STUDY_SERVER_CHANNEL',
+        grantTargetId: channel.id,
+      })),
+      ...studyAssistantPreview.candidates.courses.flatMap((previewCourse) => [
+        { grantType: 'COURSE', grantTargetId: previewCourse.id },
+        ...previewCourse.cohorts.map((cohort) => ({
+          grantType: 'COHORT',
+          grantTargetId: cohort.id,
+        })),
+        ...previewCourse.channels.map((channel) => ({
+          grantType: 'COURSE_CHANNEL',
+          grantTargetId: channel.id,
+        })),
+      ]),
+      ...studyAssistantPreview.courseResources.map((resource) => ({
+        grantType: 'COURSE_RESOURCE',
+        grantTargetId: resource.id,
+      })),
+    ]
+
+    setIsInstallingStudyAssistant(true)
+    setStudyAssistantError(null)
+    setStudyAssistantResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/study-servers/${studyServer.id}/study-assistant/install`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instructorUserId,
+          grants,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Study Assistant install failed with ${response.status}`)
+      }
+
+      const presence: StudyAssistantPresence = await response.json()
+      setStudyAssistantPresence(presence)
+      setStudyAssistantPreview((current) =>
+        current ? { ...current, alreadyInstalled: true } : current,
+      )
+      setStudyAssistantResult(`Installed with ${presence.grants.length} grant(s).`)
+    } catch (caught) {
+      setStudyAssistantError(
+        caught instanceof Error ? caught.message : 'Unable to install Study Assistant',
+      )
+    } finally {
+      setIsInstallingStudyAssistant(false)
+    }
+  }
+
+  const loadStudyAssistantPresence = async (viewerUserId: string, label: string) => {
+    if (!studyServer) {
+      return
+    }
+
+    setIsLoadingStudyAssistantPresence(true)
+    setStudyAssistantError(null)
+    setStudyAssistantResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/study-servers/${studyServer.id}/study-assistant?viewerUserId=${viewerUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Study Assistant presence failed with ${response.status}`)
+      }
+
+      const presence: StudyAssistantPresence = await response.json()
+      setStudyAssistantPresence(presence)
+      setStudyAssistantResult(
+        `${label} sees installed=${presence.installed} with ${presence.grants.length} visible grant(s).`,
+      )
+    } catch (caught) {
+      setStudyAssistantError(
+        caught instanceof Error ? caught.message : 'Unable to load Study Assistant presence',
+      )
+    } finally {
+      setIsLoadingStudyAssistantPresence(false)
     }
   }
 
@@ -1334,6 +1512,64 @@ function App() {
                         ) : null}
                       </section>
                     ) : null}
+                    {accessResult ? (
+                      <section className="support-question-summary">
+                        <p className="eyebrow">AI Study Assistant (#18)</p>
+                        <div className="voice-actions">
+                          <button
+                            type="button"
+                            onClick={previewStudyAssistantInstall}
+                            disabled={isPreviewingStudyAssistant}
+                          >
+                            {isPreviewingStudyAssistant ? 'Previewing...' : 'Preview install (Instructor)'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={confirmStudyAssistantInstall}
+                            disabled={
+                              isInstallingStudyAssistant ||
+                              !studyAssistantPreview ||
+                              studyAssistantPreview.alreadyInstalled
+                            }
+                          >
+                            {isInstallingStudyAssistant ? 'Installing...' : 'Confirm install (HITL)'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => loadStudyAssistantPresence(instructorUserId, 'Instructor')}
+                            disabled={isLoadingStudyAssistantPresence}
+                          >
+                            {isLoadingStudyAssistantPresence ? 'Loading...' : 'Presence (Instructor)'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => loadStudyAssistantPresence(learnerUserId, 'Learner')}
+                            disabled={isLoadingStudyAssistantPresence}
+                          >
+                            {isLoadingStudyAssistantPresence ? 'Loading...' : 'Presence (Learner)'}
+                          </button>
+                        </div>
+                        {studyAssistantPreview ? (
+                          <p className="system-line">
+                            Preview: {studyAssistantPreview.candidates.studyServerChannels.length} server channel(s),{' '}
+                            {studyAssistantPreview.candidates.courses.length} course(s),{' '}
+                            {studyAssistantPreview.courseResources.length} AI-approved resource(s).
+                          </p>
+                        ) : null}
+                        {studyAssistantResult ? <p className="system-line">{studyAssistantResult}</p> : null}
+                        {studyAssistantError ? <p className="form-error">{studyAssistantError}</p> : null}
+                        {studyAssistantPresence && studyAssistantPresence.grants.length > 0 ? (
+                          <ul className="support-question-list">
+                            {studyAssistantPresence.grants.map((grant) => (
+                              <li key={`${grant.grantType}-${grant.grantTargetId}`}>
+                                <strong>{grant.grantType}</strong>{' '}
+                                <code title={grant.grantTargetId}>{truncateId(grant.grantTargetId)}</code>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </section>
+                    ) : null}
                   </section>
                 ) : null}
                 {selectedVoiceChannel ? (
@@ -1392,6 +1628,7 @@ function App() {
         <StatusRow label="Community" value={health.community} />
         <StatusRow label="Message" value={health.message} />
         <StatusRow label="Media" value={health.media} />
+        <StatusRow label="Agent" value={health.agent} />
       </aside>
     </main>
   )

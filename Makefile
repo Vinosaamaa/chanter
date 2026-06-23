@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-media frontend-install frontend-dev frontend-build verify setup-git-hooks
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-media backend-agent frontend-install frontend-dev frontend-build verify setup-git-hooks
 
 ifeq ($(shell uname -s),Darwin)
 export JAVA_HOME ?= $(shell /usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 23 2>/dev/null)
@@ -34,6 +34,9 @@ backend-message:
 
 backend-media:
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl media-service spring-boot:run
+
+backend-agent:
+	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl agent-service spring-boot:run
 
 frontend-install:
 	cd frontend && npm install
