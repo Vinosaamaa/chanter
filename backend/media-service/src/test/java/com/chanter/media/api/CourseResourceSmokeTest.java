@@ -87,6 +87,7 @@ class CourseResourceSmokeTest {
                 .usingRecursiveComparison()
                 .ignoringFields("createdAt")
                 .isEqualTo(uploaded);
+        // Postgres stores timestamps at microsecond precision; upload responses truncate to match.
         assertThat(listedResource.createdAt()).isEqualTo(uploaded.createdAt().truncatedTo(ChronoUnit.MICROS));
 
         MvcResult downloadResult = mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", uploaded.id())
@@ -106,7 +107,6 @@ class CourseResourceSmokeTest {
         UUID strangerUserId = UUID.randomUUID();
 
         courseResourceAccessClient.grantInstructorUpload(courseId, instructorUserId);
-        courseResourceAccessClient.registerCourse(courseId);
 
         mockMvc.perform(multipart("/api/v1/courses/{courseId}/course-resources", courseId)
                         .file(new MockMultipartFile(
@@ -141,6 +141,69 @@ class CourseResourceSmokeTest {
                         .param("uploaderUserId", learnerUserId.toString())
                         .param("aiApproved", "false"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void instructorUploadStripsPathFromFileName() throws Exception {
+        UUID courseId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+
+        courseResourceAccessClient.grantInstructorUpload(courseId, instructorUserId);
+
+        MvcResult uploadResult = mockMvc.perform(multipart("/api/v1/courses/{courseId}/course-resources", courseId)
+                        .file(new MockMultipartFile(
+                                "file",
+                                "../../notes.txt",
+                                "text/plain",
+                                "notes".getBytes(StandardCharsets.UTF_8)
+                        ))
+                        .param("uploaderUserId", instructorUserId.toString())
+                        .param("aiApproved", "true"))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        CourseResourceResponse uploaded = objectMapper.readValue(
+                uploadResult.getResponse().getContentAsString(),
+                CourseResourceResponse.class
+        );
+
+        assertThat(uploaded.fileName()).isEqualTo("notes.txt");
+    }
+
+    @Test
+    void unauthorizedUserCannotDownloadCourseResource() throws Exception {
+        UUID courseId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+        UUID strangerUserId = UUID.randomUUID();
+
+        courseResourceAccessClient.grantInstructorUpload(courseId, instructorUserId);
+
+        MvcResult uploadResult = mockMvc.perform(multipart("/api/v1/courses/{courseId}/course-resources", courseId)
+                        .file(new MockMultipartFile(
+                                "file",
+                                "notes.txt",
+                                "text/plain",
+                                "notes".getBytes(StandardCharsets.UTF_8)
+                        ))
+                        .param("uploaderUserId", instructorUserId.toString())
+                        .param("aiApproved", "true"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        CourseResourceResponse uploaded = objectMapper.readValue(
+                uploadResult.getResponse().getContentAsString(),
+                CourseResourceResponse.class
+        );
+
+        mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", uploaded.id())
+                        .param("viewerUserId", strangerUserId.toString()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void downloadingUnknownCourseResourceReturnsNotFound() throws Exception {
+        mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", UUID.randomUUID())
+                        .param("viewerUserId", UUID.randomUUID().toString()))
+                .andExpect(status().isNotFound());
     }
 
     @Test

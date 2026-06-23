@@ -54,12 +54,12 @@ public class CourseResourceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Resource file exceeds the 10 MB limit");
         }
 
-        String fileName = file.getOriginalFilename();
-        if (fileName == null || fileName.isBlank()) {
+        String fileName = sanitizeFileName(file.getOriginalFilename());
+        if (fileName.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Resource file name must not be blank");
         }
 
-        String normalizedTitle = title == null || title.isBlank() ? fileName.trim() : title.trim();
+        String normalizedTitle = title == null || title.isBlank() ? fileName : title.trim();
         if (normalizedTitle.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Resource title must not be blank");
         }
@@ -81,7 +81,7 @@ public class CourseResourceService {
                 resourceId,
                 courseId,
                 normalizedTitle,
-                fileName.trim(),
+                fileName,
                 contentType,
                 content.length,
                 resourceId.toString(),
@@ -95,11 +95,28 @@ public class CourseResourceService {
         try {
             storage.store(resourceId, content);
         } catch (IOException exception) {
-            repository.deleteById(resourceId);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store Course Resource");
         }
 
         return courseResource;
+    }
+
+    static String sanitizeFileName(String originalFileName) {
+        if (originalFileName == null) {
+            return "";
+        }
+
+        String normalized = originalFileName.replace('\\', '/').trim();
+        int lastSlash = normalized.lastIndexOf('/');
+        if (lastSlash >= 0) {
+            normalized = normalized.substring(lastSlash + 1);
+        }
+
+        if (normalized.equals(".") || normalized.equals("..")) {
+            return "";
+        }
+
+        return normalized;
     }
 
     @Transactional(readOnly = true)
@@ -132,7 +149,7 @@ public class CourseResourceService {
         try {
             content = storage.load(resourceId);
         } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Resource content is unavailable");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Course Resource content is unavailable");
         }
 
         return new StoredCourseResourceContent(courseResource, content);
