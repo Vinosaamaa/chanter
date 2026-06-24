@@ -4,6 +4,7 @@ import com.chanter.analytics.config.AgentServiceClientProperties;
 import java.net.http.HttpClient;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -14,16 +15,17 @@ public class HttpAgentServiceClient {
 
     private final RestClient restClient;
 
-    public HttpAgentServiceClient(
-            AgentServiceClientProperties properties,
-            HttpClient analyticsHttpClient
-    ) {
+    public HttpAgentServiceClient(AgentServiceClientProperties properties) {
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder()
+                        .connectTimeout(properties.connectTimeout())
+                        .build()
+        );
+        requestFactory.setReadTimeout(properties.readTimeout());
+
         this.restClient = RestClient.builder()
                 .baseUrl(properties.baseUrl())
-                .requestFactory(new org.springframework.http.client.JdkClientHttpRequestFactory(
-                        analyticsHttpClient,
-                        properties.connectTimeout()
-                ))
+                .requestFactory(requestFactory)
                 .build();
     }
 
