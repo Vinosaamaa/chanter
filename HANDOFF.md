@@ -122,7 +122,7 @@ Scale direction:
 
 Use installed Cursor workflow skills directly rather than the deleted local `chanter-engineering-workflow` skill.
 
-**Git workflow (required):** one branch per GitHub issue → pull request → merge only after owner approval. See `docs/operations/project-operations-bootstrap.md`.
+**Git workflow (required):** one branch per GitHub issue → pull request → **full CodeRabbit loop → merge** → next issue. Master doc: `docs/operations/coderabbit-review-workflow.md` (**Issue completion loop**). Also enforced in `.cursor/rules/git-workflow.mdc`. Do not stop after opening a PR.
 
 **Testing workflow:** infrastructure bootstrap (#11) may use smoke tests; **domain features from #12 onward use TDD** (red → green → refactor) for permissions, enrollment, and learning-support workflows.
 

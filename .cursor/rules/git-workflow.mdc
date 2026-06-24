@@ -12,13 +12,17 @@ alwaysApply: true
 1. One GitHub issue → one feature branch (e.g. `feature/15-send-friend-request-and-dm`)
 2. Commit and push the **feature branch** only
 3. Open a PR targeting `main`
-4. Merge only after the repository owner approves
+4. **Complete the issue** — CI green + CodeRabbit review finished + fix loop + merge. See `docs/operations/coderabbit-review-workflow.md` (**Issue completion loop**). Do not merge or start the next issue until that loop is done.
+5. Merge only after the repository owner approves (and CodeRabbit is clean per step 4)
 
 ## Forbidden
 
 - `git push origin main`
 - `git push origin HEAD:main`
 - Committing feature or doc work directly on `main` then pushing
+- **Merging a PR while CodeRabbit is still `pending`**
+- **Stopping after opening a PR** without waiting for CodeRabbit, fixing comments, and merging
+- **Parallel sub-agents** implementing multiple issues on the same repo at once
 
 ## Doc-only changes
 
