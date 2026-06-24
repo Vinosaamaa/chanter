@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class KeywordGroundingEngine implements GroundingEngine {
 
+    private static final int MIN_TERM_MATCHES = 2;
+    private static final int EXCERPT_CHARS_BEFORE = 40;
+    private static final int EXCERPT_CHARS_AFTER = 80;
+
     private static final Set<String> STOP_WORDS = Set.of(
             "a", "an", "the", "and", "or", "to", "in", "on", "for", "of", "is", "it", "i", "my", "how", "do"
     );
@@ -26,15 +30,20 @@ public class KeywordGroundingEngine implements GroundingEngine {
         String bestExcerpt = "";
 
         for (GroundingSource source : sources) {
-            int score = scoreTerms(terms, source.textContent());
+            String textContent = source.textContent();
+            if (textContent == null || textContent.isBlank()) {
+                continue;
+            }
+
+            int score = scoreTerms(terms, textContent);
             if (score > bestScore) {
                 bestScore = score;
                 bestSource = source;
-                bestExcerpt = excerpt(source.textContent(), terms);
+                bestExcerpt = excerpt(textContent, terms);
             }
         }
 
-        if (bestSource == null || bestScore < 2 || bestExcerpt.isBlank()) {
+        if (bestSource == null || bestScore < MIN_TERM_MATCHES || bestExcerpt.isBlank()) {
             return lowConfidenceResult();
         }
 
@@ -68,6 +77,10 @@ public class KeywordGroundingEngine implements GroundingEngine {
     }
 
     private static int scoreTerms(List<String> terms, String textContent) {
+        if (textContent == null || textContent.isBlank()) {
+            return 0;
+        }
+
         String normalized = textContent.toLowerCase(Locale.ROOT);
         int score = 0;
         for (String term : terms) {
@@ -79,12 +92,16 @@ public class KeywordGroundingEngine implements GroundingEngine {
     }
 
     private static String excerpt(String textContent, List<String> terms) {
+        if (textContent == null || textContent.isBlank()) {
+            return "";
+        }
+
         String normalized = textContent.toLowerCase(Locale.ROOT);
         for (String term : terms) {
             int index = normalized.indexOf(term);
             if (index >= 0) {
-                int start = Math.max(0, index - 40);
-                int end = Math.min(textContent.length(), index + term.length() + 80);
+                int start = Math.max(0, index - EXCERPT_CHARS_BEFORE);
+                int end = Math.min(textContent.length(), index + term.length() + EXCERPT_CHARS_AFTER);
                 return textContent.substring(start, end).trim();
             }
         }

@@ -34,6 +34,7 @@ public class GroundedSupportQuestionController {
                 supportQuestionId,
                 request.learnerUserId()
         );
+        // Status strings must match SupportQuestionStatus enum in message-service.
         String supportQuestionStatus = answer.confidence() == AnswerConfidence.HIGH
                 ? "AI_ANSWERED"
                 : "AI_LOW_CONFIDENCE";

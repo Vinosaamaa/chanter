@@ -16,6 +16,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -73,6 +75,13 @@ public class GroundedSupportQuestionService {
                 supportQuestionId,
                 learnerUserId
         );
+
+        Optional<StudyAssistantAnswer> existingAnswer =
+                answerRepository.findBySupportQuestionId(supportQuestionId);
+        if (existingAnswer.isPresent()) {
+            return reconcileExistingAnswer(channelId, supportQuestionId, learnerUserId, existingAnswer.get());
+        }
+
         if (!"UNANSWERED".equals(supportQuestion.status())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
         }
@@ -150,18 +159,27 @@ public class GroundedSupportQuestionService {
                 clock.instant()
         );
 
-        StudyAssistantAnswer savedAnswer = answerRepository.saveAnswer(
-                answer,
-                invocationType,
-                sources.size()
-        );
+        StudyAssistantAnswer savedAnswer = answerRepository.saveAnswer(answer, invocationType);
 
-        String updatedStatus = groundingResult.confidence() == AnswerConfidence.HIGH
-                ? "AI_ANSWERED"
-                : "AI_LOW_CONFIDENCE";
+        String updatedStatus = statusForConfidence(groundingResult.confidence());
         supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, updatedStatus);
 
         return savedAnswer;
+    }
+
+    private StudyAssistantAnswer reconcileExistingAnswer(
+            UUID channelId,
+            UUID supportQuestionId,
+            UUID learnerUserId,
+            StudyAssistantAnswer existingAnswer
+    ) {
+        String expectedStatus = statusForConfidence(existingAnswer.confidence());
+        supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, expectedStatus);
+        return existingAnswer;
+    }
+
+    private static String statusForConfidence(AnswerConfidence confidence) {
+        return confidence == AnswerConfidence.HIGH ? "AI_ANSWERED" : "AI_LOW_CONFIDENCE";
     }
 
     private static String decodeTextContent(byte[] content, String fileName) {
@@ -169,7 +187,7 @@ public class GroundedSupportQuestionService {
             return "";
         }
 
-        String lowerFileName = fileName == null ? "" : fileName.toLowerCase();
+        String lowerFileName = fileName == null ? "" : fileName.toLowerCase(Locale.ROOT);
         if (!(lowerFileName.endsWith(".md")
                 || lowerFileName.endsWith(".txt")
                 || lowerFileName.endsWith(".markdown"))) {

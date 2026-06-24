@@ -90,7 +90,7 @@ public class HttpSupportQuestionClient implements SupportQuestionClient {
                             channelId, supportQuestionId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
-                            "actorUserId", actorUserId.toString(),
+                            "actorUserId", actorUserId,
                             "status", status
                     ))
                     .retrieve()
