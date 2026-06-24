@@ -941,6 +941,9 @@ function App() {
 
       const plan: { planTier: string; aiInvocationLimit: number } = await response.json()
       setSaasPlanTier(plan.planTier)
+      setStudyServer((current) =>
+        current ? { ...current, planTier: plan.planTier } : current,
+      )
       setSaasPlanResult(`Plan updated to ${plan.planTier} (${plan.aiInvocationLimit} AI invocations).`)
     } catch (caught) {
       setSaasPlanError(caught instanceof Error ? caught.message : 'Unable to update SaaS Plan')
