@@ -46,8 +46,8 @@ Bootstrap (#11) through **#20** (Approved FAQs) are merged on `main`. **#21** (T
 - **#17 Upload Approved Course Resource** — merged (PR #35)
 - **#18 Install AI Study Assistant** — merged (PR #36)
 - **#19 Answer Grounded Support Question** — merged (PR #37)
-- **#20 Promote Repeated Support Question To Approved FAQ** — merged (PR #38); CodeRabbit follow-up in PR
-- **#21 Route Low-Confidence Answer To TA Queue** — next
+- **#20 Promote Repeated Support Question To Approved FAQ** — merged (PR #38, CodeRabbit follow-up PR #40)
+- **#21 Route Low-Confidence Answer To TA Queue** — active
 - **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — after #24
 
 ## Major Decisions Made

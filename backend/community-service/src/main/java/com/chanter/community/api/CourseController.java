@@ -89,4 +89,14 @@ public class CourseController {
                 courseService.findCourseResourceAccess(courseId, userId)
         );
     }
+
+    @GetMapping("/cohorts/{cohortId}/ta-queue-access")
+    public CohortTaQueueAccessResponse getCohortTaQueueAccess(
+            @PathVariable UUID cohortId,
+            @RequestParam UUID userId
+    ) {
+        return CohortTaQueueAccessResponse.from(
+                courseService.findCohortTaQueueAccess(cohortId, userId)
+        );
+    }
 }
