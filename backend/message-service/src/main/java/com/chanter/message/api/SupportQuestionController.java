@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -58,5 +59,32 @@ public class SupportQuestionController {
                 .toList();
 
         return new SupportQuestionListResponse(supportQuestions);
+    }
+
+    @GetMapping("/{channelId}/support-questions/{supportQuestionId}")
+    public SupportQuestionResponse getSupportQuestion(
+            @PathVariable UUID channelId,
+            @PathVariable UUID supportQuestionId,
+            @RequestParam UUID viewerUserId
+    ) {
+        return SupportQuestionResponse.from(
+                supportQuestionService.getSupportQuestion(channelId, supportQuestionId, viewerUserId)
+        );
+    }
+
+    @PatchMapping("/{channelId}/support-questions/{supportQuestionId}/status")
+    public SupportQuestionResponse updateSupportQuestionStatus(
+            @PathVariable UUID channelId,
+            @PathVariable UUID supportQuestionId,
+            @Valid @RequestBody UpdateSupportQuestionStatusRequest request
+    ) {
+        return SupportQuestionResponse.from(
+                supportQuestionService.updateSupportQuestionStatus(
+                        channelId,
+                        supportQuestionId,
+                        request.actorUserId(),
+                        request.status()
+                )
+        );
     }
 }

@@ -223,6 +223,7 @@ class CourseEnrollmentSmokeTest {
     private record SupportQuestionChannelAccessResponse(
             UUID channelId,
             UUID courseId,
+            UUID studyServerId,
             String channelName,
             boolean canPostSupportQuestion,
             boolean canViewUnansweredSupportQuestions

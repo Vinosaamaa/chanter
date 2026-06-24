@@ -67,6 +67,20 @@ type SupportQuestion = {
   idempotencyKey?: string
 }
 
+type AssistantAnswer = {
+  id: string
+  supportQuestionId: string
+  answerBody: string
+  confidence: string
+  handoffRecommended: boolean
+  supportQuestionStatus: string
+  sources: Array<{
+    resourceId: string
+    resourceTitle: string
+    excerpt: string
+  }>
+}
+
 type CourseResource = {
   id: string
   courseId: string
@@ -216,6 +230,9 @@ function App() {
   const [isListingSupportQuestions, setIsListingSupportQuestions] = useState(false)
   const [supportQuestionResult, setSupportQuestionResult] = useState<string | null>(null)
   const [supportQuestionError, setSupportQuestionError] = useState<string | null>(null)
+  const [lastSupportQuestionId, setLastSupportQuestionId] = useState<string | null>(null)
+  const [assistantAnswer, setAssistantAnswer] = useState<AssistantAnswer | null>(null)
+  const [isInvokingAssistant, setIsInvokingAssistant] = useState(false)
   const [courseResourceTitle, setCourseResourceTitle] = useState('Spring Security Guide')
   const [courseResourceFile, setCourseResourceFile] = useState<File | null>(null)
   const [courseResources, setCourseResources] = useState<CourseResource[]>([])
@@ -515,6 +532,8 @@ function App() {
       }
 
       const created: SupportQuestion = await response.json()
+      setLastSupportQuestionId(created.id)
+      setAssistantAnswer(null)
       setSupportQuestions((current) => {
         if (current.some((question) => question.id === created.id)) {
           return current
@@ -558,6 +577,57 @@ function App() {
       )
     } finally {
       setIsListingSupportQuestions(false)
+    }
+  }
+
+  const selectedSupportQuestion =
+    supportQuestions.find((question) => question.id === lastSupportQuestionId) ?? null
+  const canInvokeAssistant =
+    selectedSupportQuestion?.status === 'UNANSWERED' && !assistantAnswer
+
+  const invokeAssistantAnswer = async () => {
+    if (!questionsChannel || !lastSupportQuestionId || !canInvokeAssistant) {
+      return
+    }
+
+    setIsInvokingAssistant(true)
+    setSupportQuestionError(null)
+    setSupportQuestionResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/course-channels/${questionsChannel.id}/support-questions/${lastSupportQuestionId}/assistant-answer`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ learnerUserId }),
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`Assistant answer failed with ${response.status}`)
+      }
+
+      const answer: AssistantAnswer = await response.json()
+      setAssistantAnswer(answer)
+      setSupportQuestions((current) =>
+        current.map((question) =>
+          question.id === lastSupportQuestionId
+            ? { ...question, status: answer.supportQuestionStatus }
+            : question,
+        ),
+      )
+      setSupportQuestionResult(
+        answer.handoffRecommended
+          ? `Low-confidence handoff: ${answer.answerBody}`
+          : `Grounded answer (${answer.sources.length} source(s)): ${answer.answerBody}`,
+      )
+    } catch (caught) {
+      setSupportQuestionError(
+        caught instanceof Error ? caught.message : 'Unable to invoke AI Study Assistant',
+      )
+    } finally {
+      setIsInvokingAssistant(false)
     }
   }
 
@@ -1448,6 +1518,13 @@ function App() {
                           >
                             {isListingSupportQuestions ? 'Loading...' : 'List unanswered (Instructor)'}
                           </button>
+                          <button
+                            type="button"
+                            onClick={invokeAssistantAnswer}
+                            disabled={isInvokingAssistant || !lastSupportQuestionId || !canInvokeAssistant}
+                          >
+                            {isInvokingAssistant ? 'Answering...' : 'Ask AI Assistant (#19)'}
+                          </button>
                         </div>
                         {supportQuestionResult ? <p className="system-line">{supportQuestionResult}</p> : null}
                         {supportQuestionError ? <p className="form-error">{supportQuestionError}</p> : null}
@@ -1456,6 +1533,15 @@ function App() {
                             {supportQuestions.map((question) => (
                               <li key={question.id}>
                                 <strong>{question.status}</strong> — {question.body}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {assistantAnswer && assistantAnswer.sources.length > 0 ? (
+                          <ul className="support-question-list">
+                            {assistantAnswer.sources.map((source) => (
+                              <li key={source.resourceId}>
+                                <strong>Source</strong> {source.resourceTitle}: {source.excerpt}
                               </li>
                             ))}
                           </ul>

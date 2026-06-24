@@ -1,5 +1,7 @@
 package com.chanter.message.domain;
 
 public enum SupportQuestionStatus {
-    UNANSWERED
+    UNANSWERED,
+    AI_ANSWERED,
+    AI_LOW_CONFIDENCE
 }
