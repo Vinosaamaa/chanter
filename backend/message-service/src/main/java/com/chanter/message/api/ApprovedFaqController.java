@@ -58,8 +58,8 @@ public class ApprovedFaqController {
         );
 
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path(ServiceInfo.API_V1_PREFIX + "/courses/{courseId}/approved-faqs")
-                .buildAndExpand(courseId)
+                .path(ServiceInfo.API_V1_PREFIX + "/courses/{courseId}/approved-faqs/{faqId}")
+                .buildAndExpand(courseId, approvedFaq.id())
                 .toUri();
 
         return ResponseEntity.created(location).body(ApprovedFaqResponse.from(approvedFaq));

@@ -3,7 +3,7 @@ package com.chanter.message.application;
 import com.chanter.message.domain.ApprovedFaq;
 import com.chanter.message.domain.SupportQuestion;
 import java.time.Clock;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -49,6 +49,7 @@ public class ApprovedFaqService {
         return faqCandidateGrouper.group(supportQuestions);
     }
 
+    @Transactional
     public ApprovedFaq createOrUpdateApprovedFaq(
             UUID courseId,
             UUID channelId,
@@ -139,7 +140,7 @@ public class ApprovedFaqService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Approved FAQ requires at least one source Support Question");
         }
 
-        Set<UUID> uniqueIds = new HashSet<>(sourceSupportQuestionIds);
+        Set<UUID> uniqueIds = new LinkedHashSet<>(sourceSupportQuestionIds);
         if (uniqueIds.size() != sourceSupportQuestionIds.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source Support Question ids must be unique");
         }
@@ -148,12 +149,12 @@ public class ApprovedFaqService {
     }
 
     private void validateSourceSupportQuestions(UUID channelId, List<UUID> sourceSupportQuestionIds) {
-        for (UUID supportQuestionId : sourceSupportQuestionIds) {
-            supportQuestionRepository.findByIdAndChannelId(channelId, supportQuestionId)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "Source Support Question not found in Course Channel"
-                    ));
+        Set<UUID> foundIds = supportQuestionRepository.findIdsByChannelIdAndIds(channelId, sourceSupportQuestionIds);
+        if (foundIds.size() != sourceSupportQuestionIds.size()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Source Support Question not found in Course Channel"
+            );
         }
     }
 }

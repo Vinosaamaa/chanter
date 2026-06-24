@@ -5,8 +5,10 @@ import com.chanter.message.domain.SupportQuestion;
 import com.chanter.message.domain.SupportQuestionStatus;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -172,6 +174,27 @@ public class JdbcSupportQuestionRepository implements SupportQuestionRepository 
                 .param("supportQuestionId", supportQuestionId)
                 .query(this::mapSupportQuestion)
                 .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<UUID> findIdsByChannelIdAndIds(UUID channelId, List<UUID> supportQuestionIds) {
+        if (supportQuestionIds.isEmpty()) {
+            return Set.of();
+        }
+
+        List<UUID> foundIds = jdbcClient.sql("""
+                        SELECT id
+                        FROM support_questions
+                        WHERE channel_id = :channelId
+                        AND id IN (:supportQuestionIds)
+                        """)
+                .param("channelId", channelId)
+                .param("supportQuestionIds", supportQuestionIds)
+                .query(UUID.class)
+                .list();
+
+        return new HashSet<>(foundIds);
     }
 
     @Override
