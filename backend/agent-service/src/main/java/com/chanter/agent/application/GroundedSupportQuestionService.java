@@ -163,7 +163,8 @@ public class GroundedSupportQuestionService {
             }
         } catch (ResponseStatusException exception) {
             if (exception.getStatusCode() != HttpStatus.NOT_FOUND
-                    && exception.getStatusCode() != HttpStatus.FORBIDDEN) {
+                    && exception.getStatusCode() != HttpStatus.FORBIDDEN
+                    && exception.getStatusCode() != HttpStatus.BAD_GATEWAY) {
                 throw exception;
             }
         } catch (RuntimeException exception) {

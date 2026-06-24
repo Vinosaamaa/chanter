@@ -100,6 +100,8 @@ class ApprovedFaqSmokeTest {
 
         assertThat(created.courseId()).isEqualTo(courseId);
         assertThat(created.approvedByUserId()).isEqualTo(instructorUserId);
+        assertThat(createResult.getResponse().getHeader("Location"))
+                .contains("/api/v1/courses/" + courseId + "/approved-faqs/" + created.id());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/courses/{courseId}/approved-faqs", courseId)
                         .param("viewerUserId", learnerUserId.toString()))

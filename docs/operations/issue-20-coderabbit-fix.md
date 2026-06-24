@@ -18,8 +18,14 @@ Retroactive `coderabbit review --agent --base b25a111` on the #20 diff (16 findi
 | Minor | `ApprovedFaqController.java` | `Location` header points to created FAQ id |
 | Minor | `JdbcApprovedFaqRepository.java` | Escape `%` and `_` in FAQ search `LIKE` patterns |
 | Minor | `HANDOFF.md`, `README.md` | Resolve #20 status contradiction (merged + follow-up PR) |
-| Trivial | `ApprovedFaqSmokeTest.java` | Compare listed FAQ directly to created response |
-| Trivial | `V5__approved_faq_source_question_index.sql` | Index on `support_question_id` |
+| Trivial | `ApprovedFaqSmokeTest.java` | Assert `Location` header includes created FAQ id |
+
+## PR #40 follow-up (second CodeRabbit pass)
+
+| Severity | File | Action |
+|----------|------|--------|
+| Major | `GroundedSupportQuestionService.java` | Swallow `BAD_GATEWAY` when FAQ list fails (supplemental grounding) |
+| Trivial | `ApprovedFaqSmokeTest.java` | Assert `Location` header includes created FAQ id |
 
 ## Deferred
 
