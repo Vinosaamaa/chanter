@@ -129,6 +129,48 @@ public class JdbcSupportQuestionRepository implements SupportQuestionRepository 
                 .list();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<SupportQuestion> findByIdAndChannelId(UUID channelId, UUID supportQuestionId) {
+        return jdbcClient.sql("""
+                        SELECT
+                            id,
+                            channel_message_id,
+                            channel_id,
+                            sender_user_id,
+                            body,
+                            status,
+                            idempotency_key,
+                            created_at
+                        FROM support_questions
+                        WHERE channel_id = :channelId
+                        AND id = :supportQuestionId
+                        """)
+                .param("channelId", channelId)
+                .param("supportQuestionId", supportQuestionId)
+                .query(this::mapSupportQuestion)
+                .optional();
+    }
+
+    @Override
+    @Transactional
+    public boolean updateStatus(
+            UUID supportQuestionId,
+            SupportQuestionStatus fromStatus,
+            SupportQuestionStatus toStatus
+    ) {
+        return jdbcClient.sql("""
+                        UPDATE support_questions
+                        SET status = :toStatus
+                        WHERE id = :supportQuestionId
+                        AND status = :fromStatus
+                        """)
+                .param("supportQuestionId", supportQuestionId)
+                .param("fromStatus", fromStatus.name())
+                .param("toStatus", toStatus.name())
+                .update() > 0;
+    }
+
     private SupportQuestion mapSupportQuestion(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new SupportQuestion(
                 rs.getObject("id", UUID.class),

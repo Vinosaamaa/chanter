@@ -33,8 +33,8 @@ Vertical slices (#11–#24):
 | 15 | Slice: Send Friend Request And Direct Message | Done |
 | 16 | Slice: Post A Support Question In A Course Channel | Done |
 | 17 | Slice: Upload An Approved Course Resource | Done |
-| 18 | Slice: Install The AI Study Assistant | **Active** |
-| 19 | Slice: Answer A Grounded Support Question | after #18 |
+| 18 | Slice: Install The AI Study Assistant | Done |
+| 19 | Slice: Answer A Grounded Support Question | **Active** |
 | 20 | Slice: Promote Repeated Support Question To Approved FAQ | after #19 |
 | 21 | Slice: Route Low-Confidence Answer To TA Queue | after #19 |
 | 22 | Slice: Run Office Hours For A Cohort | after #13, #21 |

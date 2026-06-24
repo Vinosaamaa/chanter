@@ -189,6 +189,7 @@ public class JdbcCourseRepository implements CourseRepository {
                         SELECT
                             cc.id,
                             cc.course_id,
+                            co.study_server_id,
                             cc.name,
                             CASE
                                 WHEN EXISTS (
@@ -211,6 +212,7 @@ public class JdbcCourseRepository implements CourseRepository {
                                 ELSE FALSE
                             END AS can_view
                         FROM course_channels cc
+                        JOIN courses co ON co.id = cc.course_id
                         WHERE cc.id = :channelId
                         AND cc.kind = :textKind
                         AND cc.name = :questionsChannelName
@@ -239,6 +241,7 @@ public class JdbcCourseRepository implements CourseRepository {
                 .query((rs, rowNum) -> new SupportQuestionChannelAccess(
                         rs.getObject("id", UUID.class),
                         rs.getObject("course_id", UUID.class),
+                        rs.getObject("study_server_id", UUID.class),
                         rs.getString("name"),
                         rs.getBoolean("can_post"),
                         rs.getBoolean("can_view")

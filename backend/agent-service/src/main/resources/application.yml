@@ -21,6 +21,10 @@ chanter:
     base-url: ${MEDIA_SERVICE_URL:http://localhost:8084}
     connect-timeout-seconds: 5
     read-timeout-seconds: 10
+  message-service:
+    base-url: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+    connect-timeout-seconds: 5
+    read-timeout-seconds: 10
 
 management:
   endpoints:

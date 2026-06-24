@@ -17,4 +17,8 @@ public interface SupportQuestionRepository {
     );
 
     List<SupportQuestion> findByChannelIdAndStatus(UUID channelId, SupportQuestionStatus status);
+
+    Optional<SupportQuestion> findByIdAndChannelId(UUID channelId, UUID supportQuestionId);
+
+    boolean updateStatus(UUID supportQuestionId, SupportQuestionStatus fromStatus, SupportQuestionStatus toStatus);
 }

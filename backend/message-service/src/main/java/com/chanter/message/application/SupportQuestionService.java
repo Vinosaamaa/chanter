@@ -60,4 +60,59 @@ public class SupportQuestionService {
 
         return repository.findByChannelIdAndStatus(channelId, SupportQuestionStatus.UNANSWERED);
     }
+
+    @Transactional(readOnly = true)
+    public SupportQuestion getSupportQuestion(UUID channelId, UUID supportQuestionId, UUID viewerUserId) {
+        CourseChannelAccess access = courseChannelAccessClient.requireAccess(channelId, viewerUserId);
+        SupportQuestion supportQuestion = repository.findByIdAndChannelId(channelId, supportQuestionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Support Question not found"));
+
+        if (supportQuestion.senderUserId().equals(viewerUserId)) {
+            return supportQuestion;
+        }
+        if (!access.canViewUnansweredSupportQuestions()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support Question access requires sender or Instructor role");
+        }
+
+        return supportQuestion;
+    }
+
+    public SupportQuestion updateSupportQuestionStatus(
+            UUID channelId,
+            UUID supportQuestionId,
+            UUID actorUserId,
+            SupportQuestionStatus status
+    ) {
+        CourseChannelAccess access = courseChannelAccessClient.requireAccess(channelId, actorUserId);
+        if (!access.canPostSupportQuestion()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only enrolled learners can update Support Question status");
+        }
+
+        SupportQuestion supportQuestion = repository.findByIdAndChannelId(channelId, supportQuestionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Support Question not found"));
+
+        if (!supportQuestion.senderUserId().equals(actorUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Support Question author can record assistant outcomes");
+        }
+
+        if (supportQuestion.status() != SupportQuestionStatus.UNANSWERED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
+        }
+
+        if (status != SupportQuestionStatus.AI_ANSWERED && status != SupportQuestionStatus.AI_LOW_CONFIDENCE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assistant outcomes must be AI_ANSWERED or AI_LOW_CONFIDENCE");
+        }
+
+        boolean updated = repository.updateStatus(
+                supportQuestionId,
+                SupportQuestionStatus.UNANSWERED,
+                status
+        );
+        if (!updated) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
+        }
+
+        return repository.findByIdAndChannelId(channelId, supportQuestionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Support Question not found"));
+    }
 }
