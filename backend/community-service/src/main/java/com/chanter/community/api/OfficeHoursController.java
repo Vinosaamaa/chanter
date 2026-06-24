@@ -39,8 +39,8 @@ public class OfficeHoursController {
                 request.startsAt(),
                 request.endsAt()
         );
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{sessionId}")
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path(ServiceInfo.API_V1_PREFIX + "/office-hours/{sessionId}")
                 .buildAndExpand(session.id())
                 .toUri();
 
