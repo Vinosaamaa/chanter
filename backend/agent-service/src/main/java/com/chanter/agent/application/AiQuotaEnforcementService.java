@@ -59,9 +59,9 @@ public class AiQuotaEnforcementService {
             return;
         }
 
-        jdbcClient.sql("SELECT pg_advisory_xact_lock(:msb, :lsb)")
-                .param("msb", studyServerId.getMostSignificantBits())
-                .param("lsb", studyServerId.getLeastSignificantBits())
+        long lockKey = studyServerId.getMostSignificantBits() ^ studyServerId.getLeastSignificantBits();
+        jdbcClient.sql("SELECT pg_advisory_xact_lock(:lockKey)")
+                .param("lockKey", lockKey)
                 .query(Long.class)
                 .single();
     }
