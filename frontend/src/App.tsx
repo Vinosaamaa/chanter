@@ -867,6 +867,7 @@ function App() {
     }
 
     setIsLoadingInstructorDashboard(true)
+    setInstructorDashboard(null)
     setInstructorDashboardError(null)
     setInstructorDashboardResult(null)
 

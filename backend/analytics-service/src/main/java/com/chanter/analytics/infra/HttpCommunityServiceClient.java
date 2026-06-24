@@ -9,7 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
@@ -52,6 +54,12 @@ public class HttpCommunityServiceClient {
                     "Instructor Dashboard requires Study Server Owner or Course Instructor role",
                     exception
             );
+        } catch (HttpClientErrorException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service grant candidates request failed", exception);
+        } catch (HttpServerErrorException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service is unavailable", exception);
+        } catch (RestClientException exception) {
+            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Community Service grant candidates request timed out", exception);
         }
     }
 
@@ -76,6 +84,12 @@ public class HttpCommunityServiceClient {
                     "Instructor Dashboard requires Study Server Owner or Course Instructor role",
                     exception
             );
+        } catch (HttpClientErrorException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service community metrics request failed", exception);
+        } catch (HttpServerErrorException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service is unavailable", exception);
+        } catch (RestClientException exception) {
+            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Community Service community metrics request timed out", exception);
         }
     }
 

@@ -45,8 +45,15 @@ class InstructorDashboardControllerTest {
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/instructor-dashboard", studyServerId)
                         .param("viewerUserId", viewerUserId.toString()))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.studyServerId").value(studyServerId.toString()))
                 .andExpect(jsonPath("$.unansweredSupportQuestions").value(4))
+                .andExpect(jsonPath("$.repeatedQuestionGroups").value(2))
+                .andExpect(jsonPath("$.approvedFaqCount").value(5))
                 .andExpect(jsonPath("$.openTaQueueItems").value(1))
-                .andExpect(jsonPath("$.aiInvocationCount").value(10));
+                .andExpect(jsonPath("$.liveOfficeHoursSessions").value(1))
+                .andExpect(jsonPath("$.scheduledOfficeHoursSessions").value(2))
+                .andExpect(jsonPath("$.officeHoursWaitlistEntries").value(3))
+                .andExpect(jsonPath("$.aiInvocationCount").value(10))
+                .andExpect(jsonPath("$.lowConfidenceHandoffs").value(3));
     }
 }

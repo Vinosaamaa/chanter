@@ -7,7 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
@@ -44,6 +46,12 @@ public class HttpAgentServiceClient {
             return response;
         } catch (HttpClientErrorException.Forbidden exception) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Instructor Dashboard AI usage metrics denied", exception);
+        } catch (HttpClientErrorException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Agent Service AI usage metrics request failed", exception);
+        } catch (HttpServerErrorException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Agent Service is unavailable", exception);
+        } catch (RestClientException exception) {
+            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Agent Service AI usage metrics request timed out", exception);
         }
     }
 

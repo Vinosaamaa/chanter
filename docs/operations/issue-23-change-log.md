@@ -2,7 +2,9 @@
 
 Date: 2026-06-21  
 Branch: `feature/23-show-instructor-dashboard`  
-Issue: `#23 Slice: Show Instructor Dashboard`
+PR: #44 (open)  
+Issue: `#23 Slice: Show Instructor Dashboard`  
+Merge status: pending user merge
 
 ## Acceptance Criteria Covered
 
