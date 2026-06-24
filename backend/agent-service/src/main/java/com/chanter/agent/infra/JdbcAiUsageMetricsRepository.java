@@ -1,7 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.AiUsageMetricsRepository;
-import com.chanter.agent.domain.AiUsageMetrics;
+import com.chanter.agent.domain.AiInvocationCounts;
 import com.chanter.agent.domain.InvocationType;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -19,27 +19,22 @@ public class JdbcAiUsageMetricsRepository implements AiUsageMetricsRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public AiUsageMetrics findMetrics(UUID studyServerId) {
-        int totalInvocations = jdbcClient.sql("""
-                        SELECT COUNT(*)
+    public AiInvocationCounts findInvocationCounts(UUID studyServerId) {
+        return jdbcClient.sql("""
+                        SELECT
+                            COUNT(*) AS total_invocations,
+                            COUNT(*) FILTER (
+                                WHERE invocation_type = :handoffType
+                            ) AS low_confidence_handoffs
                         FROM study_assistant_audit_records
                         WHERE study_server_id = :studyServerId
-                        """)
-                .param("studyServerId", studyServerId)
-                .query(Integer.class)
-                .single();
-
-        int lowConfidenceHandoffs = jdbcClient.sql("""
-                        SELECT COUNT(*)
-                        FROM study_assistant_audit_records
-                        WHERE study_server_id = :studyServerId
-                        AND invocation_type = :handoffType
                         """)
                 .param("studyServerId", studyServerId)
                 .param("handoffType", InvocationType.LOW_CONFIDENCE_HANDOFF.name())
-                .query(Integer.class)
+                .query((resultSet, rowNum) -> new AiInvocationCounts(
+                        resultSet.getInt("total_invocations"),
+                        resultSet.getInt("low_confidence_handoffs")
+                ))
                 .single();
-
-        return new AiUsageMetrics(studyServerId, totalInvocations, lowConfidenceHandoffs);
     }
 }

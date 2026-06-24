@@ -42,6 +42,7 @@ public class InstructorDashboardService {
 
         return new InstructorDashboardResponse(
                 studyServerId,
+                aiUsage.planTier(),
                 messageMetrics.unansweredSupportQuestions(),
                 messageMetrics.faqCandidateGroups(),
                 messageMetrics.approvedFaqCount(),
@@ -50,6 +51,9 @@ public class InstructorDashboardService {
                 communityMetrics.scheduledOfficeHoursSessions(),
                 communityMetrics.officeHoursWaitlistEntries(),
                 aiUsage.totalInvocations(),
+                aiUsage.aiInvocationLimit(),
+                aiUsage.remainingInvocations(),
+                aiUsage.quotaExhausted(),
                 aiUsage.lowConfidenceHandoffs()
         );
     }

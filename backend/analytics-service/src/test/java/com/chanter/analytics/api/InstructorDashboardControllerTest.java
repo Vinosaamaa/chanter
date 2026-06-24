@@ -31,6 +31,7 @@ class InstructorDashboardControllerTest {
         when(instructorDashboardService.buildDashboard(eq(studyServerId), eq(viewerUserId)))
                 .thenReturn(new InstructorDashboardResponse(
                         studyServerId,
+                        "STARTER",
                         4,
                         2,
                         5,
@@ -38,7 +39,10 @@ class InstructorDashboardControllerTest {
                         1,
                         2,
                         3,
-                        10,
+                        4,
+                        5,
+                        1,
+                        false,
                         3
                 ));
 
@@ -53,7 +57,11 @@ class InstructorDashboardControllerTest {
                 .andExpect(jsonPath("$.liveOfficeHoursSessions").value(1))
                 .andExpect(jsonPath("$.scheduledOfficeHoursSessions").value(2))
                 .andExpect(jsonPath("$.officeHoursWaitlistEntries").value(3))
-                .andExpect(jsonPath("$.aiInvocationCount").value(10))
+                .andExpect(jsonPath("$.aiInvocationCount").value(4))
+                .andExpect(jsonPath("$.aiInvocationLimit").value(5))
+                .andExpect(jsonPath("$.remainingAiInvocations").value(1))
+                .andExpect(jsonPath("$.quotaExhausted").value(false))
+                .andExpect(jsonPath("$.planTier").value("STARTER"))
                 .andExpect(jsonPath("$.lowConfidenceHandoffs").value(3));
     }
 }

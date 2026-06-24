@@ -13,6 +13,7 @@ import com.chanter.agent.domain.GrantType;
 import com.chanter.agent.infra.TestCourseResourceCatalogClient;
 import com.chanter.agent.infra.TestCourseResourceContentClient;
 import com.chanter.agent.infra.TestStudyAssistantGrantCandidatesClient;
+import com.chanter.agent.infra.TestStudyServerSaasPlanClient;
 import com.chanter.agent.infra.TestSupportQuestionChannelAccessClient;
 import com.chanter.agent.infra.TestSupportQuestionClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -57,6 +58,9 @@ class GroundedSupportQuestionSmokeTest {
     @Autowired
     private TestSupportQuestionClient supportQuestionClient;
 
+    @Autowired
+    private TestStudyServerSaasPlanClient saasPlanClient;
+
     @BeforeEach
     void setUp() {
         grantCandidatesClient.clear();
@@ -64,6 +68,7 @@ class GroundedSupportQuestionSmokeTest {
         courseResourceContentClient.clear();
         channelAccessClient.clear();
         supportQuestionClient.clear();
+        saasPlanClient.clear();
     }
 
     @Test
@@ -313,6 +318,8 @@ class GroundedSupportQuestionSmokeTest {
                         Set.of(channelId)
                 )
         );
+
+        saasPlanClient.registerPlan(studyServerId, "STARTER", 100);
 
         courseResourceCatalogClient.registerResource(new CourseResourceSummary(
                 courseResourceId,

@@ -35,6 +35,8 @@ public class GroundedSupportQuestionService {
     private final CourseResourceContentClient courseResourceContentClient;
     private final ApprovedFaqClient approvedFaqClient;
     private final GroundingEngine groundingEngine;
+    private final AiQuotaEnforcementService aiQuotaEnforcementService;
+    private final StudyAssistantAnswerPersistenceService answerPersistenceService;
     private final StudyAssistantAnswerRepository answerRepository;
     private final Clock clock;
 
@@ -46,6 +48,8 @@ public class GroundedSupportQuestionService {
             CourseResourceContentClient courseResourceContentClient,
             ApprovedFaqClient approvedFaqClient,
             GroundingEngine groundingEngine,
+            AiQuotaEnforcementService aiQuotaEnforcementService,
+            StudyAssistantAnswerPersistenceService answerPersistenceService,
             StudyAssistantAnswerRepository answerRepository,
             Clock clock
     ) {
@@ -56,6 +60,8 @@ public class GroundedSupportQuestionService {
         this.courseResourceContentClient = courseResourceContentClient;
         this.approvedFaqClient = approvedFaqClient;
         this.groundingEngine = groundingEngine;
+        this.aiQuotaEnforcementService = aiQuotaEnforcementService;
+        this.answerPersistenceService = answerPersistenceService;
         this.answerRepository = answerRepository;
         this.clock = clock;
     }
@@ -112,6 +118,8 @@ public class GroundedSupportQuestionService {
                     "AI Study Assistant is not granted for this Course Channel"
             );
         }
+
+        aiQuotaEnforcementService.requireQuotaAvailable(access.studyServerId());
 
         Set<UUID> grantedResourceIds = presence.grants().stream()
                 .filter(grant -> grant.grantType() == GrantType.COURSE_RESOURCE)
@@ -199,7 +207,7 @@ public class GroundedSupportQuestionService {
                 clock.instant()
         );
 
-        StudyAssistantAnswer savedAnswer = answerRepository.saveAnswer(answer, invocationType);
+        StudyAssistantAnswer savedAnswer = answerPersistenceService.saveAnswer(answer, invocationType);
 
         String updatedStatus = statusForConfidence(groundingResult.confidence());
         supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, updatedStatus);
