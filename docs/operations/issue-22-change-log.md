@@ -2,7 +2,9 @@
 
 Date: 2026-06-21  
 Branch: `feature/22-run-office-hours-for-cohort`  
-Issue: `#22 Slice: Run Office Hours For A Cohort`
+Issue: `#22 Slice: Run Office Hours For A Cohort`  
+PR: #43 (merged 2026-06-24)  
+CodeRabbit follow-up: `fix/22-coderabbit-review` — see `issue-22-coderabbit-fix.md`
 
 ## Acceptance Criteria Covered
 

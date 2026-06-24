@@ -109,10 +109,11 @@ public class OfficeHoursService {
                 .filter(entry -> entry.status() == OfficeHoursWaitlistStatus.LEFT)
                 .orElse(null);
         if (existingLeft != null) {
-            return officeHoursRepository.updateWaitlistStatus(
+            return officeHoursRepository.rejoinWaitlistEntry(
                     sessionId,
                     learnerUserId,
-                    OfficeHoursWaitlistStatus.WAITING.name()
+                    clock.instant(),
+                    OfficeHoursWaitlistStatus.WAITING
             );
         }
 
@@ -130,14 +131,8 @@ public class OfficeHoursService {
         requireManageAccess(session.cohortId(), actorUserId);
         requireOpenWindow(session);
 
-        OfficeHoursWaitlistEntry next = officeHoursRepository.findNextWaitingEntry(sessionId)
+        OfficeHoursWaitlistEntry admitted = officeHoursRepository.claimNextWaitingEntry(sessionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No learners waiting for Office Hours"));
-
-        OfficeHoursWaitlistEntry admitted = officeHoursRepository.updateWaitlistStatus(
-                sessionId,
-                next.learnerUserId(),
-                OfficeHoursWaitlistStatus.ADMITTED.name()
-        );
 
         studyServerRepository.saveVoicePresence(session.voiceChannelId(), admitted.learnerUserId());
         markSessionLiveIfNeeded(session);
@@ -180,7 +175,7 @@ public class OfficeHoursService {
     @Transactional(readOnly = true)
     public List<OfficeHoursWaitlistEntry> listWaitlist(UUID sessionId, UUID viewerUserId) {
         OfficeHoursSession session = requireSession(sessionId);
-        requireOfficeHoursAccess(session.cohortId(), viewerUserId);
+        requireManageAccess(session.cohortId(), viewerUserId);
         return officeHoursRepository.findWaitlistEntries(sessionId);
     }
 
@@ -194,7 +189,7 @@ public class OfficeHoursService {
             return session;
         }
 
-        return officeHoursRepository.updateSessionStatus(sessionId, OfficeHoursSessionStatus.ENDED.name());
+        return officeHoursRepository.updateSessionStatus(sessionId, OfficeHoursSessionStatus.ENDED);
     }
 
     private OfficeHoursSession requireSession(UUID sessionId) {
@@ -238,7 +233,7 @@ public class OfficeHoursService {
 
     private void markSessionLiveIfNeeded(OfficeHoursSession session) {
         if (session.status() == OfficeHoursSessionStatus.SCHEDULED) {
-            officeHoursRepository.updateSessionStatus(session.id(), OfficeHoursSessionStatus.LIVE.name());
+            officeHoursRepository.updateSessionStatus(session.id(), OfficeHoursSessionStatus.LIVE);
         }
     }
 }

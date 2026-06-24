@@ -7,6 +7,7 @@ import com.chanter.community.domain.OfficeHoursWaitlistEntry;
 import com.chanter.community.domain.OfficeHoursWaitlistStatus;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -82,14 +83,14 @@ public class JdbcOfficeHoursRepository implements OfficeHoursRepository {
 
     @Override
     @Transactional
-    public OfficeHoursSession updateSessionStatus(UUID sessionId, String status) {
+    public OfficeHoursSession updateSessionStatus(UUID sessionId, OfficeHoursSessionStatus status) {
         int updated = jdbcClient.sql("""
                         UPDATE office_hours_sessions
                         SET status = :status
                         WHERE id = :sessionId
                         """)
                 .param("sessionId", sessionId)
-                .param("status", status)
+                .param("status", status.name())
                 .update();
 
         if (updated == 0) {
@@ -147,10 +148,37 @@ public class JdbcOfficeHoursRepository implements OfficeHoursRepository {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Optional<OfficeHoursWaitlistEntry> findNextWaitingEntry(UUID sessionId) {
-        return jdbcClient.sql("""
-                        SELECT session_id, learner_user_id, joined_at, status
+    @Transactional
+    public OfficeHoursWaitlistEntry rejoinWaitlistEntry(
+            UUID sessionId,
+            UUID learnerUserId,
+            Instant joinedAt,
+            OfficeHoursWaitlistStatus status
+    ) {
+        int updated = jdbcClient.sql("""
+                        UPDATE office_hours_waitlist_entries
+                        SET status = :status, joined_at = :joinedAt
+                        WHERE session_id = :sessionId
+                        AND learner_user_id = :learnerUserId
+                        """)
+                .param("sessionId", sessionId)
+                .param("learnerUserId", learnerUserId)
+                .param("joinedAt", OffsetDateTime.ofInstant(joinedAt, ZoneOffset.UTC))
+                .param("status", status.name())
+                .update();
+
+        if (updated == 0) {
+            throw new IllegalStateException("Waitlist entry not found");
+        }
+
+        return findWaitlistEntry(sessionId, learnerUserId).orElseThrow();
+    }
+
+    @Override
+    @Transactional
+    public Optional<OfficeHoursWaitlistEntry> claimNextWaitingEntry(UUID sessionId) {
+        Optional<UUID> nextLearnerUserId = jdbcClient.sql("""
+                        SELECT learner_user_id
                         FROM office_hours_waitlist_entries
                         WHERE session_id = :sessionId
                         AND status = :waitingStatus
@@ -159,29 +187,31 @@ public class JdbcOfficeHoursRepository implements OfficeHoursRepository {
                         """)
                 .param("sessionId", sessionId)
                 .param("waitingStatus", OfficeHoursWaitlistStatus.WAITING.name())
-                .query((rs, rowNum) -> mapWaitlistEntry(rs))
+                .query(UUID.class)
                 .optional();
-    }
 
-    @Override
-    @Transactional
-    public OfficeHoursWaitlistEntry updateWaitlistStatus(UUID sessionId, UUID learnerUserId, String status) {
+        if (nextLearnerUserId.isEmpty()) {
+            return Optional.empty();
+        }
+
         int updated = jdbcClient.sql("""
                         UPDATE office_hours_waitlist_entries
-                        SET status = :status
+                        SET status = :admittedStatus
                         WHERE session_id = :sessionId
                         AND learner_user_id = :learnerUserId
+                        AND status = :waitingStatus
                         """)
                 .param("sessionId", sessionId)
-                .param("learnerUserId", learnerUserId)
-                .param("status", status)
+                .param("learnerUserId", nextLearnerUserId.get())
+                .param("admittedStatus", OfficeHoursWaitlistStatus.ADMITTED.name())
+                .param("waitingStatus", OfficeHoursWaitlistStatus.WAITING.name())
                 .update();
 
         if (updated == 0) {
-            throw new IllegalStateException("Waitlist entry not found");
+            return Optional.empty();
         }
 
-        return findWaitlistEntry(sessionId, learnerUserId).orElseThrow();
+        return findWaitlistEntry(sessionId, nextLearnerUserId.get());
     }
 
     @Override
