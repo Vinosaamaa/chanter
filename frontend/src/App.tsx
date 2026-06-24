@@ -124,6 +124,19 @@ type StudyAssistantPresence = {
   grants: StudyAssistantGrant[]
 }
 
+type FaqCandidateGroup = {
+  representativeQuestion: string
+  supportQuestions: SupportQuestion[]
+}
+
+type ApprovedFaq = {
+  id: string
+  courseId: string
+  question: string
+  answer: string
+  approvedByUserId: string
+}
+
 type HealthState = {
   gateway: string
   auth: string
@@ -247,6 +260,21 @@ function App() {
   const [isLoadingStudyAssistantPresence, setIsLoadingStudyAssistantPresence] = useState(false)
   const [studyAssistantResult, setStudyAssistantResult] = useState<string | null>(null)
   const [studyAssistantError, setStudyAssistantError] = useState<string | null>(null)
+  const [faqCandidates, setFaqCandidates] = useState<FaqCandidateGroup[]>([])
+  const [approvedFaqs, setApprovedFaqs] = useState<ApprovedFaq[]>([])
+  const [approvedFaqQuestion, setApprovedFaqQuestion] = useState(
+    'How do I configure Spring Security filters?',
+  )
+  const [approvedFaqAnswer, setApprovedFaqAnswer] = useState(
+    'Configure HttpSecurity to add authentication and authorization rules.',
+  )
+  const [approvedFaqSearchQuery, setApprovedFaqSearchQuery] = useState('authentication')
+  const [isListingFaqCandidates, setIsListingFaqCandidates] = useState(false)
+  const [isApprovingFaq, setIsApprovingFaq] = useState(false)
+  const [isListingApprovedFaqs, setIsListingApprovedFaqs] = useState(false)
+  const [isSearchingApprovedFaqs, setIsSearchingApprovedFaqs] = useState(false)
+  const [approvedFaqResult, setApprovedFaqResult] = useState<string | null>(null)
+  const [approvedFaqError, setApprovedFaqError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const refreshDirectMessages = async () => {
@@ -838,6 +866,145 @@ function App() {
       )
     } finally {
       setIsLoadingStudyAssistantPresence(false)
+    }
+  }
+
+  const listFaqCandidates = async () => {
+    if (!questionsChannel) {
+      return
+    }
+
+    setIsListingFaqCandidates(true)
+    setApprovedFaqError(null)
+    setApprovedFaqResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/course-channels/${questionsChannel.id}/faq-candidates?viewerUserId=${instructorUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`FAQ candidate list failed with ${response.status}`)
+      }
+
+      const data: { faqCandidates: FaqCandidateGroup[] } = await response.json()
+      setFaqCandidates(data.faqCandidates)
+      if (data.faqCandidates.length > 0) {
+        setApprovedFaqQuestion(data.faqCandidates[0].representativeQuestion)
+      }
+      setApprovedFaqResult(`Instructor sees ${data.faqCandidates.length} repeated-question group(s).`)
+    } catch (caught) {
+      setApprovedFaqError(
+        caught instanceof Error ? caught.message : 'Unable to list FAQ candidates',
+      )
+    } finally {
+      setIsListingFaqCandidates(false)
+    }
+  }
+
+  const approveFaq = async () => {
+    if (!course || !questionsChannel) {
+      return
+    }
+
+    const sourceSupportQuestionIds =
+      faqCandidates[0]?.supportQuestions.map((question) => question.id) ??
+      supportQuestions.map((question) => question.id)
+
+    if (sourceSupportQuestionIds.length === 0) {
+      setApprovedFaqError('Post similar Support Questions before approving an FAQ.')
+      return
+    }
+
+    setIsApprovingFaq(true)
+    setApprovedFaqError(null)
+    setApprovedFaqResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/courses/${course.id}/approved-faqs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelId: questionsChannel.id,
+          approvedByUserId: instructorUserId,
+          question: approvedFaqQuestion,
+          answer: approvedFaqAnswer,
+          sourceSupportQuestionIds,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Approved FAQ create failed with ${response.status}`)
+      }
+
+      const created: ApprovedFaq = await response.json()
+      setApprovedFaqs((current) => {
+        if (current.some((faq) => faq.id === created.id)) {
+          return current.map((faq) => (faq.id === created.id ? created : faq))
+        }
+        return [created, ...current]
+      })
+      setApprovedFaqResult('Instructor approved an FAQ for this Course.')
+    } catch (caught) {
+      setApprovedFaqError(caught instanceof Error ? caught.message : 'Unable to approve FAQ')
+    } finally {
+      setIsApprovingFaq(false)
+    }
+  }
+
+  const listApprovedFaqs = async () => {
+    if (!course) {
+      return
+    }
+
+    setIsListingApprovedFaqs(true)
+    setApprovedFaqError(null)
+    setApprovedFaqResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/courses/${course.id}/approved-faqs?viewerUserId=${learnerUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Approved FAQ list failed with ${response.status}`)
+      }
+
+      const data: { approvedFaqs: ApprovedFaq[] } = await response.json()
+      setApprovedFaqs(data.approvedFaqs)
+      setApprovedFaqResult(`Learner sees ${data.approvedFaqs.length} Approved FAQ(s).`)
+    } catch (caught) {
+      setApprovedFaqError(caught instanceof Error ? caught.message : 'Unable to list Approved FAQs')
+    } finally {
+      setIsListingApprovedFaqs(false)
+    }
+  }
+
+  const searchApprovedFaqs = async () => {
+    if (!course) {
+      return
+    }
+
+    setIsSearchingApprovedFaqs(true)
+    setApprovedFaqError(null)
+    setApprovedFaqResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/courses/${course.id}/approved-faqs/search?viewerUserId=${learnerUserId}&query=${encodeURIComponent(approvedFaqSearchQuery)}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Approved FAQ search failed with ${response.status}`)
+      }
+
+      const data: { approvedFaqs: ApprovedFaq[] } = await response.json()
+      setApprovedFaqs(data.approvedFaqs)
+      setApprovedFaqResult(`Search returned ${data.approvedFaqs.length} Approved FAQ(s).`)
+    } catch (caught) {
+      setApprovedFaqError(caught instanceof Error ? caught.message : 'Unable to search Approved FAQs')
+    } finally {
+      setIsSearchingApprovedFaqs(false)
     }
   }
 
@@ -1656,6 +1823,81 @@ function App() {
                               <li key={`${grant.grantType}-${grant.grantTargetId}`}>
                                 <strong>{grant.grantType}</strong>{' '}
                                 <code title={grant.grantTargetId}>{truncateId(grant.grantTargetId)}</code>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </section>
+                    ) : null}
+                    {accessResult && questionsChannel ? (
+                      <section className="support-question-summary">
+                        <p className="eyebrow">Approved FAQs (#20)</p>
+                        <label htmlFor="approved-faq-question">Approved FAQ question</label>
+                        <textarea
+                          id="approved-faq-question"
+                          value={approvedFaqQuestion}
+                          onChange={(event) => setApprovedFaqQuestion(event.target.value)}
+                          rows={2}
+                        />
+                        <label htmlFor="approved-faq-answer">Approved FAQ answer</label>
+                        <textarea
+                          id="approved-faq-answer"
+                          value={approvedFaqAnswer}
+                          onChange={(event) => setApprovedFaqAnswer(event.target.value)}
+                          rows={3}
+                        />
+                        <label htmlFor="approved-faq-search">Search query</label>
+                        <input
+                          id="approved-faq-search"
+                          value={approvedFaqSearchQuery}
+                          onChange={(event) => setApprovedFaqSearchQuery(event.target.value)}
+                          maxLength={255}
+                        />
+                        <div className="voice-actions">
+                          <button
+                            type="button"
+                            onClick={listFaqCandidates}
+                            disabled={isListingFaqCandidates}
+                          >
+                            {isListingFaqCandidates ? 'Loading...' : 'List candidates (Instructor)'}
+                          </button>
+                          <button type="button" onClick={approveFaq} disabled={isApprovingFaq}>
+                            {isApprovingFaq ? 'Approving...' : 'Approve FAQ (Instructor)'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={listApprovedFaqs}
+                            disabled={isListingApprovedFaqs}
+                          >
+                            {isListingApprovedFaqs ? 'Loading...' : 'List FAQs (Learner)'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={searchApprovedFaqs}
+                            disabled={isSearchingApprovedFaqs}
+                          >
+                            {isSearchingApprovedFaqs ? 'Searching...' : 'Search FAQs (Learner)'}
+                          </button>
+                        </div>
+                        {approvedFaqResult ? <p className="system-line">{approvedFaqResult}</p> : null}
+                        {approvedFaqError ? <p className="form-error">{approvedFaqError}</p> : null}
+                        {faqCandidates.length > 0 ? (
+                          <ul className="support-question-list">
+                            {faqCandidates.map((group) => (
+                              <li key={group.representativeQuestion}>
+                                <strong>Candidate</strong> {group.representativeQuestion}{' '}
+                                <span className="muted-copy">
+                                  ({group.supportQuestions.length} question(s))
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {approvedFaqs.length > 0 ? (
+                          <ul className="support-question-list">
+                            {approvedFaqs.map((faq) => (
+                              <li key={faq.id}>
+                                <strong>FAQ</strong> {faq.question} — {faq.answer}
                               </li>
                             ))}
                           </ul>

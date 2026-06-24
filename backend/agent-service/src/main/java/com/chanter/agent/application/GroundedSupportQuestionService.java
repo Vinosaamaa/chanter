@@ -33,6 +33,7 @@ public class GroundedSupportQuestionService {
     private final SupportQuestionClient supportQuestionClient;
     private final CourseResourceCatalogClient courseResourceCatalogClient;
     private final CourseResourceContentClient courseResourceContentClient;
+    private final ApprovedFaqClient approvedFaqClient;
     private final GroundingEngine groundingEngine;
     private final StudyAssistantAnswerRepository answerRepository;
     private final Clock clock;
@@ -43,6 +44,7 @@ public class GroundedSupportQuestionService {
             SupportQuestionClient supportQuestionClient,
             CourseResourceCatalogClient courseResourceCatalogClient,
             CourseResourceContentClient courseResourceContentClient,
+            ApprovedFaqClient approvedFaqClient,
             GroundingEngine groundingEngine,
             StudyAssistantAnswerRepository answerRepository,
             Clock clock
@@ -52,6 +54,7 @@ public class GroundedSupportQuestionService {
         this.supportQuestionClient = supportQuestionClient;
         this.courseResourceCatalogClient = courseResourceCatalogClient;
         this.courseResourceContentClient = courseResourceContentClient;
+        this.approvedFaqClient = approvedFaqClient;
         this.groundingEngine = groundingEngine;
         this.answerRepository = answerRepository;
         this.clock = clock;
@@ -138,6 +141,20 @@ public class GroundedSupportQuestionService {
                 throw exception;
             } catch (RuntimeException exception) {
                 continue;
+            }
+        }
+
+        for (ApprovedFaqClient.ApprovedFaqSummary approvedFaq : approvedFaqClient.listApprovedFaqs(
+                access.courseId(),
+                learnerUserId
+        )) {
+            String textContent = approvedFaq.question() + "\n\n" + approvedFaq.answer();
+            if (!textContent.isBlank()) {
+                groundingSources.add(new GroundingSource(
+                        approvedFaq.id(),
+                        "FAQ: " + approvedFaq.question(),
+                        textContent
+                ));
             }
         }
 
