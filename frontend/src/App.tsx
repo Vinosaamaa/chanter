@@ -108,6 +108,19 @@ type OfficeHoursWaitlistEntry = {
   status: string
 }
 
+type InstructorDashboard = {
+  studyServerId: string
+  unansweredSupportQuestions: number
+  repeatedQuestionGroups: number
+  approvedFaqCount: number
+  openTaQueueItems: number
+  liveOfficeHoursSessions: number
+  scheduledOfficeHoursSessions: number
+  officeHoursWaitlistEntries: number
+  aiInvocationCount: number
+  lowConfidenceHandoffs: number
+}
+
 type CourseResource = {
   id: string
   courseId: string
@@ -171,6 +184,7 @@ type HealthState = {
   message: string
   media: string
   agent: string
+  analytics: string
 }
 
 const createUserId = () => {
@@ -230,6 +244,7 @@ function App() {
     message: 'checking',
     media: 'checking',
     agent: 'checking',
+    analytics: 'checking',
   })
   const [demoUserIds] = useState(loadDemoUserIds)
   const ownerUserId = demoUserIds.owner
@@ -316,6 +331,10 @@ function App() {
   const [isManagingOfficeHours, setIsManagingOfficeHours] = useState(false)
   const [officeHoursResult, setOfficeHoursResult] = useState<string | null>(null)
   const [officeHoursError, setOfficeHoursError] = useState<string | null>(null)
+  const [instructorDashboard, setInstructorDashboard] = useState<InstructorDashboard | null>(null)
+  const [isLoadingInstructorDashboard, setIsLoadingInstructorDashboard] = useState(false)
+  const [instructorDashboardResult, setInstructorDashboardResult] = useState<string | null>(null)
+  const [instructorDashboardError, setInstructorDashboardError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const refreshDirectMessages = async () => {
@@ -450,6 +469,17 @@ function App() {
         }))
       })
       .catch(() => setHealth((current) => ({ ...current, agent: 'unreachable' })))
+
+    fetch(
+      `/api/v1/study-servers/00000000-0000-0000-0000-000000000000/instructor-dashboard?viewerUserId=${ownerUserId}`,
+    )
+      .then((response) => {
+        setHealth((current) => ({
+          ...current,
+          analytics: response.status === 404 || response.status === 403 ? 'ok' : response.ok ? 'ok' : 'unknown',
+        }))
+      })
+      .catch(() => setHealth((current) => ({ ...current, analytics: 'unreachable' })))
   }, [ownerUserId, learnerUserId])
 
   const textChannels = useMemo(
@@ -828,6 +858,38 @@ function App() {
       setOfficeHoursError(caught instanceof Error ? caught.message : 'Unable to manage Office Hours')
     } finally {
       setIsManagingOfficeHours(false)
+    }
+  }
+
+  const loadInstructorDashboard = async () => {
+    if (!studyServer) {
+      return
+    }
+
+    setIsLoadingInstructorDashboard(true)
+    setInstructorDashboardError(null)
+    setInstructorDashboardResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/study-servers/${studyServer.id}/instructor-dashboard?viewerUserId=${instructorUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Instructor Dashboard failed with ${response.status}`)
+      }
+
+      const dashboard: InstructorDashboard = await response.json()
+      setInstructorDashboard(dashboard)
+      setInstructorDashboardResult(
+        `Dashboard: ${dashboard.unansweredSupportQuestions} unanswered, ${dashboard.openTaQueueItems} queue, ${dashboard.aiInvocationCount} AI calls.`,
+      )
+    } catch (caught) {
+      setInstructorDashboardError(
+        caught instanceof Error ? caught.message : 'Unable to load Instructor Dashboard',
+      )
+    } finally {
+      setIsLoadingInstructorDashboard(false)
     }
   }
 
@@ -2115,6 +2177,32 @@ function App() {
                         ) : null}
                       </section>
                     ) : null}
+                    {studyServer ? (
+                      <section className="support-question-summary">
+                        <p className="eyebrow">Instructor Dashboard (#23)</p>
+                        <div className="voice-actions">
+                          <button
+                            type="button"
+                            onClick={loadInstructorDashboard}
+                            disabled={isLoadingInstructorDashboard}
+                          >
+                            {isLoadingInstructorDashboard ? 'Loading...' : 'Load dashboard (Instructor)'}
+                          </button>
+                        </div>
+                        {instructorDashboardResult ? <p className="system-line">{instructorDashboardResult}</p> : null}
+                        {instructorDashboardError ? <p className="form-error">{instructorDashboardError}</p> : null}
+                        {instructorDashboard ? (
+                          <ul className="support-question-list">
+                            <li>Unanswered questions: {instructorDashboard.unansweredSupportQuestions}</li>
+                            <li>Repeated question groups: {instructorDashboard.repeatedQuestionGroups}</li>
+                            <li>Approved FAQs: {instructorDashboard.approvedFaqCount}</li>
+                            <li>Open TA Queue items: {instructorDashboard.openTaQueueItems}</li>
+                            <li>Live Office Hours: {instructorDashboard.liveOfficeHoursSessions}</li>
+                            <li>AI invocations: {instructorDashboard.aiInvocationCount}</li>
+                          </ul>
+                        ) : null}
+                      </section>
+                    ) : null}
                     {accessResult ? (
                       <section className="support-question-summary">
                         <p className="eyebrow">Course Resources (#17)</p>
@@ -2363,6 +2451,7 @@ function App() {
         <StatusRow label="Message" value={health.message} />
         <StatusRow label="Media" value={health.media} />
         <StatusRow label="Agent" value={health.agent} />
+        <StatusRow label="Analytics" value={health.analytics} />
       </aside>
     </main>
   )
