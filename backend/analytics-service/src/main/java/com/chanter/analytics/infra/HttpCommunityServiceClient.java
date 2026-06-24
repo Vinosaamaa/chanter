@@ -10,6 +10,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
@@ -58,8 +59,14 @@ public class HttpCommunityServiceClient {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service grant candidates request failed", exception);
         } catch (HttpServerErrorException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service is unavailable", exception);
+        } catch (ResourceAccessException exception) {
+            throw DownstreamRestClientErrors.mapResourceAccess(
+                    exception,
+                    "Community Service grant candidates request timed out",
+                    "Unable to reach Community Service"
+            );
         } catch (RestClientException exception) {
-            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Community Service grant candidates request timed out", exception);
+            throw DownstreamRestClientErrors.mapRestClient(exception, "Unable to reach Community Service");
         }
     }
 
@@ -88,8 +95,14 @@ public class HttpCommunityServiceClient {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service community metrics request failed", exception);
         } catch (HttpServerErrorException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service is unavailable", exception);
+        } catch (ResourceAccessException exception) {
+            throw DownstreamRestClientErrors.mapResourceAccess(
+                    exception,
+                    "Community Service community metrics request timed out",
+                    "Unable to reach Community Service"
+            );
         } catch (RestClientException exception) {
-            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Community Service community metrics request timed out", exception);
+            throw DownstreamRestClientErrors.mapRestClient(exception, "Unable to reach Community Service");
         }
     }
 

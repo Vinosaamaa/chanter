@@ -2199,7 +2199,10 @@ function App() {
                             <li>Approved FAQs: {instructorDashboard.approvedFaqCount}</li>
                             <li>Open TA Queue items: {instructorDashboard.openTaQueueItems}</li>
                             <li>Live Office Hours: {instructorDashboard.liveOfficeHoursSessions}</li>
+                            <li>Scheduled Office Hours: {instructorDashboard.scheduledOfficeHoursSessions}</li>
+                            <li>Office Hours waitlist entries: {instructorDashboard.officeHoursWaitlistEntries}</li>
                             <li>AI invocations: {instructorDashboard.aiInvocationCount}</li>
+                            <li>Low-confidence handoffs: {instructorDashboard.lowConfidenceHandoffs}</li>
                           </ul>
                         ) : null}
                       </section>

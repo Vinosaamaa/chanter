@@ -36,7 +36,7 @@ public class InstructorDashboardMetricsService {
         int unansweredSupportQuestions = metricsRepository.countUnansweredSupportQuestions(request.questionChannelIds());
         int openTaQueueItems = metricsRepository.countOpenTaQueueItems(request.cohortIds());
         int approvedFaqCount = metricsRepository.countApprovedFaqs(request.courseIds());
-        int faqCandidateGroups = countFaqCandidateGroups(request.viewerUserId(), request.questionChannelIds());
+        int faqCandidateGroups = countFaqCandidateGroups(request.questionChannelIds());
 
         return new InstructorDashboardMessageMetrics(
                 unansweredSupportQuestions,
@@ -95,9 +95,9 @@ public class InstructorDashboardMetricsService {
         }
     }
 
-    private int countFaqCandidateGroups(UUID viewerUserId, List<UUID> questionChannelIds) {
+    private int countFaqCandidateGroups(List<UUID> questionChannelIds) {
         return questionChannelIds.stream()
-                .mapToInt(channelId -> approvedFaqService.listFaqCandidates(channelId, viewerUserId).size())
+                .mapToInt(approvedFaqService::countFaqCandidateGroups)
                 .sum();
     }
 }

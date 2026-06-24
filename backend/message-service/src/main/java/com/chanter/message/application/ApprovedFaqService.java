@@ -49,6 +49,12 @@ public class ApprovedFaqService {
         return faqCandidateGrouper.group(supportQuestions);
     }
 
+    @Transactional(readOnly = true)
+    public int countFaqCandidateGroups(UUID channelId) {
+        List<SupportQuestion> supportQuestions = supportQuestionRepository.findByChannelId(channelId);
+        return faqCandidateGrouper.group(supportQuestions).size();
+    }
+
     @Transactional
     public ApprovedFaq createOrUpdateApprovedFaq(
             UUID courseId,

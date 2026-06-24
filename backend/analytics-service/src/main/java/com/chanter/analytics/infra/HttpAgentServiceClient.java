@@ -8,6 +8,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
@@ -50,8 +51,14 @@ public class HttpAgentServiceClient {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Agent Service AI usage metrics request failed", exception);
         } catch (HttpServerErrorException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Agent Service is unavailable", exception);
+        } catch (ResourceAccessException exception) {
+            throw DownstreamRestClientErrors.mapResourceAccess(
+                    exception,
+                    "Agent Service AI usage metrics request timed out",
+                    "Unable to reach Agent Service"
+            );
         } catch (RestClientException exception) {
-            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Agent Service AI usage metrics request timed out", exception);
+            throw DownstreamRestClientErrors.mapRestClient(exception, "Unable to reach Agent Service");
         }
     }
 

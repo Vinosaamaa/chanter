@@ -9,6 +9,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
@@ -51,8 +52,14 @@ public class HttpMessageServiceClient {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Message Service dashboard metrics request failed", exception);
         } catch (HttpServerErrorException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Message Service is unavailable", exception);
+        } catch (ResourceAccessException exception) {
+            throw DownstreamRestClientErrors.mapResourceAccess(
+                    exception,
+                    "Message Service dashboard metrics request timed out",
+                    "Unable to reach Message Service"
+            );
         } catch (RestClientException exception) {
-            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Message Service dashboard metrics request timed out", exception);
+            throw DownstreamRestClientErrors.mapRestClient(exception, "Unable to reach Message Service");
         }
     }
 
