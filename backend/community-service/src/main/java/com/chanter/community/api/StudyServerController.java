@@ -1,6 +1,7 @@
 package com.chanter.community.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.RequestPrincipalAttributes;
 import com.chanter.community.application.StudyServerService;
 import com.chanter.community.domain.StudyServer;
 import jakarta.validation.Valid;
@@ -31,7 +32,10 @@ public class StudyServerController {
     public ResponseEntity<StudyServerResponse> createStudyServer(
             @Valid @RequestBody CreateStudyServerRequest request
     ) {
-        StudyServer studyServer = studyServerService.createStudyServer(request.name(), request.ownerUserId());
+        StudyServer studyServer = studyServerService.createStudyServer(
+                request.name(),
+                RequestPrincipalAttributes.requireUserId()
+        );
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(studyServer.id())

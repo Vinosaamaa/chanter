@@ -147,6 +147,32 @@ class CourseEnrollmentSmokeTest {
         assertThat(instructorAccess.canPostSupportQuestion()).isFalse();
         assertThat(instructorAccess.canViewUnansweredSupportQuestions()).isTrue();
 
+        MvcResult learnerTaQueueAccessResult = mockMvc.perform(get(
+                        "/api/v1/cohorts/{cohortId}/ta-queue-access", course.cohort().id()
+                ).param("userId", learnerUserId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+        CohortTaQueueAccessResponse learnerTaQueueAccess = objectMapper.readValue(
+                learnerTaQueueAccessResult.getResponse().getContentAsString(),
+                CohortTaQueueAccessResponse.class
+        );
+
+        assertThat(learnerTaQueueAccess.canAddToTaQueue()).isTrue();
+        assertThat(learnerTaQueueAccess.canManageTaQueue()).isFalse();
+
+        MvcResult instructorTaQueueAccessResult = mockMvc.perform(get(
+                        "/api/v1/cohorts/{cohortId}/ta-queue-access", course.cohort().id()
+                ).param("userId", instructorUserId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+        CohortTaQueueAccessResponse instructorTaQueueAccess = objectMapper.readValue(
+                instructorTaQueueAccessResult.getResponse().getContentAsString(),
+                CohortTaQueueAccessResponse.class
+        );
+
+        assertThat(instructorTaQueueAccess.canAddToTaQueue()).isFalse();
+        assertThat(instructorTaQueueAccess.canManageTaQueue()).isTrue();
+
         MvcResult learnerResourceAccessResult = mockMvc.perform(get(
                         "/api/v1/courses/{courseId}/resource-access", course.id()
                 ).param("userId", learnerUserId.toString()))
@@ -218,6 +244,14 @@ class CourseEnrollmentSmokeTest {
     }
 
     private record CourseChannelResponse(UUID id, String name, String kind) {
+    }
+
+    private record CohortTaQueueAccessResponse(
+            java.util.UUID cohortId,
+            java.util.UUID courseId,
+            boolean canAddToTaQueue,
+            boolean canManageTaQueue
+    ) {
     }
 
     private record SupportQuestionChannelAccessResponse(

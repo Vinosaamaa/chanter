@@ -5,6 +5,7 @@ import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
+import com.chanter.community.domain.CohortTaQueueAccess;
 import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.GrantCandidateCohort;
 import com.chanter.community.domain.GrantCandidateCourse;
@@ -321,6 +322,62 @@ public class JdbcCourseRepository implements CourseRepository {
                         rs.getObject("course_id", UUID.class),
                         rs.getBoolean("can_upload"),
                         rs.getBoolean("can_view")
+                ))
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CohortTaQueueAccess> findCohortTaQueueAccess(UUID cohortId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT
+                            c.id AS cohort_id,
+                            c.course_id,
+                            CASE
+                                WHEN EXISTS (
+                                    SELECT 1
+                                    FROM cohort_enrollments ce
+                                    WHERE ce.cohort_id = c.id
+                                    AND ce.learner_user_id = :userId
+                                ) THEN TRUE
+                                ELSE FALSE
+                            END AS can_add,
+                            CASE
+                                WHEN EXISTS (
+                                    SELECT 1
+                                    FROM course_roles cr
+                                    WHERE cr.course_id = c.course_id
+                                    AND cr.user_id = :userId
+                                    AND cr.role = :instructorRole
+                                ) THEN TRUE
+                                ELSE FALSE
+                            END AS can_manage
+                        FROM cohorts c
+                        WHERE c.id = :cohortId
+                        AND (
+                            EXISTS (
+                                SELECT 1
+                                FROM cohort_enrollments ce
+                                WHERE ce.cohort_id = c.id
+                                AND ce.learner_user_id = :userId
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM course_roles cr
+                                WHERE cr.course_id = c.course_id
+                                AND cr.user_id = :userId
+                                AND cr.role = :instructorRole
+                            )
+                        )
+                        """)
+                .param("cohortId", cohortId)
+                .param("userId", userId)
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .query((rs, rowNum) -> new CohortTaQueueAccess(
+                        rs.getObject("cohort_id", UUID.class),
+                        rs.getObject("course_id", UUID.class),
+                        rs.getBoolean("can_add"),
+                        rs.getBoolean("can_manage")
                 ))
                 .optional();
     }

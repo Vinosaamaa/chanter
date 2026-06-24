@@ -36,7 +36,7 @@ Vertical slices (#11–#24):
 | 18 | Slice: Install The AI Study Assistant | Done |
 | 19 | Slice: Answer A Grounded Support Question | Done |
 | 20 | Slice: Promote Repeated Support Question To Approved FAQ | Done |
-| 21 | Slice: Route Low-Confidence Answer To TA Queue | **Active** |
+| 21 | Slice: Route Low-Confidence Answer To TA Queue | **In review** |
 | 22 | Slice: Run Office Hours For A Cohort | after #13, #21 |
 | 23 | Slice: Show Instructor Dashboard | after #20, #21 |
 | 24 | Slice: Enforce SaaS Plan Limits | after #23 |
@@ -45,7 +45,7 @@ Cross-cutting (post-MVP vertical slices):
 
 | # | Title | Notes |
 |---|---|---|
-| 30 | Slice: Wire Auth Service Principal Into Protected Endpoints | Replaces `TODO(#auth)` on #12–#14; see `docs/operations/issue-14-greptile-fix.md` |
+| 30 | Slice: Wire Auth Service Principal Into Protected Endpoints | **Active** |
 
 Post-MVP social & realtime (milestone: [Social Hub & Realtime](https://github.com/Vinosaamaa/chanter/milestone/2), project: [Social Hub & Realtime (Post-MVP)](https://github.com/users/Vinosaamaa/projects/2)):
 

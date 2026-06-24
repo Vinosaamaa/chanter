@@ -37,7 +37,7 @@ Important files:
 - `.github/ISSUE_TEMPLATE/`: GitHub issue forms for epics, stories, and bugs.
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 
-Bootstrap (#11) through **#20** (Approved FAQs) are merged on `main`. **#21** (TA Queue) is active. Cross-cutting auth is **#30**. Post-MVP social UX is **#31–#32**.
+Bootstrap (#11) through **#20** (Approved FAQs) are merged on `main`. **#21** (TA Queue) is active. Cross-cutting auth **#30** is in review. Post-MVP social UX is **#31–#32**.
 
 ## Active Implementation
 
@@ -46,9 +46,10 @@ Bootstrap (#11) through **#20** (Approved FAQs) are merged on `main`. **#21** (T
 - **#17 Upload Approved Course Resource** — merged (PR #35)
 - **#18 Install AI Study Assistant** — merged (PR #36)
 - **#19 Answer Grounded Support Question** — merged (PR #37)
-- **#20 Promote Repeated Support Question To Approved FAQ** — in review
-- **#21 Route Low-Confidence Answer To TA Queue** — next
-- **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — after #24
+- **#20 Promote Repeated Support Question To Approved FAQ** — merged
+- **#21 Route Low-Confidence Answer To TA Queue** — active (`feature/21-route-low-confidence-to-ta-queue`)
+- **#30 Wire Auth Service Principal** — in review on `feature/30-auth-principal`
+- **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — demo JWT + gateway principal propagation pattern landed; retrofit remaining #12–#14 endpoints in follow-ups
 
 ## Major Decisions Made
 
@@ -268,6 +269,8 @@ After bootstrap (#11) through Friends/DM API (#15), build toward the education M
 - **#17 next:** Course Resources per `docs/issues/education-mvp-issue-breakdown.md`.
 - **#30 (cross-cutting):** wire Auth Service principal when ready to replace `TODO(#auth)` on protected endpoints.
 - **Post-MVP social (#31–#32):** Friends Hub with presence and live DM panel, then DM voice calls—after `realtime-service` and WebRTC/LiveKit transport. Target UX mockups: `docs/product-design/mockups/friends-hub-dm.png`, `friend-requests.png`. See `docs/architecture/social-hub-and-dm-voice.md`.
+
+- **#21 TA Queue — in review:** low-confidence Support Question handoff to Cohort TA Queue (`feature/21-route-low-confidence-to-ta-queue`).
 
 Recent operations documentation artifacts:
 

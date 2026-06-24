@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: gateway-service
+
+chanter:
+  auth:
+    demo-jwt:
+      secret: ${CHANTER_AUTH_DEMO_JWT_SECRET:chanter-dev-demo-jwt-secret-change-me}
+      ttl: PT24H
   cloud:
     gateway:
       routes:
@@ -21,6 +27,11 @@ spring:
           order: -1
           predicates:
             - Path=/api/v1/courses/*/approved-faqs,/api/v1/courses/*/approved-faqs/**,/api/v1/course-channels/*/faq-candidates
+        - id: message-service-ta-queue
+          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+          order: -1
+          predicates:
+            - Path=/api/v1/cohorts/*/ta-queue,/api/v1/cohorts/*/ta-queue/**
         - id: media-service-course-resources
           uri: ${MEDIA_SERVICE_URL:http://localhost:8084}
           order: -1

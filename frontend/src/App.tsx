@@ -67,6 +67,16 @@ type SupportQuestion = {
   idempotencyKey?: string
 }
 
+type TaQueueItem = {
+  id: string
+  cohortId: string
+  courseId: string
+  channelId: string
+  supportQuestionId: string
+  requesterUserId: string
+  status: string
+}
+
 type AssistantAnswer = {
   id: string
   supportQuestionId: string
@@ -246,6 +256,13 @@ function App() {
   const [lastSupportQuestionId, setLastSupportQuestionId] = useState<string | null>(null)
   const [assistantAnswer, setAssistantAnswer] = useState<AssistantAnswer | null>(null)
   const [isInvokingAssistant, setIsInvokingAssistant] = useState(false)
+  const [taQueueItems, setTaQueueItems] = useState<TaQueueItem[]>([])
+  const [isAddingToTaQueue, setIsAddingToTaQueue] = useState(false)
+  const [isListingTaQueue, setIsListingTaQueue] = useState(false)
+  const [isPickingUpTaQueueItem, setIsPickingUpTaQueueItem] = useState(false)
+  const [isResolvingTaQueueItem, setIsResolvingTaQueueItem] = useState(false)
+  const [taQueueResult, setTaQueueResult] = useState<string | null>(null)
+  const [taQueueError, setTaQueueError] = useState<string | null>(null)
   const [courseResourceTitle, setCourseResourceTitle] = useState('Spring Security Guide')
   const [courseResourceFile, setCourseResourceFile] = useState<File | null>(null)
   const [courseResources, setCourseResources] = useState<CourseResource[]>([])
@@ -656,6 +673,142 @@ function App() {
       )
     } finally {
       setIsInvokingAssistant(false)
+    }
+  }
+
+
+  const canAddToTaQueue =
+    selectedSupportQuestion?.status === 'AI_LOW_CONFIDENCE' && Boolean(lastSupportQuestionId)
+
+  const addSupportQuestionToTaQueue = async () => {
+    if (!course || !questionsChannel || !lastSupportQuestionId || !canAddToTaQueue) {
+      return
+    }
+
+    setIsAddingToTaQueue(true)
+    setTaQueueError(null)
+    setTaQueueResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/cohorts/${course.cohort.id}/ta-queue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelId: questionsChannel.id,
+          supportQuestionId: lastSupportQuestionId,
+          actorUserId: learnerUserId,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`TA Queue add failed with ${response.status}`)
+      }
+
+      const created: TaQueueItem = await response.json()
+      setTaQueueItems((current) => {
+        if (current.some((item) => item.id === created.id)) {
+          return current
+        }
+        return [...current, created]
+      })
+      setTaQueueResult('Learner routed the low-confidence Support Question to the Cohort TA Queue.')
+    } catch (caught) {
+      setTaQueueError(caught instanceof Error ? caught.message : 'Unable to add to TA Queue')
+    } finally {
+      setIsAddingToTaQueue(false)
+    }
+  }
+
+  const listTaQueueItems = async () => {
+    if (!course) {
+      return
+    }
+
+    setIsListingTaQueue(true)
+    setTaQueueError(null)
+    setTaQueueResult(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/cohorts/${course.cohort.id}/ta-queue?viewerUserId=${instructorUserId}`,
+      )
+
+      if (!response.ok) {
+        throw new Error(`TA Queue list failed with ${response.status}`)
+      }
+
+      const data: { items: TaQueueItem[] } = await response.json()
+      setTaQueueItems(data.items)
+      setTaQueueResult(`Instructor sees ${data.items.length} open TA Queue item(s).`)
+    } catch (caught) {
+      setTaQueueError(caught instanceof Error ? caught.message : 'Unable to list TA Queue')
+    } finally {
+      setIsListingTaQueue(false)
+    }
+  }
+
+  const pickupTaQueueItem = async (itemId: string) => {
+    if (!course) {
+      return
+    }
+
+    setIsPickingUpTaQueueItem(true)
+    setTaQueueError(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/cohorts/${course.cohort.id}/ta-queue/${itemId}/pickup`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ actorUserId: instructorUserId }),
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`TA Queue pickup failed with ${response.status}`)
+      }
+
+      const updated: TaQueueItem = await response.json()
+      setTaQueueItems((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      )
+      setTaQueueResult(`Instructor picked up TA Queue item ${truncateId(itemId)}.`)
+    } catch (caught) {
+      setTaQueueError(caught instanceof Error ? caught.message : 'Unable to pick up TA Queue item')
+    } finally {
+      setIsPickingUpTaQueueItem(false)
+    }
+  }
+
+  const resolveTaQueueItem = async (itemId: string) => {
+    if (!course) {
+      return
+    }
+
+    setIsResolvingTaQueueItem(true)
+    setTaQueueError(null)
+
+    try {
+      const response = await fetch(
+        `/api/v1/cohorts/${course.cohort.id}/ta-queue/${itemId}/resolve`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ actorUserId: instructorUserId }),
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`TA Queue resolve failed with ${response.status}`)
+      }
+
+      setTaQueueItems((current) => current.filter((item) => item.id !== itemId))
+      setTaQueueResult(`Instructor resolved TA Queue item ${truncateId(itemId)}.`)
+    } catch (caught) {
+      setTaQueueError(caught instanceof Error ? caught.message : 'Unable to resolve TA Queue item')
+    } finally {
+      setIsResolvingTaQueueItem(false)
     }
   }
 
@@ -1709,6 +1862,58 @@ function App() {
                             {assistantAnswer.sources.map((source) => (
                               <li key={source.resourceId}>
                                 <strong>Source</strong> {source.resourceTitle}: {source.excerpt}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </section>
+                    ) : null}
+
+                    {accessResult && questionsChannel ? (
+                      <section className="support-question-summary">
+                        <p className="eyebrow">TA Queue (#21)</p>
+                        <div className="voice-actions">
+                          <button
+                            type="button"
+                            onClick={addSupportQuestionToTaQueue}
+                            disabled={isAddingToTaQueue || !canAddToTaQueue}
+                          >
+                            {isAddingToTaQueue ? 'Adding...' : 'Add to TA Queue (Learner)'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={listTaQueueItems}
+                            disabled={isListingTaQueue}
+                          >
+                            {isListingTaQueue ? 'Loading...' : 'List open items (Instructor)'}
+                          </button>
+                        </div>
+                        {taQueueResult ? <p className="system-line">{taQueueResult}</p> : null}
+                        {taQueueError ? <p className="form-error">{taQueueError}</p> : null}
+                        {taQueueItems.length > 0 ? (
+                          <ul className="support-question-list">
+                            {taQueueItems.map((item) => (
+                              <li key={item.id}>
+                                <strong>{item.status}</strong> — question{' '}
+                                <code title={item.supportQuestionId}>
+                                  {truncateId(item.supportQuestionId)}
+                                </code>
+                                <div className="voice-actions">
+                                  <button
+                                    type="button"
+                                    onClick={() => pickupTaQueueItem(item.id)}
+                                    disabled={isPickingUpTaQueueItem || item.status !== 'OPEN'}
+                                  >
+                                    Pick up
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => resolveTaQueueItem(item.id)}
+                                    disabled={isResolvingTaQueueItem || item.status !== 'IN_PROGRESS'}
+                                  >
+                                    Resolve
+                                  </button>
+                                </div>
                               </li>
                             ))}
                           </ul>
