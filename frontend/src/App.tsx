@@ -464,6 +464,7 @@ function App() {
 
       setStudyServer(await viewedResponse.json())
       setCourse(null)
+      resetTaQueueState()
       setAccessResult(null)
       setVoiceResult(null)
       setVoicePresences([])
@@ -502,6 +503,7 @@ function App() {
       }
 
       setCourse(await response.json())
+      resetTaQueueState()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to create Course')
     } finally {
@@ -675,6 +677,12 @@ function App() {
     } finally {
       setIsInvokingAssistant(false)
     }
+  }
+
+  const resetTaQueueState = () => {
+    setTaQueueItems([])
+    setTaQueueResult(null)
+    setTaQueueError(null)
   }
 
   const addToTaQueue = async () => {
@@ -1901,7 +1909,7 @@ function App() {
                                       Pick up
                                     </button>
                                   ) : null}
-                                  {item.status === 'OPEN' || item.status === 'PICKED_UP' ? (
+                                  {item.status === 'PICKED_UP' ? (
                                     <button
                                       type="button"
                                       onClick={() => resolveTaQueueItem(item.id)}

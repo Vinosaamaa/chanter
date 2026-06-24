@@ -45,11 +45,12 @@ public class HttpCohortTaQueueAccessClient implements CohortTaQueueAccessClient 
                     response.canManageTaQueue()
             );
         } catch (HttpClientErrorException.NotFound exception) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found", exception);
         } catch (HttpClientErrorException.Forbidden exception) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "TA Queue access requires Cohort Enrollment or Instructor role"
+                    "TA Queue access requires Cohort Enrollment or Instructor role",
+                    exception
             );
         }
     }

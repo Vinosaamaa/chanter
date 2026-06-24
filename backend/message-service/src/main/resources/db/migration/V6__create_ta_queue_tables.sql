@@ -5,7 +5,7 @@ CREATE TABLE ta_queue_items (
     channel_id UUID NOT NULL,
     learner_user_id UUID NOT NULL,
     body TEXT NOT NULL,
-    status VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL CHECK (status IN ('OPEN', 'PICKED_UP', 'RESOLVED', 'CANCELLED')),
     assigned_ta_user_id UUID,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL

@@ -106,10 +106,10 @@ public class TaQueueService {
     @Transactional
     public TaQueueItem resolveQueueItem(UUID cohortId, UUID itemId, UUID taUserId) {
         TaQueueItem existing = requireManageableItem(cohortId, itemId, taUserId);
-        TaQueueItemStatus fromStatus = existing.status() == TaQueueItemStatus.OPEN
-                ? TaQueueItemStatus.OPEN
-                : TaQueueItemStatus.PICKED_UP;
-        return transitionQueueItem(cohortId, itemId, taUserId, fromStatus, TaQueueItemStatus.RESOLVED, taUserId);
+        if (existing.status() != TaQueueItemStatus.PICKED_UP) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "TA Queue item must be picked up before resolve");
+        }
+        return applyTransition(existing, cohortId, TaQueueItemStatus.PICKED_UP, TaQueueItemStatus.RESOLVED, taUserId);
     }
 
     @Transactional
@@ -163,11 +163,20 @@ public class TaQueueService {
             TaQueueItemStatus toStatus,
             UUID assignedTaUserId
     ) {
-        requireManageableItem(cohortId, itemId, taUserId);
+        TaQueueItem existing = requireManageableItem(cohortId, itemId, taUserId);
+        return applyTransition(existing, cohortId, fromStatus, toStatus, assignedTaUserId);
+    }
 
+    private TaQueueItem applyTransition(
+            TaQueueItem existing,
+            UUID cohortId,
+            TaQueueItemStatus fromStatus,
+            TaQueueItemStatus toStatus,
+            UUID assignedTaUserId
+    ) {
         Instant updatedAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
         boolean updated = taQueueRepository.updateStatus(
-                itemId,
+                existing.id(),
                 cohortId,
                 fromStatus,
                 toStatus,
@@ -178,7 +187,7 @@ public class TaQueueService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "TA Queue item status has changed");
         }
 
-        return taQueueRepository.findByIdAndCohortId(itemId, cohortId)
+        return taQueueRepository.findByIdAndCohortId(existing.id(), cohortId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA Queue item not found"));
     }
 }

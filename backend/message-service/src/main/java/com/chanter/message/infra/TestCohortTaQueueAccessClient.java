@@ -20,10 +20,6 @@ public class TestCohortTaQueueAccessClient implements CohortTaQueueAccessClient 
 
     public void registerCohort(UUID cohortId, UUID courseId, UUID studyServerId) {
         existingCohorts.add(cohortId);
-        accessRules.putIfAbsent(
-                key(cohortId, UUID.randomUUID()),
-                new CohortTaQueueAccess(cohortId, courseId, studyServerId, false, false)
-        );
     }
 
     public void grantLearnerAdd(UUID cohortId, UUID userId, UUID courseId, UUID studyServerId) {
