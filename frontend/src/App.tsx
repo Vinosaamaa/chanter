@@ -92,6 +92,22 @@ type TaQueueItem = {
   assignedTaUserId?: string | null
 }
 
+type OfficeHoursSession = {
+  id: string
+  cohortId: string
+  voiceChannelId: string
+  scheduledByUserId: string
+  startsAt: string
+  endsAt: string
+  status: string
+}
+
+type OfficeHoursWaitlistEntry = {
+  sessionId: string
+  learnerUserId: string
+  status: string
+}
+
 type CourseResource = {
   id: string
   courseId: string
@@ -293,6 +309,13 @@ function App() {
   const [isResolvingTaQueueItem, setIsResolvingTaQueueItem] = useState(false)
   const [taQueueResult, setTaQueueResult] = useState<string | null>(null)
   const [taQueueError, setTaQueueError] = useState<string | null>(null)
+  const [officeHoursSession, setOfficeHoursSession] = useState<OfficeHoursSession | null>(null)
+  const [officeHoursWaitlist, setOfficeHoursWaitlist] = useState<OfficeHoursWaitlistEntry[]>([])
+  const [isSchedulingOfficeHours, setIsSchedulingOfficeHours] = useState(false)
+  const [isJoiningOfficeHoursWaitlist, setIsJoiningOfficeHoursWaitlist] = useState(false)
+  const [isManagingOfficeHours, setIsManagingOfficeHours] = useState(false)
+  const [officeHoursResult, setOfficeHoursResult] = useState<string | null>(null)
+  const [officeHoursError, setOfficeHoursError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const refreshDirectMessages = async () => {
@@ -465,6 +488,7 @@ function App() {
       setStudyServer(await viewedResponse.json())
       setCourse(null)
       resetTaQueueState()
+      resetOfficeHoursState()
       setAccessResult(null)
       setVoiceResult(null)
       setVoicePresences([])
@@ -504,6 +528,7 @@ function App() {
 
       setCourse(await response.json())
       resetTaQueueState()
+      resetOfficeHoursState()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to create Course')
     } finally {
@@ -683,6 +708,127 @@ function App() {
     setTaQueueItems([])
     setTaQueueResult(null)
     setTaQueueError(null)
+  }
+
+  const resetOfficeHoursState = () => {
+    setOfficeHoursSession(null)
+    setOfficeHoursWaitlist([])
+    setOfficeHoursResult(null)
+    setOfficeHoursError(null)
+  }
+
+  const scheduleOfficeHours = async () => {
+    if (!course) {
+      return
+    }
+
+    setIsSchedulingOfficeHours(true)
+    setOfficeHoursError(null)
+    setOfficeHoursResult(null)
+
+    try {
+      const startsAt = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+      const endsAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      const response = await fetch(`/api/v1/cohorts/${course.cohort.id}/office-hours`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instructorUserId,
+          startsAt,
+          endsAt,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Schedule Office Hours failed with ${response.status}`)
+      }
+
+      const session: OfficeHoursSession = await response.json()
+      setOfficeHoursSession(session)
+      setOfficeHoursResult(`Office Hours scheduled (${session.status}) until ${session.endsAt}.`)
+    } catch (caught) {
+      setOfficeHoursError(caught instanceof Error ? caught.message : 'Unable to schedule Office Hours')
+    } finally {
+      setIsSchedulingOfficeHours(false)
+    }
+  }
+
+  const joinOfficeHoursWaitlist = async () => {
+    if (!officeHoursSession) {
+      return
+    }
+
+    setIsJoiningOfficeHoursWaitlist(true)
+    setOfficeHoursError(null)
+    setOfficeHoursResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/office-hours/${officeHoursSession.id}/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ learnerUserId }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Join Office Hours waitlist failed with ${response.status}`)
+      }
+
+      const entry: OfficeHoursWaitlistEntry = await response.json()
+      setOfficeHoursWaitlist((current) => [...current.filter((e) => e.learnerUserId !== entry.learnerUserId), entry])
+      setOfficeHoursResult(`Learner joined Office Hours waitlist (${entry.status}).`)
+    } catch (caught) {
+      setOfficeHoursError(caught instanceof Error ? caught.message : 'Unable to join Office Hours waitlist')
+    } finally {
+      setIsJoiningOfficeHoursWaitlist(false)
+    }
+  }
+
+  const runOfficeHoursTaFlow = async () => {
+    if (!officeHoursSession) {
+      return
+    }
+
+    setIsManagingOfficeHours(true)
+    setOfficeHoursError(null)
+    setOfficeHoursResult(null)
+
+    try {
+      const admitResponse = await fetch(`/api/v1/office-hours/${officeHoursSession.id}/admit-next`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actorUserId: instructorUserId }),
+      })
+
+      if (!admitResponse.ok) {
+        throw new Error(`Admit next learner failed with ${admitResponse.status}`)
+      }
+
+      const voiceResponse = await fetch(`/api/v1/office-hours/${officeHoursSession.id}/voice-join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actorUserId: instructorUserId }),
+      })
+
+      if (!voiceResponse.ok) {
+        throw new Error(`Instructor voice join failed with ${voiceResponse.status}`)
+      }
+
+      const waitlistResponse = await fetch(
+        `/api/v1/office-hours/${officeHoursSession.id}/waitlist?viewerUserId=${instructorUserId}`,
+      )
+
+      if (!waitlistResponse.ok) {
+        throw new Error(`Office Hours waitlist list failed with ${waitlistResponse.status}`)
+      }
+
+      const data: { waitlistEntries: OfficeHoursWaitlistEntry[] } = await waitlistResponse.json()
+      setOfficeHoursWaitlist(data.waitlistEntries)
+      setOfficeHoursResult(`Instructor admitted next learner; ${data.waitlistEntries.length} waitlist entry(ies).`)
+    } catch (caught) {
+      setOfficeHoursError(caught instanceof Error ? caught.message : 'Unable to manage Office Hours')
+    } finally {
+      setIsManagingOfficeHours(false)
+    }
   }
 
   const addToTaQueue = async () => {
@@ -1919,6 +2065,50 @@ function App() {
                                     </button>
                                   ) : null}
                                 </div>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </section>
+                    ) : null}
+                    {accessResult && course ? (
+                      <section className="support-question-summary">
+                        <p className="eyebrow">Cohort Office Hours (#22)</p>
+                        <div className="voice-actions">
+                          <button
+                            type="button"
+                            onClick={scheduleOfficeHours}
+                            disabled={isSchedulingOfficeHours}
+                          >
+                            {isSchedulingOfficeHours ? 'Scheduling...' : 'Schedule Office Hours (Instructor)'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={joinOfficeHoursWaitlist}
+                            disabled={isJoiningOfficeHoursWaitlist || !officeHoursSession}
+                          >
+                            {isJoiningOfficeHoursWaitlist ? 'Joining...' : 'Join waitlist (Learner)'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={runOfficeHoursTaFlow}
+                            disabled={isManagingOfficeHours || !officeHoursSession}
+                          >
+                            {isManagingOfficeHours ? 'Running...' : 'Admit + join voice (Instructor)'}
+                          </button>
+                        </div>
+                        {officeHoursResult ? <p className="system-line">{officeHoursResult}</p> : null}
+                        {officeHoursError ? <p className="form-error">{officeHoursError}</p> : null}
+                        {officeHoursSession ? (
+                          <p className="system-line">
+                            Session {truncateId(officeHoursSession.id)} — {officeHoursSession.status}
+                          </p>
+                        ) : null}
+                        {officeHoursWaitlist.length > 0 ? (
+                          <ul className="support-question-list">
+                            {officeHoursWaitlist.map((entry) => (
+                              <li key={entry.learnerUserId}>
+                                <strong>{entry.status}</strong> — learner {truncateId(entry.learnerUserId)}
                               </li>
                             ))}
                           </ul>
