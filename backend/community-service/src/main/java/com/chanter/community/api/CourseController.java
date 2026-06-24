@@ -99,4 +99,14 @@ public class CourseController {
                 courseService.findCohortTaQueueAccess(cohortId, userId)
         );
     }
+
+    @GetMapping("/cohorts/{cohortId}/office-hours-access")
+    public CohortOfficeHoursAccessResponse getCohortOfficeHoursAccess(
+            @PathVariable UUID cohortId,
+            @RequestParam UUID userId
+    ) {
+        return CohortOfficeHoursAccessResponse.from(
+                courseService.findCohortOfficeHoursAccess(cohortId, userId)
+        );
+    }
 }

@@ -141,6 +141,23 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<UUID> findDefaultVoiceChannelId(UUID studyServerId) {
+        return jdbcClient.sql("""
+                        SELECT id
+                        FROM study_server_channels
+                        WHERE study_server_id = :studyServerId
+                        AND kind = :voiceKind
+                        ORDER BY CASE WHEN name = 'study-room' THEN 0 ELSE 1 END, position
+                        LIMIT 1
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("voiceKind", ChannelKind.VOICE.name())
+                .query(UUID.class)
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<StudyServerChannel> findChannelById(UUID channelId) {
         return jdbcClient.sql("""
                         SELECT id, study_server_id, name, kind, position
