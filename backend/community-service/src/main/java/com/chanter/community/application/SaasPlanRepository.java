@@ -9,7 +9,5 @@ public interface SaasPlanRepository {
 
     Optional<StudyServerSaasPlan> findByStudyServerId(UUID studyServerId);
 
-    void updatePlanTier(UUID studyServerId, SaasPlanTier planTier);
-
-    boolean isStudyServerOwner(UUID studyServerId, UUID userId);
+    boolean updatePlanTierIfOwner(UUID studyServerId, UUID ownerUserId, SaasPlanTier planTier);
 }

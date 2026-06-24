@@ -36,6 +36,7 @@ public class GroundedSupportQuestionService {
     private final ApprovedFaqClient approvedFaqClient;
     private final GroundingEngine groundingEngine;
     private final AiQuotaEnforcementService aiQuotaEnforcementService;
+    private final StudyAssistantAnswerPersistenceService answerPersistenceService;
     private final StudyAssistantAnswerRepository answerRepository;
     private final Clock clock;
 
@@ -48,6 +49,7 @@ public class GroundedSupportQuestionService {
             ApprovedFaqClient approvedFaqClient,
             GroundingEngine groundingEngine,
             AiQuotaEnforcementService aiQuotaEnforcementService,
+            StudyAssistantAnswerPersistenceService answerPersistenceService,
             StudyAssistantAnswerRepository answerRepository,
             Clock clock
     ) {
@@ -59,6 +61,7 @@ public class GroundedSupportQuestionService {
         this.approvedFaqClient = approvedFaqClient;
         this.groundingEngine = groundingEngine;
         this.aiQuotaEnforcementService = aiQuotaEnforcementService;
+        this.answerPersistenceService = answerPersistenceService;
         this.answerRepository = answerRepository;
         this.clock = clock;
     }
@@ -204,7 +207,7 @@ public class GroundedSupportQuestionService {
                 clock.instant()
         );
 
-        StudyAssistantAnswer savedAnswer = answerRepository.saveAnswer(answer, invocationType);
+        StudyAssistantAnswer savedAnswer = answerPersistenceService.saveAnswer(answer, invocationType);
 
         String updatedStatus = statusForConfidence(groundingResult.confidence());
         supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, updatedStatus);

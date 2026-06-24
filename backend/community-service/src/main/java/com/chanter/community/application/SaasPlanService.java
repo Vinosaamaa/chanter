@@ -23,14 +23,17 @@ public class SaasPlanService {
     }
 
     public StudyServerSaasPlan updatePlan(UUID studyServerId, UUID ownerUserId, SaasPlanTier planTier) {
-        if (!saasPlanRepository.isStudyServerOwner(studyServerId, ownerUserId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Only the Study Server Owner can change the SaaS Plan tier"
-            );
+        if (saasPlanRepository.updatePlanTierIfOwner(studyServerId, ownerUserId, planTier)) {
+            return findPlan(studyServerId);
         }
 
-        saasPlanRepository.updatePlanTier(studyServerId, planTier);
-        return findPlan(studyServerId);
+        if (saasPlanRepository.findByStudyServerId(studyServerId).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found");
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Only the Study Server Owner can change the SaaS Plan tier"
+        );
     }
 }

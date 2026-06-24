@@ -41,40 +41,23 @@ public class JdbcSaasPlanRepository implements SaasPlanRepository {
 
     @Override
     @Transactional
-    public void updatePlanTier(UUID studyServerId, SaasPlanTier planTier) {
-        int updated = jdbcClient.sql("""
+    public boolean updatePlanTierIfOwner(UUID studyServerId, UUID ownerUserId, SaasPlanTier planTier) {
+        return jdbcClient.sql("""
                         UPDATE study_servers
                         SET plan_tier = :planTier
                         WHERE id = :studyServerId
+                        AND EXISTS (
+                            SELECT 1
+                            FROM study_server_roles
+                            WHERE study_server_id = :studyServerId
+                            AND user_id = :ownerUserId
+                            AND role = :ownerRole
+                        )
                         """)
                 .param("studyServerId", studyServerId)
+                .param("ownerUserId", ownerUserId)
                 .param("planTier", planTier.name())
-                .update();
-
-        if (updated == 0) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.NOT_FOUND,
-                    "Study Server not found"
-            );
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public boolean isStudyServerOwner(UUID studyServerId, UUID userId) {
-        Integer ownerCount = jdbcClient.sql("""
-                        SELECT COUNT(*)
-                        FROM study_server_roles
-                        WHERE study_server_id = :studyServerId
-                        AND user_id = :userId
-                        AND role = :ownerRole
-                        """)
-                .param("studyServerId", studyServerId)
-                .param("userId", userId)
                 .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
-                .query(Integer.class)
-                .single();
-
-        return ownerCount > 0;
+                .update() > 0;
     }
 }
