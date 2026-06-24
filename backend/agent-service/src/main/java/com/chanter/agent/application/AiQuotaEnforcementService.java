@@ -62,7 +62,8 @@ public class AiQuotaEnforcementService {
         jdbcClient.sql("SELECT pg_advisory_xact_lock(:msb, :lsb)")
                 .param("msb", studyServerId.getMostSignificantBits())
                 .param("lsb", studyServerId.getLeastSignificantBits())
-                .query();
+                .query(Long.class)
+                .single();
     }
 
     private boolean isPostgresDatabase() {
