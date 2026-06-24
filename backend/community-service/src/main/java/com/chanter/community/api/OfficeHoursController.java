@@ -73,9 +73,9 @@ public class OfficeHoursController {
             @Valid @RequestBody OfficeHoursLearnerRequest request
     ) {
         OfficeHoursWaitlistEntry entry = officeHoursService.joinWaitlist(sessionId, request.learnerUserId());
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{learnerUserId}")
-                .buildAndExpand(entry.learnerUserId())
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path(ServiceInfo.API_V1_PREFIX + "/office-hours/{sessionId}/waitlist")
+                .buildAndExpand(sessionId)
                 .toUri();
 
         return ResponseEntity.created(location).body(OfficeHoursWaitlistEntryResponse.from(entry));

@@ -745,6 +745,7 @@ function App() {
 
       const session: OfficeHoursSession = await response.json()
       setOfficeHoursSession(session)
+      setOfficeHoursWaitlist([])
       setOfficeHoursResult(`Office Hours scheduled (${session.status}) until ${session.endsAt}.`)
     } catch (caught) {
       setOfficeHoursError(caught instanceof Error ? caught.message : 'Unable to schedule Office Hours')
@@ -812,6 +813,8 @@ function App() {
       if (!voiceResponse.ok) {
         throw new Error(`Instructor voice join failed with ${voiceResponse.status}`)
       }
+
+      setOfficeHoursSession((current) => (current ? { ...current, status: 'LIVE' } : current))
 
       const waitlistResponse = await fetch(
         `/api/v1/office-hours/${officeHoursSession.id}/waitlist?viewerUserId=${instructorUserId}`,

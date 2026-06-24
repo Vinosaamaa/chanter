@@ -1,7 +1,9 @@
 package com.chanter.community.application;
 
 import com.chanter.community.domain.OfficeHoursSession;
+import com.chanter.community.domain.OfficeHoursSessionStatus;
 import com.chanter.community.domain.OfficeHoursWaitlistEntry;
+import com.chanter.community.domain.OfficeHoursWaitlistStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +17,7 @@ public interface OfficeHoursRepository {
 
     List<OfficeHoursSession> findSessionsByCohortId(UUID cohortId);
 
-    OfficeHoursSession updateSessionStatus(UUID sessionId, String status);
+    OfficeHoursSession updateSessionStatus(UUID sessionId, OfficeHoursSessionStatus status);
 
     OfficeHoursWaitlistEntry saveWaitlistEntry(OfficeHoursWaitlistEntry entry);
 
@@ -23,9 +25,14 @@ public interface OfficeHoursRepository {
 
     List<OfficeHoursWaitlistEntry> findWaitlistEntries(UUID sessionId);
 
-    Optional<OfficeHoursWaitlistEntry> findNextWaitingEntry(UUID sessionId);
+    OfficeHoursWaitlistEntry rejoinWaitlistEntry(
+            UUID sessionId,
+            UUID learnerUserId,
+            Instant joinedAt,
+            OfficeHoursWaitlistStatus status
+    );
 
-    OfficeHoursWaitlistEntry updateWaitlistStatus(UUID sessionId, UUID learnerUserId, String status);
+    Optional<OfficeHoursWaitlistEntry> claimNextWaitingEntry(UUID sessionId);
 
     Optional<UUID> findStudyServerIdForCohort(UUID cohortId);
 }

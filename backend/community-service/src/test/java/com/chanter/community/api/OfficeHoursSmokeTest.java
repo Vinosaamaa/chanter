@@ -144,6 +144,109 @@ class OfficeHoursSmokeTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void nonEnrolledLearnerCannotJoinOfficeHoursWaitlist() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        UUID strangerUserId = UUID.randomUUID();
+
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+        CourseResponse course = createCourse(studyServer.id(), ownerUserId, instructorUserId);
+        enrollLearner(course.cohort().id(), instructorUserId, learnerUserId);
+
+        Instant startsAt = Instant.now().minus(1, ChronoUnit.MINUTES);
+        Instant endsAt = Instant.now().plus(1, ChronoUnit.HOURS);
+
+        MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "instructorUserId", instructorUserId.toString(),
+                                "startsAt", startsAt.toString(),
+                                "endsAt", endsAt.toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        OfficeHoursSessionResponse session = objectMapper.readValue(
+                scheduleResult.getResponse().getContentAsString(),
+                OfficeHoursSessionResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/office-hours/{sessionId}/waitlist", session.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "learnerUserId", strangerUserId.toString()
+                        ))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void learnerCannotListOfficeHoursWaitlist() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+        CourseResponse course = createCourse(studyServer.id(), ownerUserId, instructorUserId);
+        enrollLearner(course.cohort().id(), instructorUserId, learnerUserId);
+
+        Instant startsAt = Instant.now().minus(1, ChronoUnit.MINUTES);
+        Instant endsAt = Instant.now().plus(1, ChronoUnit.HOURS);
+
+        MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "instructorUserId", instructorUserId.toString(),
+                                "startsAt", startsAt.toString(),
+                                "endsAt", endsAt.toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        OfficeHoursSessionResponse session = objectMapper.readValue(
+                scheduleResult.getResponse().getContentAsString(),
+                OfficeHoursSessionResponse.class
+        );
+
+        mockMvc.perform(get("/api/v1/office-hours/{sessionId}/waitlist", session.id())
+                        .param("viewerUserId", learnerUserId.toString()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void learnerCannotJoinAfterOfficeHoursWindowEnds() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+        CourseResponse course = createCourse(studyServer.id(), ownerUserId, instructorUserId);
+        enrollLearner(course.cohort().id(), instructorUserId, learnerUserId);
+
+        Instant startsAt = Instant.now().minus(2, ChronoUnit.HOURS);
+        Instant endsAt = Instant.now().minus(1, ChronoUnit.MINUTES);
+
+        MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "instructorUserId", instructorUserId.toString(),
+                                "startsAt", startsAt.toString(),
+                                "endsAt", endsAt.toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        OfficeHoursSessionResponse session = objectMapper.readValue(
+                scheduleResult.getResponse().getContentAsString(),
+                OfficeHoursSessionResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/office-hours/{sessionId}/waitlist", session.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "learnerUserId", learnerUserId.toString()
+                        ))))
+                .andExpect(status().isForbidden());
+    }
+
     private StudyServerResponse createStudyServer(UUID ownerUserId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/study-servers")
                         .contentType(MediaType.APPLICATION_JSON)
