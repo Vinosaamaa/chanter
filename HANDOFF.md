@@ -37,17 +37,18 @@ Important files:
 - `.github/ISSUE_TEMPLATE/`: GitHub issue forms for epics, stories, and bugs.
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 
-Bootstrap (#11) through Friends/DM API (#15) are merged on `main`. Issue #16 (Post A Support Question In A Course Channel) is in review on [PR #34](https://github.com/Vinosaamaa/chanter/pull/34). Cross-cutting auth hardening is tracked in #30. Post-MVP social UX is tracked in #31–#32.
+Bootstrap (#11) through **#20** (Approved FAQs) are merged on `main`. **#21** (TA Queue) is active. Cross-cutting auth is **#30**. Post-MVP social UX is **#31–#32**.
 
 ## Active Implementation
 
-- **#11 Monorepo bootstrap** — merged (PR #25)
-- **#12 Create A Study Server** — merged (PR #26)
-- **#13 Create Course, Cohort, And Enroll Learner** — merged (PR #28)
-- **#14 Join A Voice Channel** — merged (PR #29)
-- **#15 Send Friend Request And Direct Message** — merged (PR #33)
-- **#16 Post A Support Question In A Course Channel** — https://github.com/Vinosaamaa/chanter/issues/16 ([PR #34](https://github.com/Vinosaamaa/chanter/pull/34))
-- **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — deferred until after vertical slices or before production hardening
+- **#11–#15** — merged (PRs #25–#33)
+- **#16 Post A Support Question** — merged (PR #34)
+- **#17 Upload Approved Course Resource** — merged (PR #35)
+- **#18 Install AI Study Assistant** — merged (PR #36)
+- **#19 Answer Grounded Support Question** — merged (PR #37)
+- **#20 Promote Repeated Support Question To Approved FAQ** — in review
+- **#21 Route Low-Confidence Answer To TA Queue** — next
+- **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — after #24
 
 ## Major Decisions Made
 

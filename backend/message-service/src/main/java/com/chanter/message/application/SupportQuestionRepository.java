@@ -16,6 +16,8 @@ public interface SupportQuestionRepository {
             String idempotencyKey
     );
 
+    List<SupportQuestion> findByChannelId(UUID channelId);
+
     List<SupportQuestion> findByChannelIdAndStatus(UUID channelId, SupportQuestionStatus status);
 
     Optional<SupportQuestion> findByIdAndChannelId(UUID channelId, UUID supportQuestionId);

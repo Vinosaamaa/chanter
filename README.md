@@ -10,7 +10,7 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 ## Current Status
 
-Milestone 0 (monorepo bootstrap) through [issue #15](https://github.com/Vinosaamaa/chanter/issues/15) (Send Friend Request And Direct Message) are merged on `main`. [Issue #16](https://github.com/Vinosaamaa/chanter/issues/16) (Post A Support Question In A Course Channel) is in review on [PR #34](https://github.com/Vinosaamaa/chanter/pull/34). Auth hardening is tracked in [issue #30](https://github.com/Vinosaamaa/chanter/issues/30). Post-MVP Discord-like social UX is tracked in [issues #31–#32](https://github.com/Vinosaamaa/chanter/issues/31).
+Milestone 0 (monorepo bootstrap) through [issue #19](https://github.com/Vinosaamaa/chanter/issues/19) (grounded AI support answers) are merged on `main`. [Issue #20](https://github.com/Vinosaamaa/chanter/issues/20) (Approved FAQs) is in review. Active work continues through #32 (TA queue, office hours, dashboard, billing, auth, social hub, DM voice).
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`  
 Project board: `https://github.com/users/Vinosaamaa/projects/1` (Education MVP) · Post-MVP: `https://github.com/users/Vinosaamaa/projects/2` (#31–#32)

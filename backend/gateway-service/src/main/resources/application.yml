@@ -16,6 +16,11 @@ spring:
           order: -1
           predicates:
             - Path=/api/v1/course-channels/*/support-questions,/api/v1/course-channels/*/support-questions/**
+        - id: message-service-approved-faqs
+          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+          order: -1
+          predicates:
+            - Path=/api/v1/courses/*/approved-faqs,/api/v1/courses/*/approved-faqs/**,/api/v1/course-channels/*/faq-candidates
         - id: media-service-course-resources
           uri: ${MEDIA_SERVICE_URL:http://localhost:8084}
           order: -1
