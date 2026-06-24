@@ -35,6 +35,7 @@ public class GroundedSupportQuestionService {
     private final CourseResourceContentClient courseResourceContentClient;
     private final ApprovedFaqClient approvedFaqClient;
     private final GroundingEngine groundingEngine;
+    private final AiQuotaEnforcementService aiQuotaEnforcementService;
     private final StudyAssistantAnswerRepository answerRepository;
     private final Clock clock;
 
@@ -46,6 +47,7 @@ public class GroundedSupportQuestionService {
             CourseResourceContentClient courseResourceContentClient,
             ApprovedFaqClient approvedFaqClient,
             GroundingEngine groundingEngine,
+            AiQuotaEnforcementService aiQuotaEnforcementService,
             StudyAssistantAnswerRepository answerRepository,
             Clock clock
     ) {
@@ -56,6 +58,7 @@ public class GroundedSupportQuestionService {
         this.courseResourceContentClient = courseResourceContentClient;
         this.approvedFaqClient = approvedFaqClient;
         this.groundingEngine = groundingEngine;
+        this.aiQuotaEnforcementService = aiQuotaEnforcementService;
         this.answerRepository = answerRepository;
         this.clock = clock;
     }
@@ -112,6 +115,8 @@ public class GroundedSupportQuestionService {
                     "AI Study Assistant is not granted for this Course Channel"
             );
         }
+
+        aiQuotaEnforcementService.requireQuotaAvailable(access.studyServerId());
 
         Set<UUID> grantedResourceIds = presence.grants().stream()
                 .filter(grant -> grant.grantType() == GrantType.COURSE_RESOURCE)

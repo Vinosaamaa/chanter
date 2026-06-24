@@ -20,6 +20,7 @@ type StudyServer = {
     userId: string
     role: string
   }
+  planTier: string
   channels: Channel[]
 }
 
@@ -110,6 +111,7 @@ type OfficeHoursWaitlistEntry = {
 
 type InstructorDashboard = {
   studyServerId: string
+  planTier: string
   unansweredSupportQuestions: number
   repeatedQuestionGroups: number
   approvedFaqCount: number
@@ -118,6 +120,9 @@ type InstructorDashboard = {
   scheduledOfficeHoursSessions: number
   officeHoursWaitlistEntries: number
   aiInvocationCount: number
+  aiInvocationLimit: number
+  remainingAiInvocations: number
+  quotaExhausted: boolean
   lowConfidenceHandoffs: number
 }
 
@@ -335,6 +340,10 @@ function App() {
   const [isLoadingInstructorDashboard, setIsLoadingInstructorDashboard] = useState(false)
   const [instructorDashboardResult, setInstructorDashboardResult] = useState<string | null>(null)
   const [instructorDashboardError, setInstructorDashboardError] = useState<string | null>(null)
+  const [saasPlanTier, setSaasPlanTier] = useState('STARTER')
+  const [isUpdatingSaasPlan, setIsUpdatingSaasPlan] = useState(false)
+  const [saasPlanResult, setSaasPlanResult] = useState<string | null>(null)
+  const [saasPlanError, setSaasPlanError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const refreshDirectMessages = async () => {
@@ -515,7 +524,9 @@ function App() {
         throw new Error(`View failed with ${viewedResponse.status}`)
       }
 
-      setStudyServer(await viewedResponse.json())
+      const viewed: StudyServer = await viewedResponse.json()
+      setStudyServer(viewed)
+      setSaasPlanTier(viewed.planTier ?? 'STARTER')
       setCourse(null)
       resetTaQueueState()
       resetOfficeHoursState()
@@ -708,6 +719,12 @@ function App() {
       )
 
       if (!response.ok) {
+        const errorBody = await response.text()
+        if (response.status === 429) {
+          throw new Error(
+            errorBody || 'AI Study Assistant quota exhausted. Upgrade the Study Server SaaS Plan to continue.',
+          )
+        }
         throw new Error(`Assistant answer failed with ${response.status}`)
       }
 
@@ -886,7 +903,9 @@ function App() {
       const dashboard: InstructorDashboard = await response.json()
       setInstructorDashboard(dashboard)
       setInstructorDashboardResult(
-        `Dashboard: ${dashboard.unansweredSupportQuestions} unanswered, ${dashboard.openTaQueueItems} queue, ${dashboard.aiInvocationCount} AI calls.`,
+        `Dashboard (${dashboard.planTier}): ${dashboard.aiInvocationCount}/${dashboard.aiInvocationLimit} AI calls` +
+          (dashboard.quotaExhausted ? ' — quota exhausted' : ` — ${dashboard.remainingAiInvocations} remaining`) +
+          `; ${dashboard.unansweredSupportQuestions} unanswered, ${dashboard.openTaQueueItems} queue.`,
       )
     } catch (caught) {
       setInstructorDashboardError(
@@ -894,6 +913,39 @@ function App() {
       )
     } finally {
       setIsLoadingInstructorDashboard(false)
+    }
+  }
+
+  const updateSaasPlan = async () => {
+    if (!studyServer) {
+      return
+    }
+
+    setIsUpdatingSaasPlan(true)
+    setSaasPlanError(null)
+    setSaasPlanResult(null)
+
+    try {
+      const response = await fetch(`/api/v1/study-servers/${studyServer.id}/saas-plan`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerUserId,
+          planTier: saasPlanTier,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`SaaS Plan update failed with ${response.status}`)
+      }
+
+      const plan: { planTier: string; aiInvocationLimit: number } = await response.json()
+      setSaasPlanTier(plan.planTier)
+      setSaasPlanResult(`Plan updated to ${plan.planTier} (${plan.aiInvocationLimit} AI invocations).`)
+    } catch (caught) {
+      setSaasPlanError(caught instanceof Error ? caught.message : 'Unable to update SaaS Plan')
+    } finally {
+      setIsUpdatingSaasPlan(false)
     }
   }
 
@@ -2183,6 +2235,35 @@ function App() {
                     ) : null}
                     {studyServer ? (
                       <section className="support-question-summary">
+                        <p className="eyebrow">SaaS Plan (#24)</p>
+                        <p className="system-line">
+                          Current tier: {studyServer.planTier ?? saasPlanTier}
+                        </p>
+                        <label htmlFor="saas-plan-tier">Plan tier (Owner)</label>
+                        <select
+                          id="saas-plan-tier"
+                          value={saasPlanTier}
+                          onChange={(event) => setSaasPlanTier(event.target.value)}
+                        >
+                          <option value="STARTER">Starter (5 AI invocations)</option>
+                          <option value="PRO">Pro (100 AI invocations)</option>
+                          <option value="ORGANIZATION">Organization (1000 AI invocations)</option>
+                        </select>
+                        <div className="voice-actions">
+                          <button
+                            type="button"
+                            onClick={updateSaasPlan}
+                            disabled={isUpdatingSaasPlan}
+                          >
+                            {isUpdatingSaasPlan ? 'Updating...' : 'Update plan (Owner)'}
+                          </button>
+                        </div>
+                        {saasPlanResult ? <p className="system-line">{saasPlanResult}</p> : null}
+                        {saasPlanError ? <p className="form-error">{saasPlanError}</p> : null}
+                      </section>
+                    ) : null}
+                    {studyServer ? (
+                      <section className="support-question-summary">
                         <p className="eyebrow">Instructor Dashboard (#23)</p>
                         <div className="voice-actions">
                           <button
@@ -2197,6 +2278,11 @@ function App() {
                         {instructorDashboardError ? <p className="form-error">{instructorDashboardError}</p> : null}
                         {instructorDashboard ? (
                           <ul className="support-question-list">
+                            <li>Plan tier: {instructorDashboard.planTier}</li>
+                            <li>
+                              AI usage: {instructorDashboard.aiInvocationCount} / {instructorDashboard.aiInvocationLimit}
+                              {instructorDashboard.quotaExhausted ? ' (exhausted)' : ` (${instructorDashboard.remainingAiInvocations} left)`}
+                            </li>
                             <li>Unanswered questions: {instructorDashboard.unansweredSupportQuestions}</li>
                             <li>Repeated question groups: {instructorDashboard.repeatedQuestionGroups}</li>
                             <li>Approved FAQs: {instructorDashboard.approvedFaqCount}</li>

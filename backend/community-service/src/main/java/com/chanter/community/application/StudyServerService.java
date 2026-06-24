@@ -2,6 +2,7 @@ package com.chanter.community.application;
 
 import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.OwnerRole;
+import com.chanter.community.domain.SaasPlanTier;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerRole;
@@ -31,6 +32,7 @@ public class StudyServerService {
                 studyServerId,
                 name.trim(),
                 new OwnerRole(ownerUserId, StudyServerRole.STUDY_SERVER_OWNER),
+                SaasPlanTier.STARTER,
                 List.of(
                         new StudyServerChannel(UUID.randomUUID(), studyServerId, "announcements", ChannelKind.TEXT, 0),
                         new StudyServerChannel(UUID.randomUUID(), studyServerId, "general", ChannelKind.TEXT, 1),

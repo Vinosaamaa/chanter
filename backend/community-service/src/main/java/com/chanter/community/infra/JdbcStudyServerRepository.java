@@ -3,6 +3,7 @@ package com.chanter.community.infra;
 import com.chanter.community.application.StudyServerRepository;
 import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.OwnerRole;
+import com.chanter.community.domain.SaasPlanTier;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerRole;
@@ -54,12 +55,13 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     @Transactional
     public StudyServer save(StudyServer studyServer) {
         jdbcClient.sql("""
-                        INSERT INTO study_servers (id, name, owner_user_id, created_at)
-                        VALUES (:id, :name, :ownerUserId, :createdAt)
+                        INSERT INTO study_servers (id, name, owner_user_id, plan_tier, created_at)
+                        VALUES (:id, :name, :ownerUserId, :planTier, :createdAt)
                         """)
                 .param("id", studyServer.id())
                 .param("name", studyServer.name())
                 .param("ownerUserId", studyServer.ownerRole().userId())
+                .param("planTier", studyServer.planTier().name())
                 .param("createdAt", OffsetDateTime.ofInstant(studyServer.createdAt(), ZoneOffset.UTC))
                 .update();
 
@@ -92,7 +94,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     @Transactional(readOnly = true)
     public Optional<StudyServer> findById(UUID id) {
         return jdbcClient.sql("""
-                        SELECT id, name, owner_user_id, created_at
+                        SELECT id, name, owner_user_id, plan_tier, created_at
                         FROM study_servers
                         WHERE id = :id
                         """)
@@ -101,6 +103,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
                         ownerRoleFor(id),
+                        SaasPlanTier.valueOf(rs.getString("plan_tier")),
                         channelsFor(id),
                         rs.getObject("created_at", OffsetDateTime.class).toInstant()
                 ))

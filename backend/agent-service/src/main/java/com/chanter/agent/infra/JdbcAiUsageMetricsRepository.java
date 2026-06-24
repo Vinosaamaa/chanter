@@ -1,7 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.AiUsageMetricsRepository;
-import com.chanter.agent.domain.AiUsageMetrics;
+import com.chanter.agent.domain.AiInvocationCounts;
 import com.chanter.agent.domain.InvocationType;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -19,7 +19,7 @@ public class JdbcAiUsageMetricsRepository implements AiUsageMetricsRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public AiUsageMetrics findMetrics(UUID studyServerId) {
+    public AiInvocationCounts findInvocationCounts(UUID studyServerId) {
         int totalInvocations = jdbcClient.sql("""
                         SELECT COUNT(*)
                         FROM study_assistant_audit_records
@@ -40,6 +40,6 @@ public class JdbcAiUsageMetricsRepository implements AiUsageMetricsRepository {
                 .query(Integer.class)
                 .single();
 
-        return new AiUsageMetrics(studyServerId, totalInvocations, lowConfidenceHandoffs);
+        return new AiInvocationCounts(totalInvocations, lowConfidenceHandoffs);
     }
 }

@@ -64,7 +64,11 @@ public class HttpAgentServiceClient {
 
     public record AiUsageMetricsResponse(
             UUID studyServerId,
+            String planTier,
             int totalInvocations,
+            int aiInvocationLimit,
+            int remainingInvocations,
+            boolean quotaExhausted,
             int lowConfidenceHandoffs
     ) {
     }

@@ -8,6 +8,7 @@ public record StudyServer(
         UUID id,
         String name,
         OwnerRole ownerRole,
+        SaasPlanTier planTier,
         List<StudyServerChannel> channels,
         Instant createdAt
 ) {
