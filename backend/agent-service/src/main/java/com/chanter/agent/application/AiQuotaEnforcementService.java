@@ -67,21 +67,28 @@ public class AiQuotaEnforcementService {
     }
 
     private boolean isPostgresDatabase() {
-        if (postgresDatabase == null) {
+        Boolean cached = postgresDatabase;
+        if (cached == null) {
             synchronized (this) {
                 if (postgresDatabase == null) {
-                    postgresDatabase = detectPostgresDatabase();
+                    Boolean detected = detectPostgresDatabase();
+                    if (detected != null) {
+                        postgresDatabase = detected;
+                    }
+                    cached = detected;
+                } else {
+                    cached = postgresDatabase;
                 }
             }
         }
-        return postgresDatabase;
+        return Boolean.TRUE.equals(cached);
     }
 
-    private boolean detectPostgresDatabase() {
+    private Boolean detectPostgresDatabase() {
         try (Connection connection = dataSource.getConnection()) {
             return connection.getMetaData().getDatabaseProductName().toLowerCase().contains("postgres");
         } catch (Exception exception) {
-            return false;
+            return null;
         }
     }
 }
