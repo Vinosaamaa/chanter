@@ -2,6 +2,7 @@ package com.chanter.agent.application;
 
 import com.chanter.agent.domain.AnswerConfidence;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -20,7 +21,7 @@ public class KeywordGroundingEngine implements GroundingEngine {
 
     @Override
     public GroundingResult answer(String question, List<GroundingSource> sources) {
-        List<String> terms = tokenize(question);
+        List<String> terms = new ArrayList<>(new LinkedHashSet<>(tokenize(question)));
         if (terms.isEmpty() || sources.isEmpty()) {
             return lowConfidenceResult();
         }
@@ -51,8 +52,7 @@ public class KeywordGroundingEngine implements GroundingEngine {
         return new GroundingResult(
                 answerBody,
                 AnswerConfidence.HIGH,
-                List.of(new SourceCitation(bestSource.resourceId(), bestSource.title(), bestExcerpt)),
-                false
+                List.of(new SourceCitation(bestSource.resourceId(), bestSource.title(), bestExcerpt))
         );
     }
 
@@ -60,8 +60,7 @@ public class KeywordGroundingEngine implements GroundingEngine {
         return new GroundingResult(
                 "I do not have enough approved material to answer confidently. Please ask a TA or instructor for help.",
                 AnswerConfidence.LOW,
-                List.of(),
-                true
+                List.of()
         );
     }
 

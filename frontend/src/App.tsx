@@ -580,8 +580,13 @@ function App() {
     }
   }
 
+  const selectedSupportQuestion =
+    supportQuestions.find((question) => question.id === lastSupportQuestionId) ?? null
+  const canInvokeAssistant =
+    selectedSupportQuestion?.status === 'UNANSWERED' && !assistantAnswer
+
   const invokeAssistantAnswer = async () => {
-    if (!questionsChannel || !lastSupportQuestionId) {
+    if (!questionsChannel || !lastSupportQuestionId || !canInvokeAssistant) {
       return
     }
 
@@ -1516,7 +1521,7 @@ function App() {
                           <button
                             type="button"
                             onClick={invokeAssistantAnswer}
-                            disabled={isInvokingAssistant || !lastSupportQuestionId}
+                            disabled={isInvokingAssistant || !lastSupportQuestionId || !canInvokeAssistant}
                           >
                             {isInvokingAssistant ? 'Answering...' : 'Ask AI Assistant (#19)'}
                           </button>

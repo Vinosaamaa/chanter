@@ -48,7 +48,14 @@ public class HttpCourseResourceContentClient implements CourseResourceContentCli
                     .retrieve()
                     .body(byte[].class);
 
-            return content != null ? content : new byte[0];
+            if (content == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "Media Service returned empty Course Resource content"
+                );
+            }
+
+            return content;
         } catch (HttpClientErrorException.NotFound exception) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Resource not found", exception);
         } catch (HttpClientErrorException.Forbidden exception) {

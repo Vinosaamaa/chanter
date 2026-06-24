@@ -17,8 +17,10 @@ public interface GroundingEngine {
     record GroundingResult(
             String answerBody,
             AnswerConfidence confidence,
-            List<SourceCitation> citations,
-            boolean handoffRecommended
+            List<SourceCitation> citations
     ) {
+        public boolean handoffRecommended() {
+            return confidence == AnswerConfidence.LOW;
+        }
     }
 }

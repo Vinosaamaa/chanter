@@ -30,7 +30,7 @@ CREATE TABLE study_assistant_audit_records (
     learner_user_id UUID NOT NULL,
     invocation_type VARCHAR(32) NOT NULL CHECK (invocation_type IN ('GROUNDED_ANSWER', 'LOW_CONFIDENCE_HANDOFF')),
     confidence VARCHAR(16) NOT NULL CHECK (confidence IN ('HIGH', 'LOW')),
-    source_count INTEGER NOT NULL,
+    source_count INTEGER NOT NULL CHECK (source_count >= 0),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 

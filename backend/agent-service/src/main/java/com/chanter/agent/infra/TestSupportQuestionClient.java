@@ -44,7 +44,14 @@ public class TestSupportQuestionClient implements SupportQuestionClient {
             String status
     ) {
         SupportQuestion supportQuestion = getSupportQuestion(channelId, supportQuestionId, actorUserId);
-        if (!"UNANSWERED".equals(supportQuestion.status())) {
+        if (!"AI_ANSWERED".equals(status) && !"AI_LOW_CONFIDENCE".equals(status)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Assistant outcomes must be AI_ANSWERED or AI_LOW_CONFIDENCE"
+            );
+        }
+
+        if (!"UNANSWERED".equals(supportQuestion.status()) && !status.equals(supportQuestion.status())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
         }
 

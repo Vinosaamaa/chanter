@@ -124,10 +124,20 @@ public class GroundedSupportQuestionService {
                 continue;
             }
 
-            byte[] content = courseResourceContentClient.downloadContent(resource.id(), learnerUserId);
-            String textContent = decodeTextContent(content, resource.fileName());
-            if (!textContent.isBlank()) {
-                groundingSources.add(new GroundingSource(resource.id(), resource.title(), textContent));
+            try {
+                byte[] content = courseResourceContentClient.downloadContent(resource.id(), learnerUserId);
+                String textContent = decodeTextContent(content, resource.fileName());
+                if (!textContent.isBlank()) {
+                    groundingSources.add(new GroundingSource(resource.id(), resource.title(), textContent));
+                }
+            } catch (ResponseStatusException exception) {
+                if (exception.getStatusCode() == HttpStatus.NOT_FOUND
+                        || exception.getStatusCode() == HttpStatus.FORBIDDEN) {
+                    continue;
+                }
+                throw exception;
+            } catch (RuntimeException exception) {
+                continue;
             }
         }
 
@@ -173,8 +183,19 @@ public class GroundedSupportQuestionService {
             UUID learnerUserId,
             StudyAssistantAnswer existingAnswer
     ) {
-        String expectedStatus = statusForConfidence(existingAnswer.confidence());
-        supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, expectedStatus);
+        SupportQuestion current = supportQuestionClient.getSupportQuestion(
+                channelId,
+                supportQuestionId,
+                learnerUserId
+        );
+        if ("UNANSWERED".equals(current.status())) {
+            supportQuestionClient.updateStatus(
+                    channelId,
+                    supportQuestionId,
+                    learnerUserId,
+                    statusForConfidence(existingAnswer.confidence())
+            );
+        }
         return existingAnswer;
     }
 
