@@ -2,6 +2,7 @@ package com.chanter.community.application;
 
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
+import com.chanter.community.domain.CohortTaQueueAccess;
 import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.StudyAssistantGrantCandidates;
 import com.chanter.community.domain.StudyAssistantViewerScope;
@@ -29,6 +30,8 @@ public interface CourseRepository {
     boolean courseExists(UUID courseId);
 
     Optional<CourseResourceAccess> findCourseResourceAccess(UUID courseId, UUID userId);
+
+    Optional<CohortTaQueueAccess> findCohortTaQueueAccess(UUID cohortId, UUID userId);
 
     boolean isStudyServerOwner(UUID studyServerId, UUID userId);
 

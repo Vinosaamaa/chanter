@@ -6,6 +6,7 @@ import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
 import com.chanter.community.domain.InstructorRole;
+import com.chanter.community.domain.CohortTaQueueAccess;
 import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
 import java.time.Clock;
@@ -104,6 +105,18 @@ public class CourseService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.FORBIDDEN,
                         "Course Resource access requires Cohort Enrollment or Instructor role"
+                ));
+    }
+
+    public CohortTaQueueAccess findCohortTaQueueAccess(UUID cohortId, UUID userId) {
+        if (!courseRepository.cohortExists(cohortId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
+        }
+
+        return courseRepository.findCohortTaQueueAccess(cohortId, userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "TA Queue access requires Cohort Enrollment or Instructor role"
                 ));
     }
 }
