@@ -74,7 +74,7 @@ Decision status: confirmed.
 1. Create a **new branch per GitHub issue** (one issue → one branch → one PR).
 2. Implement on that branch; run tests locally before pushing.
 3. Open a **pull request** targeting `main` with acceptance criteria and test plan.
-4. **Do not merge to `main` until the PR is approved** by the repository owner.
+4. **Do not merge to `main` until the PR is approved** by the repository owner **and CodeRabbit review is complete** (see `docs/operations/coderabbit-review-workflow.md` — **Issue completion loop**).
 5. After merge, the linked issue closes (use `Closes #<number>` in the PR body).
 
 Branch naming:

@@ -3,6 +3,39 @@
 Date adopted: 2026-06-22  
 Replaces: Greptile / `greploop` (trial expired)
 
+**This file is the master reference for issue/PR completion.** Agents and humans must follow the **Issue completion loop** below. See also `.cursor/rules/git-workflow.mdc`.
+
+## Issue completion loop (mandatory)
+
+An issue is **not done** when code is pushed or a PR is opened. An issue is **done** only after the PR is **merged to `main`** following the full loop below.
+
+**One issue → one branch → one PR at a time.** Do not start the next issue, launch parallel sub-agents, or end your turn while a PR is still in review.
+
+### Required steps (in order)
+
+1. **Implement** on `feature/<N>-<slug>` from latest `main`.
+2. **Verify locally** — `mvn verify` (affected services), `npm run lint && npm run build`; browser demo when the slice has UI.
+3. **Docs** — `docs/operations/issue-<N>-change-log.md`; update `HANDOFF.md` / `README.md` when the issue closes.
+4. **Commit + push** the feature branch only.
+5. **Open PR** targeting `main` (`Closes #N`).
+6. **Wait for CI green** (`backend`, `frontend`).
+7. **Wait for CodeRabbit to finish** — status must be **Review completed** (not `pending`, not `Review in progress`, not `Review failed` because the PR was closed early).
+8. **CodeRabbit fix loop** — read all inline comments; fix actionable items; log in `docs/operations/issue-<N>-coderabbit-fix.md`; commit; push; **go back to step 6** until clean or only documented deferrals remain.
+9. **Merge** (squash) only after steps 6–8.
+10. **Start the next issue** — pull `main`, new branch, repeat.
+
+### Forbidden (caused regressions on #20 and #21)
+
+- Merging while CodeRabbit is still `pending`.
+- Ending a session or reporting “done” right after opening a PR.
+- Treating “CI green” as sufficient without CodeRabbit complete.
+- Launching background agents on multiple issues in parallel on the same repo.
+- Skipping `issue-<N>-coderabbit-fix.md` when CodeRabbit changed code or recorded deferrals.
+
+### Polling
+
+If CodeRabbit is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in the same session until it completes, then run the fix loop. Do not hand off with “waiting for CodeRabbit.”
+
 ## Policy
 
 **From issue #17 onward, use CodeRabbit for AI PR review.** Greptile fix logs under `docs/operations/issue-*-greptile-fix.md` remain historical records for merged PRs #25–#35; do not run new Greptile reviews.
