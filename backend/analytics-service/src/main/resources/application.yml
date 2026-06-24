@@ -1,0 +1,29 @@
+server:
+  port: ${ANALYTICS_PORT:8086}
+
+spring:
+  application:
+    name: analytics-service
+
+chanter:
+  community-service:
+    base-url: ${COMMUNITY_SERVICE_URL:http://localhost:8082}
+    connect-timeout-seconds: 5
+    read-timeout-seconds: 10
+  message-service:
+    base-url: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+    connect-timeout-seconds: 5
+    read-timeout-seconds: 10
+  agent-service:
+    base-url: ${AGENT_SERVICE_URL:http://localhost:8085}
+    connect-timeout-seconds: 5
+    read-timeout-seconds: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized

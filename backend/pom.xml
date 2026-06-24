@@ -26,6 +26,7 @@
         <module>message-service</module>
         <module>media-service</module>
         <module>agent-service</module>
+        <module>analytics-service</module>
     </modules>
 
     <properties>
