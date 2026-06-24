@@ -4,6 +4,7 @@ import com.chanter.message.domain.SupportQuestion;
 import com.chanter.message.domain.SupportQuestionStatus;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface SupportQuestionRepository {
@@ -21,6 +22,8 @@ public interface SupportQuestionRepository {
     List<SupportQuestion> findByChannelIdAndStatus(UUID channelId, SupportQuestionStatus status);
 
     Optional<SupportQuestion> findByIdAndChannelId(UUID channelId, UUID supportQuestionId);
+
+    Set<UUID> findIdsByChannelIdAndIds(UUID channelId, List<UUID> supportQuestionIds);
 
     boolean updateStatus(UUID supportQuestionId, SupportQuestionStatus fromStatus, SupportQuestionStatus toStatus);
 }

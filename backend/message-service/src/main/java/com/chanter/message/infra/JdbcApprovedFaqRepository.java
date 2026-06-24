@@ -144,7 +144,7 @@ public class JdbcApprovedFaqRepository implements ApprovedFaqRepository {
             return findByCourseId(courseId);
         }
 
-        String pattern = "%" + normalizedQuery + "%";
+        String pattern = "%" + escapeLikePattern(normalizedQuery) + "%";
         return jdbcClient.sql("""
                         SELECT
                             id,
@@ -157,8 +157,8 @@ public class JdbcApprovedFaqRepository implements ApprovedFaqRepository {
                         FROM approved_faqs
                         WHERE course_id = :courseId
                         AND (
-                            LOWER(question) LIKE :pattern
-                            OR LOWER(answer) LIKE :pattern
+                            LOWER(question) LIKE :pattern ESCAPE '\\'
+                            OR LOWER(answer) LIKE :pattern ESCAPE '\\'
                         )
                         ORDER BY updated_at DESC, question ASC
                         """)
@@ -182,6 +182,13 @@ public class JdbcApprovedFaqRepository implements ApprovedFaqRepository {
                     .param("supportQuestionId", supportQuestionId)
                     .update();
         }
+    }
+
+    private static String escapeLikePattern(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     private ApprovedFaq mapApprovedFaq(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {

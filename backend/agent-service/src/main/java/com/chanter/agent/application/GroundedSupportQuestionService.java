@@ -144,18 +144,31 @@ public class GroundedSupportQuestionService {
             }
         }
 
-        for (ApprovedFaqClient.ApprovedFaqSummary approvedFaq : approvedFaqClient.listApprovedFaqs(
-                access.courseId(),
-                learnerUserId
-        )) {
-            String textContent = approvedFaq.question() + "\n\n" + approvedFaq.answer();
-            if (!textContent.isBlank()) {
-                groundingSources.add(new GroundingSource(
-                        approvedFaq.id(),
-                        "FAQ: " + approvedFaq.question(),
-                        textContent
-                ));
+        try {
+            for (ApprovedFaqClient.ApprovedFaqSummary approvedFaq : approvedFaqClient.listApprovedFaqs(
+                    access.courseId(),
+                    learnerUserId
+            )) {
+                if (approvedFaq.question() == null || approvedFaq.answer() == null) {
+                    continue;
+                }
+                String textContent = approvedFaq.question() + "\n\n" + approvedFaq.answer();
+                if (!textContent.isBlank()) {
+                    groundingSources.add(new GroundingSource(
+                            approvedFaq.id(),
+                            "FAQ: " + approvedFaq.question(),
+                            textContent
+                    ));
+                }
             }
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode() != HttpStatus.NOT_FOUND
+                    && exception.getStatusCode() != HttpStatus.FORBIDDEN
+                    && exception.getStatusCode() != HttpStatus.BAD_GATEWAY) {
+                throw exception;
+            }
+        } catch (RuntimeException exception) {
+            // FAQ grounding is supplemental; continue without FAQ sources when message-service is unavailable.
         }
 
         GroundingResult groundingResult = groundingEngine.answer(supportQuestion.body(), groundingSources);

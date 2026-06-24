@@ -100,6 +100,8 @@ class ApprovedFaqSmokeTest {
 
         assertThat(created.courseId()).isEqualTo(courseId);
         assertThat(created.approvedByUserId()).isEqualTo(instructorUserId);
+        assertThat(createResult.getResponse().getHeader("Location"))
+                .contains("/api/v1/courses/" + courseId + "/approved-faqs/" + created.id());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/courses/{courseId}/approved-faqs", courseId)
                         .param("viewerUserId", learnerUserId.toString()))
@@ -110,17 +112,7 @@ class ApprovedFaqSmokeTest {
                 ApprovedFaqListResponse.class
         );
 
-        assertThat(listed.approvedFaqs()).containsExactly(ApprovedFaqResponse.from(
-                new com.chanter.message.domain.ApprovedFaq(
-                        created.id(),
-                        created.courseId(),
-                        created.question(),
-                        created.answer(),
-                        created.approvedByUserId(),
-                        created.createdAt(),
-                        created.updatedAt()
-                )
-        ));
+        assertThat(listed.approvedFaqs()).containsExactly(created);
 
         MvcResult searchResult = mockMvc.perform(get("/api/v1/courses/{courseId}/approved-faqs/search", courseId)
                         .param("viewerUserId", learnerUserId.toString())
