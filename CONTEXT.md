@@ -141,4 +141,5 @@ _Avoid_: Workspace, tenant, account
 | [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Requirements and user stories |
 | [`plan.md`](../plan.md) | Implementation milestones and frontend direction |
 | [`System Design.md`](../System Design.md) | Backend services and engineering diagrams |
+| [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) | **Mandatory agent issue order** (project boards #3, #4) |
 | [`HANDOFF.md`](../HANDOFF.md) | Agent session startup and current slice |

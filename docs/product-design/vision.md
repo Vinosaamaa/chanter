@@ -264,21 +264,25 @@ Access is scoped by **Cohort Enrollment** and role (Owner, Instructor, TA, Learn
 
 ## Built today vs target UI
 
-| Capability | Backend / API | Target product UI |
+| Capability | Backend / API (#11–#24) | Target product UI |
 |---|---|---|
-| Create Study Server | #12 done | Demo form → full server picker |
-| Course, cohort, enroll | #13 done | Course cards in server home |
-| Voice presence | #14 done | Voice grid in `> study-room` |
-| Friends & DMs | #15 done | Friends hub (#31 for live UX) |
-| Support questions | #16 in PR | Realtime `#questions` chat |
-| Course resources | #17 planned | `#resources` panel + uploads |
-| AI Study Assistant | #18–#19 planned | Context panel + citations |
-| TA queue & office hours | #21–#22 planned | Queue UI + scheduled voice |
-| Instructor dashboard | #23 planned | Dedicated dashboard route |
+| Create Study Server | done | #56 onboarding flows |
+| Course, cohort, enroll | done | #56 server home + enrollment |
+| Voice presence | done | #61 voice WebRTC (Workable Product) |
+| Friends & DMs | #15 API done | #31 Friends hub (Workable Product) |
+| Support questions + AI | done | #52 `#questions` UX |
+| Course resources | done | #53 `#resources` panel |
+| TA queue & office hours | done | #54 support ops UI |
+| Instructor dashboard & billing | done | #55 dashboard + SaaS plan UI |
+| Live text chat | APIs exist | #51 realtime-service + shell |
 
-Today's `frontend/src/App.tsx` is a **vertical-slice demo** (forms and buttons proving APIs). The mockups in `mockups/` show the **production shell** once navigation, WebSocket chat, and dashboard routes land.
+**Active:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) (#48–#59). **Next:** [Workable Product](https://github.com/users/Vinosaamaa/projects/4) (#60–#63, #31–#32). Agent order: [`docs/issues/agent-roadmap.md`](../issues/agent-roadmap.md).
+
+Today's `frontend/src/App.tsx` is a **vertical-slice demo** (forms and buttons proving APIs). The mockups in `mockups/` show the **production shell** implemented in Production Frontend slices #48–#59.
 
 ## Later phases (post-MVP)
+
+**Production Frontend** (#48–#59) and **Workable Product** (#60–#63, #31–#32) are tracked on [project boards #3 and #4](https://github.com/users/Vinosaamaa/projects/3). See [`agent-roadmap.md`](../issues/agent-roadmap.md).
 
 Dashed boxes in the [user journey diagram](diagrams/user-journey.drawio.png):
 
@@ -289,8 +293,11 @@ Dashed boxes in the [user journey diagram](diagrams/user-journey.drawio.png):
 
 ## See also
 
+- [**Agent roadmap**](../issues/agent-roadmap.md) — mandatory issue order for agents
+- [Production frontend breakdown](../issues/production-frontend-issue-breakdown.md) — active UI phase (#48–#59)
+- [Workable product breakdown](../issues/workable-product-issue-breakdown.md) — full-stack local app (#60–#63, #31–#32)
 - [Visibility and social model](visibility-and-social-model.md) — global friends vs enrollment-scoped course UI
 - [Product design showcase README](README.md) — index of all assets
 - [Education MVP PRD](../product/education-mvp-prd.md) — full requirements
-- [Issue breakdown](../issues/education-mvp-issue-breakdown.md) — implementation slices
+- [Issue breakdown](../issues/education-mvp-issue-breakdown.md) — backend slices (#11–#24)
 - [Interactive screen tour](interactive/README.md) — clickable walkthrough in Cursor

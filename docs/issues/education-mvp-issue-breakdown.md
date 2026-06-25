@@ -1,7 +1,8 @@
 # Chanter Education MVP Issue Breakdown
 
 > **Product visuals:** target UI mockups and screen flows for each slice live in [`docs/product-design/`](../product-design/README.md) (see `mockups/README.md` for the gallery).  
-> **Visibility:** global friends + enrollment-scoped **My courses** sidebar — [`visibility-and-social-model.md`](../product-design/visibility-and-social-model.md).
+> **Visibility:** global friends + enrollment-scoped **My courses** sidebar — [`visibility-and-social-model.md`](../product-design/visibility-and-social-model.md).  
+> **Backend MVP (#11–#24):** merged on `main`. **Active / next phases:** [`agent-roadmap.md`](agent-roadmap.md).
 
 ## GitHub Issues Published
 
@@ -47,20 +48,24 @@ Cross-cutting (post-MVP vertical slices):
 |---|---|---|
 | 30 | Slice: Wire Auth Service Principal Into Protected Endpoints | Replaces `TODO(#auth)` on #12–#14; see `docs/operations/issue-14-greptile-fix.md` |
 
-Post-MVP social & realtime (milestone: [Social Hub & Realtime](https://github.com/Vinosaamaa/chanter/milestone/2), project: [Social Hub & Realtime (Post-MVP)](https://github.com/users/Vinosaamaa/projects/2)):
+Post-MVP social & realtime — now tracked under **[Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4)** ([project #4](https://github.com/users/Vinosaamaa/projects/4)). Legacy milestone 2 / project #2 are closed.
 
 | # | Title | Start when unblocked |
 |---|---|---|
-| 31 | Slice: Build Discord-Like Friends Hub And Live DM Conversation | after #15, #30; requires `realtime-service` bootstrap |
-| 32 | Slice: Direct Message Voice Call Between Friends | after #31; requires Voice Channel WebRTC/LiveKit transport |
+| 31 | Slice: Build Discord-Like Friends Hub And Live DM Conversation | after #51, #30, #50 |
+| 32 | Slice: Direct Message Voice Call Between Friends | after #31, #61 |
+
+See also: #60–#63 in [`workable-product-issue-breakdown.md`](workable-product-issue-breakdown.md). Agent order: [`agent-roadmap.md`](agent-roadmap.md).
 
 Architecture: `docs/architecture/social-hub-and-dm-voice.md`
 
 All issues: https://github.com/Vinosaamaa/chanter/issues
 
-Project board: [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) — issues #1–#24 and #30.
+Project boards:
 
-Post-MVP project: [Social Hub & Realtime (Post-MVP)](https://github.com/users/Vinosaamaa/projects/2) — issues #31–#32 (milestone 2).
+- [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) — backend #1–#24 (**done**).
+- [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — #47–#59, #30 (**active**).
+- [Workable Product](https://github.com/users/Vinosaamaa/projects/4) — #60–#63, #30–#32 (after #51).
 
 Recommended labels:
 

@@ -185,3 +185,62 @@ The MVP should win by reducing educator workload and making learning communities
 Learners should still feel the familiar Discord-like surface: channels, voice, friends, and DMs. Issue #15 establishes friend/DM backend rules; issues #31–#32 deliver the full social UX (friends list with presence, live DM chat box, friend voice calls). The buyer value is learning operations: fewer repeated questions, faster support, better knowledge retention, and lower instructor/TA overhead.
 
 Domain language is canonical in `CONTEXT.md`. Grill session decisions are logged in `docs/sessions/2026-06-16-product-strategy-grill-session.md`.
+
+## Phase 2: Production Frontend (post–backend MVP)
+
+**Status (2026-06):** Vertical slices **#11–#24** delivered backend APIs and a single-file demo UI (`frontend/src/App.tsx`). The **buyer-facing product** — matching [`docs/product-design/mockups/`](../product-design/mockups/README.md) — is a separate delivery phase tracked as **[Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3)**.
+
+### Problem
+
+Educators evaluating Chanter see API demo forms, not the Discord-like learning community promised in mockups. Without auth UI, app shell, realtime chat, and screen-level polish, the product is not demoable as a SaaS application.
+
+### Solution
+
+Build the production React shell (React Router, TanStack Query, design system) and replace demo harness flows with mockup-aligned screens. Bootstrap `realtime-service` for live Course Channel chat. Pair **#30** (backend auth principal) with **#49** (sign-in UI). Track slices in [`docs/issues/production-frontend-issue-breakdown.md`](../issues/production-frontend-issue-breakdown.md) (epic [#47](https://github.com/Vinosaamaa/chanter/issues/47), [project #3](https://github.com/users/Vinosaamaa/projects/3), slices **#48–#59**). **Start at #48;** full order in [`docs/issues/agent-roadmap.md`](../issues/agent-roadmap.md) § Phase 2.
+
+### Phase 2 user stories (additive)
+
+44. As a user, I want to sign in through a proper auth screen, so that I do not paste user IDs into demo forms.
+45. As a learner, I want the Study Server app shell with enrollment-scoped **My courses** in the sidebar, so that navigation matches the product mockups.
+46. As a learner, I want live message delivery in Course Channels, so that `#questions` feels like Discord rather than a form POST.
+47. As a learner, I want Support Questions and AI answers rendered in the conversation with citation cards, so that I trust grounded responses.
+48. As an Instructor, I want TA Queue, Office Hours, and FAQ approval as dedicated screens, so that support operations are usable without the dev demo panel.
+49. As an Instructor, I want the Instructor Dashboard and SaaS Plan UI to match the designed ops views, so that buyer value is visible in sales demos.
+50. As a visitor, I want a marketing landing page (optional), so that educators discover Chanter before sign-in.
+
+### Phase 2 implementation decisions
+
+- Split `frontend/src/App.tsx` into feature-based routes and components; keep the demo harness behind a dev-only route until removed.
+- Adopt Tailwind + component library (shadcn-style) consistent with mockup dark theme and indigo accents.
+- **#30 + #49** must ship before treating any flow as production-ready (no caller-supplied user IDs).
+- **#51** bootstraps `realtime-service` (WebSocket auth, channel subscriptions, optimistic send) — prerequisite for **#31** Friends Hub live DMs.
+- Search (**#57**) and Channel Summaries (**#58**) require new `search-service` / summary generation paths not covered by backend slices alone.
+- AI Study Assistant install polish (`ai-assistant-install.png`) ships inside **#52** context panel or a thin follow-up; backend install flow (#18) already exists.
+
+### Phase 2 out of scope
+
+- Course storefront commerce UI (`course-storefront.png`) — future PRD.
+- Native mobile apps, Organization SSO, Live Class video — unchanged from main Out of Scope.
+- Replacing backend APIs built in #11–#24 (frontend consumes existing contracts).
+
+### Phase 2 testing decisions
+
+- Frontend E2E (Playwright or equivalent) for sign-in → server shell → post in `#questions` → see AI citation card.
+- WebSocket integration tests for `realtime-service` subscribe/send/reconnect.
+- Accessibility checks on app shell navigation (keyboard, focus order).
+- Browser demo against mockup checklist in each slice PR before merge.
+
+## Phase 3: Workable Product (full-stack local app)
+
+**Status (2026-06):** Production Frontend delivers **screens and live text chat**; a **workable app** also needs voice media, live friends/DM, and a one-command local stack. Tracked as **[Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4)** ([project #4](https://github.com/users/Vinosaamaa/projects/4), epic [#60](https://github.com/Vinosaamaa/chanter/issues/60)).
+
+### Solution
+
+After **#51** merges (realtime text chat), ship Workable Product slices in [project #4](https://github.com/users/Vinosaamaa/projects/4) board order: **#60** (epic) → **#30** (if needed) → **#62** (one-command stack) → **#61** (Voice Channel WebRTC + LiveKit) → **#31** (Friends Hub) → **#32** (DM voice) → **#63** (E2E demo). See [`docs/issues/agent-roadmap.md`](../issues/agent-roadmap.md) § Phase 3 and [`docs/issues/workable-product-issue-breakdown.md`](../issues/workable-product-issue-breakdown.md).
+
+### Phase 3 user stories (additive)
+
+51. As a learner, I want to join a Voice Channel and speak with classmates, so that study rooms feel like Discord voice.
+52. As friends, I want live DM delivery without refreshing, so that social chat feels realtime.
+53. As a developer, I want one command to start the full local product, so that I can demo Chanter without manual service wiring.
+54. As a product owner, I want a documented end-to-end demo path, so that I know the app is truly workable front to back.

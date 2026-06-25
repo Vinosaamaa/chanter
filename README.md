@@ -10,10 +10,22 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 ## Current Status
 
-Milestone 0 (monorepo bootstrap) through [issue #20](https://github.com/Vinosaamaa/chanter/issues/20) (Approved FAQs, including CodeRabbit follow-up PR #40) are merged on `main`. [Issue #21](https://github.com/Vinosaamaa/chanter/issues/21) (TA Queue) is in progress.
+**Backend MVP (milestone 1)** — issues **#11–#24** are merged on `main`. The running `frontend/src/App.tsx` is still an API demo harness, not the production shell.
 
-GitHub repository: `https://github.com/Vinosaamaa/chanter`  
-Project board: `https://github.com/users/Vinosaamaa/projects/1` (Education MVP) · Post-MVP: `https://github.com/users/Vinosaamaa/projects/2` (#31–#32)
+**Active work:** **[Production Frontend](https://github.com/users/Vinosaamaa/projects/3)** (milestone 3) — start at **[issue #48](https://github.com/Vinosaamaa/chanter/issues/48)**.  
+**Next phase:** **[Workable Product](https://github.com/users/Vinosaamaa/projects/4)** (milestone 4) — full-stack local app (voice, live DMs, one-command stack) after **#51** merges.
+
+GitHub repository: `https://github.com/Vinosaamaa/chanter`
+
+### Project boards (issue order on each board = implementation order)
+
+| Project | URL | Scope |
+|---------|-----|--------|
+| Education MVP (historical) | [projects/1](https://github.com/users/Vinosaamaa/projects/1) | Backend slices #1–#24 |
+| **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59**, #30 — **active** |
+| **Workable Product** | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #30–#32 — after realtime UI |
+
+**Agent issue order:** [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) (mandatory for all agents).
 
 Implemented bootstrap:
 
@@ -30,7 +42,10 @@ Key planning files:
 | [`CONTEXT.md`](CONTEXT.md) | Canonical product glossary (Study Server, Cohort, Support Question, …) |
 | [`docs/product-design/`](docs/product-design/README.md) | **Product showcase** — target UI mockups (19 screens), vision walkthrough, **visibility and social model**, user-journey diagram, interactive screen tour |
 | [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Education MVP PRD — problem, user stories, out of scope |
-| [`docs/issues/education-mvp-issue-breakdown.md`](docs/issues/education-mvp-issue-breakdown.md) | Epics and vertical slices (#11–#24) |
+| [`docs/issues/education-mvp-issue-breakdown.md`](docs/issues/education-mvp-issue-breakdown.md) | Backend epics and slices (#11–#24) — **done** |
+| [`docs/issues/production-frontend-issue-breakdown.md`](docs/issues/production-frontend-issue-breakdown.md) | Production UI slices (#47–#59) — **active** |
+| [`docs/issues/workable-product-issue-breakdown.md`](docs/issues/workable-product-issue-breakdown.md) | Workable full-stack app (#60–#63, #31–#32) |
+| [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) | **Mandatory agent issue order** across project boards |
 | [`plan.md`](plan.md) | Roadmap, milestones, frontend/backend direction, scale and AI-agent phases |
 | [`System Design.md`](System Design.md) | Backend architecture, service boundaries, event flows (engineering diagrams in `docs/diagrams/`) |
 | [`docs/diagrams/`](docs/diagrams/) | Editable draw.io **architecture** sources + PNG exports for `plan.md` / `System Design.md` |
@@ -88,4 +103,6 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-Active: [#16 Post A Support Question In A Course Channel](https://github.com/Vinosaamaa/chanter/issues/16) ([PR #34](https://github.com/Vinosaamaa/chanter/pull/34)).
+**Active:** [Production Frontend — issue #48](https://github.com/Vinosaamaa/chanter/issues/48) on [project board #3](https://github.com/users/Vinosaamaa/projects/3).
+
+See [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) for the full ordered list through Workable Product (project #4).

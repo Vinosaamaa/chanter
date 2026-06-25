@@ -15,7 +15,8 @@ Create a clean development operating model for an enterprise-grade microservice 
 
 - The workspace is initialized as a local git repository on `main`.
 - Private GitHub repository exists at `https://github.com/Vinosaamaa/chanter`, and local `main` tracks `origin/main`.
-- Application code has been bootstrapped. Issues #11–#15 are merged on `main`; issue #16 is in review on [PR #34](https://github.com/Vinosaamaa/chanter/pull/34).
+- Application code has been bootstrapped. Backend MVP issues **#11–#24** are merged on `main`.
+- **Active phase:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — start at **#48**. **Next:** [Workable Product](https://github.com/users/Vinosaamaa/projects/4) after **#51**. Agent order: [`docs/issues/agent-roadmap.md`](../issues/agent-roadmap.md).
 - Existing files include planning/design docs, the education MVP PRD, **product design showcase** (`docs/product-design/` — UI mockups and vision), GitHub-ready local issue breakdown, editable draw.io architecture diagrams (`docs/diagrams/`), local repository metadata/templates, Spring Boot services, a React/Vite frontend, CI, and local Docker infrastructure.
 - The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and CodeRabbit review (`docs/operations/coderabbit-review-workflow.md`; replaces Greptile / `greploop`).
 - Draw.io **architecture** diagram sources and embedded PNG exports live in `docs/diagrams/`; use `/drawio-skill` for future diagram revisions.
@@ -50,7 +51,10 @@ Decision status: confirmed.
 - [ ] Require pull requests for `main` on GitHub (after Pro upgrade or if repo is public).
 - [ ] Require `backend` and `frontend` status checks on GitHub (after Pro upgrade).
 - [ ] Add CODEOWNERS after real ownership exists.
-- [x] Create the GitHub Projects board: [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) (issues #1–#24 added).
+- [x] Create the GitHub Projects board: [Chanter Education MVP](https://github.com/users/Vinosaamaa/projects/1) (issues #1–#24).
+- [x] Create [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) (issues #47–#59, #30) and [Workable Product](https://github.com/users/Vinosaamaa/projects/4) (#60–#63, #31–#32).
+- [x] Close legacy Social Hub project #2 (empty; #31–#32 moved to project #4).
+- [x] Agent issue order documented in [`docs/issues/agent-roadmap.md`](../issues/agent-roadmap.md).
 - [x] Convert `docs/issues/education-mvp-issue-breakdown.md` into GitHub epics and vertical-slice stories.
 
 ## Initial Epics
