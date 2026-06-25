@@ -1,3 +1,4 @@
+import { getApiBase } from '../../lib/api-base'
 import type { AuthSession } from '../auth/types'
 
 export type DemoPersonaKey = 'owner' | 'instructor' | 'learner' | 'nonEnrolled'
@@ -23,7 +24,8 @@ const PERSONA_LABELS: Record<DemoPersonaKey, string> = {
 }
 
 async function loginOrRegister(email: string, displayName: string): Promise<AuthSession> {
-  const loginResponse = await fetch('/api/v1/auth/login', {
+  const apiBase = getApiBase()
+  const loginResponse = await fetch(`${apiBase}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password: DEMO_PASSWORD }),
@@ -33,7 +35,7 @@ async function loginOrRegister(email: string, displayName: string): Promise<Auth
     return loginResponse.json() as Promise<AuthSession>
   }
 
-  const registerResponse = await fetch('/api/v1/auth/register', {
+  const registerResponse = await fetch(`${apiBase}/api/v1/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password: DEMO_PASSWORD, displayName }),

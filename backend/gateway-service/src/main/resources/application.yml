@@ -78,7 +78,7 @@ spring:
 
 chanter:
   jwt:
-    secret: ${CHANTER_JWT_SECRET:chanter-local-dev-jwt-secret-change-me}
+    secret: ${CHANTER_JWT_SECRET}
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
 
 management:

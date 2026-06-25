@@ -3,7 +3,7 @@ package com.chanter.gateway.security;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.InvalidJwtException;
 import com.chanter.common.auth.JwtTokenService;
-import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -20,8 +20,8 @@ import reactor.core.publisher.Mono;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class JwtAuthenticationWebFilter implements WebFilter {
 
-    private static final List<String> PUBLIC_PREFIXES = List.of(
-            "/actuator/",
+    private static final String ACTUATOR_PREFIX = "/actuator/";
+    private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
             "/api/v1/auth/health",
             "/api/v1/auth/register",
             "/api/v1/auth/login",
@@ -54,7 +54,10 @@ public class JwtAuthenticationWebFilter implements WebFilter {
         try {
             UUID userId = jwtTokenService.parseUserId(authorizationHeader);
             ServerWebExchange authenticatedExchange = exchange.mutate()
-                    .request(builder -> builder.header(AuthHeaders.USER_ID, userId.toString()))
+                    .request(builder -> builder.headers(headers -> {
+                        headers.remove(AuthHeaders.USER_ID);
+                        headers.set(AuthHeaders.USER_ID, userId.toString());
+                    }))
                     .build();
             return chain.filter(authenticatedExchange);
         } catch (InvalidJwtException exception) {
@@ -64,6 +67,9 @@ public class JwtAuthenticationWebFilter implements WebFilter {
     }
 
     private static boolean isPublicPath(String path) {
-        return PUBLIC_PREFIXES.stream().anyMatch(path::startsWith);
+        if (path.startsWith(ACTUATOR_PREFIX)) {
+            return true;
+        }
+        return PUBLIC_AUTH_PATHS.contains(path);
     }
 }

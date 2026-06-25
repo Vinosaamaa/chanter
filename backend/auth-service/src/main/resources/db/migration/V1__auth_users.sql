@@ -8,7 +8,7 @@ CREATE TABLE auth_users (
 
 CREATE TABLE auth_refresh_tokens (
     id UUID PRIMARY KEY,
-    user_id UUID NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth_users (id) ON DELETE CASCADE,
     token_hash VARCHAR(128) NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
     revoked_at TIMESTAMP

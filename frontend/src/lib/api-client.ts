@@ -1,5 +1,4 @@
-const API_BASE =
-  import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_BASE_URL ?? ''
+import { getApiBase } from './api-base'
 
 export class ApiError extends Error {
   status: number
@@ -18,23 +17,27 @@ type ApiAuthConfig = {
   refreshSession: () => Promise<boolean>
 }
 
+export type ApiFetchInit = RequestInit & {
+  skipAuthRefresh?: boolean
+}
+
 let apiAuthConfig: ApiAuthConfig | null = null
 
 export function configureApiAuth(config: ApiAuthConfig): void {
   apiAuthConfig = config
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  return apiFetchWithRetry<T>(path, init, true)
+export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T> {
+  return apiFetchWithRetry<T>(path, init, init?.skipAuthRefresh ?? false)
 }
 
 async function apiFetchWithRetry<T>(
   path: string,
-  init: RequestInit | undefined,
-  allowRefresh: boolean,
+  init: ApiFetchInit | undefined,
+  skipAuthRefresh: boolean,
 ): Promise<T> {
   const headers = new Headers(init?.headers)
-  if (init?.body && !headers.has('Content-Type')) {
+  if (init?.body && typeof init.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 
@@ -43,15 +46,15 @@ async function apiFetchWithRetry<T>(
     headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${getApiBase()}${path}`, {
     ...init,
     headers,
   })
 
-  if (response.status === 401 && allowRefresh && apiAuthConfig) {
+  if (response.status === 401 && !skipAuthRefresh && apiAuthConfig) {
     const refreshed = await apiAuthConfig.refreshSession()
     if (refreshed) {
-      return apiFetchWithRetry<T>(path, init, false)
+      return apiFetchWithRetry<T>(path, init, true)
     }
   }
 

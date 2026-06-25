@@ -36,7 +36,7 @@ Shipped JWT-backed auth sessions (register, login, refresh, logout, `/me`), gate
 
 ## Config
 
-- `CHANTER_JWT_SECRET` — shared by auth-service and gateway (see `.env.example`)
+- `CHANTER_JWT_SECRET` — **required** for auth-service and gateway (no default; set in local `.env`)
 - `VITE_API_BASE` or `VITE_API_BASE_URL` — optional frontend API base (Vite dev proxy works with empty base)
 
 ## Verification

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../../../components/ui/card'
@@ -11,6 +11,7 @@ type AuthMode = 'sign-in' | 'register'
 export function SignInPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const accessToken = useAuthStore((state) => state.accessToken)
   const setSession = useAuthStore((state) => state.setSession)
   const [mode, setMode] = useState<AuthMode>('sign-in')
   const [email, setEmail] = useState('')
@@ -20,6 +21,10 @@ export function SignInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app'
+
+  if (accessToken) {
+    return <Navigate to={redirectTo} replace />
+  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()

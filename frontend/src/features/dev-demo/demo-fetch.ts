@@ -13,6 +13,19 @@ export function setActiveDemoPersona(key: DemoPersonaKey): void {
   activePersonaKey = key
 }
 
+export async function withActiveDemoPersona<T>(
+  persona: DemoPersonaKey,
+  action: () => Promise<T>,
+): Promise<T> {
+  const previous = activePersonaKey
+  setActiveDemoPersona(persona)
+  try {
+    return await action()
+  } finally {
+    setActiveDemoPersona(previous)
+  }
+}
+
 export function getDemoPersonas(): DemoPersonas {
   if (!demoPersonas) {
     throw new Error('Demo personas are not initialized')
@@ -61,7 +74,7 @@ export async function demoFetch(
   if (!headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${resolved.accessToken}`)
   }
-  if (init?.body && !headers.has('Content-Type')) {
+  if (init?.body && typeof init.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 

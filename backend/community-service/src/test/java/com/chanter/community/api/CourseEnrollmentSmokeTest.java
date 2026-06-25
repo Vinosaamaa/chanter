@@ -33,7 +33,6 @@ class CourseEnrollmentSmokeTest {
     @Test
     void learnerAccessesCourseChannelsOnlyThroughCohortEnrollment() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
-        UUID instructorUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
         UUID nonEnrolledUserId = UUID.randomUUID();
 
@@ -44,7 +43,6 @@ class CourseEnrollmentSmokeTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "title", "Spring Boot Foundations",
-                                "instructorUserId", instructorUserId.toString(),
                                 "cohortName", "Summer 2026"
                         ))))
                 .andExpect(status().isCreated())
@@ -55,22 +53,22 @@ class CourseEnrollmentSmokeTest {
         );
 
         assertThat(course.title()).isEqualTo("Spring Boot Foundations");
-        assertThat(course.instructorRole()).isEqualTo(new InstructorRoleResponse(instructorUserId, "INSTRUCTOR"));
+        assertThat(course.instructorRole()).isEqualTo(new InstructorRoleResponse(ownerUserId, "INSTRUCTOR"));
         assertThat(course.cohort().name()).isEqualTo("Summer 2026");
         assertThat(course.channels())
                 .extracting(CourseChannelResponse::name)
                 .containsExactly("announcements", "questions", "resources");
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}", course.channels().getFirst().id())
-                        .with(asUser(instructorUserId)))
+                        .with(asUser(ownerUserId)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}", UUID.randomUUID())
-                        .with(asUser(instructorUserId)))
+                        .with(asUser(ownerUserId)))
                 .andExpect(status().isNotFound());
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", UUID.randomUUID())
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "learnerUserId", learnerUserId.toString()
@@ -86,7 +84,7 @@ class CourseEnrollmentSmokeTest {
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "learnerUserId", learnerUserId.toString()
@@ -137,7 +135,7 @@ class CourseEnrollmentSmokeTest {
 
         MvcResult instructorAccessResult = mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}/support-question-access", questionsChannelId
-                ).with(asUser(instructorUserId)))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         SupportQuestionChannelAccessResponse instructorAccess = objectMapper.readValue(
@@ -163,7 +161,7 @@ class CourseEnrollmentSmokeTest {
 
         MvcResult instructorResourceAccessResult = mockMvc.perform(get(
                         "/api/v1/courses/{courseId}/resource-access", course.id()
-                ).with(asUser(instructorUserId)))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         CourseResourceAccessResponse instructorResourceAccess = objectMapper.readValue(

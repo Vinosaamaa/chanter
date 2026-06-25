@@ -10,6 +10,8 @@ public interface RefreshTokenRepository {
 
     Optional<UUID> findActiveUserIdByTokenHash(String tokenHash, Instant now);
 
+    Optional<UUID> consumeActiveUserIdByTokenHash(String tokenHash, Instant now);
+
     void revokeByTokenHash(String tokenHash, Instant revokedAt);
 
     void revokeAllForUser(UUID userId, Instant revokedAt);

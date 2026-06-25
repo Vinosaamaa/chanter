@@ -35,21 +35,20 @@ class OfficeHoursSmokeTest {
     @Test
     void instructorSchedulesOfficeHoursAndLearnerJoinsDuringWindow() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
-        UUID instructorUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
 
         StudyServerResponse studyServer = createStudyServer(ownerUserId);
-        CourseResponse course = createCourse(studyServer.id(), ownerUserId, instructorUserId);
-        enrollLearner(course.cohort().id(), instructorUserId, learnerUserId);
+        CourseResponse course = createCourse(studyServer.id(), ownerUserId);
+        enrollLearner(course.cohort().id(), ownerUserId, learnerUserId);
 
         Instant startsAt = Instant.now().minus(5, ChronoUnit.MINUTES);
         Instant endsAt = Instant.now().plus(1, ChronoUnit.HOURS);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
+                                "instructorUserId", ownerUserId.toString(),
                                 "startsAt", startsAt.toString(),
                                 "endsAt", endsAt.toString()
                         ))))
@@ -88,24 +87,24 @@ class OfficeHoursSmokeTest {
         assertThat(waitlistEntry.status()).isEqualTo("WAITING");
 
         mockMvc.perform(post("/api/v1/office-hours/{sessionId}/admit-next", session.id())
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "actorUserId", instructorUserId.toString()
+                                "actorUserId", ownerUserId.toString()
                         ))))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/office-hours/{sessionId}/voice-join", session.id())
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "actorUserId", instructorUserId.toString()
+                                "actorUserId", ownerUserId.toString()
                         ))))
                 .andExpect(status().isOk());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/office-hours/{sessionId}/waitlist", session.id())
-                        .with(asUser(instructorUserId))
-                        .param("viewerUserId", instructorUserId.toString()))
+                        .with(asUser(ownerUserId))
+                        .param("viewerUserId", ownerUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         OfficeHoursWaitlistListResponse waitlist = objectMapper.readValue(
@@ -119,21 +118,20 @@ class OfficeHoursSmokeTest {
     @Test
     void learnerCannotJoinOutsideOfficeHoursWindow() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
-        UUID instructorUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
 
         StudyServerResponse studyServer = createStudyServer(ownerUserId);
-        CourseResponse course = createCourse(studyServer.id(), ownerUserId, instructorUserId);
-        enrollLearner(course.cohort().id(), instructorUserId, learnerUserId);
+        CourseResponse course = createCourse(studyServer.id(), ownerUserId);
+        enrollLearner(course.cohort().id(), ownerUserId, learnerUserId);
 
         Instant startsAt = Instant.now().plus(2, ChronoUnit.HOURS);
         Instant endsAt = Instant.now().plus(3, ChronoUnit.HOURS);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
+                                "instructorUserId", ownerUserId.toString(),
                                 "startsAt", startsAt.toString(),
                                 "endsAt", endsAt.toString()
                         ))))
@@ -156,22 +154,21 @@ class OfficeHoursSmokeTest {
     @Test
     void nonEnrolledLearnerCannotJoinOfficeHoursWaitlist() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
-        UUID instructorUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
         UUID strangerUserId = UUID.randomUUID();
 
         StudyServerResponse studyServer = createStudyServer(ownerUserId);
-        CourseResponse course = createCourse(studyServer.id(), ownerUserId, instructorUserId);
-        enrollLearner(course.cohort().id(), instructorUserId, learnerUserId);
+        CourseResponse course = createCourse(studyServer.id(), ownerUserId);
+        enrollLearner(course.cohort().id(), ownerUserId, learnerUserId);
 
         Instant startsAt = Instant.now().minus(1, ChronoUnit.MINUTES);
         Instant endsAt = Instant.now().plus(1, ChronoUnit.HOURS);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
+                                "instructorUserId", ownerUserId.toString(),
                                 "startsAt", startsAt.toString(),
                                 "endsAt", endsAt.toString()
                         ))))
@@ -194,21 +191,20 @@ class OfficeHoursSmokeTest {
     @Test
     void learnerCannotListOfficeHoursWaitlist() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
-        UUID instructorUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
 
         StudyServerResponse studyServer = createStudyServer(ownerUserId);
-        CourseResponse course = createCourse(studyServer.id(), ownerUserId, instructorUserId);
-        enrollLearner(course.cohort().id(), instructorUserId, learnerUserId);
+        CourseResponse course = createCourse(studyServer.id(), ownerUserId);
+        enrollLearner(course.cohort().id(), ownerUserId, learnerUserId);
 
         Instant startsAt = Instant.now().minus(1, ChronoUnit.MINUTES);
         Instant endsAt = Instant.now().plus(1, ChronoUnit.HOURS);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
+                                "instructorUserId", ownerUserId.toString(),
                                 "startsAt", startsAt.toString(),
                                 "endsAt", endsAt.toString()
                         ))))
@@ -228,21 +224,20 @@ class OfficeHoursSmokeTest {
     @Test
     void learnerCannotJoinAfterOfficeHoursWindowEnds() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
-        UUID instructorUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
 
         StudyServerResponse studyServer = createStudyServer(ownerUserId);
-        CourseResponse course = createCourse(studyServer.id(), ownerUserId, instructorUserId);
-        enrollLearner(course.cohort().id(), instructorUserId, learnerUserId);
+        CourseResponse course = createCourse(studyServer.id(), ownerUserId);
+        enrollLearner(course.cohort().id(), ownerUserId, learnerUserId);
 
         Instant startsAt = Instant.now().minus(2, ChronoUnit.HOURS);
         Instant endsAt = Instant.now().minus(1, ChronoUnit.MINUTES);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
+                                "instructorUserId", ownerUserId.toString(),
                                 "startsAt", startsAt.toString(),
                                 "endsAt", endsAt.toString()
                         ))))
@@ -275,13 +270,12 @@ class OfficeHoursSmokeTest {
         return objectMapper.readValue(result.getResponse().getContentAsString(), StudyServerResponse.class);
     }
 
-    private CourseResponse createCourse(UUID studyServerId, UUID ownerUserId, UUID instructorUserId) throws Exception {
+    private CourseResponse createCourse(UUID studyServerId, UUID ownerUserId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/courses", studyServerId)
                         .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "title", "Office Hours Course",
-                                "instructorUserId", instructorUserId.toString(),
                                 "cohortName", "Fall 2026"
                         ))))
                 .andExpect(status().isCreated())
@@ -290,9 +284,9 @@ class OfficeHoursSmokeTest {
         return objectMapper.readValue(result.getResponse().getContentAsString(), CourseResponse.class);
     }
 
-    private void enrollLearner(UUID cohortId, UUID instructorUserId, UUID learnerUserId) throws Exception {
+    private void enrollLearner(UUID cohortId, UUID ownerUserId, UUID learnerUserId) throws Exception {
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", cohortId)
-                        .with(asUser(instructorUserId))
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "learnerUserId", learnerUserId.toString()

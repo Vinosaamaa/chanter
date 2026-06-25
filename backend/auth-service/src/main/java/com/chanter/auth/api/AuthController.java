@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping(ServiceInfo.API_V1_PREFIX + "/auth")
@@ -60,7 +61,12 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public AuthUserResponse me(@RequestHeader(AuthHeaders.AUTHORIZATION) String authorizationHeader) {
+    public AuthUserResponse me(
+            @RequestHeader(value = AuthHeaders.AUTHORIZATION, required = false) String authorizationHeader
+    ) {
+        if (authorizationHeader == null || authorizationHeader.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
         UUID userId = authSessionService.requireUserIdFromAccessToken(authorizationHeader);
         return AuthUserResponse.from(authSessionService.requireUser(userId));
     }

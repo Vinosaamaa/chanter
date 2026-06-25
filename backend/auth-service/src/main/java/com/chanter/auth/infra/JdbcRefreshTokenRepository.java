@@ -3,6 +3,7 @@ package com.chanter.auth.infra;
 import com.chanter.auth.application.RefreshTokenRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,6 +48,44 @@ public class JdbcRefreshTokenRepository implements RefreshTokenRepository {
                 )
                 .stream()
                 .findFirst();
+    }
+
+    @Override
+    public Optional<UUID> consumeActiveUserIdByTokenHash(String tokenHash, Instant now) {
+        List<UUID> userIds = jdbcTemplate.query(
+                        """
+                        SELECT user_id
+                        FROM auth_refresh_tokens
+                        WHERE token_hash = ?
+                          AND revoked_at IS NULL
+                          AND expires_at > ?
+                        FOR UPDATE
+                        """,
+                        (resultSet, rowNum) -> resultSet.getObject("user_id", UUID.class),
+                        tokenHash,
+                        Timestamp.from(now)
+                );
+
+        if (userIds.isEmpty()) {
+            return Optional.empty();
+        }
+
+        int revokedRows = jdbcTemplate.update(
+                """
+                UPDATE auth_refresh_tokens
+                SET revoked_at = ?
+                WHERE token_hash = ?
+                  AND revoked_at IS NULL
+                """,
+                Timestamp.from(now),
+                tokenHash
+        );
+
+        if (revokedRows == 0) {
+            return Optional.empty();
+        }
+
+        return Optional.of(userIds.getFirst());
     }
 
     @Override

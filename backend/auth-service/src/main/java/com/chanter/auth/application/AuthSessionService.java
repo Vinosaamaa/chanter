@@ -8,11 +8,14 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Locale;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import com.chanter.common.auth.JwtTokenService;
 
@@ -40,6 +43,7 @@ public class AuthSessionService {
         this.refreshTokenTtl = refreshTokenTtl;
     }
 
+    @Transactional
     public AuthSession register(String email, String password, String displayName) {
         String normalizedEmail = normalizeEmail(email);
         if (authUserRepository.existsByEmail(normalizedEmail)) {
@@ -52,7 +56,11 @@ public class AuthSessionService {
                 displayName.trim(),
                 Instant.now()
         );
-        authUserRepository.save(user);
+        try {
+            authUserRepository.save(user);
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");
+        }
         return issueSession(user);
     }
 
@@ -65,11 +73,11 @@ public class AuthSessionService {
         return issueSession(user);
     }
 
+    @Transactional
     public AuthSession refresh(String refreshToken) {
         String tokenHash = hashToken(refreshToken);
-        UUID userId = refreshTokenRepository.findActiveUserIdByTokenHash(tokenHash, Instant.now())
+        UUID userId = refreshTokenRepository.consumeActiveUserIdByTokenHash(tokenHash, Instant.now())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
-        refreshTokenRepository.revokeByTokenHash(tokenHash, Instant.now());
         AuthUser user = authUserRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
         return issueSession(user);
@@ -106,7 +114,7 @@ public class AuthSessionService {
     }
 
     private static String normalizeEmail(String email) {
-        return email.trim().toLowerCase();
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String generateRefreshToken() {

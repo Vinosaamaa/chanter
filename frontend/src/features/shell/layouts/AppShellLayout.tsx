@@ -13,13 +13,13 @@ const navItems = [
 export function AppShellLayout() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
-  const refreshToken = useAuthStore((state) => state.refreshToken)
   const clearSession = useAuthStore((state) => state.clearSession)
 
   const handleSignOut = async () => {
-    if (refreshToken) {
+    const tokenToRevoke = useAuthStore.getState().refreshToken
+    if (tokenToRevoke) {
       try {
-        await logoutApi(refreshToken)
+        await logoutApi(tokenToRevoke)
       } catch {
         // Local session clear still runs if the network call fails.
       }

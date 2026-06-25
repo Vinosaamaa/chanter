@@ -32,6 +32,10 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'chanter-auth',
+      partialize: (state) => ({
+        accessToken: state.accessToken,
+        user: state.user,
+      }),
     },
   ),
 )

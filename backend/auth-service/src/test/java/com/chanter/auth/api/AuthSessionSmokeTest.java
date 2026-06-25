@@ -48,6 +48,9 @@ class AuthSessionSmokeTest {
         assertThat(registered.refreshToken()).isNotBlank();
         assertThat(registered.user().email()).isEqualTo("owner@study.local");
 
+        mockMvc.perform(get("/api/v1/auth/me"))
+                .andExpect(status().isUnauthorized());
+
         mockMvc.perform(get("/api/v1/auth/me")
                         .header(AuthHeaders.AUTHORIZATION, AuthHeaders.BEARER_PREFIX + registered.accessToken()))
                 .andExpect(status().isOk());
@@ -78,5 +81,26 @@ class AuthSessionSmokeTest {
         );
         assertThat(refreshed.accessToken()).isNotBlank();
         assertThat(refreshed.refreshToken()).isNotEqualTo(loggedIn.refreshToken());
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "refreshToken", loggedIn.refreshToken()
+                        ))))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "refreshToken", refreshed.refreshToken()
+                        ))))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "refreshToken", refreshed.refreshToken()
+                        ))))
+                .andExpect(status().isUnauthorized());
     }
 }

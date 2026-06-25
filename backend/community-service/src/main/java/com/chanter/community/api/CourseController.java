@@ -40,7 +40,7 @@ public class CourseController {
                 studyServerId,
                 actorUserId,
                 request.title(),
-                request.instructorUserId(),
+                actorUserId,
                 request.cohortName()
         );
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
