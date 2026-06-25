@@ -37,16 +37,16 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         if (HttpMethod.OPTIONS.equals(exchange.getRequest().getMethod())) {
-            return chain.filter(exchange);
+            return continueWithoutSpoofedUserId(exchange, chain);
         }
 
         String path = exchange.getRequest().getPath().pathWithinApplication().value();
         if (isPublicPath(path)) {
-            return chain.filter(exchange);
+            return continueWithoutSpoofedUserId(exchange, chain);
         }
 
         if (!path.startsWith("/api/v1/")) {
-            return chain.filter(exchange);
+            return continueWithoutSpoofedUserId(exchange, chain);
         }
 
         String authorizationHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
@@ -75,5 +75,12 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
             return true;
         }
         return PUBLIC_AUTH_PATHS.contains(path);
+    }
+
+    private static Mono<Void> continueWithoutSpoofedUserId(ServerWebExchange exchange, GatewayFilterChain chain) {
+        ServerHttpRequest request = exchange.getRequest().mutate()
+                .headers(headers -> headers.remove(AuthHeaders.USER_ID))
+                .build();
+        return chain.filter(exchange.mutate().request(request).build());
     }
 }

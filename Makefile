@@ -11,6 +11,7 @@ endif
 
 define require-jwt-secret
 	@test -n "$$CHANTER_JWT_SECRET" || (echo "CHANTER_JWT_SECRET is required. Copy .env.example to .env and set a 32+ character secret." && exit 1)
+	@test $${#CHANTER_JWT_SECRET} -ge 32 || (echo "CHANTER_JWT_SECRET must be at least 32 characters." && exit 1)
 endef
 
 infra-up:

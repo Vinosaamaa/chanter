@@ -53,16 +53,28 @@ async function loginWithRetry(email: string, attempts = 4): Promise<Response> {
   let lastResponse: Response | null = null
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const response = await login(email)
-    if (response.ok || !TRANSIENT_AUTH_STATUSES.has(response.status)) {
-      return response
+    try {
+      const response = await login(email)
+      if (response.ok || !TRANSIENT_AUTH_STATUSES.has(response.status)) {
+        return response
+      }
+
+      lastResponse = response
+    } catch {
+      lastResponse = null
     }
 
-    lastResponse = response
     await delay(250 * (attempt + 1))
   }
 
-  return lastResponse ?? login(email)
+  try {
+    return lastResponse ?? await login(email)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'network error'
+    throw new Error(`Demo auth bootstrap failed for ${email}: auth service unreachable (${message})`, {
+      cause: error,
+    })
+  }
 }
 
 async function loginOrRegister(email: string, displayName: string): Promise<AuthSession> {

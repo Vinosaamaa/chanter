@@ -11,6 +11,10 @@ PR: [#67](https://github.com/Vinosaamaa/chanter/pull/67)
 | Sidebar "My courses" for owners | Label switches to **Courses** when `canViewFullCatalog` is true |
 | Conversation placeholder states | Separate loading, denied, and unknown-channel copy for deep links |
 | Server redirect gated on list query | `/app/servers/:serverId` redirect waits only on navigation query |
+| Gateway bypass paths spoof `X-User-Id` | Strip inbound `X-User-Id` on OPTIONS, public, and non-API paths |
+| Demo auth fetch throws on cold start | `loginWithRetry` catches network errors and backs off |
+| `.env.example` API base key | Document `VITE_API_BASE` (dev defaults to Vite proxy when unset) |
+| Makefile JWT length | `require-jwt-secret` enforces 32+ characters |
 
 ## Deferred
 
