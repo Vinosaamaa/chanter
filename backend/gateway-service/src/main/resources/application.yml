@@ -6,8 +6,6 @@ spring:
     name: gateway-service
   cloud:
     gateway:
-      default-filters:
-        - RemoveRequestHeader=X-User-Id
       routes:
         - id: auth-service
           uri: ${AUTH_SERVICE_URL:http://localhost:8081}

@@ -1,6 +1,7 @@
 package com.chanter.community.infra;
 
 import com.chanter.community.application.CourseRepository;
+import com.chanter.community.domain.AccessibleStudyServer;
 import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
@@ -670,6 +671,47 @@ public class JdbcCourseRepository implements CourseRepository {
                         rs.getBoolean("can_manage")
                 ))
                 .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AccessibleStudyServer> listAccessibleStudyServers(UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT DISTINCT ss.id, ss.name
+                        FROM study_servers ss
+                        WHERE EXISTS (
+                            SELECT 1
+                            FROM study_server_roles ssr
+                            WHERE ssr.study_server_id = ss.id
+                            AND ssr.user_id = :userId
+                            AND ssr.role = :ownerRole
+                        )
+                        OR EXISTS (
+                            SELECT 1
+                            FROM courses co
+                            JOIN course_roles cr ON cr.course_id = co.id
+                            WHERE co.study_server_id = ss.id
+                            AND cr.user_id = :userId
+                            AND cr.role = :instructorRole
+                        )
+                        OR EXISTS (
+                            SELECT 1
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            WHERE co.study_server_id = ss.id
+                            AND ce.learner_user_id = :userId
+                        )
+                        ORDER BY ss.name
+                        """)
+                .param("userId", userId)
+                .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .query((rs, rowNum) -> new AccessibleStudyServer(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("name")
+                ))
+                .list();
     }
 
     private record CourseRow(UUID id, String title) {

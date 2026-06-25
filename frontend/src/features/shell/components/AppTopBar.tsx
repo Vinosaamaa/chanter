@@ -1,0 +1,61 @@
+import { Link, useNavigate } from 'react-router-dom'
+
+import { logout as logoutApi } from '../../auth/auth-api'
+import { cn } from '../../../lib/cn'
+import { useAuthStore } from '../../../stores/auth-store'
+
+const topLinks = [
+  { label: 'Friends', to: '/app/friends', hint: 'Stub until #31' },
+  { label: 'Instructor Dashboard', to: '/app/instructor-dashboard', hint: 'Stub until #55' },
+]
+
+export function AppTopBar() {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const clearSession = useAuthStore((state) => state.clearSession)
+
+  const handleSignOut = async () => {
+    const tokenToRevoke = useAuthStore.getState().refreshToken
+    if (tokenToRevoke) {
+      try {
+        await logoutApi(tokenToRevoke)
+      } catch {
+        // Local session clear still runs if the network call fails.
+      }
+    }
+    clearSession()
+    navigate('/sign-in', { replace: true })
+  }
+
+  return (
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-app-border bg-app-elevated px-4">
+      <nav className="flex items-center gap-1">
+        {topLinks.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            title={item.hint}
+            className={cn(
+              'rounded-md px-3 py-1.5 text-sm text-app-muted transition-colors',
+              'hover:bg-app-surface hover:text-app-text',
+            )}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+      <div className="flex items-center gap-4">
+        <p className="hidden text-xs text-app-muted sm:block">
+          {user?.displayName ?? user?.email ?? 'Signed in'}
+        </p>
+        <button
+          type="button"
+          className="text-sm text-app-accent hover:text-app-accent-hover"
+          onClick={handleSignOut}
+        >
+          Sign out
+        </button>
+      </div>
+    </header>
+  )
+}
