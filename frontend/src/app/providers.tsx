@@ -24,7 +24,7 @@ export function AppProviders({ children }: AppProvidersProps) {
 
   const [router] = useState(() => createAppRouter())
 
-  if (children) {
+  if (children !== undefined) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   }
 

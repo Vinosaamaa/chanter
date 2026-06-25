@@ -8,7 +8,7 @@ Established the production frontend architecture: React Router, TanStack Query, 
 
 ## Structure
 
-```
+```text
 frontend/src/
   app/                 Router + providers
   components/ui/       Button, Card primitives
