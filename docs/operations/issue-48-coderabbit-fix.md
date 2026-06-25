@@ -7,6 +7,7 @@ PR: [#65](https://github.com/Vinosaamaa/chanter/pull/65)
 | Change log fence missing language tag | Added `text` language to structure block |
 | `if (children)` treats `0`/`''` as absent | Branch on `children !== undefined` |
 | Empty 2xx body throws on `response.json()` | Read text first; parse only when non-empty |
+| Malformed JSON parse failures | Wrap `JSON.parse` in try/catch → `ApiError` |
 
 ## Verification
 

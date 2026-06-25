@@ -41,7 +41,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     return undefined as T
   }
 
-  return JSON.parse(text) as T
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new ApiError('Response body was not valid JSON', response.status, text)
+  }
 }
 
 export type HealthResponse = {
