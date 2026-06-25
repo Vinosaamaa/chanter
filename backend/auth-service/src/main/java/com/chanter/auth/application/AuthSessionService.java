@@ -59,7 +59,11 @@ public class AuthSessionService {
         try {
             authUserRepository.save(user);
         } catch (DataIntegrityViolationException exception) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Email is already registered",
+                    exception
+            );
         }
         return issueSession(user);
     }

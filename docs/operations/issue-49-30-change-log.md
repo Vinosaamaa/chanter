@@ -22,7 +22,7 @@ Shipped JWT-backed auth sessions (register, login, refresh, logout, `/me`), gate
 
 **Done:** study server create/view, course create, cohort enroll, course channel access, voice join/leave/list, SaaS plan patch.
 
-**Deferred (still caller-supplied ids):** office hours, study-assistant grant endpoints, message/media/agent/analytics query params — gateway still requires JWT; services retain `TODO(#auth)` bodies/params.
+**Deferred (still caller-supplied ids):** office hours, message/media/agent/analytics query params — gateway still requires JWT.
 
 ## Frontend
 

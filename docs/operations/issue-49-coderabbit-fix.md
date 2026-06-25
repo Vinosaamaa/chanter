@@ -23,7 +23,10 @@ PR: [#66](https://github.com/Vinosaamaa/chanter/pull/66)
 | Demo auth hard-coded origin | `getApiBase()` for register/login bootstrap |
 | Demo fetch `Content-Type` on `FormData` | Only default JSON content type for string bodies |
 | JWT TTL / key length validation | Reject non-positive TTL and secrets shorter than 256 bits |
+| Study-assistant grant principal | `@RequestAttribute` on grant-candidates and viewer-scope; change log synced |
 | Gateway strips spoofed `X-User-Id` | `RemoveRequestHeader` default filter + JWT filter overwrite |
+| Concurrent refresh dedup | Shared in-flight promise in `api-auth.ts` and `api-client.ts` |
+| Demo persona races | Call sites use `demoFetch(persona, …)` instead of global persona swap |
 | Providers auth bootstrap timing | Synchronous `api-auth.ts` import before router mount |
 
 ## Verification

@@ -22,6 +22,7 @@ export type ApiFetchInit = RequestInit & {
 }
 
 let apiAuthConfig: ApiAuthConfig | null = null
+let refreshInFlight: Promise<boolean> | null = null
 
 export function configureApiAuth(config: ApiAuthConfig): void {
   apiAuthConfig = config
@@ -52,7 +53,10 @@ async function apiFetchWithRetry<T>(
   })
 
   if (response.status === 401 && !skipAuthRefresh && apiAuthConfig) {
-    const refreshed = await apiAuthConfig.refreshSession()
+    refreshInFlight ??= apiAuthConfig.refreshSession().finally(() => {
+      refreshInFlight = null
+    })
+    const refreshed = await refreshInFlight
     if (refreshed) {
       return apiFetchWithRetry<T>(path, init, true)
     }

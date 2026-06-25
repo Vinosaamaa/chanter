@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import './DevDemoApp.css'
 import { bootstrapDemoPersonas, type DemoPersonas } from './demo-auth'
-import { installAuthenticatedDemoFetch, setDemoPersonas, withActiveDemoPersona } from './demo-fetch'
+import { installAuthenticatedDemoFetch, setDemoPersonas, demoFetch } from './demo-fetch'
 
 type HealthResponse = {
   status: string
@@ -573,17 +573,15 @@ function App() {
     setAccessResult(null)
 
     try {
-      await withActiveDemoPersona('instructor', async () => {
-        const response = await fetch(`/api/v1/cohorts/${course.cohort.id}/enrollments`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ learnerUserId }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Enroll failed with ${response.status}`)
-        }
+      const response = await demoFetch('instructor', `/api/v1/cohorts/${course.cohort.id}/enrollments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ learnerUserId }),
       })
+
+      if (!response.ok) {
+        throw new Error(`Enroll failed with ${response.status}`)
+      }
 
       const firstChannel = course.channels[0]
       const learnerAccess = await fetch(
@@ -1467,15 +1465,15 @@ function App() {
     setVoiceResult(null)
 
     try {
-      await withActiveDemoPersona('nonEnrolled', async () => {
-        const response = await fetch(`/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`, {
-          method: 'POST',
-        })
+      const response = await demoFetch(
+        'nonEnrolled',
+        `/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`,
+        { method: 'POST' },
+      )
 
-        if (response.status !== 403) {
-          throw new Error(`Expected non-member voice join to fail with 403, got ${response.status}`)
-        }
-      })
+      if (response.status !== 403) {
+        throw new Error(`Expected non-member voice join to fail with 403, got ${response.status}`)
+      }
 
       await refreshVoicePresences(selectedVoiceChannel.id)
       setVoiceResult('Non-member is blocked from joining the Voice Channel.')
