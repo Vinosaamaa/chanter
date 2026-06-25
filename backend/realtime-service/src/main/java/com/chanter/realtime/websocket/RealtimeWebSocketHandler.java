@@ -22,6 +22,7 @@ import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Component
 public class RealtimeWebSocketHandler implements WebSocketHandler {
@@ -82,14 +83,19 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         UUID channelId = UUID.fromString(requiredText(frame, "channelId"));
         RealtimeChannelScope channelScope = RealtimeChannelScope.valueOf(requiredText(frame, "channelScope"));
 
-        subscriptionAuthorizer.requireSubscribeAccess(channelId, userId, channelScope);
-        subscriptionHub.subscribe(session, userId, channelId, channelScope);
-
-        return sendJson(session, Map.of(
-                "type", "subscribed",
-                "channelId", channelId.toString(),
-                "channelScope", channelScope.name()
-        ));
+        return Mono.fromCallable(() -> {
+                    subscriptionAuthorizer.requireSubscribeAccess(channelId, userId, channelScope);
+                    subscriptionHub.subscribe(session, userId, channelId, channelScope);
+                    return Map.<String, Object>of(
+                            "type", "subscribed",
+                            "channelId", channelId.toString(),
+                            "channelScope", channelScope.name()
+                    );
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(payload -> sendJson(session, payload))
+                .onErrorResume(ResponseStatusException.class, exception ->
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()));
     }
 
     private Mono<Void> handleUnsubscribe(WebSocketSession session) {
@@ -102,10 +108,14 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         RealtimeChannelScope channelScope = RealtimeChannelScope.valueOf(requiredText(frame, "channelScope"));
         String body = requiredText(frame, "body");
 
-        subscriptionAuthorizer.requireSubscribeAccess(channelId, userId, channelScope);
-        PersistedChannelMessage message = channelMessageClient.postMessage(channelId, userId, channelScope, body);
-
-        return subscriptionHub.publishMessage(message, channelScope);
+        return Mono.fromCallable(() -> {
+                    subscriptionAuthorizer.requireSubscribeAccess(channelId, userId, channelScope);
+                    return channelMessageClient.postMessage(channelId, userId, channelScope, body);
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(message -> subscriptionHub.publishMessage(message, channelScope))
+                .onErrorResume(ResponseStatusException.class, exception ->
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()));
     }
 
     private UUID authenticate(WebSocketSession session) {
