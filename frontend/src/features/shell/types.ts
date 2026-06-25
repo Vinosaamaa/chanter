@@ -24,6 +24,7 @@ export type StudyServerSummary = {
 export type StudyServerNavigation = {
   studyServerId: string
   studyServerName: string
+  canViewFullCatalog: boolean
   studyServerChannels: ShellChannel[]
   courses: ShellCourse[]
 }

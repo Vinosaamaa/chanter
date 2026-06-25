@@ -6,6 +6,7 @@ import java.util.UUID;
 public record StudyServerNavigationResponse(
         UUID studyServerId,
         String studyServerName,
+        boolean canViewFullCatalog,
         java.util.List<StudyAssistantGrantCandidatesResponse.ChannelResponse> studyServerChannels,
         java.util.List<StudyAssistantGrantCandidatesResponse.CourseResponse> courses
 ) {
@@ -14,6 +15,7 @@ public record StudyServerNavigationResponse(
         return new StudyServerNavigationResponse(
                 navigation.studyServerId(),
                 navigation.studyServerName(),
+                navigation.canViewFullCatalog(),
                 navigation.studyServerChannels().stream()
                         .map(StudyAssistantGrantCandidatesResponse.ChannelResponse::fromStudyServerChannel)
                         .toList(),

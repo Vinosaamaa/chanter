@@ -30,7 +30,7 @@ export function AppServerRedirectPage() {
     return <Navigate to={`/app/servers/${firstServer.id}`} replace />
   }
 
-  if (navigationQuery.isLoading || serversQuery.isLoading) {
+  if (navigationQuery.isLoading) {
     return <ShellMessage>Loading navigation…</ShellMessage>
   }
 

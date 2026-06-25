@@ -61,6 +61,7 @@ public class StudyServerNavigationService {
         return new StudyServerNavigation(
                 studyServer.id(),
                 studyServer.name(),
+                viewerScope.canViewAllGrants(),
                 studyServerChannels,
                 courses
         );

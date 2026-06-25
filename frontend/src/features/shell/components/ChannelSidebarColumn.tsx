@@ -57,7 +57,7 @@ export function ChannelSidebarColumn() {
         {navigationQuery.data && navigationQuery.data.courses.length > 0 && (
           <section>
             <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-app-muted">
-              My courses
+              {navigationQuery.data.canViewFullCatalog ? 'Courses' : 'My courses'}
             </p>
             <ul className="flex flex-col gap-2">
               {navigationQuery.data.courses.map((course) => (

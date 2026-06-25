@@ -679,12 +679,12 @@ public class JdbcCourseRepository implements CourseRepository {
         return jdbcClient.sql("""
                         SELECT DISTINCT ss.id, ss.name
                         FROM study_servers ss
-                        WHERE ss.owner_user_id = :userId
-                        OR EXISTS (
+                        WHERE EXISTS (
                             SELECT 1
                             FROM study_server_roles ssr
                             WHERE ssr.study_server_id = ss.id
                             AND ssr.user_id = :userId
+                            AND ssr.role = :ownerRole
                         )
                         OR EXISTS (
                             SELECT 1
@@ -692,6 +692,7 @@ public class JdbcCourseRepository implements CourseRepository {
                             JOIN course_roles cr ON cr.course_id = co.id
                             WHERE co.study_server_id = ss.id
                             AND cr.user_id = :userId
+                            AND cr.role = :instructorRole
                         )
                         OR EXISTS (
                             SELECT 1
@@ -704,6 +705,8 @@ public class JdbcCourseRepository implements CourseRepository {
                         ORDER BY ss.name
                         """)
                 .param("userId", userId)
+                .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
                 .query((rs, rowNum) -> new AccessibleStudyServer(
                         rs.getObject("id", UUID.class),
                         rs.getString("name")
