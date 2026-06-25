@@ -2,10 +2,12 @@ package com.chanter.community.api;
 
 import com.chanter.common.ServiceInfo;
 import com.chanter.common.auth.AuthRequestAttributes;
+import com.chanter.community.application.StudyServerNavigationService;
 import com.chanter.community.application.StudyServerService;
 import com.chanter.community.domain.StudyServer;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,9 +26,14 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class StudyServerController {
 
     private final StudyServerService studyServerService;
+    private final StudyServerNavigationService studyServerNavigationService;
 
-    public StudyServerController(StudyServerService studyServerService) {
+    public StudyServerController(
+            StudyServerService studyServerService,
+            StudyServerNavigationService studyServerNavigationService
+    ) {
         this.studyServerService = studyServerService;
+        this.studyServerNavigationService = studyServerNavigationService;
     }
 
     @PostMapping
@@ -43,10 +50,27 @@ public class StudyServerController {
         return ResponseEntity.created(location).body(StudyServerResponse.from(studyServer));
     }
 
+    @GetMapping
+    public List<AccessibleStudyServerResponse> listAccessibleStudyServers(
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
+    ) {
+        return studyServerNavigationService.listAccessibleStudyServers(userId).stream()
+                .map(AccessibleStudyServerResponse::from)
+                .toList();
+    }
+
     @GetMapping("/{id}")
     public StudyServerResponse getStudyServer(@PathVariable UUID id) {
         return studyServerService.findStudyServer(id)
                 .map(StudyServerResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
+    }
+
+    @GetMapping("/{id}/navigation")
+    public StudyServerNavigationResponse getStudyServerNavigation(
+            @PathVariable UUID id,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
+    ) {
+        return StudyServerNavigationResponse.from(studyServerNavigationService.findNavigation(id, userId));
     }
 }

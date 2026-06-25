@@ -1,5 +1,6 @@
 package com.chanter.community.application;
 
+import com.chanter.community.domain.AccessibleStudyServer;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CohortTaQueueAccess;
@@ -9,6 +10,7 @@ import com.chanter.community.domain.StudyAssistantGrantCandidates;
 import com.chanter.community.domain.StudyAssistantViewerScope;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,4 +47,6 @@ public interface CourseRepository {
     Optional<StudyAssistantGrantCandidates> findGrantCandidates(UUID studyServerId);
 
     Optional<StudyAssistantViewerScope> findViewerScope(UUID studyServerId, UUID userId);
+
+    List<AccessibleStudyServer> listAccessibleStudyServers(UUID userId);
 }
