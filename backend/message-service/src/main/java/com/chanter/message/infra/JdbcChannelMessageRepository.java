@@ -36,21 +36,29 @@ public class JdbcChannelMessageRepository implements ChannelMessageRepository {
     }
 
     @Override
-    public List<ChannelMessage> listByChannelSince(UUID channelId, Optional<Instant> since, int limit) {
+    public List<ChannelMessage> listByChannelSince(
+            UUID channelId,
+            Optional<Instant> since,
+            Optional<UUID> afterMessageId,
+            int limit
+    ) {
         String sql = since.isPresent()
                 ? """
                 SELECT id, channel_id, sender_user_id, body, created_at
                 FROM channel_messages
                 WHERE channel_id = :channelId
-                AND created_at > :since
-                ORDER BY created_at ASC
+                AND (
+                    created_at > :since
+                    OR (:afterMessageId IS NOT NULL AND created_at = :since AND id > :afterMessageId)
+                )
+                ORDER BY created_at ASC, id ASC
                 LIMIT :limit
                 """
                 : """
                 SELECT id, channel_id, sender_user_id, body, created_at
                 FROM channel_messages
                 WHERE channel_id = :channelId
-                ORDER BY created_at ASC
+                ORDER BY created_at ASC, id ASC
                 LIMIT :limit
                 """;
 
@@ -59,7 +67,9 @@ public class JdbcChannelMessageRepository implements ChannelMessageRepository {
                 .param("limit", limit);
 
         if (since.isPresent()) {
-            query = query.param("since", Timestamp.from(since.get()));
+            query = query
+                    .param("since", Timestamp.from(since.get()))
+                    .param("afterMessageId", afterMessageId.orElse(null));
         }
 
         return query.query((rs, rowNum) -> new ChannelMessage(

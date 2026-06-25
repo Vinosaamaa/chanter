@@ -35,14 +35,15 @@ public class ChannelMessageService {
             UUID channelId,
             UUID viewerUserId,
             ChannelScope channelScope,
-            Optional<Instant> since
+            Optional<Instant> since,
+            Optional<UUID> afterMessageId
     ) {
         ChannelMessageAccess access = accessClient.requireAccess(channelId, viewerUserId, channelScope);
         if (!access.canReadMessages()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Channel read access denied");
         }
 
-        return repository.listByChannelSince(channelId, since, MAX_PAGE_SIZE);
+        return repository.listByChannelSince(channelId, since, afterMessageId, MAX_PAGE_SIZE);
     }
 
     public ChannelMessage postMessage(

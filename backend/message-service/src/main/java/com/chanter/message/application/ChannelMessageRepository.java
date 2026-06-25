@@ -10,5 +10,10 @@ public interface ChannelMessageRepository {
 
     ChannelMessage save(ChannelMessage message);
 
-    List<ChannelMessage> listByChannelSince(UUID channelId, Optional<Instant> since, int limit);
+    List<ChannelMessage> listByChannelSince(
+            UUID channelId,
+            Optional<Instant> since,
+            Optional<UUID> afterMessageId,
+            int limit
+    );
 }

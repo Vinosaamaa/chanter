@@ -55,8 +55,15 @@ export class RealtimeClient {
 
   disconnect(): void {
     this.stopped = true
-    this.socket?.close()
+    const socket = this.socket
     this.socket = null
+    if (socket) {
+      socket.onopen = null
+      socket.onmessage = null
+      socket.onerror = null
+      socket.onclose = null
+      socket.close()
+    }
     this.options.onStatusChange('disconnected')
   }
 
@@ -125,6 +132,9 @@ export class RealtimeClient {
     }
 
     socket.onerror = () => {
+      if (this.stopped) {
+        return
+      }
       this.options.onError('Realtime connection failed')
     }
   }
@@ -142,7 +152,7 @@ export class RealtimeClient {
 
   private sendFrame(frame: OutboundFrame): void {
     if (this.socket?.readyState !== WebSocket.OPEN) {
-      return
+      throw new Error('Realtime connection is not ready')
     }
     this.socket.send(JSON.stringify(frame))
   }

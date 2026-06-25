@@ -10,8 +10,16 @@ export async function fetchChannelMessages(
   scope: ChannelScope,
   channelId: string,
   since?: string,
+  afterMessageId?: string,
 ): Promise<ChannelMessageListResponse> {
-  const query = since ? `?since=${encodeURIComponent(since)}` : ''
+  const params = new URLSearchParams()
+  if (since) {
+    params.set('since', since)
+  }
+  if (afterMessageId) {
+    params.set('afterMessageId', afterMessageId)
+  }
+  const query = params.size > 0 ? `?${params.toString()}` : ''
   return apiFetch<ChannelMessageListResponse>(`${messagesPath(scope, channelId)}${query}`)
 }
 

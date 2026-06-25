@@ -30,7 +30,7 @@ public class TestChannelMessageClient implements ChannelMessageClient {
                 UUID.randomUUID(),
                 channelId,
                 senderUserId,
-                body.trim(),
+                body,
                 clock.instant()
         );
     }

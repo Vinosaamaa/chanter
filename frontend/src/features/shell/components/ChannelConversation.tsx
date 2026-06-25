@@ -71,7 +71,11 @@ function ChannelConversationPanel({
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    void conversation.sendMessage(draft).then(() => setDraft(''))
+    void conversation.sendMessage(draft).then((sent) => {
+      if (sent) {
+        setDraft('')
+      }
+    })
   }
 
   return (

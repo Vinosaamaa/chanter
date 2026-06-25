@@ -10,7 +10,7 @@ type UseChannelConversationResult = {
   connectionStatus: RealtimeConnectionStatus
   isLoadingHistory: boolean
   error: string | null
-  sendMessage: (body: string) => Promise<void>
+  sendMessage: (body: string) => Promise<boolean>
   isSending: boolean
 }
 
@@ -28,6 +28,7 @@ export function useChannelConversation(
   const [isSending, setIsSending] = useState(false)
   const clientRef = useRef<RealtimeClient | null>(null)
   const lastEventAtRef = useRef<string | null>(null)
+  const lastEventIdRef = useRef<string | null>(null)
 
   const canConnect = Boolean(channelScope && channelId && accessToken)
 
@@ -41,9 +42,10 @@ export function useChannelConversation(
     void fetchChannelMessages(channelScope, channelId)
       .then((response) => {
         if (!cancelled) {
-          setMessages(response.messages)
+          setMessages((current) => mergeMessages(current, response.messages))
           const last = response.messages.at(-1)
           lastEventAtRef.current = last?.createdAt ?? null
+          lastEventIdRef.current = last?.id ?? null
         }
       })
       .catch((caught) => {
@@ -75,24 +77,29 @@ export function useChannelConversation(
           return [...withoutMatchingOptimistic, message]
         })
         lastEventAtRef.current = message.createdAt
+        lastEventIdRef.current = message.id
       },
       onStatusChange: (status) => {
+        if (status === 'connected') {
+          setError((current) => (isRealtimeConnectionError(current) ? null : current))
+        }
         if (status === 'connected' && lastEventAtRef.current) {
-          void fetchChannelMessages(channelScope, channelId, lastEventAtRef.current)
+          void fetchChannelMessages(
+            channelScope,
+            channelId,
+            lastEventAtRef.current,
+            lastEventIdRef.current ?? undefined,
+          )
             .then((response) => {
               if (response.messages.length === 0) {
                 return
               }
-              setMessages((current) => {
-                const knownIds = new Set(current.map((entry) => entry.id))
-                const merged = [...current]
-                for (const message of response.messages) {
-                  if (!knownIds.has(message.id)) {
-                    merged.push(message)
-                  }
-                }
-                return merged.sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-              })
+              setMessages((current) => mergeMessages(current, response.messages))
+              const last = response.messages.at(-1)
+              if (last) {
+                lastEventAtRef.current = last.createdAt
+                lastEventIdRef.current = last.id
+              }
             })
             .catch(() => {
               setError('Unable to reconcile missed messages after reconnect')
@@ -116,12 +123,12 @@ export function useChannelConversation(
   const sendMessage = useMemo(
     () => async (body: string) => {
       if (!channelScope || !channelId || !userId) {
-        return
+        return false
       }
 
       const trimmed = body.trim()
       if (!trimmed) {
-        return
+        return false
       }
 
       const optimisticId = `optimistic-${crypto.randomUUID()}`
@@ -138,10 +145,15 @@ export function useChannelConversation(
       setMessages((current) => [...current, optimisticMessage])
 
       try {
-        clientRef.current?.send(trimmed)
+        if (!clientRef.current) {
+          throw new Error('Realtime connection is not ready')
+        }
+        clientRef.current.send(trimmed)
+        return true
       } catch (caught) {
         setMessages((current) => current.filter((message) => message.id !== optimisticId))
         setError(caught instanceof Error ? caught.message : 'Unable to send message')
+        return false
       } finally {
         setIsSending(false)
       }
@@ -157,4 +169,23 @@ export function useChannelConversation(
     sendMessage,
     isSending,
   }
+}
+
+function mergeMessages(current: ChannelMessage[], fetched: ChannelMessage[]): ChannelMessage[] {
+  const knownIds = new Set(current.map((entry) => entry.id))
+  const merged = [...current]
+  for (const message of fetched) {
+    if (!knownIds.has(message.id)) {
+      merged.push(message)
+    }
+  }
+  return merged.sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+}
+
+function isRealtimeConnectionError(message: string | null): boolean {
+  return (
+    message === 'Realtime connection failed' ||
+    message === 'Received an invalid realtime event' ||
+    message === 'Realtime connection is not ready'
+  )
 }

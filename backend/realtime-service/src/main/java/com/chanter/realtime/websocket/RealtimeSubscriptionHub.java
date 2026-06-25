@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketSession;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -38,15 +39,10 @@ public class RealtimeSubscriptionHub {
             return;
         }
 
-        Set<Subscription> channelSubscriptions = subscriptionsByChannel.get(state.channelId());
-        if (channelSubscriptions == null) {
-            return;
-        }
-
-        channelSubscriptions.removeIf(subscription -> subscription.session().getId().equals(session.getId()));
-        if (channelSubscriptions.isEmpty()) {
-            subscriptionsByChannel.remove(state.channelId());
-        }
+        subscriptionsByChannel.computeIfPresent(state.channelId(), (channelId, channelSubscriptions) -> {
+            channelSubscriptions.removeIf(subscription -> subscription.session().getId().equals(session.getId()));
+            return channelSubscriptions.isEmpty() ? null : channelSubscriptions;
+        });
     }
 
     public Mono<Void> publishMessage(PersistedChannelMessage message, RealtimeChannelScope channelScope) {
@@ -73,11 +69,23 @@ public class RealtimeSubscriptionHub {
             return Mono.error(exception);
         }
 
-        return Mono.when(channelSubscriptions.stream()
-                .map(subscription -> subscription.session().send(
-                        Mono.just(subscription.session().textMessage(payload))
-                ))
-                .toArray(Mono[]::new));
+        return Flux.fromIterable(channelSubscriptions)
+                .flatMap(subscription -> subscription.session().send(
+                                Mono.just(subscription.session().textMessage(payload))
+                        )
+                        .onErrorResume(error -> {
+                            removeSubscription(subscription);
+                            return Mono.empty();
+                        }))
+                .then();
+    }
+
+    private void removeSubscription(Subscription subscription) {
+        subscriptionsBySession.remove(subscription.session().getId());
+        subscriptionsByChannel.computeIfPresent(subscription.channelId(), (channelId, channelSubscriptions) -> {
+            channelSubscriptions.remove(subscription);
+            return channelSubscriptions.isEmpty() ? null : channelSubscriptions;
+        });
     }
 
     private record Subscription(

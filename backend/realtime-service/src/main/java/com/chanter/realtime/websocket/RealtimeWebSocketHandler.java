@@ -113,7 +113,8 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                     return channelMessageClient.postMessage(channelId, userId, channelScope, body);
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(message -> subscriptionHub.publishMessage(message, channelScope))
+                .flatMap(message -> subscriptionHub.publishMessage(message, channelScope)
+                        .onErrorResume(error -> Mono.empty()))
                 .onErrorResume(ResponseStatusException.class, exception ->
                         sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()));
     }

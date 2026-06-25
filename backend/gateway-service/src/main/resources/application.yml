@@ -8,7 +8,7 @@ spring:
     gateway:
       routes:
         - id: realtime-service
-          uri: ${REALTIME_SERVICE_URL:http://localhost:8087}
+          uri: ${REALTIME_SERVICE_URL:ws://localhost:8087}
           predicates:
             - Path=/api/v1/realtime/**
         - id: auth-service

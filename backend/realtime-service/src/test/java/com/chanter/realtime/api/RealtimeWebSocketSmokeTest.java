@@ -12,7 +12,6 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -112,22 +111,29 @@ class RealtimeWebSocketSmokeTest {
 
         client.execute(
                 websocketUri(token),
-                session -> session.send(Mono.just(session.textMessage(toJson(Map.of(
-                        "type", "subscribe",
-                        "channelId", channelId.toString(),
-                        "channelScope", RealtimeChannelScope.COURSE.name()
-                )))))
-                        .thenMany(session.receive().map(WebSocketMessage::getPayloadAsText))
-                        .filter(payload -> payload.contains("\"type\":\"error\""))
-                        .next()
-                        .doOnNext(payload -> {
-                            try {
-                                errorFrame.set(objectMapper.readTree(payload));
-                            } catch (Exception exception) {
-                                throw new IllegalStateException(exception);
-                            }
-                        })
-                        .then()
+                session -> {
+                    Flux<String> inbound = session.receive()
+                            .map(WebSocketMessage::getPayloadAsText)
+                            .cache();
+
+                    Mono<Void> subscribe = session.send(Mono.just(session.textMessage(toJson(Map.of(
+                            "type", "subscribe",
+                            "channelId", channelId.toString(),
+                            "channelScope", RealtimeChannelScope.COURSE.name()
+                    )))));
+
+                    return subscribe.thenMany(inbound)
+                            .filter(payload -> payload.contains("\"type\":\"error\""))
+                            .next()
+                            .doOnNext(payload -> {
+                                try {
+                                    errorFrame.set(objectMapper.readTree(payload));
+                                } catch (Exception exception) {
+                                    throw new IllegalStateException(exception);
+                                }
+                            })
+                            .then();
+                }
         ).block(Duration.ofSeconds(5));
 
         assertThat(errorFrame.get()).isNotNull();
