@@ -6,6 +6,8 @@ spring:
     name: gateway-service
   cloud:
     gateway:
+      default-filters:
+        - RemoveRequestHeader=X-User-Id
       routes:
         - id: auth-service
           uri: ${AUTH_SERVICE_URL:http://localhost:8081}
@@ -75,6 +77,11 @@ spring:
               - DELETE
               - OPTIONS
             allowedHeaders: "*"
+
+chanter:
+  jwt:
+    secret: ${CHANTER_JWT_SECRET}
+    access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
 
 management:
   endpoints:

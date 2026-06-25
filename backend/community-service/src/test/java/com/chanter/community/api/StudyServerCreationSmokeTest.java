@@ -1,5 +1,6 @@
 package com.chanter.community.api;
 
+import static com.chanter.community.api.AuthenticatedTestSupport.asUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,10 +35,10 @@ class StudyServerCreationSmokeTest {
         UUID ownerUserId = UUID.randomUUID();
 
         MvcResult createdResult = mockMvc.perform(post("/api/v1/study-servers")
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "name", "Java Spring Study Group",
-                                "ownerUserId", ownerUserId.toString()
+                                "name", "Java Spring Study Group"
                         ))))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -59,7 +60,7 @@ class StudyServerCreationSmokeTest {
                 .extracting(ChannelResponse::kind)
                 .containsExactly("TEXT", "TEXT", "VOICE");
 
-        MvcResult viewedResult = mockMvc.perform(get(location))
+        MvcResult viewedResult = mockMvc.perform(get(location).with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyServerResponse viewed = objectMapper.readValue(
@@ -68,6 +69,16 @@ class StudyServerCreationSmokeTest {
         );
 
         assertThat(viewed).isEqualTo(created);
+    }
+
+    @Test
+    void missingAuthenticatedUserReturnsUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/v1/study-servers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "Java Spring Study Group"
+                        ))))
+                .andExpect(status().isUnauthorized());
     }
 
     private record StudyServerResponse(

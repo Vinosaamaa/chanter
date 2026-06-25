@@ -1,5 +1,6 @@
 package com.chanter.community.api;
 
+import static com.chanter.community.api.AuthenticatedTestSupport.asUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,18 +33,16 @@ class CourseEnrollmentSmokeTest {
     @Test
     void learnerAccessesCourseChannelsOnlyThroughCohortEnrollment() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
-        UUID instructorUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
         UUID nonEnrolledUserId = UUID.randomUUID();
 
         StudyServerResponse studyServer = createStudyServer(ownerUserId);
 
         MvcResult courseResult = mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/courses", studyServer.id())
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "ownerUserId", ownerUserId.toString(),
                                 "title", "Spring Boot Foundations",
-                                "instructorUserId", instructorUserId.toString(),
                                 "cohortName", "Summer 2026"
                         ))))
                 .andExpect(status().isCreated())
@@ -54,47 +53,47 @@ class CourseEnrollmentSmokeTest {
         );
 
         assertThat(course.title()).isEqualTo("Spring Boot Foundations");
-        assertThat(course.instructorRole()).isEqualTo(new InstructorRoleResponse(instructorUserId, "INSTRUCTOR"));
+        assertThat(course.instructorRole()).isEqualTo(new InstructorRoleResponse(ownerUserId, "INSTRUCTOR"));
         assertThat(course.cohort().name()).isEqualTo("Summer 2026");
         assertThat(course.channels())
                 .extracting(CourseChannelResponse::name)
                 .containsExactly("announcements", "questions", "resources");
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}", course.channels().getFirst().id())
-                        .param("viewerUserId", instructorUserId.toString()))
+                        .with(asUser(ownerUserId)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}", UUID.randomUUID())
-                        .param("viewerUserId", instructorUserId.toString()))
+                        .with(asUser(ownerUserId)))
                 .andExpect(status().isNotFound());
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", UUID.randomUUID())
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
                                 "learnerUserId", learnerUserId.toString()
                         ))))
                 .andExpect(status().isNotFound());
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
+                        .with(asUser(nonEnrolledUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", nonEnrolledUserId.toString(),
                                 "learnerUserId", learnerUserId.toString()
                         ))))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
                                 "learnerUserId", learnerUserId.toString()
                         ))))
                 .andExpect(status().isCreated());
 
         MvcResult channelResult = mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}", course.channels().getFirst().id()
-                ).param("viewerUserId", learnerUserId.toString()))
+                ).with(asUser(learnerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         CourseChannelResponse accessibleChannel = objectMapper.readValue(
@@ -112,7 +111,7 @@ class CourseEnrollmentSmokeTest {
 
         MvcResult learnerAccessResult = mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}/support-question-access", questionsChannelId
-                ).param("userId", learnerUserId.toString()))
+                ).with(asUser(learnerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         SupportQuestionChannelAccessResponse learnerAccess = objectMapper.readValue(
@@ -131,12 +130,12 @@ class CourseEnrollmentSmokeTest {
 
         mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}/support-question-access", announcementsChannelId
-                ).param("userId", learnerUserId.toString()))
+                ).with(asUser(learnerUserId)))
                 .andExpect(status().isForbidden());
 
         MvcResult instructorAccessResult = mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}/support-question-access", questionsChannelId
-                ).param("userId", instructorUserId.toString()))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         SupportQuestionChannelAccessResponse instructorAccess = objectMapper.readValue(
@@ -149,7 +148,7 @@ class CourseEnrollmentSmokeTest {
 
         MvcResult learnerResourceAccessResult = mockMvc.perform(get(
                         "/api/v1/courses/{courseId}/resource-access", course.id()
-                ).param("userId", learnerUserId.toString()))
+                ).with(asUser(learnerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         CourseResourceAccessResponse learnerResourceAccess = objectMapper.readValue(
@@ -162,7 +161,7 @@ class CourseEnrollmentSmokeTest {
 
         MvcResult instructorResourceAccessResult = mockMvc.perform(get(
                         "/api/v1/courses/{courseId}/resource-access", course.id()
-                ).param("userId", instructorUserId.toString()))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         CourseResourceAccessResponse instructorResourceAccess = objectMapper.readValue(
@@ -174,24 +173,24 @@ class CourseEnrollmentSmokeTest {
         assertThat(instructorResourceAccess.canViewCourseResources()).isTrue();
 
         mockMvc.perform(get("/api/v1/courses/{courseId}/resource-access", course.id())
-                        .param("userId", nonEnrolledUserId.toString()))
+                        .with(asUser(nonEnrolledUserId)))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}/support-question-access", questionsChannelId)
-                        .param("userId", nonEnrolledUserId.toString()))
+                        .with(asUser(nonEnrolledUserId)))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}", course.channels().getFirst().id())
-                        .param("viewerUserId", nonEnrolledUserId.toString()))
+                        .with(asUser(nonEnrolledUserId)))
                 .andExpect(status().isForbidden());
     }
 
     private StudyServerResponse createStudyServer(UUID ownerUserId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/study-servers")
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "name", "Java Spring Study Group",
-                                "ownerUserId", ownerUserId.toString()
+                                "name", "Java Spring Study Group"
                         ))))
                 .andExpect(status().isCreated())
                 .andReturn();

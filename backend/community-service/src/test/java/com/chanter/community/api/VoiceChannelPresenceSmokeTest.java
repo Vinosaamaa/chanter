@@ -1,5 +1,6 @@
 package com.chanter.community.api;
 
+import static com.chanter.community.api.AuthenticatedTestSupport.asUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -44,11 +45,7 @@ class VoiceChannelPresenceSmokeTest {
         MvcResult joinResult = mockMvc.perform(post(
                         "/api/v1/study-server-channels/{channelId}/voice-presences",
                         voiceChannel.id()
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "memberUserId", ownerUserId.toString()
-                        ))))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isCreated())
                 .andReturn();
         VoicePresenceResponse joined = objectMapper.readValue(
@@ -64,7 +61,7 @@ class VoiceChannelPresenceSmokeTest {
         MvcResult listResult = mockMvc.perform(get(
                         "/api/v1/study-server-channels/{channelId}/voice-presences",
                         voiceChannel.id()
-                ).param("viewerUserId", ownerUserId.toString()))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         VoicePresenceListResponse listed = objectMapper.readValue(
@@ -77,47 +74,31 @@ class VoiceChannelPresenceSmokeTest {
         mockMvc.perform(post(
                         "/api/v1/study-server-channels/{channelId}/voice-presences",
                         voiceChannel.id()
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "memberUserId", ownerUserId.toString()
-                        ))))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post(
                         "/api/v1/study-server-channels/{channelId}/voice-presences",
                         voiceChannel.id()
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "memberUserId", nonMemberUserId.toString()
-                        ))))
+                ).with(asUser(nonMemberUserId)))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(delete(
                         "/api/v1/study-server-channels/{channelId}/voice-presences",
                         voiceChannel.id()
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "memberUserId", nonMemberUserId.toString()
-                        ))))
+                ).with(asUser(nonMemberUserId)))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(delete(
                         "/api/v1/study-server-channels/{channelId}/voice-presences",
                         voiceChannel.id()
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "memberUserId", ownerUserId.toString()
-                        ))))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isNoContent());
 
         MvcResult afterLeaveResult = mockMvc.perform(get(
                         "/api/v1/study-server-channels/{channelId}/voice-presences",
                         voiceChannel.id()
-                ).param("viewerUserId", ownerUserId.toString()))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         VoicePresenceListResponse afterLeave = objectMapper.readValue(
@@ -130,10 +111,10 @@ class VoiceChannelPresenceSmokeTest {
 
     private StudyServerResponse createStudyServer(UUID ownerUserId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/study-servers")
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "name", "Java Spring Study Group",
-                                "ownerUserId", ownerUserId.toString()
+                                "name", "Java Spring Study Group"
                         ))))
                 .andExpect(status().isCreated())
                 .andReturn();

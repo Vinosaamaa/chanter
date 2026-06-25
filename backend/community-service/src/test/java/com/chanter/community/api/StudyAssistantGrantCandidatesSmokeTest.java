@@ -1,5 +1,6 @@
 package com.chanter.community.api;
 
+import static com.chanter.community.api.AuthenticatedTestSupport.asUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,18 +33,16 @@ class StudyAssistantGrantCandidatesSmokeTest {
     @Test
     void ownerAndInstructorCanListGrantCandidatesAndLearnerGetsViewerScope() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
-        UUID instructorUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
         UUID strangerUserId = UUID.randomUUID();
 
         StudyServerResponse studyServer = createStudyServer(ownerUserId);
 
         MvcResult courseResult = mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/courses", studyServer.id())
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "ownerUserId", ownerUserId.toString(),
                                 "title", "Spring Boot Foundations",
-                                "instructorUserId", instructorUserId.toString(),
                                 "cohortName", "Summer 2026"
                         ))))
                 .andExpect(status().isCreated())
@@ -54,9 +53,9 @@ class StudyAssistantGrantCandidatesSmokeTest {
         );
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
                                 "learnerUserId", learnerUserId.toString()
                         ))))
                 .andExpect(status().isCreated());
@@ -64,7 +63,7 @@ class StudyAssistantGrantCandidatesSmokeTest {
         MvcResult ownerCandidatesResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates",
                         studyServer.id()
-                ).param("userId", ownerUserId.toString()))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyAssistantGrantCandidatesResponse ownerCandidates = objectMapper.readValue(
@@ -82,25 +81,25 @@ class StudyAssistantGrantCandidatesSmokeTest {
         mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates",
                         studyServer.id()
-                ).param("userId", instructorUserId.toString()))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates",
                         studyServer.id()
-                ).param("userId", learnerUserId.toString()))
+                ).with(asUser(learnerUserId)))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates",
                         studyServer.id()
-                ).param("userId", strangerUserId.toString()))
+                ).with(asUser(strangerUserId)))
                 .andExpect(status().isForbidden());
 
         MvcResult instructorScopeResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant-viewer-scope",
                         studyServer.id()
-                ).param("userId", instructorUserId.toString()))
+                ).with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyAssistantViewerScopeResponse instructorScope = objectMapper.readValue(
@@ -113,7 +112,7 @@ class StudyAssistantGrantCandidatesSmokeTest {
         MvcResult learnerScopeResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant-viewer-scope",
                         studyServer.id()
-                ).param("userId", learnerUserId.toString()))
+                ).with(asUser(learnerUserId)))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyAssistantViewerScopeResponse learnerScope = objectMapper.readValue(
@@ -130,16 +129,16 @@ class StudyAssistantGrantCandidatesSmokeTest {
         mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant-viewer-scope",
                         studyServer.id()
-                ).param("userId", strangerUserId.toString()))
+                ).with(asUser(strangerUserId)))
                 .andExpect(status().isForbidden());
     }
 
     private StudyServerResponse createStudyServer(UUID ownerUserId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/study-servers")
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "name", "Java Spring Study Group",
-                                "ownerUserId", ownerUserId.toString()
+                                "name", "Java Spring Study Group"
                         ))))
                 .andExpect(status().isCreated())
                 .andReturn();

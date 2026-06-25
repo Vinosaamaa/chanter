@@ -1,6 +1,8 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useNavigate } from 'react-router-dom'
 
+import { logout as logoutApi } from '../../auth/auth-api'
 import { cn } from '../../../lib/cn'
+import { useAuthStore } from '../../../stores/auth-store'
 
 const navItems = [
   { label: 'Home', to: '/app' },
@@ -9,6 +11,23 @@ const navItems = [
 ]
 
 export function AppShellLayout() {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const clearSession = useAuthStore((state) => state.clearSession)
+
+  const handleSignOut = async () => {
+    const tokenToRevoke = useAuthStore.getState().refreshToken
+    if (tokenToRevoke) {
+      try {
+        await logoutApi(tokenToRevoke)
+      } catch {
+        // Local session clear still runs if the network call fails.
+      }
+    }
+    clearSession()
+    navigate('/sign-in', { replace: true })
+  }
+
   return (
     <div className="flex min-h-screen bg-app-bg text-app-text">
       <aside className="flex w-72 shrink-0 flex-col border-r border-app-border bg-app-surface">
@@ -43,11 +62,17 @@ export function AppShellLayout() {
         <header className="flex items-center justify-between border-b border-app-border bg-app-elevated px-6 py-3">
           <div>
             <p className="text-sm font-medium text-app-text">App shell</p>
-            <p className="text-xs text-app-muted">Dark theme + indigo accents (#48 foundation)</p>
+            <p className="text-xs text-app-muted">
+              Signed in as {user?.displayName ?? user?.email ?? 'unknown user'}
+            </p>
           </div>
-          <Link className="text-sm text-app-accent hover:text-app-accent-hover" to="/sign-in">
-            Sign in
-          </Link>
+          <button
+            type="button"
+            className="text-sm text-app-accent hover:text-app-accent-hover"
+            onClick={handleSignOut}
+          >
+            Sign out
+          </button>
         </header>
         <div className="flex-1 overflow-auto p-6">
           <Outlet />

@@ -1,12 +1,13 @@
 package com.chanter.community.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.community.application.StudyAssistantGrantService;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -22,7 +23,7 @@ public class StudyAssistantGrantController {
     @GetMapping("/study-assistant-grant-candidates")
     public StudyAssistantGrantCandidatesResponse findGrantCandidates(
             @PathVariable UUID studyServerId,
-            @RequestParam UUID userId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
     ) {
         return StudyAssistantGrantCandidatesResponse.from(
                 studyAssistantGrantService.findGrantCandidates(studyServerId, userId)
@@ -32,7 +33,7 @@ public class StudyAssistantGrantController {
     @GetMapping("/study-assistant-viewer-scope")
     public StudyAssistantViewerScopeResponse findViewerScope(
             @PathVariable UUID studyServerId,
-            @RequestParam UUID userId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
     ) {
         return StudyAssistantViewerScopeResponse.from(
                 studyAssistantGrantService.findViewerScope(studyServerId, userId)

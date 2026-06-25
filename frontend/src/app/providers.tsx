@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { RouterProvider } from 'react-router-dom'
 
+import './api-auth'
 import { createAppRouter } from './router'
 
 type AppProvidersProps = {

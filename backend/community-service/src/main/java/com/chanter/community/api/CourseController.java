@@ -1,6 +1,7 @@
 package com.chanter.community.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.community.application.CourseService;
 import com.chanter.community.domain.Course;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,13 +33,14 @@ public class CourseController {
     @PostMapping("/study-servers/{studyServerId}/courses")
     public ResponseEntity<CourseResponse> createCourse(
             @PathVariable UUID studyServerId,
-            @Valid @RequestBody CreateCourseRequest request
+            @Valid @RequestBody CreateCourseRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
     ) {
         Course course = courseService.createCourseWithCohort(
                 studyServerId,
-                request.ownerUserId(),
+                actorUserId,
                 request.title(),
-                request.instructorUserId(),
+                actorUserId,
                 request.cohortName()
         );
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -51,16 +54,17 @@ public class CourseController {
     @PostMapping("/cohorts/{cohortId}/enrollments")
     public ResponseEntity<Void> enrollLearner(
             @PathVariable UUID cohortId,
-            @Valid @RequestBody CreateEnrollmentRequest request
+            @Valid @RequestBody CreateEnrollmentRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID instructorUserId
     ) {
-        courseService.enrollLearner(cohortId, request.instructorUserId(), request.learnerUserId());
+        courseService.enrollLearner(cohortId, instructorUserId, request.learnerUserId());
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest().build().toUri()).build();
     }
 
     @GetMapping("/course-channels/{channelId}")
     public CourseChannelResponse getCourseChannel(
             @PathVariable UUID channelId,
-            @RequestParam UUID viewerUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         return courseService.findAccessibleChannel(channelId, viewerUserId)
                 .map(CourseChannelResponse::from)
@@ -73,7 +77,7 @@ public class CourseController {
     @GetMapping("/course-channels/{channelId}/support-question-access")
     public SupportQuestionChannelAccessResponse getSupportQuestionChannelAccess(
             @PathVariable UUID channelId,
-            @RequestParam UUID userId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
     ) {
         return SupportQuestionChannelAccessResponse.from(
                 courseService.findSupportQuestionChannelAccess(channelId, userId)
@@ -83,7 +87,7 @@ public class CourseController {
     @GetMapping("/courses/{courseId}/resource-access")
     public CourseResourceAccessResponse getCourseResourceAccess(
             @PathVariable UUID courseId,
-            @RequestParam UUID userId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
     ) {
         return CourseResourceAccessResponse.from(
                 courseService.findCourseResourceAccess(courseId, userId)
@@ -93,7 +97,7 @@ public class CourseController {
     @GetMapping("/cohorts/{cohortId}/ta-queue-access")
     public CohortTaQueueAccessResponse getCohortTaQueueAccess(
             @PathVariable UUID cohortId,
-            @RequestParam UUID userId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
     ) {
         return CohortTaQueueAccessResponse.from(
                 courseService.findCohortTaQueueAccess(cohortId, userId)
@@ -103,7 +107,7 @@ public class CourseController {
     @GetMapping("/cohorts/{cohortId}/office-hours-access")
     public CohortOfficeHoursAccessResponse getCohortOfficeHoursAccess(
             @PathVariable UUID cohortId,
-            @RequestParam UUID userId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
     ) {
         return CohortOfficeHoursAccessResponse.from(
                 courseService.findCohortOfficeHoursAccess(cohortId, userId)

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import './DevDemoApp.css'
+import { bootstrapDemoPersonas, type DemoPersonas } from './demo-auth'
+import { installAuthenticatedDemoFetch, setDemoPersonas, demoFetch } from './demo-fetch'
 
 type HealthResponse = {
   status: string
@@ -192,54 +194,9 @@ type HealthState = {
   analytics: string
 }
 
-const createUserId = () => {
-  if ('crypto' in window && typeof window.crypto.randomUUID === 'function') {
-    return window.crypto.randomUUID()
-  }
-
-  return '00000000-0000-4000-8000-000000000001'
-}
-
-const DEMO_USERS_STORAGE_KEY = 'chanter-demo-user-ids'
-
-type DemoUserIds = {
-  owner: string
-  instructor: string
-  learner: string
-  nonEnrolled: string
-}
+const truncateId = (id: string) => `${id.slice(0, 8)}…`
 
 type FriendshipStatus = 'NONE' | 'PENDING' | 'ACCEPTED' | 'DECLINED'
-
-const loadDemoUserIds = (): DemoUserIds => {
-  try {
-    const raw = sessionStorage.getItem(DEMO_USERS_STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<DemoUserIds>
-      if (parsed.owner && parsed.instructor && parsed.learner && parsed.nonEnrolled) {
-        return {
-          owner: parsed.owner,
-          instructor: parsed.instructor,
-          learner: parsed.learner,
-          nonEnrolled: parsed.nonEnrolled,
-        }
-      }
-    }
-  } catch {
-    // Fall through to fresh demo identities.
-  }
-
-  const ids = {
-    owner: createUserId(),
-    instructor: createUserId(),
-    learner: createUserId(),
-    nonEnrolled: createUserId(),
-  }
-  sessionStorage.setItem(DEMO_USERS_STORAGE_KEY, JSON.stringify(ids))
-  return ids
-}
-
-const truncateId = (id: string) => `${id.slice(0, 8)}…`
 
 function App() {
   const [health, setHealth] = useState<HealthState>({
@@ -251,11 +208,12 @@ function App() {
     agent: 'checking',
     analytics: 'checking',
   })
-  const [demoUserIds] = useState(loadDemoUserIds)
-  const ownerUserId = demoUserIds.owner
-  const instructorUserId = demoUserIds.instructor
-  const learnerUserId = demoUserIds.learner
-  const nonEnrolledUserId = demoUserIds.nonEnrolled
+  const [personas, setPersonas] = useState<DemoPersonas | null>(null)
+  const [authBootstrapError, setAuthBootstrapError] = useState<string | null>(null)
+  const ownerUserId = personas?.owner.userId ?? ''
+  const instructorUserId = personas?.instructor.userId ?? ''
+  const learnerUserId = personas?.learner.userId ?? ''
+  const nonEnrolledUserId = personas?.nonEnrolled.userId ?? ''
   const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus>('NONE')
   const [serverName, setServerName] = useState('Java Spring Study Group')
   const [courseTitle, setCourseTitle] = useState('Spring Boot Foundations')
@@ -346,6 +304,32 @@ function App() {
   const [saasPlanError, setSaasPlanError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    let cancelled = false
+
+    bootstrapDemoPersonas()
+      .then((loaded) => {
+        if (cancelled) {
+          return
+        }
+        setDemoPersonas(loaded)
+        installAuthenticatedDemoFetch()
+        setPersonas(loaded)
+      })
+      .catch((caught) => {
+        if (cancelled) {
+          return
+        }
+        setAuthBootstrapError(
+          caught instanceof Error ? caught.message : 'Unable to bootstrap demo auth personas',
+        )
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const refreshDirectMessages = async () => {
     setIsRefreshingDirectMessages(true)
     setSocialError(null)
@@ -429,6 +413,10 @@ function App() {
   }, [ownerUserId, learnerUserId])
 
   useEffect(() => {
+    if (!ownerUserId) {
+      return
+    }
+
     fetch('/actuator/health')
       .then((response) => response.json())
       .then((data) => setHealth((current) => ({ ...current, gateway: data.status ?? 'unknown' })))
@@ -510,7 +498,7 @@ function App() {
       const response = await fetch('/api/v1/study-servers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: serverName, ownerUserId }),
+        body: JSON.stringify({ name: serverName }),
       })
 
       if (!response.ok) {
@@ -556,9 +544,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ownerUserId,
           title: courseTitle,
-          instructorUserId,
           cohortName,
         }),
       })
@@ -587,10 +573,10 @@ function App() {
     setAccessResult(null)
 
     try {
-      const response = await fetch(`/api/v1/cohorts/${course.cohort.id}/enrollments`, {
+      const response = await demoFetch('instructor', `/api/v1/cohorts/${course.cohort.id}/enrollments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instructorUserId, learnerUserId }),
+        body: JSON.stringify({ learnerUserId }),
       })
 
       if (!response.ok) {
@@ -930,7 +916,6 @@ function App() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ownerUserId,
           planTier: saasPlanTier,
         }),
       })
@@ -1455,8 +1440,6 @@ function App() {
     try {
       const response = await fetch(`/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberUserId: ownerUserId }),
       })
 
       if (!response.ok) {
@@ -1482,11 +1465,11 @@ function App() {
     setVoiceResult(null)
 
     try {
-      const response = await fetch(`/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberUserId: nonEnrolledUserId }),
-      })
+      const response = await demoFetch(
+        'nonEnrolled',
+        `/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`,
+        { method: 'POST' },
+      )
 
       if (response.status !== 403) {
         throw new Error(`Expected non-member voice join to fail with 403, got ${response.status}`)
@@ -1515,8 +1498,6 @@ function App() {
         `/api/v1/study-server-channels/${selectedVoiceChannel.id}/voice-presences`,
         {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ memberUserId: ownerUserId }),
         },
       )
 
@@ -1787,13 +1768,29 @@ function App() {
   const canSendDirectMessage = friendshipStatus === 'ACCEPTED'
   const questionsChannel = course?.channels.find((channel) => channel.name === 'questions') ?? null
 
+  if (authBootstrapError) {
+    return (
+      <main className="app-shell">
+        <p className="form-error">Demo auth bootstrap failed: {authBootstrapError}</p>
+      </main>
+    )
+  }
+
+  if (!personas) {
+    return (
+      <main className="app-shell">
+        <p className="sidebar-lead">Bootstrapping demo auth personas…</p>
+      </main>
+    )
+  }
+
   return (
     <main className="app-shell">
       <aside className="workspace-panel" aria-label="Study Server setup">
         <header className="sidebar-header">
           <p className="eyebrow">Chanter</p>
           <h1>Study Servers</h1>
-          <p className="sidebar-lead">Developer demo — simulates multiple users in one browser until login ships (#30).</p>
+          <p className="sidebar-lead">Developer demo — simulates multiple users in one browser via JWT-backed demo personas.</p>
         </header>
 
         <div className="sidebar-scroll">

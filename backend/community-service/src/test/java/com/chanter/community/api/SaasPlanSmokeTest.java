@@ -1,5 +1,6 @@
 package com.chanter.community.api;
 
+import static com.chanter.community.api.AuthenticatedTestSupport.asUser;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,10 +35,10 @@ class SaasPlanSmokeTest {
         UUID ownerUserId = UUID.randomUUID();
 
         MvcResult createdResult = mockMvc.perform(post("/api/v1/study-servers")
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "name", "Quota Demo Server",
-                                "ownerUserId", ownerUserId.toString()
+                                "name", "Quota Demo Server"
                         ))))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -46,15 +47,16 @@ class SaasPlanSmokeTest {
                 objectMapper.readTree(createdResult.getResponse().getContentAsString()).get("id").asText()
         );
 
-        mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId))
+        mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
+                        .with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.planTier").value("STARTER"))
                 .andExpect(jsonPath("$.aiInvocationLimit").value(5));
 
         mockMvc.perform(patch("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "ownerUserId", ownerUserId.toString(),
                                 "planTier", "PRO"
                         ))))
                 .andExpect(status().isOk())
@@ -63,9 +65,9 @@ class SaasPlanSmokeTest {
 
         UUID strangerUserId = UUID.randomUUID();
         mockMvc.perform(patch("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
+                        .with(asUser(strangerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "ownerUserId", strangerUserId.toString(),
                                 "planTier", "ORGANIZATION"
                         ))))
                 .andExpect(status().isForbidden());

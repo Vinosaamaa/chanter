@@ -40,13 +40,13 @@ Important files:
 - `.github/ISSUE_TEMPLATE/`: GitHub issue forms for epics, stories, and bugs.
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 
-Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend foundation **#48** adds routed shell + `/dev/demo` harness.
+Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend foundation **#48** and auth **#49** + backend principal **#30** are implemented on branch `feature/49-30-auth-ui-and-principal` (PR pending).
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress / next:** [#48](https://github.com/Vinosaamaa/chanter/issues/48) foundation → **#49** auth UI.
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress / next:** open PR for **#49** + **#30**, then **#50** Study Server app shell.
 
 **Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#51** (realtime text chat) merges.
 
-Cross-cutting auth **#30** pairs with **#49** during Production Frontend.
+Cross-cutting auth **#30** pairs with **#49** during Production Frontend (partial principal retrofit; office hours / messaging deferred).
 
 ## Active Implementation
 
@@ -59,10 +59,11 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | Order | Issue | Notes |
 |------:|-------|-------|
 | 1 | [#47](https://github.com/Vinosaamaa/chanter/issues/47) | Epic |
-| 2 | [**#48**](https://github.com/Vinosaamaa/chanter/issues/48) | Foundation — PR in review |
-| 3 | [#49](https://github.com/Vinosaamaa/chanter/issues/49) | Auth UI (**next** after #48 merges) |
-| 4 | [#30](https://github.com/Vinosaamaa/chanter/issues/30) | Auth backend (with #49) |
-| 5–14 | [#50](https://github.com/Vinosaamaa/chanter/issues/50)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Shell, realtime, screens |
+| 2 | [**#48**](https://github.com/Vinosaamaa/chanter/issues/48) | Foundation — **merged** |
+| 3 | [**#49**](https://github.com/Vinosaamaa/chanter/issues/49) | Auth UI — **PR pending** (with #30) |
+| 4 | [**#30**](https://github.com/Vinosaamaa/chanter/issues/30) | Auth backend — **PR pending** (with #49) |
+| 5 | [#50](https://github.com/Vinosaamaa/chanter/issues/50) | Study Server shell (**next** after #49+#30 merge) |
+| 6–15 | [#51](https://github.com/Vinosaamaa/chanter/issues/51)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Realtime, screens |
 
 Workable Product (**after #51** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
 
