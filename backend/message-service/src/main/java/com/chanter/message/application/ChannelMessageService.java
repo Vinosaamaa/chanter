@@ -4,6 +4,7 @@ import com.chanter.message.domain.ChannelMessage;
 import com.chanter.message.domain.ChannelScope;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -65,7 +66,7 @@ public class ChannelMessageService {
                 channelId,
                 senderUserId,
                 trimmedBody,
-                clock.instant()
+                clock.instant().truncatedTo(ChronoUnit.MICROS)
         ));
     }
 }
