@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import './App.css'
+import './DevDemoApp.css'
 
 type HealthResponse = {
   status: string

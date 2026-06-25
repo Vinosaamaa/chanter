@@ -40,9 +40,9 @@ Important files:
 - `.github/ISSUE_TEMPLATE/`: GitHub issue forms for epics, stories, and bugs.
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 
-Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. The API demo in `frontend/src/App.tsx` is not the production UI.
+Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend foundation **#48** adds routed shell + `/dev/demo` harness.
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3), start at **[#48](https://github.com/Vinosaamaa/chanter/issues/48)**.
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress / next:** [#48](https://github.com/Vinosaamaa/chanter/issues/48) foundation → **#49** auth UI.
 
 **Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#51** (realtime text chat) merges.
 
@@ -59,8 +59,8 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | Order | Issue | Notes |
 |------:|-------|-------|
 | 1 | [#47](https://github.com/Vinosaamaa/chanter/issues/47) | Epic |
-| 2 | [**#48**](https://github.com/Vinosaamaa/chanter/issues/48) | **Start here** |
-| 3 | [#49](https://github.com/Vinosaamaa/chanter/issues/49) | Auth UI |
+| 2 | [**#48**](https://github.com/Vinosaamaa/chanter/issues/48) | Foundation — PR in review |
+| 3 | [#49](https://github.com/Vinosaamaa/chanter/issues/49) | Auth UI (**next** after #48 merges) |
 | 4 | [#30](https://github.com/Vinosaamaa/chanter/issues/30) | Auth backend (with #49) |
 | 5–14 | [#50](https://github.com/Vinosaamaa/chanter/issues/50)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Shell, realtime, screens |
 
@@ -84,9 +84,9 @@ Full tables: [`docs/operations/agent-workflow.md`](docs/operations/agent-workflo
 Frontend:
 
 - Use React + TypeScript + Vite.
-- Use React Router, TanStack Query, Zustand, and likely Tailwind/shadcn-style UI.
+- Use React Router, TanStack Query, Zustand, and Tailwind/shadcn-style UI (**#48** landed the base stack).
 - Build a Discord-like learning community shell focused on Study Servers, course/module channels, resources, question workflows, office hours, instructor dashboards, and AI Study Assistant controls.
-- **Target product UI** (mockups, screen flows, platform delivery = browser web app): `docs/product-design/`. **Visibility:** global friends + enrollment-scoped **My courses** sidebar — `docs/product-design/visibility-and-social-model.md`. The current `frontend/src/App.tsx` is a vertical-slice **API demo**, not the production shell.
+- **Target product UI** (mockups, screen flows, platform delivery = browser web app): `docs/product-design/`. **Visibility:** global friends + enrollment-scoped **My courses** sidebar — `docs/product-design/visibility-and-social-model.md`. Legacy API demo: `/dev/demo`.
 
 Backend:
 
