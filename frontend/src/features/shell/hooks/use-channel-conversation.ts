@@ -14,6 +14,8 @@ type UseChannelConversationResult = {
   isSending: boolean
 }
 
+const MAX_MESSAGE_BODY_LENGTH = 4000
+
 export function useChannelConversation(
   channelScope: ChannelScope | null,
   channelId: string | undefined,
@@ -128,6 +130,10 @@ export function useChannelConversation(
 
       const trimmed = body.trim()
       if (!trimmed) {
+        return false
+      }
+      if (trimmed.length > MAX_MESSAGE_BODY_LENGTH) {
+        setError(`Message must be ${MAX_MESSAGE_BODY_LENGTH} characters or fewer`)
         return false
       }
 

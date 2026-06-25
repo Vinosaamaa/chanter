@@ -34,3 +34,16 @@ PR: [#68](https://github.com/Vinosaamaa/chanter/pull/68)
 | Comment | Reason |
 |---------|--------|
 | — | None |
+
+## Second pass (post `a2dd175`)
+
+| Comment | Fix |
+|---------|-----|
+| `afterMessageId` without `since` | `ChannelMessageService` rejects cursor-only requests with `400` |
+| Stale subscription clears newer session | `removeSubscription` uses conditional `computeIfPresent` |
+| macOS Makefile silent Java fallback | `$(error ...)` when neither Java 21 nor 23 is installed |
+| Unexpected WS downstream failures close socket | `handleSubscribe` / `handleSend` return error frames for non-`ResponseStatusException` failures |
+| Missing resume-cursor smoke test | Added `courseChannelMessagesCanResumeAfterCursor` |
+| Oversized frontend send shows optimistic row | Client rejects bodies over 4000 chars before optimistic append |
+| Community 5xx not mapped to `BAD_GATEWAY` | Catch `HttpServerErrorException` explicitly |
+| WS smoke test misses first frame | Use `replay().autoConnect(1)` + `Mono.when` before send |

@@ -38,6 +38,10 @@ public class ChannelMessageService {
             Optional<Instant> since,
             Optional<UUID> afterMessageId
     ) {
+        if (afterMessageId.isPresent() && since.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "afterMessageId requires since");
+        }
+
         ChannelMessageAccess access = accessClient.requireAccess(channelId, viewerUserId, channelScope);
         if (!access.canReadMessages()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Channel read access denied");

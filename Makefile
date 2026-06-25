@@ -7,6 +7,8 @@ ifneq ($(JAVA_HOME_21),)
 export JAVA_HOME := $(JAVA_HOME_21)
 else ifneq ($(JAVA_HOME_23),)
 export JAVA_HOME := $(JAVA_HOME_23)
+else
+$(error Java 21 or 23 is required on macOS. Install one and rerun this target)
 endif
 endif
 

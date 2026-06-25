@@ -133,4 +133,42 @@ class ChannelMessageSmokeTest {
                         .content(objectMapper.writeValueAsString(Map.of("body", "blocked"))))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void courseChannelMessagesCanResumeAfterCursor() throws Exception {
+        UUID channelId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        channelMessageAccessClient.grant(channelId, learnerUserId, ChannelScope.COURSE);
+
+        ChannelMessageResponse first = postCourseMessage(channelId, learnerUserId, "first");
+        ChannelMessageResponse second = postCourseMessage(channelId, learnerUserId, "second");
+
+        MvcResult listResult = mockMvc.perform(get("/api/v1/course-channels/{channelId}/messages", channelId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .param("since", first.createdAt().toString())
+                        .param("afterMessageId", first.id().toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        ChannelMessageListResponse listed = objectMapper.readValue(
+                listResult.getResponse().getContentAsString(),
+                ChannelMessageListResponse.class
+        );
+
+        assertThat(listed.messages()).containsExactly(second);
+    }
+
+    private ChannelMessageResponse postCourseMessage(UUID channelId, UUID userId, String body) throws Exception {
+        MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/messages", channelId)
+                        .header(AuthHeaders.USER_ID, userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("body", body))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return objectMapper.readValue(
+                postResult.getResponse().getContentAsString(),
+                ChannelMessageResponse.class
+        );
+    }
 }

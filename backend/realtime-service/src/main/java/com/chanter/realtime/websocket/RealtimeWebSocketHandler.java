@@ -95,7 +95,8 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(payload -> sendJson(session, payload))
                 .onErrorResume(ResponseStatusException.class, exception ->
-                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()));
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
+                .onErrorResume(exception -> sendError(session, "error", "Realtime request failed"));
     }
 
     private Mono<Void> handleUnsubscribe(WebSocketSession session) {
@@ -116,7 +117,8 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                 .flatMap(message -> subscriptionHub.publishMessage(message, channelScope)
                         .onErrorResume(error -> Mono.empty()))
                 .onErrorResume(ResponseStatusException.class, exception ->
-                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()));
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
+                .onErrorResume(exception -> sendError(session, "error", "Realtime request failed"));
     }
 
     private UUID authenticate(WebSocketSession session) {

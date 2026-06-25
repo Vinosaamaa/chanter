@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
@@ -65,6 +66,12 @@ public class HttpChannelMessageAccessClient implements ChannelMessageAccessClien
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "Community Service is unavailable",
+                    exception
+            );
+        } catch (HttpServerErrorException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Community Service request failed",
                     exception
             );
         } catch (HttpClientErrorException exception) {

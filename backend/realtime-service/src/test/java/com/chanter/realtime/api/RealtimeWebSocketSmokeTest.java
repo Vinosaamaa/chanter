@@ -60,18 +60,19 @@ class RealtimeWebSocketSmokeTest {
                 session -> {
                     Flux<String> inbound = session.receive()
                             .map(WebSocketMessage::getPayloadAsText)
-                            .cache();
+                            .replay()
+                            .autoConnect(1);
+
+                    Mono<Void> waitForSubscribed = inbound
+                            .filter(payload -> payload.contains("\"type\":\"subscribed\""))
+                            .next()
+                            .then();
 
                     Mono<Void> subscribe = session.send(Mono.just(session.textMessage(toJson(Map.of(
                             "type", "subscribe",
                             "channelId", channelId.toString(),
                             "channelScope", RealtimeChannelScope.COURSE.name()
                     )))));
-
-                    Mono<Void> waitForSubscribed = inbound
-                            .filter(payload -> payload.contains("\"type\":\"subscribed\""))
-                            .next()
-                            .then();
 
                     Mono<Void> send = session.send(Mono.just(session.textMessage(toJson(Map.of(
                             "type", "send",
@@ -92,7 +93,7 @@ class RealtimeWebSocketSmokeTest {
                             })
                             .then();
 
-                    return subscribe.then(waitForSubscribed).then(send).then(waitForMessage);
+                    return Mono.when(waitForSubscribed, subscribe).then(send).then(waitForMessage);
                 }
         ).block(Duration.ofSeconds(5));
 
@@ -114,15 +115,10 @@ class RealtimeWebSocketSmokeTest {
                 session -> {
                     Flux<String> inbound = session.receive()
                             .map(WebSocketMessage::getPayloadAsText)
-                            .cache();
+                            .replay()
+                            .autoConnect(1);
 
-                    Mono<Void> subscribe = session.send(Mono.just(session.textMessage(toJson(Map.of(
-                            "type", "subscribe",
-                            "channelId", channelId.toString(),
-                            "channelScope", RealtimeChannelScope.COURSE.name()
-                    )))));
-
-                    return subscribe.thenMany(inbound)
+                    Mono<Void> waitForError = inbound
                             .filter(payload -> payload.contains("\"type\":\"error\""))
                             .next()
                             .doOnNext(payload -> {
@@ -133,6 +129,14 @@ class RealtimeWebSocketSmokeTest {
                                 }
                             })
                             .then();
+
+                    Mono<Void> subscribe = session.send(Mono.just(session.textMessage(toJson(Map.of(
+                            "type", "subscribe",
+                            "channelId", channelId.toString(),
+                            "channelScope", RealtimeChannelScope.COURSE.name()
+                    )))));
+
+                    return Mono.when(waitForError, subscribe).then();
                 }
         ).block(Duration.ofSeconds(5));
 

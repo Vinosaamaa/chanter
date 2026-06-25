@@ -81,7 +81,11 @@ public class RealtimeSubscriptionHub {
     }
 
     private void removeSubscription(Subscription subscription) {
-        subscriptionsBySession.remove(subscription.session().getId());
+        subscriptionsBySession.computeIfPresent(subscription.session().getId(), (sessionId, state) ->
+                state.channelId().equals(subscription.channelId())
+                        && state.channelScope() == subscription.channelScope()
+                        ? null
+                        : state);
         subscriptionsByChannel.computeIfPresent(subscription.channelId(), (channelId, channelSubscriptions) -> {
             channelSubscriptions.remove(subscription);
             return channelSubscriptions.isEmpty() ? null : channelSubscriptions;
