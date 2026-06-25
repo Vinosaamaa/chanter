@@ -5,20 +5,19 @@ import com.chanter.common.auth.InvalidJwtException;
 import com.chanter.common.auth.JwtTokenService;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.WebFilter;
-import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
-public class JwtAuthenticationWebFilter implements WebFilter {
+public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
 
     private static final String ACTUATOR_PREFIX = "/actuator/";
     private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
@@ -31,12 +30,12 @@ public class JwtAuthenticationWebFilter implements WebFilter {
 
     private final JwtTokenService jwtTokenService;
 
-    public JwtAuthenticationWebFilter(JwtTokenService jwtTokenService) {
+    public JwtAuthenticationGlobalFilter(JwtTokenService jwtTokenService) {
         this.jwtTokenService = jwtTokenService;
     }
 
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         if (HttpMethod.OPTIONS.equals(exchange.getRequest().getMethod())) {
             return chain.filter(exchange);
         }
@@ -53,17 +52,22 @@ public class JwtAuthenticationWebFilter implements WebFilter {
         String authorizationHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         try {
             UUID userId = jwtTokenService.parseUserId(authorizationHeader);
-            ServerWebExchange authenticatedExchange = exchange.mutate()
-                    .request(builder -> builder.headers(headers -> {
+            ServerHttpRequest request = exchange.getRequest().mutate()
+                    .headers(headers -> {
                         headers.remove(AuthHeaders.USER_ID);
                         headers.set(AuthHeaders.USER_ID, userId.toString());
-                    }))
+                    })
                     .build();
-            return chain.filter(authenticatedExchange);
+            return chain.filter(exchange.mutate().request(request).build());
         } catch (InvalidJwtException exception) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
+    }
+
+    @Override
+    public int getOrder() {
+        return Ordered.HIGHEST_PRECEDENCE;
     }
 
     private static boolean isPublicPath(String path) {

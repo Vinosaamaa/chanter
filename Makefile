@@ -4,6 +4,15 @@ ifeq ($(shell uname -s),Darwin)
 export JAVA_HOME ?= $(shell /usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 23 2>/dev/null)
 endif
 
+ifneq (,$(wildcard .env))
+include .env
+export
+endif
+
+define require-jwt-secret
+	@test -n "$$CHANTER_JWT_SECRET" || (echo "CHANTER_JWT_SECRET is required. Copy .env.example to .env and set a 32+ character secret." && exit 1)
+endef
+
 infra-up:
 	@test -f .env || cp .env.example .env
 	docker compose -f infra/docker-compose.yml --env-file .env up -d
@@ -21,12 +30,15 @@ backend-test:
 	cd backend && mvn -B -q test
 
 backend-gateway:
+	$(require-jwt-secret)
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl gateway-service spring-boot:run
 
 backend-auth:
+	$(require-jwt-secret)
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl auth-service spring-boot:run
 
 backend-community:
+	$(require-jwt-secret)
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl community-service spring-boot:run
 
 backend-message:

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './DevDemoApp.css'
-import { bootstrapDemoPersonas, type DemoPersonas } from './demo-auth'
+import { bootstrapDemoPersonas, type DemoPersonaKey, type DemoPersonas } from './demo-auth'
 import { installAuthenticatedDemoFetch, setDemoPersonas, demoFetch } from './demo-fetch'
+import { useAuthStore } from '../../stores/auth-store'
 
 type HealthResponse = {
   status: string
@@ -210,6 +212,8 @@ function App() {
   })
   const [personas, setPersonas] = useState<DemoPersonas | null>(null)
   const [authBootstrapError, setAuthBootstrapError] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const setSession = useAuthStore((state) => state.setSession)
   const ownerUserId = personas?.owner.userId ?? ''
   const instructorUserId = personas?.instructor.userId ?? ''
   const learnerUserId = personas?.learner.userId ?? ''
@@ -1768,6 +1772,25 @@ function App() {
   const canSendDirectMessage = friendshipStatus === 'ACCEPTED'
   const questionsChannel = course?.channels.find((channel) => channel.name === 'questions') ?? null
 
+  const openProductionAppShell = (personaKey: DemoPersonaKey) => {
+    if (!personas) {
+      return
+    }
+
+    const persona = personas[personaKey]
+    setSession({
+      accessToken: persona.accessToken,
+      refreshToken: persona.refreshToken,
+      expiresInSeconds: 900,
+      user: {
+        id: persona.userId,
+        email: persona.email,
+        displayName: persona.displayName,
+      },
+    })
+    navigate('/app')
+  }
+
   if (authBootstrapError) {
     return (
       <main className="app-shell">
@@ -1791,6 +1814,14 @@ function App() {
           <p className="eyebrow">Chanter</p>
           <h1>Study Servers</h1>
           <p className="sidebar-lead">Developer demo — simulates multiple users in one browser via JWT-backed demo personas.</p>
+          <div className="demo-app-shell-links">
+            <button type="button" className="demo-app-shell-link" onClick={() => openProductionAppShell('owner')}>
+              Open app shell as Owner
+            </button>
+            <button type="button" className="demo-app-shell-link" onClick={() => openProductionAppShell('learner')}>
+              Open app shell as Learner
+            </button>
+          </div>
         </header>
 
         <div className="sidebar-scroll">
