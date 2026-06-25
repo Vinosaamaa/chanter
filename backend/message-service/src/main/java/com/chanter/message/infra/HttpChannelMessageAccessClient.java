@@ -75,13 +75,6 @@ public class HttpChannelMessageAccessClient implements ChannelMessageAccessClien
                     exception
             );
         } catch (HttpClientErrorException exception) {
-            if (exception.getStatusCode().is5xxServerError()) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_GATEWAY,
-                        "Community Service request failed",
-                        exception
-                );
-            }
             throw exception;
         }
     }

@@ -47,3 +47,10 @@ PR: [#68](https://github.com/Vinosaamaa/chanter/pull/68)
 | Oversized frontend send shows optimistic row | Client rejects bodies over 4000 chars before optimistic append |
 | Community 5xx not mapped to `BAD_GATEWAY` | Catch `HttpServerErrorException` explicitly |
 | WS smoke test misses first frame | Use `replay().autoConnect(1)` + `Mono.when` before send |
+
+## Third pass (post `8a0575b`)
+
+| Comment | Fix |
+|---------|-----|
+| Unreachable 5xx branch in `HttpClientErrorException` catch | Rethrow client errors; keep `HttpServerErrorException` mapping only |
+| Flaky cursor-resume smoke test | Seed repository rows with distinct microsecond timestamps |

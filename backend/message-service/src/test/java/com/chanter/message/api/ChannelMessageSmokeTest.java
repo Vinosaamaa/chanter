@@ -6,9 +6,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.chanter.common.auth.AuthHeaders;
+import com.chanter.message.application.ChannelMessageRepository;
+import com.chanter.message.domain.ChannelMessage;
 import com.chanter.message.domain.ChannelScope;
 import com.chanter.message.infra.TestChannelMessageAccessClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +38,9 @@ class ChannelMessageSmokeTest {
 
     @Autowired
     private TestChannelMessageAccessClient channelMessageAccessClient;
+
+    @Autowired
+    private ChannelMessageRepository channelMessageRepository;
 
     @BeforeEach
     void setUp() {
@@ -140,8 +147,21 @@ class ChannelMessageSmokeTest {
         UUID learnerUserId = UUID.randomUUID();
         channelMessageAccessClient.grant(channelId, learnerUserId, ChannelScope.COURSE);
 
-        ChannelMessageResponse first = postCourseMessage(channelId, learnerUserId, "first");
-        ChannelMessageResponse second = postCourseMessage(channelId, learnerUserId, "second");
+        Instant firstCreatedAt = Instant.parse("2026-01-01T00:00:00Z");
+        ChannelMessage first = channelMessageRepository.save(new ChannelMessage(
+                UUID.randomUUID(),
+                channelId,
+                learnerUserId,
+                "first",
+                firstCreatedAt
+        ));
+        channelMessageRepository.save(new ChannelMessage(
+                UUID.randomUUID(),
+                channelId,
+                learnerUserId,
+                "second",
+                firstCreatedAt.plus(1, ChronoUnit.MICROS)
+        ));
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/course-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
@@ -155,7 +175,7 @@ class ChannelMessageSmokeTest {
                 ChannelMessageListResponse.class
         );
 
-        assertThat(listed.messages()).containsExactly(second);
+        assertThat(listed.messages()).extracting(ChannelMessageResponse::body).containsExactly("second");
     }
 
     private ChannelMessageResponse postCourseMessage(UUID channelId, UUID userId, String body) throws Exception {
