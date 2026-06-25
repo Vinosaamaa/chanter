@@ -7,10 +7,19 @@ spring:
   cloud:
     gateway:
       routes:
+        - id: realtime-service
+          uri: ${REALTIME_SERVICE_URL:ws://localhost:8087}
+          predicates:
+            - Path=/api/v1/realtime/**
         - id: auth-service
           uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/v1/auth/**
+        - id: message-service-channel-messages
+          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+          order: -1
+          predicates:
+            - Path=/api/v1/study-server-channels/*/messages,/api/v1/course-channels/*/messages
         - id: message-service-support-questions
           uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
           order: -1

@@ -6,6 +6,7 @@ import com.chanter.community.domain.SaasPlanTier;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerRole;
+import com.chanter.community.domain.TextChannelMessageAccess;
 import com.chanter.community.domain.VoicePresence;
 import java.time.Clock;
 import java.util.List;
@@ -67,6 +68,28 @@ public class StudyServerService {
         requireStudyServerMember(channel.studyServerId(), memberUserId);
 
         repository.deleteVoicePresence(channelId, memberUserId);
+    }
+
+    public TextChannelMessageAccess findStudyServerChannelMessageAccess(UUID channelId, UUID userId) {
+        StudyServerChannel channel = requireTextChannel(channelId);
+        requireStudyServerMember(channel.studyServerId(), userId);
+
+        return new TextChannelMessageAccess(
+                channel.id(),
+                channel.studyServerId(),
+                channel.name(),
+                true,
+                true
+        );
+    }
+
+    private StudyServerChannel requireTextChannel(UUID channelId) {
+        StudyServerChannel channel = repository.findChannelById(channelId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server Channel not found"));
+        if (channel.kind() != ChannelKind.TEXT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Study Server Channel is not a Text Channel");
+        }
+        return channel;
     }
 
     private StudyServerChannel requireVoiceChannel(UUID channelId) {

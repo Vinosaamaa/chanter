@@ -1,7 +1,15 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-media backend-agent frontend-install frontend-dev frontend-build verify setup-git-hooks
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent frontend-install frontend-dev frontend-build verify setup-git-hooks
 
 ifeq ($(shell uname -s),Darwin)
-export JAVA_HOME ?= $(shell /usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 23 2>/dev/null)
+JAVA_HOME_21 := $(shell /usr/libexec/java_home -v 21 2>/dev/null)
+JAVA_HOME_23 := $(shell /usr/libexec/java_home -v 23 2>/dev/null)
+ifneq ($(JAVA_HOME_21),)
+export JAVA_HOME := $(JAVA_HOME_21)
+else ifneq ($(JAVA_HOME_23),)
+export JAVA_HOME := $(JAVA_HOME_23)
+else
+$(error Java 21 or 23 is required on macOS. Install one and rerun this target)
+endif
 endif
 
 ifneq (,$(wildcard .env))
@@ -16,7 +24,7 @@ endef
 
 infra-up:
 	@test -f .env || cp .env.example .env
-	docker compose -f infra/docker-compose.yml --env-file .env up -d
+	docker compose -f infra/docker-compose.yml --env-file .env up -d postgres redis redpanda minio
 
 infra-down:
 	docker compose -f infra/docker-compose.yml down
@@ -44,6 +52,10 @@ backend-community:
 
 backend-message:
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl message-service spring-boot:run
+
+backend-realtime:
+	$(require-jwt-secret)
+	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl realtime-service spring-boot:run
 
 backend-media:
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl media-service spring-boot:run

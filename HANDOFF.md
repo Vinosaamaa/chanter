@@ -40,9 +40,9 @@ Important files:
 - `.github/ISSUE_TEMPLATE/`: GitHub issue forms for epics, stories, and bugs.
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 
-Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30** are **merged** (PR #66).
+Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#50** Study Server app shell (branch `feature/50-study-server-app-shell`).
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#51** realtime text chat (branch `feature/51-realtime-course-channel-chat`).
 
 **Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#51** (realtime text chat) merges.
 
@@ -62,8 +62,9 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | 2 | [**#48**](https://github.com/Vinosaamaa/chanter/issues/48) | Foundation — **merged** |
 | 3 | [**#49**](https://github.com/Vinosaamaa/chanter/issues/49) | Auth UI — **merged** (with #30, PR #66) |
 | 4 | [**#30**](https://github.com/Vinosaamaa/chanter/issues/30) | Auth backend — **merged** (with #49, PR #66) |
-| 5 | [**#50**](https://github.com/Vinosaamaa/chanter/issues/50) | Study Server shell — **in progress** |
-| 6–15 | [#51](https://github.com/Vinosaamaa/chanter/issues/51)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Realtime, screens |
+| 5 | [**#50**](https://github.com/Vinosaamaa/chanter/issues/50) | Study Server shell — **merged** |
+| 6 | [**#51**](https://github.com/Vinosaamaa/chanter/issues/51) | Realtime text chat — **in progress** |
+| 7–15 | [#52](https://github.com/Vinosaamaa/chanter/issues/52)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
 
 Workable Product (**after #51** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
 
