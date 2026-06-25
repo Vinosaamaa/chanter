@@ -22,6 +22,9 @@ public final class JwtTokenService {
         if (secret == null || secret.isBlank()) {
             throw new IllegalArgumentException("JWT secret must not be blank");
         }
+        if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalArgumentException("JWT secret must be at least 256 bits");
+        }
         if (accessTokenTtlSeconds <= 0) {
             throw new IllegalArgumentException("JWT access token TTL must be positive");
         }

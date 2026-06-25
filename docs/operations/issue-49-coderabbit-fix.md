@@ -22,7 +22,8 @@ PR: [#66](https://github.com/Vinosaamaa/chanter/pull/66)
 | Sign-in page with existing session | Redirect to `/app` when `accessToken` present |
 | Demo auth hard-coded origin | `getApiBase()` for register/login bootstrap |
 | Demo fetch `Content-Type` on `FormData` | Only default JSON content type for string bodies |
-| Demo persona global leak | `withActiveDemoPersona` restore wrapper |
+| JWT TTL / key length validation | Reject non-positive TTL and secrets shorter than 256 bits |
+| Gateway strips spoofed `X-User-Id` | `RemoveRequestHeader` default filter + JWT filter overwrite |
 | Providers auth bootstrap timing | Synchronous `api-auth.ts` import before router mount |
 
 ## Verification
