@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { AppTopBar } from '../components/AppTopBar'
 import { ChannelSidebarColumn } from '../components/ChannelSidebarColumn'
 import { ContextPlaceholder } from '../components/ContextPlaceholder'
-import { ConversationPlaceholder } from '../components/ConversationPlaceholder'
+import { ChannelConversation } from '../components/ChannelConversation'
 import { ServerSwitcherColumn } from '../components/ServerSwitcherColumn'
 
 export function AppShellLayout() {
@@ -21,5 +21,5 @@ export function AppShellLayout() {
 }
 
 export function AppChannelLayout() {
-  return <ConversationPlaceholder />
+  return <ChannelConversation />
 }

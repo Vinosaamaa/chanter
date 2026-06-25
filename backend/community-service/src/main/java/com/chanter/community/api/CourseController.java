@@ -84,6 +84,16 @@ public class CourseController {
         );
     }
 
+    @GetMapping("/course-channels/{channelId}/channel-message-access")
+    public CourseChannelMessageAccessResponse getCourseChannelMessageAccess(
+            @PathVariable UUID channelId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
+    ) {
+        return CourseChannelMessageAccessResponse.from(
+                courseService.findCourseChannelMessageAccess(channelId, userId)
+        );
+    }
+
     @GetMapping("/courses/{courseId}/resource-access")
     public CourseResourceAccessResponse getCourseResourceAccess(
             @PathVariable UUID courseId,

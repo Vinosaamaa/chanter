@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-media backend-agent frontend-install frontend-dev frontend-build verify setup-git-hooks
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent frontend-install frontend-dev frontend-build verify setup-git-hooks
 
 ifeq ($(shell uname -s),Darwin)
 export JAVA_HOME ?= $(shell /usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 23 2>/dev/null)
@@ -44,6 +44,10 @@ backend-community:
 
 backend-message:
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl message-service spring-boot:run
+
+backend-realtime:
+	$(require-jwt-secret)
+	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl realtime-service spring-boot:run
 
 backend-media:
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl media-service spring-boot:run

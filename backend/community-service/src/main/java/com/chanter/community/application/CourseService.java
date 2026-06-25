@@ -2,13 +2,14 @@ package com.chanter.community.application;
 
 import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.Cohort;
+import com.chanter.community.domain.CohortOfficeHoursAccess;
+import com.chanter.community.domain.CohortTaQueueAccess;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
+import com.chanter.community.domain.CourseChannelMessageAccess;
+import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.CourseRole;
 import com.chanter.community.domain.InstructorRole;
-import com.chanter.community.domain.CohortTaQueueAccess;
-import com.chanter.community.domain.CohortOfficeHoursAccess;
-import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
 import java.time.Clock;
 import java.util.List;
@@ -95,6 +96,25 @@ public class CourseService {
                         HttpStatus.FORBIDDEN,
                         "Course Channel access requires Cohort Enrollment or Instructor role"
                 ));
+    }
+
+    public CourseChannelMessageAccess findCourseChannelMessageAccess(UUID channelId, UUID userId) {
+        CourseChannel channel = findAccessibleChannel(channelId, userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Course Channel access requires Cohort Enrollment or Instructor role"
+                ));
+        if (channel.kind() != ChannelKind.TEXT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Channel is not a Text Channel");
+        }
+
+        return new CourseChannelMessageAccess(
+                channel.id(),
+                channel.courseId(),
+                channel.name(),
+                true,
+                true
+        );
     }
 
     public CourseResourceAccess findCourseResourceAccess(UUID courseId, UUID userId) {

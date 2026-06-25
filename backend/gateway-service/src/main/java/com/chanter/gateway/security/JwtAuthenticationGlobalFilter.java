@@ -51,7 +51,7 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
 
         String authorizationHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         try {
-            UUID userId = jwtTokenService.parseUserId(authorizationHeader);
+            UUID userId = resolveUserId(exchange.getRequest(), authorizationHeader);
             ServerHttpRequest request = exchange.getRequest().mutate()
                     .headers(headers -> {
                         headers.remove(AuthHeaders.USER_ID);
@@ -82,5 +82,18 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
                 .headers(headers -> headers.remove(AuthHeaders.USER_ID))
                 .build();
         return chain.filter(exchange.mutate().request(request).build());
+    }
+
+    private UUID resolveUserId(ServerHttpRequest request, String authorizationHeader) {
+        if (authorizationHeader != null && !authorizationHeader.isBlank()) {
+            return jwtTokenService.parseUserId(authorizationHeader);
+        }
+
+        String accessToken = request.getQueryParams().getFirst("access_token");
+        if (accessToken != null && !accessToken.isBlank()) {
+            return jwtTokenService.parseUserId(AuthHeaders.BEARER_PREFIX + accessToken.trim());
+        }
+
+        throw new InvalidJwtException("Missing or invalid Authorization header");
     }
 }

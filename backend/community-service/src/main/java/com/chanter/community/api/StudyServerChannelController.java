@@ -57,4 +57,14 @@ public class StudyServerChannelController {
         studyServerService.leaveVoiceChannel(channelId, memberUserId);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{channelId}/channel-message-access")
+    public StudyServerChannelMessageAccessResponse getChannelMessageAccess(
+            @PathVariable UUID channelId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
+    ) {
+        return StudyServerChannelMessageAccessResponse.from(
+                studyServerService.findStudyServerChannelMessageAccess(channelId, userId)
+        );
+    }
 }
