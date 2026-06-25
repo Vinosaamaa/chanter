@@ -2,7 +2,7 @@
 
 > **Product visuals:** target UI mockups and screen flows for each slice live in [`docs/product-design/`](../product-design/README.md) (see `mockups/README.md` for the gallery).  
 > **Visibility:** global friends + enrollment-scoped **My courses** sidebar — [`visibility-and-social-model.md`](../product-design/visibility-and-social-model.md).  
-> **Backend MVP (#11–#24):** merged on `main`. **Active / next phases:** [`agent-roadmap.md`](agent-roadmap.md).
+> **Backend MVP (#11–#24):** merged on `main`. **Active / next phases:** [`agent-workflow.md`](../operations/agent-workflow.md).
 
 ## GitHub Issues Published
 
@@ -55,7 +55,7 @@ Post-MVP social & realtime — now tracked under **[Workable Product](https://gi
 | 31 | Slice: Build Discord-Like Friends Hub And Live DM Conversation | after #51, #30, #50 |
 | 32 | Slice: Direct Message Voice Call Between Friends | after #31, #61 |
 
-See also: #60–#63 in [`workable-product-issue-breakdown.md`](workable-product-issue-breakdown.md). Agent order: [`agent-roadmap.md`](agent-roadmap.md).
+See also: #60–#63 in [`workable-product-issue-breakdown.md`](workable-product-issue-breakdown.md). Agent order: [`agent-workflow.md`](../operations/agent-workflow.md).
 
 Architecture: `docs/architecture/social-hub-and-dm-voice.md`
 

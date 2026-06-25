@@ -25,7 +25,7 @@ GitHub repository: `https://github.com/Vinosaamaa/chanter`
 | **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59**, #30 — **active** |
 | **Workable Product** | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #30–#32 — after realtime UI |
 
-**Agent issue order:** [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) (mandatory for all agents).
+**Agent workflow (order + loop + merge policy):** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) (mandatory for all agents).
 
 Implemented bootstrap:
 
@@ -45,7 +45,8 @@ Key planning files:
 | [`docs/issues/education-mvp-issue-breakdown.md`](docs/issues/education-mvp-issue-breakdown.md) | Backend epics and slices (#11–#24) — **done** |
 | [`docs/issues/production-frontend-issue-breakdown.md`](docs/issues/production-frontend-issue-breakdown.md) | Production UI slices (#47–#59) — **active** |
 | [`docs/issues/workable-product-issue-breakdown.md`](docs/issues/workable-product-issue-breakdown.md) | Workable full-stack app (#60–#63, #31–#32) |
-| [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) | **Mandatory agent issue order** across project boards |
+| [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) | **Mandatory agent workflow** — issue order, completion loop, owner-only merge |
+| [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) | Redirect → `agent-workflow.md` |
 | [`plan.md`](plan.md) | Roadmap, milestones, frontend/backend direction, scale and AI-agent phases |
 | [`System Design.md`](System Design.md) | Backend architecture, service boundaries, event flows (engineering diagrams in `docs/diagrams/`) |
 | [`docs/diagrams/`](docs/diagrams/) | Editable draw.io **architecture** sources + PNG exports for `plan.md` / `System Design.md` |
@@ -71,7 +72,7 @@ Use `HANDOFF.md` as the first resume point for new agent sessions. For **what th
 - `zoom-out` or `improve-codebase-architecture` for architecture reviews.
 - `prototype` for uncertain UI or system interaction flows.
 - `setup-pre-commit` after runnable code and checks exist.
-- `coderabbit` for PR review loops — see [`docs/operations/coderabbit-review-workflow.md`](docs/operations/coderabbit-review-workflow.md). Greptile/`greploop` retired (trial expired).
+- `coderabbit` for PR review loops — see [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) § CodeRabbit. Greptile/`greploop` retired (trial expired).
 
 ## Architecture Direction
 
@@ -105,4 +106,4 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 **Active:** [Production Frontend — issue #48](https://github.com/Vinosaamaa/chanter/issues/48) on [project board #3](https://github.com/users/Vinosaamaa/projects/3).
 
-See [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) for the full ordered list through Workable Product (project #4).
+See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for the full ordered list through Workable Product (project #4).

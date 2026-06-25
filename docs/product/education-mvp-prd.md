@@ -196,7 +196,7 @@ Educators evaluating Chanter see API demo forms, not the Discord-like learning c
 
 ### Solution
 
-Build the production React shell (React Router, TanStack Query, design system) and replace demo harness flows with mockup-aligned screens. Bootstrap `realtime-service` for live Course Channel chat. Pair **#30** (backend auth principal) with **#49** (sign-in UI). Track slices in [`docs/issues/production-frontend-issue-breakdown.md`](../issues/production-frontend-issue-breakdown.md) (epic [#47](https://github.com/Vinosaamaa/chanter/issues/47), [project #3](https://github.com/users/Vinosaamaa/projects/3), slices **#48–#59**). **Start at #48;** full order in [`docs/issues/agent-roadmap.md`](../issues/agent-roadmap.md) § Phase 2.
+Build the production React shell (React Router, TanStack Query, design system) and replace demo harness flows with mockup-aligned screens. Bootstrap `realtime-service` for live Course Channel chat. Pair **#30** (backend auth principal) with **#49** (sign-in UI). Track slices in [`docs/issues/production-frontend-issue-breakdown.md`](../issues/production-frontend-issue-breakdown.md) (epic [#47](https://github.com/Vinosaamaa/chanter/issues/47), [project #3](https://github.com/users/Vinosaamaa/projects/3), slices **#48–#59**). **Start at #48;** full order in [`docs/operations/agent-workflow.md`](../operations/agent-workflow.md) § Phase 2.
 
 ### Phase 2 user stories (additive)
 
@@ -236,7 +236,7 @@ Build the production React shell (React Router, TanStack Query, design system) a
 
 ### Solution
 
-After **#51** merges (realtime text chat), ship Workable Product slices in [project #4](https://github.com/users/Vinosaamaa/projects/4) board order: **#60** (epic) → **#30** (if needed) → **#62** (one-command stack) → **#61** (Voice Channel WebRTC + LiveKit) → **#31** (Friends Hub) → **#32** (DM voice) → **#63** (E2E demo). See [`docs/issues/agent-roadmap.md`](../issues/agent-roadmap.md) § Phase 3 and [`docs/issues/workable-product-issue-breakdown.md`](../issues/workable-product-issue-breakdown.md).
+After **#51** merges (realtime text chat), ship Workable Product slices in [project #4](https://github.com/users/Vinosaamaa/projects/4) board order: **#60** → **#62** → **#61** → **#31** → **#32** → **#63**. See [`docs/operations/agent-workflow.md`](../operations/agent-workflow.md) § Phase 3 and [`docs/issues/workable-product-issue-breakdown.md`](../issues/workable-product-issue-breakdown.md).
 
 ### Phase 3 user stories (additive)
 

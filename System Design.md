@@ -25,7 +25,7 @@ The education MVP ships as a **web application** (React SPA in the browser). Nat
 | Production UI | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Active** (#48+) |
 | Workable app | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | After #51 |
 
-**Mandatory issue order:** [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md).
+**Mandatory agent workflow:** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
 ## Product Architecture Direction
 
@@ -76,7 +76,7 @@ Teacher/student verification should start simple and become stronger over time:
 - Organization tier: Google Workspace or Microsoft login, institution domains, roster import, and SSO later.
 - Public creator tier: optional verified educator badge based on manual review, payment identity, or linked organization.
 
-Friends and direct messages can exist, but they are not the core MVP learning workflow. Issue #15 delivers durable Friend Request / Direct Message rules over REST. The Discord-like **Friends Hub** (#31) and **DM voice** (#32) ship in the **Workable Product** phase ([project #4](https://github.com/users/Vinosaamaa/projects/4)), after Production Frontend **#51** (realtime-service). See `docs/architecture/social-hub-and-dm-voice.md` and `docs/issues/agent-roadmap.md`. Education DMs need policy controls:
+Friends and direct messages can exist, but they are not the core MVP learning workflow. Issue #15 delivers durable Friend Request / Direct Message rules over REST. The Discord-like **Friends Hub** (#31) and **DM voice** (#32) ship in the **Workable Product** phase ([project #4](https://github.com/users/Vinosaamaa/projects/4)), after Production Frontend **#51** (realtime-service). See `docs/architecture/social-hub-and-dm-voice.md` and `docs/operations/agent-workflow.md`. Education DMs need policy controls:
 
 - Users can send friend or DM requests, but recipients must accept.
 - Teachers/TAs can disable or restrict learner DMs.

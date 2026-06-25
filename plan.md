@@ -322,10 +322,10 @@ Use an incremental production workflow:
 10. Maintain release notes, change logs, debug logs, and runbooks for local deployment.
 11. For every non-trivial implementation slice, add an issue-scoped change log under `docs/operations/` with the files changed, behavior added, verification commands, and representative code snippets.
 12. For every meaningful local or browser-debugging failure, add an issue-scoped debug log under `docs/operations/` with symptoms, hypotheses, commands run, findings, fixes, and final verification.
-13. For every CodeRabbit suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/coderabbit-review-workflow.md`).
+13. For every CodeRabbit suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/agent-workflow.md`).
 14. Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 
-Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, `setup-pre-commit` for quality gates, and CodeRabbit for PR review loops (`docs/operations/coderabbit-review-workflow.md`).
+Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, `setup-pre-commit` for quality gates, and CodeRabbit for PR review loops (`docs/operations/agent-workflow.md`).
 
 Definition of Done for each feature:
 
@@ -369,7 +369,7 @@ Operational controls:
 Current implementation status as of 2026-06-24:
 
 - **Education MVP backend (milestone 1):** issues **#11–#24** merged on `main`.
-- **Active:** **Production Frontend** (milestone 3, [project #3](https://github.com/users/Vinosaamaa/projects/3)) — start at **#48**. See [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md).
+- **Active:** **Production Frontend** (milestone 3, [project #3](https://github.com/users/Vinosaamaa/projects/3)) — start at **#48**. See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 - **Next:** **Workable Product** (milestone 4, [project #4](https://github.com/users/Vinosaamaa/projects/4)) — after **#51** merges.
 - Cross-cutting auth: **#30** (pair with **#49**).
 - `frontend/src/App.tsx` remains an API demo until Production Frontend slices land.
@@ -458,7 +458,7 @@ Milestone 8: SaaS plans, voice agents, and marketplace foundation
 
 Milestone 9: Workable Product (full-stack local app)
 
-Tracked as GitHub milestone **[Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4)** and [project board #4](https://github.com/users/Vinosaamaa/projects/4). Issue order: [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) § Phase 3.
+Tracked as GitHub milestone **[Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4)** and [project board #4](https://github.com/users/Vinosaamaa/projects/4). Issue order: [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) § Phase 3.
 
 Prerequisite: Production Frontend **#51** (realtime text chat) merged.
 
@@ -502,7 +502,7 @@ Milestone 9: Hardening
 
 Backend MVP **#11–#24** is merged on `main`. **Active work:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — start at **[issue #48](https://github.com/Vinosaamaa/chanter/issues/48)**.
 
-Follow [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) for mandatory issue order. For UI intent, align with `docs/product-design/mockups/` and the slice rows in `docs/issues/production-frontend-issue-breakdown.md`. Use TDD and issue-scoped change logs in `docs/operations/`.
+Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for mandatory issue order. For UI intent, align with `docs/product-design/mockups/` and the slice rows in `docs/issues/production-frontend-issue-breakdown.md`. Use TDD and issue-scoped change logs in `docs/operations/`.
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

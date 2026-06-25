@@ -12,7 +12,7 @@
 
 **[Workable Product](https://github.com/users/Vinosaamaa/projects/4)**
 
-**Board order = implementation order:** #60 → #30 → #62 → #61 → #31 → #32 → #63. See [`agent-roadmap.md`](agent-roadmap.md) § Phase 3.
+**Board order = implementation order:** #60 → #62 → #61 → #31 → #32 → #63. See [`agent-workflow.md`](../operations/agent-workflow.md) § Phase 3.
 
 ## Epic
 
@@ -46,14 +46,13 @@
 
 ## Recommended order
 
-Matches [project #4](https://github.com/users/Vinosaamaa/projects/4) board order — see [`agent-roadmap.md`](agent-roadmap.md) § Phase 3:
+Matches [project #4](https://github.com/users/Vinosaamaa/projects/4) board order — see [`agent-workflow.md`](../operations/agent-workflow.md) § Phase 3:
 
 ```
 Production Frontend (prerequisite): #48 → #49+#30 → #50 → #51 → …
 
 Workable Product (after #51 merges):
   #60 epic
-  #30 (if auth not finished in phase 2)
   #62 One-command stack (may start early)
   #61 Voice WebRTC + LiveKit
   #31 Friends Hub
@@ -72,6 +71,6 @@ Workable Product (after #51 merges):
 
 ## Related docs
 
-- [`docs/issues/agent-roadmap.md`](agent-roadmap.md) — **mandatory issue order**
+- [`docs/operations/agent-workflow.md`](../operations/agent-workflow.md) — **mandatory agent workflow**
 - [`docs/issues/production-frontend-issue-breakdown.md`](production-frontend-issue-breakdown.md)
 - [`docs/architecture/social-hub-and-dm-voice.md`](../architecture/social-hub-and-dm-voice.md)

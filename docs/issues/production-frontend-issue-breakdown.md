@@ -12,7 +12,7 @@
 
 **[Production Frontend](https://github.com/users/Vinosaamaa/projects/3)** — issues **#30**, **#47–#59**.
 
-**Board order = implementation order** (top row first). Full table: [`agent-roadmap.md`](agent-roadmap.md) § Phase 2.
+**Board order = implementation order** (top row first). Full table: [`agent-workflow.md`](../operations/agent-workflow.md) § Phase 2.
 
 ## Epic
 
@@ -54,7 +54,7 @@
 #59 anytime after #49 (marketing polish)
 ```
 
-**#31–#32** (Friends Hub, DM voice) are **not** part of this milestone — they ship on [Workable Product project #4](https://github.com/users/Vinosaamaa/projects/4) after **#51** merges. See [`agent-roadmap.md`](agent-roadmap.md).
+**#31–#32** (Friends Hub, DM voice) are **not** part of this milestone — they ship on [Workable Product project #4](https://github.com/users/Vinosaamaa/projects/4) after **#51** merges. See [`agent-workflow.md`](../operations/agent-workflow.md).
 
 ## Mock coverage map (19 screens)
 
@@ -86,5 +86,5 @@ Use existing labels: `epic`, `story`, `ready-for-agent`, `frontend`, `education`
 
 ## Related docs
 
-- [`agent-roadmap.md`](agent-roadmap.md) — **mandatory issue order** (project #3)
+- [`agent-workflow.md`](../operations/agent-workflow.md) — **mandatory agent workflow** (project #3)
 - [`workable-product-issue-breakdown.md`](workable-product-issue-breakdown.md) — voice, friends, E2E (#60–#63, #31–#32) after #51

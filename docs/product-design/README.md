@@ -50,7 +50,7 @@ docs/product-design/
 | [Issue breakdown](../issues/education-mvp-issue-breakdown.md) | Backend epics and slices (#11–#24) — **done** |
 | [Production frontend breakdown](../issues/production-frontend-issue-breakdown.md) | UI phase (#47–#59) — **active** |
 | [Workable product breakdown](../issues/workable-product-issue-breakdown.md) | Full-stack local app (#60–#63, #31–#32) |
-| [**Agent roadmap**](../issues/agent-roadmap.md) | **Mandatory issue order** for agents (project boards #3, #4) |
+| [**Agent workflow**](../operations/agent-workflow.md) | **Mandatory agent workflow** (project boards #3, #4) |
 | [Product glossary](../../CONTEXT.md) | Canonical domain language (Study Server, Cohort, etc.) |
 | [Product strategy session](../sessions/2026-06-16-product-strategy-grill-session.md) | How the education wedge was chosen |
 | [Social hub architecture](../architecture/social-hub-and-dm-voice.md) | Friends hub and DM voice (#31–#32) on project #4 |
@@ -71,7 +71,7 @@ These live under `docs/diagrams/` because `plan.md` and `System Design.md` refer
 
 **Backend MVP merged on `main`:** #11–#24 (through SaaS plan limits).
 
-**Active:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — start at **[#48](https://github.com/Vinosaamaa/chanter/issues/48)**. Agent order: [`docs/issues/agent-roadmap.md`](../issues/agent-roadmap.md).
+**Active:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — start at **[#48](https://github.com/Vinosaamaa/chanter/issues/48)**. Agent workflow: [`docs/operations/agent-workflow.md`](../operations/agent-workflow.md).
 
 **Next:** [Workable Product](https://github.com/users/Vinosaamaa/projects/4) (#60–#63, #31–#32) after **#51** (realtime text chat) merges.
 

@@ -29,7 +29,7 @@ Important files:
 - `docs/issues/education-mvp-issue-breakdown.md`: GitHub-ready epics and vertical-slice stories for the education MVP (**#11–#24, done**).
 - `docs/issues/production-frontend-issue-breakdown.md`: Production UI phase (**#47–#59**, project #3).
 - `docs/issues/workable-product-issue-breakdown.md`: Workable full-stack local app (**#60–#63**, #31–#32, project #4).
-- `docs/issues/agent-roadmap.md`: **Mandatory issue order** for agents across project boards.
+- `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, completion loop, owner-only merge policy.
 - `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
 - `System Design.md`: detailed backend/system architecture explanation and diagrams.
 - `docs/diagrams/`: editable draw.io **engineering** diagram sources plus embedded PNG exports referenced from `plan.md` and `System Design.md` (not product UI mockups — those live under `docs/product-design/`).
@@ -69,14 +69,15 @@ Workable Product (**after #51** — [project #4](https://github.com/users/Vinosa
 | Order | Issue |
 |------:|-------|
 | 1 | [#60](https://github.com/Vinosaamaa/chanter/issues/60) epic |
-| 2 | [#30](https://github.com/Vinosaamaa/chanter/issues/30) |
-| 3 | [#62](https://github.com/Vinosaamaa/chanter/issues/62) one-command stack |
-| 4 | [#61](https://github.com/Vinosaamaa/chanter/issues/61) voice WebRTC |
-| 5 | [#31](https://github.com/Vinosaamaa/chanter/issues/31) Friends Hub |
-| 6 | [#32](https://github.com/Vinosaamaa/chanter/issues/32) DM voice |
-| 7 | [#63](https://github.com/Vinosaamaa/chanter/issues/63) E2E demo |
+| 2 | [#62](https://github.com/Vinosaamaa/chanter/issues/62) one-command stack |
+| 3 | [#61](https://github.com/Vinosaamaa/chanter/issues/61) voice WebRTC |
+| 4 | [#31](https://github.com/Vinosaamaa/chanter/issues/31) Friends Hub |
+| 5 | [#32](https://github.com/Vinosaamaa/chanter/issues/32) DM voice |
+| 6 | [#63](https://github.com/Vinosaamaa/chanter/issues/63) E2E demo |
 
-Full tables: [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md).
+**#30** ships in phase 2 with **#49** (project #3).
+
+Full tables: [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
 ## Major Decisions Made
 
@@ -150,7 +151,7 @@ Scale direction:
 
 Use installed Cursor workflow skills directly rather than the deleted local `chanter-engineering-workflow` skill.
 
-**Git workflow (required):** one branch per GitHub issue → pull request → **full CodeRabbit loop → merge** → next issue. Master doc: `docs/operations/coderabbit-review-workflow.md` (**Issue completion loop**). Also enforced in `.cursor/rules/git-workflow.mdc`. Do not stop after opening a PR.
+**Git workflow (required):** one branch per GitHub issue → pull request → **full CodeRabbit loop** → **owner merges** → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. **Agents never merge.** Do not stop after opening a PR.
 
 **Testing workflow:** infrastructure bootstrap (#11) may use smoke tests; **domain features from #12 onward use TDD** (red → green → refactor) for permissions, enrollment, and learning-support workflows.
 
@@ -163,7 +164,7 @@ The expected workflow includes:
 - Diagnose loop for bugs and regressions.
 - Issue-scoped change logs for non-trivial implementation slices.
 - Issue-scoped debug logs for meaningful local/browser failures.
-- Issue-scoped CodeRabbit fix logs for every CodeRabbit suggestion that changes code or records an explicit follow-up (`docs/operations/issue-<N>-coderabbit-fix.md`). See `docs/operations/coderabbit-review-workflow.md`.
+- Issue-scoped CodeRabbit fix logs for every CodeRabbit suggestion that changes code or records an explicit follow-up (`docs/operations/issue-<N>-coderabbit-fix.md`). See `docs/operations/agent-workflow.md`.
 - Zoom-out architecture review after milestones.
 - Prototyping for uncertain UX/system flows.
 - Pre-commit and CI-style quality gates once code exists.
@@ -179,7 +180,7 @@ Use these installed skills by name when relevant:
 - `zoom-out` or `improve-codebase-architecture`: review architecture boundaries after major changes.
 - `prototype`: explore uncertain UI or system flows before production implementation.
 - `setup-pre-commit`: add quality gates after runnable code exists.
-- **CodeRabbit review:** push to PR → GitHub review; or local `coderabbit review --agent --base main`. Fix loop and fix-log naming: `docs/operations/coderabbit-review-workflow.md`.
+- **CodeRabbit review:** push to PR → GitHub review; or local `coderabbit review --agent --base main`. See `docs/operations/agent-workflow.md`.
 
 Diagram workflow:
 
@@ -287,7 +288,7 @@ Pending:
 
 After backend MVP (#11–#24), build in **issue order** on project boards:
 
-1. **Production Frontend** ([`agent-roadmap.md`](docs/issues/agent-roadmap.md) § Phase 2): #48 → #49+#30 → #50 → #51 → #52–#59.
+1. **Production Frontend** ([`agent-workflow.md`](docs/operations/agent-workflow.md) § Phase 2): #48 → #49+#30 → #50 → #51 → #52–#59.
 2. **Workable Product** (§ Phase 3): #62 (early ok) → #61 → #31 → #32 → #63.
 
 Target UX mockups: `docs/product-design/mockups/`. Social architecture: `docs/architecture/social-hub-and-dm-voice.md`.
@@ -308,13 +309,13 @@ Recent operations documentation artifacts:
 Use this prompt after reloading Cursor or starting a new chat:
 
 ```text
-Read HANDOFF.md, CONTEXT.md, and docs/issues/agent-roadmap.md.
+Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24 is merged on main.
 Active: Production Frontend project #3 — start at issue #48.
 
 Product UI: docs/product-design/README.md
-Workflow: docs/operations/coderabbit-review-workflow.md
+Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
 Issue: https://github.com/Vinosaamaa/chanter/issues/48
@@ -323,7 +324,7 @@ Project: https://github.com/users/Vinosaamaa/projects/3
 
 ## Notes For Future Agent
 
-- **Agent issue order:** read [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) before picking work; follow project board order on [#3](https://github.com/users/Vinosaamaa/projects/3) then [#4](https://github.com/users/Vinosaamaa/projects/4).
+- **Agent workflow:** read [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) before picking work; follow project board order on [#3](https://github.com/users/Vinosaamaa/projects/3) then [#4](https://github.com/users/Vinosaamaa/projects/4). **Agents never merge PRs.**
 - **Product showcase:** `docs/product-design/` has target UI mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** (global friends vs my-courses sidebar). Use it when implementing frontend routes or explaining scope to stakeholders. `frontend/src/App.tsx` is an API demo, not the final shell.
 - **Engineering diagrams:** `docs/diagrams/` is for service architecture — do not put product mockups there.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
@@ -331,7 +332,7 @@ Project: https://github.com/users/Vinosaamaa/projects/3
 - **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
-- For every CodeRabbit suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/coderabbit-review-workflow.md`). Historical Greptile logs remain under `issue-*-greptile-fix.md`.
+- For every CodeRabbit suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/agent-workflow.md`). Historical Greptile logs remain under `issue-*-greptile-fix.md`.
 - Keep explanations beginner-friendly but production-oriented.
 - Preserve and update the docs when architecture or process decisions change.
 - Ask before creating remote repositories, pushing code, creating tickets, or installing third-party integrations.

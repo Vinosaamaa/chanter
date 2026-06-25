@@ -276,13 +276,13 @@ Access is scoped by **Cohort Enrollment** and role (Owner, Instructor, TA, Learn
 | Instructor dashboard & billing | done | #55 dashboard + SaaS plan UI |
 | Live text chat | APIs exist | #51 realtime-service + shell |
 
-**Active:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) (#48–#59). **Next:** [Workable Product](https://github.com/users/Vinosaamaa/projects/4) (#60–#63, #31–#32). Agent order: [`docs/issues/agent-roadmap.md`](../issues/agent-roadmap.md).
+**Active:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) (#48–#59). **Next:** [Workable Product](https://github.com/users/Vinosaamaa/projects/4) (#60–#63, #31–#32). Agent order: [`docs/operations/agent-workflow.md`](../operations/agent-workflow.md).
 
 Today's `frontend/src/App.tsx` is a **vertical-slice demo** (forms and buttons proving APIs). The mockups in `mockups/` show the **production shell** implemented in Production Frontend slices #48–#59.
 
 ## Later phases (post-MVP)
 
-**Production Frontend** (#48–#59) and **Workable Product** (#60–#63, #31–#32) are tracked on [project boards #3 and #4](https://github.com/users/Vinosaamaa/projects/3). See [`agent-roadmap.md`](../issues/agent-roadmap.md).
+**Production Frontend** (#48–#59) and **Workable Product** (#60–#63, #31–#32) are tracked on [project boards #3 and #4](https://github.com/users/Vinosaamaa/projects/3). See [`agent-workflow.md`](../operations/agent-workflow.md).
 
 Dashed boxes in the [user journey diagram](diagrams/user-journey.drawio.png):
 
@@ -293,7 +293,7 @@ Dashed boxes in the [user journey diagram](diagrams/user-journey.drawio.png):
 
 ## See also
 
-- [**Agent roadmap**](../issues/agent-roadmap.md) — mandatory issue order for agents
+- [**Agent workflow**](../operations/agent-workflow.md) — mandatory issue order and completion loop
 - [Production frontend breakdown](../issues/production-frontend-issue-breakdown.md) — active UI phase (#48–#59)
 - [Workable product breakdown](../issues/workable-product-issue-breakdown.md) — full-stack local app (#60–#63, #31–#32)
 - [Visibility and social model](visibility-and-social-model.md) — global friends vs enrollment-scoped course UI
