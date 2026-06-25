@@ -47,10 +47,13 @@ docs/product-design/
 | Document | Purpose |
 |---|---|
 | [Education MVP PRD](../product/education-mvp-prd.md) | Problem, solution, user stories, implementation decisions |
-| [Issue breakdown](../issues/education-mvp-issue-breakdown.md) | Epics and vertical slices (#11–#24) |
+| [Issue breakdown](../issues/education-mvp-issue-breakdown.md) | Backend epics and slices (#11–#24) — **done** |
+| [Production frontend breakdown](../issues/production-frontend-issue-breakdown.md) | UI phase (#47–#59) — **active** |
+| [Workable product breakdown](../issues/workable-product-issue-breakdown.md) | Full-stack local app (#60–#63, #31–#32) |
+| [**Agent workflow**](../operations/agent-workflow.md) | **Mandatory agent workflow** (project boards #3, #4) |
 | [Product glossary](../../CONTEXT.md) | Canonical domain language (Study Server, Cohort, etc.) |
 | [Product strategy session](../sessions/2026-06-16-product-strategy-grill-session.md) | How the education wedge was chosen |
-| [Social hub architecture](../architecture/social-hub-and-dm-voice.md) | Post-MVP Friends hub and DM voice (#31–#32) |
+| [Social hub architecture](../architecture/social-hub-and-dm-voice.md) | Friends hub and DM voice (#31–#32) on project #4 |
 
 ## Related architecture (engineering)
 
@@ -66,13 +69,13 @@ These live under `docs/diagrams/` because `plan.md` and `System Design.md` refer
 
 ## Implementation status (snapshot)
 
-**Merged on `main`:** #12 Study Server, #13 Course/Cohort/Enrollment, #14 Voice, #15 Friends/DM API.
+**Backend MVP merged on `main`:** #11–#24 (through SaaS plan limits).
 
-**In flight:** #16 Support Questions in `#questions` ([PR #34](https://github.com/Vinosaamaa/chanter/pull/34)).
+**Active:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — start at **[#48](https://github.com/Vinosaamaa/chanter/issues/48)**. Agent workflow: [`docs/operations/agent-workflow.md`](../operations/agent-workflow.md).
 
-**Next MVP slices:** #17–#24 (resources → AI assistant → FAQs → TA queue → office hours → dashboard → billing).
+**Next:** [Workable Product](https://github.com/users/Vinosaamaa/projects/4) (#60–#63, #31–#32) after **#51** (realtime text chat) merges.
 
-The current `frontend/` app is an **API demo shell** for vertical slices. The mockups in `mockups/` show the **target product UI** once realtime chat, navigation, and dashboard views land.
+The current `frontend/` app is an **API demo shell** for vertical slices. The mockups in `mockups/` show the **target product UI** — implemented in Production Frontend slices #48–#59.
 
 ## Editing assets
 

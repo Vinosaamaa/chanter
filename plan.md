@@ -322,10 +322,10 @@ Use an incremental production workflow:
 10. Maintain release notes, change logs, debug logs, and runbooks for local deployment.
 11. For every non-trivial implementation slice, add an issue-scoped change log under `docs/operations/` with the files changed, behavior added, verification commands, and representative code snippets.
 12. For every meaningful local or browser-debugging failure, add an issue-scoped debug log under `docs/operations/` with symptoms, hypotheses, commands run, findings, fixes, and final verification.
-13. For every CodeRabbit suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/coderabbit-review-workflow.md`).
+13. For every CodeRabbit suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/agent-workflow.md`).
 14. Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 
-Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, `setup-pre-commit` for quality gates, and CodeRabbit for PR review loops (`docs/operations/coderabbit-review-workflow.md`).
+Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, `setup-pre-commit` for quality gates, and CodeRabbit for PR review loops (`docs/operations/agent-workflow.md`).
 
 Definition of Done for each feature:
 
@@ -366,15 +366,13 @@ Operational controls:
 
 ## Implementation Milestones
 
-Current implementation status as of 2026-06-17:
+Current implementation status as of 2026-06-24:
 
-- Milestone 0 / issue #11, Monorepo And Local Infrastructure Bootstrap, is merged on `main`.
-- Issue #12, Create A Study Server, is merged on `main` via PR #26.
-- Issue #13, Create Course, Cohort, And Enroll Learner, is merged on `main` via PR #28.
-- Issue #14, Join A Voice Channel, is merged on `main` via PR #29.
-- Issue #15, Send Friend Request And Direct Message, is merged on `main` via PR #33.
-- The active implementation slice is issue #16, Post A Support Question In A Course Channel. Use branch `feature/16-post-support-question-in-course-channel` and TDD. PR: https://github.com/Vinosaamaa/chanter/pull/34
-- Cross-cutting auth hardening is tracked in issue #30.
+- **Education MVP backend (milestone 1):** issues **#11–#24** merged on `main`.
+- **Active:** **Production Frontend** (milestone 3, [project #3](https://github.com/users/Vinosaamaa/projects/3)) — start at **#48**. See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
+- **Next:** **Workable Product** (milestone 4, [project #4](https://github.com/users/Vinosaamaa/projects/4)) — after **#51** merges.
+- Cross-cutting auth: **#30** (pair with **#49**).
+- `frontend/src/App.tsx` remains an API demo until Production Frontend slices land.
 
 Milestone -1: Project operations bootstrap
 
@@ -458,15 +456,25 @@ Milestone 8: SaaS plans, voice agents, and marketplace foundation
 - Add paid agent billing readiness after SaaS plan metering is stable.
 - Add creator/listing review workflow before public marketplace publishing.
 
-Milestone 9: Social Hub and DM voice (post Education MVP slices #16–#24)
+Milestone 9: Workable Product (full-stack local app)
 
-Tracked as GitHub milestone **Social Hub & Realtime** and architecture doc `docs/architecture/social-hub-and-dm-voice.md`.
+Tracked as GitHub milestone **[Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4)** and [project board #4](https://github.com/users/Vinosaamaa/projects/4). Issue order: [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) § Phase 3.
 
-- Bootstrap `realtime-service`: authenticated WebSocket, Redis presence, reconnect/resubscribe.
-- **#31** Friends Hub: accepted-friends list, online/offline presence, DM conversation panel, live DM fan-out (replaces #15 demo harness).
-- Voice Channel WebRTC/LiveKit transport for Study Server voice rooms (prerequisite media plane).
-- **#32** DM voice: 1:1 friend calls with signaling over realtime-service and short-lived LiveKit tokens after friendship/block checks.
-- Education policy hooks: cross-role DM restrictions, block/report, optional server-level DM disable (HITL where required).
+Prerequisite: Production Frontend **#51** (realtime text chat) merged.
+
+Board order on [project #4](https://github.com/users/Vinosaamaa/projects/4):
+
+- **#60** Epic: Workable Local Product (Full Stack)
+- **#30** Auth principal (if not finished in phase 2)
+- **#62** One-command local product stack (`make product-up` / Compose profile)
+- **#61** Voice Channel WebRTC/LiveKit — study-room and Office Hours audio
+- **#31** Friends Hub: friends list, presence, live DM panel (replaces #15 demo harness)
+- **#32** DM voice: 1:1 friend calls with signaling over realtime-service
+- **#63** End-to-end demo checklist (sign-in → chat → friends → voice)
+
+Architecture: `docs/architecture/social-hub-and-dm-voice.md`, `docs/issues/workable-product-issue-breakdown.md`.
+
+Legacy GitHub milestone **Social Hub & Realtime** (milestone 2) and **project #2** are superseded by Workable Product tracking.
 
 Milestone 9: Hardening
 
@@ -492,9 +500,9 @@ Milestone 9: Hardening
 
 ## Next Build Step
 
-Bootstrap (#11) through Friends/DM API (#15) are merged on `main`. Issue #16 (Support Questions) is in PR review.
+Backend MVP **#11–#24** is merged on `main`. **Active work:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — start at **[issue #48](https://github.com/Vinosaamaa/chanter/issues/48)**.
 
-Next after #16 merges: issue #17 (Course Resources). Use TDD and keep the issue-scoped change/debug/Greptile-fix log practice in `docs/operations/`. For UI intent, align with `docs/product-design/mockups/` and the slice row in `docs/issues/education-mvp-issue-breakdown.md`.
+Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for mandatory issue order. For UI intent, align with `docs/product-design/mockups/` and the slice rows in `docs/issues/production-frontend-issue-breakdown.md`. Use TDD and issue-scoped change logs in `docs/operations/`.
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

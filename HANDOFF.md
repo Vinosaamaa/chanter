@@ -26,29 +26,58 @@ Important files:
 - `CONTEXT.md`: canonical product glossary from the active `/grill-with-docs` session.
 - `docs/product-design/`: **product showcase for agents and stakeholders** — start at `README.md`; includes `vision.md`, `visibility-and-social-model.md`, 19 UI mockups in `mockups/`, user-journey diagram in `diagrams/`, and optional interactive tour in `interactive/`.
 - `docs/product/education-mvp-prd.md`: PRD for the education-focused Study Server MVP.
-- `docs/issues/education-mvp-issue-breakdown.md`: GitHub-ready epics and vertical-slice stories for the education MVP.
+- `docs/issues/education-mvp-issue-breakdown.md`: GitHub-ready epics and vertical-slice stories for the education MVP (**#11–#24, done**).
+- `docs/issues/production-frontend-issue-breakdown.md`: Production UI phase (**#47–#59**, project #3).
+- `docs/issues/workable-product-issue-breakdown.md`: Workable full-stack local app (**#60–#63**, #31–#32, project #4).
+- `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, completion loop, owner-only merge policy.
 - `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
 - `System Design.md`: detailed backend/system architecture explanation and diagrams.
 - `docs/diagrams/`: editable draw.io **engineering** diagram sources plus embedded PNG exports referenced from `plan.md` and `System Design.md` (not product UI mockups — those live under `docs/product-design/`).
-- `docs/architecture/social-hub-and-dm-voice.md`: post-MVP Friends Hub and DM voice (#31–#32).
+- `docs/architecture/social-hub-and-dm-voice.md`: Friends Hub and DM voice (#31–#32) on **Workable Product** project #4.
 - `docs/sessions/2026-06-16-product-strategy-grill-session.md`: readable recap of the product strategy discussion and active `/grill-with-docs` decision tree.
 - `docs/operations/project-operations-bootstrap.md`: Milestone -1 operating model, tracker recommendation, bootstrap checklist, initial epics, and branch/PR conventions.
 - `.github/PULL_REQUEST_TEMPLATE.md`: PR checklist aligned with architecture, security, testing, and operations expectations.
 - `.github/ISSUE_TEMPLATE/`: GitHub issue forms for epics, stories, and bugs.
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 
-Bootstrap (#11) through **#20** (Approved FAQs) are merged on `main`. **#21** (TA Queue) is active. Cross-cutting auth is **#30**. Post-MVP social UX is **#31–#32**.
+Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. The API demo in `frontend/src/App.tsx` is not the production UI.
+
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3), start at **[#48](https://github.com/Vinosaamaa/chanter/issues/48)**.
+
+**Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#51** (realtime text chat) merges.
+
+Cross-cutting auth **#30** pairs with **#49** during Production Frontend.
 
 ## Active Implementation
 
-- **#11–#15** — merged (PRs #25–#33)
-- **#16 Post A Support Question** — merged (PR #34)
-- **#17 Upload Approved Course Resource** — merged (PR #35)
-- **#18 Install AI Study Assistant** — merged (PR #36)
-- **#19 Answer Grounded Support Question** — merged (PR #37)
-- **#20 Promote Repeated Support Question To Approved FAQ** — merged (PR #38, CodeRabbit follow-up PR #40)
-- **#21 Route Low-Confidence Answer To TA Queue** — active
-- **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — after #24
+Backend MVP (**merged**):
+
+- **#11–#24** — all education MVP vertical slices merged on `main` (through SaaS plan limits, PR #46).
+
+Production Frontend (**active** — [project #3](https://github.com/users/Vinosaamaa/projects/3)):
+
+| Order | Issue | Notes |
+|------:|-------|-------|
+| 1 | [#47](https://github.com/Vinosaamaa/chanter/issues/47) | Epic |
+| 2 | [**#48**](https://github.com/Vinosaamaa/chanter/issues/48) | **Start here** |
+| 3 | [#49](https://github.com/Vinosaamaa/chanter/issues/49) | Auth UI |
+| 4 | [#30](https://github.com/Vinosaamaa/chanter/issues/30) | Auth backend (with #49) |
+| 5–14 | [#50](https://github.com/Vinosaamaa/chanter/issues/50)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Shell, realtime, screens |
+
+Workable Product (**after #51** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
+
+| Order | Issue |
+|------:|-------|
+| 1 | [#60](https://github.com/Vinosaamaa/chanter/issues/60) epic |
+| 2 | [#62](https://github.com/Vinosaamaa/chanter/issues/62) one-command stack |
+| 3 | [#61](https://github.com/Vinosaamaa/chanter/issues/61) voice WebRTC |
+| 4 | [#31](https://github.com/Vinosaamaa/chanter/issues/31) Friends Hub |
+| 5 | [#32](https://github.com/Vinosaamaa/chanter/issues/32) DM voice |
+| 6 | [#63](https://github.com/Vinosaamaa/chanter/issues/63) E2E demo |
+
+**#30** ships in phase 2 with **#49** (project #3).
+
+Full tables: [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
 ## Major Decisions Made
 
@@ -122,7 +151,7 @@ Scale direction:
 
 Use installed Cursor workflow skills directly rather than the deleted local `chanter-engineering-workflow` skill.
 
-**Git workflow (required):** one branch per GitHub issue → pull request → **full CodeRabbit loop → merge** → next issue. Master doc: `docs/operations/coderabbit-review-workflow.md` (**Issue completion loop**). Also enforced in `.cursor/rules/git-workflow.mdc`. Do not stop after opening a PR.
+**Git workflow (required):** one branch per GitHub issue → pull request → **full CodeRabbit loop** → **owner merges** → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. **Agents never merge.** Do not stop after opening a PR.
 
 **Testing workflow:** infrastructure bootstrap (#11) may use smoke tests; **domain features from #12 onward use TDD** (red → green → refactor) for permissions, enrollment, and learning-support workflows.
 
@@ -135,7 +164,7 @@ The expected workflow includes:
 - Diagnose loop for bugs and regressions.
 - Issue-scoped change logs for non-trivial implementation slices.
 - Issue-scoped debug logs for meaningful local/browser failures.
-- Issue-scoped CodeRabbit fix logs for every CodeRabbit suggestion that changes code or records an explicit follow-up (`docs/operations/issue-<N>-coderabbit-fix.md`). See `docs/operations/coderabbit-review-workflow.md`.
+- Issue-scoped CodeRabbit fix logs for every CodeRabbit suggestion that changes code or records an explicit follow-up (`docs/operations/issue-<N>-coderabbit-fix.md`). See `docs/operations/agent-workflow.md`.
 - Zoom-out architecture review after milestones.
 - Prototyping for uncertain UX/system flows.
 - Pre-commit and CI-style quality gates once code exists.
@@ -151,7 +180,7 @@ Use these installed skills by name when relevant:
 - `zoom-out` or `improve-codebase-architecture`: review architecture boundaries after major changes.
 - `prototype`: explore uncertain UI or system flows before production implementation.
 - `setup-pre-commit`: add quality gates after runnable code exists.
-- **CodeRabbit review:** push to PR → GitHub review; or local `coderabbit review --agent --base main`. Fix loop and fix-log naming: `docs/operations/coderabbit-review-workflow.md`.
+- **CodeRabbit review:** push to PR → GitHub review; or local `coderabbit review --agent --base main`. See `docs/operations/agent-workflow.md`.
 
 Diagram workflow:
 
@@ -230,17 +259,18 @@ Pending user confirmation:
 GitHub issues published (2026-06-17):
 
 - Milestone: https://github.com/Vinosaamaa/chanter/milestone/1
-- Project board: https://github.com/users/Vinosaamaa/projects/1 (Education MVP #1–#24, #30)
-- Post-MVP project: https://github.com/users/Vinosaamaa/projects/2 (#31–#32, milestone Social Hub & Realtime)
+- Project board: https://github.com/users/Vinosaamaa/projects/1 (Education MVP backend #1–#24)
+- **Production Frontend project:** https://github.com/users/Vinosaamaa/projects/3 (#30, #47–#59, milestone 3)
+- **Workable Product project:** https://github.com/users/Vinosaamaa/projects/4 (#30–#32, #60–#63, milestone 4)
+- ~~Social Hub project #2~~ — closed; #31–#32 live on project #4 only
 - **#11 Monorepo bootstrap — CLOSED** (merged PR #25)
 - **#12 Create A Study Server — CLOSED** (merged PR #26)
 - **#13 Create Course, Cohort, And Enroll Learner — CLOSED** (merged PR #28)
 - **#14 Join A Voice Channel — CLOSED** (merged PR #29)
 - **#15 Send Friend Request And Direct Message — CLOSED** (merged PR #33)
-- **Active: #16 Post A Support Question In A Course Channel** — https://github.com/Vinosaamaa/chanter/issues/16 ([PR #34](https://github.com/Vinosaamaa/chanter/pull/34))
-- **Cross-cutting: #30 Wire Auth Service Principal** — https://github.com/Vinosaamaa/chanter/issues/30
-- **Post-MVP: #31 Friends Hub And Live DM** — https://github.com/Vinosaamaa/chanter/issues/31
-- **Post-MVP: #32 DM Voice Call** — https://github.com/Vinosaamaa/chanter/issues/32
+- **#48 Bootstrap Production Frontend Foundation** — https://github.com/Vinosaamaa/chanter/issues/48
+- **Cross-cutting:** [#30 Wire Auth Service Principal](https://github.com/Vinosaamaa/chanter/issues/30) — with #49
+- **Workable Product:** [#31](https://github.com/Vinosaamaa/chanter/issues/31) Friends Hub, [#32](https://github.com/Vinosaamaa/chanter/issues/32) DM voice — project #4 only (not before #51)
 
 Architecture for social UX: `docs/architecture/social-hub-and-dm-voice.md`
 
@@ -254,20 +284,14 @@ Implementation on `main`:
 Pending:
 
 - Branch protection on `main` (optional, after owner enables)
-- Merge #16 after review; then #17 Course Resources per issue breakdown
+- Complete Production Frontend (#48–#59) then Workable Product (#60–#63, #31–#32)
 
-Confirmed decision:
+After backend MVP (#11–#24), build in **issue order** on project boards:
 
-- Use GitHub Projects for early project tracking, with Linear or Jira as upgrade paths if workflow needs grow.
-- Start with the education market and SaaS model.
-- Position Chanter as Discord for learning communities, with AI teaching assistants and instructor operations built in.
+1. **Production Frontend** ([`agent-workflow.md`](docs/operations/agent-workflow.md) § Phase 2): #48 → #49+#30 → #50 → #51 → #52–#59.
+2. **Workable Product** (§ Phase 3): #62 (early ok) → #61 → #31 → #32 → #63.
 
-After bootstrap (#11) through Friends/DM API (#15), build toward the education MVP:
-
-- **#16 (PR review):** Support Questions in `#questions` — `community-service` access + `message-service` persistence.
-- **#17 next:** Course Resources per `docs/issues/education-mvp-issue-breakdown.md`.
-- **#30 (cross-cutting):** wire Auth Service principal when ready to replace `TODO(#auth)` on protected endpoints.
-- **Post-MVP social (#31–#32):** Friends Hub with presence and live DM panel, then DM voice calls—after `realtime-service` and WebRTC/LiveKit transport. Target UX mockups: `docs/product-design/mockups/friends-hub-dm.png`, `friend-requests.png`. See `docs/architecture/social-hub-and-dm-voice.md`.
+Target UX mockups: `docs/product-design/mockups/`. Social architecture: `docs/architecture/social-hub-and-dm-voice.md`.
 
 Recent operations documentation artifacts:
 
@@ -285,21 +309,22 @@ Recent operations documentation artifacts:
 Use this prompt after reloading Cursor or starting a new chat:
 
 ```text
-Read HANDOFF.md and CONTEXT.md.
+Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
-For product/UI intent before frontend work, read docs/product-design/README.md and docs/product-design/visibility-and-social-model.md.
+Backend MVP #11–#24 is merged on main.
+Active: Production Frontend project #3 — start at issue #48.
 
-Issues #11–#15 are merged on main. Issue #16 PR: https://github.com/Vinosaamaa/chanter/pull/34
-
-Auth hardening: https://github.com/Vinosaamaa/chanter/issues/30
+Product UI: docs/product-design/README.md
+Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/16
+Issue: https://github.com/Vinosaamaa/chanter/issues/48
+Project: https://github.com/users/Vinosaamaa/projects/3
 ```
 
 ## Notes For Future Agent
 
-- Do not assume the user wants to code immediately; they have been exploring system design and enterprise workflow.
+- **Agent workflow:** read [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) before picking work; follow project board order on [#3](https://github.com/users/Vinosaamaa/projects/3) then [#4](https://github.com/users/Vinosaamaa/projects/4). **Agents never merge PRs.**
 - **Product showcase:** `docs/product-design/` has target UI mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** (global friends vs my-courses sidebar). Use it when implementing frontend routes or explaining scope to stakeholders. `frontend/src/App.tsx` is an API demo, not the final shell.
 - **Engineering diagrams:** `docs/diagrams/` is for service architecture — do not put product mockups there.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
@@ -307,7 +332,7 @@ Issue: https://github.com/Vinosaamaa/chanter/issues/16
 - **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
-- For every CodeRabbit suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/coderabbit-review-workflow.md`). Historical Greptile logs remain under `issue-*-greptile-fix.md`.
+- For every CodeRabbit suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/agent-workflow.md`). Historical Greptile logs remain under `issue-*-greptile-fix.md`.
 - Keep explanations beginner-friendly but production-oriented.
 - Preserve and update the docs when architecture or process decisions change.
 - Ask before creating remote repositories, pushing code, creating tickets, or installing third-party integrations.

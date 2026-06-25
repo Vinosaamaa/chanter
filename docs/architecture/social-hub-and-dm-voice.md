@@ -1,8 +1,8 @@
 # Social Hub And DM Voice Architecture
 
 Date: 2026-06-17  
-Status: planned (post Education MVP core slices)  
-Tracking: GitHub issues #31 (Friends Hub) and #32 (DM Voice)
+Status: planned (Workable Product phase)  
+Tracking: GitHub [project #4](https://github.com/users/Vinosaamaa/projects/4), milestone [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4). Issues **#31** (Friends Hub) and **#32** (DM Voice). Agent workflow: [`docs/operations/agent-workflow.md`](../operations/agent-workflow.md).
 
 > **Target UX mockups:** [`docs/product-design/mockups/friends-hub-dm.png`](../product-design/mockups/friends-hub-dm.png), [`friend-requests.png`](../product-design/mockups/friend-requests.png). Product index: [`docs/product-design/README.md`](../product-design/README.md).
 
