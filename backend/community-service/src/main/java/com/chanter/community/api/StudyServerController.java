@@ -1,20 +1,22 @@
 package com.chanter.community.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.community.application.StudyServerService;
 import com.chanter.community.domain.StudyServer;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
@@ -29,9 +31,10 @@ public class StudyServerController {
 
     @PostMapping
     public ResponseEntity<StudyServerResponse> createStudyServer(
-            @Valid @RequestBody CreateStudyServerRequest request
+            @Valid @RequestBody CreateStudyServerRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID ownerUserId
     ) {
-        StudyServer studyServer = studyServerService.createStudyServer(request.name(), request.ownerUserId());
+        StudyServer studyServer = studyServerService.createStudyServer(request.name(), ownerUserId);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(studyServer.id())

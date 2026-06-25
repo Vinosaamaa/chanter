@@ -3,11 +3,13 @@ package com.chanter.community.api;
 import com.chanter.community.application.SaasPlanService;
 import com.chanter.community.domain.StudyServerSaasPlan;
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,11 +33,12 @@ public class SaasPlanController {
     @PatchMapping("/saas-plan")
     public SaasPlanResponse updateSaasPlan(
             @PathVariable UUID studyServerId,
-            @Valid @RequestBody UpdateSaasPlanRequest request
+            @Valid @RequestBody UpdateSaasPlanRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID ownerUserId
     ) {
         StudyServerSaasPlan plan = saasPlanService.updatePlan(
                 studyServerId,
-                request.ownerUserId(),
+                ownerUserId,
                 request.planTier()
         );
         return SaasPlanResponse.from(plan);

@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
+import { ProtectedRoute } from '../features/auth/components/ProtectedRoute'
 import { SignInPage } from '../features/auth/pages/SignInPage'
 import DevDemoApp from '../features/dev-demo/DevDemoApp'
 import { DevDemoRoutePage } from '../features/dev-demo/DevDemoRoutePage'
@@ -19,7 +20,11 @@ export function createAppRouter() {
     },
     {
       path: '/app',
-      element: <AppShellLayout />,
+      element: (
+        <ProtectedRoute>
+          <AppShellLayout />
+        </ProtectedRoute>
+      ),
       children: [
         {
           index: true,

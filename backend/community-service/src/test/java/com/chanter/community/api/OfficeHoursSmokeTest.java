@@ -1,5 +1,6 @@
 package com.chanter.community.api;
 
+import static com.chanter.community.api.AuthenticatedTestSupport.asUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -45,6 +46,7 @@ class OfficeHoursSmokeTest {
         Instant endsAt = Instant.now().plus(1, ChronoUnit.HOURS);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
+                        .with(asUser(instructorUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "instructorUserId", instructorUserId.toString(),
@@ -62,6 +64,7 @@ class OfficeHoursSmokeTest {
         assertThat(session.cohortId()).isEqualTo(course.cohort().id());
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
+                        .with(asUser(learnerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "instructorUserId", learnerUserId.toString(),
@@ -71,6 +74,7 @@ class OfficeHoursSmokeTest {
                 .andExpect(status().isForbidden());
 
         MvcResult waitlistResult = mockMvc.perform(post("/api/v1/office-hours/{sessionId}/waitlist", session.id())
+                        .with(asUser(learnerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "learnerUserId", learnerUserId.toString()
@@ -84,6 +88,7 @@ class OfficeHoursSmokeTest {
         assertThat(waitlistEntry.status()).isEqualTo("WAITING");
 
         mockMvc.perform(post("/api/v1/office-hours/{sessionId}/admit-next", session.id())
+                        .with(asUser(instructorUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "actorUserId", instructorUserId.toString()
@@ -91,6 +96,7 @@ class OfficeHoursSmokeTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/office-hours/{sessionId}/voice-join", session.id())
+                        .with(asUser(instructorUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "actorUserId", instructorUserId.toString()
@@ -98,6 +104,7 @@ class OfficeHoursSmokeTest {
                 .andExpect(status().isOk());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/office-hours/{sessionId}/waitlist", session.id())
+                        .with(asUser(instructorUserId))
                         .param("viewerUserId", instructorUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -123,6 +130,7 @@ class OfficeHoursSmokeTest {
         Instant endsAt = Instant.now().plus(3, ChronoUnit.HOURS);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
+                        .with(asUser(instructorUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "instructorUserId", instructorUserId.toString(),
@@ -137,6 +145,7 @@ class OfficeHoursSmokeTest {
         );
 
         mockMvc.perform(post("/api/v1/office-hours/{sessionId}/waitlist", session.id())
+                        .with(asUser(learnerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "learnerUserId", learnerUserId.toString()
@@ -159,6 +168,7 @@ class OfficeHoursSmokeTest {
         Instant endsAt = Instant.now().plus(1, ChronoUnit.HOURS);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
+                        .with(asUser(instructorUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "instructorUserId", instructorUserId.toString(),
@@ -173,6 +183,7 @@ class OfficeHoursSmokeTest {
         );
 
         mockMvc.perform(post("/api/v1/office-hours/{sessionId}/waitlist", session.id())
+                        .with(asUser(strangerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "learnerUserId", strangerUserId.toString()
@@ -194,6 +205,7 @@ class OfficeHoursSmokeTest {
         Instant endsAt = Instant.now().plus(1, ChronoUnit.HOURS);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
+                        .with(asUser(instructorUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "instructorUserId", instructorUserId.toString(),
@@ -208,6 +220,7 @@ class OfficeHoursSmokeTest {
         );
 
         mockMvc.perform(get("/api/v1/office-hours/{sessionId}/waitlist", session.id())
+                        .with(asUser(learnerUserId))
                         .param("viewerUserId", learnerUserId.toString()))
                 .andExpect(status().isForbidden());
     }
@@ -226,6 +239,7 @@ class OfficeHoursSmokeTest {
         Instant endsAt = Instant.now().minus(1, ChronoUnit.MINUTES);
 
         MvcResult scheduleResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/office-hours", course.cohort().id())
+                        .with(asUser(instructorUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "instructorUserId", instructorUserId.toString(),
@@ -240,6 +254,7 @@ class OfficeHoursSmokeTest {
         );
 
         mockMvc.perform(post("/api/v1/office-hours/{sessionId}/waitlist", session.id())
+                        .with(asUser(learnerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "learnerUserId", learnerUserId.toString()
@@ -249,10 +264,10 @@ class OfficeHoursSmokeTest {
 
     private StudyServerResponse createStudyServer(UUID ownerUserId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/study-servers")
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "name", "Office Hours Study Group",
-                                "ownerUserId", ownerUserId.toString()
+                                "name", "Office Hours Study Group"
                         ))))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -262,9 +277,9 @@ class OfficeHoursSmokeTest {
 
     private CourseResponse createCourse(UUID studyServerId, UUID ownerUserId, UUID instructorUserId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/courses", studyServerId)
+                        .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "ownerUserId", ownerUserId.toString(),
                                 "title", "Office Hours Course",
                                 "instructorUserId", instructorUserId.toString(),
                                 "cohortName", "Fall 2026"
@@ -277,9 +292,9 @@ class OfficeHoursSmokeTest {
 
     private void enrollLearner(UUID cohortId, UUID instructorUserId, UUID learnerUserId) throws Exception {
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", cohortId)
+                        .with(asUser(instructorUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
                                 "learnerUserId", learnerUserId.toString()
                         ))))
                 .andExpect(status().isCreated());

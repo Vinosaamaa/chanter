@@ -76,6 +76,11 @@ spring:
               - OPTIONS
             allowedHeaders: "*"
 
+chanter:
+  jwt:
+    secret: ${CHANTER_JWT_SECRET:chanter-local-dev-jwt-secret-change-me}
+    access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
+
 management:
   endpoints:
     web:

@@ -4,6 +4,18 @@ server:
 spring:
   application:
     name: auth-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/chanter_auth
+    username: ${POSTGRES_USER:chanter}
+    password: ${POSTGRES_PASSWORD:chanter}
+  flyway:
+    enabled: true
+
+chanter:
+  jwt:
+    secret: ${CHANTER_JWT_SECRET:chanter-local-dev-jwt-secret-change-me}
+    access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
+    refresh-token-ttl: ${CHANTER_JWT_REFRESH_TTL:7d}
 
 management:
   endpoints:

@@ -1,8 +1,8 @@
 package com.chanter.community.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.community.application.StudyServerService;
-import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -10,9 +10,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -29,10 +28,10 @@ public class StudyServerChannelController {
     @PostMapping("/{channelId}/voice-presences")
     public ResponseEntity<VoicePresenceResponse> joinVoiceChannel(
             @PathVariable UUID channelId,
-            @Valid @RequestBody CreateVoicePresenceRequest request
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID memberUserId
     ) {
         VoicePresenceResponse response = VoicePresenceResponse.from(
-                studyServerService.joinVoiceChannel(channelId, request.memberUserId())
+                studyServerService.joinVoiceChannel(channelId, memberUserId)
         );
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{memberUserId}")
@@ -45,7 +44,7 @@ public class StudyServerChannelController {
     @GetMapping("/{channelId}/voice-presences")
     public VoicePresenceListResponse getVoicePresences(
             @PathVariable UUID channelId,
-            @RequestParam UUID viewerUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         return VoicePresenceListResponse.from(studyServerService.findVoicePresences(channelId, viewerUserId));
     }
@@ -53,9 +52,9 @@ public class StudyServerChannelController {
     @DeleteMapping("/{channelId}/voice-presences")
     public ResponseEntity<Void> leaveVoiceChannel(
             @PathVariable UUID channelId,
-            @Valid @RequestBody CreateVoicePresenceRequest request
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID memberUserId
     ) {
-        studyServerService.leaveVoiceChannel(channelId, request.memberUserId());
+        studyServerService.leaveVoiceChannel(channelId, memberUserId);
         return ResponseEntity.noContent().build();
     }
 }
