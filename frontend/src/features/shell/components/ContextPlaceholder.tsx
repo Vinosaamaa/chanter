@@ -6,7 +6,7 @@ export function ContextPlaceholder() {
           Context
         </p>
         <h2 className="mt-1 text-sm font-semibold text-app-text">AI & resources</h2>
-        <p className="text-xs text-app-muted">#52 and #53 land here.</p>
+        <p className="text-xs text-app-muted">Context panels open per channel.</p>
       </div>
       <div className="flex flex-1 items-center justify-center p-4">
         <p className="text-center text-xs text-app-muted">

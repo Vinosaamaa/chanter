@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.media.infra.TestCourseResourceAccessClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -56,7 +57,7 @@ class CourseResourceSmokeTest {
                                 "text/markdown",
                                 fileContent
                         ))
-                        .param("uploaderUserId", instructorUserId.toString())
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .param("title", "Spring Security Guide")
                         .param("aiApproved", "true"))
                 .andExpect(status().isCreated())
@@ -73,7 +74,7 @@ class CourseResourceSmokeTest {
         assertThat(uploaded.uploadedByUserId()).isEqualTo(instructorUserId);
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/courses/{courseId}/course-resources", courseId)
-                        .param("viewerUserId", learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         CourseResourceListResponse listed = objectMapper.readValue(
@@ -91,7 +92,7 @@ class CourseResourceSmokeTest {
         assertThat(listedResource.createdAt()).isEqualTo(uploaded.createdAt().truncatedTo(ChronoUnit.MICROS));
 
         MvcResult downloadResult = mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", uploaded.id())
-                        .param("viewerUserId", learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -115,12 +116,12 @@ class CourseResourceSmokeTest {
                                 "text/plain",
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
-                        .param("uploaderUserId", instructorUserId.toString())
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .param("aiApproved", "true"))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/v1/courses/{courseId}/course-resources", courseId)
-                        .param("viewerUserId", strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
                 .andExpect(status().isForbidden());
     }
 
@@ -138,7 +139,7 @@ class CourseResourceSmokeTest {
                                 "text/plain",
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
-                        .param("uploaderUserId", learnerUserId.toString())
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .param("aiApproved", "false"))
                 .andExpect(status().isForbidden());
     }
@@ -157,7 +158,7 @@ class CourseResourceSmokeTest {
                                 "text/plain",
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
-                        .param("uploaderUserId", instructorUserId.toString())
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .param("aiApproved", "true"))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -185,7 +186,7 @@ class CourseResourceSmokeTest {
                                 "text/plain",
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
-                        .param("uploaderUserId", instructorUserId.toString())
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .param("aiApproved", "true"))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -195,14 +196,14 @@ class CourseResourceSmokeTest {
         );
 
         mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", uploaded.id())
-                        .param("viewerUserId", strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void downloadingUnknownCourseResourceReturnsNotFound() throws Exception {
         mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", UUID.randomUUID())
-                        .param("viewerUserId", UUID.randomUUID().toString()))
+                        .header(AuthHeaders.USER_ID, UUID.randomUUID().toString()))
                 .andExpect(status().isNotFound());
     }
 
@@ -215,7 +216,7 @@ class CourseResourceSmokeTest {
                                 "text/plain",
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
-                        .param("uploaderUserId", UUID.randomUUID().toString())
+                        .header(AuthHeaders.USER_ID, UUID.randomUUID().toString())
                         .param("aiApproved", "true"))
                 .andExpect(status().isNotFound());
     }
