@@ -1087,11 +1087,10 @@ function App() {
     try {
       const formData = new FormData()
       formData.append('file', courseResourceFile)
-      formData.append('uploaderUserId', courseInstructorUserId)
       formData.append('title', courseResourceTitle.trim() || courseResourceFile.name)
       formData.append('aiApproved', 'true')
 
-      const response = await fetch(`/api/v1/courses/${course.id}/course-resources`, {
+      const response = await demoFetch('instructor', `/api/v1/courses/${course.id}/course-resources`, {
         method: 'POST',
         body: formData,
       })
@@ -1129,9 +1128,7 @@ function App() {
     setCourseResourceResult(null)
 
     try {
-      const response = await fetch(
-        `/api/v1/courses/${course.id}/course-resources?viewerUserId=${learnerUserId}`,
-      )
+      const response = await demoFetch('learner', `/api/v1/courses/${course.id}/course-resources`)
 
       if (!response.ok) {
         throw new Error(`Course Resource list failed with ${response.status}`)

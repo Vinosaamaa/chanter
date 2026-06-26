@@ -3,6 +3,7 @@ import { type ChangeEvent, useRef, useState, type ReactNode } from 'react'
 import type { CourseResource, CourseResourceFilter } from '../../resources/course-resource-types'
 import {
   formatByteSize,
+  isPdfResource,
   resourceFileKind,
   resourceKindLabel,
 } from '../../resources/course-resource-format'
@@ -27,7 +28,7 @@ export function ResourcesChannelConversation({ channelContext }: ResourcesChanne
   const resources = useCourseResourcesChannel(channelContext.course.id)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadTitle, setUploadTitle] = useState('')
-  const [aiApproved, setAiApproved] = useState(true)
+  const [aiApproved, setAiApproved] = useState(false)
 
   const onChooseFile = () => {
     fileInputRef.current?.click()
@@ -229,6 +230,7 @@ function ResourceCard({
 }) {
   const kind = resourceFileKind(resource)
   const kindLabel = resourceKindLabel(kind)
+  const canPreview = isPdfResource(resource)
 
   return (
     <article className="flex h-full flex-col rounded-xl border border-app-border bg-app-surface p-4">
@@ -252,17 +254,19 @@ function ResourceCard({
       <p className="mt-3 line-clamp-2 text-xs text-app-muted">{resource.fileName}</p>
 
       <div className="mt-4 flex gap-2">
+        {canPreview ? (
+          <button
+            type="button"
+            className="flex-1 rounded-md border border-app-border px-3 py-1.5 text-xs font-semibold text-app-muted hover:bg-app-bg disabled:opacity-60"
+            onClick={onPreview}
+            disabled={isDownloading}
+          >
+            Preview
+          </button>
+        ) : null}
         <button
           type="button"
-          className="flex-1 rounded-md border border-app-border px-3 py-1.5 text-xs font-semibold text-app-muted hover:bg-app-bg disabled:opacity-60"
-          onClick={onPreview}
-          disabled={isDownloading}
-        >
-          Preview
-        </button>
-        <button
-          type="button"
-          className="flex-1 rounded-md bg-app-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+          className={`rounded-md bg-app-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60 ${canPreview ? 'flex-1' : 'w-full'}`}
           onClick={onDownload}
           disabled={isDownloading}
         >

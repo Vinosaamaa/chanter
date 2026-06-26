@@ -65,3 +65,9 @@ export function matchesResourceSearch(resource: CourseResource, query: string): 
     resource.fileName.toLowerCase().includes(normalized)
   )
 }
+
+export function isPdfResource(resource: CourseResource): boolean {
+  return (
+    resource.fileName.toLowerCase().endsWith('.pdf') || resource.contentType === 'application/pdf'
+  )
+}

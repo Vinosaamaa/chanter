@@ -10,25 +10,17 @@ export async function fetchCourseResourceAccess(courseId: string): Promise<Cours
   return apiFetch<CourseResourceAccess>(`/api/v1/courses/${courseId}/resource-access`)
 }
 
-export async function listCourseResources(
-  courseId: string,
-  viewerUserId: string,
-): Promise<CourseResourceListResponse> {
-  const params = new URLSearchParams({ viewerUserId })
-  return apiFetch<CourseResourceListResponse>(
-    `/api/v1/courses/${courseId}/course-resources?${params.toString()}`,
-  )
+export async function listCourseResources(courseId: string): Promise<CourseResourceListResponse> {
+  return apiFetch<CourseResourceListResponse>(`/api/v1/courses/${courseId}/course-resources`)
 }
 
 export async function uploadCourseResource(
   courseId: string,
-  uploaderUserId: string,
   file: File,
   options: { title?: string; aiApproved: boolean },
 ): Promise<CourseResource> {
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('uploaderUserId', uploaderUserId)
   formData.append('title', options.title?.trim() || file.name)
   formData.append('aiApproved', String(options.aiApproved))
 
@@ -38,12 +30,8 @@ export async function uploadCourseResource(
   })
 }
 
-export async function downloadCourseResourceContent(
-  resourceId: string,
-  viewerUserId: string,
-): Promise<Blob> {
-  const params = new URLSearchParams({ viewerUserId })
-  return apiFetchBlob(`/api/v1/course-resources/${resourceId}/content?${params.toString()}`)
+export async function downloadCourseResourceContent(resourceId: string): Promise<Blob> {
+  return apiFetchBlob(`/api/v1/course-resources/${resourceId}/content`)
 }
 
 export function resourceAccessDeniedMessage(error: unknown): string {

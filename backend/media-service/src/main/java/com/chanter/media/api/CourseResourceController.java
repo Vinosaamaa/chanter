@@ -1,6 +1,7 @@
 package com.chanter.media.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.media.application.CourseResourceService;
 import com.chanter.media.domain.CourseResource;
 import java.net.URI;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -34,7 +36,7 @@ public class CourseResourceController {
     @PostMapping(value = "/courses/{courseId}/course-resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CourseResourceResponse> uploadCourseResource(
             @PathVariable UUID courseId,
-            @RequestParam UUID uploaderUserId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID uploaderUserId,
             @RequestParam(required = false) String title,
             @RequestParam boolean aiApproved,
             @RequestPart("file") MultipartFile file
@@ -57,7 +59,7 @@ public class CourseResourceController {
     @GetMapping("/courses/{courseId}/course-resources")
     public CourseResourceListResponse listCourseResources(
             @PathVariable UUID courseId,
-            @RequestParam UUID viewerUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         List<CourseResourceResponse> courseResources = courseResourceService
                 .listCourseResources(courseId, viewerUserId)
@@ -71,7 +73,7 @@ public class CourseResourceController {
     @GetMapping("/course-resources/{resourceId}/content")
     public ResponseEntity<byte[]> downloadCourseResource(
             @PathVariable UUID resourceId,
-            @RequestParam UUID viewerUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         CourseResourceService.StoredCourseResourceContent stored = courseResourceService.downloadCourseResource(
                 resourceId,

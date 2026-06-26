@@ -6,6 +6,16 @@ Issue: [#53 Production Course Resources Panel](https://github.com/Vinosaamaa/cha
 
 Shipped the production `#resources` course-channel experience: resource list with search and type filters, instructor upload (multipart + AI-approved toggle), learner download/preview, AI-approved badges, and enrollment-gated access messaging. Generic course channels keep the #51 live-chat path; `#resources` uses a dedicated center-column panel.
 
+## Backend
+
+### media-service
+
+| Area | Change |
+|------|--------|
+| `CourseResourceController` | List/upload/download derive caller from `@RequestAttribute(USER_ID)` (gateway JWT), not query/body |
+| `AuthenticatedUserFilter` | Requires `X-User-Id` on `/course-resources` routes |
+| `CourseResourceSmokeTest` | MockMvc calls send `AuthHeaders.USER_ID` |
+
 ## Frontend
 
 | Path | Purpose |

@@ -6,6 +6,7 @@ import type { CourseResource, CourseResourceFilter } from '../../resources/cours
 import {
   matchesResourceFilter,
   matchesResourceSearch,
+  isPdfResource,
 } from '../../resources/course-resource-format'
 import {
   downloadCourseResourceContent,
@@ -91,7 +92,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
           return
         }
 
-        const list = await listCourseResources(courseId, userId)
+        const list = await listCourseResources(courseId)
         if (cancelled) {
           return
         }
@@ -140,7 +141,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       setUploadSuccess(null)
 
       try {
-        const created = await uploadCourseResource(courseId, userId, file, options)
+        const created = await uploadCourseResource(courseId, file, options)
         setResources((current) => {
           if (current.some((resource) => resource.id === created.id)) {
             return current
@@ -169,13 +170,16 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       setError(null)
 
       try {
-        const blob = await downloadCourseResourceContent(resource.id, userId)
+        const blob = await downloadCourseResourceContent(resource.id)
         const url = URL.createObjectURL(blob)
         const anchor = document.createElement('a')
         anchor.href = url
         anchor.download = resource.fileName
+        anchor.style.display = 'none'
+        document.body.appendChild(anchor)
         anchor.click()
-        URL.revokeObjectURL(url)
+        anchor.remove()
+        window.setTimeout(() => URL.revokeObjectURL(url), 0)
       } catch (caught) {
         setError(resourceAccessDeniedMessage(caught))
       } finally {
@@ -191,11 +195,8 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
         return
       }
 
-      const isPdf =
-        resource.fileName.toLowerCase().endsWith('.pdf') ||
-        resource.contentType === 'application/pdf'
+      const isPdf = isPdfResource(resource)
       if (!isPdf) {
-        await downloadResource(resource)
         return
       }
 
@@ -203,7 +204,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       setError(null)
 
       try {
-        const blob = await downloadCourseResourceContent(resource.id, userId)
+        const blob = await downloadCourseResourceContent(resource.id)
         if (previewUrlRef.current) {
           URL.revokeObjectURL(previewUrlRef.current)
         }
@@ -216,7 +217,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
         setDownloadingResourceId(null)
       }
     },
-    [canView, downloadResource, userId],
+    [canView, userId],
   )
 
   return {

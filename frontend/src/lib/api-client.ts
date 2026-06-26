@@ -29,48 +29,20 @@ export function configureApiAuth(config: ApiAuthConfig): void {
 }
 
 export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T> {
-  return apiFetchWithRetry<T>(path, init, init?.skipAuthRefresh ?? false)
+  const response = await fetchWithAuth(path, init, init?.skipAuthRefresh ?? false)
+  return parseJsonResponse<T>(response)
 }
 
 export async function apiFetchBlob(path: string, init?: ApiFetchInit): Promise<Blob> {
-  const headers = new Headers(init?.headers)
-  const accessToken = apiAuthConfig?.getAccessToken()
-  if (accessToken && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${accessToken}`)
-  }
-
-  const response = await fetch(`${getApiBase()}${path}`, {
-    ...init,
-    headers,
-  })
-
-  if (response.status === 401 && !init?.skipAuthRefresh && apiAuthConfig) {
-    refreshInFlight ??= apiAuthConfig.refreshSession().finally(() => {
-      refreshInFlight = null
-    })
-    const refreshed = await refreshInFlight
-    if (refreshed) {
-      return apiFetchBlob(path, { ...init, skipAuthRefresh: true })
-    }
-  }
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => undefined)
-    throw new ApiError(
-      `Request failed: ${response.status} ${response.statusText}`,
-      response.status,
-      body,
-    )
-  }
-
+  const response = await fetchWithAuth(path, init, init?.skipAuthRefresh ?? false)
   return response.blob()
 }
 
-async function apiFetchWithRetry<T>(
+async function fetchWithAuth(
   path: string,
   init: ApiFetchInit | undefined,
   skipAuthRefresh: boolean,
-): Promise<T> {
+): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (init?.body && typeof init.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
@@ -92,7 +64,7 @@ async function apiFetchWithRetry<T>(
     })
     const refreshed = await refreshInFlight
     if (refreshed) {
-      return apiFetchWithRetry<T>(path, init, true)
+      return fetchWithAuth(path, init, true)
     }
   }
 
@@ -105,6 +77,10 @@ async function apiFetchWithRetry<T>(
     )
   }
 
+  return response
+}
+
+async function parseJsonResponse<T>(response: Response): Promise<T> {
   if (response.status === 204) {
     return undefined as T
   }
