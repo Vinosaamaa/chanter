@@ -32,6 +32,40 @@ export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T>
   return apiFetchWithRetry<T>(path, init, init?.skipAuthRefresh ?? false)
 }
 
+export async function apiFetchBlob(path: string, init?: ApiFetchInit): Promise<Blob> {
+  const headers = new Headers(init?.headers)
+  const accessToken = apiAuthConfig?.getAccessToken()
+  if (accessToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${accessToken}`)
+  }
+
+  const response = await fetch(`${getApiBase()}${path}`, {
+    ...init,
+    headers,
+  })
+
+  if (response.status === 401 && !init?.skipAuthRefresh && apiAuthConfig) {
+    refreshInFlight ??= apiAuthConfig.refreshSession().finally(() => {
+      refreshInFlight = null
+    })
+    const refreshed = await refreshInFlight
+    if (refreshed) {
+      return apiFetchBlob(path, { ...init, skipAuthRefresh: true })
+    }
+  }
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => undefined)
+    throw new ApiError(
+      `Request failed: ${response.status} ${response.statusText}`,
+      response.status,
+      body,
+    )
+  }
+
+  return response.blob()
+}
+
 async function apiFetchWithRetry<T>(
   path: string,
   init: ApiFetchInit | undefined,

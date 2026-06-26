@@ -78,3 +78,7 @@ export function findCourseChannelContext(
 export function isQuestionsChannel(context: CourseChannelContext | null): boolean {
   return context?.channel.kind === 'TEXT' && context.channel.name === 'questions'
 }
+
+export function isResourcesChannel(context: CourseChannelContext | null): boolean {
+  return context?.channel.kind === 'TEXT' && context.channel.name === 'resources'
+}

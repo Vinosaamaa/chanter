@@ -4,9 +4,10 @@ import { useLocation, useParams } from 'react-router-dom'
 import { useAuthStore } from '../../../stores/auth-store'
 
 import { QuestionsChannelGate } from './QuestionsChannelConversation'
+import { ResourcesChannelGate } from './ResourcesChannelConversation'
 import { useChannelConversation } from '../hooks/use-channel-conversation'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
-import { findChannelLabel, findCourseChannelContext, isQuestionsChannel } from '../shell-routes'
+import { findChannelLabel, findCourseChannelContext, isQuestionsChannel, isResourcesChannel } from '../shell-routes'
 import type { ChannelScope } from '../channel-message-types'
 
 export function ChannelConversation() {
@@ -60,6 +61,9 @@ function ChannelConversationPanel({
     channelScope === 'course' ? findCourseChannelContext(navigationQuery.data, channelId) : null
   if (isQuestionsChannel(courseChannelContext)) {
     return <QuestionsChannelGate serverId={serverId} channelId={channelId} />
+  }
+  if (isResourcesChannel(courseChannelContext)) {
+    return <ResourcesChannelGate serverId={serverId} channelId={channelId} />
   }
 
   const channelLabel = findChannelLabel(navigationQuery.data, channelScope, channelId)

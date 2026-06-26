@@ -42,9 +42,9 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#52** production `#questions` UX (branch `feature/52-questions-ai-context-panel`, PR #69).
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#53** production `#resources` panel (branch `feature/53-production-course-resources-panel`).
 
-**Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#52–#59** screens on project #3 (or per owner merge order).
+**Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#53–#59** screens on project #3 (or per owner merge order).
 
 Cross-cutting auth **#30** pairs with **#49** during Production Frontend (partial principal retrofit; office hours / messaging deferred).
 
@@ -64,8 +64,9 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | 4 | [**#30**](https://github.com/Vinosaamaa/chanter/issues/30) | Auth backend — **merged** (with #49, PR #66) |
 | 5 | [**#50**](https://github.com/Vinosaamaa/chanter/issues/50) | Study Server shell — **merged** |
 | 6 | [**#51**](https://github.com/Vinosaamaa/chanter/issues/51) | Realtime text chat — **merged** (PR #68) |
-| 7 | [**#52**](https://github.com/Vinosaamaa/chanter/issues/52) | `#questions` + AI context panel — **in progress** (PR #69) |
-| 8–15 | [#53](https://github.com/Vinosaamaa/chanter/issues/53)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
+| 7 | [**#52**](https://github.com/Vinosaamaa/chanter/issues/52) | `#questions` + AI context panel — **merged** (PR #69) |
+| 8 | [**#53**](https://github.com/Vinosaamaa/chanter/issues/53) | Course resources panel — **in progress** |
+| 9–15 | [#54](https://github.com/Vinosaamaa/chanter/issues/54)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
 
 Workable Product (**after #52–#59** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
 
