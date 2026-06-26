@@ -54,7 +54,6 @@ class SupportQuestionSmokeTest {
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", learnerUserId.toString(),
                                 "body", "How do I configure Spring Security?",
                                 "idempotencyKey", idempotencyKey
                         ))))
@@ -75,7 +74,6 @@ class SupportQuestionSmokeTest {
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", learnerUserId.toString(),
                                 "body", "How do I configure Spring Security?",
                                 "idempotencyKey", idempotencyKey
                         ))))
@@ -123,7 +121,6 @@ class SupportQuestionSmokeTest {
                         .header(AuthHeaders.USER_ID, strangerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", strangerUserId.toString(),
                                 "body", "Can I post here?",
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))
@@ -137,7 +134,6 @@ class SupportQuestionSmokeTest {
                         .header(AuthHeaders.USER_ID, senderUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", senderUserId.toString(),
                                 "body", "Hello?",
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))
@@ -156,7 +152,6 @@ class SupportQuestionSmokeTest {
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", instructorUserId.toString(),
                                 "body", "Instructor question",
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))

@@ -63,7 +63,6 @@ class TaQueueSmokeTest {
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", learnerUserId.toString(),
                                 "body", "How do I configure Spring Security?",
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))
@@ -173,7 +172,6 @@ class TaQueueSmokeTest {
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", learnerUserId.toString(),
                                 "body", "Need help with Spring Security",
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))

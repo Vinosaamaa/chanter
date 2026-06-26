@@ -52,7 +52,6 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
 
     private static boolean requiresAuthenticatedUser(String uri) {
         return uri.endsWith("/messages")
-                || uri.contains("/messages?")
                 || uri.contains("/support-questions");
     }
 }

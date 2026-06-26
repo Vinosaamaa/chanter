@@ -624,7 +624,6 @@ function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            senderUserId: learnerUserId,
             body: supportQuestionBody,
             idempotencyKey,
           }),

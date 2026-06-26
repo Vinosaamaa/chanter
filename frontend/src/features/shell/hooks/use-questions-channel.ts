@@ -196,7 +196,7 @@ export function useQuestionsChannel({
       postAttemptRef.current = { body: trimmed, key: idempotencyKey }
 
       try {
-        const created = await postSupportQuestion(channelId, userId, trimmed, idempotencyKey)
+        const created = await postSupportQuestion(channelId, trimmed, idempotencyKey)
         postAttemptRef.current = null
         setSupportQuestionsById((current) => ({ ...current, [created.id]: created }))
         setSelectedSupportQuestionId(created.id)

@@ -10,13 +10,12 @@ import type {
 
 export async function postSupportQuestion(
   channelId: string,
-  senderUserId: string,
   body: string,
   idempotencyKey: string,
 ): Promise<SupportQuestion> {
   return apiFetch<SupportQuestion>(`/api/v1/course-channels/${channelId}/support-questions`, {
     method: 'POST',
-    body: JSON.stringify({ senderUserId, body, idempotencyKey }),
+    body: JSON.stringify({ body, idempotencyKey }),
   })
 }
 

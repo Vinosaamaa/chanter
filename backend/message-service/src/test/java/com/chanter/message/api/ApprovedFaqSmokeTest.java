@@ -159,7 +159,6 @@ class ApprovedFaqSmokeTest {
                         .header(AuthHeaders.USER_ID, senderUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", senderUserId.toString(),
                                 "body", body,
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))
