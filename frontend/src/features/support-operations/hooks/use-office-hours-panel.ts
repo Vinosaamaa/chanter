@@ -119,7 +119,7 @@ export function useOfficeHoursPanel(cohortId: string | undefined): UseOfficeHour
         setSessions(list.officeHoursSessions)
 
         const active = list.officeHoursSessions.find((session) => isActiveSession(session))
-        if (active) {
+        if (active && access.canManageOfficeHours) {
           const waitlistList = await listOfficeHoursWaitlist(active.id, userId)
           if (!cancelled) {
             setWaitlist(waitlistList.waitlistEntries)
@@ -153,14 +153,14 @@ export function useOfficeHoursPanel(cohortId: string | undefined): UseOfficeHour
 
   const loadWaitlist = useCallback(
     async (sessionId: string) => {
-      if (!userId) {
+      if (!userId || !canManage) {
         return
       }
 
       const list = await listOfficeHoursWaitlist(sessionId, userId)
       setWaitlist(list.waitlistEntries)
     },
-    [userId],
+    [canManage, userId],
   )
 
   const scheduleSession = useCallback(async () => {

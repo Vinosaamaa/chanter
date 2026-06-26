@@ -2,6 +2,12 @@ import type { ShellCourse, StudyServerNavigation } from './types'
 
 export type SupportOperation = 'ta-queue' | 'office-hours' | 'faq-approval'
 
+export const SUPPORT_OPERATIONS: SupportOperation[] = [
+  'ta-queue',
+  'office-hours',
+  'faq-approval',
+]
+
 export type CourseChannelContext = {
   course: ShellCourse
   channel: ShellCourse['channels'][number]

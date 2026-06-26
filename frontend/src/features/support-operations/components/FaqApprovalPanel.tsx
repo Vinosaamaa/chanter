@@ -43,13 +43,21 @@ export function FaqApprovalPanel({
           )}
 
           {faq.error && (
-            <p className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            <p
+              role="status"
+              aria-live="polite"
+              className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+            >
               {faq.error}
             </p>
           )}
 
           {faq.actionMessage && (
-            <p className="mb-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+            <p
+              role="status"
+              aria-live="polite"
+              className="mb-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+            >
               {faq.actionMessage}
             </p>
           )}
@@ -130,8 +138,11 @@ export function FaqApprovalPanel({
             Approved FAQs are searchable and used by the AI Study Assistant.
           </p>
 
-          <label className="mt-4 block text-xs font-medium text-app-muted">Question</label>
+          <label htmlFor="faq-question-draft" className="mt-4 block text-xs font-medium text-app-muted">
+            Question
+          </label>
           <textarea
+            id="faq-question-draft"
             value={faq.questionDraft}
             onChange={(event) => faq.setQuestionDraft(event.target.value)}
             rows={3}
@@ -139,8 +150,11 @@ export function FaqApprovalPanel({
             className="mt-1 w-full rounded-lg border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text outline-none ring-app-accent focus:ring-2 disabled:opacity-60"
           />
 
-          <label className="mt-4 block text-xs font-medium text-app-muted">Answer</label>
+          <label htmlFor="faq-answer-draft" className="mt-4 block text-xs font-medium text-app-muted">
+            Answer
+          </label>
           <textarea
+            id="faq-answer-draft"
             value={faq.answerDraft}
             onChange={(event) => faq.setAnswerDraft(event.target.value)}
             rows={8}

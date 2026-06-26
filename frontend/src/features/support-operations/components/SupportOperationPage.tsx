@@ -6,9 +6,9 @@ import {
   findCourseById,
   findQuestionsChannel,
   isSupportOperation,
+  SUPPORT_OPERATIONS,
   supportOperationLabel,
   supportOperationPath,
-  type SupportOperation,
 } from '../../shell/shell-routes'
 
 import { FaqApprovalPanel } from './FaqApprovalPanel'
@@ -39,7 +39,7 @@ export function SupportOperationPage() {
     )
   }
 
-  if (!course || !cohort) {
+  if (!course) {
     return (
       <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
         Course not found on this Study Server.
@@ -47,13 +47,22 @@ export function SupportOperationPage() {
     )
   }
 
+  if (!cohort) {
+    return (
+      <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
+        This course has no cohort yet.
+      </section>
+    )
+  }
+
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <nav className="flex gap-1 border-b border-app-border bg-app-surface px-4 py-2">
-        {(['ta-queue', 'office-hours', 'faq-approval'] as SupportOperation[]).map((item) => (
+        {SUPPORT_OPERATIONS.map((item) => (
           <Link
             key={item}
             to={supportOperationPath(serverId, courseId, item)}
+            aria-current={resolvedOperation === item ? 'page' : undefined}
             className={cn(
               'rounded-md px-3 py-1.5 text-sm transition-colors',
               resolvedOperation === item

@@ -5,14 +5,12 @@ import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
 import {
   courseChannelPath,
   isSupportOperation,
+  SUPPORT_OPERATIONS,
   studyChannelPath,
   supportOperationLabel,
   supportOperationPath,
-  type SupportOperation,
 } from '../shell-routes'
 import type { ShellChannel } from '../types'
-
-const SUPPORT_OPERATIONS: SupportOperation[] = ['ta-queue', 'office-hours', 'faq-approval']
 
 export function ChannelSidebarColumn() {
   const { serverId, channelId, courseId, operation } = useParams()

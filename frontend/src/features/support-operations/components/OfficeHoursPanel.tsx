@@ -35,13 +35,21 @@ export function OfficeHoursPanel({ courseTitle, cohortName, cohortId }: OfficeHo
         )}
 
         {officeHours.error && (
-          <p className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <p
+            role="status"
+            aria-live="polite"
+            className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+          >
             {officeHours.error}
           </p>
         )}
 
         {officeHours.actionMessage && (
-          <p className="mb-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          <p
+            role="status"
+            aria-live="polite"
+            className="mb-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+          >
             {officeHours.actionMessage}
           </p>
         )}

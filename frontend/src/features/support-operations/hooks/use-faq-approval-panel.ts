@@ -224,8 +224,12 @@ export function useFaqApprovalPanel(
       if (editingFaqId) {
         setActionMessage('Updated approved FAQ.')
       } else {
-        setCandidates((current) => current.filter((_, index) => index !== selectedIndex))
-        setSelectedIndex(0)
+        setCandidates((current) => {
+          const next = current.filter((_, index) => index !== selectedIndex)
+          setSelectedIndex(0)
+          setQuestionDraft(next[0]?.representativeQuestion ?? '')
+          return next
+        })
         setActionMessage('Approved FAQ for this course.')
         setAnswerDraft('')
       }
