@@ -28,4 +28,13 @@ Resolved the stale-candidates race on FAQ approve.
 
 | Comment | Resolution |
 |---------|------------|
-| **Major** — post-await candidate removal used stale closure | Remove approved group via functional `setCandidates` keyed by `sourceSupportQuestionIds`; block refresh/selection while `isSaving` |
+| **Major** — post-await candidate removal used stale closure | Remove approved group keyed by `sourceSupportQuestionIds`; block refresh/selection while `isSaving` |
+
+## Pass 4
+
+Resolved outside-diff and duplicate comments from the fourth review.
+
+| Comment | Resolution |
+|---------|------------|
+| **Major** — FAQ editor partially unlocked during save | Disable Edit, Cancel, and textareas while `isSaving`; guard `startEditApproved` / `clearEdit` in hook |
+| **Major** — `nextCandidates` read from `setCandidates` side effect | Compute filtered list before `setCandidates` (safe because save locks concurrent candidate edits) |

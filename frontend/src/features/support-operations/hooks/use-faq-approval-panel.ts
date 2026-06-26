@@ -150,18 +150,26 @@ export function useFaqApprovalPanel(
   )
 
   const startEditApproved = useCallback((faq: ApprovedFaq) => {
+    if (isSaving) {
+      return
+    }
+
     setEditingFaqId(faq.id)
     setQuestionDraft(faq.question)
     setAnswerDraft(faq.answer)
     setActionMessage(null)
     setError(null)
-  }, [])
+  }, [isSaving])
 
   const clearEdit = useCallback(() => {
+    if (isSaving) {
+      return
+    }
+
     setEditingFaqId(null)
     setAnswerDraft('')
     setQuestionDraft(candidates[selectedIndex]?.representativeQuestion ?? '')
-  }, [candidates, selectedIndex])
+  }, [candidates, isSaving, selectedIndex])
 
   const resolveSourceSupportQuestionIds = useCallback((): string[] => {
     const candidate = candidates[selectedIndex]
@@ -233,14 +241,10 @@ export function useFaqApprovalPanel(
         setActionMessage('Updated approved FAQ.')
       } else {
         const approvedSourceIds = new Set(sourceSupportQuestionIds)
-        let nextCandidates: FaqCandidateGroup[] = []
-
-        setCandidates((current) => {
-          nextCandidates = current.filter(
-            (group) => !group.supportQuestions.some((question) => approvedSourceIds.has(question.id)),
-          )
-          return nextCandidates
-        })
+        const nextCandidates = candidates.filter(
+          (group) => !group.supportQuestions.some((question) => approvedSourceIds.has(question.id)),
+        )
+        setCandidates(nextCandidates)
         setSelectedIndex(0)
         setQuestionDraft(nextCandidates[0]?.representativeQuestion ?? '')
         setActionMessage('Approved FAQ for this course.')
@@ -255,6 +259,7 @@ export function useFaqApprovalPanel(
     }
   }, [
     answerDraft,
+    candidates,
     courseId,
     editingFaqId,
     questionDraft,

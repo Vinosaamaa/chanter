@@ -118,6 +118,7 @@ export function FaqApprovalPanel({
                         <span className="truncate text-sm text-app-text">{approved.question}</span>
                         <button
                           type="button"
+                          disabled={faq.isSaving}
                           onClick={() => faq.startEditApproved(approved)}
                           className="shrink-0 rounded-md border border-app-border px-2 py-1 text-xs text-app-muted hover:text-app-text"
                         >
@@ -148,7 +149,7 @@ export function FaqApprovalPanel({
             value={faq.questionDraft}
             onChange={(event) => faq.setQuestionDraft(event.target.value)}
             rows={3}
-            disabled={!questionsChannelId || faq.accessDenied}
+            disabled={!questionsChannelId || faq.accessDenied || faq.isSaving}
             className="mt-1 w-full rounded-lg border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text outline-none ring-app-accent focus:ring-2 disabled:opacity-60"
           />
 
@@ -161,7 +162,7 @@ export function FaqApprovalPanel({
             onChange={(event) => faq.setAnswerDraft(event.target.value)}
             rows={8}
             placeholder="Write the instructor-approved answer learners and the assistant should use."
-            disabled={!questionsChannelId || faq.accessDenied}
+            disabled={!questionsChannelId || faq.accessDenied || faq.isSaving}
             className="mt-1 w-full rounded-lg border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text outline-none ring-app-accent focus:ring-2 disabled:opacity-60"
           />
 
@@ -184,6 +185,7 @@ export function FaqApprovalPanel({
             {faq.editingFaqId && (
               <button
                 type="button"
+                disabled={faq.isSaving}
                 onClick={faq.clearEdit}
                 className="rounded-lg border border-app-border px-3 py-2 text-sm text-app-muted hover:text-app-text"
               >
