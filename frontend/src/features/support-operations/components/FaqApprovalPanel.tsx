@@ -149,7 +149,7 @@ export function FaqApprovalPanel({
             value={faq.questionDraft}
             onChange={(event) => faq.setQuestionDraft(event.target.value)}
             rows={3}
-            disabled={!questionsChannelId || faq.accessDenied || faq.isSaving}
+            disabled={!questionsChannelId || faq.accessDenied || faq.isLoading || faq.isSaving}
             className="mt-1 w-full rounded-lg border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text outline-none ring-app-accent focus:ring-2 disabled:opacity-60"
           />
 
@@ -162,7 +162,7 @@ export function FaqApprovalPanel({
             onChange={(event) => faq.setAnswerDraft(event.target.value)}
             rows={8}
             placeholder="Write the instructor-approved answer learners and the assistant should use."
-            disabled={!questionsChannelId || faq.accessDenied || faq.isSaving}
+            disabled={!questionsChannelId || faq.accessDenied || faq.isLoading || faq.isSaving}
             className="mt-1 w-full rounded-lg border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text outline-none ring-app-accent focus:ring-2 disabled:opacity-60"
           />
 

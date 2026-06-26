@@ -89,10 +89,10 @@ export function ChannelSidebarColumn() {
                       />
                     ))}
                   </ul>
-                  <ul className="mt-2 flex flex-col gap-0.5 border-t border-app-border/60 pt-2">
-                    <li className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-app-muted">
-                      Support
-                    </li>
+                  <p className="mt-2 border-t border-app-border/60 px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-app-muted">
+                    Support
+                  </p>
+                  <ul className="flex flex-col gap-0.5">
                     {SUPPORT_OPERATIONS.map((item) => (
                       <li key={item}>
                         <Link

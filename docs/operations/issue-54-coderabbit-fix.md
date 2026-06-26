@@ -54,3 +54,12 @@ Resolved re-entrant save guard.
 | Comment | Resolution |
 |---------|------------|
 | **Major** — duplicate `approveOrUpdate` while save pending | Short-circuit when `isSaving`; add to callback deps |
+
+## Pass 7 (CLI + follow-up)
+
+| Comment | Resolution |
+|---------|------------|
+| **Trivial** — FAQ textareas editable during reload | Disable Question/Answer fields while `isLoading` |
+| **Minor** — Support label inside `<ul>` | Move Support heading outside list in `ChannelSidebarColumn` |
+| **Minor** — `loadWaitlist` for joiners after join | Deferred: join-only users get 403 on waitlist API (see Pass 1) |
+| **Minor** — approved FAQ fetch swallows errors | Deferred: non-blocking secondary load; empty list is acceptable fallback |
