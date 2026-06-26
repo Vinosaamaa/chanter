@@ -46,3 +46,11 @@ Resolved reload-during-save race on FAQ approve.
 | Comment | Resolution |
 |---------|------------|
 | **Major** — approve allowed while `isLoading` | Guard `approveOrUpdate` when `isLoading`; disable Approve button during reload |
+
+## Pass 6
+
+Resolved re-entrant save guard.
+
+| Comment | Resolution |
+|---------|------------|
+| **Major** — duplicate `approveOrUpdate` while save pending | Short-circuit when `isSaving`; add to callback deps |

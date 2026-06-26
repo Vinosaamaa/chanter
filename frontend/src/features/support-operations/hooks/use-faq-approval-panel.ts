@@ -194,7 +194,7 @@ export function useFaqApprovalPanel(
   }, [approvedFaqs, candidates, editingFaqId, selectedIndex, sourceIdsByFaqId])
 
   const approveOrUpdate = useCallback(async () => {
-    if (!courseId || !questionsChannelId || !userId || isLoading) {
+    if (!courseId || !questionsChannelId || !userId || isLoading || isSaving) {
       return
     }
 
@@ -263,6 +263,7 @@ export function useFaqApprovalPanel(
     courseId,
     editingFaqId,
     isLoading,
+    isSaving,
     questionDraft,
     questionsChannelId,
     resolveSourceSupportQuestionIds,
