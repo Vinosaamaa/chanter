@@ -38,3 +38,11 @@ Resolved outside-diff and duplicate comments from the fourth review.
 |---------|------------|
 | **Major** — FAQ editor partially unlocked during save | Disable Edit, Cancel, and textareas while `isSaving`; guard `startEditApproved` / `clearEdit` in hook |
 | **Major** — `nextCandidates` read from `setCandidates` side effect | Compute filtered list before `setCandidates` (safe because save locks concurrent candidate edits) |
+
+## Pass 5
+
+Resolved reload-during-save race on FAQ approve.
+
+| Comment | Resolution |
+|---------|------------|
+| **Major** — approve allowed while `isLoading` | Guard `approveOrUpdate` when `isLoading`; disable Approve button during reload |

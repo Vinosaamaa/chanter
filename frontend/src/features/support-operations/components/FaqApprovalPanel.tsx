@@ -176,7 +176,7 @@ export function FaqApprovalPanel({
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={!questionsChannelId || faq.accessDenied || faq.isSaving}
+              disabled={!questionsChannelId || faq.accessDenied || faq.isLoading || faq.isSaving}
               onClick={() => void faq.approveOrUpdate()}
               className="rounded-lg bg-app-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
