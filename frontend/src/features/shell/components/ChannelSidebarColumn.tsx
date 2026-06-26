@@ -2,17 +2,28 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 
 import { cn } from '../../../lib/cn'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
-import { courseChannelPath, studyChannelPath } from '../shell-routes'
+import {
+  courseChannelPath,
+  isSupportOperation,
+  studyChannelPath,
+  supportOperationLabel,
+  supportOperationPath,
+  type SupportOperation,
+} from '../shell-routes'
 import type { ShellChannel } from '../types'
 
+const SUPPORT_OPERATIONS: SupportOperation[] = ['ta-queue', 'office-hours', 'faq-approval']
+
 export function ChannelSidebarColumn() {
-  const { serverId, channelId } = useParams()
+  const { serverId, channelId, courseId, operation } = useParams()
   const location = useLocation()
   const channelScope = location.pathname.includes('/course-channels/')
     ? 'course'
     : location.pathname.includes('/study-channels/')
       ? 'study'
-      : undefined
+      : location.pathname.includes('/courses/') && location.pathname.includes('/support/')
+        ? 'support'
+        : undefined
   const navigationQuery = useStudyServerNavigationQuery(serverId)
 
   if (!serverId) {
@@ -78,6 +89,32 @@ export function ChannelSidebarColumn() {
                         to={courseChannelPath(serverId, channel.id)}
                         isActive={channelScope === 'course' && channel.id === channelId}
                       />
+                    ))}
+                  </ul>
+                  <ul className="mt-2 flex flex-col gap-0.5 border-t border-app-border/60 pt-2">
+                    <li className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-app-muted">
+                      Support
+                    </li>
+                    {SUPPORT_OPERATIONS.map((item) => (
+                      <li key={item}>
+                        <Link
+                          to={supportOperationPath(serverId, course.id, item)}
+                          className={cn(
+                            'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+                            channelScope === 'support' &&
+                              courseId === course.id &&
+                              isSupportOperation(operation) &&
+                              operation === item
+                              ? 'bg-app-elevated text-app-text'
+                              : 'text-app-muted hover:bg-app-elevated/70 hover:text-app-text',
+                          )}
+                        >
+                          <span aria-hidden className="w-4 shrink-0 text-center text-xs text-app-muted">
+                            •
+                          </span>
+                          <span className="truncate">{supportOperationLabel(item)}</span>
+                        </Link>
+                      </li>
                     ))}
                   </ul>
                 </li>

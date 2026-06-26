@@ -1,5 +1,7 @@
 import type { ShellCourse, StudyServerNavigation } from './types'
 
+export type SupportOperation = 'ta-queue' | 'office-hours' | 'faq-approval'
+
 export type CourseChannelContext = {
   course: ShellCourse
   channel: ShellCourse['channels'][number]
@@ -11,6 +13,29 @@ export function studyChannelPath(serverId: string, channelId: string): string {
 
 export function courseChannelPath(serverId: string, channelId: string): string {
   return `/app/servers/${serverId}/course-channels/${channelId}`
+}
+
+export function supportOperationPath(
+  serverId: string,
+  courseId: string,
+  operation: SupportOperation,
+): string {
+  return `/app/servers/${serverId}/courses/${courseId}/support/${operation}`
+}
+
+export function supportOperationLabel(operation: SupportOperation): string {
+  switch (operation) {
+    case 'ta-queue':
+      return 'TA queue'
+    case 'office-hours':
+      return 'Office Hours'
+    case 'faq-approval':
+      return 'FAQ approval'
+  }
+}
+
+export function isSupportOperation(value: string | undefined): value is SupportOperation {
+  return value === 'ta-queue' || value === 'office-hours' || value === 'faq-approval'
 }
 
 export function defaultChannelPath(
@@ -73,6 +98,21 @@ export function findCourseChannelContext(
   }
 
   return null
+}
+
+export function findCourseById(
+  navigation: StudyServerNavigation | undefined,
+  courseId: string | undefined,
+): ShellCourse | null {
+  if (!navigation || !courseId) {
+    return null
+  }
+
+  return navigation.courses.find((course) => course.id === courseId) ?? null
+}
+
+export function findQuestionsChannel(course: ShellCourse) {
+  return course.channels.find((channel) => channel.kind === 'TEXT' && channel.name === 'questions')
 }
 
 export function isQuestionsChannel(context: CourseChannelContext | null): boolean {

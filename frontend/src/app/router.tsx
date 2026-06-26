@@ -7,6 +7,7 @@ import { DevDemoRoutePage } from '../features/dev-demo/DevDemoRoutePage'
 import { LandingPage } from '../features/marketing/pages/LandingPage'
 import { AppChannelLayout, AppShellLayout } from '../features/shell/layouts/AppShellLayout'
 import { AppHomeRedirectPage, AppServerRedirectPage } from '../features/shell/pages/AppServerRedirectPage'
+import { SupportOperationPage } from '../features/support-operations/components/SupportOperationPage'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -57,6 +58,10 @@ export function createAppRouter() {
         {
           path: 'servers/:serverId/course-channels/:channelId',
           element: <AppChannelLayout />,
+        },
+        {
+          path: 'servers/:serverId/courses/:courseId/support/:operation',
+          element: <SupportOperationPage />,
         },
       ],
     },

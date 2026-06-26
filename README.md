@@ -12,7 +12,7 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 **Backend MVP (milestone 1)** — issues **#11–#24** are merged on `main`. The running `frontend/src/App.tsx` is still an API demo harness, not the production shell.
 
-**Active work:** **[Production Frontend](https://github.com/users/Vinosaamaa/projects/3)** (milestone 3) — **#53** production `#resources` panel; **#52** `#questions` UX merged (PR #69); **#51** realtime text chat merged.  
+**Active work:** **[Production Frontend](https://github.com/users/Vinosaamaa/projects/3)** (milestone 3) — **#54** support operations UI (TA queue, Office Hours, FAQ approval); **#53** `#resources` merged (PR #70); **#52** `#questions` merged (PR #69).  
 **Next phase:** **[Workable Product](https://github.com/users/Vinosaamaa/projects/4)** (milestone 4) — full-stack local app (voice, live DMs, one-command stack) after production frontend screens land.
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`
@@ -104,6 +104,6 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-**Active:** [Production `#resources` panel — issue #53](https://github.com/Vinosaamaa/chanter/issues/53) on [project board #3](https://github.com/users/Vinosaamaa/projects/3).
+**Active:** [Support operations UI — issue #54](https://github.com/Vinosaamaa/chanter/issues/54) on [project board #3](https://github.com/users/Vinosaamaa/projects/3).
 
 See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for the full ordered list through Workable Product (project #4).
