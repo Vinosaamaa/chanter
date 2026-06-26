@@ -67,7 +67,7 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | 7 | [**#52**](https://github.com/Vinosaamaa/chanter/issues/52) | `#questions` + AI context panel — **in progress** (PR #69) |
 | 8–15 | [#53](https://github.com/Vinosaamaa/chanter/issues/53)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
 
-Workable Product (**after #51** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
+Workable Product (**after #52–#59** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
 
 | Order | Issue |
 |------:|-------|

@@ -38,6 +38,16 @@ PR: [#69](https://github.com/Vinosaamaa/chanter/pull/69)
 | Dev demo JWT persona mismatch | Extend `demo-fetch` resolver for `instructorUserId` / `actorUserId` query params |
 | Agent install-preview 502 | `HttpCourseResourceAccessClient` sends `X-User-Id` to community (was query-only after #30 auth) |
 
+## Pass 5 (`f52f666` + follow-up)
+
+| Comment | Fix |
+|---------|-----|
+| Verification `cd` blocks in change log | Wrap backend/frontend steps in subshells |
+| Verification `cd` blocks in coderabbit fix log | Same subshell fix |
+| Instructor presence button still uses wrong persona | `loadStudyAssistantPresence(courseInstructorUserId, …)` |
+| HANDOFF Workable Product gate inconsistent | Align table to **after #52–#59** |
+| README Next Milestone still points at #48 | Update to active **#52** / PR #69 |
+
 ## Deferred
 
 | Comment | Reason |
@@ -47,7 +57,7 @@ PR: [#69](https://github.com/Vinosaamaa/chanter/pull/69)
 ## Verification
 
 ```bash
-cd backend && mvn -pl message-service test -Dtest=SupportQuestionSmokeTest,TaQueueSmokeTest,ApprovedFaqSmokeTest
-cd frontend && npm run lint && npm run build
+(cd backend && mvn -pl message-service test -Dtest=SupportQuestionSmokeTest,TaQueueSmokeTest,ApprovedFaqSmokeTest)
+(cd frontend && npm run lint && npm run build)
 gh pr checks 69   # backend, frontend, CodeRabbit pass
 ```

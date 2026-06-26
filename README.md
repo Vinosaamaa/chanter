@@ -104,6 +104,6 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-**Active:** [Production Frontend — issue #48](https://github.com/Vinosaamaa/chanter/issues/48) on [project board #3](https://github.com/users/Vinosaamaa/projects/3).
+**Active:** [Production `#questions` UX — issue #52](https://github.com/Vinosaamaa/chanter/issues/52) ([PR #69](https://github.com/Vinosaamaa/chanter/pull/69)) on [project board #3](https://github.com/users/Vinosaamaa/projects/3).
 
 See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for the full ordered list through Workable Product (project #4).

@@ -2408,7 +2408,7 @@ function App() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => loadStudyAssistantPresence(instructorUserId, 'Instructor')}
+                            onClick={() => loadStudyAssistantPresence(courseInstructorUserId, 'Instructor')}
                             disabled={isLoadingStudyAssistantPresence}
                           >
                             {isLoadingStudyAssistantPresence ? 'Loading...' : 'Presence (Instructor)'}

@@ -56,10 +56,10 @@ Smoke tests updated for JWT header identity on support-question routes.
 ## Verification
 
 ```bash
-cd backend && mvn -pl community-service,message-service,agent-service -am test \
+(cd backend && mvn -pl community-service,message-service,agent-service -am test \
   -Dtest=SupportQuestionSmokeTest,TaQueueSmokeTest,ApprovedFaqSmokeTest,GroundedSupportQuestionSmokeTest \
-  -Dsurefire.failIfNoSpecifiedTests=false
-cd frontend && npm run lint && npm run build
+  -Dsurefire.failIfNoSpecifiedTests=false)
+(cd frontend && npm run lint && npm run build)
 ```
 
 Manual (Chrome):
