@@ -1,6 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.SupportQuestionChannelAccessClient;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.UUID;
@@ -43,8 +44,8 @@ public class HttpSupportQuestionChannelAccessClient implements SupportQuestionCh
     public SupportQuestionChannelAccess requireAccess(UUID channelId, UUID userId) {
         try {
             AccessResponse response = restClient.get()
-                    .uri("/api/v1/course-channels/{channelId}/support-question-access?userId={userId}",
-                            channelId, userId)
+                    .uri("/api/v1/course-channels/{channelId}/support-question-access", channelId)
+                    .header(AuthHeaders.USER_ID, userId.toString())
                     .retrieve()
                     .body(AccessResponse.class);
 

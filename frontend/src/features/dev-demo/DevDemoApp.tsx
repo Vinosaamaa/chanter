@@ -577,7 +577,7 @@ function App() {
     setAccessResult(null)
 
     try {
-      const response = await demoFetch('instructor', `/api/v1/cohorts/${course.cohort.id}/enrollments`, {
+      const response = await demoFetch('owner', `/api/v1/cohorts/${course.cohort.id}/enrollments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ learnerUserId }),

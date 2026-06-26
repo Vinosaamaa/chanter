@@ -29,8 +29,8 @@ public class HttpCourseChannelAccessClient implements CourseChannelAccessClient 
     public CourseChannelAccess requireAccess(UUID channelId, UUID userId) {
         try {
             AccessResponse response = restClient.get()
-                    .uri("/api/v1/course-channels/{channelId}/support-question-access?userId={userId}",
-                            channelId, userId)
+                    .uri("/api/v1/course-channels/{channelId}/support-question-access", channelId)
+                    .header("X-User-Id", userId.toString())
                     .retrieve()
                     .body(AccessResponse.class);
 

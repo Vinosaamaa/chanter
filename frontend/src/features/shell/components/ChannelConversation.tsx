@@ -3,9 +3,10 @@ import { useLocation, useParams } from 'react-router-dom'
 
 import { useAuthStore } from '../../../stores/auth-store'
 
+import { QuestionsChannelGate } from './QuestionsChannelConversation'
 import { useChannelConversation } from '../hooks/use-channel-conversation'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
-import { findChannelLabel } from '../shell-routes'
+import { findChannelLabel, findCourseChannelContext, isQuestionsChannel } from '../shell-routes'
 import type { ChannelScope } from '../channel-message-types'
 
 export function ChannelConversation() {
@@ -67,6 +68,12 @@ function ChannelConversationPanel({
         </p>
       </ConversationFrame>
     )
+  }
+
+  const courseChannelContext =
+    channelScope === 'course' ? findCourseChannelContext(navigationQuery.data, channelId) : null
+  if (isQuestionsChannel(courseChannelContext)) {
+    return <QuestionsChannelGate serverId={serverId} channelId={channelId} />
   }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {

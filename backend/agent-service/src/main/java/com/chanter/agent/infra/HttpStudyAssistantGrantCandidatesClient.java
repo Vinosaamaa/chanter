@@ -1,6 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.StudyAssistantGrantCandidatesClient;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.List;
@@ -45,11 +46,8 @@ public class HttpStudyAssistantGrantCandidatesClient implements StudyAssistantGr
     public GrantCandidates requireGrantCandidates(UUID studyServerId, UUID userId) {
         try {
             GrantCandidatesResponse response = restClient.get()
-                    .uri(
-                            "/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates?userId={userId}",
-                            studyServerId,
-                            userId
-                    )
+                    .uri("/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates", studyServerId)
+                    .header(AuthHeaders.USER_ID, userId.toString())
                     .retrieve()
                     .body(GrantCandidatesResponse.class);
 
@@ -83,11 +81,8 @@ public class HttpStudyAssistantGrantCandidatesClient implements StudyAssistantGr
     public ViewerScope requireViewerScope(UUID studyServerId, UUID userId) {
         try {
             ViewerScopeResponse response = restClient.get()
-                    .uri(
-                            "/api/v1/study-servers/{studyServerId}/study-assistant-viewer-scope?userId={userId}",
-                            studyServerId,
-                            userId
-                    )
+                    .uri("/api/v1/study-servers/{studyServerId}/study-assistant-viewer-scope", studyServerId)
+                    .header(AuthHeaders.USER_ID, userId.toString())
                     .retrieve()
                     .body(ViewerScopeResponse.class);
 
