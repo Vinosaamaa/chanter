@@ -16,4 +16,8 @@ Resolved all inline comments from the first CodeRabbit review on PR #71.
 
 ## Pass 2
 
-_Pending re-review._
+Resolved the single follow-up comment from the second CodeRabbit review.
+
+| Comment | Resolution |
+|---------|------------|
+| **Trivial** — `use-faq-approval-panel.ts`: impure `setCandidates` updater | Compute `next` outside updater; set candidates, index, and draft separately; add `candidates` to deps |

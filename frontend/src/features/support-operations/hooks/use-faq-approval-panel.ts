@@ -224,12 +224,10 @@ export function useFaqApprovalPanel(
       if (editingFaqId) {
         setActionMessage('Updated approved FAQ.')
       } else {
-        setCandidates((current) => {
-          const next = current.filter((_, index) => index !== selectedIndex)
-          setSelectedIndex(0)
-          setQuestionDraft(next[0]?.representativeQuestion ?? '')
-          return next
-        })
+        const next = candidates.filter((_, index) => index !== selectedIndex)
+        setCandidates(next)
+        setSelectedIndex(0)
+        setQuestionDraft(next[0]?.representativeQuestion ?? '')
         setActionMessage('Approved FAQ for this course.')
         setAnswerDraft('')
       }
@@ -242,6 +240,7 @@ export function useFaqApprovalPanel(
     }
   }, [
     answerDraft,
+    candidates,
     courseId,
     editingFaqId,
     questionDraft,
