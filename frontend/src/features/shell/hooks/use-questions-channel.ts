@@ -63,7 +63,7 @@ export function useQuestionsChannel({
   const [addingToQueueQuestionId, setAddingToQueueQuestionId] = useState<string | null>(null)
   const [taQueueSuccess, setTaQueueSuccess] = useState<string | null>(null)
   const [selectedSupportQuestionId, setSelectedSupportQuestionId] = useState<string | null>(null)
-  const postIdempotencyKeyRef = useRef<string | null>(null)
+  const postAttemptRef = useRef<{ body: string; key: string } | null>(null)
   const historyRequestKey = channelId && userId ? `${channelId}:${userId}` : null
   const isLoadingHistory = historyRequestKey !== null && loadedHistoryKey !== historyRequestKey
 
@@ -76,7 +76,7 @@ export function useQuestionsChannel({
 
     void Promise.all([
       fetchChannelMessages('course', channelId),
-      listUnansweredSupportQuestions(channelId, userId),
+      listUnansweredSupportQuestions(channelId),
     ])
       .then(([messageResponse, supportQuestionResponse]) => {
         if (cancelled) {
@@ -190,12 +190,14 @@ export function useQuestionsChannel({
       setTaQueueSuccess(null)
       setMessages((current) => [...current, optimisticMessage])
 
-      const idempotencyKey = postIdempotencyKeyRef.current ?? crypto.randomUUID()
-      postIdempotencyKeyRef.current = idempotencyKey
+      const previousAttempt = postAttemptRef.current
+      const idempotencyKey =
+        previousAttempt?.body === trimmed ? previousAttempt.key : crypto.randomUUID()
+      postAttemptRef.current = { body: trimmed, key: idempotencyKey }
 
       try {
         const created = await postSupportQuestion(channelId, userId, trimmed, idempotencyKey)
-        postIdempotencyKeyRef.current = null
+        postAttemptRef.current = null
         setSupportQuestionsById((current) => ({ ...current, [created.id]: created }))
         setSelectedSupportQuestionId(created.id)
         setMessages((current) =>

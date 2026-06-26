@@ -1,6 +1,7 @@
 package com.chanter.message.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.message.application.SupportQuestionService;
 import com.chanter.message.domain.SupportQuestion;
 import jakarta.validation.Valid;
@@ -12,9 +13,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -31,11 +32,12 @@ public class SupportQuestionController {
     @PostMapping("/{channelId}/support-questions")
     public ResponseEntity<SupportQuestionResponse> postSupportQuestion(
             @PathVariable UUID channelId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID senderUserId,
             @Valid @RequestBody CreateSupportQuestionRequest request
     ) {
         SupportQuestion supportQuestion = supportQuestionService.postSupportQuestion(
                 channelId,
-                request.senderUserId(),
+                senderUserId,
                 request.body(),
                 request.idempotencyKey()
         );
@@ -50,7 +52,7 @@ public class SupportQuestionController {
     @GetMapping("/{channelId}/support-questions")
     public SupportQuestionListResponse listUnansweredSupportQuestions(
             @PathVariable UUID channelId,
-            @RequestParam UUID viewerUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         List<SupportQuestionSummaryResponse> supportQuestions = supportQuestionService
                 .listUnansweredSupportQuestions(channelId, viewerUserId)
@@ -65,7 +67,7 @@ public class SupportQuestionController {
     public SupportQuestionResponse getSupportQuestion(
             @PathVariable UUID channelId,
             @PathVariable UUID supportQuestionId,
-            @RequestParam UUID viewerUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         return SupportQuestionResponse.from(
                 supportQuestionService.getSupportQuestion(channelId, supportQuestionId, viewerUserId)
@@ -76,13 +78,14 @@ public class SupportQuestionController {
     public SupportQuestionResponse updateSupportQuestionStatus(
             @PathVariable UUID channelId,
             @PathVariable UUID supportQuestionId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId,
             @Valid @RequestBody UpdateSupportQuestionStatusRequest request
     ) {
         return SupportQuestionResponse.from(
                 supportQuestionService.updateSupportQuestionStatus(
                         channelId,
                         supportQuestionId,
-                        request.actorUserId(),
+                        actorUserId,
                         request.status()
                 )
         );

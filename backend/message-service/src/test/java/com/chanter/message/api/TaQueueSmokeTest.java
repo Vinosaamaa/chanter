@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.message.domain.SupportQuestionStatus;
 import com.chanter.message.infra.TestCohortTaQueueAccessClient;
 import com.chanter.message.infra.TestCourseChannelAccessClient;
@@ -59,6 +60,7 @@ class TaQueueSmokeTest {
         cohortTaQueueAccessClient.grantInstructorManage(cohortId, instructorUserId, courseId, studyServerId);
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "senderUserId", learnerUserId.toString(),
@@ -77,9 +79,9 @@ class TaQueueSmokeTest {
                         channelId,
                         supportQuestion.id()
                 )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "actorUserId", learnerUserId.toString(),
                                 "status", SupportQuestionStatus.AI_LOW_CONFIDENCE.name()
                         ))))
                 .andExpect(status().isOk());
@@ -168,6 +170,7 @@ class TaQueueSmokeTest {
         cohortTaQueueAccessClient.registerCohort(cohortId, courseId, studyServerId);
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "senderUserId", learnerUserId.toString(),
@@ -186,9 +189,9 @@ class TaQueueSmokeTest {
                         channelId,
                         supportQuestion.id()
                 )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "actorUserId", learnerUserId.toString(),
                                 "status", SupportQuestionStatus.AI_LOW_CONFIDENCE.name()
                         ))))
                 .andExpect(status().isOk());

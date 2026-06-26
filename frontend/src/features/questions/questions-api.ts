@@ -22,11 +22,9 @@ export async function postSupportQuestion(
 
 export async function listUnansweredSupportQuestions(
   channelId: string,
-  viewerUserId: string,
 ): Promise<SupportQuestionListResponse> {
-  const params = new URLSearchParams({ viewerUserId })
   return apiFetch<SupportQuestionListResponse>(
-    `/api/v1/course-channels/${channelId}/support-questions?${params.toString()}`,
+    `/api/v1/course-channels/${channelId}/support-questions`,
   )
 }
 

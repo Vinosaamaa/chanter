@@ -1,6 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.SupportQuestionClient;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.Instant;
@@ -47,11 +48,11 @@ public class HttpSupportQuestionClient implements SupportQuestionClient {
         try {
             SupportQuestionResponse response = restClient.get()
                     .uri(
-                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}?viewerUserId={viewerUserId}",
+                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}",
                             channelId,
-                            supportQuestionId,
-                            viewerUserId
+                            supportQuestionId
                     )
+                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(SupportQuestionResponse.class);
 
@@ -88,9 +89,9 @@ public class HttpSupportQuestionClient implements SupportQuestionClient {
             SupportQuestionResponse response = restClient.patch()
                     .uri("/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/status",
                             channelId, supportQuestionId)
+                    .header(AuthHeaders.USER_ID, actorUserId.toString())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
-                            "actorUserId", actorUserId,
                             "status", status
                     ))
                     .retrieve()

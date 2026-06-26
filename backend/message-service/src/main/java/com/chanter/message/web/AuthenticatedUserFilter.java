@@ -29,8 +29,7 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (!request.getRequestURI().endsWith("/messages")
-                && !request.getRequestURI().contains("/messages?")) {
+        if (!requiresAuthenticatedUser(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -49,5 +48,11 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private static boolean requiresAuthenticatedUser(String uri) {
+        return uri.endsWith("/messages")
+                || uri.contains("/messages?")
+                || uri.contains("/support-questions");
     }
 }
