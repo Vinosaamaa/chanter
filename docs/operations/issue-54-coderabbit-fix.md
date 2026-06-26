@@ -21,3 +21,11 @@ Resolved the single follow-up comment from the second CodeRabbit review.
 | Comment | Resolution |
 |---------|------------|
 | **Trivial** — `use-faq-approval-panel.ts`: impure `setCandidates` updater | Compute `next` outside updater; set candidates, index, and draft separately; add `candidates` to deps |
+
+## Pass 3
+
+Resolved the stale-candidates race on FAQ approve.
+
+| Comment | Resolution |
+|---------|------------|
+| **Major** — post-await candidate removal used stale closure | Remove approved group via functional `setCandidates` keyed by `sourceSupportQuestionIds`; block refresh/selection while `isSaving` |

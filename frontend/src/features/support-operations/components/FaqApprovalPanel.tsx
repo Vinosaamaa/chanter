@@ -72,6 +72,7 @@ export function FaqApprovalPanel({
                 </p>
                 <button
                   type="button"
+                  disabled={faq.isSaving}
                   onClick={() => void faq.refresh()}
                   className="rounded-lg border border-app-border px-3 py-1.5 text-xs text-app-muted hover:bg-app-elevated hover:text-app-text"
                 >
@@ -84,6 +85,7 @@ export function FaqApprovalPanel({
                   <li key={`${candidate.representativeQuestion}:${index}`}>
                     <button
                       type="button"
+                      disabled={faq.isSaving}
                       onClick={() => faq.selectCandidate(index)}
                       className={cn(
                         'w-full rounded-xl border px-4 py-3 text-left transition-colors',
