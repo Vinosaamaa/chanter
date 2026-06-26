@@ -36,10 +36,7 @@ function ChannelConversationPanel({
   channelId: string
   channelScope: ChannelScope
 }) {
-  const currentUserId = useAuthStore((state) => state.user?.id)
   const navigationQuery = useStudyServerNavigationQuery(serverId)
-  const conversation = useChannelConversation(channelScope, channelId)
-  const [draft, setDraft] = useState('')
 
   if (navigationQuery.isLoading) {
     return (
@@ -59,6 +56,12 @@ function ChannelConversationPanel({
     )
   }
 
+  const courseChannelContext =
+    channelScope === 'course' ? findCourseChannelContext(navigationQuery.data, channelId) : null
+  if (isQuestionsChannel(courseChannelContext)) {
+    return <QuestionsChannelGate serverId={serverId} channelId={channelId} />
+  }
+
   const channelLabel = findChannelLabel(navigationQuery.data, channelScope, channelId)
   if (!channelLabel) {
     return (
@@ -70,11 +73,27 @@ function ChannelConversationPanel({
     )
   }
 
-  const courseChannelContext =
-    channelScope === 'course' ? findCourseChannelContext(navigationQuery.data, channelId) : null
-  if (isQuestionsChannel(courseChannelContext)) {
-    return <QuestionsChannelGate serverId={serverId} channelId={channelId} />
-  }
+  return (
+    <LiveChannelConversation
+      channelId={channelId}
+      channelScope={channelScope}
+      channelLabel={channelLabel}
+    />
+  )
+}
+
+function LiveChannelConversation({
+  channelId,
+  channelScope,
+  channelLabel,
+}: {
+  channelId: string
+  channelScope: ChannelScope
+  channelLabel: string
+}) {
+  const currentUserId = useAuthStore((state) => state.user?.id)
+  const conversation = useChannelConversation(channelScope, channelId)
+  const [draft, setDraft] = useState('')
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

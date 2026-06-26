@@ -22,13 +22,21 @@ export function ShellContextPanel() {
     return <ContextPlaceholder />
   }
 
-  return <QuestionsContextPanel studyServerId={serverId} />
+  return <QuestionsContextPanel studyServerId={serverId} channelId={channelId} />
 }
 
-function QuestionsContextPanel({ studyServerId }: { studyServerId: string | undefined }) {
+function QuestionsContextPanel({
+  studyServerId,
+  channelId,
+}: {
+  studyServerId: string | undefined
+  channelId: string | undefined
+}) {
   const userId = useAuthStore((state) => state.user?.id)
   const { selectedAnswer, studyServerId: panelServerId } = useQuestionsPanel()
   const resolvedServerId = studyServerId ?? panelServerId
+  const activeAnswer =
+    selectedAnswer && channelId && selectedAnswer.channelId === channelId ? selectedAnswer : null
 
   const assistantQuery = useQuery({
     queryKey: ['study-assistant-presence', resolvedServerId, userId],
@@ -81,9 +89,9 @@ function QuestionsContextPanel({ studyServerId }: { studyServerId: string | unde
           <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-app-muted">
             Grounding sources
           </h3>
-          {selectedAnswer && selectedAnswer.sources.length > 0 ? (
+          {activeAnswer && activeAnswer.sources.length > 0 ? (
             <ul className="mt-2 space-y-2">
-              {selectedAnswer.sources.map((source) => (
+              {activeAnswer.sources.map((source) => (
                 <li
                   key={source.resourceId}
                   className="rounded-md border border-app-border bg-app-surface px-2 py-2"
@@ -100,7 +108,7 @@ function QuestionsContextPanel({ studyServerId }: { studyServerId: string | unde
           )}
         </section>
 
-        {selectedAnswer?.handoffRecommended ? (
+        {activeAnswer?.handoffRecommended ? (
           <section className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
             <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-200">
               Low confidence

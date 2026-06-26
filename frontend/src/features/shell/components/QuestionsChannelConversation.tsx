@@ -225,35 +225,31 @@ function LearnerQuestionCard({
   onSelect: () => void
 }) {
   return (
-    <article
-      className="rounded-lg border border-app-border bg-app-surface px-3 py-2"
-      onClick={onSelect}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          onSelect()
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
+    <article className="rounded-lg border border-app-border bg-app-surface px-3 py-2">
       <div className="flex items-center justify-between gap-2 text-xs text-app-muted">
         <span>{isOwnQuestion ? 'You' : 'Learner'}</span>
         <time dateTime={createdAt}>{formatTimestamp(createdAt)}</time>
       </div>
       <p className="mt-1 whitespace-pre-wrap text-sm text-app-text">{body}</p>
-      {canAskAi ? (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {canAskAi ? (
+          <button
+            type="button"
+            className="rounded-md border border-app-accent px-3 py-1 text-xs font-semibold text-app-accent hover:bg-app-accent/10"
+            onClick={onAskAi}
+            disabled={isInvoking}
+          >
+            {isInvoking ? 'Asking AI…' : 'Ask AI'}
+          </button>
+        ) : null}
         <button
           type="button"
-          className="mt-2 rounded-md border border-app-accent px-3 py-1 text-xs font-semibold text-app-accent hover:bg-app-accent/10"
-          onClick={(event) => {
-            event.stopPropagation()
-            onAskAi()
-          }}
-          disabled={isInvoking}
+          className="rounded-md border border-app-border px-3 py-1 text-xs font-semibold text-app-muted hover:bg-app-bg"
+          onClick={onSelect}
         >
-          {isInvoking ? 'Asking AI…' : 'Ask AI'}
+          View context
         </button>
-      ) : null}
+      </div>
     </article>
   )
 }
@@ -276,14 +272,6 @@ function AiAnswerCard({
       className={`rounded-lg border px-3 py-3 ${
         isSelected ? 'border-app-accent bg-app-accent/10' : 'border-app-accent/40 bg-app-surface'
       }`}
-      onClick={onSelect}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          onSelect()
-        }
-      }}
-      role="button"
-      tabIndex={0}
     >
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-app-accent">
         <span className="rounded bg-app-accent px-1.5 py-0.5 text-[10px] text-white">AI</span>
@@ -310,24 +298,24 @@ function AiAnswerCard({
         </div>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded-md border border-app-border px-3 py-1.5 text-xs font-semibold text-app-muted"
+          onClick={onSelect}
+        >
+          View context
+        </button>
         {answer.handoffRecommended ? (
           <button
             type="button"
             className="rounded-md bg-app-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-            onClick={(event) => {
-              event.stopPropagation()
-              onAddToTaQueue()
-            }}
+            onClick={onAddToTaQueue}
             disabled={isAddingToQueue}
           >
             {isAddingToQueue ? 'Adding…' : '+ Add to TA Queue'}
           </button>
         ) : null}
-        <button
-          type="button"
-          className="rounded-md border border-app-border px-3 py-1.5 text-xs font-semibold text-app-muted"
-          onClick={(event) => event.stopPropagation()}
-        >
+        <button type="button" className="rounded-md border border-app-border px-3 py-1.5 text-xs font-semibold text-app-muted">
           Mark helpful
         </button>
       </div>

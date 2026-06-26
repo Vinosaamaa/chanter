@@ -2,6 +2,7 @@ package com.chanter.message.infra;
 
 import com.chanter.message.application.CourseChannelAccess;
 import com.chanter.message.application.CourseChannelAccessClient;
+import com.chanter.common.auth.AuthHeaders;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -30,7 +31,7 @@ public class HttpCourseChannelAccessClient implements CourseChannelAccessClient 
         try {
             AccessResponse response = restClient.get()
                     .uri("/api/v1/course-channels/{channelId}/support-question-access", channelId)
-                    .header("X-User-Id", userId.toString())
+                    .header(AuthHeaders.USER_ID, userId.toString())
                     .retrieve()
                     .body(AccessResponse.class);
 

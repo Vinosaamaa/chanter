@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ApiError } from '../../../lib/api-client'
 import { useAuthStore } from '../../../stores/auth-store'
@@ -56,16 +56,19 @@ export function useQuestionsChannel({
   const [messages, setMessages] = useState<ChannelMessage[]>([])
   const [supportQuestionsById, setSupportQuestionsById] = useState<Record<string, SupportQuestion>>({})
   const [answersByQuestionId, setAnswersByQuestionId] = useState<Record<string, AssistantAnswer>>({})
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+  const [loadedHistoryKey, setLoadedHistoryKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPosting, setIsPosting] = useState(false)
   const [invokingQuestionId, setInvokingQuestionId] = useState<string | null>(null)
   const [addingToQueueQuestionId, setAddingToQueueQuestionId] = useState<string | null>(null)
   const [taQueueSuccess, setTaQueueSuccess] = useState<string | null>(null)
   const [selectedSupportQuestionId, setSelectedSupportQuestionId] = useState<string | null>(null)
+  const postIdempotencyKeyRef = useRef<string | null>(null)
+  const historyRequestKey = channelId && userId ? `${channelId}:${userId}` : null
+  const isLoadingHistory = historyRequestKey !== null && loadedHistoryKey !== historyRequestKey
 
   useEffect(() => {
-    if (!channelId || !userId) {
+    if (!historyRequestKey || !channelId || !userId) {
       return
     }
 
@@ -105,14 +108,14 @@ export function useQuestionsChannel({
       })
       .finally(() => {
         if (!cancelled) {
-          setIsLoadingHistory(false)
+          setLoadedHistoryKey(historyRequestKey)
         }
       })
 
     return () => {
       cancelled = true
     }
-  }, [channelId, userId])
+  }, [channelId, historyRequestKey, userId])
 
   const supportQuestionByMessageId = useMemo(() => {
     const map = new Map<string, SupportQuestion>()
@@ -187,8 +190,12 @@ export function useQuestionsChannel({
       setTaQueueSuccess(null)
       setMessages((current) => [...current, optimisticMessage])
 
+      const idempotencyKey = postIdempotencyKeyRef.current ?? crypto.randomUUID()
+      postIdempotencyKeyRef.current = idempotencyKey
+
       try {
-        const created = await postSupportQuestion(channelId, userId, trimmed, crypto.randomUUID())
+        const created = await postSupportQuestion(channelId, userId, trimmed, idempotencyKey)
+        postIdempotencyKeyRef.current = null
         setSupportQuestionsById((current) => ({ ...current, [created.id]: created }))
         setSelectedSupportQuestionId(created.id)
         setMessages((current) =>
