@@ -3,9 +3,10 @@ import { useLocation, useParams } from 'react-router-dom'
 
 import { useAuthStore } from '../../../stores/auth-store'
 
+import { QuestionsChannelGate } from './QuestionsChannelConversation'
 import { useChannelConversation } from '../hooks/use-channel-conversation'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
-import { findChannelLabel } from '../shell-routes'
+import { findChannelLabel, findCourseChannelContext, isQuestionsChannel } from '../shell-routes'
 import type { ChannelScope } from '../channel-message-types'
 
 export function ChannelConversation() {
@@ -35,10 +36,7 @@ function ChannelConversationPanel({
   channelId: string
   channelScope: ChannelScope
 }) {
-  const currentUserId = useAuthStore((state) => state.user?.id)
   const navigationQuery = useStudyServerNavigationQuery(serverId)
-  const conversation = useChannelConversation(channelScope, channelId)
-  const [draft, setDraft] = useState('')
 
   if (navigationQuery.isLoading) {
     return (
@@ -58,6 +56,12 @@ function ChannelConversationPanel({
     )
   }
 
+  const courseChannelContext =
+    channelScope === 'course' ? findCourseChannelContext(navigationQuery.data, channelId) : null
+  if (isQuestionsChannel(courseChannelContext)) {
+    return <QuestionsChannelGate serverId={serverId} channelId={channelId} />
+  }
+
   const channelLabel = findChannelLabel(navigationQuery.data, channelScope, channelId)
   if (!channelLabel) {
     return (
@@ -68,6 +72,28 @@ function ChannelConversationPanel({
       </ConversationFrame>
     )
   }
+
+  return (
+    <LiveChannelConversation
+      channelId={channelId}
+      channelScope={channelScope}
+      channelLabel={channelLabel}
+    />
+  )
+}
+
+function LiveChannelConversation({
+  channelId,
+  channelScope,
+  channelLabel,
+}: {
+  channelId: string
+  channelScope: ChannelScope
+  channelLabel: string
+}) {
+  const currentUserId = useAuthStore((state) => state.user?.id)
+  const conversation = useChannelConversation(channelScope, channelId)
+  const [draft, setDraft] = useState('')
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

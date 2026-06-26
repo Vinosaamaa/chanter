@@ -21,6 +21,12 @@ public interface SupportQuestionRepository {
 
     List<SupportQuestion> findByChannelIdAndStatus(UUID channelId, SupportQuestionStatus status);
 
+    List<SupportQuestion> findByChannelIdAndSenderUserIdAndStatus(
+            UUID channelId,
+            UUID senderUserId,
+            SupportQuestionStatus status
+    );
+
     Optional<SupportQuestion> findByIdAndChannelId(UUID channelId, UUID supportQuestionId);
 
     Set<UUID> findIdsByChannelIdAndIds(UUID channelId, List<UUID> supportQuestionIds);

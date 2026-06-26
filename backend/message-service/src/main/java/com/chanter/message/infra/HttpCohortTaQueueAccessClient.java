@@ -2,6 +2,7 @@ package com.chanter.message.infra;
 
 import com.chanter.message.application.CohortTaQueueAccess;
 import com.chanter.message.application.CohortTaQueueAccessClient;
+import com.chanter.common.auth.AuthHeaders;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -29,7 +30,8 @@ public class HttpCohortTaQueueAccessClient implements CohortTaQueueAccessClient 
     public CohortTaQueueAccess requireAccess(UUID cohortId, UUID userId) {
         try {
             AccessResponse response = restClient.get()
-                    .uri("/api/v1/cohorts/{cohortId}/ta-queue-access?userId={userId}", cohortId, userId)
+                    .uri("/api/v1/cohorts/{cohortId}/ta-queue-access", cohortId)
+                    .header(AuthHeaders.USER_ID, userId.toString())
                     .retrieve()
                     .body(AccessResponse.class);
 

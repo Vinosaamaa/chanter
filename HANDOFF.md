@@ -42,9 +42,9 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#51** realtime text chat (branch `feature/51-realtime-course-channel-chat`).
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#52** production `#questions` UX (branch `feature/52-questions-ai-context-panel`, PR #69).
 
-**Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#51** (realtime text chat) merges.
+**Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#52–#59** screens on project #3 (or per owner merge order).
 
 Cross-cutting auth **#30** pairs with **#49** during Production Frontend (partial principal retrofit; office hours / messaging deferred).
 
@@ -63,10 +63,11 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | 3 | [**#49**](https://github.com/Vinosaamaa/chanter/issues/49) | Auth UI — **merged** (with #30, PR #66) |
 | 4 | [**#30**](https://github.com/Vinosaamaa/chanter/issues/30) | Auth backend — **merged** (with #49, PR #66) |
 | 5 | [**#50**](https://github.com/Vinosaamaa/chanter/issues/50) | Study Server shell — **merged** |
-| 6 | [**#51**](https://github.com/Vinosaamaa/chanter/issues/51) | Realtime text chat — **in progress** |
-| 7–15 | [#52](https://github.com/Vinosaamaa/chanter/issues/52)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
+| 6 | [**#51**](https://github.com/Vinosaamaa/chanter/issues/51) | Realtime text chat — **merged** (PR #68) |
+| 7 | [**#52**](https://github.com/Vinosaamaa/chanter/issues/52) | `#questions` + AI context panel — **in progress** (PR #69) |
+| 8–15 | [#53](https://github.com/Vinosaamaa/chanter/issues/53)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
 
-Workable Product (**after #51** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
+Workable Product (**after #52–#59** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
 
 | Order | Issue |
 |------:|-------|
@@ -304,7 +305,9 @@ Recent operations documentation artifacts:
 - `docs/operations/issue-13-greptile-fix.md`: Greptile review feedback and fixes for PR #28.
 - `docs/operations/issue-14-change-log.md`: issue #14 voice presence implementation log with representative snippets.
 - `docs/operations/issue-14-debug-log.md`: issue #14 local Maven/dev-server debug log.
-- `docs/operations/issue-14-greptile-fix.md`: Greptile review feedback and fixes for PR #29.
+- `docs/operations/issue-51-change-log.md`: realtime-service bootstrap and live course channel chat.
+- `docs/operations/issue-52-change-log.md`: production `#questions` UX and AI context panel (#52, PR #69).
+- `docs/operations/issue-52-coderabbit-fix.md`: CodeRabbit review passes for PR #69.
 
 ## New Chat Startup Prompt
 

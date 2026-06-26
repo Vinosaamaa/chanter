@@ -1,4 +1,9 @@
-import type { StudyServerNavigation } from './types'
+import type { ShellCourse, StudyServerNavigation } from './types'
+
+export type CourseChannelContext = {
+  course: ShellCourse
+  channel: ShellCourse['channels'][number]
+}
 
 export function studyChannelPath(serverId: string, channelId: string): string {
   return `/app/servers/${serverId}/study-channels/${channelId}`
@@ -50,4 +55,26 @@ export function findChannelLabel(
   }
 
   return null
+}
+
+export function findCourseChannelContext(
+  navigation: StudyServerNavigation | undefined,
+  channelId: string,
+): CourseChannelContext | null {
+  if (!navigation) {
+    return null
+  }
+
+  for (const course of navigation.courses) {
+    const channel = course.channels.find((item) => item.id === channelId)
+    if (channel) {
+      return { course, channel }
+    }
+  }
+
+  return null
+}
+
+export function isQuestionsChannel(context: CourseChannelContext | null): boolean {
+  return context?.channel.kind === 'TEXT' && context.channel.name === 'questions'
 }

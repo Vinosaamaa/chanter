@@ -54,11 +54,23 @@ public class SupportQuestionService {
     @Transactional(readOnly = true)
     public List<SupportQuestion> listUnansweredSupportQuestions(UUID channelId, UUID viewerUserId) {
         CourseChannelAccess access = courseChannelAccessClient.requireAccess(channelId, viewerUserId);
-        if (!access.canViewUnansweredSupportQuestions()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Instructors can view unanswered Support Questions");
+
+        if (access.canViewUnansweredSupportQuestions()) {
+            return repository.findByChannelIdAndStatus(
+                    channelId,
+                    SupportQuestionStatus.UNANSWERED
+            );
         }
 
-        return repository.findByChannelIdAndStatus(channelId, SupportQuestionStatus.UNANSWERED);
+        if (access.canPostSupportQuestion()) {
+            return repository.findByChannelIdAndSenderUserIdAndStatus(
+                    channelId,
+                    viewerUserId,
+                    SupportQuestionStatus.UNANSWERED
+            );
+        }
+
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support Question list access denied");
     }
 
     @Transactional(readOnly = true)

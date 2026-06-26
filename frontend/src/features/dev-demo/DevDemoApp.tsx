@@ -216,6 +216,8 @@ function App() {
   const setSession = useAuthStore((state) => state.setSession)
   const ownerUserId = personas?.owner.userId ?? ''
   const instructorUserId = personas?.instructor.userId ?? ''
+  // Courses are created under the owner JWT, so the owner is the course instructor in this harness.
+  const courseInstructorUserId = ownerUserId
   const learnerUserId = personas?.learner.userId ?? ''
   const nonEnrolledUserId = personas?.nonEnrolled.userId ?? ''
   const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus>('NONE')
@@ -577,7 +579,7 @@ function App() {
     setAccessResult(null)
 
     try {
-      const response = await demoFetch('instructor', `/api/v1/cohorts/${course.cohort.id}/enrollments`, {
+      const response = await demoFetch('owner', `/api/v1/cohorts/${course.cohort.id}/enrollments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ learnerUserId }),
@@ -624,7 +626,6 @@ function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            senderUserId: learnerUserId,
             body: supportQuestionBody,
             idempotencyKey,
           }),
@@ -665,7 +666,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `/api/v1/course-channels/${questionsChannel.id}/support-questions?viewerUserId=${instructorUserId}`,
+        `/api/v1/course-channels/${questionsChannel.id}/support-questions?viewerUserId=${courseInstructorUserId}`,
       )
 
       if (!response.ok) {
@@ -770,7 +771,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instructorUserId,
+          instructorUserId: courseInstructorUserId,
           startsAt,
           endsAt,
         }),
@@ -834,7 +835,7 @@ function App() {
       const admitResponse = await fetch(`/api/v1/office-hours/${officeHoursSession.id}/admit-next`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actorUserId: instructorUserId }),
+        body: JSON.stringify({ actorUserId: courseInstructorUserId }),
       })
 
       if (!admitResponse.ok) {
@@ -844,7 +845,7 @@ function App() {
       const voiceResponse = await fetch(`/api/v1/office-hours/${officeHoursSession.id}/voice-join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actorUserId: instructorUserId }),
+        body: JSON.stringify({ actorUserId: courseInstructorUserId }),
       })
 
       if (!voiceResponse.ok) {
@@ -854,7 +855,7 @@ function App() {
       setOfficeHoursSession((current) => (current ? { ...current, status: 'LIVE' } : current))
 
       const waitlistResponse = await fetch(
-        `/api/v1/office-hours/${officeHoursSession.id}/waitlist?viewerUserId=${instructorUserId}`,
+        `/api/v1/office-hours/${officeHoursSession.id}/waitlist?viewerUserId=${courseInstructorUserId}`,
       )
 
       if (!waitlistResponse.ok) {
@@ -883,7 +884,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `/api/v1/study-servers/${studyServer.id}/instructor-dashboard?viewerUserId=${instructorUserId}`,
+        `/api/v1/study-servers/${studyServer.id}/instructor-dashboard?viewerUserId=${courseInstructorUserId}`,
       )
 
       if (!response.ok) {
@@ -986,7 +987,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `/api/v1/cohorts/${course.cohort.id}/ta-queue?viewerUserId=${instructorUserId}`,
+        `/api/v1/cohorts/${course.cohort.id}/ta-queue?viewerUserId=${courseInstructorUserId}`,
       )
 
       if (!response.ok) {
@@ -1017,7 +1018,7 @@ function App() {
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ actorUserId: instructorUserId }),
+          body: JSON.stringify({ actorUserId: courseInstructorUserId }),
         },
       )
 
@@ -1051,7 +1052,7 @@ function App() {
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ actorUserId: instructorUserId }),
+          body: JSON.stringify({ actorUserId: courseInstructorUserId }),
         },
       )
 
@@ -1086,7 +1087,7 @@ function App() {
     try {
       const formData = new FormData()
       formData.append('file', courseResourceFile)
-      formData.append('uploaderUserId', instructorUserId)
+      formData.append('uploaderUserId', courseInstructorUserId)
       formData.append('title', courseResourceTitle.trim() || courseResourceFile.name)
       formData.append('aiApproved', 'true')
 
@@ -1159,7 +1160,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `/api/v1/study-servers/${studyServer.id}/study-assistant/install-preview?instructorUserId=${instructorUserId}`,
+        `/api/v1/study-servers/${studyServer.id}/study-assistant/install-preview?instructorUserId=${courseInstructorUserId}`,
       )
 
       if (!response.ok) {
@@ -1223,7 +1224,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instructorUserId,
+          instructorUserId: courseInstructorUserId,
           grants,
         }),
       })
@@ -1290,7 +1291,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `/api/v1/course-channels/${questionsChannel.id}/faq-candidates?viewerUserId=${instructorUserId}`,
+        `/api/v1/course-channels/${questionsChannel.id}/faq-candidates?viewerUserId=${courseInstructorUserId}`,
       )
 
       if (!response.ok) {
@@ -1336,7 +1337,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           channelId: questionsChannel.id,
-          approvedByUserId: instructorUserId,
+          approvedByUserId: courseInstructorUserId,
           question: approvedFaqQuestion,
           answer: approvedFaqAnswer,
           sourceSupportQuestionIds,
@@ -2407,7 +2408,7 @@ function App() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => loadStudyAssistantPresence(instructorUserId, 'Instructor')}
+                            onClick={() => loadStudyAssistantPresence(courseInstructorUserId, 'Instructor')}
                             disabled={isLoadingStudyAssistantPresence}
                           >
                             {isLoadingStudyAssistantPresence ? 'Loading...' : 'Presence (Instructor)'}

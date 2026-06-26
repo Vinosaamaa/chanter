@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.message.infra.TestCourseChannelAccessClient;
 import com.chanter.message.infra.TestCourseResourceAccessClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -155,9 +156,9 @@ class ApprovedFaqSmokeTest {
     private SupportQuestionResponse postSupportQuestion(UUID channelId, UUID senderUserId, String body)
             throws Exception {
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, senderUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", senderUserId.toString(),
                                 "body", body,
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))

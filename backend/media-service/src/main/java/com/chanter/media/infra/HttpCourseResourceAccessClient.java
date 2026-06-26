@@ -1,5 +1,6 @@
 package com.chanter.media.infra;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.media.application.CourseResourceAccess;
 import com.chanter.media.application.CourseResourceAccessClient;
 import java.net.http.HttpClient;
@@ -44,7 +45,8 @@ public class HttpCourseResourceAccessClient implements CourseResourceAccessClien
     public CourseResourceAccess requireAccess(UUID courseId, UUID userId) {
         try {
             AccessResponse response = restClient.get()
-                    .uri("/api/v1/courses/{courseId}/resource-access?userId={userId}", courseId, userId)
+                    .uri("/api/v1/courses/{courseId}/resource-access", courseId)
+                    .header(AuthHeaders.USER_ID, userId.toString())
                     .retrieve()
                     .body(AccessResponse.class);
 

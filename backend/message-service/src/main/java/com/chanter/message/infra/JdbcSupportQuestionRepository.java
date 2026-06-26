@@ -155,6 +155,36 @@ public class JdbcSupportQuestionRepository implements SupportQuestionRepository 
 
     @Override
     @Transactional(readOnly = true)
+    public List<SupportQuestion> findByChannelIdAndSenderUserIdAndStatus(
+            UUID channelId,
+            UUID senderUserId,
+            SupportQuestionStatus status
+    ) {
+        return jdbcClient.sql("""
+                        SELECT
+                            id,
+                            channel_message_id,
+                            channel_id,
+                            sender_user_id,
+                            body,
+                            status,
+                            idempotency_key,
+                            created_at
+                        FROM support_questions
+                        WHERE channel_id = :channelId
+                        AND sender_user_id = :senderUserId
+                        AND status = :status
+                        ORDER BY created_at ASC
+                        """)
+                .param("channelId", channelId)
+                .param("senderUserId", senderUserId)
+                .param("status", status.name())
+                .query(this::mapSupportQuestion)
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<SupportQuestion> findByIdAndChannelId(UUID channelId, UUID supportQuestionId) {
         return jdbcClient.sql("""
                         SELECT

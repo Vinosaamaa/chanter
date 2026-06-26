@@ -25,7 +25,9 @@ export function getDemoPersona(key: DemoPersonaKey): DemoPersona {
 }
 
 function resolvePersonaKeyFromUrl(url: string): DemoPersonaKey | null {
-  const match = url.match(/(?:viewerUserId|userId)=([^&]+)/)
+  const match = url.match(
+    /(?:viewerUserId|userId|instructorUserId|actorUserId|learnerUserId|uploaderUserId|approvedByUserId)=([^&]+)/,
+  )
   if (!match) {
     return null
   }

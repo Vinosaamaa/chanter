@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.message.infra.TestCourseChannelAccessClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
@@ -50,9 +51,9 @@ class SupportQuestionSmokeTest {
         courseChannelAccessClient.grantInstructorView(channelId, instructorUserId, courseId, "questions");
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", learnerUserId.toString(),
                                 "body", "How do I configure Spring Security?",
                                 "idempotencyKey", idempotencyKey
                         ))))
@@ -70,9 +71,9 @@ class SupportQuestionSmokeTest {
         assertThat(created.idempotencyKey()).isEqualTo(idempotencyKey);
 
         MvcResult retryResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", learnerUserId.toString(),
                                 "body", "How do I configure Spring Security?",
                                 "idempotencyKey", idempotencyKey
                         ))))
@@ -86,7 +87,7 @@ class SupportQuestionSmokeTest {
         assertThat(retried.id()).isEqualTo(created.id());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/course-channels/{channelId}/support-questions", channelId)
-                        .param("viewerUserId", instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         SupportQuestionListResponse listed = objectMapper.readValue(
@@ -117,9 +118,9 @@ class SupportQuestionSmokeTest {
         courseChannelAccessClient.grantLearnerPost(channelId, learnerUserId, UUID.randomUUID(), "questions");
 
         mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", strangerUserId.toString(),
                                 "body", "Can I post here?",
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))
@@ -128,10 +129,11 @@ class SupportQuestionSmokeTest {
 
     @Test
     void postingToUnknownCourseChannelReturnsNotFound() throws Exception {
+        UUID senderUserId = UUID.randomUUID();
         mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", UUID.randomUUID())
+                        .header(AuthHeaders.USER_ID, senderUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", UUID.randomUUID().toString(),
                                 "body", "Hello?",
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))
@@ -147,9 +149,9 @@ class SupportQuestionSmokeTest {
         courseChannelAccessClient.grantInstructorView(channelId, instructorUserId, courseId, "questions");
 
         mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", instructorUserId.toString(),
                                 "body", "Instructor question",
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))
