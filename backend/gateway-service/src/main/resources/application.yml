@@ -55,6 +55,11 @@ spring:
           order: -2
           predicates:
             - Path=/api/v1/study-servers/*/instructor-dashboard
+        - id: search-service-global-search
+          uri: ${SEARCH_SERVICE_URL:http://localhost:8088}
+          order: -2
+          predicates:
+            - Path=/api/v1/study-servers/*/search,/api/v1/study-servers/*/search/**
         - id: message-service-instructor-dashboard
           uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
           order: -1
