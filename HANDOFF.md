@@ -69,7 +69,7 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | 7 | [**#52**](https://github.com/Vinosaamaa/chanter/issues/52) | `#questions` + AI context panel — **merged** (PR #69) |
 | 8 | [**#53**](https://github.com/Vinosaamaa/chanter/issues/53) | Course resources panel — **merged** (PR #70) |
 | 9 | [**#54**](https://github.com/Vinosaamaa/chanter/issues/54) | Support operations UI — **merged** (PR #71) |
-| 10 | [**#55**](https://github.com/Vinosaamaa/chanter/issues/55) | Instructor dashboard & SaaS plan — **in progress** (implementation complete; browser test pending gateway restart) |
+| 10 | [**#55**](https://github.com/Vinosaamaa/chanter/issues/55) | Instructor dashboard & SaaS plan — **PR open** ([#72](https://github.com/Vinosaamaa/chanter/pull/72); browser verified) |
 | 11–15 | [#56](https://github.com/Vinosaamaa/chanter/issues/56)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
 
 Workable Product (**after #52–#59** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):

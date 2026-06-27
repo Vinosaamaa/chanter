@@ -106,6 +106,7 @@ export function useInstructorDashboardPage(
       setError(null)
       setActionMessage(null)
       setDashboard(null)
+      setIsOwner(false)
 
       try {
         const [dashboardData, serverDetails] = await Promise.all([

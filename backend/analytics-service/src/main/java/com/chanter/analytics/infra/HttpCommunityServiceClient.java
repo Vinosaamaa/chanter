@@ -75,8 +75,8 @@ public class HttpCommunityServiceClient {
     public CommunityMetricsResponse fetchCommunityMetrics(UUID studyServerId, UUID viewerUserId) {
         try {
             CommunityMetricsResponse response = restClient.get()
-                    .uri("/api/v1/study-servers/{studyServerId}/instructor-dashboard/community-metrics?userId={userId}",
-                            studyServerId, viewerUserId)
+                    .uri("/api/v1/study-servers/{studyServerId}/instructor-dashboard/community-metrics",
+                            studyServerId)
                     .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(CommunityMetricsResponse.class);
