@@ -62,7 +62,6 @@ Resolved re-entrant save guard.
 | **Trivial** — FAQ textareas editable during reload | Disable Question/Answer fields while `isLoading` |
 | **Minor** — Support label inside `<ul>` | Move Support heading outside list in `ChannelSidebarColumn` |
 | **Minor** — `loadWaitlist` for joiners after join | Deferred: join-only users get 403 on waitlist API (see Pass 1) |
-| **Minor** — approved FAQ fetch swallows errors | Deferred: non-blocking secondary load; empty list is acceptable fallback |
 
 ## Pass 8
 
@@ -74,3 +73,13 @@ Resolved four inline comments from the full re-review.
 | **Major** — duplicate `SupportOperation` type | Import and re-export from `support-operations-types.ts` in `shell-routes.ts` |
 | **Major** — navigation query errors show "course not found" | Added `navigationQuery.isError` branch before course lookup |
 | **Minor** — clear `approvedFaqs` on transient failure | Keep existing list when `listApprovedFaqs` fails on refresh |
+
+## Pass 9
+
+Resolved follow-up comments from the pass-8 re-review.
+
+| Comment | Resolution |
+|---------|------------|
+| **Major** — stale `approvedFaqs` across course/user change | Track `approvedFaqsContextKey`; clear on fetch failure only when context changed |
+| **Major** — edit FAQ relinks to unrelated candidate | Return `[]` when editing with no stored or matching source IDs |
+| **Minor** — stale fix-log wording in Pass 7 | Removed outdated deferred note for approved FAQ fetch |

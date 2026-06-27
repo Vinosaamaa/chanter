@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ApiError } from '../../../lib/api-client'
 import { useAuthStore } from '../../../stores/auth-store'
@@ -60,6 +60,8 @@ export function useFaqApprovalPanel(
   const [isSaving, setIsSaving] = useState(false)
   const [sourceIdsByFaqId, setSourceIdsByFaqId] = useState<Record<string, string[]>>({})
   const [reloadToken, setReloadToken] = useState(0)
+  const approvedFaqsContextKey = courseId && userId ? `${courseId}:${userId}` : null
+  const approvedFaqsContextKeyRef = useRef<string | null>(null)
 
   const requestKey =
     courseId && questionsChannelId && userId
@@ -109,10 +111,13 @@ export function useFaqApprovalPanel(
       try {
         const approvedList = await listApprovedFaqs(courseId, userId)
         if (!cancelled) {
+          approvedFaqsContextKeyRef.current = approvedFaqsContextKey
           setApprovedFaqs(approvedList.approvedFaqs)
         }
       } catch {
-        // Keep previously loaded approved FAQs on transient failure.
+        if (!cancelled && approvedFaqsContextKeyRef.current !== approvedFaqsContextKey) {
+          setApprovedFaqs([])
+        }
       }
 
       if (!cancelled) {
@@ -123,7 +128,7 @@ export function useFaqApprovalPanel(
     return () => {
       cancelled = true
     }
-  }, [courseId, questionsChannelId, requestKey, userId])
+  }, [approvedFaqsContextKey, courseId, questionsChannelId, requestKey, userId])
 
   const refresh = useCallback(async () => {
     if (isSaving) {
@@ -185,7 +190,7 @@ export function useFaqApprovalPanel(
         return matchingCandidate.supportQuestions.map((question) => question.id)
       }
 
-      return candidate?.supportQuestions.map((question) => question.id) ?? []
+      return []
     }
 
     return candidate?.supportQuestions.map((question) => question.id) ?? []
