@@ -17,31 +17,21 @@ export function ServerSwitcherColumn() {
       )}
       {serversQuery.data?.map((server) => {
         const isActive = server.id === serverId
-        const targetPath = server.id === serverId
-          ? undefined
-          : `/app/servers/${server.id}`
-
-        const content = (
-          <span
-            className={cn(
-              'flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold transition-colors',
-              isActive
-                ? 'bg-app-accent text-white'
-                : 'bg-app-surface text-app-muted hover:bg-app-elevated hover:text-app-text',
-            )}
-            title={server.name}
-          >
-            {initials(server.name)}
-          </span>
-        )
-
-        if (!targetPath) {
-          return <div key={server.id}>{content}</div>
-        }
+        const targetPath = `/app/servers/${server.id}/home`
 
         return (
           <Link key={server.id} to={targetPath} aria-label={`Switch to ${server.name}`}>
-            {content}
+            <span
+              className={cn(
+                'flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold transition-colors',
+                isActive
+                  ? 'bg-app-accent text-white'
+                  : 'bg-app-surface text-app-muted hover:bg-app-elevated hover:text-app-text',
+              )}
+              title={server.name}
+            >
+              {initials(server.name)}
+            </span>
           </Link>
         )
       })}

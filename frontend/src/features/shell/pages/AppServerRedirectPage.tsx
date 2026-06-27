@@ -1,13 +1,11 @@
 import type { ReactNode } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 
-import { useAccessibleStudyServersQuery, useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
-import { defaultChannelPath } from '../shell-routes'
+import { useAccessibleStudyServersQuery } from '../hooks/use-shell-queries'
 
 export function AppServerRedirectPage() {
   const { serverId } = useParams()
   const serversQuery = useAccessibleStudyServersQuery()
-  const navigationQuery = useStudyServerNavigationQuery(serverId)
 
   if (!serverId) {
     if (serversQuery.isLoading) {
@@ -20,38 +18,13 @@ export function AppServerRedirectPage() {
 
     const firstServer = serversQuery.data?.[0]
     if (!firstServer) {
-      return (
-        <ShellMessage>
-          No study servers yet. Use the API demo harness or onboarding (#56) to create one.
-        </ShellMessage>
-      )
+      return <Navigate to="/app/onboarding/create-study-server" replace />
     }
 
-    return <Navigate to={`/app/servers/${firstServer.id}`} replace />
+    return <Navigate to={`/app/servers/${firstServer.id}/home`} replace />
   }
 
-  if (navigationQuery.isLoading) {
-    return <ShellMessage>Loading navigation…</ShellMessage>
-  }
-
-  if (navigationQuery.isError) {
-    return <ShellMessage>You do not have access to this study server.</ShellMessage>
-  }
-
-  if (!navigationQuery.data) {
-    return <ShellMessage>Study server not found.</ShellMessage>
-  }
-
-  const target = defaultChannelPath(serverId, navigationQuery.data)
-  if (!target) {
-    return (
-      <ShellMessage>
-        This study server has no channels yet. Create a course to unlock course channels.
-      </ShellMessage>
-    )
-  }
-
-  return <Navigate to={target} replace />
+  return <Navigate to={`/app/servers/${serverId}/home`} replace />
 }
 
 export function AppHomeRedirectPage() {

@@ -9,6 +9,9 @@ import { AppChannelLayout, AppShellLayout } from '../features/shell/layouts/AppS
 import { AppHomeRedirectPage, AppServerRedirectPage } from '../features/shell/pages/AppServerRedirectPage'
 import { SupportOperationPage } from '../features/support-operations/components/SupportOperationPage'
 import { InstructorDashboardPage } from '../features/instructor-dashboard/components/InstructorDashboardPage'
+import { CreateStudyServerPage } from '../features/onboarding/components/CreateStudyServerPage'
+import { CohortEnrollmentPage } from '../features/onboarding/components/CohortEnrollmentPage'
+import { StudyServerHomePage } from '../features/onboarding/components/StudyServerHomePage'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -19,6 +22,14 @@ export function createAppRouter() {
     {
       path: '/sign-in',
       element: <SignInPage />,
+    },
+    {
+      path: '/app/onboarding/create-study-server',
+      element: (
+        <ProtectedRoute>
+          <CreateStudyServerPage />
+        </ProtectedRoute>
+      ),
     },
     {
       path: '/app',
@@ -43,6 +54,14 @@ export function createAppRouter() {
         {
           path: 'instructor-dashboard',
           element: <InstructorDashboardPage />,
+        },
+        {
+          path: 'servers/:serverId/home',
+          element: <StudyServerHomePage />,
+        },
+        {
+          path: 'servers/:serverId/courses/:courseId/enrollment',
+          element: <CohortEnrollmentPage />,
         },
         {
           path: 'servers/:serverId',

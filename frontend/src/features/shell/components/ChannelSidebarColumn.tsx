@@ -21,7 +21,9 @@ export function ChannelSidebarColumn() {
       ? 'study'
       : location.pathname.includes('/courses/') && location.pathname.includes('/support/')
         ? 'support'
-        : undefined
+        : location.pathname.endsWith('/home') || location.pathname.includes('/enrollment')
+          ? 'home'
+          : undefined
   const navigationQuery = useStudyServerNavigationQuery(serverId)
 
   if (!serverId) {
@@ -31,11 +33,20 @@ export function ChannelSidebarColumn() {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-app-border bg-app-surface">
       <div className="border-b border-app-border px-4 py-3">
-        <p className="truncate text-sm font-semibold text-app-text">
+        <Link
+          to={`/app/servers/${serverId}/home`}
+          className="truncate text-sm font-semibold text-app-text hover:text-app-accent"
+        >
           {navigationQuery.data?.studyServerName ?? 'Study Server'}
-        </p>
+        </Link>
         <p className="text-xs text-app-muted">Enrollment-scoped navigation</p>
       </div>
+
+      {channelScope === 'home' && (
+        <p className="border-b border-app-border px-4 py-2 text-xs text-app-accent">
+          Study Server home
+        </p>
+      )}
 
       <div className="flex-1 overflow-y-auto p-2">
         {navigationQuery.isLoading && (
