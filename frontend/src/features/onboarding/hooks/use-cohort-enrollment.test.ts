@@ -28,6 +28,23 @@ describe('useCohortEnrollment', () => {
     expect(mockedEnrollLearner).not.toHaveBeenCalled()
   })
 
+  it('rejects missing cohort id', async () => {
+    const { result } = renderHook(() => useCohortEnrollment(''))
+
+    act(() => {
+      result.current.setLearnerUserId('learner-42')
+    })
+
+    let enrolled = true
+    await act(async () => {
+      enrolled = await result.current.enroll()
+    })
+
+    expect(enrolled).toBe(false)
+    expect(result.current.error).toMatch(/select a cohort/i)
+    expect(mockedEnrollLearner).not.toHaveBeenCalled()
+  })
+
   it('enrolls trimmed learner user id', async () => {
     mockedEnrollLearner.mockResolvedValue(undefined)
     const { result } = renderHook(() => useCohortEnrollment('cohort-1'))

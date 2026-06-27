@@ -28,8 +28,17 @@ export function useCohortEnrollment(cohortId: string): UseCohortEnrollmentResult
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const enroll = useCallback(async () => {
+    if (isSubmitting) {
+      return false
+    }
+
+    if (!cohortId) {
+      setError('Select a cohort before enrolling a learner.')
+      return false
+    }
+
     const trimmed = learnerUserId.trim()
-    if (!trimmed || isSubmitting) {
+    if (!trimmed) {
       setError('Enter the learner user id to enroll.')
       return false
     }

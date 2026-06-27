@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '../../../components/ui/button'
 import { cn } from '../../../lib/cn'
+import { formatUserFacingApiError, isUnauthorizedApiError } from '../../../lib/format-api-error'
+import { useAuthStore } from '../../../stores/auth-store'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
 import { courseChannelPath } from '../../shell/shell-routes'
 
@@ -12,7 +14,9 @@ import { createCourse } from '../onboarding-api'
 
 export function StudyServerHomePage() {
   const { serverId } = useParams()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const clearSession = useAuthStore((state) => state.clearSession)
   const navigationQuery = useStudyServerNavigationQuery(serverId)
   const [courseTitle, setCourseTitle] = useState('')
   const [cohortName, setCohortName] = useState('')
@@ -44,7 +48,15 @@ export function StudyServerHomePage() {
       setCourseMessage(`Created ${title} (${cohort}).`)
       await queryClient.invalidateQueries({ queryKey: ['study-server-navigation', serverId] })
     } catch (caught) {
-      setCourseError(caught instanceof Error ? caught.message : 'Unable to create course.')
+      if (isUnauthorizedApiError(caught)) {
+        clearSession()
+        navigate('/sign-in', {
+          replace: true,
+          state: { from: `/app/servers/${serverId}/home` },
+        })
+        return
+      }
+      setCourseError(formatUserFacingApiError(caught, 'Unable to create course.'))
     } finally {
       setIsCreatingCourse(false)
     }

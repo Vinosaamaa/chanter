@@ -39,7 +39,17 @@ export function ChannelSidebarColumn() {
         >
           {navigationQuery.data?.studyServerName ?? 'Study Server'}
         </Link>
-        <p className="text-xs text-app-muted">Enrollment-scoped navigation</p>
+        <p className="text-xs text-app-muted">
+          {channelScope === 'home'
+            ? 'Study Server home'
+            : channelScope === 'support'
+              ? 'Support operations'
+              : channelScope === 'study'
+                ? 'Study Server channels'
+                : channelScope === 'course'
+                  ? 'Course channels'
+                  : 'Server navigation'}
+        </p>
       </div>
 
       {channelScope === 'home' && (

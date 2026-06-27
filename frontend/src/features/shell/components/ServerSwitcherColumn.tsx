@@ -20,7 +20,12 @@ export function ServerSwitcherColumn() {
         const targetPath = `/app/servers/${server.id}/home`
 
         return (
-          <Link key={server.id} to={targetPath} aria-label={`Switch to ${server.name}`}>
+          <Link
+            key={server.id}
+            to={targetPath}
+            aria-current={isActive ? 'page' : undefined}
+            aria-label={isActive ? `${server.name} home` : `Switch to ${server.name}`}
+          >
             <span
               className={cn(
                 'flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold transition-colors',

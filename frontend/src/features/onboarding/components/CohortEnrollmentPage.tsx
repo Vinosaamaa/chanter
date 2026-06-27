@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
@@ -10,7 +11,9 @@ export function CohortEnrollmentPage() {
   const { serverId, courseId } = useParams()
   const navigationQuery = useStudyServerNavigationQuery(serverId)
   const course = navigationQuery.data?.courses.find((item) => item.id === courseId)
-  const cohort = course?.cohorts[0]
+  const [selectedCohortId, setSelectedCohortId] = useState('')
+  const cohort =
+    course?.cohorts.find((item) => item.id === selectedCohortId) ?? course?.cohorts[0]
   const enrollment = useCohortEnrollment(cohort?.id ?? '')
 
   if (!serverId || !courseId) {
@@ -21,6 +24,14 @@ export function CohortEnrollmentPage() {
     return (
       <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
         Loading enrollment…
+      </section>
+    )
+  }
+
+  if (navigationQuery.isError) {
+    return (
+      <section className="flex flex-1 items-center justify-center p-6 text-sm text-red-300">
+        Could not load enrollment for this Study Server.
       </section>
     )
   }
@@ -40,7 +51,24 @@ export function CohortEnrollmentPage() {
           Cohort enrollment
         </p>
         <h1 className="mt-2 text-2xl font-semibold text-app-text">{course.title}</h1>
-        <p className="mt-1 text-sm text-app-muted">{cohort.name}</p>
+        {course.cohorts.length > 1 ? (
+          <label className="mt-2 flex flex-col gap-1 text-xs text-app-muted">
+            Cohort
+            <select
+              value={cohort.id}
+              onChange={(event) => setSelectedCohortId(event.target.value)}
+              className="max-w-xs rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm text-app-text"
+            >
+              {course.cohorts.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="mt-1 text-sm text-app-muted">{cohort.name}</p>
+        )}
       </header>
 
       <div className="grid flex-1 gap-6 p-6 lg:grid-cols-2">
