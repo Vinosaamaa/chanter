@@ -161,7 +161,7 @@ Use installed Cursor workflow skills directly rather than the deleted local `cha
 
 **Git workflow (required):** one branch per GitHub issue → pull request → **full CodeRabbit loop** → **owner merges** → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. **Agents never merge.** Do not stop after opening a PR.
 
-**Testing workflow:** infrastructure bootstrap (#11) may use smoke tests; **domain features from #12 onward use TDD** (red → green → refactor) for permissions, enrollment, and learning-support workflows.
+**Testing workflow:** backend bootstrap (#11) may use smoke tests; **backend domain features #12–#24 use TDD**. Production frontend **#47–#55** were test-last; **from #56 onward** use vertical-slice TDD per `agent-workflow.md`.
 
 The expected workflow includes:
 
@@ -322,13 +322,13 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24 is merged on main.
-Active: Production Frontend project #3 — start at issue #48.
+Active: Production Frontend project #3 — #55 PR open ([#72](https://github.com/Vinosaamaa/chanter/pull/72)); next grab #56.
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/48
+Issue: https://github.com/Vinosaamaa/chanter/issues/56
 Project: https://github.com/users/Vinosaamaa/projects/3
 ```
 
@@ -339,7 +339,7 @@ Project: https://github.com/users/Vinosaamaa/projects/3
 - **Engineering diagrams:** `docs/diagrams/` is for service architecture — do not put product mockups there.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
 - Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
-- **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
+- **TDD:** backend #12–#24 used TDD for domain behavior; production frontend **#47–#55** test-last; **#56+** vertical-slice TDD per `agent-workflow.md`.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
 - For every CodeRabbit suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/agent-workflow.md`). Historical Greptile logs remain under `issue-*-greptile-fix.md`.
