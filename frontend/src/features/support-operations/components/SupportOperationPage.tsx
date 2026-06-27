@@ -39,6 +39,14 @@ export function SupportOperationPage() {
     )
   }
 
+  if (navigationQuery.isError) {
+    return (
+      <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
+        Unable to load course navigation for this Study Server.
+      </section>
+    )
+  }
+
   if (!course) {
     return (
       <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">

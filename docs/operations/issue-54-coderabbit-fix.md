@@ -63,3 +63,14 @@ Resolved re-entrant save guard.
 | **Minor** — Support label inside `<ul>` | Move Support heading outside list in `ChannelSidebarColumn` |
 | **Minor** — `loadWaitlist` for joiners after join | Deferred: join-only users get 403 on waitlist API (see Pass 1) |
 | **Minor** — approved FAQ fetch swallows errors | Deferred: non-blocking secondary load; empty list is acceptable fallback |
+
+## Pass 8
+
+Resolved four inline comments from the full re-review.
+
+| Comment | Resolution |
+|---------|------------|
+| **Minor** — sidebar support link `aria-current` | Added `aria-current="page"` on active support sidebar link |
+| **Major** — duplicate `SupportOperation` type | Import and re-export from `support-operations-types.ts` in `shell-routes.ts` |
+| **Major** — navigation query errors show "course not found" | Added `navigationQuery.isError` branch before course lookup |
+| **Minor** — clear `approvedFaqs` on transient failure | Keep existing list when `listApprovedFaqs` fails on refresh |

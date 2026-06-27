@@ -112,9 +112,7 @@ export function useFaqApprovalPanel(
           setApprovedFaqs(approvedList.approvedFaqs)
         }
       } catch {
-        if (!cancelled) {
-          setApprovedFaqs([])
-        }
+        // Keep previously loaded approved FAQs on transient failure.
       }
 
       if (!cancelled) {

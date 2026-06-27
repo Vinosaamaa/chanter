@@ -93,16 +93,21 @@ export function ChannelSidebarColumn() {
                     Support
                   </p>
                   <ul className="flex flex-col gap-0.5">
-                    {SUPPORT_OPERATIONS.map((item) => (
+                    {SUPPORT_OPERATIONS.map((item) => {
+                      const isActiveSupportLink =
+                        channelScope === 'support' &&
+                        courseId === course.id &&
+                        isSupportOperation(operation) &&
+                        operation === item
+
+                      return (
                       <li key={item}>
                         <Link
                           to={supportOperationPath(serverId, course.id, item)}
+                          aria-current={isActiveSupportLink ? 'page' : undefined}
                           className={cn(
                             'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
-                            channelScope === 'support' &&
-                              courseId === course.id &&
-                              isSupportOperation(operation) &&
-                              operation === item
+                            isActiveSupportLink
                               ? 'bg-app-elevated text-app-text'
                               : 'text-app-muted hover:bg-app-elevated/70 hover:text-app-text',
                           )}
@@ -113,7 +118,8 @@ export function ChannelSidebarColumn() {
                           <span className="truncate">{supportOperationLabel(item)}</span>
                         </Link>
                       </li>
-                    ))}
+                      )
+                    })}
                   </ul>
                 </li>
               ))}

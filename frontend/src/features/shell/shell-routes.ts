@@ -1,6 +1,7 @@
+import type { SupportOperation } from '../support-operations/support-operations-types'
 import type { ShellCourse, StudyServerNavigation } from './types'
 
-export type SupportOperation = 'ta-queue' | 'office-hours' | 'faq-approval'
+export type { SupportOperation }
 
 export const SUPPORT_OPERATIONS: SupportOperation[] = [
   'ta-queue',
