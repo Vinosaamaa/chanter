@@ -2,17 +2,26 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 
 import { cn } from '../../../lib/cn'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
-import { courseChannelPath, studyChannelPath } from '../shell-routes'
+import {
+  courseChannelPath,
+  isSupportOperation,
+  SUPPORT_OPERATIONS,
+  studyChannelPath,
+  supportOperationLabel,
+  supportOperationPath,
+} from '../shell-routes'
 import type { ShellChannel } from '../types'
 
 export function ChannelSidebarColumn() {
-  const { serverId, channelId } = useParams()
+  const { serverId, channelId, courseId, operation } = useParams()
   const location = useLocation()
   const channelScope = location.pathname.includes('/course-channels/')
     ? 'course'
     : location.pathname.includes('/study-channels/')
       ? 'study'
-      : undefined
+      : location.pathname.includes('/courses/') && location.pathname.includes('/support/')
+        ? 'support'
+        : undefined
   const navigationQuery = useStudyServerNavigationQuery(serverId)
 
   if (!serverId) {
@@ -79,6 +88,38 @@ export function ChannelSidebarColumn() {
                         isActive={channelScope === 'course' && channel.id === channelId}
                       />
                     ))}
+                  </ul>
+                  <p className="mt-2 border-t border-app-border/60 px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-app-muted">
+                    Support
+                  </p>
+                  <ul className="flex flex-col gap-0.5">
+                    {SUPPORT_OPERATIONS.map((item) => {
+                      const isActiveSupportLink =
+                        channelScope === 'support' &&
+                        courseId === course.id &&
+                        isSupportOperation(operation) &&
+                        operation === item
+
+                      return (
+                      <li key={item}>
+                        <Link
+                          to={supportOperationPath(serverId, course.id, item)}
+                          aria-current={isActiveSupportLink ? 'page' : undefined}
+                          className={cn(
+                            'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+                            isActiveSupportLink
+                              ? 'bg-app-elevated text-app-text'
+                              : 'text-app-muted hover:bg-app-elevated/70 hover:text-app-text',
+                          )}
+                        >
+                          <span aria-hidden className="w-4 shrink-0 text-center text-xs text-app-muted">
+                            •
+                          </span>
+                          <span className="truncate">{supportOperationLabel(item)}</span>
+                        </Link>
+                      </li>
+                      )
+                    })}
                   </ul>
                 </li>
               ))}
