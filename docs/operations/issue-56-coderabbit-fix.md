@@ -18,3 +18,12 @@ Addressed seven inline comments from the first CodeRabbit review. One security i
 **Verification:** `cd frontend && npm test && npm run lint && npm run build`
 
 **Remaining threads:** HttpOnly refresh-token storage (deferred).
+
+## Pass 2
+
+| Comment | Resolution |
+|---------|------------|
+| **Minor** — `CohortEnrollmentPage`: stale enrollment feedback on cohort switch | Call `enrollment.reset()` when the cohort `<select>` changes |
+| **Minor** — `use-cohort-enrollment`: success message persists on validation failure | Clear `successMessage` in missing-cohort and empty-learner branches |
+
+**Verification:** `cd frontend && npm test && npm run lint && npm run build`

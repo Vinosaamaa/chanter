@@ -56,7 +56,10 @@ export function CohortEnrollmentPage() {
             Cohort
             <select
               value={cohort.id}
-              onChange={(event) => setSelectedCohortId(event.target.value)}
+              onChange={(event) => {
+                setSelectedCohortId(event.target.value)
+                enrollment.reset()
+              }}
               className="max-w-xs rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm text-app-text"
             >
               {course.cohorts.map((item) => (

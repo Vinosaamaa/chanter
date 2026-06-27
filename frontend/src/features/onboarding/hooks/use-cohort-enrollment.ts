@@ -12,6 +12,7 @@ type UseCohortEnrollmentResult = {
   error: string | null
   successMessage: string | null
   enroll: () => Promise<boolean>
+  reset: () => void
 }
 
 function enrollmentErrorMessage(caught: unknown): string {
@@ -27,18 +28,26 @@ export function useCohortEnrollment(cohortId: string): UseCohortEnrollmentResult
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
+  const reset = useCallback(() => {
+    setLearnerUserId('')
+    setError(null)
+    setSuccessMessage(null)
+  }, [])
+
   const enroll = useCallback(async () => {
     if (isSubmitting) {
       return false
     }
 
     if (!cohortId) {
+      setSuccessMessage(null)
       setError('Select a cohort before enrolling a learner.')
       return false
     }
 
     const trimmed = learnerUserId.trim()
     if (!trimmed) {
+      setSuccessMessage(null)
       setError('Enter the learner user id to enroll.')
       return false
     }
@@ -66,5 +75,6 @@ export function useCohortEnrollment(cohortId: string): UseCohortEnrollmentResult
     error,
     successMessage,
     enroll,
+    reset,
   }
 }
