@@ -83,3 +83,9 @@ Resolved follow-up comments from the pass-8 re-review.
 | **Major** — stale `approvedFaqs` across course/user change | Track `approvedFaqsContextKey`; clear on fetch failure only when context changed |
 | **Major** — edit FAQ relinks to unrelated candidate | Return `[]` when editing with no stored or matching source IDs |
 | **Minor** — stale fix-log wording in Pass 7 | Removed outdated deferred note for approved FAQ fetch |
+
+## Pass 10
+
+| Comment | Resolution |
+|---------|------------|
+| **Major** — context ref stale after local save | Set `approvedFaqsContextKeyRef` when `approveOrUpdate` succeeds |

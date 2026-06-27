@@ -233,6 +233,8 @@ export function useFaqApprovalPanel(
         [saved.id]: sourceSupportQuestionIds,
       }))
 
+      approvedFaqsContextKeyRef.current = approvedFaqsContextKey
+
       setApprovedFaqs((current) => {
         if (current.some((faq) => faq.id === saved.id)) {
           return current.map((faq) => (faq.id === saved.id ? saved : faq))
@@ -262,6 +264,7 @@ export function useFaqApprovalPanel(
     }
   }, [
     answerDraft,
+    approvedFaqsContextKey,
     candidates,
     courseId,
     editingFaqId,
