@@ -1,5 +1,6 @@
 package com.chanter.search.infra;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.search.application.MediaCatalogClient;
 import com.chanter.search.config.MediaServiceClientProperties;
 import java.net.http.HttpClient;
@@ -39,7 +40,8 @@ public class HttpMediaCatalogClient implements MediaCatalogClient {
     public List<CourseResourceSummary> listCourseResources(UUID courseId, UUID viewerUserId) {
         try {
             CourseResourceListResponse response = restClient.get()
-                    .uri("/api/v1/courses/{courseId}/course-resources?viewerUserId={viewerUserId}", courseId, viewerUserId)
+                    .uri("/api/v1/courses/{courseId}/course-resources", courseId)
+                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(CourseResourceListResponse.class);
 
@@ -55,6 +57,8 @@ public class HttpMediaCatalogClient implements MediaCatalogClient {
                             resource.fileName()
                     ))
                     .toList();
+        } catch (HttpClientErrorException.Unauthorized exception) {
+            return List.of();
         } catch (HttpClientErrorException.NotFound exception) {
             return List.of();
         } catch (HttpClientErrorException.Forbidden exception) {

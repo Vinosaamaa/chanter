@@ -19,10 +19,15 @@ Bootstrapped `search-service` with a denormalized Postgres index for course reso
 
 ## Manual test
 
-1. Start gateway, community, media, message, search services (+ Postgres with `chanter_search`)
-2. Sign in as owner → open a Study Server → **Search** (or ⌘K)
-3. **Refresh index** → search for a resource title or FAQ question
-4. Sign in as a non-enrolled learner on another account → same query returns no unauthorized hits
+1. Start gateway, community, media, message, **search-service** (`make backend-search`; requires `chanter_search` DB)
+2. `/dev/demo` → **Open app shell as Owner** → **Browser Test Study Server 52**
+3. **Search** (or ⌘K) opens overlay; **Refresh index** succeeds
+4. Query with no indexed content shows “No matching resources or FAQs” (expected until content exists + reindex)
+5. Esc closes overlay
+
+**Browser verified (2026-06-27):** overlay, reindex, and empty-state search on `http://127.0.0.1:5173`. Initial reindex returned 502 — `HttpMediaCatalogClient` was not sending `X-User-Id` to media-service (fixed). After fix, reindex returns 200 (`Indexed 0 documents` when no resources/FAQs on server).
+
+**Positive hit path:** approve an FAQ (requires linked support question in FAQ approval UI) or upload a resource, then **Refresh index** and search again.
 
 ## Deferred
 
