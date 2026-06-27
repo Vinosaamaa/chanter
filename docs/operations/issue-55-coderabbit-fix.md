@@ -26,3 +26,14 @@ Addressed five inline comments from the first CodeRabbit review on PR #72. One i
 **Verification:** `npm run build` (frontend).
 
 **Remaining threads:** saas-plan GET membership authz (deferred).
+
+## Pass 3
+
+| Comment | Resolution |
+|---------|------------|
+| **Minor** — `HANDOFF.md` #55 row still says browser pending (duplicate) | Already fixed in Pass 1; synced line 45 active-phase wording to match PR #72 |
+| **Major** — `AppTopBar` refresh-token revocation skipped after reload (outside diff) | **Deferred:** pre-existing `auth-store` persist omits `refreshToken`; out of #55 scope |
+
+**Verification:** `gh pr checks 72` — backend, frontend, CodeRabbit pass.
+
+**Remaining threads:** saas-plan GET authz; refresh-token persist on sign-out (deferred).

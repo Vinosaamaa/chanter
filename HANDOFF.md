@@ -42,7 +42,7 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#55** production instructor dashboard and SaaS plan UI (branch `feature/55-production-instructor-dashboard-saas-plan-ui`).
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **#55** instructor dashboard — **PR open** ([#72](https://github.com/Vinosaamaa/chanter/pull/72); browser verified).
 
 **Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#53–#59** screens on project #3 (or per owner merge order).
 
