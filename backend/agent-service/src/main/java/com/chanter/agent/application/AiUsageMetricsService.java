@@ -24,7 +24,7 @@ public class AiUsageMetricsService {
 
     public AiUsageMetrics findMetrics(UUID studyServerId, UUID viewerUserId) {
         grantCandidatesClient.requireGrantCandidates(studyServerId, viewerUserId);
-        StudyServerSaasPlanClient.StudyServerSaasPlan plan = saasPlanClient.fetchPlan(studyServerId);
+        StudyServerSaasPlanClient.StudyServerSaasPlan plan = saasPlanClient.fetchPlan(studyServerId, viewerUserId);
         AiInvocationCounts usage = metricsRepository.findInvocationCounts(studyServerId);
         return new AiUsageMetrics(
                 studyServerId,

@@ -1,16 +1,17 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { logout as logoutApi } from '../../auth/auth-api'
 import { cn } from '../../../lib/cn'
 import { useAuthStore } from '../../../stores/auth-store'
 
 const topLinks = [
-  { label: 'Friends', to: '/app/friends', hint: 'Stub until #31' },
-  { label: 'Instructor Dashboard', to: '/app/instructor-dashboard', hint: 'Stub until #55' },
+  { label: 'Friends', to: '/app/friends' },
+  { label: 'Instructor Dashboard', to: '/app/instructor-dashboard' },
 ]
 
 export function AppTopBar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useAuthStore((state) => state.user)
   const clearSession = useAuthStore((state) => state.clearSession)
 
@@ -34,10 +35,12 @@ export function AppTopBar() {
           <Link
             key={item.to}
             to={item.to}
-            title={item.hint}
+            aria-current={location.pathname === item.to ? 'page' : undefined}
             className={cn(
-              'rounded-md px-3 py-1.5 text-sm text-app-muted transition-colors',
-              'hover:bg-app-surface hover:text-app-text',
+              'rounded-md px-3 py-1.5 text-sm transition-colors',
+              location.pathname === item.to
+                ? 'bg-app-surface font-medium text-app-text'
+                : 'text-app-muted hover:bg-app-surface hover:text-app-text',
             )}
           >
             {item.label}

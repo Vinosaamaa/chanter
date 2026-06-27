@@ -8,6 +8,7 @@ import { LandingPage } from '../features/marketing/pages/LandingPage'
 import { AppChannelLayout, AppShellLayout } from '../features/shell/layouts/AppShellLayout'
 import { AppHomeRedirectPage, AppServerRedirectPage } from '../features/shell/pages/AppServerRedirectPage'
 import { SupportOperationPage } from '../features/support-operations/components/SupportOperationPage'
+import { InstructorDashboardPage } from '../features/instructor-dashboard/components/InstructorDashboardPage'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -41,11 +42,7 @@ export function createAppRouter() {
         },
         {
           path: 'instructor-dashboard',
-          element: (
-            <p className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
-              Instructor dashboard lands in #55.
-            </p>
-          ),
+          element: <InstructorDashboardPage />,
         },
         {
           path: 'servers/:serverId',

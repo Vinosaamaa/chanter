@@ -29,7 +29,7 @@ An issue is **not done** when code is pushed or a PR is opened. An issue is **do
 
 1. **Read context** — `HANDOFF.md`, `CONTEXT.md`, this file (issue order below), the GitHub issue, and relevant mockups in `docs/product-design/mockups/` when building UI.
 2. **Branch** — `feature/<N>-<slug>` from latest `main`. Never commit feature work on `main`.
-3. **Implement** — scope limited to the issue acceptance criteria.
+3. **Implement** — scope limited to the issue acceptance criteria. **From issue #56 onward, use TDD** (see [Test-driven development](#test-driven-development-tdd) below).
 4. **Verify locally** — `mvn verify` (affected services), `npm run lint && npm run build`; browser demo when the slice has UI.
 5. **Docs** — `docs/operations/issue-<N>-change-log.md`; update `HANDOFF.md` / `README.md` when the issue closes.
 6. **Commit + push** the feature branch only (push when the owner approves at push time).
@@ -122,6 +122,28 @@ After **#50**, issues **#53–#56** may run in parallel if coordinated; default 
 4. Friend request → accept → live DM (#31).
 5. Join Voice Channel with real audio (#61).
 6. Optional: DM voice call (#32).
+
+---
+
+## Test-driven development (TDD)
+
+**Effective from issue #56.** Issues **#47–#55** were implemented with manual/browser verification first; **#55** did not add automated frontend tests.
+
+For **#56 and later**, agents must use **vertical-slice TDD** (red → green → refactor), one behavior at a time:
+
+1. **Red** — write a failing test for one user-visible behavior (hook, API client, or component integration test).
+2. **Green** — minimal production code to pass.
+3. **Refactor** — clean up without changing behavior; re-run tests.
+
+Rules:
+
+- Test through **public interfaces** (exported hooks, API functions, page behavior), not implementation details.
+- Do **not** write all tests then all code (“horizontal slices”).
+- Prioritize behaviors from the issue acceptance criteria; confirm with the user when unclear.
+- Run the new tests in step 4 of the [issue completion loop](#required-steps-in-order) alongside `mvn verify` / `npm run lint && npm run build`.
+- Log test commands in `docs/operations/issue-<N>-change-log.md`.
+
+Frontend test stack for production UI slices: add **Vitest** + **Testing Library** when first needed (#56), then keep using it for subsequent slices.
 
 ---
 

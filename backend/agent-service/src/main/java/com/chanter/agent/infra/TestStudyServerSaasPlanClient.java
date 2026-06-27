@@ -24,7 +24,7 @@ public class TestStudyServerSaasPlanClient implements StudyServerSaasPlanClient 
     }
 
     @Override
-    public StudyServerSaasPlan fetchPlan(UUID studyServerId) {
+    public StudyServerSaasPlan fetchPlan(UUID studyServerId, UUID actingUserId) {
         StudyServerSaasPlan plan = plans.get(studyServerId);
         if (plan == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found");

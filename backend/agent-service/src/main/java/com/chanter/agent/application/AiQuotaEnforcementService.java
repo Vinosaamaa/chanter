@@ -31,18 +31,18 @@ public class AiQuotaEnforcementService {
         this.dataSource = dataSource;
     }
 
-    public void requireQuotaAvailable(UUID studyServerId) {
-        assertQuotaAvailable(studyServerId);
+    public void requireQuotaAvailable(UUID studyServerId, UUID actingUserId) {
+        assertQuotaAvailable(studyServerId, actingUserId);
     }
 
     @Transactional
-    public void requireQuotaAvailableUnderLock(UUID studyServerId) {
+    public void requireQuotaAvailableUnderLock(UUID studyServerId, UUID actingUserId) {
         acquireStudyServerLock(studyServerId);
-        assertQuotaAvailable(studyServerId);
+        assertQuotaAvailable(studyServerId, actingUserId);
     }
 
-    private void assertQuotaAvailable(UUID studyServerId) {
-        StudyServerSaasPlanClient.StudyServerSaasPlan plan = saasPlanClient.fetchPlan(studyServerId);
+    private void assertQuotaAvailable(UUID studyServerId, UUID actingUserId) {
+        StudyServerSaasPlanClient.StudyServerSaasPlan plan = saasPlanClient.fetchPlan(studyServerId, actingUserId);
         AiInvocationCounts usage = metricsRepository.findInvocationCounts(studyServerId);
         if (usage.totalInvocations() >= plan.aiInvocationLimit()) {
             throw new ResponseStatusException(

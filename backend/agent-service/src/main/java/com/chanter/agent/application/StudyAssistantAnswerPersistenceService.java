@@ -21,7 +21,7 @@ public class StudyAssistantAnswerPersistenceService {
 
     @Transactional
     public StudyAssistantAnswer saveAnswer(StudyAssistantAnswer answer, InvocationType invocationType) {
-        aiQuotaEnforcementService.requireQuotaAvailableUnderLock(answer.studyServerId());
+        aiQuotaEnforcementService.requireQuotaAvailableUnderLock(answer.studyServerId(), answer.learnerUserId());
         return answerRepository.saveAnswer(answer, invocationType);
     }
 }

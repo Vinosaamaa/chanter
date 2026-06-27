@@ -42,9 +42,11 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#54** production support operations UI (branch `feature/54-production-support-operations-ui`).
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#55** production instructor dashboard and SaaS plan UI (branch `feature/55-production-instructor-dashboard-saas-plan-ui`).
 
 **Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#53–#59** screens on project #3 (or per owner merge order).
+
+**TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
 Cross-cutting auth **#30** pairs with **#49** during Production Frontend (partial principal retrofit; office hours / messaging deferred).
 
@@ -66,8 +68,9 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | 6 | [**#51**](https://github.com/Vinosaamaa/chanter/issues/51) | Realtime text chat — **merged** (PR #68) |
 | 7 | [**#52**](https://github.com/Vinosaamaa/chanter/issues/52) | `#questions` + AI context panel — **merged** (PR #69) |
 | 8 | [**#53**](https://github.com/Vinosaamaa/chanter/issues/53) | Course resources panel — **merged** (PR #70) |
-| 9 | [**#54**](https://github.com/Vinosaamaa/chanter/issues/54) | Support operations UI — **in progress** |
-| 10–15 | [#55](https://github.com/Vinosaamaa/chanter/issues/55)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
+| 9 | [**#54**](https://github.com/Vinosaamaa/chanter/issues/54) | Support operations UI — **merged** (PR #71) |
+| 10 | [**#55**](https://github.com/Vinosaamaa/chanter/issues/55) | Instructor dashboard & SaaS plan — **in progress** (implementation complete; browser test pending gateway restart) |
+| 11–15 | [#56](https://github.com/Vinosaamaa/chanter/issues/56)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
 
 Workable Product (**after #52–#59** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
 
