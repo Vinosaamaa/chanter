@@ -119,7 +119,7 @@ public class GroundedSupportQuestionService {
             );
         }
 
-        aiQuotaEnforcementService.requireQuotaAvailable(access.studyServerId());
+        aiQuotaEnforcementService.requireQuotaAvailable(access.studyServerId(), learnerUserId);
 
         Set<UUID> grantedResourceIds = presence.grants().stream()
                 .filter(grant -> grant.grantType() == GrantType.COURSE_RESOURCE)

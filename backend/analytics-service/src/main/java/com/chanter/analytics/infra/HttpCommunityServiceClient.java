@@ -1,5 +1,6 @@
 package com.chanter.analytics.infra;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.analytics.config.CommunityServiceClientProperties;
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -37,8 +38,9 @@ public class HttpCommunityServiceClient {
     public GrantCandidatesResponse fetchGrantCandidates(UUID studyServerId, UUID viewerUserId) {
         try {
             GrantCandidatesResponse response = restClient.get()
-                    .uri("/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates?userId={userId}",
-                            studyServerId, viewerUserId)
+                    .uri("/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates",
+                            studyServerId)
+                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(GrantCandidatesResponse.class);
 
@@ -73,8 +75,9 @@ public class HttpCommunityServiceClient {
     public CommunityMetricsResponse fetchCommunityMetrics(UUID studyServerId, UUID viewerUserId) {
         try {
             CommunityMetricsResponse response = restClient.get()
-                    .uri("/api/v1/study-servers/{studyServerId}/instructor-dashboard/community-metrics?userId={userId}",
-                            studyServerId, viewerUserId)
+                    .uri("/api/v1/study-servers/{studyServerId}/instructor-dashboard/community-metrics",
+                            studyServerId)
+                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(CommunityMetricsResponse.class);
 

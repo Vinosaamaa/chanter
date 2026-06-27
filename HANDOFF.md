@@ -42,9 +42,11 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **In progress:** **#54** production support operations UI (branch `feature/54-production-support-operations-ui`).
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **#55** instructor dashboard — **PR open** ([#72](https://github.com/Vinosaamaa/chanter/pull/72); browser verified).
 
 **Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#53–#59** screens on project #3 (or per owner merge order).
+
+**TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
 Cross-cutting auth **#30** pairs with **#49** during Production Frontend (partial principal retrofit; office hours / messaging deferred).
 
@@ -66,8 +68,9 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | 6 | [**#51**](https://github.com/Vinosaamaa/chanter/issues/51) | Realtime text chat — **merged** (PR #68) |
 | 7 | [**#52**](https://github.com/Vinosaamaa/chanter/issues/52) | `#questions` + AI context panel — **merged** (PR #69) |
 | 8 | [**#53**](https://github.com/Vinosaamaa/chanter/issues/53) | Course resources panel — **merged** (PR #70) |
-| 9 | [**#54**](https://github.com/Vinosaamaa/chanter/issues/54) | Support operations UI — **in progress** |
-| 10–15 | [#55](https://github.com/Vinosaamaa/chanter/issues/55)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
+| 9 | [**#54**](https://github.com/Vinosaamaa/chanter/issues/54) | Support operations UI — **merged** (PR #71) |
+| 10 | [**#55**](https://github.com/Vinosaamaa/chanter/issues/55) | Instructor dashboard & SaaS plan — **PR open** ([#72](https://github.com/Vinosaamaa/chanter/pull/72); browser verified) |
+| 11–15 | [#56](https://github.com/Vinosaamaa/chanter/issues/56)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
 
 Workable Product (**after #52–#59** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
 
@@ -158,7 +161,7 @@ Use installed Cursor workflow skills directly rather than the deleted local `cha
 
 **Git workflow (required):** one branch per GitHub issue → pull request → **full CodeRabbit loop** → **owner merges** → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. **Agents never merge.** Do not stop after opening a PR.
 
-**Testing workflow:** infrastructure bootstrap (#11) may use smoke tests; **domain features from #12 onward use TDD** (red → green → refactor) for permissions, enrollment, and learning-support workflows.
+**Testing workflow:** backend bootstrap (#11) may use smoke tests; **backend domain features #12–#24 use TDD**. Production frontend **#47–#55** were test-last; **from #56 onward** use vertical-slice TDD per `agent-workflow.md`.
 
 The expected workflow includes:
 
@@ -319,13 +322,13 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24 is merged on main.
-Active: Production Frontend project #3 — start at issue #48.
+Active: Production Frontend project #3 — #55 PR open ([#72](https://github.com/Vinosaamaa/chanter/pull/72)); next grab #56.
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/48
+Issue: https://github.com/Vinosaamaa/chanter/issues/56
 Project: https://github.com/users/Vinosaamaa/projects/3
 ```
 
@@ -336,7 +339,7 @@ Project: https://github.com/users/Vinosaamaa/projects/3
 - **Engineering diagrams:** `docs/diagrams/` is for service architecture — do not put product mockups there.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
 - Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
-- **TDD from issue #12 onward** for domain behavior; bootstrap/infra may use smoke tests only.
+- **TDD:** backend #12–#24 used TDD for domain behavior; production frontend **#47–#55** test-last; **#56+** vertical-slice TDD per `agent-workflow.md`.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
 - For every CodeRabbit suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/agent-workflow.md`). Historical Greptile logs remain under `issue-*-greptile-fix.md`.

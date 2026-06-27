@@ -1,6 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.StudyServerSaasPlanClient;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.UUID;
@@ -40,10 +41,11 @@ public class HttpStudyServerSaasPlanClient implements StudyServerSaasPlanClient 
     }
 
     @Override
-    public StudyServerSaasPlan fetchPlan(UUID studyServerId) {
+    public StudyServerSaasPlan fetchPlan(UUID studyServerId, UUID actingUserId) {
         try {
             SaasPlanResponse response = restClient.get()
                     .uri("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
+                    .header(AuthHeaders.USER_ID, actingUserId.toString())
                     .retrieve()
                     .body(SaasPlanResponse.class);
 
