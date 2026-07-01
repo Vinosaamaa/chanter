@@ -42,9 +42,9 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **#56** onboarding & enrollment — **in progress** (branch `feature/56-production-onboarding-enrollment-flows`).
+**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **#58** channel summary UI — **in progress** (branch `feature/58-channel-summary-ui`).
 
-**Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#53–#59** screens on project #3 (or per owner merge order).
+**Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#58–#59** on project #3 (or per owner merge order).
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
@@ -70,8 +70,10 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | 8 | [**#53**](https://github.com/Vinosaamaa/chanter/issues/53) | Course resources panel — **merged** (PR #70) |
 | 9 | [**#54**](https://github.com/Vinosaamaa/chanter/issues/54) | Support operations UI — **merged** (PR #71) |
 | 10 | [**#55**](https://github.com/Vinosaamaa/chanter/issues/55) | Instructor dashboard & SaaS plan — **merged** (PR #72) |
-| 11 | [**#56**](https://github.com/Vinosaamaa/chanter/issues/56) | Onboarding & enrollment — **in progress** |
-| 12–15 | [#57](https://github.com/Vinosaamaa/chanter/issues/57)–[#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
+| 11 | [**#56**](https://github.com/Vinosaamaa/chanter/issues/56) | Onboarding & enrollment — **merged** (PR #73) |
+| 12 | [**#57**](https://github.com/Vinosaamaa/chanter/issues/57) | Global search — **merged** (PR #74) |
+| 13 | [**#58**](https://github.com/Vinosaamaa/chanter/issues/58) | Channel summary UI — **in progress** |
+| 14–15 | [#59](https://github.com/Vinosaamaa/chanter/issues/59) | Screens |
 
 Workable Product (**after #52–#59** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
 
@@ -323,13 +325,13 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24 is merged on main.
-Active: Production Frontend project #3 — #56 in progress; next after merge is #57.
+Active: Production Frontend project #3 — #58 in progress; #57 merged (PR #74).
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/56
+Issue: https://github.com/Vinosaamaa/chanter/issues/58
 Project: https://github.com/users/Vinosaamaa/projects/3
 ```
 

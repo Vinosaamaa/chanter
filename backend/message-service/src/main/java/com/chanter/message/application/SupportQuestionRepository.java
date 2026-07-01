@@ -2,6 +2,7 @@ package com.chanter.message.application;
 
 import com.chanter.message.domain.SupportQuestion;
 import com.chanter.message.domain.SupportQuestionStatus;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -18,6 +19,12 @@ public interface SupportQuestionRepository {
     );
 
     List<SupportQuestion> findByChannelId(UUID channelId);
+
+    List<SupportQuestion> findByChannelIdAndCreatedAtBetween(
+            UUID channelId,
+            Instant windowStartInclusive,
+            Instant windowEndExclusive
+    );
 
     List<SupportQuestion> findByChannelIdAndStatus(UUID channelId, SupportQuestionStatus status);
 

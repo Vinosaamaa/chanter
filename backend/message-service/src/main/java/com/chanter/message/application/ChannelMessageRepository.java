@@ -16,4 +16,17 @@ public interface ChannelMessageRepository {
             Optional<UUID> afterMessageId,
             int limit
     );
+
+    long countByChannelCreatedBetween(
+            UUID channelId,
+            Instant windowStartInclusive,
+            Instant windowEndExclusive
+    );
+
+    List<ChannelMessage> listByChannelCreatedBetween(
+            UUID channelId,
+            Instant windowStartInclusive,
+            Instant windowEndExclusive,
+            int limit
+    );
 }

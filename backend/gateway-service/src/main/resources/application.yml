@@ -30,6 +30,11 @@ spring:
           order: -1
           predicates:
             - Path=/api/v1/cohorts/*/ta-queue,/api/v1/cohorts/*/ta-queue/**
+        - id: message-service-channel-summary
+          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+          order: -1
+          predicates:
+            - Path=/api/v1/course-channels/*/channel-summary
         - id: message-service-approved-faqs
           uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
           order: -1

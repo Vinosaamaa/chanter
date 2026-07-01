@@ -80,4 +80,55 @@ public class JdbcChannelMessageRepository implements ChannelMessageRepository {
                 rs.getTimestamp("created_at").toInstant()
         )).list();
     }
+
+    @Override
+    public long countByChannelCreatedBetween(
+            UUID channelId,
+            Instant windowStartInclusive,
+            Instant windowEndExclusive
+    ) {
+        Long count = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM channel_messages
+                        WHERE channel_id = :channelId
+                        AND created_at >= :windowStartInclusive
+                        AND created_at < :windowEndExclusive
+                        """)
+                .param("channelId", channelId)
+                .param("windowStartInclusive", Timestamp.from(windowStartInclusive))
+                .param("windowEndExclusive", Timestamp.from(windowEndExclusive))
+                .query(Long.class)
+                .single();
+        return count == null ? 0L : count;
+    }
+
+    @Override
+    public List<ChannelMessage> listByChannelCreatedBetween(
+            UUID channelId,
+            Instant windowStartInclusive,
+            Instant windowEndExclusive,
+            int limit
+    ) {
+        return jdbcClient.sql("""
+                        SELECT id, channel_id, sender_user_id, body, created_at
+                        FROM channel_messages
+                        WHERE channel_id = :channelId
+                        AND created_at >= :windowStartInclusive
+                        AND created_at < :windowEndExclusive
+                        ORDER BY created_at DESC, id DESC
+                        LIMIT :limit
+                        """)
+                .param("channelId", channelId)
+                .param("windowStartInclusive", Timestamp.from(windowStartInclusive))
+                .param("windowEndExclusive", Timestamp.from(windowEndExclusive))
+                .param("limit", limit)
+                .query((rs, rowNum) -> new ChannelMessage(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("channel_id", UUID.class),
+                        rs.getObject("sender_user_id", UUID.class),
+                        rs.getString("body"),
+                        rs.getTimestamp("created_at").toInstant()
+                ))
+                .list();
+    }
 }

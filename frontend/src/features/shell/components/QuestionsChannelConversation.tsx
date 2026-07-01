@@ -1,11 +1,12 @@
 import { type FormEvent, useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuthStore } from '../../../stores/auth-store'
 import { useQuestionsPanel } from '../context/use-questions-panel'
 import { useQuestionsChannel } from '../hooks/use-questions-channel'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
 import type { CourseChannelContext } from '../shell-routes'
-import { findCourseChannelContext } from '../shell-routes'
+import { channelSummaryPath, findCourseChannelContext } from '../shell-routes'
 
 type QuestionsChannelConversationProps = {
   serverId: string
@@ -19,6 +20,8 @@ export function QuestionsChannelConversation({
   channelContext,
 }: QuestionsChannelConversationProps) {
   const currentUserId = useAuthStore((state) => state.user?.id)
+  const navigationQuery = useStudyServerNavigationQuery(serverId)
+  const canViewSummary = Boolean(navigationQuery.data?.canViewFullCatalog)
   const cohortId = channelContext.course.cohorts[0]?.id
   const { setStudyServerId, setSelectedAnswer } = useQuestionsPanel()
   const questions = useQuestionsChannel({
@@ -59,13 +62,25 @@ export function QuestionsChannelConversation({
   return (
     <section className="flex min-w-0 flex-1 flex-col bg-app-bg">
       <header className="border-b border-app-border px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
-          Support questions
-        </p>
-        <h2 className="mt-1 text-base font-semibold text-app-text">#{channelContext.channel.name}</h2>
-        <p className="mt-1 text-sm text-app-muted">
-          Ask questions and get help from your peers and AI assistant.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
+              Support questions
+            </p>
+            <h2 className="mt-1 text-base font-semibold text-app-text">#{channelContext.channel.name}</h2>
+            <p className="mt-1 text-sm text-app-muted">
+              Ask questions and get help from your peers and AI assistant.
+            </p>
+          </div>
+          {canViewSummary ? (
+            <Link
+              to={channelSummaryPath(serverId, channelId)}
+              className="rounded-lg border border-app-border px-3 py-1.5 text-sm text-app-text hover:bg-app-surface"
+            >
+              Channel summary
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col">

@@ -3,7 +3,9 @@ package com.chanter.message.infra;
 import com.chanter.message.application.SupportQuestionRepository;
 import com.chanter.message.domain.SupportQuestion;
 import com.chanter.message.domain.SupportQuestionStatus;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.sql.Timestamp;
 import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
@@ -125,6 +127,36 @@ public class JdbcSupportQuestionRepository implements SupportQuestionRepository 
                         ORDER BY created_at ASC
                         """)
                 .param("channelId", channelId)
+                .query(this::mapSupportQuestion)
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SupportQuestion> findByChannelIdAndCreatedAtBetween(
+            UUID channelId,
+            Instant windowStartInclusive,
+            Instant windowEndExclusive
+    ) {
+        return jdbcClient.sql("""
+                        SELECT
+                            id,
+                            channel_message_id,
+                            channel_id,
+                            sender_user_id,
+                            body,
+                            status,
+                            idempotency_key,
+                            created_at
+                        FROM support_questions
+                        WHERE channel_id = :channelId
+                        AND created_at >= :windowStartInclusive
+                        AND created_at < :windowEndExclusive
+                        ORDER BY created_at ASC
+                        """)
+                .param("channelId", channelId)
+                .param("windowStartInclusive", Timestamp.from(windowStartInclusive))
+                .param("windowEndExclusive", Timestamp.from(windowEndExclusive))
                 .query(this::mapSupportQuestion)
                 .list();
     }

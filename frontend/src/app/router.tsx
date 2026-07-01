@@ -9,6 +9,7 @@ import { AppChannelLayout, AppShellLayout } from '../features/shell/layouts/AppS
 import { AppHomeRedirectPage, AppServerRedirectPage } from '../features/shell/pages/AppServerRedirectPage'
 import { SupportOperationPage } from '../features/support-operations/components/SupportOperationPage'
 import { InstructorDashboardPage } from '../features/instructor-dashboard/components/InstructorDashboardPage'
+import { ChannelSummaryPage } from '../features/channel-summary/components/ChannelSummaryPage'
 import { CreateStudyServerPage } from '../features/onboarding/components/CreateStudyServerPage'
 import { CohortEnrollmentPage } from '../features/onboarding/components/CohortEnrollmentPage'
 import { StudyServerHomePage } from '../features/onboarding/components/StudyServerHomePage'
@@ -70,6 +71,10 @@ export function createAppRouter() {
         {
           path: 'servers/:serverId/study-channels/:channelId',
           element: <AppChannelLayout />,
+        },
+        {
+          path: 'servers/:serverId/course-channels/:channelId/summary',
+          element: <ChannelSummaryPage />,
         },
         {
           path: 'servers/:serverId/course-channels/:channelId',
