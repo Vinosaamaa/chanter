@@ -28,6 +28,7 @@
         <module>media-service</module>
         <module>agent-service</module>
         <module>analytics-service</module>
+        <module>search-service</module>
     </modules>
 
     <properties>

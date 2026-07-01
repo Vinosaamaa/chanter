@@ -1,5 +1,18 @@
 # search-service
 
-Planned microservice boundary for Chanter. See `plan.md` and `System Design.md`.
+Global search read model for Chanter. Indexes course resources and approved FAQs per Study Server, then serves enrollment-scoped search results.
 
-Bootstrap status: not implemented yet. Active work starts after issue #11 (monorepo bootstrap) and follows vertical slices in `docs/issues/education-mvp-issue-breakdown.md`.
+## Local run
+
+```bash
+make backend-search
+```
+
+Requires Postgres database `chanter_search` (see `infra/postgres/init/01-databases.sql`) and downstream community, media, and message services.
+
+## API
+
+- `GET /api/v1/study-servers/{studyServerId}/search?q=` — enrollment-scoped search
+- `POST /api/v1/study-servers/{studyServerId}/search/reindex` — rebuild index from media + message catalogs
+
+Gateway route: `/api/v1/study-servers/*/search/**` → port `8088`.

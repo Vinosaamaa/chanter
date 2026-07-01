@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { logout as logoutApi } from '../../auth/auth-api'
+import { useGlobalSearch } from '../../global-search/hooks/use-global-search'
 import { cn } from '../../../lib/cn'
 import { useAuthStore } from '../../../stores/auth-store'
 
@@ -12,6 +13,7 @@ const topLinks = [
 export function AppTopBar() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { openSearch } = useGlobalSearch()
   const user = useAuthStore((state) => state.user)
   const clearSession = useAuthStore((state) => state.clearSession)
 
@@ -47,7 +49,15 @@ export function AppTopBar() {
           </Link>
         ))}
       </nav>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={openSearch}
+          className="flex items-center gap-2 rounded-lg border border-app-border bg-app-bg px-3 py-1.5 text-sm text-app-muted hover:text-app-text"
+        >
+          <span>Search</span>
+          <kbd className="hidden rounded border border-app-border px-1.5 py-0.5 text-[10px] sm:inline">⌘K</kbd>
+        </button>
         <p className="hidden text-xs text-app-muted sm:block">
           {user?.displayName ?? user?.email ?? 'Signed in'}
         </p>
