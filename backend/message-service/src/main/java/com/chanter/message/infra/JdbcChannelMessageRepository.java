@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -103,6 +104,34 @@ public class JdbcChannelMessageRepository implements ChannelMessageRepository {
     }
 
     @Override
+    public long countByChannelCreatedBetweenExcludingIds(
+            UUID channelId,
+            Instant windowStartInclusive,
+            Instant windowEndExclusive,
+            Set<UUID> excludedMessageIds
+    ) {
+        if (excludedMessageIds.isEmpty()) {
+            return countByChannelCreatedBetween(channelId, windowStartInclusive, windowEndExclusive);
+        }
+
+        Long count = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM channel_messages
+                        WHERE channel_id = :channelId
+                        AND created_at >= :windowStartInclusive
+                        AND created_at < :windowEndExclusive
+                        AND id NOT IN (:excludedMessageIds)
+                        """)
+                .param("channelId", channelId)
+                .param("windowStartInclusive", Timestamp.from(windowStartInclusive))
+                .param("windowEndExclusive", Timestamp.from(windowEndExclusive))
+                .param("excludedMessageIds", excludedMessageIds)
+                .query(Long.class)
+                .single();
+        return count == null ? 0L : count;
+    }
+
+    @Override
     public List<ChannelMessage> listByChannelCreatedBetween(
             UUID channelId,
             Instant windowStartInclusive,
@@ -121,6 +150,43 @@ public class JdbcChannelMessageRepository implements ChannelMessageRepository {
                 .param("channelId", channelId)
                 .param("windowStartInclusive", Timestamp.from(windowStartInclusive))
                 .param("windowEndExclusive", Timestamp.from(windowEndExclusive))
+                .param("limit", limit)
+                .query((rs, rowNum) -> new ChannelMessage(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("channel_id", UUID.class),
+                        rs.getObject("sender_user_id", UUID.class),
+                        rs.getString("body"),
+                        rs.getTimestamp("created_at").toInstant()
+                ))
+                .list();
+    }
+
+    @Override
+    public List<ChannelMessage> listByChannelCreatedBetweenExcludingIds(
+            UUID channelId,
+            Instant windowStartInclusive,
+            Instant windowEndExclusive,
+            Set<UUID> excludedMessageIds,
+            int limit
+    ) {
+        if (excludedMessageIds.isEmpty()) {
+            return listByChannelCreatedBetween(channelId, windowStartInclusive, windowEndExclusive, limit);
+        }
+
+        return jdbcClient.sql("""
+                        SELECT id, channel_id, sender_user_id, body, created_at
+                        FROM channel_messages
+                        WHERE channel_id = :channelId
+                        AND created_at >= :windowStartInclusive
+                        AND created_at < :windowEndExclusive
+                        AND id NOT IN (:excludedMessageIds)
+                        ORDER BY created_at DESC, id DESC
+                        LIMIT :limit
+                        """)
+                .param("channelId", channelId)
+                .param("windowStartInclusive", Timestamp.from(windowStartInclusive))
+                .param("windowEndExclusive", Timestamp.from(windowEndExclusive))
+                .param("excludedMessageIds", excludedMessageIds)
                 .param("limit", limit)
                 .query((rs, rowNum) -> new ChannelMessage(
                         rs.getObject("id", UUID.class),

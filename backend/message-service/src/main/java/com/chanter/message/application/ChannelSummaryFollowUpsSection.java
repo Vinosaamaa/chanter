@@ -7,4 +7,7 @@ public record ChannelSummaryFollowUpsSection(
         String summary,
         List<String> questions
 ) {
+    public ChannelSummaryFollowUpsSection {
+        questions = List.copyOf(questions);
+    }
 }

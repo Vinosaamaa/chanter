@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -75,11 +76,20 @@ public class ChannelSummaryService {
                 windowStart
         );
 
-        long currentReplies = channelMessageRepository.countByChannelCreatedBetween(channelId, windowStart, windowEnd);
-        long previousReplies = channelMessageRepository.countByChannelCreatedBetween(
+        Set<UUID> currentSupportMessageIds = supportQuestionMessageIds(currentQuestions);
+        Set<UUID> previousSupportMessageIds = supportQuestionMessageIds(previousQuestions);
+
+        long currentReplies = channelMessageRepository.countByChannelCreatedBetweenExcludingIds(
+                channelId,
+                windowStart,
+                windowEnd,
+                currentSupportMessageIds
+        );
+        long previousReplies = channelMessageRepository.countByChannelCreatedBetweenExcludingIds(
                 channelId,
                 previousWindowStart,
-                windowStart
+                windowStart,
+                previousSupportMessageIds
         );
 
         long currentViews = estimateViews(currentQuestions.size(), currentReplies);
@@ -95,11 +105,19 @@ public class ChannelSummaryService {
                 metric(currentResolvedPercent, previousResolvedPercent)
         );
 
-        ChannelSummaryDigest digest = buildDigest(access.courseId(), currentQuestions);
+        ChannelSummaryDigest digest = buildDigest(access.courseId(), currentQuestions, windowStart, windowEnd);
         List<ChannelSummaryTimelineEvent> timeline = buildTimeline(
                 access.courseId(),
                 currentQuestions,
-                channelMessageRepository.listByChannelCreatedBetween(channelId, windowStart, windowEnd, 200)
+                channelMessageRepository.listByChannelCreatedBetweenExcludingIds(
+                        channelId,
+                        windowStart,
+                        windowEnd,
+                        currentSupportMessageIds,
+                        200
+                ),
+                windowStart,
+                windowEnd
         );
 
         return new ChannelSummary(
@@ -151,7 +169,22 @@ public class ChannelSummaryService {
         return Math.toIntExact(Math.round(resolvedCount * 100.0 / questions.size()));
     }
 
-    private ChannelSummaryDigest buildDigest(UUID courseId, List<SupportQuestion> questions) {
+    private static Set<UUID> supportQuestionMessageIds(List<SupportQuestion> questions) {
+        return questions.stream()
+                .map(SupportQuestion::channelMessageId)
+                .collect(Collectors.toSet());
+    }
+
+    private static boolean isWithinWindow(Instant instant, Instant windowStart, Instant windowEnd) {
+        return !instant.isBefore(windowStart) && instant.isBefore(windowEnd);
+    }
+
+    private ChannelSummaryDigest buildDigest(
+            UUID courseId,
+            List<SupportQuestion> questions,
+            Instant windowStart,
+            Instant windowEnd
+    ) {
         ChannelSummaryTopicSection topTopics = buildTopTopics(questions);
 
         List<SupportQuestion> followUpQuestions = questions.stream()
@@ -176,6 +209,7 @@ public class ChannelSummaryService {
         );
 
         List<ApprovedFaq> approvedFaqs = approvedFaqRepository.findByCourseId(courseId).stream()
+                .filter(faq -> isWithinWindow(faq.updatedAt(), windowStart, windowEnd))
                 .sorted(Comparator.comparing(ApprovedFaq::updatedAt).reversed())
                 .limit(MAX_TEXT_ITEMS)
                 .toList();
@@ -265,7 +299,9 @@ public class ChannelSummaryService {
     private List<ChannelSummaryTimelineEvent> buildTimeline(
             UUID courseId,
             List<SupportQuestion> questions,
-            List<ChannelMessage> messages
+            List<ChannelMessage> messages,
+            Instant windowStart,
+            Instant windowEnd
     ) {
         List<ChannelSummaryTimelineEvent> events = new ArrayList<>();
 
@@ -293,6 +329,9 @@ public class ChannelSummaryService {
         }
 
         for (ApprovedFaq approvedFaq : approvedFaqRepository.findByCourseId(courseId)) {
+            if (!isWithinWindow(approvedFaq.updatedAt(), windowStart, windowEnd)) {
+                continue;
+            }
             events.add(new ChannelSummaryTimelineEvent(
                     "KEY_DECISION",
                     approvedFaq.question(),

@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 
 import { generateChannelSummary } from '../channel-summary-api'
 import type { ChannelSummary } from '../channel-summary-types'
@@ -8,6 +8,10 @@ export function useChannelSummary(channelId: string | undefined, windowDays = 7)
   const mutation = useMutation({
     mutationFn: () => generateChannelSummary(channelId!, windowDays),
   })
+
+  useEffect(() => {
+    mutation.reset()
+  }, [channelId, windowDays, mutation])
 
   const generate = useCallback(() => {
     if (!channelId) {

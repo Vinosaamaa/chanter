@@ -71,9 +71,21 @@ class ChannelSummarySmokeTest {
         assertThat(summary.channelName()).isEqualTo("questions");
         assertThat(summary.windowDays()).isEqualTo(7);
         assertThat(summary.metrics().questionsAsked().value()).isEqualTo(3);
+        assertThat(summary.metrics().replies().value()).isZero();
         assertThat(summary.digest().topTopics().title()).isNotBlank();
         assertThat(summary.digest().unansweredFollowUps().count()).isGreaterThanOrEqualTo(3);
         assertThat(summary.timeline()).isNotEmpty();
+    }
+
+    @Test
+    void unauthenticatedRequestReturnsUnauthorized() throws Exception {
+        UUID channelId = UUID.randomUUID();
+        courseChannelAccessClient.registerChannel(channelId);
+
+        mockMvc.perform(post("/api/v1/course-channels/{channelId}/channel-summary", channelId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("windowDays", 7))))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

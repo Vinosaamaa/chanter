@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
+import { useState } from 'react'
 
 import { cn } from '../../../lib/cn'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
@@ -103,13 +104,14 @@ function formatTimelineDate(iso: string): string {
 
 export function ChannelSummaryPage() {
   const { serverId, channelId } = useParams()
+  const [windowDays, setWindowDays] = useState(7)
   const navigationQuery = useStudyServerNavigationQuery(serverId)
   const channelContext =
     channelId && navigationQuery.data
       ? findCourseChannelContext(navigationQuery.data, channelId)
       : null
   const canViewSummary = Boolean(navigationQuery.data?.canViewFullCatalog)
-  const summaryState = useChannelSummary(channelId)
+  const summaryState = useChannelSummary(channelId, windowDays)
 
   if (!serverId || !channelId) {
     return (
@@ -123,6 +125,14 @@ export function ChannelSummaryPage() {
     return (
       <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
         Loading channel…
+      </section>
+    )
+  }
+
+  if (navigationQuery.isError) {
+    return (
+      <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
+        Unable to load channel navigation for this Study Server.
       </section>
     )
   }
@@ -148,7 +158,7 @@ export function ChannelSummaryPage() {
             <h1 className="mt-1 text-2xl font-semibold text-app-text">
               #{channelContext?.channel.name ?? 'questions'}
               <span className="ml-2 text-base font-normal text-app-muted">
-                · Last {summary?.windowDays ?? 7} days
+                · Last {summary?.windowDays ?? windowDays} days
               </span>
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-app-muted">
@@ -156,6 +166,19 @@ export function ChannelSummaryPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <label className="flex flex-col gap-1 text-xs text-app-muted">
+              Time window
+              <select
+                value={windowDays}
+                onChange={(event) => setWindowDays(Number(event.target.value))}
+                disabled={summaryState.isGenerating}
+                className="min-w-32 rounded-lg border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text"
+              >
+                <option value={7}>Last 7 days</option>
+                <option value={14}>Last 14 days</option>
+                <option value={30}>Last 30 days</option>
+              </select>
+            </label>
             <Link
               to={courseChannelPath(serverId, channelId)}
               className="rounded-lg border border-app-border px-3 py-2 text-sm text-app-muted hover:bg-app-surface hover:text-app-text"

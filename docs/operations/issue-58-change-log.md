@@ -8,6 +8,8 @@ Instructors can generate an on-demand digest for a `#questions` course channel: 
 
 `POST /api/v1/course-channels/{channelId}/channel-summary`
 
+Request body is optional; omitting it defaults `windowDays` to 7.
+
 ```json
 { "windowDays": 7 }
 ```
