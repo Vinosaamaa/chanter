@@ -3,12 +3,10 @@ package com.chanter.search.infra;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.search.application.MediaCatalogClient;
 import com.chanter.search.config.MediaServiceClientProperties;
-import java.net.http.HttpClient;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -23,17 +21,11 @@ public class HttpMediaCatalogClient implements MediaCatalogClient {
     private final RestClient restClient;
 
     public HttpMediaCatalogClient(MediaServiceClientProperties properties) {
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
-                HttpClient.newBuilder()
-                        .connectTimeout(properties.connectTimeout())
-                        .build()
+        this.restClient = DownstreamRestClientFactory.create(
+                properties.baseUrl(),
+                properties.connectTimeout(),
+                properties.readTimeout()
         );
-        requestFactory.setReadTimeout(properties.readTimeout());
-
-        this.restClient = RestClient.builder()
-                .baseUrl(properties.baseUrl())
-                .requestFactory(requestFactory)
-                .build();
     }
 
     @Override
@@ -57,8 +49,6 @@ public class HttpMediaCatalogClient implements MediaCatalogClient {
                             resource.fileName()
                     ))
                     .toList();
-        } catch (HttpClientErrorException.Unauthorized exception) {
-            return List.of();
         } catch (HttpClientErrorException.NotFound exception) {
             return List.of();
         } catch (HttpClientErrorException.Forbidden exception) {

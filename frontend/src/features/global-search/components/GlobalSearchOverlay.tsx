@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { cn } from '../../../lib/cn'
@@ -24,7 +24,21 @@ function hitDestination(serverId: string, hit: GlobalSearchHit, resourcesChannel
   return `/app/servers/${serverId}/home`
 }
 
-function GlobalSearchOverlayPanel({ onClose }: { onClose: () => void }) {
+function focusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  )
+}
+
+function GlobalSearchOverlayPanel({
+  onClose,
+  panelRef,
+}: {
+  onClose: () => void
+  panelRef: RefObject<HTMLElement | null>
+}) {
   const { serverId } = useParams()
   const navigate = useNavigate()
   const navigationQuery = useStudyServerNavigationQuery(serverId)
@@ -35,38 +49,53 @@ function GlobalSearchOverlayPanel({ onClose }: { onClose: () => void }) {
   const [isReindexing, setIsReindexing] = useState(false)
   const [reindexMessage, setReindexMessage] = useState<string | null>(null)
 
+  const trimmedQuery = query.trim()
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value)
+    if (value.trim().length < 2) {
+      setResults([])
+      setError(null)
+      setIsSearching(false)
+    }
+  }
+
   useEffect(() => {
-    if (!serverId) {
+    if (!serverId || trimmedQuery.length < 2) {
       return
     }
 
-    const trimmed = query.trim()
-    if (trimmed.length < 2) {
-      return
-    }
-
+    let cancelled = false
     const handle = window.setTimeout(() => {
       setIsSearching(true)
       setError(null)
-      void searchStudyServer(serverId, trimmed)
+      void searchStudyServer(serverId, trimmedQuery)
         .then((response) => {
-          setResults(response.results)
+          if (!cancelled) {
+            setResults(response.results)
+          }
         })
         .catch((caught) => {
-          setResults([])
-          setError(formatUserFacingApiError(caught, 'Search failed.'))
+          if (!cancelled) {
+            setResults([])
+            setError(formatUserFacingApiError(caught, 'Search failed.'))
+          }
         })
         .finally(() => {
-          setIsSearching(false)
+          if (!cancelled) {
+            setIsSearching(false)
+          }
         })
     }, 250)
 
-    return () => window.clearTimeout(handle)
+    return () => {
+      cancelled = true
+      window.clearTimeout(handle)
+    }
   }, [query, serverId])
 
   const canManage = navigationQuery.data?.canViewFullCatalog ?? false
-  const trimmedQuery = query.trim()
-  const visibleResults = trimmedQuery.length >= 2 ? results : []
+  const visibleResults = serverId && trimmedQuery.length >= 2 ? results : []
 
   const onReindex = async () => {
     if (!serverId) {
@@ -89,6 +118,7 @@ function GlobalSearchOverlayPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <section
+      ref={panelRef}
       role="dialog"
       aria-modal="true"
       aria-label="Global search"
@@ -100,7 +130,7 @@ function GlobalSearchOverlayPanel({ onClose }: { onClose: () => void }) {
           <input
             autoFocus
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => handleQueryChange(event.target.value)}
             placeholder="Search resources and approved FAQs"
             className="rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm text-app-text"
           />
@@ -121,9 +151,11 @@ function GlobalSearchOverlayPanel({ onClose }: { onClose: () => void }) {
           <p className="px-3 py-6 text-sm text-app-muted">Type at least two characters to search.</p>
         ) : null}
 
-        {isSearching ? <p className="px-3 py-6 text-sm text-app-muted">Searching…</p> : null}
+        {serverId && trimmedQuery.length >= 2 && isSearching ? (
+          <p className="px-3 py-6 text-sm text-app-muted">Searching…</p>
+        ) : null}
 
-        {error ? (
+        {serverId && trimmedQuery.length >= 2 && error ? (
           <p role="alert" className="px-3 py-4 text-sm text-red-300">
             {error}
           </p>
@@ -197,6 +229,47 @@ function GlobalSearchOverlayPanel({ onClose }: { onClose: () => void }) {
 
 export function GlobalSearchOverlay() {
   const { isOpen, closeSearch } = useGlobalSearch()
+  const panelRef = useRef<HTMLElement>(null)
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    previouslyFocusedRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !panelRef.current) {
+        return
+      }
+
+      const focusable = focusableElements(panelRef.current)
+      if (focusable.length === 0) {
+        return
+      }
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      previouslyFocusedRef.current?.focus()
+    }
+  }, [isOpen])
 
   if (!isOpen) {
     return null
@@ -210,7 +283,7 @@ export function GlobalSearchOverlay() {
         className="absolute inset-0"
         onClick={closeSearch}
       />
-      <GlobalSearchOverlayPanel onClose={closeSearch} />
+      <GlobalSearchOverlayPanel onClose={closeSearch} panelRef={panelRef} />
     </div>
   )
 }

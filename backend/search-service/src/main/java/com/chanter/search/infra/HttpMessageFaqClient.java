@@ -2,12 +2,10 @@ package com.chanter.search.infra;
 
 import com.chanter.search.application.MessageFaqClient;
 import com.chanter.search.config.MessageServiceClientProperties;
-import java.net.http.HttpClient;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -22,17 +20,11 @@ public class HttpMessageFaqClient implements MessageFaqClient {
     private final RestClient restClient;
 
     public HttpMessageFaqClient(MessageServiceClientProperties properties) {
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
-                HttpClient.newBuilder()
-                        .connectTimeout(properties.connectTimeout())
-                        .build()
+        this.restClient = DownstreamRestClientFactory.create(
+                properties.baseUrl(),
+                properties.connectTimeout(),
+                properties.readTimeout()
         );
-        requestFactory.setReadTimeout(properties.readTimeout());
-
-        this.restClient = RestClient.builder()
-                .baseUrl(properties.baseUrl())
-                .requestFactory(requestFactory)
-                .build();
     }
 
     @Override

@@ -21,9 +21,7 @@ export function useGlobalSearchShortcut({
 
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        if (isOpen) {
-          onClose()
-        } else {
+        if (!isOpen) {
           onOpen()
         }
         return

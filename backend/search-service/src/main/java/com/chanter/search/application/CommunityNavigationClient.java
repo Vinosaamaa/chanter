@@ -10,6 +10,7 @@ public interface CommunityNavigationClient {
     record StudyServerNavigation(
             UUID studyServerId,
             String studyServerName,
+            boolean canViewFullCatalog,
             List<CourseSummary> courses
     ) {
     }

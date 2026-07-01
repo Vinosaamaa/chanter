@@ -3,12 +3,10 @@ package com.chanter.search.infra;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.search.application.CommunityNavigationClient;
 import com.chanter.search.config.CommunityServiceClientProperties;
-import java.net.http.HttpClient;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -24,17 +22,11 @@ public class HttpCommunityNavigationClient implements CommunityNavigationClient 
     private final RestClient restClient;
 
     public HttpCommunityNavigationClient(CommunityServiceClientProperties properties) {
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
-                HttpClient.newBuilder()
-                        .connectTimeout(properties.connectTimeout())
-                        .build()
+        this.restClient = DownstreamRestClientFactory.create(
+                properties.baseUrl(),
+                properties.connectTimeout(),
+                properties.readTimeout()
         );
-        requestFactory.setReadTimeout(properties.readTimeout());
-
-        this.restClient = RestClient.builder()
-                .baseUrl(properties.baseUrl())
-                .requestFactory(requestFactory)
-                .build();
     }
 
     @Override
@@ -56,7 +48,12 @@ public class HttpCommunityNavigationClient implements CommunityNavigationClient 
                             .map(course -> new CourseSummary(course.id(), course.title()))
                             .toList();
 
-            return new StudyServerNavigation(response.studyServerId(), response.studyServerName(), courses);
+            return new StudyServerNavigation(
+                    response.studyServerId(),
+                    response.studyServerName(),
+                    response.canViewFullCatalog(),
+                    courses
+            );
         } catch (HttpClientErrorException.NotFound exception) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found", exception);
         } catch (HttpClientErrorException.Forbidden exception) {

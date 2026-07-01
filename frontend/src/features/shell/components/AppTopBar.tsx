@@ -53,10 +53,10 @@ export function AppTopBar() {
         <button
           type="button"
           onClick={openSearch}
-          className="hidden items-center gap-2 rounded-lg border border-app-border bg-app-bg px-3 py-1.5 text-sm text-app-muted hover:text-app-text sm:flex"
+          className="flex items-center gap-2 rounded-lg border border-app-border bg-app-bg px-3 py-1.5 text-sm text-app-muted hover:text-app-text"
         >
           <span>Search</span>
-          <kbd className="rounded border border-app-border px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+          <kbd className="hidden rounded border border-app-border px-1.5 py-0.5 text-[10px] sm:inline">⌘K</kbd>
         </button>
         <p className="hidden text-xs text-app-muted sm:block">
           {user?.displayName ?? user?.email ?? 'Signed in'}
