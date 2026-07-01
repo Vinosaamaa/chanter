@@ -7,11 +7,11 @@ import com.chanter.search.infra.JdbcSearchIndexRepository.IndexEntry;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -128,7 +128,7 @@ public class GlobalSearchService {
                     courseId,
                     id -> mediaCatalogClient.listCourseResources(id, viewerUserId).stream()
                             .map(MediaCatalogClient.CourseResourceSummary::id)
-                            .collect(HashSet::new, Set::add, Set::addAll)
+                            .collect(Collectors.toSet())
             );
             return visibleResourceIds.contains(hit.sourceId());
         }
@@ -137,7 +137,7 @@ public class GlobalSearchService {
                 courseId,
                 id -> messageFaqClient.listApprovedFaqs(id, viewerUserId).stream()
                         .map(MessageFaqClient.ApprovedFaqSummary::id)
-                        .collect(HashSet::new, Set::add, Set::addAll)
+                        .collect(Collectors.toSet())
         );
         return visibleFaqIds.contains(hit.sourceId());
     }

@@ -20,7 +20,7 @@ Bootstrapped `search-service` with a denormalized Postgres index for course reso
 ## Manual test
 
 1. Start gateway, auth, community, media, message, **search-service** (`make backend-search`; requires `chanter_search` DB)
-2. Seed searchable content (optional): `./scripts/seed-issue-57-search-demo.sh` — posts support question, approves FAQ, uploads resource, reindexes, and asserts API hits
+2. Seed searchable content (optional): `DEMO_PASSWORD=chanter-dev-demo ./scripts/seed-issue-57-search-demo.sh` — posts support question, approves FAQ, uploads resource, reindexes, and asserts API hits
 3. `/dev/demo` → **Open app shell as Owner** → **Browser Test Study Server 52**
 4. **Search** (or ⌘K) opens overlay; **Refresh index** succeeds
 5. After reindex, query `homework` or `lecture` shows FAQ/resource hits; Esc closes overlay

@@ -31,3 +31,19 @@ Addressed sixteen inline comments from the first CodeRabbit review.
 ```
 
 **Remaining threads:** none from pass 1.
+
+## Pass 2
+
+| Comment | Resolution |
+|---------|------------|
+| **Major** — `JdbcSearchIndexRepository`: delete+insert not transactional | Added `@Transactional` on `replaceStudyServerIndex` |
+| **Minor** — seed script hardcoded demo password | Require `DEMO_PASSWORD` env var |
+| **Minor** — seed script predictable `/tmp` path | Use `mktemp` + `trap` cleanup |
+| **Minor** — `GlobalSearchOverlay`: effect deps use `trimmedQuery` | Updated dependency array |
+| **Trivial** — `GlobalSearchService`: simplify `Collectors.toSet()` | Applied |
+| **Trivial** — per-search downstream fan-out / TTL cache | **Deferred:** correct visibility filtering needs live checks in this slice; cache invalidation belongs with event-driven indexing (#57 deferred) |
+| **Minor** — prefer `focus-trap-react` over hand-rolled trap | **Deferred:** manual Tab trap satisfies a11y for this overlay; no new dependency for bootstrap slice |
+
+**Verification:** same as pass 1.
+
+**Remaining threads:** TTL visibility cache (deferred with Kafka incremental indexing).

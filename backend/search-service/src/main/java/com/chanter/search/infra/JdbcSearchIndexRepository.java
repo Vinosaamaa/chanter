@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class JdbcSearchIndexRepository {
@@ -30,6 +31,7 @@ public class JdbcSearchIndexRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    @Transactional
     public void replaceStudyServerIndex(UUID studyServerId, List<IndexEntry> entries) {
         jdbcTemplate.update("DELETE FROM search_index_entries WHERE study_server_id = ?", studyServerId);
 

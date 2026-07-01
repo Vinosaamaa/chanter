@@ -8,7 +8,7 @@ cd "$ROOT"
 source .env 2>/dev/null || true
 
 GATEWAY="${GATEWAY:-http://localhost:8080}"
-DEMO_PASSWORD="chanter-dev-demo"
+: "${DEMO_PASSWORD:?Set DEMO_PASSWORD to the local demo password before running this script}"
 MARKER="issue57-search-demo-$(date +%s)"
 
 login() {
@@ -130,14 +130,16 @@ echo "   learnerHits=$LEARNER_COUNT"
 echo "==> Search as stranger (query: homework) — expect 0 hits or 403"
 STRANGER_JSON=$(login "dev-demo-nonEnrolled@chanter.local" "Demo Stranger")
 STRANGER_TOKEN=$(echo "$STRANGER_JSON" | json_field "['accessToken']")
-STRANGER_HTTP=$(curl -s -o /tmp/issue57-stranger-search.json -w "%{http_code}" \
+STRANGER_TMP="$(mktemp)"
+trap 'rm -f "$STRANGER_TMP"' EXIT
+STRANGER_HTTP=$(curl -s -o "$STRANGER_TMP" -w "%{http_code}" \
   "$GATEWAY/api/v1/study-servers/$SERVER_ID/search?q=homework" \
   -H "Authorization: Bearer $STRANGER_TOKEN")
 if [[ "$STRANGER_HTTP" == "403" ]]; then
   echo "   strangerBlocked=403 (no study-server access)"
   STRANGER_OK=1
 elif [[ "$STRANGER_HTTP" == "200" ]]; then
-  STRANGER_COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/issue57-stranger-search.json')).get('results',[])))")
+  STRANGER_COUNT=$(python3 -c "import json; print(len(json.load(open('$STRANGER_TMP')).get('results',[])))")
   echo "   strangerHits=$STRANGER_COUNT"
   STRANGER_OK=$([[ "$STRANGER_COUNT" == "0" ]] && echo 1 || echo 0)
 else

@@ -92,7 +92,7 @@ function GlobalSearchOverlayPanel({
       cancelled = true
       window.clearTimeout(handle)
     }
-  }, [query, serverId])
+  }, [trimmedQuery, serverId])
 
   const canManage = navigationQuery.data?.canViewFullCatalog ?? false
   const visibleResults = serverId && trimmedQuery.length >= 2 ? results : []
