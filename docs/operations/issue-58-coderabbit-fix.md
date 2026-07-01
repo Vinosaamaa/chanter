@@ -13,6 +13,13 @@
 | Add time-window selector in UI | Fixed — 7 / 14 / 30 day dropdown |
 | Reset mutation when `channelId` or `windowDays` changes | Fixed |
 
+## Pass 2
+
+| Comment | Action |
+|---------|--------|
+| Fetch approved FAQs once per summary request | Fixed — `approvedFaqsInWindow` shared by digest + timeline |
+| Stabilize `useMutation` reset effect deps | Fixed — destructure `reset`/`mutate` instead of whole `mutation` object |
+
 ## Deferred
 
 None.

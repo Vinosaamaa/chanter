@@ -5,26 +5,26 @@ import { generateChannelSummary } from '../channel-summary-api'
 import type { ChannelSummary } from '../channel-summary-types'
 
 export function useChannelSummary(channelId: string | undefined, windowDays = 7) {
-  const mutation = useMutation({
+  const { mutate, reset, data, isPending, isSuccess, error } = useMutation({
     mutationFn: () => generateChannelSummary(channelId!, windowDays),
   })
 
   useEffect(() => {
-    mutation.reset()
-  }, [channelId, windowDays, mutation])
+    reset()
+  }, [channelId, windowDays, reset])
 
   const generate = useCallback(() => {
     if (!channelId) {
       return
     }
-    mutation.mutate()
-  }, [channelId, mutation])
+    mutate()
+  }, [channelId, mutate])
 
   return {
-    summary: mutation.data as ChannelSummary | undefined,
-    isGenerating: mutation.isPending,
-    error: mutation.error instanceof Error ? mutation.error.message : null,
+    summary: data as ChannelSummary | undefined,
+    isGenerating: isPending,
+    error: error instanceof Error ? error.message : null,
     generate,
-    hasGenerated: mutation.isSuccess,
+    hasGenerated: isSuccess,
   }
 }

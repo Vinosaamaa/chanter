@@ -105,9 +105,10 @@ public class ChannelSummaryService {
                 metric(currentResolvedPercent, previousResolvedPercent)
         );
 
-        ChannelSummaryDigest digest = buildDigest(access.courseId(), currentQuestions, windowStart, windowEnd);
+        List<ApprovedFaq> approvedFaqs = approvedFaqsInWindow(access.courseId(), windowStart, windowEnd);
+
+        ChannelSummaryDigest digest = buildDigest(currentQuestions, approvedFaqs);
         List<ChannelSummaryTimelineEvent> timeline = buildTimeline(
-                access.courseId(),
                 currentQuestions,
                 channelMessageRepository.listByChannelCreatedBetweenExcludingIds(
                         channelId,
@@ -116,8 +117,7 @@ public class ChannelSummaryService {
                         currentSupportMessageIds,
                         200
                 ),
-                windowStart,
-                windowEnd
+                approvedFaqs
         );
 
         return new ChannelSummary(
@@ -179,11 +179,16 @@ public class ChannelSummaryService {
         return !instant.isBefore(windowStart) && instant.isBefore(windowEnd);
     }
 
+    private List<ApprovedFaq> approvedFaqsInWindow(UUID courseId, Instant windowStart, Instant windowEnd) {
+        return approvedFaqRepository.findByCourseId(courseId).stream()
+                .filter(faq -> isWithinWindow(faq.updatedAt(), windowStart, windowEnd))
+                .sorted(Comparator.comparing(ApprovedFaq::updatedAt).reversed())
+                .toList();
+    }
+
     private ChannelSummaryDigest buildDigest(
-            UUID courseId,
             List<SupportQuestion> questions,
-            Instant windowStart,
-            Instant windowEnd
+            List<ApprovedFaq> approvedFaqs
     ) {
         ChannelSummaryTopicSection topTopics = buildTopTopics(questions);
 
@@ -208,9 +213,7 @@ public class ChannelSummaryService {
                 followUpBodies
         );
 
-        List<ApprovedFaq> approvedFaqs = approvedFaqRepository.findByCourseId(courseId).stream()
-                .filter(faq -> isWithinWindow(faq.updatedAt(), windowStart, windowEnd))
-                .sorted(Comparator.comparing(ApprovedFaq::updatedAt).reversed())
+        List<ApprovedFaq> windowApprovedFaqs = approvedFaqs.stream()
                 .limit(MAX_TEXT_ITEMS)
                 .toList();
 
@@ -218,14 +221,14 @@ public class ChannelSummaryService {
                 approvedFaqs.isEmpty()
                         ? "No approved FAQ decisions recorded yet for this course."
                         : "Instructor-approved answers that set direction for the cohort.",
-                approvedFaqs.stream().map(ApprovedFaq::answer).limit(MAX_TEXT_ITEMS).toList()
+                windowApprovedFaqs.stream().map(ApprovedFaq::answer).limit(MAX_TEXT_ITEMS).toList()
         );
 
         ChannelSummaryTextItemsSection resourceLinks = new ChannelSummaryTextItemsSection(
                 approvedFaqs.isEmpty()
                         ? "No curated resources linked from approved FAQs yet."
                         : "Approved FAQ entries that learners can revisit as reference material.",
-                approvedFaqs.stream().map(ApprovedFaq::question).limit(MAX_TEXT_ITEMS).toList()
+                windowApprovedFaqs.stream().map(ApprovedFaq::question).limit(MAX_TEXT_ITEMS).toList()
         );
 
         return new ChannelSummaryDigest(topTopics, unansweredFollowUps, keyDecisions, resourceLinks);
@@ -297,11 +300,9 @@ public class ChannelSummaryService {
     }
 
     private List<ChannelSummaryTimelineEvent> buildTimeline(
-            UUID courseId,
             List<SupportQuestion> questions,
             List<ChannelMessage> messages,
-            Instant windowStart,
-            Instant windowEnd
+            List<ApprovedFaq> approvedFaqs
     ) {
         List<ChannelSummaryTimelineEvent> events = new ArrayList<>();
 
@@ -328,10 +329,7 @@ public class ChannelSummaryService {
             ));
         }
 
-        for (ApprovedFaq approvedFaq : approvedFaqRepository.findByCourseId(courseId)) {
-            if (!isWithinWindow(approvedFaq.updatedAt(), windowStart, windowEnd)) {
-                continue;
-            }
+        for (ApprovedFaq approvedFaq : approvedFaqs) {
             events.add(new ChannelSummaryTimelineEvent(
                     "KEY_DECISION",
                     approvedFaq.question(),
