@@ -58,6 +58,14 @@ public class StudyServerChannelController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{channelId}/media-token")
+    public VoiceMediaTokenResponse issueMediaToken(
+            @PathVariable UUID channelId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID memberUserId
+    ) {
+        return VoiceMediaTokenResponse.from(studyServerService.issueVoiceChannelMediaToken(channelId, memberUserId));
+    }
+
     @GetMapping("/{channelId}/channel-message-access")
     public StudyServerChannelMessageAccessResponse getChannelMessageAccess(
             @PathVariable UUID channelId,

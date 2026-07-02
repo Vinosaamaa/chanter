@@ -44,9 +44,9 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4). Production Frontend **#47–#59** is **complete** (last merge: #59, PR #76).
 
-**Active slice:** **#62** one-command local product stack — branch `feature/62-one-command-local-product-stack`.
+**Active slice:** **#61** voice WebRTC + LiveKit — branch `feature/61-voice-webrtc-livekit`.
 
-**Next after #62:** #61 voice WebRTC + LiveKit integration.
+**Next after #61:** #31 Friends Hub + live DM.
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
@@ -82,8 +82,8 @@ Workable Product (**active** — [project #4](https://github.com/users/Vinosaama
 | Order | Issue | Notes |
 |------:|-------|-------|
 | 1 | [#60](https://github.com/Vinosaamaa/chanter/issues/60) | Epic |
-| 2 | [**#62**](https://github.com/Vinosaamaa/chanter/issues/62) | One-command stack — **in progress** |
-| 3 | [#61](https://github.com/Vinosaamaa/chanter/issues/61) | Voice WebRTC + LiveKit |
+| 2 | [**#62**](https://github.com/Vinosaamaa/chanter/issues/62) | One-command stack — **merged** (PR #77) |
+| 3 | [**#61**](https://github.com/Vinosaamaa/chanter/issues/61) | Voice WebRTC + LiveKit — **in progress** |
 | 4 | [#31](https://github.com/Vinosaamaa/chanter/issues/31) | Friends Hub |
 | 5 | [#32](https://github.com/Vinosaamaa/chanter/issues/32) | DM voice |
 | 6 | [#63](https://github.com/Vinosaamaa/chanter/issues/63) | E2E demo |
@@ -330,13 +330,13 @@ Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24 is merged on main.
 Production Frontend #47–#59 is complete.
-Active: Workable Product project #4 — #62 in progress.
+Active: Workable Product project #4 — #61 in progress.
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/62
+Issue: https://github.com/Vinosaamaa/chanter/issues/61
 Project: https://github.com/users/Vinosaamaa/projects/4
 ```
 

@@ -19,3 +19,9 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+
+chanter:
+  livekit:
+    url: ${LIVEKIT_URL:ws://localhost:7880}
+    api-key: ${LIVEKIT_API_KEY:devkey}
+    api-secret: ${LIVEKIT_API_SECRET:secret}

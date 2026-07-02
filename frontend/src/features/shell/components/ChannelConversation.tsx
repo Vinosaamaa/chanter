@@ -5,9 +5,16 @@ import { useAuthStore } from '../../../stores/auth-store'
 
 import { QuestionsChannelGate } from './QuestionsChannelConversation'
 import { ResourcesChannelGate } from './ResourcesChannelConversation'
+import { VoiceChannelPanel } from '../../voice/components/VoiceChannelPanel'
 import { useChannelConversation } from '../hooks/use-channel-conversation'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
-import { findChannelLabel, findCourseChannelContext, isQuestionsChannel, isResourcesChannel } from '../shell-routes'
+import {
+  findChannelLabel,
+  findCourseChannelContext,
+  isQuestionsChannel,
+  isResourcesChannel,
+  isVoiceStudyChannel,
+} from '../shell-routes'
 import type { ChannelScope } from '../channel-message-types'
 
 export function ChannelConversation() {
@@ -64,6 +71,13 @@ function ChannelConversationPanel({
   }
   if (isResourcesChannel(courseChannelContext)) {
     return <ResourcesChannelGate serverId={serverId} channelId={channelId} />
+  }
+
+  if (channelScope === 'study' && isVoiceStudyChannel(navigationQuery.data, channelId)) {
+    const channelLabel = findChannelLabel(navigationQuery.data, channelScope, channelId)
+    if (channelLabel) {
+      return <VoiceChannelPanel channelId={channelId} channelLabel={channelLabel} />
+    }
   }
 
   const channelLabel = findChannelLabel(navigationQuery.data, channelScope, channelId)
