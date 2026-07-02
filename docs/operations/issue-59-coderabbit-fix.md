@@ -9,6 +9,10 @@
 | Explicit types for use cases / pricing teaser | Fixed — `string[]` and `MarketingPricingTeaser` |
 | Missing authenticated CTA test | Fixed — `LandingPage.test.tsx` |
 
+## Pass 2
+
+No new actionable comments. All checks green (`gh pr checks 76`).
+
 ## Deferred
 
 None.
