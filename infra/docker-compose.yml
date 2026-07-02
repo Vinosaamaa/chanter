@@ -80,6 +80,7 @@ services:
       retries: 10
 
   realtime-service:
+    profiles: [product]
     build:
       context: ..
       dockerfile: infra/docker/realtime-service/Dockerfile
@@ -101,6 +102,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  livekit:
+    image: livekit/livekit-server:v1.13.1
+    container_name: chanter-livekit
+    profiles: [product]
+    environment:
+      LIVEKIT_KEYS: ${LIVEKIT_API_KEY:-devkey}:${LIVEKIT_API_SECRET:-secret}
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
 
 volumes:
   postgres-data:

@@ -19,6 +19,10 @@ jobs:
       - name: Build and test backend
         run: mvn -B verify
         working-directory: backend
+      - name: Product stack script tests
+        run: make product-test
+      - name: Validate product Docker Compose profile
+        run: docker compose -f infra/docker-compose.yml --profile product config --quiet
 
   frontend:
     runs-on: ubuntu-latest

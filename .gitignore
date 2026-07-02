@@ -46,6 +46,7 @@ docker-data/
 data/
 tmp/
 logs/
+.product/
 
 # Generated artifacts
 generated/
