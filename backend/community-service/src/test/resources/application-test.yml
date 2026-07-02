@@ -5,3 +5,9 @@ spring:
     password:
   flyway:
     enabled: true
+
+chanter:
+  livekit:
+    url: ws://localhost:7880
+    api-key: devkey
+    api-secret: secret
