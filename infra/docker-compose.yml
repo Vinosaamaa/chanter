@@ -104,9 +104,11 @@ services:
       retries: 10
 
   livekit:
-    image: livekit/livekit-server:v1.8.0
+    image: livekit/livekit-server:v1.13.1
     container_name: chanter-livekit
     profiles: [product]
+    environment:
+      LIVEKIT_KEYS: ${LIVEKIT_API_KEY:-devkey}:${LIVEKIT_API_SECRET:-secret}
     command: --dev --bind 0.0.0.0
     ports:
       - "7880:7880"

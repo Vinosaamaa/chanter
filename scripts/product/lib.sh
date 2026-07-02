@@ -115,8 +115,17 @@ product_is_pid_running() {
 product_stop_pid_file() {
   local pid_file="$1"
   local name="$2"
-  if product_is_pid_running "$pid_file"; then
-    kill "$(cat "$pid_file")" 2>/dev/null || true
+  if [ ! -f "$pid_file" ]; then
+    return 0
+  fi
+  local pid
+  pid="$(cat "$pid_file")"
+  if kill -0 "$pid" 2>/dev/null; then
+    pkill -TERM -P "$pid" 2>/dev/null || true
+    kill -TERM "$pid" 2>/dev/null || true
+    sleep 1
+    pkill -KILL -P "$pid" 2>/dev/null || true
+    kill -KILL "$pid" 2>/dev/null || true
     echo "stopped: $name"
   fi
   rm -f "$pid_file"

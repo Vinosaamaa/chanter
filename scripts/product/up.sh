@@ -13,12 +13,10 @@ product_ensure_state_dirs
 COMPOSE_FILE="$ROOT/infra/docker-compose.yml"
 
 echo "Starting Chanter product infrastructure..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ROOT/.env" --profile product up -d \
+docker compose -f "$COMPOSE_FILE" --env-file "$ROOT/.env" --profile product up -d --wait --wait-timeout 180 \
   postgres redis redpanda minio realtime-service livekit
 
-echo "Waiting for infrastructure health..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ROOT/.env" --profile product \
-  exec -T postgres pg_isready -U "${POSTGRES_USER:-chanter}" -d "${POSTGRES_DB:-chanter}" >/dev/null
+echo "Infrastructure is healthy."
 
 echo "Building backend modules (skip tests)..."
 (cd "$ROOT/backend" && mvn -B -q install -DskipTests)
