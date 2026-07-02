@@ -2,19 +2,18 @@ import { Link } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../../../components/ui/card'
-import { useAuthStore } from '../../../stores/auth-store'
 import { AppPreviewMock } from '../components/AppPreviewMock'
 import { MarketingHeader, MarketingHero } from '../components/MarketingHeader'
+import { useStudyServerCta } from '../hooks/use-study-server-cta'
 import {
   MARKETING_FEATURES,
   MARKETING_PRICING_TEASER,
   MARKETING_USE_CASES,
 } from '../marketing-content'
-import { createStudyServerCta, MARKETING_SIGN_IN_PATH } from '../marketing-routes'
+import { MARKETING_SIGN_IN_PATH } from '../marketing-routes'
 
 export function LandingPage() {
-  const isAuthenticated = Boolean(useAuthStore((state) => state.accessToken))
-  const createServerCta = createStudyServerCta(isAuthenticated)
+  const createServerCta = useStudyServerCta()
 
   return (
     <div className="min-h-screen bg-app-bg">

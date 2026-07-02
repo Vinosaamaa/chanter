@@ -36,13 +36,18 @@ export const MARKETING_FEATURES: MarketingFeature[] = [
   },
 ]
 
-export const MARKETING_USE_CASES = [
+export type MarketingPricingTeaser = {
+  headline: string
+  body: string
+}
+
+export const MARKETING_USE_CASES: string[] = [
   'University courses and bootcamps',
   'Cohort-based online programs',
   'Tutoring businesses and study groups',
 ]
 
-export const MARKETING_PRICING_TEASER = {
+export const MARKETING_PRICING_TEASER: MarketingPricingTeaser = {
   headline: 'Free for educators to start',
   body: 'Launch a Study Server, enroll your first cohort, and explore AI-assisted support before upgrading your SaaS plan.',
 }
