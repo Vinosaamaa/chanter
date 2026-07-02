@@ -22,6 +22,10 @@ export function courseChannelPath(serverId: string, channelId: string): string {
   return `/app/servers/${serverId}/course-channels/${channelId}`
 }
 
+export function channelSummaryPath(serverId: string, channelId: string): string {
+  return `/app/servers/${serverId}/course-channels/${channelId}/summary`
+}
+
 export function supportOperationPath(
   serverId: string,
   courseId: string,
