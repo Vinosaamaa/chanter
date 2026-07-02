@@ -8,6 +8,10 @@
 | `pg_isready` races container startup | Fixed — `docker compose up --wait` |
 | `spring-boot:run` orphan JVM on down | Fixed — `pkill -P` process tree in `product_stop_pid_file` |
 
+## Pass 2
+
+No new actionable comments. All checks green (`gh pr checks 77`).
+
 ## Deferred
 
 None.
