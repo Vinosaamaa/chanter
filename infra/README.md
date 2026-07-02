@@ -4,17 +4,25 @@ Local development dependencies via Docker Compose.
 
 ## Services
 
-- PostgreSQL 16 (`localhost:5432`)
-- Redis 7 (`localhost:6379`)
-- Redpanda (`localhost:19092`)
-- MinIO (`localhost:9000`, console `9001`)
+| Service | Port | Profile |
+|---------|------|---------|
+| PostgreSQL 16 | 5432 | default |
+| Redis 7 | 6379 | default |
+| Redpanda | 19092 | default |
+| MinIO | 9000 (API), 9001 (console) | default |
+| realtime-service | 8087 | `product` |
+| LiveKit | 7880 (HTTP/WS), 7881 (TCP), 7882 (UDP) | `product` |
 
 ## Commands
 
 ```bash
-make infra-up
+make infra-up      # core infra only
 make infra-down
 make infra-logs
+
+make product-up    # full local product stack (#62)
+make product-down
+make product-health
 ```
 
 Copy `.env.example` to `.env` for local app configuration.

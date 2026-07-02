@@ -12,8 +12,7 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 **Backend MVP (milestone 1)** — issues **#11–#24** are merged on `main`. The running `frontend/src/App.tsx` is still an API demo harness, not the production shell.
 
-**Active work:** **[Production Frontend](https://github.com/users/Vinosaamaa/projects/3)** (milestone 3) — **#55** instructor dashboard & SaaS plan UI (in progress on `feature/55-production-instructor-dashboard-saas-plan-ui`). **From #56**, agents use vertical-slice TDD (`docs/operations/agent-workflow.md`).  
-**Next phase:** **[Workable Product](https://github.com/users/Vinosaamaa/projects/4)** (milestone 4) — full-stack local app (voice, live DMs, one-command stack) after production frontend screens land.
+**Active work:** **[Workable Product](https://github.com/users/Vinosaamaa/projects/4)** (milestone 4) — **#62** one-command local product stack (in progress). Production Frontend **#47–#59** is complete.
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`
 
@@ -22,8 +21,8 @@ GitHub repository: `https://github.com/Vinosaamaa/chanter`
 | Project | URL | Scope |
 |---------|-----|--------|
 | Education MVP (historical) | [projects/1](https://github.com/users/Vinosaamaa/projects/1) | Backend slices #1–#24 |
-| **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59**, #30 — **active** |
-| **Workable Product** | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #30–#32 — after realtime UI |
+| **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59** — **complete** |
+| **Workable Product** | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **active** |
 
 **Agent workflow (order + loop + merge policy):** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) (mandatory for all agents).
 
@@ -85,6 +84,19 @@ Use `HANDOFF.md` as the first resume point for new agent sessions. For **what th
 
 Prerequisites: Java 21+, Node 20+, Maven 3.9+, Docker (for infra).
 
+### One-command product stack (recommended)
+
+```bash
+cp .env.example .env
+make product-up          # infra + realtime + LiveKit + all services + frontend
+make product-health      # verify gateway, auth, realtime, LiveKit
+make product-down        # stop app processes and product Docker services
+```
+
+Open **http://localhost:5173** — the frontend proxies `/api` to the gateway at **http://localhost:8080**.
+
+### Manual multi-terminal setup
+
 ```bash
 cp .env.example .env
 make infra-up          # PostgreSQL, Redis, Redpanda, MinIO
@@ -92,9 +104,16 @@ make backend-test      # requires JAVA_HOME 21+ (see .java-version)
 make frontend-install
 make backend-auth      # terminal 1 — port 8081
 make backend-community # terminal 2 — port 8082
-make backend-gateway   # terminal 3 — port 8080
-make frontend-dev      # terminal 4 — http://localhost:5173
+make backend-message   # terminal 3 — port 8083
+make backend-media     # terminal 4 — port 8084
+make backend-agent     # terminal 5 — port 8085
+make backend-analytics # terminal 6 — port 8086
+make backend-search    # terminal 7 — port 8088
+make backend-gateway   # terminal 8 — port 8080
+make frontend-dev      # terminal 9 — http://localhost:5173
 ```
+
+For live channel text chat, also start realtime: `docker compose -f infra/docker-compose.yml --profile product up -d realtime-service`
 
 The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health endpoints:
 
@@ -104,6 +123,6 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-**Active:** [Instructor dashboard & SaaS plan — issue #55](https://github.com/Vinosaamaa/chanter/issues/55) on [project board #3](https://github.com/users/Vinosaamaa/projects/3).
+**Active:** [One-command local product stack — issue #62](https://github.com/Vinosaamaa/chanter/issues/62) on [project board #4](https://github.com/users/Vinosaamaa/projects/4).
 
 See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for the full ordered list through Workable Product (project #4).

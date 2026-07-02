@@ -42,9 +42,11 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Production Frontend — [project #3](https://github.com/users/Vinosaamaa/projects/3). **#59** public marketing landing page — **in progress** (branch `feature/59-public-marketing-landing-page`).
+**Active phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4). Production Frontend **#47–#59** is **complete** (last merge: #59, PR #76).
 
-**Next phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4) after **#59** merges (Production Frontend milestone complete).
+**Active slice:** **#62** one-command local product stack — branch `feature/62-one-command-local-product-stack`.
+
+**Next after #62:** #61 voice WebRTC + LiveKit integration.
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
@@ -56,7 +58,7 @@ Backend MVP (**merged**):
 
 - **#11–#24** — all education MVP vertical slices merged on `main` (through SaaS plan limits, PR #46).
 
-Production Frontend (**active** — [project #3](https://github.com/users/Vinosaamaa/projects/3)):
+Production Frontend (**complete** — [project #3](https://github.com/users/Vinosaamaa/projects/3)):
 
 | Order | Issue | Notes |
 |------:|-------|-------|
@@ -73,18 +75,20 @@ Production Frontend (**active** — [project #3](https://github.com/users/Vinosa
 | 11 | [**#56**](https://github.com/Vinosaamaa/chanter/issues/56) | Onboarding & enrollment — **merged** (PR #73) |
 | 12 | [**#57**](https://github.com/Vinosaamaa/chanter/issues/57) | Global search — **merged** (PR #74) |
 | 13 | [**#58**](https://github.com/Vinosaamaa/chanter/issues/58) | Channel summary UI — **merged** (PR #75) |
-| 14 | [**#59**](https://github.com/Vinosaamaa/chanter/issues/59) | Public marketing landing page — **in progress** |
+| 14 | [**#59**](https://github.com/Vinosaamaa/chanter/issues/59) | Public marketing landing page — **merged** (PR #76) |
 
-Workable Product (**after #52–#59** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
+Workable Product (**active** — [project #4](https://github.com/users/Vinosaamaa/projects/4)):
 
-| Order | Issue |
-|------:|-------|
-| 1 | [#60](https://github.com/Vinosaamaa/chanter/issues/60) epic |
-| 2 | [#62](https://github.com/Vinosaamaa/chanter/issues/62) one-command stack |
-| 3 | [#61](https://github.com/Vinosaamaa/chanter/issues/61) voice WebRTC |
-| 4 | [#31](https://github.com/Vinosaamaa/chanter/issues/31) Friends Hub |
-| 5 | [#32](https://github.com/Vinosaamaa/chanter/issues/32) DM voice |
-| 6 | [#63](https://github.com/Vinosaamaa/chanter/issues/63) E2E demo |
+| Order | Issue | Notes |
+|------:|-------|-------|
+| 1 | [#60](https://github.com/Vinosaamaa/chanter/issues/60) | Epic |
+| 2 | [**#62**](https://github.com/Vinosaamaa/chanter/issues/62) | One-command stack — **in progress** |
+| 3 | [#61](https://github.com/Vinosaamaa/chanter/issues/61) | Voice WebRTC + LiveKit |
+| 4 | [#31](https://github.com/Vinosaamaa/chanter/issues/31) | Friends Hub |
+| 5 | [#32](https://github.com/Vinosaamaa/chanter/issues/32) | DM voice |
+| 6 | [#63](https://github.com/Vinosaamaa/chanter/issues/63) | E2E demo |
+
+Production Frontend table retained above for history; milestone **complete**.
 
 **#30** ships in phase 2 with **#49** (project #3).
 
@@ -325,14 +329,15 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24 is merged on main.
-Active: Production Frontend project #3 — #59 in progress (#58 merged, PR #75).
+Production Frontend #47–#59 is complete.
+Active: Workable Product project #4 — #62 in progress.
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/59
-Project: https://github.com/users/Vinosaamaa/projects/3
+Issue: https://github.com/Vinosaamaa/chanter/issues/62
+Project: https://github.com/users/Vinosaamaa/projects/4
 ```
 
 ## Notes For Future Agent

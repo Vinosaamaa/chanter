@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search frontend-install frontend-dev frontend-build verify setup-git-hooks
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search frontend-install frontend-dev frontend-build verify setup-git-hooks product-up product-down product-health product-test
 
 ifeq ($(shell uname -s),Darwin)
 JAVA_HOME_21 := $(shell /usr/libexec/java_home -v 21 2>/dev/null)
@@ -78,7 +78,19 @@ frontend-dev:
 frontend-build:
 	cd frontend && npm run build
 
-verify: backend-test frontend-build
+verify: backend-test frontend-build product-test
+
+product-up:
+	./scripts/product/up.sh
+
+product-down:
+	./scripts/product/down.sh
+
+product-health:
+	./scripts/product/health.sh
+
+product-test:
+	./scripts/product/lib.test.sh
 
 setup-git-hooks:
 	./scripts/setup-git-hooks.sh
