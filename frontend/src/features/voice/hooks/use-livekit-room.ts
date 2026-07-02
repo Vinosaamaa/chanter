@@ -22,7 +22,11 @@ export function useLiveKitRoom(): UseLiveKitRoomResult {
     const room = roomRef.current
     roomRef.current = null
     if (room) {
-      await room.disconnect()
+      try {
+        await room.disconnect()
+      } catch {
+        // Ignore cleanup failures during disconnect.
+      }
     }
     setStatus('idle')
     setIsMuted(false)
@@ -39,12 +43,17 @@ export function useLiveKitRoom(): UseLiveKitRoomResult {
         dynacast: true,
       })
       await room.connect(token.serverUrl, token.participantToken)
-      if (token.canSpeak) {
-        await room.localParticipant.setMicrophoneEnabled(true)
-        setIsMuted(false)
-      } else {
-        await room.localParticipant.setMicrophoneEnabled(false)
-        setIsMuted(true)
+      try {
+        if (token.canSpeak) {
+          await room.localParticipant.setMicrophoneEnabled(true)
+          setIsMuted(false)
+        } else {
+          await room.localParticipant.setMicrophoneEnabled(false)
+          setIsMuted(true)
+        }
+      } catch (micError) {
+        await room.disconnect()
+        throw micError
       }
       roomRef.current = room
       setStatus('connected')

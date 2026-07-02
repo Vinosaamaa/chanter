@@ -1,6 +1,7 @@
 import { useAuthStore } from '../../../stores/auth-store'
 
 import { useVoiceChannel } from '../hooks/use-voice-channel'
+import type { VoiceConnectionStatus } from '../voice-types'
 
 type VoiceChannelPanelProps = {
   channelId: string
@@ -105,7 +106,7 @@ export function VoiceChannelPanel({ channelId, channelLabel }: VoiceChannelPanel
   )
 }
 
-function VoiceStatusBadge({ status }: { status: string }) {
+function VoiceStatusBadge({ status }: { status: VoiceConnectionStatus }) {
   const label =
     status === 'connected'
       ? 'In voice'

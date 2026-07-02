@@ -78,7 +78,9 @@ public class StudyServerService {
     }
 
     public VoiceMediaToken issueVoiceChannelMediaToken(UUID channelId, UUID memberUserId) {
-        VoicePresence presence = joinVoiceChannel(channelId, memberUserId);
+        StudyServerChannel channel = requireVoiceChannel(channelId);
+        requireStudyServerMember(channel.studyServerId(), memberUserId);
+        VoicePresence presence = repository.saveVoicePresence(channelId, memberUserId);
         return liveKitTokenIssuer.issueForVoiceChannel(
                 channelId,
                 memberUserId,

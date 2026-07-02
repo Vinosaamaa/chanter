@@ -11,6 +11,7 @@ import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
 import {
   findChannelLabel,
   findCourseChannelContext,
+  findStudyChannel,
   isQuestionsChannel,
   isResourcesChannel,
   isVoiceStudyChannel,
@@ -74,9 +75,9 @@ function ChannelConversationPanel({
   }
 
   if (channelScope === 'study' && isVoiceStudyChannel(navigationQuery.data, channelId)) {
-    const channelLabel = findChannelLabel(navigationQuery.data, channelScope, channelId)
-    if (channelLabel) {
-      return <VoiceChannelPanel channelId={channelId} channelLabel={channelLabel} />
+    const studyChannel = findStudyChannel(navigationQuery.data, channelId)
+    if (studyChannel) {
+      return <VoiceChannelPanel channelId={channelId} channelLabel={studyChannel.name} />
     }
   }
 

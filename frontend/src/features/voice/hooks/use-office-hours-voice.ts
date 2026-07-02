@@ -47,8 +47,8 @@ export function useOfficeHoursVoice(
     setIsBusy(true)
     setActionError(null)
     try {
-      await liveKit.disconnect()
       await leaveVoiceChannel(voiceChannelId)
+      await liveKit.disconnect()
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : 'Unable to leave Office Hours voice.')
     } finally {

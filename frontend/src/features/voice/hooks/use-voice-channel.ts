@@ -72,8 +72,8 @@ export function useVoiceChannel(channelId: string): UseVoiceChannelResult {
     setIsBusy(true)
     setActionError(null)
     try {
-      await liveKit.disconnect()
       await leaveVoiceChannel(channelId)
+      await liveKit.disconnect()
       await refreshPresences()
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : 'Unable to leave voice.')
@@ -81,6 +81,20 @@ export function useVoiceChannel(channelId: string): UseVoiceChannelResult {
       setIsBusy(false)
     }
   }, [channelId, liveKit, refreshPresences])
+
+  useEffect(() => {
+    if (liveKit.status !== 'connected') {
+      return undefined
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshPresences()
+    }, 10_000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [liveKit.status, refreshPresences])
 
   return {
     presences,

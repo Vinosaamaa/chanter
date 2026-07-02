@@ -179,33 +179,37 @@ public class OfficeHoursService {
     @Transactional
     public VoiceMediaToken issueOfficeHoursMediaToken(UUID sessionId, UUID userId) {
         OfficeHoursSession session = requireSession(sessionId);
-        requireOpenWindow(session);
         CohortOfficeHoursAccess access = requireOfficeHoursAccess(session.cohortId(), userId);
+        requireOpenWindow(session);
 
+        VoicePresence presence;
         if (access.canManageOfficeHours()) {
-            VoicePresence presence = joinVoiceAsManager(sessionId, userId);
-            return liveKitTokenIssuer.issueForVoiceChannel(
-                    session.voiceChannelId(),
-                    userId,
-                    presence.canSpeak(),
-                    presence.canListen()
-            );
-        }
-
-        if (!access.canJoinOfficeHours()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Office Hours media token requires Cohort Enrollment");
-        }
-
-        OfficeHoursWaitlistEntry entry = officeHoursRepository.findWaitlistEntry(sessionId, userId)
-                .orElseThrow(() -> new ResponseStatusException(
+            markSessionLiveIfNeeded(session);
+            presence = studyServerRepository.saveVoicePresence(session.voiceChannelId(), userId);
+        } else {
+            if (!access.canJoinOfficeHours()) {
+                throw new ResponseStatusException(
                         HttpStatus.FORBIDDEN,
-                        "Learner must join the Office Hours waitlist first"
-                ));
-        if (entry.status() != OfficeHoursWaitlistStatus.ADMITTED) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Learner must be admitted before joining Office Hours voice");
+                        "Office Hours media token requires Cohort Enrollment"
+                );
+            }
+
+            OfficeHoursWaitlistEntry entry = officeHoursRepository.findWaitlistEntry(sessionId, userId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "Learner must join the Office Hours waitlist first"
+                    ));
+            if (entry.status() != OfficeHoursWaitlistStatus.ADMITTED) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Learner must be admitted before joining Office Hours voice"
+                );
+            }
+
+            markSessionLiveIfNeeded(session);
+            presence = studyServerRepository.saveVoicePresence(session.voiceChannelId(), userId);
         }
 
-        VoicePresence presence = joinVoiceAsAdmittedLearner(sessionId, userId);
         return liveKitTokenIssuer.issueForVoiceChannel(
                 session.voiceChannelId(),
                 userId,

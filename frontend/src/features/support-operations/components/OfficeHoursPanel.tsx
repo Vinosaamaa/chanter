@@ -118,7 +118,7 @@ export function OfficeHoursPanel({ courseTitle, cohortName, cohortId }: OfficeHo
             </div>
 
             {officeHours.activeSession && (
-              <OfficeHoursVoiceSection session={officeHours.activeSession} />
+              <OfficeHoursVoiceSection key={officeHours.activeSession.id} session={officeHours.activeSession} />
             )}
 
             {officeHours.activeSession && officeHours.canManage && (
@@ -188,7 +188,11 @@ function OfficeHoursVoiceSection({ session }: { session: OfficeHoursSession }) {
       </div>
 
       {voice.error ? (
-        <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200"
+        >
           {voice.error}
         </p>
       ) : null}
