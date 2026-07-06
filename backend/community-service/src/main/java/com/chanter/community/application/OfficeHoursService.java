@@ -5,6 +5,7 @@ import com.chanter.community.domain.OfficeHoursSession;
 import com.chanter.community.domain.OfficeHoursSessionStatus;
 import com.chanter.community.domain.OfficeHoursWaitlistEntry;
 import com.chanter.community.domain.OfficeHoursWaitlistStatus;
+import com.chanter.community.domain.VoiceMediaToken;
 import com.chanter.community.domain.VoicePresence;
 import java.time.Clock;
 import java.time.Instant;
@@ -21,17 +22,20 @@ public class OfficeHoursService {
     private final OfficeHoursRepository officeHoursRepository;
     private final CourseRepository courseRepository;
     private final StudyServerRepository studyServerRepository;
+    private final LiveKitTokenIssuer liveKitTokenIssuer;
     private final Clock clock;
 
     public OfficeHoursService(
             OfficeHoursRepository officeHoursRepository,
             CourseRepository courseRepository,
             StudyServerRepository studyServerRepository,
+            LiveKitTokenIssuer liveKitTokenIssuer,
             Clock clock
     ) {
         this.officeHoursRepository = officeHoursRepository;
         this.courseRepository = courseRepository;
         this.studyServerRepository = studyServerRepository;
+        this.liveKitTokenIssuer = liveKitTokenIssuer;
         this.clock = clock;
     }
 
@@ -170,6 +174,48 @@ public class OfficeHoursService {
 
         markSessionLiveIfNeeded(session);
         return studyServerRepository.saveVoicePresence(session.voiceChannelId(), learnerUserId);
+    }
+
+    @Transactional
+    public VoiceMediaToken issueOfficeHoursMediaToken(UUID sessionId, UUID userId) {
+        OfficeHoursSession session = requireSession(sessionId);
+        CohortOfficeHoursAccess access = requireOfficeHoursAccess(session.cohortId(), userId);
+        requireOpenWindow(session);
+
+        VoicePresence presence;
+        if (access.canManageOfficeHours()) {
+            markSessionLiveIfNeeded(session);
+            presence = studyServerRepository.saveVoicePresence(session.voiceChannelId(), userId);
+        } else {
+            if (!access.canJoinOfficeHours()) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Office Hours media token requires Cohort Enrollment"
+                );
+            }
+
+            OfficeHoursWaitlistEntry entry = officeHoursRepository.findWaitlistEntry(sessionId, userId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "Learner must join the Office Hours waitlist first"
+                    ));
+            if (entry.status() != OfficeHoursWaitlistStatus.ADMITTED) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Learner must be admitted before joining Office Hours voice"
+                );
+            }
+
+            markSessionLiveIfNeeded(session);
+            presence = studyServerRepository.saveVoicePresence(session.voiceChannelId(), userId);
+        }
+
+        return liveKitTokenIssuer.issueForVoiceChannel(
+                session.voiceChannelId(),
+                userId,
+                presence.canSpeak(),
+                presence.canListen()
+        );
     }
 
     @Transactional(readOnly = true)

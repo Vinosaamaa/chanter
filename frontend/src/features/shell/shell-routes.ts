@@ -80,7 +80,7 @@ export function findChannelLabel(
   }
 
   if (scope === 'study') {
-    return navigation.studyServerChannels.find((channel) => channel.id === channelId)?.name ?? null
+    return findStudyChannel(navigation, channelId)?.name ?? null
   }
 
   for (const course of navigation.courses) {
@@ -132,4 +132,18 @@ export function isQuestionsChannel(context: CourseChannelContext | null): boolea
 
 export function isResourcesChannel(context: CourseChannelContext | null): boolean {
   return context?.channel.kind === 'TEXT' && context.channel.name === 'resources'
+}
+
+export function findStudyChannel(
+  navigation: StudyServerNavigation | undefined,
+  channelId: string,
+) {
+  return navigation?.studyServerChannels.find((channel) => channel.id === channelId) ?? null
+}
+
+export function isVoiceStudyChannel(
+  navigation: StudyServerNavigation | undefined,
+  channelId: string,
+): boolean {
+  return findStudyChannel(navigation, channelId)?.kind === 'VOICE'
 }

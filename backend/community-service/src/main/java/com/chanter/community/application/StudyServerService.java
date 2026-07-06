@@ -7,6 +7,7 @@ import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerRole;
 import com.chanter.community.domain.TextChannelMessageAccess;
+import com.chanter.community.domain.VoiceMediaToken;
 import com.chanter.community.domain.VoicePresence;
 import java.time.Clock;
 import java.util.List;
@@ -20,10 +21,16 @@ import org.springframework.web.server.ResponseStatusException;
 public class StudyServerService {
 
     private final StudyServerRepository repository;
+    private final LiveKitTokenIssuer liveKitTokenIssuer;
     private final Clock clock;
 
-    public StudyServerService(StudyServerRepository repository, Clock clock) {
+    public StudyServerService(
+            StudyServerRepository repository,
+            LiveKitTokenIssuer liveKitTokenIssuer,
+            Clock clock
+    ) {
         this.repository = repository;
+        this.liveKitTokenIssuer = liveKitTokenIssuer;
         this.clock = clock;
     }
 
@@ -68,6 +75,18 @@ public class StudyServerService {
         requireStudyServerMember(channel.studyServerId(), memberUserId);
 
         repository.deleteVoicePresence(channelId, memberUserId);
+    }
+
+    public VoiceMediaToken issueVoiceChannelMediaToken(UUID channelId, UUID memberUserId) {
+        StudyServerChannel channel = requireVoiceChannel(channelId);
+        requireStudyServerMember(channel.studyServerId(), memberUserId);
+        VoicePresence presence = repository.saveVoicePresence(channelId, memberUserId);
+        return liveKitTokenIssuer.issueForVoiceChannel(
+                channelId,
+                memberUserId,
+                presence.canSpeak(),
+                presence.canListen()
+        );
     }
 
     public TextChannelMessageAccess findStudyServerChannelMessageAccess(UUID channelId, UUID userId) {
