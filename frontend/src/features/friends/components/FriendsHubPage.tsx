@@ -60,7 +60,7 @@ export function FriendsHubPage() {
                   <button
                     type="button"
                     onClick={() => hub.selectFriend(friend.friendUserId)}
-                    aria-pressed={hub.selectedFriendId === friend.friendUserId}
+                    aria-current={hub.selectedFriendId === friend.friendUserId ? 'true' : undefined}
                     className={cn(
                       'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors',
                       hub.selectedFriendId === friend.friendUserId

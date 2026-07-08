@@ -122,19 +122,18 @@ public class SocialRealtimeHub {
                     if (generation == null || generation.get() != generationAtDisconnect) {
                         return Mono.empty();
                     }
-                    return notifyFriendsPresence(userId, "offline")
-                            .onErrorResume(error -> Mono.empty())
-                            .doFinally(signal -> {
-                                synchronized (sessionLock) {
-                                    AtomicInteger activeGeneration = connectionGenerations.get(userId);
-                                    if (activeGeneration != null
-                                            && activeGeneration.get() == generationAtDisconnect
-                                            && !sessionsByUser.containsKey(userId)) {
-                                        connectionGenerations.remove(userId);
-                                    }
-                                }
-                            });
-                }));
+                    return notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty());
+                }))
+                .doFinally(signal -> {
+                    synchronized (sessionLock) {
+                        AtomicInteger activeGeneration = connectionGenerations.get(userId);
+                        if (activeGeneration != null
+                                && activeGeneration.get() == generationAtDisconnect
+                                && !sessionsByUser.containsKey(userId)) {
+                            connectionGenerations.remove(userId);
+                        }
+                    }
+                });
     }
 
     public Mono<Void> sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {

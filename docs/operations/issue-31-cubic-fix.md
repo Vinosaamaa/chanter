@@ -166,6 +166,14 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 |---------|--------|
 | P1: Stale disconnect prunes generation counter for newer reconnect | Fixed — only remove `connectionGenerations` when cleanup still owns `generationAtDisconnect` |
 
+## Pass 17
+
+| Comment | Action |
+|---------|--------|
+| P2: Generation cleanup skipped when offline notify never runs | Fixed — attach generation-removal `doFinally` to full offline cleanup chain |
+| P3: `aria-pressed` wrong control model for friend list | Fixed — use `aria-current` for selected conversation |
+| P3: Reconnect jitter can exceed `RECONNECT_MAX_MS` | Fixed — cap delay after jitter |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.

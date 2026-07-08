@@ -175,8 +175,10 @@ export class SocialRealtimeClient {
     this.clearReconnectTimer()
     this.reconnectAttempts += 1
     const exponentialDelay = RECONNECT_BASE_MS * 2 ** (this.reconnectAttempts - 1)
-    const delay =
-      Math.min(exponentialDelay, RECONNECT_MAX_MS) + Math.floor(Math.random() * 500)
+    const delay = Math.min(
+      exponentialDelay + Math.floor(Math.random() * 500),
+      RECONNECT_MAX_MS,
+    )
     this.options.onStatusChange('reconnecting')
     this.reconnectTimerId = window.setTimeout(() => {
       this.reconnectTimerId = null
