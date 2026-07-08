@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
 
 @Component
 @Profile("!test")
@@ -27,30 +28,28 @@ public class HttpSocialFriendsClient implements SocialFriendsClient {
     }
 
     @Override
-    public List<UUID> listFriendUserIds(UUID viewerUserId) {
-        try {
-            FriendsListResponse response = webClient.get()
-                    .uri("/api/v1/friendships")
-                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
-                    .retrieve()
-                    .bodyToMono(FriendsListResponse.class)
-                    .block();
-
-            if (response == null || response.friends() == null) {
-                return List.of();
-            }
-
-            return response.friends().stream()
-                    .map(FriendSummaryResponse::friendUserId)
-                    .toList();
-        } catch (WebClientResponseException exception) {
-            throw new ResponseStatusException(
-                    HttpStatus.valueOf(exception.getStatusCode().value()),
-                    exception.getResponseBodyAsString()
-            );
-        } catch (RuntimeException exception) {
-            return List.of();
-        }
+    public Mono<List<UUID>> listFriendUserIds(UUID viewerUserId) {
+        return webClient.get()
+                .uri("/api/v1/friendships")
+                .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                .retrieve()
+                .bodyToMono(FriendsListResponse.class)
+                .map(response -> {
+                    if (response == null || response.friends() == null) {
+                        return List.<UUID>of();
+                    }
+                    return response.friends().stream()
+                            .map(FriendSummaryResponse::friendUserId)
+                            .toList();
+                })
+                .onErrorMap(WebClientResponseException.class, exception -> new ResponseStatusException(
+                        HttpStatus.valueOf(exception.getStatusCode().value()),
+                        exception.getResponseBodyAsString(),
+                        exception
+                ))
+                .onErrorResume(exception -> exception instanceof ResponseStatusException
+                        ? Mono.error(exception)
+                        : Mono.just(List.of()));
     }
 
     private record FriendsListResponse(List<FriendSummaryResponse> friends) {

@@ -168,8 +168,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
     }
 
     private Mono<Void> sendInitialFriendPresence(WebSocketSession session, UUID userId) {
-        return Mono.fromCallable(() -> socialFriendsClient.listFriendUserIds(userId))
-                .subscribeOn(Schedulers.boundedElastic())
+        return socialFriendsClient.listFriendUserIds(userId)
                 .flatMap(friendUserIds -> {
                     Mono<Void> deliveries = Mono.empty();
                     for (UUID friendUserId : friendUserIds) {

@@ -161,8 +161,7 @@ public class SocialRealtimeHub {
     }
 
     private Mono<Void> notifyFriendsPresence(UUID userId, String status) {
-        return Mono.fromCallable(() -> socialFriendsClient.listFriendUserIds(userId))
-                .subscribeOn(Schedulers.boundedElastic())
+        return socialFriendsClient.listFriendUserIds(userId)
                 .flatMapMany(Flux::fromIterable)
                 .flatMap(friendUserId -> deliverPresence(friendUserId, userId, status))
                 .then();

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
 
 @Component
 @Profile("test")
@@ -17,7 +18,7 @@ public class TestSocialFriendsClient implements SocialFriendsClient {
     }
 
     @Override
-    public List<UUID> listFriendUserIds(UUID viewerUserId) {
-        return socialGraph.friendUserIds(viewerUserId);
+    public Mono<List<UUID>> listFriendUserIds(UUID viewerUserId) {
+        return Mono.fromSupplier(() -> socialGraph.friendUserIds(viewerUserId));
     }
 }

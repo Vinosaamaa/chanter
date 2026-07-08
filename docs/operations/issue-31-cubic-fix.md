@@ -30,13 +30,13 @@
 | P2: Disconnect race can drop replacement socket | Fixed — `sessionsByUser.remove(userId, userSessions)` conditional remove |
 | P3: Shared base layout for friends vs shell chrome | Deferred — follow-up refactor; layouts intentionally minimal for #31 slice |
 | P2: Multi-instance DM/presence fan-out needs Redis pub/sub | Deferred — single-instance product stack for #31; note for horizontal scale |
-| P2: Per-session Redis presence leases for multi-instance | Deferred — TTL mitigates stale keys; session-scoped leases are #63+ hardening |
+| P2: Per-session Redis presence leases for multi-instance | Deferred — single-instance MVP stack; session-scoped leases tracked for horizontal-scale hardening |
 | P2: Co-membership query needs user-leading indexes | Deferred — acceptable at MVP scale; add migration when membership grows |
 | P2: `friendsSince` uses request `created_at` not accept time | Deferred — schema change (`accepted_at`) out of #31 scope |
 | P2: WS token in query string | Deferred — matches existing realtime auth pattern; ticket handshake is follow-up |
 | P2: Linear reconnect backoff without jitter | Deferred — minor; exponential backoff in hardening pass |
 | P2: No unread badge for non-selected friend DMs | Deferred — MVP UX gap; tracked for polish |
-| P2: WS DMs dropped while selected thread still loading | Fixed — claim thread and append on matching `dm_message` before REST load completes |
+| P2: WS DMs dropped while selected Direct Message still loading | Fixed — claim DM ownership and append on matching `dm_message` before REST load completes |
 | P2: WS send lacks reconciliation fallback when echo missing | Fixed in Pass 4 — ack correlation on `sendDirectMessage` |
 | P3: `ConnectionBadge` string typing / `Intl` per message | Deferred — low impact at MVP message volume |
 
@@ -151,6 +151,14 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P2/P3: Multi-instance pub/sub, Redis presence leases, co-membership indexes, `friendsSince`, WS token in query | Deferred — documented in Pass 2 |
 | P3: Shared friends/shell layout duplication | Deferred — follow-up refactor |
 | P3: Fix-log deferred note / DM wording | Fixed — clarified deferrals; use Direct Message wording in new rows |
+
+## Pass 15
+
+| Comment | Action |
+|---------|--------|
+| P1: `HttpSocialFriendsClient` blocking `.block()` on event loop | Fixed — `SocialFriendsClient` now returns `Mono<List<UUID>>`; hub/handler subscribe reactively |
+| P3: Fix-log TTL deferral contradicts reverted TTL | Fixed — deferred note no longer cites TTL mitigation |
+| P3: Fix-log uses `thread` instead of Direct Message | Fixed — Pass 2 row wording updated |
 
 ## Deferred
 
