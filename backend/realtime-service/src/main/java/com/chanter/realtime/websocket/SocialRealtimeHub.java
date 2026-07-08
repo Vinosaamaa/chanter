@@ -116,13 +116,21 @@ public class SocialRealtimeHub {
                     presenceStore.markOffline(userId);
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(ignored -> {
+                .then(Mono.defer(() -> {
                     AtomicInteger generation = connectionGenerations.get(userId);
                     if (generation == null || generation.get() != generationAtDisconnect) {
                         return Mono.empty();
                     }
-                    return notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty());
-                });
+                    return notifyFriendsPresence(userId, "offline")
+                            .onErrorResume(error -> Mono.empty())
+                            .doFinally(signal -> {
+                                synchronized (sessionLock) {
+                                    if (!sessionsByUser.containsKey(userId)) {
+                                        connectionGenerations.remove(userId);
+                                    }
+                                }
+                            });
+                }));
     }
 
     public Mono<Void> sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {

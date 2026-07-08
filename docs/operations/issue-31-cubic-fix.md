@@ -127,6 +127,13 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 |---------|--------|
 | P1: Stale `shouldMarkOffline` before async Redis write | Fixed — connection generation guard + revalidate before `markOffline` |
 
+## Pass 13
+
+| Comment | Action |
+|---------|--------|
+| P1: Offline presence fanout never runs after `fromRunnable` | Fixed — chain notify with `then(Mono.defer(...))` |
+| P2: `connectionGenerations` map never pruned | Fixed — remove entry after offline cleanup when user stays disconnected |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.
