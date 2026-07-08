@@ -30,14 +30,14 @@ export function useFriendsHub(): UseFriendsHubResult {
   const currentUserId = useAuthStore((state) => state.user?.id ?? null)
   const [friends, setFriends] = useState<FriendSummary[]>([])
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null)
-  const [messages, setMessages] = useState<DirectMessage[]>([])
+  const [loadedMessages, setLoadedMessages] = useState<DirectMessage[]>([])
+  const [loadedMessagesFriendId, setLoadedMessagesFriendId] = useState<string | null>(null)
   const [presenceByFriendId, setPresenceByFriendId] = useState<Record<string, FriendPresenceStatus>>(
     {},
   )
   const [connectionStatus, setConnectionStatus] =
     useState<SocialRealtimeConnectionStatus>('connecting')
   const [isLoadingFriends, setIsLoadingFriends] = useState(true)
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
   const clientRef = useRef<SocialRealtimeClient | null>(null)
@@ -72,27 +72,21 @@ export function useFriendsHub(): UseFriendsHubResult {
 
   useEffect(() => {
     if (!selectedFriendId) {
-      setMessages([])
       return
     }
 
     let cancelled = false
-    setIsLoadingMessages(true)
 
     void fetchDirectMessages(selectedFriendId)
       .then((response) => {
         if (!cancelled) {
-          setMessages(response.messages)
+          setLoadedMessages(response.messages)
+          setLoadedMessagesFriendId(selectedFriendId)
         }
       })
       .catch((caught) => {
         if (!cancelled) {
           setError(caught instanceof Error ? caught.message : 'Unable to load direct messages')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoadingMessages(false)
         }
       })
 
@@ -113,7 +107,7 @@ export function useFriendsHub(): UseFriendsHubResult {
           selectedFriendId &&
           (message.senderUserId === selectedFriendId || message.recipientUserId === selectedFriendId)
         ) {
-          setMessages((current) => mergeMessages(current, [message]))
+          setLoadedMessages((current) => mergeMessages(current, [message]))
         }
       },
       onPresenceChange: (userId, status) => {
@@ -154,7 +148,7 @@ export function useFriendsHub(): UseFriendsHubResult {
       sentAt: new Date().toISOString(),
     }
 
-    setMessages((current) => [...current, optimisticMessage])
+    setLoadedMessages((current) => [...current, optimisticMessage])
     setIsSending(true)
     setError(null)
 
@@ -165,17 +159,28 @@ export function useFriendsHub(): UseFriendsHubResult {
       } else {
         await sendDirectMessage(selectedFriendId, trimmed)
         const refreshed = await fetchDirectMessages(selectedFriendId)
-        setMessages(refreshed.messages)
+        setLoadedMessages(refreshed.messages)
+        setLoadedMessagesFriendId(selectedFriendId)
       }
       return true
     } catch (caught) {
-      setMessages((current) => current.filter((message) => message.id !== optimisticId))
+      setLoadedMessages((current) => current.filter((message) => message.id !== optimisticId))
       setError(caught instanceof Error ? caught.message : 'Unable to send direct message')
       return false
     } finally {
       setIsSending(false)
     }
   }
+
+  const messages = useMemo(
+    () =>
+      selectedFriendId && loadedMessagesFriendId === selectedFriendId ? loadedMessages : [],
+    [loadedMessages, loadedMessagesFriendId, selectedFriendId],
+  )
+
+  const isLoadingMessages = Boolean(
+    selectedFriendId && loadedMessagesFriendId !== selectedFriendId,
+  )
 
   const presenceMap = useMemo(() => {
     const next: Record<string, FriendPresenceStatus> = { ...presenceByFriendId }

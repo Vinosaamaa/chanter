@@ -6,6 +6,7 @@ import com.chanter.message.domain.FriendRequestStatus;
 import com.chanter.message.domain.FriendSummary;
 import com.chanter.message.domain.FriendshipSnapshot;
 import java.time.Clock;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -140,7 +141,7 @@ public class SocialMessagingService {
                 senderUserId,
                 recipientUserId,
                 body.trim(),
-                clock.instant()
+                clock.instant().truncatedTo(ChronoUnit.MICROS)
         ));
     }
 
