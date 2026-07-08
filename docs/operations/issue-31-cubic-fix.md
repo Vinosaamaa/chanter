@@ -109,6 +109,12 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 |---------|--------|
 | P1: Early `userLocks` removal races with reconnect offline fanout | Fixed — prune lock after async offline cleanup when user still has no sessions |
 
+## Pass 10
+
+| Comment | Action |
+|---------|--------|
+| P2: Stale per-user lock monitor swapped under waiting threads | Fixed — single hub `sessionLock` for all connect/disconnect bookkeeping |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.
