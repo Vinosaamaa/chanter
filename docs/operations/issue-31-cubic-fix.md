@@ -36,12 +36,11 @@
 | P2: WS token in query string | Deferred — matches existing realtime auth pattern; ticket handshake is follow-up |
 | P2: Linear reconnect backoff without jitter | Deferred — minor; exponential backoff in hardening pass |
 | P2: No unread badge for non-selected friend DMs | Deferred — MVP UX gap; tracked for polish |
-| P2: WS send lacks reconciliation fallback when echo missing | Deferred — HTTP path already refreshes; WS echo is primary for #31 |
+| P2: WS DMs dropped while selected thread still loading | Fixed — claim thread and append on matching `dm_message` before REST load completes |
+| P2: WS send lacks reconciliation fallback when echo missing | Fixed in Pass 4 — ack correlation on `sendDirectMessage` |
 | P3: `ConnectionBadge` string typing / `Intl` per message | Deferred — low impact at MVP message volume |
 
 Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialRealtimeWebSocketSmokeTest`, CI on PR #79.
-
-| P2: WS DMs dropped while selected thread still loading | Fixed — claim thread and append on matching `dm_message` before REST load completes |
 
 ## Pass 3
 
@@ -56,6 +55,16 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P2: 2-minute presence TTL caused false offline | Reverted TTL (single-instance MVP) |
 | P2: Multi-instance Redis presence / connect cleanup race | Deferred — documented in Pass 2 |
 | P2: Co-membership inside `@Transactional` | Deferred — acceptable for MVP volume |
+
+## Pass 4
+
+| Comment | Action |
+|---------|--------|
+| P2: WS send returns success before server ack | Fixed — `sendDirectMessage` awaits `dm_message` echo or error frame with timeout |
+| P2: REST send refresh can write to wrong friend after switch | Fixed — guard post-await state updates with `selectedFriendIdRef` |
+| P2: Initial presence snapshot failure drops whole socket | Fixed — `sendInitialFriendPresence` is best-effort (`onErrorResume`) |
+| P2: Long DM thread pushes composer off-screen | Fixed — `min-h-0` on scrollable message list |
+| P3: Invalid `sentAt` crashes render | Fixed — guard `formatTimestamp` like channel conversation |
 
 ## Deferred
 

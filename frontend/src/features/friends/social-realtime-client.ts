@@ -23,13 +23,23 @@ type OutboundFrame =
       body: string
     }
 
+type PendingDirectMessage = {
+  recipientUserId: string
+  body: string
+  resolve: () => void
+  reject: (error: Error) => void
+  timeoutId: number
+}
+
 const RECONNECT_BASE_MS = 500
 const RECONNECT_MAX_MS = 5_000
+const SEND_ACK_TIMEOUT_MS = 10_000
 
 export class SocialRealtimeClient {
   private socket: WebSocket | null = null
   private reconnectAttempts = 0
   private stopped = false
+  private pendingDirectMessage: PendingDirectMessage | null = null
   private readonly options: SocialRealtimeClientOptions
 
   constructor(options: SocialRealtimeClientOptions) {
@@ -43,6 +53,7 @@ export class SocialRealtimeClient {
 
   disconnect(): void {
     this.stopped = true
+    this.rejectPendingDirectMessage(new Error('Social realtime connection closed'))
     const socket = this.socket
     this.socket = null
     if (socket) {
@@ -55,11 +66,41 @@ export class SocialRealtimeClient {
     this.options.onStatusChange('disconnected')
   }
 
-  sendDirectMessage(recipientUserId: string, body: string): void {
-    this.sendFrame({
-      type: 'send_dm',
-      recipientUserId,
-      body,
+  sendDirectMessage(recipientUserId: string, body: string): Promise<void> {
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      return Promise.reject(new Error('Social realtime connection is not ready'))
+    }
+
+    if (this.pendingDirectMessage) {
+      return Promise.reject(new Error('Another direct message send is already in flight'))
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeoutId = window.setTimeout(() => {
+        if (this.pendingDirectMessage?.body === body && this.pendingDirectMessage.recipientUserId === recipientUserId) {
+          this.rejectPendingDirectMessage(new Error('Direct message send timed out'))
+        }
+      }, SEND_ACK_TIMEOUT_MS)
+
+      this.pendingDirectMessage = {
+        recipientUserId,
+        body,
+        resolve,
+        reject,
+        timeoutId,
+      }
+
+      try {
+        this.sendFrame({
+          type: 'send_dm',
+          recipientUserId,
+          body,
+        })
+      } catch (error) {
+        this.rejectPendingDirectMessage(
+          error instanceof Error ? error : new Error('Social realtime connection is not ready'),
+        )
+      }
     })
   }
 
@@ -86,6 +127,7 @@ export class SocialRealtimeClient {
       try {
         const frame = JSON.parse(String(event.data)) as SocialRealtimeMessage
         if (frame.type === 'dm_message') {
+          this.resolvePendingDirectMessage(frame.payload)
           this.options.onDirectMessage(frame.payload)
           return
         }
@@ -94,6 +136,9 @@ export class SocialRealtimeClient {
           return
         }
         if (frame.type === 'error') {
+          if (this.pendingDirectMessage) {
+            this.rejectPendingDirectMessage(new Error(frame.message))
+          }
           this.options.onError(frame.message)
         }
       } catch {
@@ -103,6 +148,7 @@ export class SocialRealtimeClient {
 
     socket.onclose = () => {
       this.socket = null
+      this.rejectPendingDirectMessage(new Error('Social realtime connection closed'))
       if (this.stopped) {
         this.options.onStatusChange('disconnected')
         return
@@ -112,6 +158,7 @@ export class SocialRealtimeClient {
 
     socket.onerror = () => {
       if (!this.stopped) {
+        this.rejectPendingDirectMessage(new Error('Social realtime connection failed'))
         this.options.onError('Social realtime connection failed')
       }
     }
@@ -133,5 +180,28 @@ export class SocialRealtimeClient {
       throw new Error('Social realtime connection is not ready')
     }
     this.socket.send(JSON.stringify(frame))
+  }
+
+  private resolvePendingDirectMessage(message: DirectMessage): void {
+    const pending = this.pendingDirectMessage
+    if (!pending) {
+      return
+    }
+    if (pending.recipientUserId !== message.recipientUserId || pending.body !== message.body) {
+      return
+    }
+    window.clearTimeout(pending.timeoutId)
+    this.pendingDirectMessage = null
+    pending.resolve()
+  }
+
+  private rejectPendingDirectMessage(error: Error): void {
+    const pending = this.pendingDirectMessage
+    if (!pending) {
+      return
+    }
+    window.clearTimeout(pending.timeoutId)
+    this.pendingDirectMessage = null
+    pending.reject(error)
   }
 }

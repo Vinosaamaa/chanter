@@ -24,7 +24,6 @@ import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Schedulers;
 
 @Component
@@ -67,7 +66,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         }
 
         Mono<Void> sessionWork = socialRealtimeHub.connect(session, userId)
-                .then(sendInitialFriendPresence(session, userId))
+                .then(sendInitialFriendPresence(session, userId).onErrorResume(error -> Mono.empty()))
                 .thenMany(session.receive()
                         .map(WebSocketMessage::getPayloadAsText)
                         .concatMap(payload -> handleClientFrame(session, userId, payload)))

@@ -183,12 +183,18 @@ export function useFriendsHub(): UseFriendsHubResult {
     try {
       const client = clientRef.current
       if (client && connectionStatus === 'connected') {
-        client.sendDirectMessage(selectedFriendId, trimmed)
+        await client.sendDirectMessage(friendId, trimmed)
       } else {
-        await sendDirectMessage(selectedFriendId, trimmed)
-        const refreshed = await fetchDirectMessages(selectedFriendId)
+        await sendDirectMessage(friendId, trimmed)
+        if (selectedFriendIdRef.current !== friendId) {
+          return true
+        }
+        const refreshed = await fetchDirectMessages(friendId)
+        if (selectedFriendIdRef.current !== friendId) {
+          return true
+        }
         setLoadedMessages(refreshed.messages)
-        setLoadedMessagesFriendId(selectedFriendId)
+        setLoadedMessagesFriendId(friendId)
       }
       return true
     } catch (caught) {

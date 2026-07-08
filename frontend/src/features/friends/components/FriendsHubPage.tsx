@@ -117,7 +117,7 @@ export function FriendsHubPage() {
               </p>
             ) : null}
 
-            <ol className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            <ol className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
               {hub.isLoadingMessages ? (
                 <li className="text-sm text-app-muted">Loading message history…</li>
               ) : hub.messages.length === 0 ? (
@@ -199,8 +199,12 @@ function formatFriendLabel(userId: string): string {
 }
 
 function formatTimestamp(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
   return new Intl.DateTimeFormat(undefined, {
     hour: 'numeric',
     minute: '2-digit',
-  }).format(new Date(value))
+  }).format(date)
 }
