@@ -14,6 +14,9 @@ public class SocialGraph {
     private final Set<String> friendships = ConcurrentHashMap.newKeySet();
 
     public void befriend(UUID firstUserId, UUID secondUserId) {
+        if (firstUserId.equals(secondUserId)) {
+            throw new IllegalArgumentException("Users cannot befriend themselves");
+        }
         friendships.add(pairKey(firstUserId, secondUserId));
     }
 

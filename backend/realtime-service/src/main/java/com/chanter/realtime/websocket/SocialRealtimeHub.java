@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Component
 public class SocialRealtimeHub {
@@ -42,15 +43,19 @@ public class SocialRealtimeHub {
         sessionsByUser.computeIfAbsent(userId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
         userBySession.put(session.getId(), userId);
 
-        boolean wasOffline = !presenceStore.isOnline(userId);
-        presenceStore.markOnline(userId);
-
-        Mono<Void> socialSubscribed = sendJson(session, Map.of("type", "social_subscribed"));
-        if (!wasOffline) {
-            return socialSubscribed;
-        }
-
-        return socialSubscribed.then(notifyFriendsPresence(userId, "online"));
+        return Mono.fromCallable(() -> {
+                    boolean wasOffline = !presenceStore.isOnline(userId);
+                    presenceStore.markOnline(userId);
+                    return wasOffline;
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(wasOffline -> {
+                    Mono<Void> socialSubscribed = sendJson(session, Map.of("type", "social_subscribed"));
+                    if (!wasOffline) {
+                        return socialSubscribed;
+                    }
+                    return socialSubscribed.then(notifyFriendsPresence(userId, "online"));
+                });
     }
 
     public Mono<Void> disconnect(WebSocketSession session) {
@@ -59,22 +64,32 @@ public class SocialRealtimeHub {
             return Mono.empty();
         }
 
-        Set<WebSocketSession> userSessions = sessionsByUser.get(userId);
-        if (userSessions != null) {
-            userSessions.remove(session);
-            if (userSessions.isEmpty()) {
-                sessionsByUser.remove(userId);
-                presenceStore.markOffline(userId);
-                return notifyFriendsPresence(userId, "offline");
-            }
-        }
-
-        return Mono.empty();
+        return Mono.fromCallable(() -> {
+                    Set<WebSocketSession> userSessions = sessionsByUser.get(userId);
+                    if (userSessions == null) {
+                        return false;
+                    }
+                    userSessions.remove(session);
+                    if (!userSessions.isEmpty()) {
+                        return false;
+                    }
+                    return sessionsByUser.remove(userId, userSessions);
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(becameOffline -> {
+                    if (!becameOffline) {
+                        return Mono.empty();
+                    }
+                    return Mono.fromRunnable(() -> presenceStore.markOffline(userId))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .then(notifyFriendsPresence(userId, "offline"));
+                });
     }
 
     public Mono<Void> sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {
-        PersistedDirectMessage message = directMessageClient.sendDirectMessage(senderUserId, recipientUserId, body);
-        return publishDirectMessage(message);
+        return Mono.fromCallable(() -> directMessageClient.sendDirectMessage(senderUserId, recipientUserId, body))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(this::publishDirectMessage);
     }
 
     public Mono<Void> publishDirectMessage(PersistedDirectMessage message) {
@@ -85,8 +100,9 @@ public class SocialRealtimeHub {
     }
 
     private Mono<Void> notifyFriendsPresence(UUID userId, String status) {
-        List<UUID> friendUserIds = socialFriendsClient.listFriendUserIds(userId);
-        return Flux.fromIterable(friendUserIds)
+        return Mono.fromCallable(() -> socialFriendsClient.listFriendUserIds(userId))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMapMany(Flux::fromIterable)
                 .flatMap(friendUserId -> deliverPresence(friendUserId, userId, status))
                 .then();
     }

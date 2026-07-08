@@ -6,8 +6,11 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 @Profile("!test")
@@ -25,20 +28,27 @@ public class HttpSocialFriendsClient implements SocialFriendsClient {
 
     @Override
     public List<UUID> listFriendUserIds(UUID viewerUserId) {
-        FriendsListResponse response = webClient.get()
-                .uri("/api/v1/friendships")
-                .header(AuthHeaders.USER_ID, viewerUserId.toString())
-                .retrieve()
-                .bodyToMono(FriendsListResponse.class)
-                .block();
+        try {
+            FriendsListResponse response = webClient.get()
+                    .uri("/api/v1/friendships")
+                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                    .retrieve()
+                    .bodyToMono(FriendsListResponse.class)
+                    .block();
 
-        if (response == null || response.friends() == null) {
-            return List.of();
+            if (response == null || response.friends() == null) {
+                return List.of();
+            }
+
+            return response.friends().stream()
+                    .map(FriendSummaryResponse::friendUserId)
+                    .toList();
+        } catch (WebClientResponseException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.valueOf(exception.getStatusCode().value()),
+                    exception.getResponseBodyAsString()
+            );
         }
-
-        return response.friends().stream()
-                .map(FriendSummaryResponse::friendUserId)
-                .toList();
     }
 
     private record FriendsListResponse(List<FriendSummaryResponse> friends) {

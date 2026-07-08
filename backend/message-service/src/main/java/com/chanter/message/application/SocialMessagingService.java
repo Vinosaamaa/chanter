@@ -37,12 +37,6 @@ public class SocialMessagingService {
         if (senderUserId.equals(recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot send Friend Requests to themselves");
         }
-        if (!coMembershipClient.shareStudyServerMembership(senderUserId, recipientUserId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Friend Requests require shared Study Server membership"
-            );
-        }
         if (repository.isBlocked(senderUserId, recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Friend Requests are blocked between these users");
         }
@@ -51,6 +45,12 @@ public class SocialMessagingService {
         }
         if (repository.hasPendingFriendRequest(senderUserId, recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "A Friend Request is already pending between these users");
+        }
+        if (!coMembershipClient.shareStudyServerMembership(senderUserId, recipientUserId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Friend Requests require shared Study Server membership"
+            );
         }
 
         try {

@@ -71,10 +71,8 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                         .map(WebSocketMessage::getPayloadAsText)
                         .concatMap(payload -> handleClientFrame(session, userId, payload)))
                 .then()
-                .doFinally(signalType -> {
-                    subscriptionHub.unsubscribeAll(session);
-                    socialRealtimeHub.disconnect(session).subscribe();
-                });
+                .doFinally(signalType -> subscriptionHub.unsubscribeAll(session))
+                .then(Mono.defer(() -> socialRealtimeHub.disconnect(session)));
     }
 
     private Mono<Void> handleClientFrame(WebSocketSession session, UUID userId, String payload) {

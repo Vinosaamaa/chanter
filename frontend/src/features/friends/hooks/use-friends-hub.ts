@@ -42,10 +42,15 @@ export function useFriendsHub(): UseFriendsHubResult {
   const [isSending, setIsSending] = useState(false)
   const clientRef = useRef<SocialRealtimeClient | null>(null)
   const loadedMessagesFriendIdRef = useRef<string | null>(null)
+  const selectedFriendIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     loadedMessagesFriendIdRef.current = loadedMessagesFriendId
   }, [loadedMessagesFriendId])
+
+  useEffect(() => {
+    selectedFriendIdRef.current = selectedFriendId
+  }, [selectedFriendId])
 
   useEffect(() => {
     let cancelled = false
@@ -110,10 +115,11 @@ export function useFriendsHub(): UseFriendsHubResult {
     const client = new SocialRealtimeClient({
       accessToken,
       onDirectMessage: (message) => {
+        const friendId = selectedFriendIdRef.current
         if (
-          selectedFriendId &&
-          loadedMessagesFriendIdRef.current === selectedFriendId &&
-          (message.senderUserId === selectedFriendId || message.recipientUserId === selectedFriendId)
+          friendId &&
+          loadedMessagesFriendIdRef.current === friendId &&
+          (message.senderUserId === friendId || message.recipientUserId === friendId)
         ) {
           setLoadedMessages((current) => mergeMessages(current, [message]))
         }
@@ -135,7 +141,7 @@ export function useFriendsHub(): UseFriendsHubResult {
       client.disconnect()
       clientRef.current = null
     }
-  }, [accessToken, selectedFriendId])
+  }, [accessToken])
 
   const sendMessage = async (body: string): Promise<boolean> => {
     const trimmed = body.trim()

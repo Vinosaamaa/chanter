@@ -330,13 +330,14 @@ Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24 is merged on main.
 Production Frontend #47–#59 is complete.
-Active: Workable Product project #4 — #61 in progress.
+Active: Workable Product project #4 — #31 in progress (PR #79).
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/61
+Issue: https://github.com/Vinosaamaa/chanter/issues/31
+Branch: feature/31-friends-hub-live-dm
 Project: https://github.com/users/Vinosaamaa/projects/4
 ```
 

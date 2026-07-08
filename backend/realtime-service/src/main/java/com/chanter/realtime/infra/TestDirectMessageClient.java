@@ -23,15 +23,23 @@ public class TestDirectMessageClient implements DirectMessageClient {
 
     @Override
     public PersistedDirectMessage sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {
+        if (senderUserId.equals(recipientUserId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot send Direct Messages to themselves");
+        }
         if (!socialGraph.areFriends(senderUserId, recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Messages require an accepted Friend Request");
+        }
+
+        String trimmed = body == null ? "" : body.trim();
+        if (trimmed.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Direct Message body must not be blank");
         }
 
         return new PersistedDirectMessage(
                 UUID.randomUUID(),
                 senderUserId,
                 recipientUserId,
-                body,
+                trimmed,
                 clock.instant()
         );
     }

@@ -9,10 +9,38 @@
 | CI: `sentAt` nanosecond vs microsecond mismatch in DM smoke test | Fixed — truncate to `ChronoUnit.MICROS` in `SocialMessagingService.sendDirectMessage` |
 | CI: `react-hooks/set-state-in-effect` on friends hub message load | Fixed — derive `isLoadingMessages` from `loadedMessagesFriendId` vs `selectedFriendId` |
 | P2: Failed DM history leaves endless loading spinner | Fixed — on fetch error, set `loadedMessagesFriendId` to selected friend with empty messages |
-| P2: Optimistic send while thread loading attaches to wrong friend cache | Fixed — claim thread ownership on send; guard realtime merges with `loadedMessagesFriendIdRef` |
+| P2: Optimistic send while thread loading attaches to wrong friend cache | Fixed — claim thread ownership on send; guard realtime merges with refs |
 
-Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, CI on PR #79.
+## Pass 2
+
+| Comment | Action |
+|---------|--------|
+| P1: `realtime-service` pom dropped actuator | Fixed — restored `spring-boot-starter-actuator` alongside Redis |
+| P1: Blocking Redis/HTTP on WebFlux event loop in `SocialRealtimeHub` | Fixed — offload connect/disconnect/DM/presence to `Schedulers.boundedElastic()` |
+| P1: Fire-and-forget `disconnect().subscribe()` in handler | Fixed — chain `disconnect` after receive loop via `Mono.defer` |
+| P1: WebSocket reconnects on every friend selection | Fixed — keep socket effect keyed on `accessToken` only; use `selectedFriendIdRef` in callbacks |
+| P2: `HttpCoMembershipClient` missing timeouts / null body → false | Fixed — JDK client timeouts; `BAD_GATEWAY` on empty body |
+| P2: `HttpSocialFriendsClient` missing `WebClientResponseException` handling | Fixed — map to `ResponseStatusException` like sibling clients |
+| P2: Co-membership RPC before cheap local friend-request rejections | Fixed — local block/friend/pending checks first |
+| P2: `TestDirectMessageClient` allows self-DM and untrimmed body | Fixed — mirror message-service validation |
+| P2: `SocialGraph.befriend` allows self-friend | Fixed — reject identical UUIDs |
+| P2: Redis presence keys never expire | Partial — 2-minute TTL on `markOnline` (heartbeat refresh on connect) |
+| P2: Friend-list load failure shown as empty state | Fixed — show `hub.error` in sidebar when friends fetch fails |
+| P2: HANDOFF startup prompt still references #61 | Fixed — #31 / PR #79 / branch name |
+| P2: Disconnect race can drop replacement socket | Fixed — `sessionsByUser.remove(userId, userSessions)` conditional remove |
+| P3: Shared base layout for friends vs shell chrome | Deferred — follow-up refactor; layouts intentionally minimal for #31 slice |
+| P2: Multi-instance DM/presence fan-out needs Redis pub/sub | Deferred — single-instance product stack for #31; note for horizontal scale |
+| P2: Per-session Redis presence leases for multi-instance | Deferred — TTL mitigates stale keys; session-scoped leases are #63+ hardening |
+| P2: Co-membership query needs user-leading indexes | Deferred — acceptable at MVP scale; add migration when membership grows |
+| P2: `friendsSince` uses request `created_at` not accept time | Deferred — schema change (`accepted_at`) out of #31 scope |
+| P2: WS token in query string | Deferred — matches existing realtime auth pattern; ticket handshake is follow-up |
+| P2: Linear reconnect backoff without jitter | Deferred — minor; exponential backoff in hardening pass |
+| P2: No unread badge for non-selected friend DMs | Deferred — MVP UX gap; tracked for polish |
+| P2: WS send lacks reconciliation fallback when echo missing | Deferred — HTTP path already refreshes; WS echo is primary for #31 |
+| P3: `ConnectionBadge` string typing / `Intl` per message | Deferred — low impact at MVP message volume |
+
+Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialRealtimeWebSocketSmokeTest`, CI on PR #79.
 
 ## Deferred
 
-None.
+See Pass 2 table rows marked **Deferred**.

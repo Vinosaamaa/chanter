@@ -38,13 +38,19 @@ export function FriendsHubPage() {
           {hub.isLoadingFriends ? (
             <p className="px-2 py-3 text-sm text-app-muted">Loading friends…</p>
           ) : hub.friends.length === 0 ? (
-            <p className="px-2 py-3 text-sm text-app-muted">
-              Accepted friends appear here after you share a Study Server and connect on{' '}
-              <Link to="/app" className="text-app-accent hover:underline">
-                your courses
-              </Link>
-              .
-            </p>
+            hub.error ? (
+              <p className="px-2 py-3 text-sm text-rose-200" role="alert">
+                {hub.error}
+              </p>
+            ) : (
+              <p className="px-2 py-3 text-sm text-app-muted">
+                Accepted friends appear here after you share a Study Server and connect on{' '}
+                <Link to="/app" className="text-app-accent hover:underline">
+                  your courses
+                </Link>
+                .
+              </p>
+            )
           ) : (
             <ul className="space-y-1">
               {hub.friends.map((friend) => (
