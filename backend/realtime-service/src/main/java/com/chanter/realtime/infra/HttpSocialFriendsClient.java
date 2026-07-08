@@ -48,6 +48,8 @@ public class HttpSocialFriendsClient implements SocialFriendsClient {
                     HttpStatus.valueOf(exception.getStatusCode().value()),
                     exception.getResponseBodyAsString()
             );
+        } catch (RuntimeException exception) {
+            return List.of();
         }
     }
 

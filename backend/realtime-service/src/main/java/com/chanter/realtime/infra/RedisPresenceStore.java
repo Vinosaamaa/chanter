@@ -1,7 +1,6 @@
 package com.chanter.realtime.infra;
 
 import com.chanter.realtime.application.PresenceStore;
-import java.time.Duration;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Component;
 public class RedisPresenceStore implements PresenceStore {
 
     private static final String KEY_PREFIX = "presence:user:";
-    private static final Duration PRESENCE_TTL = Duration.ofMinutes(2);
 
     private final ReactiveStringRedisTemplate redisTemplate;
 
@@ -23,7 +21,7 @@ public class RedisPresenceStore implements PresenceStore {
     @Override
     public void markOnline(UUID userId) {
         redisTemplate.opsForValue()
-                .set(key(userId), "online", PRESENCE_TTL)
+                .set(key(userId), "online")
                 .block();
     }
 

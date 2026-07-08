@@ -24,6 +24,7 @@ import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Schedulers;
 
 @Component
@@ -65,14 +66,18 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
             return session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Authentication required"));
         }
 
-        return socialRealtimeHub.connect(session, userId)
+        Mono<Void> sessionWork = socialRealtimeHub.connect(session, userId)
                 .then(sendInitialFriendPresence(session, userId))
                 .thenMany(session.receive()
                         .map(WebSocketMessage::getPayloadAsText)
                         .concatMap(payload -> handleClientFrame(session, userId, payload)))
                 .then()
-                .doFinally(signalType -> subscriptionHub.unsubscribeAll(session))
-                .then(Mono.defer(() -> socialRealtimeHub.disconnect(session)));
+                .doFinally(signalType -> subscriptionHub.unsubscribeAll(session));
+
+        return sessionWork
+                .materialize()
+                .flatMap(signal -> socialRealtimeHub.disconnect(session)
+                        .then(signal.isOnError() ? Mono.error(signal.getThrowable()) : Mono.empty()));
     }
 
     private Mono<Void> handleClientFrame(WebSocketSession session, UUID userId, String payload) {

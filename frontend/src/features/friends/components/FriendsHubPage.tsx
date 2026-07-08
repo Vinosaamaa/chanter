@@ -16,9 +16,10 @@ export function FriendsHubPage() {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    void hub.sendMessage(draft).then((sent) => {
+    const submitted = draft
+    void hub.sendMessage(submitted).then((sent) => {
       if (sent) {
-        setDraft('')
+        setDraft((current) => (current === submitted ? '' : current))
       }
     })
   }
@@ -108,7 +109,10 @@ export function FriendsHubPage() {
             </header>
 
             {hub.error ? (
-              <p className="border-b border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
+              <p
+                className="border-b border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-200"
+                role="alert"
+              >
                 {hub.error}
               </p>
             ) : null}
@@ -140,6 +144,7 @@ export function FriendsHubPage() {
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   placeholder={`Message ${formatFriendLabel(selectedFriend.friendUserId)}`}
+                  aria-label="Message"
                   className="min-w-0 flex-1 rounded-lg border border-app-border bg-app-elevated px-3 py-2 text-sm text-app-text"
                 />
                 <button

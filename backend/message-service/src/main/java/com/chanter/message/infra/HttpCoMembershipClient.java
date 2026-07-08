@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
@@ -38,20 +39,27 @@ public class HttpCoMembershipClient implements CoMembershipClient {
 
     @Override
     public boolean shareStudyServerMembership(UUID firstUserId, UUID secondUserId) {
-        CoMembershipResponse response = restClient.get()
-                .uri("/api/v1/users/{peerUserId}/co-membership", secondUserId)
-                .header(AuthHeaders.USER_ID, firstUserId.toString())
-                .retrieve()
-                .body(CoMembershipResponse.class);
+        try {
+            CoMembershipResponse response = restClient.get()
+                    .uri("/api/v1/users/{peerUserId}/co-membership", secondUserId)
+                    .header(AuthHeaders.USER_ID, firstUserId.toString())
+                    .retrieve()
+                    .body(CoMembershipResponse.class);
 
-        if (response == null) {
+            if (response == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "Community Service returned an empty co-membership response"
+                );
+            }
+
+            return response.coMembers();
+        } catch (RestClientException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
-                    "Community Service returned an empty co-membership response"
+                    "Community Service co-membership check failed"
             );
         }
-
-        return response.coMembers();
     }
 
     private record CoMembershipResponse(boolean coMembers) {

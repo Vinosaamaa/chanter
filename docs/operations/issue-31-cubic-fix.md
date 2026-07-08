@@ -45,7 +45,17 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 
 ## Pass 3
 
-_Pending cubic re-review after pass 2 push._
+| Comment | Action |
+|---------|--------|
+| P0: `disconnect` skipped on WebSocket error path | Fixed — `materialize()` + always run `disconnect` on terminal signal |
+| P1: Friends lookup failure aborts WS after mark-online | Fixed — `HttpSocialFriendsClient` returns empty list on transport errors |
+| P2: Co-membership `RestClientException` → opaque 500 | Fixed — map to `BAD_GATEWAY` |
+| P2: Stale error when switching friends after failed load | Fixed — clear error on friend select + successful fetch |
+| P2: Draft cleared while new text typed during send | Fixed — only clear if draft still matches submitted text |
+| P3: Conversation error missing `role="alert"` / input label | Fixed |
+| P2: 2-minute presence TTL caused false offline | Reverted TTL (single-instance MVP) |
+| P2: Multi-instance Redis presence / connect cleanup race | Deferred — documented in Pass 2 |
+| P2: Co-membership inside `@Transactional` | Deferred — acceptable for MVP volume |
 
 ## Deferred
 

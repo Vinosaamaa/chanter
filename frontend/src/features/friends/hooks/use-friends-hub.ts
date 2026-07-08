@@ -92,6 +92,7 @@ export function useFriendsHub(): UseFriendsHubResult {
         if (!cancelled) {
           setLoadedMessages(response.messages)
           setLoadedMessagesFriendId(selectedFriendId)
+          setError(null)
         }
       })
       .catch((caught) => {
@@ -220,7 +221,10 @@ export function useFriendsHub(): UseFriendsHubResult {
   return {
     friends,
     selectedFriendId,
-    selectFriend: setSelectedFriendId,
+    selectFriend: (friendUserId: string) => {
+      setError(null)
+      setSelectedFriendId(friendUserId)
+    },
     messages,
     presenceByFriendId: presenceMap,
     connectionStatus,
