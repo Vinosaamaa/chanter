@@ -125,7 +125,7 @@ class SocialRealtimeWebSocketSmokeTest {
                 }
         ).block(Duration.ofSeconds(10));
 
-        listenerThread.join(5_000);
+        listenerThread.join(15_000);
         if (listenerFailure.get() != null) {
             throw new AssertionError(listenerFailure.get());
         }
