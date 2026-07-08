@@ -51,7 +51,11 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
     }
 
     private static boolean requiresAuthenticatedUser(String uri) {
-        return uri.endsWith("/messages")
+        return uri.contains("/friend-requests")
+                || uri.contains("/friendships")
+                || uri.contains("/direct-messages")
+                || uri.contains("/user-blocks")
+                || uri.endsWith("/messages")
                 || uri.contains("/support-questions")
                 || uri.endsWith("/channel-summary");
     }

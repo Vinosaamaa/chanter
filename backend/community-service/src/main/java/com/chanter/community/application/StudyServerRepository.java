@@ -17,6 +17,8 @@ public interface StudyServerRepository {
 
     boolean isStudyServerMember(UUID studyServerId, UUID userId);
 
+    boolean shareStudyServerMembership(UUID firstUserId, UUID secondUserId);
+
     VoicePresence saveVoicePresence(UUID channelId, UUID memberUserId);
 
     List<VoicePresence> findVoicePresences(UUID channelId);

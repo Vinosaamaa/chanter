@@ -1,14 +1,17 @@
 package com.chanter.message.api;
 
+import static com.chanter.message.api.AuthenticatedTestSupport.asUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.chanter.message.infra.TestCoMembershipClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -29,56 +32,36 @@ class FriendRequestAndDirectMessageSmokeTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private TestCoMembershipClient coMembershipClient;
+
+    @BeforeEach
+    void setUp() {
+        coMembershipClient.clear();
+    }
+
     @Test
     void friendsCanExchangeDirectMessagesAfterAcceptedFriendRequest() throws Exception {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
         UUID stranger = UUID.randomUUID();
 
-        MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        FriendRequestResponse friendRequest = objectMapper.readValue(
-                friendRequestResult.getResponse().getContentAsString(),
-                FriendRequestResponse.class
-        );
+        FriendRequestResponse friendRequest = sendFriendRequest(userA, userB);
 
         assertThat(friendRequest.senderUserId()).isEqualTo(userA);
         assertThat(friendRequest.recipientUserId()).isEqualTo(userB);
         assertThat(friendRequest.status()).isEqualTo("PENDING");
 
-        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/acceptance", friendRequest.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isOk());
+        acceptFriendRequest(friendRequest.id(), userB);
 
-        MvcResult sendResult = mockMvc.perform(post("/api/v1/direct-messages")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString(),
-                                "body", "Want to study together?"
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        DirectMessageResponse sent = objectMapper.readValue(
-                sendResult.getResponse().getContentAsString(),
-                DirectMessageResponse.class
-        );
+        DirectMessageResponse sent = sendDirectMessage(userA, userB, "Want to study together?");
 
         assertThat(sent.senderUserId()).isEqualTo(userA);
         assertThat(sent.recipientUserId()).isEqualTo(userB);
         assertThat(sent.body()).isEqualTo("Want to study together?");
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/direct-messages")
-                        .param("viewerUserId", userB.toString())
+                        .with(asUser(userB))
                         .param("peerUserId", userA.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -90,9 +73,9 @@ class FriendRequestAndDirectMessageSmokeTest {
         assertThat(listed.messages()).containsExactly(sent);
 
         mockMvc.perform(post("/api/v1/direct-messages")
+                        .with(asUser(stranger))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", stranger.toString(),
                                 "recipientUserId", userB.toString(),
                                 "body", "Can we talk?"
                         ))))
@@ -104,30 +87,16 @@ class FriendRequestAndDirectMessageSmokeTest {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
 
-        MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        FriendRequestResponse friendRequest = objectMapper.readValue(
-                friendRequestResult.getResponse().getContentAsString(),
-                FriendRequestResponse.class
-        );
+        FriendRequestResponse friendRequest = sendFriendRequest(userA, userB);
 
         mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/decline", friendRequest.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "recipientUserId", userB.toString()
-                        ))))
+                        .with(asUser(userB)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/direct-messages")
+                        .with(asUser(userA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
                                 "recipientUserId", userB.toString(),
                                 "body", "Hello?"
                         ))))
@@ -139,38 +108,21 @@ class FriendRequestAndDirectMessageSmokeTest {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
 
-        MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        FriendRequestResponse friendRequest = objectMapper.readValue(
-                friendRequestResult.getResponse().getContentAsString(),
-                FriendRequestResponse.class
-        );
-
-        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/acceptance", friendRequest.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isOk());
+        FriendRequestResponse friendRequest = sendFriendRequest(userA, userB);
+        acceptFriendRequest(friendRequest.id(), userB);
 
         mockMvc.perform(post("/api/v1/user-blocks")
+                        .with(asUser(userB))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "blockerUserId", userB.toString(),
                                 "blockedUserId", userA.toString()
                         ))))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/direct-messages")
+                        .with(asUser(userA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
                                 "recipientUserId", userB.toString(),
                                 "body", "Are you there?"
                         ))))
@@ -182,45 +134,20 @@ class FriendRequestAndDirectMessageSmokeTest {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
 
-        MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        FriendRequestResponse friendRequest = objectMapper.readValue(
-                friendRequestResult.getResponse().getContentAsString(),
-                FriendRequestResponse.class
-        );
-
-        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/acceptance", friendRequest.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/api/v1/direct-messages")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString(),
-                                "body", "Before block"
-                        ))))
-                .andExpect(status().isCreated());
+        FriendRequestResponse friendRequest = sendFriendRequest(userA, userB);
+        acceptFriendRequest(friendRequest.id(), userB);
+        sendDirectMessage(userA, userB, "Before block");
 
         mockMvc.perform(post("/api/v1/user-blocks")
+                        .with(asUser(userB))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "blockerUserId", userB.toString(),
                                 "blockedUserId", userA.toString()
                         ))))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/v1/direct-messages")
-                        .param("viewerUserId", userA.toString())
+                        .with(asUser(userA))
                         .param("peerUserId", userB.toString()))
                 .andExpect(status().isForbidden());
     }
@@ -231,17 +158,17 @@ class FriendRequestAndDirectMessageSmokeTest {
         UUID userB = UUID.randomUUID();
 
         mockMvc.perform(post("/api/v1/user-blocks")
+                        .with(asUser(userB))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "blockerUserId", userB.toString(),
                                 "blockedUserId", userA.toString()
                         ))))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/friend-requests")
+                        .with(asUser(userA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
                                 "recipientUserId", userB.toString()
                         ))))
                 .andExpect(status().isForbidden());
@@ -252,30 +179,13 @@ class FriendRequestAndDirectMessageSmokeTest {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
 
-        MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        FriendRequestResponse friendRequest = objectMapper.readValue(
-                friendRequestResult.getResponse().getContentAsString(),
-                FriendRequestResponse.class
-        );
-
-        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/acceptance", friendRequest.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isOk());
+        FriendRequestResponse friendRequest = sendFriendRequest(userA, userB);
+        acceptFriendRequest(friendRequest.id(), userB);
 
         mockMvc.perform(post("/api/v1/friend-requests")
+                        .with(asUser(userA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
                                 "recipientUserId", userB.toString()
                         ))))
                 .andExpect(status().isConflict());
@@ -286,44 +196,16 @@ class FriendRequestAndDirectMessageSmokeTest {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
 
-        MvcResult firstRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        FriendRequestResponse firstRequest = objectMapper.readValue(
-                firstRequestResult.getResponse().getContentAsString(),
-                FriendRequestResponse.class
-        );
+        FriendRequestResponse firstRequest = sendFriendRequest(userA, userB);
 
         mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/decline", firstRequest.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "recipientUserId", userB.toString()
-                        ))))
+                        .with(asUser(userB)))
                 .andExpect(status().isOk());
 
-        MvcResult secondRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        FriendRequestResponse secondRequest = objectMapper.readValue(
-                secondRequestResult.getResponse().getContentAsString(),
-                FriendRequestResponse.class
-        );
+        FriendRequestResponse secondRequest = sendFriendRequest(userA, userB);
 
         mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/decline", secondRequest.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "recipientUserId", userB.toString()
-                        ))))
+                        .with(asUser(userB)))
                 .andExpect(status().isOk());
     }
 
@@ -332,18 +214,12 @@ class FriendRequestAndDirectMessageSmokeTest {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
 
-        mockMvc.perform(post("/api/v1/friend-requests")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isCreated());
+        sendFriendRequest(userA, userB);
 
         mockMvc.perform(post("/api/v1/friend-requests")
+                        .with(asUser(userB))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userB.toString(),
                                 "recipientUserId", userA.toString()
                         ))))
                 .andExpect(status().isConflict());
@@ -354,65 +230,117 @@ class FriendRequestAndDirectMessageSmokeTest {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
 
-        MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        FriendRequestResponse friendRequest = objectMapper.readValue(
-                friendRequestResult.getResponse().getContentAsString(),
-                FriendRequestResponse.class
-        );
-
-        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/acceptance", friendRequest.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "recipientUserId", userB.toString()
-                        ))))
-                .andExpect(status().isOk());
+        FriendRequestResponse friendRequest = sendFriendRequest(userA, userB);
+        acceptFriendRequest(friendRequest.id(), userB);
 
         mockMvc.perform(get("/api/v1/friendships/status")
-                        .param("userId", userA.toString())
+                        .with(asUser(userA))
                         .param("peerUserId", userB.toString()))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/friendships/removal")
+                        .with(asUser(userA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "requesterUserId", userA.toString(),
                                 "friendUserId", userB.toString()
                         ))))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(post("/api/v1/direct-messages")
+                        .with(asUser(userA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "senderUserId", userA.toString(),
                                 "recipientUserId", userB.toString(),
                                 "body", "Hello again?"
                         ))))
                 .andExpect(status().isForbidden());
     }
 
-    private record FriendRequestResponse(
-            UUID id,
-            UUID senderUserId,
-            UUID recipientUserId,
-            String status
-    ) {
+    @Test
+    void friendRequestRequiresSharedStudyServerMembership() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+        coMembershipClient.deny(userA, userB);
+
+        mockMvc.perform(post("/api/v1/friend-requests")
+                        .with(asUser(userA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "recipientUserId", userB.toString()
+                        ))))
+                .andExpect(status().isForbidden());
     }
 
-    private record DirectMessageResponse(
-            UUID id,
-            UUID senderUserId,
-            UUID recipientUserId,
-            String body
-    ) {
+    @Test
+    void acceptedFriendsAppearOnFriendsListAndBlockedUsersAreExcluded() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+        UUID userC = UUID.randomUUID();
+
+        FriendRequestResponse requestB = sendFriendRequest(userA, userB);
+        acceptFriendRequest(requestB.id(), userB);
+
+        FriendRequestResponse requestC = sendFriendRequest(userA, userC);
+        acceptFriendRequest(requestC.id(), userC);
+
+        mockMvc.perform(post("/api/v1/user-blocks")
+                        .with(asUser(userA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "blockedUserId", userC.toString()
+                        ))))
+                .andExpect(status().isCreated());
+
+        MvcResult friendsResult = mockMvc.perform(get("/api/v1/friendships").with(asUser(userA)))
+                .andExpect(status().isOk())
+                .andReturn();
+        FriendsListResponse friends = objectMapper.readValue(
+                friendsResult.getResponse().getContentAsString(),
+                FriendsListResponse.class
+        );
+
+        assertThat(friends.friends())
+                .extracting(FriendSummaryResponse::friendUserId)
+                .containsExactly(userB);
     }
 
-    private record DirectMessageListResponse(List<DirectMessageResponse> messages) {
+    private FriendRequestResponse sendFriendRequest(UUID senderUserId, UUID recipientUserId) throws Exception {
+        MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
+                        .with(asUser(senderUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "recipientUserId", recipientUserId.toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return objectMapper.readValue(
+                friendRequestResult.getResponse().getContentAsString(),
+                FriendRequestResponse.class
+        );
+    }
+
+    private void acceptFriendRequest(UUID friendRequestId, UUID recipientUserId) throws Exception {
+        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/acceptance", friendRequestId)
+                        .with(asUser(recipientUserId)))
+                .andExpect(status().isOk());
+    }
+
+    private DirectMessageResponse sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body)
+            throws Exception {
+        MvcResult sendResult = mockMvc.perform(post("/api/v1/direct-messages")
+                        .with(asUser(senderUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "recipientUserId", recipientUserId.toString(),
+                                "body", body
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return objectMapper.readValue(
+                sendResult.getResponse().getContentAsString(),
+                DirectMessageResponse.class
+        );
     }
 }

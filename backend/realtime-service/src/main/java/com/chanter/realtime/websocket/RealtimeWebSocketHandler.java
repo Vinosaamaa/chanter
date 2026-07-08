@@ -6,6 +6,8 @@ import com.chanter.common.auth.JwtTokenService;
 import com.chanter.realtime.application.ChannelMessageClient;
 import com.chanter.realtime.application.ChannelSubscriptionAuthorizer;
 import com.chanter.realtime.application.PersistedChannelMessage;
+import com.chanter.realtime.application.PresenceStore;
+import com.chanter.realtime.application.SocialFriendsClient;
 import com.chanter.realtime.domain.RealtimeChannelScope;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +33,9 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
     private final ChannelSubscriptionAuthorizer subscriptionAuthorizer;
     private final ChannelMessageClient channelMessageClient;
     private final RealtimeSubscriptionHub subscriptionHub;
+    private final SocialRealtimeHub socialRealtimeHub;
+    private final SocialFriendsClient socialFriendsClient;
+    private final PresenceStore presenceStore;
     private final ObjectMapper objectMapper;
 
     public RealtimeWebSocketHandler(
@@ -38,12 +43,18 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
             ChannelSubscriptionAuthorizer subscriptionAuthorizer,
             ChannelMessageClient channelMessageClient,
             RealtimeSubscriptionHub subscriptionHub,
+            SocialRealtimeHub socialRealtimeHub,
+            SocialFriendsClient socialFriendsClient,
+            PresenceStore presenceStore,
             ObjectMapper objectMapper
     ) {
         this.jwtTokenService = jwtTokenService;
         this.subscriptionAuthorizer = subscriptionAuthorizer;
         this.channelMessageClient = channelMessageClient;
         this.subscriptionHub = subscriptionHub;
+        this.socialRealtimeHub = socialRealtimeHub;
+        this.socialFriendsClient = socialFriendsClient;
+        this.presenceStore = presenceStore;
         this.objectMapper = objectMapper;
     }
 
@@ -54,11 +65,16 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
             return session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Authentication required"));
         }
 
-        return session.receive()
-                .map(WebSocketMessage::getPayloadAsText)
-                .concatMap(payload -> handleClientFrame(session, userId, payload))
+        return socialRealtimeHub.connect(session, userId)
+                .then(sendInitialFriendPresence(session, userId))
+                .thenMany(session.receive()
+                        .map(WebSocketMessage::getPayloadAsText)
+                        .concatMap(payload -> handleClientFrame(session, userId, payload)))
                 .then()
-                .doFinally(signalType -> subscriptionHub.unsubscribeAll(session));
+                .doFinally(signalType -> {
+                    subscriptionHub.unsubscribeAll(session);
+                    socialRealtimeHub.disconnect(session).subscribe();
+                });
     }
 
     private Mono<Void> handleClientFrame(WebSocketSession session, UUID userId, String payload) {
@@ -70,6 +86,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                 case "subscribe" -> handleSubscribe(session, userId, frame);
                 case "unsubscribe" -> handleUnsubscribe(session);
                 case "send" -> handleSend(session, userId, frame);
+                case "send_dm" -> handleSendDirectMessage(session, userId, frame);
                 default -> sendError(session, "invalid_frame", "Unsupported frame type: " + type);
             };
         } catch (ResponseStatusException exception) {
@@ -119,6 +136,35 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                 .onErrorResume(ResponseStatusException.class, exception ->
                         sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
                 .onErrorResume(exception -> sendError(session, "error", "Realtime request failed"));
+    }
+
+    private Mono<Void> handleSendDirectMessage(WebSocketSession session, UUID userId, JsonNode frame) {
+        UUID recipientUserId = UUID.fromString(requiredText(frame, "recipientUserId"));
+        String body = requiredText(frame, "body");
+
+        return Mono.defer(() -> socialRealtimeHub.sendDirectMessage(userId, recipientUserId, body))
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(ResponseStatusException.class, exception ->
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
+                .onErrorResume(exception -> sendError(session, "error", "Realtime request failed"));
+    }
+
+    private Mono<Void> sendInitialFriendPresence(WebSocketSession session, UUID userId) {
+        return Mono.fromCallable(() -> socialFriendsClient.listFriendUserIds(userId))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(friendUserIds -> {
+                    Mono<Void> deliveries = Mono.empty();
+                    for (UUID friendUserId : friendUserIds) {
+                        if (presenceStore.isOnline(friendUserId)) {
+                            deliveries = deliveries.then(sendJson(session, Map.of(
+                                    "type", "presence_changed",
+                                    "userId", friendUserId.toString(),
+                                    "status", "online"
+                            )));
+                        }
+                    }
+                    return deliveries;
+                });
     }
 
     private UUID authenticate(WebSocketSession session) {

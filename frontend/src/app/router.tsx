@@ -4,6 +4,8 @@ import { ProtectedRoute } from '../features/auth/components/ProtectedRoute'
 import { SignInPage } from '../features/auth/pages/SignInPage'
 import DevDemoApp from '../features/dev-demo/DevDemoApp'
 import { DevDemoRoutePage } from '../features/dev-demo/DevDemoRoutePage'
+import { FriendsHubPage } from '../features/friends/components/FriendsHubPage'
+import { FriendsHubLayout } from '../features/friends/layouts/FriendsHubLayout'
 import { LandingPage } from '../features/marketing/pages/LandingPage'
 import { AppChannelLayout, AppShellLayout } from '../features/shell/layouts/AppShellLayout'
 import { AppHomeRedirectPage, AppServerRedirectPage } from '../features/shell/pages/AppServerRedirectPage'
@@ -45,14 +47,6 @@ export function createAppRouter() {
           element: <AppHomeRedirectPage />,
         },
         {
-          path: 'friends',
-          element: (
-            <p className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
-              Friends hub lands in #31 (Workable Product).
-            </p>
-          ),
-        },
-        {
           path: 'instructor-dashboard',
           element: <InstructorDashboardPage />,
         },
@@ -83,6 +77,20 @@ export function createAppRouter() {
         {
           path: 'servers/:serverId/courses/:courseId/support/:operation',
           element: <SupportOperationPage />,
+        },
+      ],
+    },
+    {
+      path: '/app/friends',
+      element: (
+        <ProtectedRoute>
+          <FriendsHubLayout />
+        </ProtectedRoute>
+      ),
+      children: [
+        {
+          index: true,
+          element: <FriendsHubPage />,
         },
       ],
     },

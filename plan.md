@@ -322,17 +322,17 @@ Use an incremental production workflow:
 10. Maintain release notes, change logs, debug logs, and runbooks for local deployment.
 11. For every non-trivial implementation slice, add an issue-scoped change log under `docs/operations/` with the files changed, behavior added, verification commands, and representative code snippets.
 12. For every meaningful local or browser-debugging failure, add an issue-scoped debug log under `docs/operations/` with symptoms, hypotheses, commands run, findings, fixes, and final verification.
-13. For every CodeRabbit suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/agent-workflow.md`).
+13. For every **cubic** suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-cubic-fix.md` (see `docs/operations/agent-workflow.md`).
 14. Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 
-Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, `setup-pre-commit` for quality gates, and CodeRabbit for PR review loops (`docs/operations/agent-workflow.md`).
+Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, `setup-pre-commit` for quality gates, and **cubic** for PR review loops (`docs/operations/agent-workflow.md`).
 
 Definition of Done for each feature:
 
 - Backend endpoint/service implemented with validation and permissions.
 - Frontend UI implemented with loading, error, and empty states.
 - Database migrations are reversible or safely forward-only with documented rollback.
-- Issue-scoped change log, any relevant debug log, and any relevant CodeRabbit fix log are written under `docs/operations/`.
+- Issue-scoped change log, any relevant debug log, and any relevant **cubic** fix log are written under `docs/operations/`.
 - Unit/integration tests added.
 - E2E coverage added for user-critical flows.
 - Logs and metrics added where operationally useful.

@@ -194,6 +194,52 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public boolean shareStudyServerMembership(UUID firstUserId, UUID secondUserId) {
+        Integer sharedServerCount = jdbcClient.sql("""
+                        SELECT COUNT(DISTINCT first_access.study_server_id)
+                        FROM (
+                            SELECT study_server_id
+                            FROM study_server_roles
+                            WHERE user_id = :firstUserId
+                            UNION
+                            SELECT co.study_server_id
+                            FROM courses co
+                            INNER JOIN course_roles cr ON cr.course_id = co.id
+                            WHERE cr.user_id = :firstUserId
+                            UNION
+                            SELECT co.study_server_id
+                            FROM courses co
+                            INNER JOIN cohorts c ON c.course_id = co.id
+                            INNER JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            WHERE ce.learner_user_id = :firstUserId
+                        ) first_access
+                        INNER JOIN (
+                            SELECT study_server_id
+                            FROM study_server_roles
+                            WHERE user_id = :secondUserId
+                            UNION
+                            SELECT co.study_server_id
+                            FROM courses co
+                            INNER JOIN course_roles cr ON cr.course_id = co.id
+                            WHERE cr.user_id = :secondUserId
+                            UNION
+                            SELECT co.study_server_id
+                            FROM courses co
+                            INNER JOIN cohorts c ON c.course_id = co.id
+                            INNER JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            WHERE ce.learner_user_id = :secondUserId
+                        ) second_access ON first_access.study_server_id = second_access.study_server_id
+                        """)
+                .param("firstUserId", firstUserId)
+                .param("secondUserId", secondUserId)
+                .query(Integer.class)
+                .single();
+
+        return sharedServerCount > 0;
+    }
+
+    @Override
     @Transactional
     public VoicePresence saveVoicePresence(UUID channelId, UUID memberUserId) {
         OffsetDateTime joinedAt = OffsetDateTime.now(ZoneOffset.UTC);

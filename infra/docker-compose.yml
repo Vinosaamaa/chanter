@@ -92,6 +92,8 @@ services:
       CHANTER_JWT_SECRET: ${CHANTER_JWT_SECRET:-chanter-local-dev-jwt-secret-32bytes!!}
       COMMUNITY_SERVICE_URL: ${COMMUNITY_SERVICE_URL:-http://host.docker.internal:8082}
       MESSAGE_SERVICE_URL: ${MESSAGE_SERVICE_URL:-http://host.docker.internal:8083}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "${REALTIME_PORT:-8087}:8087"
     depends_on:
