@@ -126,7 +126,10 @@ public class SocialRealtimeHub {
                             .onErrorResume(error -> Mono.empty())
                             .doFinally(signal -> {
                                 synchronized (sessionLock) {
-                                    if (!sessionsByUser.containsKey(userId)) {
+                                    AtomicInteger generation = connectionGenerations.get(userId);
+                                    if (generation != null
+                                            && generation.get() == generationAtDisconnect
+                                            && !sessionsByUser.containsKey(userId)) {
                                         connectionGenerations.remove(userId);
                                     }
                                 }

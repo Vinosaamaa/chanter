@@ -160,6 +160,12 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P3: Fix-log TTL deferral contradicts reverted TTL | Fixed — deferred note no longer cites TTL mitigation |
 | P3: Fix-log uses `thread` instead of Direct Message | Fixed — Pass 2 row wording updated |
 
+## Pass 16
+
+| Comment | Action |
+|---------|--------|
+| P1: Stale disconnect prunes generation counter for newer reconnect | Fixed — only remove `connectionGenerations` when cleanup still owns `generationAtDisconnect` |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.
