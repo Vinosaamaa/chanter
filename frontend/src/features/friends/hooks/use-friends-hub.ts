@@ -90,7 +90,11 @@ export function useFriendsHub(): UseFriendsHubResult {
     void fetchDirectMessages(selectedFriendId)
       .then((response) => {
         if (!cancelled) {
-          setLoadedMessages(response.messages)
+          setLoadedMessages((current) =>
+            loadedMessagesFriendIdRef.current === selectedFriendId && current.length > 0
+              ? mergeMessages(response.messages, current)
+              : response.messages,
+          )
           setLoadedMessagesFriendId(selectedFriendId)
           setError(null)
         }
@@ -152,6 +156,26 @@ export function useFriendsHub(): UseFriendsHubResult {
     }
   }, [accessToken])
 
+  const reconcileThreadMessages = async (friendId: string, sent: DirectMessage): Promise<void> => {
+    if (selectedFriendIdRef.current !== friendId) {
+      return
+    }
+
+    setLoadedMessages((current) => mergeMessages(current, [sent]))
+    setLoadedMessagesFriendId(friendId)
+
+    try {
+      const refreshed = await fetchDirectMessages(friendId)
+      if (selectedFriendIdRef.current !== friendId) {
+        return
+      }
+      setLoadedMessages((current) => mergeMessages(refreshed.messages, current))
+      setLoadedMessagesFriendId(friendId)
+    } catch {
+      // Send succeeded; keep optimistic/POST state when history refresh fails.
+    }
+  }
+
   const sendMessage = async (body: string): Promise<boolean> => {
     const trimmed = body.trim()
     if (!trimmed || !selectedFriendId || !currentUserId) {
@@ -186,26 +210,12 @@ export function useFriendsHub(): UseFriendsHubResult {
         try {
           await client.sendDirectMessage(friendId, trimmed)
         } catch {
-          await sendDirectMessage(friendId, trimmed)
-          if (selectedFriendIdRef.current === friendId) {
-            const refreshed = await fetchDirectMessages(friendId)
-            if (selectedFriendIdRef.current === friendId) {
-              setLoadedMessages(refreshed.messages)
-              setLoadedMessagesFriendId(friendId)
-            }
-          }
+          const sent = await sendDirectMessage(friendId, trimmed)
+          await reconcileThreadMessages(friendId, sent)
         }
       } else {
-        await sendDirectMessage(friendId, trimmed)
-        if (selectedFriendIdRef.current !== friendId) {
-          return true
-        }
-        const refreshed = await fetchDirectMessages(friendId)
-        if (selectedFriendIdRef.current !== friendId) {
-          return true
-        }
-        setLoadedMessages(refreshed.messages)
-        setLoadedMessagesFriendId(friendId)
+        const sent = await sendDirectMessage(friendId, trimmed)
+        await reconcileThreadMessages(friendId, sent)
       }
       return true
     } catch (caught) {

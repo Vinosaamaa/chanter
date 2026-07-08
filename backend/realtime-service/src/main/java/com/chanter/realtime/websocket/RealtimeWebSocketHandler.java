@@ -69,21 +69,25 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
             return session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Authentication required"));
         }
 
-        Mono<Void> sessionWork = socialRealtimeHub.connect(session, userId)
-                .then(sendInitialFriendPresence(session, userId).onErrorResume(error -> {
-                    log.warn("Initial friend presence snapshot unavailable for user {}", userId, error);
-                    return Mono.empty();
-                }))
-                .thenMany(session.receive()
-                        .map(WebSocketMessage::getPayloadAsText)
-                        .concatMap(payload -> handleClientFrame(session, userId, payload)))
-                .then()
-                .doFinally(signalType -> subscriptionHub.unsubscribeAll(session));
-
-        return sessionWork
-                .materialize()
-                .flatMap(signal -> socialRealtimeHub.disconnect(session)
-                        .then(signal.isOnError() ? Mono.error(signal.getThrowable()) : Mono.empty()));
+        return Mono.usingWhen(
+                Mono.just(session),
+                activeSession -> Mono.defer(() -> socialRealtimeHub.connect(activeSession, userId)
+                                .then(sendInitialFriendPresence(activeSession, userId).onErrorResume(error -> {
+                                    log.warn(
+                                            "Initial friend presence snapshot unavailable for user {}",
+                                            userId,
+                                            error
+                                    );
+                                    return Mono.empty();
+                                })))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .thenMany(activeSession.receive()
+                                .map(WebSocketMessage::getPayloadAsText)
+                                .concatMap(payload -> handleClientFrame(activeSession, userId, payload)))
+                        .then(),
+                activeSession -> socialRealtimeHub.disconnect(activeSession)
+                        .then(Mono.fromRunnable(() -> subscriptionHub.unsubscribeAll(activeSession)))
+        );
     }
 
     private Mono<Void> handleClientFrame(WebSocketSession session, UUID userId, String payload) {

@@ -74,6 +74,16 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P2: Fix log claimed echo reconciliation without REST fallback | Fixed — HTTP send+refresh fallback when WS ack fails |
 | P3: Initial presence errors swallowed silently | Fixed — warn log before continuing degraded connect |
 
+## Pass 6
+
+| Comment | Action |
+|---------|--------|
+| P2: Stale history fetch overwrites live/optimistic DMs | Fixed — merge history into same-thread cache when messages already exist |
+| P2: REST fallback fails when refresh fails after successful POST | Fixed — `reconcileThreadMessages` merges POST response; refresh errors are non-fatal |
+| P1: Cancelled WebSocket skips social disconnect | Fixed — `Mono.usingWhen` async cleanup on complete/error/cancel |
+| P2: Social connect blocks before scheduler boundary | Fixed — defer connect/presence onto `boundedElastic` |
+| P3: Shared friends/shell layout duplication | Deferred — follow-up refactor |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.
