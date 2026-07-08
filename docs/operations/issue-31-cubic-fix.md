@@ -41,6 +41,12 @@
 
 Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialRealtimeWebSocketSmokeTest`, CI on PR #79.
 
+| P2: WS DMs dropped while selected thread still loading | Fixed — claim thread and append on matching `dm_message` before REST load completes |
+
+## Pass 3
+
+_Pending cubic re-review after pass 2 push._
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.

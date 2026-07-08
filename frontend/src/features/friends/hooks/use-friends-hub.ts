@@ -117,12 +117,20 @@ export function useFriendsHub(): UseFriendsHubResult {
       onDirectMessage: (message) => {
         const friendId = selectedFriendIdRef.current
         if (
-          friendId &&
-          loadedMessagesFriendIdRef.current === friendId &&
-          (message.senderUserId === friendId || message.recipientUserId === friendId)
+          !friendId ||
+          (message.senderUserId !== friendId && message.recipientUserId !== friendId)
         ) {
-          setLoadedMessages((current) => mergeMessages(current, [message]))
+          return
         }
+
+        const ownedFriendId = loadedMessagesFriendIdRef.current
+        if (ownedFriendId === friendId) {
+          setLoadedMessages((current) => mergeMessages(current, [message]))
+          return
+        }
+
+        setLoadedMessages([message])
+        setLoadedMessagesFriendId(friendId)
       },
       onPresenceChange: (userId, status) => {
         setPresenceByFriendId((current) => ({
