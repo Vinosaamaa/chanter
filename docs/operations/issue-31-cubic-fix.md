@@ -174,6 +174,12 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P3: `aria-pressed` wrong control model for friend list | Fixed — use `aria-current` for selected conversation |
 | P3: Reconnect jitter can exceed `RECONNECT_MAX_MS` | Fixed — cap delay after jitter |
 
+## Pass 18
+
+| Comment | Action |
+|---------|--------|
+| P2: Capped reconnect retries lose jitter spread at `RECONNECT_MAX_MS` | Fixed — reserve jitter headroom before capping base delay |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.
