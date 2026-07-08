@@ -4,6 +4,7 @@ import com.chanter.message.application.SocialMessagingRepository;
 import com.chanter.message.domain.DirectMessage;
 import com.chanter.message.domain.FriendRequest;
 import com.chanter.message.domain.FriendRequestStatus;
+import com.chanter.message.domain.FriendSummary;
 import com.chanter.message.domain.FriendshipSnapshot;
 import com.chanter.message.domain.FriendshipState;
 import java.time.Instant;
@@ -297,6 +298,41 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
                         rs.getObject("recipient_user_id", UUID.class),
                         rs.getString("body"),
                         rs.getObject("sent_at", OffsetDateTime.class).toInstant()
+                ))
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FriendSummary> findFriends(UUID viewerUserId) {
+        return jdbcClient.sql("""
+                        SELECT
+                            CASE
+                                WHEN sender_user_id = :viewerUserId THEN recipient_user_id
+                                ELSE sender_user_id
+                            END AS friend_user_id,
+                            created_at AS friends_since
+                        FROM friend_requests fr
+                        WHERE fr.status = 'ACCEPTED'
+                        AND (fr.sender_user_id = :viewerUserId OR fr.recipient_user_id = :viewerUserId)
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM user_blocks ub
+                            WHERE (ub.blocker_user_id = :viewerUserId AND ub.blocked_user_id = CASE
+                                    WHEN fr.sender_user_id = :viewerUserId THEN fr.recipient_user_id
+                                    ELSE fr.sender_user_id
+                                END)
+                            OR (ub.blocker_user_id = CASE
+                                    WHEN fr.sender_user_id = :viewerUserId THEN fr.recipient_user_id
+                                    ELSE fr.sender_user_id
+                                END AND ub.blocked_user_id = :viewerUserId)
+                        )
+                        ORDER BY friends_since, friend_user_id
+                        """)
+                .param("viewerUserId", viewerUserId)
+                .query((rs, rowNum) -> new FriendSummary(
+                        rs.getObject("friend_user_id", UUID.class),
+                        rs.getObject("friends_since", OffsetDateTime.class).toInstant()
                 ))
                 .list();
     }

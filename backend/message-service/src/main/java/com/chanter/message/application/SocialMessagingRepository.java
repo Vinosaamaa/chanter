@@ -3,6 +3,7 @@ package com.chanter.message.application;
 import com.chanter.message.domain.DirectMessage;
 import com.chanter.message.domain.FriendRequest;
 import com.chanter.message.domain.FriendRequestStatus;
+import com.chanter.message.domain.FriendSummary;
 import com.chanter.message.domain.FriendshipSnapshot;
 import java.util.List;
 import java.util.Optional;
@@ -31,4 +32,6 @@ public interface SocialMessagingRepository {
     DirectMessage saveDirectMessage(DirectMessage directMessage);
 
     List<DirectMessage> findDirectMessages(UUID viewerUserId, UUID peerUserId);
+
+    List<FriendSummary> findFriends(UUID viewerUserId);
 }

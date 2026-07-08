@@ -1,7 +1,7 @@
-# CodeRabbit Review Workflow (moved)
+# CodeRabbit Review Workflow (retired)
 
-**Issue completion loop, CodeRabbit fix loop, and merge policy** are documented in the single canonical agent doc:
+CodeRabbit was the PR review tool from 2026-06-22 through 2026-07-07 (trial expired).
 
-**[`docs/operations/agent-workflow.md`](agent-workflow.md)**
+**Current tool:** [cubic Dev AI](https://www.cubic.dev/) — see [`docs/operations/agent-workflow.md`](agent-workflow.md) § cubic review.
 
-Greptile historical fix logs remain under `docs/operations/issue-*-greptile-fix.md`.
+Historical CodeRabbit fix logs remain under `docs/operations/issue-*-coderabbit-fix.md`.

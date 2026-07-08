@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record RemoveFriendshipRequest(
-        @NotNull UUID requesterUserId,
         @NotNull UUID friendUserId
 ) {
 }

@@ -44,9 +44,9 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4). Production Frontend **#47–#59** is **complete** (last merge: #59, PR #76).
 
-**Active slice:** **#61** voice WebRTC + LiveKit — branch `feature/61-voice-webrtc-livekit`.
+**Active slice:** **#31** Friends Hub + live DM — branch `feature/31-friends-hub-live-dm`.
 
-**Next after #61:** #31 Friends Hub + live DM.
+**Next after #31:** #32 DM voice.
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
@@ -83,8 +83,8 @@ Workable Product (**active** — [project #4](https://github.com/users/Vinosaama
 |------:|-------|-------|
 | 1 | [#60](https://github.com/Vinosaamaa/chanter/issues/60) | Epic |
 | 2 | [**#62**](https://github.com/Vinosaamaa/chanter/issues/62) | One-command stack — **merged** (PR #77) |
-| 3 | [**#61**](https://github.com/Vinosaamaa/chanter/issues/61) | Voice WebRTC + LiveKit — **in progress** |
-| 4 | [#31](https://github.com/Vinosaamaa/chanter/issues/31) | Friends Hub |
+| 3 | [**#61**](https://github.com/Vinosaamaa/chanter/issues/61) | Voice WebRTC + LiveKit — **merged** (PR #78) |
+| 4 | [**#31**](https://github.com/Vinosaamaa/chanter/issues/31) | Friends Hub — **in progress** |
 | 5 | [#32](https://github.com/Vinosaamaa/chanter/issues/32) | DM voice |
 | 6 | [#63](https://github.com/Vinosaamaa/chanter/issues/63) | E2E demo |
 
@@ -166,7 +166,7 @@ Scale direction:
 
 Use installed Cursor workflow skills directly rather than the deleted local `chanter-engineering-workflow` skill.
 
-**Git workflow (required):** one branch per GitHub issue → pull request → **full CodeRabbit loop** → **owner merges** → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. **Agents never merge.** Do not stop after opening a PR.
+**Git workflow (required):** one branch per GitHub issue → pull request → **full cubic loop** → **owner merges** → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. **Agents never merge.** Do not stop after opening a PR.
 
 **Testing workflow:** backend bootstrap (#11) may use smoke tests; **backend domain features #12–#24 use TDD**. Production frontend **#47–#55** were test-last; **from #56 onward** use vertical-slice TDD per `agent-workflow.md`.
 
@@ -179,11 +179,11 @@ The expected workflow includes:
 - Diagnose loop for bugs and regressions.
 - Issue-scoped change logs for non-trivial implementation slices.
 - Issue-scoped debug logs for meaningful local/browser failures.
-- Issue-scoped CodeRabbit fix logs for every CodeRabbit suggestion that changes code or records an explicit follow-up (`docs/operations/issue-<N>-coderabbit-fix.md`). See `docs/operations/agent-workflow.md`.
+- Issue-scoped **cubic** fix logs for every cubic suggestion that changes code or records an explicit follow-up (`docs/operations/issue-<N>-cubic-fix.md`). See `docs/operations/agent-workflow.md`. Historical CodeRabbit logs: `issue-*-coderabbit-fix.md`.
 - Zoom-out architecture review after milestones.
 - Prototyping for uncertain UX/system flows.
 - Pre-commit and CI-style quality gates once code exists.
-- CodeRabbit PR review loops after GitHub PRs are open (replaces Greptile / `greploop`; trial expired).
+- **cubic PR review** loops after GitHub PRs are open (current; replaces CodeRabbit and Greptile).
 
 Use these installed skills by name when relevant:
 
@@ -195,7 +195,7 @@ Use these installed skills by name when relevant:
 - `zoom-out` or `improve-codebase-architecture`: review architecture boundaries after major changes.
 - `prototype`: explore uncertain UI or system flows before production implementation.
 - `setup-pre-commit`: add quality gates after runnable code exists.
-- **CodeRabbit review:** push to PR → GitHub review; or local `coderabbit review --agent --base main`. See `docs/operations/agent-workflow.md`.
+- **cubic review:** push to PR → GitHub review (or comment `@cubic-dev-ai review this PR`). See `docs/operations/agent-workflow.md`.
 
 Diagram workflow:
 
@@ -330,13 +330,14 @@ Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24 is merged on main.
 Production Frontend #47–#59 is complete.
-Active: Workable Product project #4 — #61 in progress.
+Active: Workable Product project #4 — #31 in progress (PR #79).
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/61
+Issue: https://github.com/Vinosaamaa/chanter/issues/31
+Branch: feature/31-friends-hub-live-dm
 Project: https://github.com/users/Vinosaamaa/projects/4
 ```
 
@@ -350,7 +351,7 @@ Project: https://github.com/users/Vinosaamaa/projects/4
 - **TDD:** backend #12–#24 used TDD for domain behavior; production frontend **#47–#55** test-last; **#56+** vertical-slice TDD per `agent-workflow.md`.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
-- For every CodeRabbit suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/agent-workflow.md`). Historical Greptile logs remain under `issue-*-greptile-fix.md`.
+- For every **cubic** suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-cubic-fix.md` (see `docs/operations/agent-workflow.md`). Historical CodeRabbit logs remain under `issue-*-coderabbit-fix.md`.
 - Keep explanations beginner-friendly but production-oriented.
 - Preserve and update the docs when architecture or process decisions change.
 - Ask before creating remote repositories, pushing code, creating tickets, or installing third-party integrations.

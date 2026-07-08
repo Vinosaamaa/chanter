@@ -12,8 +12,8 @@ alwaysApply: true
 1. One GitHub issue → one feature branch (e.g. `feature/15-send-friend-request-and-dm`)
 2. Commit and push the **feature branch** only
 3. Open a PR targeting `main`
-4. **Complete the issue** — CI green + CodeRabbit review finished + fix loop. See `docs/operations/agent-workflow.md` (**Issue completion loop**). Do not start the next issue until the loop is done and the PR is merged.
-5. **Only the repository owner merges.** Agents must never run `gh pr merge` or push to `main`. Wait for owner merge after CodeRabbit is clean.
+4. **Complete the issue** — CI green + **cubic** review finished + fix loop. See `docs/operations/agent-workflow.md` (**Issue completion loop**). Do not start the next issue until the loop is done and the PR is merged.
+5. **Only the repository owner merges.** Agents must never run `gh pr merge` or push to `main`. Wait for owner merge after cubic is clean.
 
 ## Forbidden
 
@@ -21,8 +21,8 @@ alwaysApply: true
 - `git push origin HEAD:main`
 - Committing feature or doc work directly on `main` then pushing
 - **Agents merging PRs** (owner only)
-- **Merging a PR while CodeRabbit is still `pending`**
-- **Stopping after opening a PR** without waiting for CodeRabbit, fixing comments, and owner merge
+- **Merging a PR while cubic is still `pending`**
+- **Stopping after opening a PR** without waiting for cubic, fixing comments, and owner merge
 - **Parallel sub-agents** implementing multiple issues on the same repo at once
 
 ## Doc-only changes

@@ -18,7 +18,7 @@ Create a clean development operating model for an enterprise-grade microservice 
 - Application code has been bootstrapped. Backend MVP issues **#11–#24** are merged on `main`.
 - **Active phase:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — start at **#48**. **Next:** [Workable Product](https://github.com/users/Vinosaamaa/projects/4) after **#51**. Agent order: [`docs/operations/agent-workflow.md`](../operations/agent-workflow.md).
 - Existing files include planning/design docs, the education MVP PRD, **product design showcase** (`docs/product-design/` — UI mockups and vision), GitHub-ready local issue breakdown, editable draw.io architecture diagrams (`docs/diagrams/`), local repository metadata/templates, Spring Boot services, a React/Vite frontend, CI, and local Docker infrastructure.
-- The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and CodeRabbit review (`docs/operations/agent-workflow.md`; replaces Greptile / `greploop`).
+- The local `chanter-engineering-workflow` skill has been removed. Use installed workflow skills directly, such as `grill-with-docs`, `to-prd`, `to-issues`, `tdd`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `prototype`, `setup-pre-commit`, and **cubic** review (`docs/operations/agent-workflow.md`; replaces CodeRabbit and Greptile / `greploop`).
 - Draw.io **architecture** diagram sources and embedded PNG exports live in `docs/diagrams/`; use `/drawio-skill` for future diagram revisions.
 - **Product UI** mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** live in `docs/product-design/`; update when target screens or visibility rules change.
 
@@ -78,7 +78,7 @@ Decision status: confirmed.
 1. Create a **new branch per GitHub issue** (one issue → one branch → one PR).
 2. Implement on that branch; run tests locally before pushing.
 3. Open a **pull request** targeting `main` with acceptance criteria and test plan.
-4. **Owner merges only** — agents never merge. Wait until the repository owner merges after CodeRabbit review is complete (see `docs/operations/agent-workflow.md` — **Issue completion loop**).
+4. **Owner merges only** — agents never merge. Wait until the repository owner merges after **cubic** review is complete (see `docs/operations/agent-workflow.md` — **Issue completion loop**).
 5. After merge, the linked issue closes (use `Closes #<number>` in the PR body).
 
 Branch naming:
@@ -95,7 +95,7 @@ Recommended PR rules:
 - Update `plan.md`, `System Design.md`, `CONTEXT.md`, or ADRs for durable architecture/product decisions.
 - For each non-trivial slice, add an issue-scoped change log under `docs/operations/` that lists what changed, the files touched, representative code snippets, and verification commands.
 - For each meaningful debugging incident, add an issue-scoped debug log under `docs/operations/` that records symptoms, hypotheses, commands run, findings, fixes, and final verification.
-- For every CodeRabbit suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-coderabbit-fix.md` (see `docs/operations/agent-workflow.md`).
+- For every **cubic** suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-cubic-fix.md` (see `docs/operations/agent-workflow.md`).
 - Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 - Do not merge code that bypasses backend permission enforcement for protected actions.
 - Do not commit secrets, local credentials, generated dependency folders, or local runtime data.

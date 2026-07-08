@@ -3,8 +3,10 @@ package com.chanter.message.application;
 import com.chanter.message.domain.DirectMessage;
 import com.chanter.message.domain.FriendRequest;
 import com.chanter.message.domain.FriendRequestStatus;
+import com.chanter.message.domain.FriendSummary;
 import com.chanter.message.domain.FriendshipSnapshot;
 import java.time.Clock;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -17,10 +19,16 @@ import org.springframework.web.server.ResponseStatusException;
 public class SocialMessagingService {
 
     private final SocialMessagingRepository repository;
+    private final CoMembershipClient coMembershipClient;
     private final Clock clock;
 
-    public SocialMessagingService(SocialMessagingRepository repository, Clock clock) {
+    public SocialMessagingService(
+            SocialMessagingRepository repository,
+            CoMembershipClient coMembershipClient,
+            Clock clock
+    ) {
         this.repository = repository;
+        this.coMembershipClient = coMembershipClient;
         this.clock = clock;
     }
 
@@ -37,6 +45,12 @@ public class SocialMessagingService {
         }
         if (repository.hasPendingFriendRequest(senderUserId, recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "A Friend Request is already pending between these users");
+        }
+        if (!coMembershipClient.shareStudyServerMembership(senderUserId, recipientUserId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Friend Requests require shared Study Server membership"
+            );
         }
 
         try {
@@ -78,12 +92,16 @@ public class SocialMessagingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Friend Request is no longer pending"));
     }
 
-    public FriendshipSnapshot findFriendshipStatus(UUID firstUserId, UUID secondUserId) {
-        if (firstUserId.equals(secondUserId)) {
+    public FriendshipSnapshot findFriendshipStatus(UUID viewerUserId, UUID peerUserId) {
+        if (viewerUserId.equals(peerUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot query friendship with themselves");
         }
 
-        return repository.findFriendshipSnapshot(firstUserId, secondUserId);
+        return repository.findFriendshipSnapshot(viewerUserId, peerUserId);
+    }
+
+    public List<FriendSummary> findFriends(UUID viewerUserId) {
+        return repository.findFriends(viewerUserId);
     }
 
     @Transactional
@@ -123,7 +141,7 @@ public class SocialMessagingService {
                 senderUserId,
                 recipientUserId,
                 body.trim(),
-                clock.instant()
+                clock.instant().truncatedTo(ChronoUnit.MICROS)
         ));
     }
 

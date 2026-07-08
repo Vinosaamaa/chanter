@@ -1,7 +1,7 @@
 # Chanter Agent Workflow
 
-**Last updated:** 2026-06-25  
-**This is the single canonical doc for agents.** It covers issue order, the per-issue completion loop, merge policy, and CodeRabbit review. Enforced in `.cursor/rules/git-workflow.mdc`.
+**Last updated:** 2026-07-08  
+**This is the single canonical doc for agents.** It covers issue order, the per-issue completion loop, merge policy, and **cubic Dev AI** PR review. Enforced in `.cursor/rules/git-workflow.mdc`.
 
 ---
 
@@ -9,13 +9,13 @@
 
 **Only the repository owner merges pull requests.** Agents must **never** run `gh pr merge`, squash-merge on GitHub, or push to `main`.
 
-After CI is green and CodeRabbit is clean, the agent:
+After CI is green and **cubic** review is clean, the agent:
 
 1. Tells the owner the PR is ready.
 2. **Stops and waits** for the owner to merge.
 3. Pulls latest `main` and starts the **next** issue only **after** the owner confirms merge (or `main` contains the merge).
 
-Agents may open PRs, push feature branches, and fix CodeRabbit comments. Merging is owner-only.
+Agents may open PRs, push feature branches, and fix cubic comments. Merging is owner-only.
 
 ---
 
@@ -35,24 +35,24 @@ An issue is **not done** when code is pushed or a PR is opened. An issue is **do
 6. **Commit + push** the feature branch only (push when the owner approves at push time).
 7. **Open PR** targeting `main` with `Closes #N` in the body.
 8. **Wait for CI green** (`backend`, `frontend`).
-9. **Wait for CodeRabbit** — status must be **Review completed** (not `pending`, not `Review in progress`).
-10. **CodeRabbit fix loop** — read all inline comments; fix actionable items; log in `docs/operations/issue-<N>-coderabbit-fix.md`; commit; push; **go back to step 8** until clean or only documented deferrals remain.
+9. **Wait for cubic** — GitHub check **Review completed** (or equivalent cubic status; not `pending`, not `in progress`).
+10. **cubic fix loop** — read all inline comments; fix actionable items; log in `docs/operations/issue-<N>-cubic-fix.md`; commit; push; **go back to step 8** until clean or only documented deferrals remain.
 11. **Hand off for merge** — notify the owner; **do not merge**. Wait for owner merge.
 12. **Next issue** — pull `main`, new branch, repeat from step 1.
 
 ### Forbidden (caused regressions on #20 and #21)
 
 - **Agents merging PRs** (owner only).
-- Merging while CodeRabbit is still `pending`.
+- Merging while cubic is still `pending`.
 - Ending a session or reporting “done” right after opening a PR.
-- Treating “CI green” as sufficient without CodeRabbit complete.
+- Treating “CI green” as sufficient without cubic review complete.
 - Launching background agents on multiple issues in parallel on the same repo.
-- Skipping `issue-<N>-coderabbit-fix.md` when CodeRabbit changed code or recorded deferrals.
+- Skipping `issue-<N>-cubic-fix.md` when cubic feedback changed code or recorded deferrals.
 - `git push origin main` or any direct push to `main`.
 
 ### Polling
 
-If CodeRabbit is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in the same session until it completes, then run the fix loop. Do not hand off with “waiting for CodeRabbit.”
+If cubic is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in the same session until it completes, then run the fix loop. Do not hand off with “waiting for cubic.”
 
 ---
 
@@ -147,41 +147,42 @@ Frontend test stack for production UI slices: add **Vitest** + **Testing Library
 
 ---
 
-## CodeRabbit review
+## cubic review
 
-Date adopted: 2026-06-22. Replaces Greptile / `greploop` (trial expired).
+Date adopted: 2026-07-08. Replaces **CodeRabbit** (trial expired 2026-07-07) and **Greptile** / `greploop` (trial expired 2026-06).
 
-**From issue #17 onward, use CodeRabbit for AI PR review.** Historical Greptile logs: `docs/operations/issue-*-greptile-fix.md`.
+**From issue #31 onward, use [cubic Dev AI](https://www.cubic.dev/) for AI PR review.** Historical logs:
 
-For each issue where CodeRabbit feedback changes code or records an explicit deferral, add or update:
+| Tool | Fix log pattern | Status |
+|------|-----------------|--------|
+| cubic | `docs/operations/issue-<number>-cubic-fix.md` | **Current** |
+| CodeRabbit | `docs/operations/issue-*-coderabbit-fix.md` | Retired |
+| Greptile | `docs/operations/issue-*-greptile-fix.md` | Retired |
 
-`docs/operations/issue-<number>-coderabbit-fix.md`
+For each issue where **cubic** feedback changes code or records an explicit deferral, add or update:
 
-Include: finding, fix (or deferral reason), verification commands, and any remaining threads.
+`docs/operations/issue-<number>-cubic-fix.md`
+
+Include: finding, fix (or deferral reason), verification commands, and any remaining threads. Use the same table format as `issue-59-coderabbit-fix.md` / `issue-61-coderabbit-fix.md`.
 
 ### Prerequisites (one-time)
 
-1. [CodeRabbit GitHub app](https://github.com/apps/coderabbitai) on `Vinosaamaa/chanter`.
-2. Local CLI: `coderabbit doctor` / `coderabbit auth login`.
+1. [cubic GitHub app](https://www.cubic.dev/) installed on `Vinosaamaa/chanter`.
+2. Optional local CLI: see [cubic CLI review docs](https://docs.cubic.dev/ide/cli-review).
 
 ### GitHub PR flow (merge gate)
 
 1. Open PR targeting `main`.
 2. Push feature branch.
-3. Wait for **CodeRabbit** check — **Review completed**.
-4. Fix comments → commit → push → re-review until clean.
-5. Owner merges.
-
-### Local CLI (optional, pre-push)
-
-```bash
-coderabbit review --agent --base main --type committed
-coderabbit review --agent -t uncommitted
-```
+3. Wait for **cubic** check — **Review completed** (new PRs are reviewed automatically).
+4. To re-run on an existing PR, comment: `@cubic-dev-ai review this PR`.
+5. Fix comments → commit → push → re-review until clean.
+6. Log every pass in `issue-<N>-cubic-fix.md`.
+7. Owner merges.
 
 ### What to defer vs fix
 
-CodeRabbit often flags `TODO(#auth)` caller identity params. Those are **document and defer** until **#30**, unless the slice explicitly implements auth. Fix real bugs: timeouts, sanitization, missing tests, wrong status codes. See `issue-17-coderabbit-fix.md` for the pattern.
+cubic may flag `TODO(#auth)` caller identity params. Those are **document and defer** unless the slice explicitly implements auth. Fix real bugs: timeouts, sanitization, missing tests, wrong status codes. See `issue-17-coderabbit-fix.md` for the historical defer/fix pattern (same discipline applies to cubic).
 
 ---
 
