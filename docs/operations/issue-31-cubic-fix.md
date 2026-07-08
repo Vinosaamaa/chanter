@@ -115,6 +115,12 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 |---------|--------|
 | P2: Stale per-user lock monitor swapped under waiting threads | Fixed — single hub `sessionLock` for all connect/disconnect bookkeeping |
 
+## Pass 11
+
+| Comment | Action |
+|---------|--------|
+| P2: Global `sessionLock` held during blocking Redis `markOffline` | Fixed — check session map under lock, then mark offline outside lock |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.

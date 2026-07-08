@@ -94,15 +94,20 @@ public class SocialRealtimeHub {
             return Mono.empty();
         }
 
-        return Mono.fromRunnable(() -> {
+        return Mono.fromCallable(() -> {
                     synchronized (sessionLock) {
-                        if (!sessionsByUser.containsKey(userId)) {
-                            presenceStore.markOffline(userId);
-                        }
+                        return !sessionsByUser.containsKey(userId);
                     }
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .then(notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty()));
+                .flatMap(shouldMarkOffline -> {
+                    if (!shouldMarkOffline) {
+                        return Mono.empty();
+                    }
+                    return Mono.fromRunnable(() -> presenceStore.markOffline(userId))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .then(notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty()));
+                });
     }
 
     public Mono<Void> sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {
