@@ -6,6 +6,7 @@ import com.chanter.realtime.application.PresenceStore;
 import com.chanter.realtime.application.SocialFriendsClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,15 +88,28 @@ public class SocialRealtimeHub {
     }
 
     public Mono<Void> sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {
+        return sendDirectMessage(senderUserId, recipientUserId, body, null);
+    }
+
+    public Mono<Void> sendDirectMessage(
+            UUID senderUserId,
+            UUID recipientUserId,
+            String body,
+            String clientMessageId
+    ) {
         return Mono.fromCallable(() -> directMessageClient.sendDirectMessage(senderUserId, recipientUserId, body))
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(this::publishDirectMessage);
+                .flatMap(message -> publishDirectMessage(message, clientMessageId));
     }
 
     public Mono<Void> publishDirectMessage(PersistedDirectMessage message) {
+        return publishDirectMessage(message, null);
+    }
+
+    public Mono<Void> publishDirectMessage(PersistedDirectMessage message, String clientMessageId) {
         return Flux.merge(
-                deliverToUser(message.senderUserId(), message),
-                deliverToUser(message.recipientUserId(), message)
+                deliverToUser(message.senderUserId(), message, clientMessageId),
+                deliverToUser(message.recipientUserId(), message, clientMessageId)
         ).then();
     }
 
@@ -124,21 +138,25 @@ public class SocialRealtimeHub {
                 .then();
     }
 
-    private Mono<Void> deliverToUser(UUID userId, PersistedDirectMessage message) {
+    private Mono<Void> deliverToUser(UUID userId, PersistedDirectMessage message, String clientMessageId) {
         Set<WebSocketSession> sessions = sessionsByUser.get(userId);
         if (sessions == null || sessions.isEmpty()) {
             return Mono.empty();
         }
 
+        Map<String, Object> messagePayload = new LinkedHashMap<>();
+        messagePayload.put("id", message.id().toString());
+        messagePayload.put("senderUserId", message.senderUserId().toString());
+        messagePayload.put("recipientUserId", message.recipientUserId().toString());
+        messagePayload.put("body", message.body());
+        messagePayload.put("sentAt", message.sentAt().toString());
+        if (clientMessageId != null && !clientMessageId.isBlank()) {
+            messagePayload.put("clientMessageId", clientMessageId);
+        }
+
         Map<String, Object> payload = Map.of(
                 "type", "dm_message",
-                "payload", Map.of(
-                        "id", message.id().toString(),
-                        "senderUserId", message.senderUserId().toString(),
-                        "recipientUserId", message.recipientUserId().toString(),
-                        "body", message.body(),
-                        "sentAt", message.sentAt().toString()
-                )
+                "payload", messagePayload
         );
 
         return Flux.fromIterable(sessions)

@@ -21,11 +21,11 @@ type OutboundFrame =
       type: 'send_dm'
       recipientUserId: string
       body: string
+      clientMessageId: string
     }
 
 type PendingDirectMessage = {
-  recipientUserId: string
-  body: string
+  clientMessageId: string
   resolve: () => void
   reject: (error: Error) => void
   timeoutId: number
@@ -76,15 +76,15 @@ export class SocialRealtimeClient {
     }
 
     return new Promise((resolve, reject) => {
+      const clientMessageId = crypto.randomUUID()
       const timeoutId = window.setTimeout(() => {
-        if (this.pendingDirectMessage?.body === body && this.pendingDirectMessage.recipientUserId === recipientUserId) {
+        if (this.pendingDirectMessage?.clientMessageId === clientMessageId) {
           this.rejectPendingDirectMessage(new Error('Direct message send timed out'))
         }
       }, SEND_ACK_TIMEOUT_MS)
 
       this.pendingDirectMessage = {
-        recipientUserId,
-        body,
+        clientMessageId,
         resolve,
         reject,
         timeoutId,
@@ -95,6 +95,7 @@ export class SocialRealtimeClient {
           type: 'send_dm',
           recipientUserId,
           body,
+          clientMessageId,
         })
       } catch (error) {
         this.rejectPendingDirectMessage(
@@ -187,7 +188,7 @@ export class SocialRealtimeClient {
     if (!pending) {
       return
     }
-    if (pending.recipientUserId !== message.recipientUserId || pending.body !== message.body) {
+    if (message.clientMessageId !== pending.clientMessageId) {
       return
     }
     window.clearTimeout(pending.timeoutId)

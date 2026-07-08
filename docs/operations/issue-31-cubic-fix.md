@@ -66,6 +66,14 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P2: Long DM thread pushes composer off-screen | Fixed — `min-h-0` on scrollable message list |
 | P3: Invalid `sentAt` crashes render | Fixed — guard `formatTimestamp` like channel conversation |
 
+## Pass 5
+
+| Comment | Action |
+|---------|--------|
+| P2: WS ack matched only on recipient+body (cross-tab false positive) | Fixed — `clientMessageId` on `send_dm` echoed in `dm_message` payload |
+| P2: Fix log claimed echo reconciliation without REST fallback | Fixed — HTTP send+refresh fallback when WS ack fails |
+| P3: Initial presence errors swallowed silently | Fixed — warn log before continuing degraded connect |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.

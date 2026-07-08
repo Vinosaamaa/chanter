@@ -16,6 +16,8 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.CloseStatus;
@@ -28,6 +30,8 @@ import reactor.core.scheduler.Schedulers;
 
 @Component
 public class RealtimeWebSocketHandler implements WebSocketHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(RealtimeWebSocketHandler.class);
 
     private final JwtTokenService jwtTokenService;
     private final ChannelSubscriptionAuthorizer subscriptionAuthorizer;
@@ -66,7 +70,10 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         }
 
         Mono<Void> sessionWork = socialRealtimeHub.connect(session, userId)
-                .then(sendInitialFriendPresence(session, userId).onErrorResume(error -> Mono.empty()))
+                .then(sendInitialFriendPresence(session, userId).onErrorResume(error -> {
+                    log.warn("Initial friend presence snapshot unavailable for user {}", userId, error);
+                    return Mono.empty();
+                }))
                 .thenMany(session.receive()
                         .map(WebSocketMessage::getPayloadAsText)
                         .concatMap(payload -> handleClientFrame(session, userId, payload)))
@@ -143,8 +150,9 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
     private Mono<Void> handleSendDirectMessage(WebSocketSession session, UUID userId, JsonNode frame) {
         UUID recipientUserId = UUID.fromString(requiredText(frame, "recipientUserId"));
         String body = requiredText(frame, "body");
+        String clientMessageId = optionalText(frame, "clientMessageId");
 
-        return Mono.defer(() -> socialRealtimeHub.sendDirectMessage(userId, recipientUserId, body))
+        return Mono.defer(() -> socialRealtimeHub.sendDirectMessage(userId, recipientUserId, body, clientMessageId))
                 .subscribeOn(Schedulers.boundedElastic())
                 .onErrorResume(ResponseStatusException.class, exception ->
                         sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
@@ -212,6 +220,14 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         JsonNode value = frame.get(fieldName);
         if (value == null || value.asText().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing field: " + fieldName);
+        }
+        return value.asText();
+    }
+
+    private static String optionalText(JsonNode frame, String fieldName) {
+        JsonNode value = frame.get(fieldName);
+        if (value == null || value.asText().isBlank()) {
+            return null;
         }
         return value.asText();
     }

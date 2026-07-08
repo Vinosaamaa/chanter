@@ -13,6 +13,7 @@ export type DirectMessage = {
   recipientUserId: string
   body: string
   sentAt: string
+  clientMessageId?: string
 }
 
 export type DirectMessageListResponse = {
