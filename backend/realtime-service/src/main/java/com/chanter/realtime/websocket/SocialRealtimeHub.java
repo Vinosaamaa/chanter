@@ -71,7 +71,8 @@ public class SocialRealtimeHub {
                     return socialSubscribed.then(
                             notifyFriendsPresence(userId, "online").onErrorResume(error -> Mono.empty())
                     );
-                });
+                })
+                .onErrorResume(error -> disconnect(session).then(Mono.error(error)));
     }
 
     public Mono<Void> disconnect(WebSocketSession session) {

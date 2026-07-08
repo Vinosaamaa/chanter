@@ -18,6 +18,7 @@ type UseFriendsHubResult = {
   connectionStatus: SocialRealtimeConnectionStatus
   isLoadingFriends: boolean
   isLoadingMessages: boolean
+  friendsListError: string | null
   error: string | null
   sendMessage: (body: string) => Promise<boolean>
   isSending: boolean
@@ -38,6 +39,7 @@ export function useFriendsHub(): UseFriendsHubResult {
   const [connectionStatus, setConnectionStatus] =
     useState<SocialRealtimeConnectionStatus>('connecting')
   const [isLoadingFriends, setIsLoadingFriends] = useState(true)
+  const [friendsListError, setFriendsListError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
   const clientRef = useRef<SocialRealtimeClient | null>(null)
@@ -66,7 +68,9 @@ export function useFriendsHub(): UseFriendsHubResult {
       })
       .catch((caught) => {
         if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : 'Unable to load friends')
+          setFriendsListError(
+            caught instanceof Error ? caught.message : 'Unable to load friends',
+          )
         }
       })
       .finally(() => {
@@ -295,6 +299,7 @@ export function useFriendsHub(): UseFriendsHubResult {
     connectionStatus,
     isLoadingFriends,
     isLoadingMessages,
+    friendsListError,
     error,
     sendMessage,
     isSending,

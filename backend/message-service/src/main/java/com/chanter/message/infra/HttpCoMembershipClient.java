@@ -57,7 +57,8 @@ public class HttpCoMembershipClient implements CoMembershipClient {
         } catch (RestClientException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
-                    "Community Service co-membership check failed"
+                    "Community Service co-membership check failed",
+                    exception
             );
         }
     }

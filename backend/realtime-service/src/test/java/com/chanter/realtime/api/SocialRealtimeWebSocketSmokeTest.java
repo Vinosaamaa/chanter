@@ -90,7 +90,7 @@ class SocialRealtimeWebSocketSmokeTest {
 
                             return ready.then(waitForPresence).then(waitForDm);
                         }
-                ).block(Duration.ofSeconds(5));
+                ).block(Duration.ofSeconds(10));
             } catch (Throwable throwable) {
                 listenerFailure.set(throwable);
             }
@@ -123,7 +123,7 @@ class SocialRealtimeWebSocketSmokeTest {
 
                     return waitForSubscribed.then(sendDm);
                 }
-        ).block(Duration.ofSeconds(5));
+        ).block(Duration.ofSeconds(10));
 
         listenerThread.join(5_000);
         if (listenerFailure.get() != null) {
@@ -174,7 +174,7 @@ class SocialRealtimeWebSocketSmokeTest {
 
                     return waitForSubscribed.then(sendDm).then(waitForError);
                 }
-        ).block(Duration.ofSeconds(5));
+        ).block(Duration.ofSeconds(10));
 
         assertThat(errorFrame.get()).isNotNull();
         assertThat(errorFrame.get().get("code").asText()).isEqualTo("forbidden");

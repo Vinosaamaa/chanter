@@ -6,6 +6,7 @@ import { cn } from '../../../lib/cn'
 
 import { useFriendsHub } from '../hooks/use-friends-hub'
 import type { FriendPresenceStatus } from '../types'
+import type { SocialRealtimeConnectionStatus } from '../social-realtime-client'
 
 export function FriendsHubPage() {
   const user = useAuthStore((state) => state.user)
@@ -39,9 +40,9 @@ export function FriendsHubPage() {
           {hub.isLoadingFriends ? (
             <p className="px-2 py-3 text-sm text-app-muted">Loading friends…</p>
           ) : hub.friends.length === 0 ? (
-            hub.error ? (
+            hub.friendsListError ? (
               <p className="px-2 py-3 text-sm text-rose-200" role="alert">
-                {hub.error}
+                {hub.friendsListError}
               </p>
             ) : (
               <p className="px-2 py-3 text-sm text-app-muted">
@@ -59,6 +60,7 @@ export function FriendsHubPage() {
                   <button
                     type="button"
                     onClick={() => hub.selectFriend(friend.friendUserId)}
+                    aria-pressed={hub.selectedFriendId === friend.friendUserId}
                     className={cn(
                       'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors',
                       hub.selectedFriendId === friend.friendUserId
@@ -179,7 +181,7 @@ function PresenceDot({ status }: { status: FriendPresenceStatus }) {
   )
 }
 
-function ConnectionBadge({ status }: { status: string }) {
+function ConnectionBadge({ status }: { status: SocialRealtimeConnectionStatus }) {
   const label =
     status === 'connected'
       ? 'Live'
@@ -198,13 +200,15 @@ function formatFriendLabel(userId: string): string {
   return `Friend ${userId.slice(0, 8)}`
 }
 
+const messageTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
 function formatTimestamp(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return value
   }
-  return new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date)
+  return messageTimeFormatter.format(date)
 }

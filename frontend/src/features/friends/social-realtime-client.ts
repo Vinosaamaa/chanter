@@ -38,6 +38,7 @@ const SEND_ACK_TIMEOUT_MS = 10_000
 export class SocialRealtimeClient {
   private socket: WebSocket | null = null
   private reconnectAttempts = 0
+  private reconnectTimerId: number | null = null
   private stopped = false
   private pendingDirectMessage: PendingDirectMessage | null = null
   private readonly options: SocialRealtimeClientOptions
@@ -48,11 +49,13 @@ export class SocialRealtimeClient {
 
   connect(): void {
     this.stopped = false
+    this.clearReconnectTimer()
     this.openSocket()
   }
 
   disconnect(): void {
     this.stopped = true
+    this.clearReconnectTimer()
     this.rejectPendingDirectMessage(new Error('Social realtime connection closed'))
     const socket = this.socket
     this.socket = null
@@ -111,8 +114,11 @@ export class SocialRealtimeClient {
     this.options.onStatusChange(status)
 
     const apiBase = getApiBase()
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = apiBase ? new URL(apiBase).host : window.location.host
+    const baseUrl = apiBase
+      ? new URL(apiBase)
+      : new URL(`${window.location.protocol}//${window.location.host}`)
+    const protocol = baseUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = baseUrl.host
     const path = '/api/v1/realtime/ws'
     const url = `${protocol}//${host}${path}?access_token=${encodeURIComponent(this.options.accessToken)}`
 
@@ -166,14 +172,25 @@ export class SocialRealtimeClient {
   }
 
   private scheduleReconnect(): void {
+    this.clearReconnectTimer()
     this.reconnectAttempts += 1
-    const delay = Math.min(RECONNECT_BASE_MS * this.reconnectAttempts, RECONNECT_MAX_MS)
+    const exponentialDelay = RECONNECT_BASE_MS * 2 ** (this.reconnectAttempts - 1)
+    const delay =
+      Math.min(exponentialDelay, RECONNECT_MAX_MS) + Math.floor(Math.random() * 500)
     this.options.onStatusChange('reconnecting')
-    window.setTimeout(() => {
+    this.reconnectTimerId = window.setTimeout(() => {
+      this.reconnectTimerId = null
       if (!this.stopped) {
         this.openSocket()
       }
     }, delay)
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimerId !== null) {
+      window.clearTimeout(this.reconnectTimerId)
+      this.reconnectTimerId = null
+    }
   }
 
   private sendFrame(frame: OutboundFrame): void {

@@ -134,6 +134,24 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P1: Offline presence fanout never runs after `fromRunnable` | Fixed — chain notify with `then(Mono.defer(...))` |
 | P2: `connectionGenerations` map never pruned | Fixed — remove entry after offline cleanup when user stays disconnected |
 
+## Pass 14
+
+| Comment | Action |
+|---------|--------|
+| P1: `HttpCoMembershipClient` drops `RestClientException` cause | Fixed — pass exception as `ResponseStatusException` cause |
+| P2: Failed social connect leaves stale session | Fixed — `connect` rolls back via `disconnect` on error |
+| P3: Friends empty state hidden by realtime `hub.error` | Fixed — separate `friendsListError` from conversation/realtime errors |
+| P3: Friend list selection missing `aria-pressed` | Fixed |
+| P3: `ConnectionBadge` accepts any string | Fixed — `SocialRealtimeConnectionStatus` union |
+| P3: Per-message `Intl.DateTimeFormat` allocation | Fixed — module-level formatter |
+| P2: Linear reconnect backoff / duplicate socket timers | Fixed — exponential backoff with jitter; clear reconnect timer on connect/disconnect |
+| P2: WS scheme derived from page not API base | Fixed — derive protocol from `getApiBase()` URL |
+| CI flake: social smoke test 5s timeout under load | Fixed — increase blocking read timeout to 10s |
+| P1/P2: `notifyFriendsPresence` blocking on event loop | Already fixed — `subscribeOn(boundedElastic)` in Pass 2 |
+| P2/P3: Multi-instance pub/sub, Redis presence leases, co-membership indexes, `friendsSince`, WS token in query | Deferred — documented in Pass 2 |
+| P3: Shared friends/shell layout duplication | Deferred — follow-up refactor |
+| P3: Fix-log deferred note / DM wording | Fixed — clarified deferrals; use Direct Message wording in new rows |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.
