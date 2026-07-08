@@ -87,7 +87,6 @@ public class SocialRealtimeHub {
             becameOffline = userSessions.isEmpty();
             if (becameOffline) {
                 sessionsByUser.remove(userId);
-                userLocks.remove(userId);
             }
         }
 
@@ -103,7 +102,14 @@ public class SocialRealtimeHub {
                     }
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .then(notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty()));
+                .then(notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty()))
+                .doFinally(signal -> {
+                    synchronized (userLock(userId)) {
+                        if (!sessionsByUser.containsKey(userId)) {
+                            userLocks.remove(userId);
+                        }
+                    }
+                });
     }
 
     public Mono<Void> sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {

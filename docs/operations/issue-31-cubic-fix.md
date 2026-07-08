@@ -103,6 +103,12 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P2: `userLocks` map grows without bound | Fixed — remove lock when last session disconnects |
 | P3: Social disconnect cleanup errors swallowed silently | Fixed — warn log in handler `onErrorResume` |
 
+## Pass 9
+
+| Comment | Action |
+|---------|--------|
+| P1: Early `userLocks` removal races with reconnect offline fanout | Fixed — prune lock after async offline cleanup when user still has no sessions |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.
