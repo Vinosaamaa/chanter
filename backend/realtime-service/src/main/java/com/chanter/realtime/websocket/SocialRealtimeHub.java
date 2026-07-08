@@ -27,6 +27,7 @@ public class SocialRealtimeHub {
     private final ObjectMapper objectMapper;
     private final Map<UUID, Set<WebSocketSession>> sessionsByUser = new ConcurrentHashMap<>();
     private final Map<String, UUID> userBySession = new ConcurrentHashMap<>();
+    private final Map<UUID, Object> userLocks = new ConcurrentHashMap<>();
 
     public SocialRealtimeHub(
             SocialFriendsClient socialFriendsClient,
@@ -41,21 +42,32 @@ public class SocialRealtimeHub {
     }
 
     public Mono<Void> connect(WebSocketSession session, UUID userId) {
-        sessionsByUser.computeIfAbsent(userId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
-        userBySession.put(session.getId(), userId);
+        boolean shouldAnnounceOnline;
+        synchronized (userLock(userId)) {
+            Set<WebSocketSession> userSessions = sessionsByUser.computeIfAbsent(
+                    userId,
+                    ignored -> ConcurrentHashMap.newKeySet()
+            );
+            shouldAnnounceOnline = userSessions.isEmpty();
+            userSessions.add(session);
+            userBySession.put(session.getId(), userId);
+        }
 
         return Mono.fromCallable(() -> {
-                    boolean wasOffline = !presenceStore.isOnline(userId);
-                    presenceStore.markOnline(userId);
-                    return wasOffline;
+                    if (shouldAnnounceOnline) {
+                        presenceStore.markOnline(userId);
+                    }
+                    return shouldAnnounceOnline;
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(wasOffline -> {
+                .flatMap(announceOnline -> {
                     Mono<Void> socialSubscribed = sendJson(session, Map.of("type", "social_subscribed"));
-                    if (!wasOffline) {
+                    if (!announceOnline) {
                         return socialSubscribed;
                     }
-                    return socialSubscribed.then(notifyFriendsPresence(userId, "online"));
+                    return socialSubscribed.then(
+                            notifyFriendsPresence(userId, "online").onErrorResume(error -> Mono.empty())
+                    );
                 });
     }
 
@@ -65,26 +77,32 @@ public class SocialRealtimeHub {
             return Mono.empty();
         }
 
-        return Mono.fromCallable(() -> {
-                    Set<WebSocketSession> userSessions = sessionsByUser.get(userId);
-                    if (userSessions == null) {
-                        return false;
+        boolean becameOffline;
+        synchronized (userLock(userId)) {
+            Set<WebSocketSession> userSessions = sessionsByUser.get(userId);
+            if (userSessions == null) {
+                return Mono.empty();
+            }
+            userSessions.remove(session);
+            becameOffline = userSessions.isEmpty();
+            if (becameOffline) {
+                sessionsByUser.remove(userId);
+            }
+        }
+
+        if (!becameOffline) {
+            return Mono.empty();
+        }
+
+        return Mono.fromRunnable(() -> {
+                    synchronized (userLock(userId)) {
+                        if (!sessionsByUser.containsKey(userId)) {
+                            presenceStore.markOffline(userId);
+                        }
                     }
-                    userSessions.remove(session);
-                    if (!userSessions.isEmpty()) {
-                        return false;
-                    }
-                    return sessionsByUser.remove(userId, userSessions);
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(becameOffline -> {
-                    if (!becameOffline) {
-                        return Mono.empty();
-                    }
-                    return Mono.fromRunnable(() -> presenceStore.markOffline(userId))
-                            .subscribeOn(Schedulers.boundedElastic())
-                            .then(notifyFriendsPresence(userId, "offline"));
-                });
+                .then(notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty()));
     }
 
     public Mono<Void> sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {
@@ -172,5 +190,9 @@ public class SocialRealtimeHub {
         } catch (JsonProcessingException exception) {
             return Mono.error(exception);
         }
+    }
+
+    private Object userLock(UUID userId) {
+        return userLocks.computeIfAbsent(userId, ignored -> new Object());
     }
 }

@@ -84,6 +84,18 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P2: Social connect blocks before scheduler boundary | Fixed — defer connect/presence onto `boundedElastic` |
 | P3: Shared friends/shell layout duplication | Deferred — follow-up refactor |
 
+## Pass 7
+
+| Comment | Action |
+|---------|--------|
+| P2: Channel unsubscribe skipped when social disconnect fails | Fixed — `onErrorResume` before `unsubscribeAll` |
+| P2: Missed DMs after reconnect | Fixed — reconcile selected thread on `connected` |
+| P2: Duplicate optimistic removal on identical body | Fixed — remove only first matching optimistic per echo |
+| P2: WS timeout triggers duplicate REST POST | Fixed — reconcile via GET before HTTP retry |
+| P2: Online/offline fanout failure closes socket | Fixed — best-effort `notifyFriendsPresence` |
+| P1: Reconnect race drops replacement socket / stale offline | Fixed — per-user lock + offline only when no sessions remain |
+| P2: Offline fanout failure blocks channel cleanup | Fixed — best-effort offline notify + handler cleanup order |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.

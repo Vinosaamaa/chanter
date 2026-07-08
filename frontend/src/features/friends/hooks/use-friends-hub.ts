@@ -143,7 +143,26 @@ export function useFriendsHub(): UseFriendsHubResult {
           [userId]: status,
         }))
       },
-      onStatusChange: setConnectionStatus,
+      onStatusChange: (status) => {
+        setConnectionStatus(status)
+        if (status === 'connected') {
+          const friendId = selectedFriendIdRef.current
+          if (!friendId) {
+            return
+          }
+          void fetchDirectMessages(friendId)
+            .then((response) => {
+              if (selectedFriendIdRef.current !== friendId) {
+                return
+              }
+              setLoadedMessages((current) => mergeMessages(response.messages, current))
+              setLoadedMessagesFriendId(friendId)
+            })
+            .catch(() => {
+              // Keep existing thread state when reconnect reconciliation fails.
+            })
+        }
+      },
       onError: (message) => setError(message),
     })
 
@@ -209,7 +228,26 @@ export function useFriendsHub(): UseFriendsHubResult {
       if (client && connectionStatus === 'connected') {
         try {
           await client.sendDirectMessage(friendId, trimmed)
-        } catch {
+        } catch (wsError) {
+          const wsMessage = wsError instanceof Error ? wsError.message : ''
+          if (wsMessage === 'Direct message send timed out') {
+            try {
+              const refreshed = await fetchDirectMessages(friendId)
+              if (selectedFriendIdRef.current === friendId) {
+                setLoadedMessages((current) => mergeMessages(refreshed.messages, current))
+                setLoadedMessagesFriendId(friendId)
+                const alreadySent = refreshed.messages.some(
+                  (message) =>
+                    message.body === trimmed && message.senderUserId === currentUserId,
+                )
+                if (alreadySent) {
+                  return true
+                }
+              }
+            } catch {
+              // Fall through to HTTP send when reconciliation cannot confirm delivery.
+            }
+          }
           const sent = await sendDirectMessage(friendId, trimmed)
           await reconcileThreadMessages(friendId, sent)
         }
@@ -266,12 +304,19 @@ export function useFriendsHub(): UseFriendsHubResult {
 function mergeMessages(current: DirectMessage[], incoming: DirectMessage[]): DirectMessage[] {
   let next = [...current]
   for (const message of incoming) {
-    next = next.filter(
-      (entry) =>
-        !entry.id.startsWith('optimistic-') ||
-        entry.body !== message.body ||
-        entry.senderUserId !== message.senderUserId,
-    )
+    let removedOptimistic = false
+    next = next.filter((entry) => {
+      if (
+        !removedOptimistic &&
+        entry.id.startsWith('optimistic-') &&
+        entry.body === message.body &&
+        entry.senderUserId === message.senderUserId
+      ) {
+        removedOptimistic = true
+        return false
+      }
+      return true
+    })
     if (!next.some((entry) => entry.id === message.id)) {
       next = [...next, message]
     }
