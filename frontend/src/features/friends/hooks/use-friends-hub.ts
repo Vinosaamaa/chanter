@@ -41,6 +41,11 @@ export function useFriendsHub(): UseFriendsHubResult {
   const [error, setError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
   const clientRef = useRef<SocialRealtimeClient | null>(null)
+  const loadedMessagesFriendIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    loadedMessagesFriendIdRef.current = loadedMessagesFriendId
+  }, [loadedMessagesFriendId])
 
   useEffect(() => {
     let cancelled = false
@@ -86,6 +91,8 @@ export function useFriendsHub(): UseFriendsHubResult {
       })
       .catch((caught) => {
         if (!cancelled) {
+          setLoadedMessages([])
+          setLoadedMessagesFriendId(selectedFriendId)
           setError(caught instanceof Error ? caught.message : 'Unable to load direct messages')
         }
       })
@@ -105,6 +112,7 @@ export function useFriendsHub(): UseFriendsHubResult {
       onDirectMessage: (message) => {
         if (
           selectedFriendId &&
+          loadedMessagesFriendIdRef.current === selectedFriendId &&
           (message.senderUserId === selectedFriendId || message.recipientUserId === selectedFriendId)
         ) {
           setLoadedMessages((current) => mergeMessages(current, [message]))
@@ -148,7 +156,12 @@ export function useFriendsHub(): UseFriendsHubResult {
       sentAt: new Date().toISOString(),
     }
 
-    setLoadedMessages((current) => [...current, optimisticMessage])
+    const friendId = selectedFriendId
+    const ownedFriendId = loadedMessagesFriendIdRef.current
+    setLoadedMessages(
+      ownedFriendId === friendId ? (current) => [...current, optimisticMessage] : [optimisticMessage],
+    )
+    setLoadedMessagesFriendId(friendId)
     setIsSending(true)
     setError(null)
 
