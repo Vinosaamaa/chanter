@@ -86,7 +86,10 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                                 .concatMap(payload -> handleClientFrame(activeSession, userId, payload)))
                         .then(),
                 activeSession -> socialRealtimeHub.disconnect(activeSession)
-                        .onErrorResume(error -> Mono.empty())
+                        .onErrorResume(error -> {
+                            log.warn("Social disconnect cleanup failed for session {}", activeSession.getId(), error);
+                            return Mono.empty();
+                        })
                         .then(Mono.fromRunnable(() -> subscriptionHub.unsubscribeAll(activeSession)))
         );
     }

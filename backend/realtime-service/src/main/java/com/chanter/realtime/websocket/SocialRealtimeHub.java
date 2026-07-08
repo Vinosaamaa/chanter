@@ -87,6 +87,7 @@ public class SocialRealtimeHub {
             becameOffline = userSessions.isEmpty();
             if (becameOffline) {
                 sessionsByUser.remove(userId);
+                userLocks.remove(userId);
             }
         }
 

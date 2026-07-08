@@ -96,6 +96,13 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 | P1: Reconnect race drops replacement socket / stale offline | Fixed — per-user lock + offline only when no sessions remain |
 | P2: Offline fanout failure blocks channel cleanup | Fixed — best-effort offline notify + handler cleanup order |
 
+## Pass 8
+
+| Comment | Action |
+|---------|--------|
+| P2: `userLocks` map grows without bound | Fixed — remove lock when last session disconnects |
+| P3: Social disconnect cleanup errors swallowed silently | Fixed — warn log in handler `onErrorResume` |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.
