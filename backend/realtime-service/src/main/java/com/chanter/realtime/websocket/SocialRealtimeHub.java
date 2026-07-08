@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
@@ -27,6 +28,7 @@ public class SocialRealtimeHub {
     private final ObjectMapper objectMapper;
     private final Map<UUID, Set<WebSocketSession>> sessionsByUser = new ConcurrentHashMap<>();
     private final Map<String, UUID> userBySession = new ConcurrentHashMap<>();
+    private final Map<UUID, AtomicInteger> connectionGenerations = new ConcurrentHashMap<>();
     private final Object sessionLock = new Object();
 
     public SocialRealtimeHub(
@@ -51,6 +53,7 @@ public class SocialRealtimeHub {
             shouldAnnounceOnline = userSessions.isEmpty();
             userSessions.add(session);
             userBySession.put(session.getId(), userId);
+            connectionGenerations.computeIfAbsent(userId, ignored -> new AtomicInteger(0)).incrementAndGet();
         }
 
         return Mono.fromCallable(() -> {
@@ -78,6 +81,7 @@ public class SocialRealtimeHub {
         }
 
         boolean becameOffline;
+        int generationAtDisconnect;
         synchronized (sessionLock) {
             Set<WebSocketSession> userSessions = sessionsByUser.get(userId);
             if (userSessions == null) {
@@ -88,25 +92,36 @@ public class SocialRealtimeHub {
             if (becameOffline) {
                 sessionsByUser.remove(userId);
             }
+            generationAtDisconnect = connectionGenerations
+                    .computeIfAbsent(userId, ignored -> new AtomicInteger(0))
+                    .get();
         }
 
         if (!becameOffline) {
             return Mono.empty();
         }
 
-        return Mono.fromCallable(() -> {
-                    synchronized (sessionLock) {
-                        return !sessionsByUser.containsKey(userId);
+        return Mono.fromRunnable(() -> {
+                    AtomicInteger generation = connectionGenerations.get(userId);
+                    if (generation == null || generation.get() != generationAtDisconnect) {
+                        return;
                     }
+                    boolean stillOffline;
+                    synchronized (sessionLock) {
+                        stillOffline = !sessionsByUser.containsKey(userId);
+                    }
+                    if (!stillOffline || generation.get() != generationAtDisconnect) {
+                        return;
+                    }
+                    presenceStore.markOffline(userId);
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(shouldMarkOffline -> {
-                    if (!shouldMarkOffline) {
+                .flatMap(ignored -> {
+                    AtomicInteger generation = connectionGenerations.get(userId);
+                    if (generation == null || generation.get() != generationAtDisconnect) {
                         return Mono.empty();
                     }
-                    return Mono.fromRunnable(() -> presenceStore.markOffline(userId))
-                            .subscribeOn(Schedulers.boundedElastic())
-                            .then(notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty()));
+                    return notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty());
                 });
     }
 

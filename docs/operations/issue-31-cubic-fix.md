@@ -121,6 +121,12 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 |---------|--------|
 | P2: Global `sessionLock` held during blocking Redis `markOffline` | Fixed — check session map under lock, then mark offline outside lock |
 
+## Pass 12
+
+| Comment | Action |
+|---------|--------|
+| P1: Stale `shouldMarkOffline` before async Redis write | Fixed — connection generation guard + revalidate before `markOffline` |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.
