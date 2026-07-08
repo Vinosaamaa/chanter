@@ -180,6 +180,12 @@ Verification: `npm run lint`, `FriendRequestAndDirectMessageSmokeTest`, `SocialR
 |---------|--------|
 | P2: Capped reconnect retries lose jitter spread at `RECONNECT_MAX_MS` | Fixed — reserve jitter headroom before capping base delay |
 
+## Pass 19
+
+| Comment | Action |
+|---------|--------|
+| P2: Per-attempt jitter still collapses capped delay to exactly 5s | Fixed — reserve fixed `RECONNECT_JITTER_MS` window below cap |
+
 ## Deferred
 
 See Pass 2 table rows marked **Deferred**.

@@ -33,6 +33,7 @@ type PendingDirectMessage = {
 
 const RECONNECT_BASE_MS = 500
 const RECONNECT_MAX_MS = 5_000
+const RECONNECT_JITTER_MS = 500
 const SEND_ACK_TIMEOUT_MS = 10_000
 
 export class SocialRealtimeClient {
@@ -175,9 +176,9 @@ export class SocialRealtimeClient {
     this.clearReconnectTimer()
     this.reconnectAttempts += 1
     const exponentialDelay = RECONNECT_BASE_MS * 2 ** (this.reconnectAttempts - 1)
-    const jitter = Math.floor(Math.random() * 500)
-    const maxBaseDelay = Math.max(0, RECONNECT_MAX_MS - jitter)
-    const delay = Math.min(exponentialDelay, maxBaseDelay) + jitter
+    const jitter = Math.floor(Math.random() * RECONNECT_JITTER_MS)
+    const baseDelay = Math.min(exponentialDelay, RECONNECT_MAX_MS - RECONNECT_JITTER_MS)
+    const delay = baseDelay + jitter
     this.options.onStatusChange('reconnecting')
     this.reconnectTimerId = window.setTimeout(() => {
       this.reconnectTimerId = null
