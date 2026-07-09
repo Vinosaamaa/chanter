@@ -10,7 +10,13 @@ public interface DirectMessageCallStore {
 
     Optional<DirectMessageCall> findActiveCallForUser(UUID userId);
 
-    void save(DirectMessageCall call);
+    Optional<DirectMessageCall> tryCreateRingingCall(DirectMessageCall call);
+
+    Optional<DirectMessageCall> activateIfRinging(UUID callId, UUID calleeUserId);
+
+    Optional<DirectMessageCall> endIfPresent(UUID callId);
+
+    Optional<DirectMessageCall> endIfRinging(UUID callId);
 
     void remove(UUID callId);
 }

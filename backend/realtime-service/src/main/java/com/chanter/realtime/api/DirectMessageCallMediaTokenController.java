@@ -1,5 +1,6 @@
 package com.chanter.realtime.api;
 
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.realtime.application.DmCallMediaToken;
 import com.chanter.realtime.websocket.DirectMessageCallHub;
 import java.util.UUID;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/v1/direct-message-calls")
@@ -20,11 +22,12 @@ public class DirectMessageCallMediaTokenController {
     }
 
     @PostMapping("/{callId}/media-token")
-    public DmCallMediaTokenResponse issueMediaToken(
+    public Mono<DmCallMediaTokenResponse> issueMediaToken(
             @PathVariable UUID callId,
-            @RequestAttribute(name = "authenticatedUserId") UUID userId
+            @RequestAttribute(name = AuthRequestAttributes.USER_ID) UUID userId
     ) {
-        return DmCallMediaTokenResponse.from(directMessageCallHub.issueMediaToken(userId, callId));
+        return directMessageCallHub.issueMediaToken(userId, callId)
+                .map(DmCallMediaTokenResponse::from);
     }
 
     public record DmCallMediaTokenResponse(

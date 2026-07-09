@@ -28,6 +28,7 @@ public class SocialGraph {
 
     public void block(UUID blockerUserId, UUID blockedUserId) {
         blocks.add(blockKey(blockerUserId, blockedUserId));
+        friendships.remove(pairKey(blockerUserId, blockedUserId));
     }
 
     public boolean isBlocked(UUID firstUserId, UUID secondUserId) {
@@ -46,6 +47,7 @@ public class SocialGraph {
                 .map(parts -> parts[0].equals(viewerUserId.toString())
                         ? UUID.fromString(parts[1])
                         : UUID.fromString(parts[0]))
+                .filter(friendId -> !isBlocked(viewerUserId, friendId))
                 .toList();
     }
 

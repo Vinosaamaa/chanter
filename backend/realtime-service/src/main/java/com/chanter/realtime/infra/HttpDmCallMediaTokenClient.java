@@ -9,8 +9,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
 
 @Component
 @Profile("!test")
@@ -27,33 +29,33 @@ public class HttpDmCallMediaTokenClient implements DmCallMediaTokenClient {
     }
 
     @Override
-    public DmCallMediaToken issueForCall(UUID callId, UUID participantUserId) {
-        try {
-            TokenResponse response = webClient.post()
-                    .uri("/internal/v1/dm-calls/{callId}/media-token", callId)
-                    .header(AuthHeaders.USER_ID, participantUserId.toString())
-                    .retrieve()
-                    .bodyToMono(TokenResponse.class)
-                    .block();
-
-            if (response == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service returned an empty token");
-            }
-
-            return new DmCallMediaToken(
-                    response.roomName(),
-                    response.serverUrl(),
-                    response.participantToken(),
-                    response.canSpeak(),
-                    response.canListen()
-            );
-        } catch (WebClientResponseException exception) {
-            throw new ResponseStatusException(
-                    HttpStatus.valueOf(exception.getStatusCode().value()),
-                    exception.getResponseBodyAsString(),
-                    exception
-            );
-        }
+    public Mono<DmCallMediaToken> issueForCall(UUID callId, UUID participantUserId) {
+        return webClient.post()
+                .uri("/internal/v1/dm-calls/{callId}/media-token", callId)
+                .header(AuthHeaders.USER_ID, participantUserId.toString())
+                .retrieve()
+                .bodyToMono(TokenResponse.class)
+                .switchIfEmpty(Mono.error(new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "Community Service returned an empty token"
+                )))
+                .map(response -> new DmCallMediaToken(
+                        response.roomName(),
+                        response.serverUrl(),
+                        response.participantToken(),
+                        response.canSpeak(),
+                        response.canListen()
+                ))
+                .onErrorMap(WebClientResponseException.class, exception -> new ResponseStatusException(
+                        HttpStatus.valueOf(exception.getStatusCode().value()),
+                        exception.getResponseBodyAsString(),
+                        exception
+                ))
+                .onErrorMap(WebClientRequestException.class, exception -> new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "Community Service is unavailable",
+                        exception
+                ));
     }
 
     private record TokenResponse(

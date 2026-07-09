@@ -1,8 +1,9 @@
 package com.chanter.realtime.application;
 
 import java.util.UUID;
+import reactor.core.publisher.Mono;
 
 public interface DmCallMediaTokenClient {
 
-    DmCallMediaToken issueForCall(UUID callId, UUID participantUserId);
+    Mono<DmCallMediaToken> issueForCall(UUID callId, UUID participantUserId);
 }

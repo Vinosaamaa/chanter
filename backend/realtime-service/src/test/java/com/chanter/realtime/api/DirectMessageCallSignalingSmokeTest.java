@@ -3,6 +3,7 @@ package com.chanter.realtime.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.chanter.common.auth.JwtTokenService;
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.realtime.infra.InMemoryDirectMessageCallStore;
 import com.chanter.realtime.infra.SocialGraph;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
@@ -115,6 +117,9 @@ class DirectMessageCallSignalingSmokeTest {
         calleeThread.start();
 
         assertThat(calleeReady.await(5, TimeUnit.SECONDS)).isTrue();
+        if (calleeFailure.get() != null) {
+            throw new AssertionError(calleeFailure.get());
+        }
 
         AtomicReference<JsonNode> callerAccepted = new AtomicReference<>();
         client.execute(
@@ -159,7 +164,7 @@ class DirectMessageCallSignalingSmokeTest {
         var tokenResponse = org.springframework.web.reactive.function.client.WebClient.create()
                 .post()
                 .uri("http://localhost:" + port + "/api/v1/direct-message-calls/{callId}/media-token", callId)
-                .header("X-User-Id", userA.toString())
+                .header(HttpHeaders.AUTHORIZATION, AuthHeaders.BEARER_PREFIX + tokenA)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
                 .block(Duration.ofSeconds(5));

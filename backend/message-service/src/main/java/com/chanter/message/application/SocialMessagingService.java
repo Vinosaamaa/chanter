@@ -126,7 +126,15 @@ public class SocialMessagingService {
 
     @Transactional
     public DirectMessage sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {
-        requireDirectMessageCallAccess(senderUserId, recipientUserId);
+        if (senderUserId.equals(recipientUserId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot message themselves");
+        }
+        if (repository.isBlocked(senderUserId, recipientUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Messages are blocked between these users");
+        }
+        if (!repository.areFriends(senderUserId, recipientUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Messages require an accepted Friend Request");
+        }
 
         return repository.saveDirectMessage(new DirectMessage(
                 UUID.randomUUID(),

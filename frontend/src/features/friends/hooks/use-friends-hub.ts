@@ -69,8 +69,11 @@ export function useFriendsHub(): UseFriendsHubResult {
   const [callError, setCallError] = useState<string | null>(null)
   const clientRef = useRef<SocialRealtimeClient | null>(null)
   const callStateRef = useRef<DmCallState>(initialCallState)
+  const resetCallTimerRef = useRef<number | null>(null)
+  const inviteInFlightRef = useRef(false)
+  const livekitErrorRef = useRef<string | null>(null)
   const livekit = useLiveKitRoom()
-  const { connect: connectLivekit, disconnect: disconnectLivekit, toggleMute, isMuted, error: livekitError } =
+  const { connect: connectLivekit, disconnect: disconnectLivekit, toggleMute, isMuted, error: livekitConnectionError } =
     livekit
   const loadedMessagesFriendIdRef = useRef<string | null>(null)
   const selectedFriendIdRef = useRef<string | null>(null)
@@ -87,12 +90,24 @@ export function useFriendsHub(): UseFriendsHubResult {
     callStateRef.current = callState
   }, [callState])
 
+  useEffect(() => {
+    livekitErrorRef.current = livekitConnectionError
+  }, [livekitConnectionError])
+
   const resetCall = useCallback(async (reason: string | null = null) => {
+    if (resetCallTimerRef.current !== null) {
+      window.clearTimeout(resetCallTimerRef.current)
+      resetCallTimerRef.current = null
+    }
+    inviteInFlightRef.current = false
     await disconnectLivekit()
     setCallState({ phase: 'ended', callId: null, peerUserId: null, reason })
-    window.setTimeout(() => {
+    const delayMs = reason === null ? 300 : 1_500
+    resetCallTimerRef.current = window.setTimeout(() => {
       setCallState(initialCallState)
-    }, 300)
+      setCallError(null)
+      resetCallTimerRef.current = null
+    }, delayMs)
   }, [disconnectLivekit])
 
   const joinCallMedia = useCallback(async (callId: string) => {
@@ -102,7 +117,7 @@ export function useFriendsHub(): UseFriendsHubResult {
       const token = await fetchDirectMessageCallMediaToken(callId)
       const connected = await connectLivekit(token)
       if (!connected) {
-        setCallError(livekitError ?? 'Unable to join call audio')
+        setCallError(livekitErrorRef.current ?? 'Unable to join call audio')
         await resetCall('media_failed')
         return
       }
@@ -111,10 +126,12 @@ export function useFriendsHub(): UseFriendsHubResult {
       setCallError(caught instanceof Error ? caught.message : 'Unable to join call audio')
       await resetCall('media_failed')
     }
-  }, [connectLivekit, livekitError, resetCall])
+  }, [connectLivekit, resetCall])
 
   const handleCallEvent = useCallback((event: SocialCallMessage) => {
     if (event.type === 'call_ringing') {
+      inviteInFlightRef.current = false
+      setCallError(null)
       const peerUserId =
         event.direction === 'incoming' ? event.callerUserId : event.calleeUserId
       setCallState({
@@ -388,9 +405,13 @@ export function useFriendsHub(): UseFriendsHubResult {
   }, [friends, presenceByFriendId])
 
   const startCall = () => {
-    if (!selectedFriendId || connectionStatus !== 'connected') {
+    if (!selectedFriendId || connectionStatus !== 'connected' || inviteInFlightRef.current) {
       return
     }
+    if (callStateRef.current.phase !== 'idle') {
+      return
+    }
+    inviteInFlightRef.current = true
     setCallError(null)
     clientRef.current?.inviteCall(selectedFriendId)
   }
@@ -448,7 +469,13 @@ export function useFriendsHub(): UseFriendsHubResult {
     acceptCall,
     declineCall,
     hangUpCall,
-    toggleCallMute: toggleMute,
+    toggleCallMute: async () => {
+      try {
+        await toggleMute()
+      } catch (caught) {
+        setCallError(caught instanceof Error ? caught.message : 'Unable to update microphone')
+      }
+    },
   }
 }
 

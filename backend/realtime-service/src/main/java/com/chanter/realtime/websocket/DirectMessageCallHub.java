@@ -6,6 +6,7 @@ import com.chanter.realtime.application.DmCallMediaToken;
 import com.chanter.realtime.application.DmCallMediaTokenClient;
 import com.chanter.realtime.domain.DirectMessageCall;
 import com.chanter.realtime.domain.DirectMessageCallStatus;
+import jakarta.annotation.PreDestroy;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -13,7 +14,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,14 +47,16 @@ public class DirectMessageCallHub {
         this.mediaTokenClient = mediaTokenClient;
     }
 
+    @PreDestroy
+    void shutdownScheduler() {
+        scheduler.shutdownNow();
+    }
+
     public Mono<Void> invite(UUID callerUserId, UUID calleeUserId) {
         return callAuthorizer.requireCallAccess(callerUserId, calleeUserId)
                 .then(Mono.fromCallable(() -> {
                     if (callStore.findActiveCallForUser(callerUserId).isPresent()) {
                         throw new ResponseStatusException(HttpStatus.CONFLICT, "Caller is already in a call");
-                    }
-                    if (callStore.findActiveCallForUser(calleeUserId).isPresent()) {
-                        return Optional.<DirectMessageCall>empty();
                     }
 
                     UUID callId = UUID.randomUUID();
@@ -65,7 +67,11 @@ public class DirectMessageCallHub {
                             DirectMessageCallStatus.RINGING,
                             Instant.now()
                     );
-                    callStore.save(call);
+                    Optional<DirectMessageCall> created = callStore.tryCreateRingingCall(call);
+                    if (created.isEmpty()) {
+                        return Optional.<DirectMessageCall>empty();
+                    }
+
                     scheduleRingTimeout(callId);
                     log.info(
                             "DM call ringing callId={} caller={} callee={}",
@@ -73,7 +79,7 @@ public class DirectMessageCallHub {
                             callerUserId,
                             calleeUserId
                     );
-                    return Optional.of(call);
+                    return created;
                 }))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(maybeCall -> {
@@ -93,17 +99,10 @@ public class DirectMessageCallHub {
     }
 
     public Mono<Void> accept(UUID calleeUserId, UUID callId) {
-        return Mono.fromCallable(() -> resolveRingingCall(callId, calleeUserId))
+        return Mono.fromCallable(() -> callStore.activateIfRinging(callId, calleeUserId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Call is not ringing")))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(call -> {
-                    DirectMessageCall active = new DirectMessageCall(
-                            call.callId(),
-                            call.callerUserId(),
-                            call.calleeUserId(),
-                            DirectMessageCallStatus.ACTIVE,
-                            call.createdAt()
-                    );
-                    callStore.save(active);
                     log.info("DM call accepted callId={}", callId);
                     Map<String, Object> accepted = Map.of(
                             "type", "call_accepted",
@@ -129,51 +128,57 @@ public class DirectMessageCallHub {
                     return call;
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(call -> endCall(call, "cancelled"));
+                .flatMap(call -> endCall(call.callId(), "cancelled"));
     }
 
     public Mono<Void> hangUp(UUID userId, UUID callId) {
         return endCall(userId, callId, "ended");
     }
 
-    public DmCallMediaToken issueMediaToken(UUID userId, UUID callId) {
-        DirectMessageCall call = callStore.findById(callId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Call not found"));
+    public Mono<DmCallMediaToken> issueMediaToken(UUID userId, UUID callId) {
+        return Mono.fromCallable(() -> {
+                    DirectMessageCall call = callStore.findById(callId)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Call not found"));
 
-        if (call.status() != DirectMessageCallStatus.ACTIVE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Call is not active");
-        }
-        if (!call.callerUserId().equals(userId) && !call.calleeUserId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a participant in this call");
-        }
-
-        return mediaTokenClient.issueForCall(callId, userId);
+                    if (call.status() != DirectMessageCallStatus.ACTIVE) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Call is not active");
+                    }
+                    if (!call.callerUserId().equals(userId) && !call.calleeUserId().equals(userId)) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a participant in this call");
+                    }
+                    return call;
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(call -> mediaTokenClient.issueForCall(callId, userId));
     }
 
     private Mono<Void> endCall(UUID userId, UUID callId, String reason) {
-        return Mono.fromCallable(() -> resolveAnyCall(callId, userId))
+        return Mono.fromCallable(() -> {
+                    resolveAnyCall(callId, userId);
+                    return callId;
+                })
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(call -> endCall(call, reason));
+                .flatMap(id -> endCall(id, reason));
     }
 
-    private Mono<Void> endCall(DirectMessageCall call, String reason) {
-        callStore.save(new DirectMessageCall(
-                call.callId(),
-                call.callerUserId(),
-                call.calleeUserId(),
-                DirectMessageCallStatus.ENDED,
-                call.createdAt()
-        ));
-        callStore.remove(call.callId());
-        log.info("DM call ended callId={} reason={}", call.callId(), reason);
+    private Mono<Void> endCall(UUID callId, String reason) {
+        return Mono.fromCallable(() -> callStore.endIfPresent(callId))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(maybeCall -> {
+                    if (maybeCall.isEmpty()) {
+                        return Mono.empty();
+                    }
+                    DirectMessageCall call = maybeCall.get();
+                    log.info("DM call ended callId={} reason={}", call.callId(), reason);
 
-        Map<String, Object> ended = Map.of(
-                "type", "call_ended",
-                "callId", call.callId().toString(),
-                "reason", reason
-        );
-        return socialRealtimeHub.deliverEventToUser(call.callerUserId(), ended)
-                .then(socialRealtimeHub.deliverEventToUser(call.calleeUserId(), ended));
+                    Map<String, Object> ended = Map.of(
+                            "type", "call_ended",
+                            "callId", call.callId().toString(),
+                            "reason", reason
+                    );
+                    return socialRealtimeHub.deliverEventToUser(call.callerUserId(), ended)
+                            .then(socialRealtimeHub.deliverEventToUser(call.calleeUserId(), ended));
+                });
     }
 
     private DirectMessageCall resolveRingingCall(UUID callId, UUID participantUserId) {
@@ -194,13 +199,12 @@ public class DirectMessageCallHub {
     }
 
     private void scheduleRingTimeout(UUID callId) {
-        ScheduledFuture<?> ignored = scheduler.schedule(() -> {
-            callStore.findById(callId).ifPresent(call -> {
-                if (call.status() == DirectMessageCallStatus.RINGING) {
-                    endCall(call, "timeout").subscribe();
-                }
-            });
-        }, RING_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        scheduler.schedule(
+                () -> callStore.endIfRinging(callId)
+                        .ifPresent(call -> endCall(call.callId(), "timeout").subscribe()),
+                RING_TIMEOUT_SECONDS,
+                TimeUnit.SECONDS
+        );
     }
 
     private static Map<String, Object> ringingPayload(DirectMessageCall call, String direction) {

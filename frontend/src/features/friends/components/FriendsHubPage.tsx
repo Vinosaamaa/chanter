@@ -15,7 +15,8 @@ export function FriendsHubPage() {
 
   const selectedFriend = hub.friends.find((friend) => friend.friendUserId === hub.selectedFriendId)
   const isCallUiVisible =
-    hub.callState.phase !== 'idle' && hub.callState.phase !== 'ended'
+    hub.callState.phase !== 'idle' &&
+    (hub.callState.phase !== 'ended' || hub.callError !== null)
   const callPeerLabel = hub.callState.peerUserId
     ? formatFriendLabel(hub.callState.peerUserId)
     : 'Friend'
@@ -174,7 +175,12 @@ export function FriendsHubPage() {
       </section>
 
       {isCallUiVisible ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Direct message voice call"
+        >
           <div className="w-full max-w-md rounded-xl border border-app-border bg-app-elevated p-5 shadow-xl">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
               Direct Message Voice

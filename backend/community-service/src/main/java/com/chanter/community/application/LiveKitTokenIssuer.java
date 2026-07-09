@@ -4,10 +4,12 @@ import com.chanter.community.config.LiveKitProperties;
 import com.chanter.community.domain.VoiceMediaToken;
 import io.livekit.server.AccessToken;
 import io.livekit.server.CanPublish;
+import io.livekit.server.CanPublishSources;
 import io.livekit.server.CanSubscribe;
 import io.livekit.server.RoomJoin;
 import io.livekit.server.RoomName;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +35,7 @@ public class LiveKitTokenIssuer {
 
     public VoiceMediaToken issueForDmCall(UUID callId, UUID participantUserId) {
         String roomName = dmCallRoomName(callId);
-        String participantToken = buildToken(participantUserId, roomName, true, true);
+        String participantToken = buildDmCallToken(participantUserId, roomName);
         return new VoiceMediaToken(roomName, properties.url(), participantToken, true, true);
     }
 
@@ -55,6 +57,21 @@ public class LiveKitTokenIssuer {
                 new RoomName(roomName),
                 new CanPublish(canSpeak),
                 new CanSubscribe(canListen)
+        );
+        return token.toJwt();
+    }
+
+    private String buildDmCallToken(UUID participantUserId, String roomName) {
+        AccessToken token = new AccessToken(properties.apiKey(), properties.apiSecret());
+        token.setIdentity(participantUserId.toString());
+        token.setName(participantUserId.toString());
+        token.setTtl(Duration.ofMinutes(15).toMillis());
+        token.addGrants(
+                new RoomJoin(true),
+                new RoomName(roomName),
+                new CanPublish(true),
+                new CanPublishSources(List.of("microphone")),
+                new CanSubscribe(true)
         );
         return token.toJwt();
     }

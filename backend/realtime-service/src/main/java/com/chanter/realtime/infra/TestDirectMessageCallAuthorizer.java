@@ -28,7 +28,7 @@ public class TestDirectMessageCallAuthorizer implements DirectMessageCallAuthori
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Message calls are blocked");
             }
             if (!socialGraph.areFriends(callerUserId, calleeUserId)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Message calls require friendship");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Message calls require an accepted Friend Request");
             }
         });
     }
