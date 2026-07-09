@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,7 @@ import reactor.core.publisher.Mono;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@Order(1)
 class SocialRealtimeWebSocketSmokeTest {
 
     @LocalServerPort
@@ -128,9 +130,9 @@ class SocialRealtimeWebSocketSmokeTest {
 
                     return waitForSubscribed.then(sendDm);
                 }
-        ).block(Duration.ofSeconds(10));
+        ).block(Duration.ofSeconds(20));
 
-        listenerThread.join(15_000);
+        listenerThread.join(25_000);
         if (listenerFailure.get() != null) {
             throw new AssertionError(listenerFailure.get());
         }

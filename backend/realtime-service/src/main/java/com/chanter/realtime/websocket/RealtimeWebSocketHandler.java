@@ -233,7 +233,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                                 .toList())
                         .subscribeOn(Schedulers.boundedElastic()))
                 .flatMapMany(Flux::fromIterable)
-                .flatMap(frame -> sendJson(session, frame))
+                .concatMap(frame -> sendJson(session, frame))
                 .then();
     }
 
