@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# Seed study server, enrollment, and friendship for the workable product demo (#63).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+# shellcheck disable=SC1091
+source .env 2>/dev/null || true
+
+GATEWAY="${GATEWAY:-http://localhost:8080}"
+FRONTEND="${FRONTEND:-http://127.0.0.1:${FRONTEND_PORT:-5173}}"
+DEMO_PASSWORD="${DEMO_PASSWORD:-chanter-dev-demo}"
+OWNER_EMAIL="dev-demo-owner@chanter.local"
+LEARNER_EMAIL="dev-demo-learner@chanter.local"
+DEMO_SERVER_NAME="Workable Product Demo"
+
+login() {
+  local email="$1"
+  curl -sf -X POST "$GATEWAY/api/v1/auth/login" \
+    -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$email\",\"password\":\"$DEMO_PASSWORD\"}" \
+    || curl -sf -X POST "$GATEWAY/api/v1/auth/register" \
+      -H 'Content-Type: application/json' \
+      -d "{\"email\":\"$email\",\"password\":\"$DEMO_PASSWORD\",\"displayName\":\"$2\"}"
+}
+
+json_field() {
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(d$1)"
+}
+
+echo "==> Logging in demo personas (password from DEMO_PASSWORD)"
+OWNER_JSON=$(login "$OWNER_EMAIL" "Demo Owner")
+LEARNER_JSON=$(login "$LEARNER_EMAIL" "Demo Learner")
+OWNER_TOKEN=$(echo "$OWNER_JSON" | json_field "['accessToken']")
+LEARNER_TOKEN=$(echo "$LEARNER_JSON" | json_field "['accessToken']")
+OWNER_ID=$(echo "$OWNER_JSON" | json_field "['user']['id']")
+LEARNER_ID=$(echo "$LEARNER_JSON" | json_field "['user']['id']")
+
+echo "==> Resolve or create Study Server"
+SERVERS=$(curl -sf "$GATEWAY/api/v1/study-servers" -H "Authorization: Bearer $OWNER_TOKEN")
+SERVER_ID=$(echo "$SERVERS" | python3 -c "
+import sys, json
+servers = json.load(sys.stdin)
+for server in servers:
+  if server.get('name') == '$DEMO_SERVER_NAME':
+    print(server['id']); raise SystemExit
+print(servers[0]['id'] if servers else '')
+" 2>/dev/null || true)
+if [[ -z "$SERVER_ID" ]]; then
+  CREATED=$(curl -sf -X POST "$GATEWAY/api/v1/study-servers" \
+    -H "Authorization: Bearer $OWNER_TOKEN" \
+    -H 'Content-Type: application/json' \
+    -d "{\"name\":\"$DEMO_SERVER_NAME\"}")
+  SERVER_ID=$(echo "$CREATED" | json_field "['id']")
+fi
+
+NAV=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/navigation" -H "Authorization: Bearer $OWNER_TOKEN")
+COURSE_ID=$(echo "$NAV" | python3 -c "import sys,json; d=json.load(sys.stdin); cs=d.get('courses') or []; print(cs[0]['id'] if cs else '')")
+if [[ -z "$COURSE_ID" ]]; then
+  COURSE=$(curl -sf -X POST "$GATEWAY/api/v1/study-servers/$SERVER_ID/courses" \
+    -H "Authorization: Bearer $OWNER_TOKEN" \
+    -H 'Content-Type: application/json' \
+    -d '{"title":"Demo Course","cohortName":"Demo Cohort"}')
+  COURSE_ID=$(echo "$COURSE" | json_field "['id']")
+  NAV=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/navigation" -H "Authorization: Bearer $OWNER_TOKEN")
+fi
+
+CHANNEL_IDS=$(echo "$NAV" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+course_id = '$COURSE_ID'
+announcements = ''
+general = ''
+study_room = ''
+for c in d.get('courses', []):
+  if c['id'] == course_id:
+    for ch in c.get('channels', []):
+      if ch.get('name') == 'announcements':
+        announcements = ch['id']
+      if ch.get('name') == 'questions':
+        questions = ch['id']
+for ch in d.get('studyServerChannels', []):
+  if ch.get('name') == 'general':
+    general = ch['id']
+  if ch.get('name') == 'study-room':
+    study_room = ch['id']
+print(announcements, general, study_room, questions)
+")
+read -r ANNOUNCEMENTS_CHANNEL_ID GENERAL_CHANNEL_ID STUDY_ROOM_CHANNEL_ID QUESTIONS_CHANNEL_ID <<<"$CHANNEL_IDS"
+
+echo "==> Enroll learner (idempotent)"
+COHORT_ID=$(echo "$NAV" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+for c in d.get('courses', []):
+  if c['id'] == '$COURSE_ID' and c.get('cohorts'):
+    print(c['cohorts'][0]['id']); raise SystemExit
+")
+curl -sf -X POST "$GATEWAY/api/v1/cohorts/$COHORT_ID/enrollments" \
+  -H "Authorization: Bearer $OWNER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"learnerUserId\":\"$LEARNER_ID\"}" >/dev/null || true
+
+echo "==> Ensure friendship (owner → learner)"
+FRIEND_STATUS=$(curl -sf "$GATEWAY/api/v1/friendships/status?peerUserId=$LEARNER_ID" \
+  -H "Authorization: Bearer $OWNER_TOKEN")
+STATUS=$(echo "$FRIEND_STATUS" | json_field "['status']")
+if [[ "$STATUS" == "NONE" ]]; then
+  REQUEST=$(curl -sf -X POST "$GATEWAY/api/v1/friend-requests" \
+    -H "Authorization: Bearer $OWNER_TOKEN" \
+    -H 'Content-Type: application/json' \
+    -d "{\"recipientUserId\":\"$LEARNER_ID\"}")
+  REQUEST_ID=$(echo "$REQUEST" | json_field "['id']")
+  curl -sf -X POST "$GATEWAY/api/v1/friend-requests/$REQUEST_ID/acceptance" \
+    -H "Authorization: Bearer $LEARNER_TOKEN" >/dev/null
+  echo "   friendship created"
+elif [[ "$STATUS" == "ACCEPTED" ]]; then
+  echo "   friendship already accepted"
+else
+  echo "   friendship status=$STATUS (complete pending request in UI or remove and re-run)"
+fi
+
+echo "==> Upload AI-approved course resource for Study Assistant grounding"
+RESOURCE_FILE="$ROOT/scripts/.workable-demo-ai-resource.txt"
+cat >"$RESOURCE_FILE" <<'EOF'
+Homework help for the Workable Product Demo course:
+
+Submit homework assignments through the course portal before Friday at 11:59 PM.
+Late submissions receive a ten percent penalty per day unless you request an extension
+from your instructor in the questions channel.
+EOF
+curl -sf -X POST "$GATEWAY/api/v1/courses/$COURSE_ID/course-resources" \
+  -H "Authorization: Bearer $OWNER_TOKEN" \
+  -F "title=Homework Help Guide" \
+  -F "aiApproved=true" \
+  -F "file=@$RESOURCE_FILE;type=text/plain" >/dev/null
+echo "   uploaded Homework Help Guide (aiApproved=true)"
+
+echo "==> Install AI Study Assistant (idempotent)"
+ASSISTANT_INSTALLED=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant?viewerUserId=$OWNER_ID" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin).get('installed', False))")
+if [[ "$ASSISTANT_INSTALLED" == "True" ]]; then
+  echo "   already installed"
+else
+  PREVIEW=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install-preview?instructorUserId=$OWNER_ID")
+  INSTALL_BODY=$(echo "$PREVIEW" | python3 -c "
+import sys, json
+preview = json.load(sys.stdin)
+if preview.get('alreadyInstalled'):
+    raise SystemExit(0)
+grants = []
+for ch in preview['candidates']['studyServerChannels']:
+    grants.append({'grantType': 'STUDY_SERVER_CHANNEL', 'grantTargetId': ch['id']})
+for course in preview['candidates']['courses']:
+    grants.append({'grantType': 'COURSE', 'grantTargetId': course['id']})
+    for cohort in course.get('cohorts', []):
+        grants.append({'grantType': 'COHORT', 'grantTargetId': cohort['id']})
+    for ch in course.get('channels', []):
+        grants.append({'grantType': 'COURSE_CHANNEL', 'grantTargetId': ch['id']})
+for res in preview.get('courseResources', []):
+    grants.append({'grantType': 'COURSE_RESOURCE', 'grantTargetId': res['id']})
+print(json.dumps({'instructorUserId': '$OWNER_ID', 'grants': grants}))
+")
+  if [[ -n "$INSTALL_BODY" ]]; then
+    curl -sf -X POST "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install" \
+      -H 'Content-Type: application/json' \
+      -d "$INSTALL_BODY" >/dev/null
+    echo "   installed with channel + resource grants"
+  fi
+fi
+
+echo ""
+echo "OK: workable product demo data is ready"
+echo ""
+echo "Demo personas (password: $DEMO_PASSWORD)"
+echo "  Owner:   $OWNER_EMAIL"
+echo "  Learner: $LEARNER_EMAIL"
+echo ""
+echo "Open in two browser profiles:"
+echo "  Sign in:     $FRONTEND/sign-in"
+echo "  Server home: $FRONTEND/app/servers/$SERVER_ID/home"
+echo "  #announcements (course text chat): $FRONTEND/app/servers/$SERVER_ID/course-channels/$ANNOUNCEMENTS_CHANNEL_ID"
+echo "  #questions (AI Study Assistant):   $FRONTEND/app/servers/$SERVER_ID/course-channels/$QUESTIONS_CHANNEL_ID"
+echo "  #general (study text chat):        $FRONTEND/app/servers/$SERVER_ID/study-channels/$GENERAL_CHANNEL_ID"
+echo "  study-room (voice):                $FRONTEND/app/servers/$SERVER_ID/study-channels/$STUDY_ROOM_CHANNEL_ID"
+echo "  Friends Hub (DM + optional call):  $FRONTEND/app/friends"
+echo ""
+echo "Try AI (as learner in #questions):"
+echo "  Ask: How do I submit homework before the deadline?"
+echo "  Then click Ask AI — see docs/operations/ai-study-assistant.md for how answers work."
+echo ""
+echo "SERVER_ID=$SERVER_ID"
+echo "COURSE_ID=$COURSE_ID"

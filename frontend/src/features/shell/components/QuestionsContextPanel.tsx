@@ -79,8 +79,9 @@ function QuestionsContextPanel({
             </div>
           ) : (
             <p className="mt-2 text-xs text-app-muted">
-              AI Study Assistant is not installed yet. An instructor can install it from the dev demo
-              harness until onboarding lands in #56.
+              AI Study Assistant is not installed yet. Run{' '}
+              <code className="rounded bg-app-bg px-1">make product-demo-seed</code> locally, or an
+              instructor can install from <code className="rounded bg-app-bg px-1">/dev/demo</code>.
             </p>
           )}
         </section>

@@ -1,8 +1,7 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
-COPY backend/pom.xml backend/pom.xml
-COPY backend/common backend/common
-COPY backend/realtime-service backend/realtime-service
+# Parent POM lists every backend module; copy the full tree so Maven can resolve the reactor.
+COPY backend backend
 RUN cd backend && mvn -B -q -pl realtime-service -am package -DskipTests
 
 FROM eclipse-temurin:21-jre

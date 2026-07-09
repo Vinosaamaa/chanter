@@ -20,9 +20,13 @@ make infra-up      # core infra only
 make infra-down
 make infra-logs
 
-make product-up    # full local product stack (#62)
+make product-up    # full local product stack (#62) — start here
 make product-down
 make product-health
+make product-demo-seed   # demo personas + friendship (#63)
 ```
+
+**Beginner guide:** [`docs/operations/getting-started.md`](../docs/operations/getting-started.md)  
+**Two-user E2E checklist:** [`docs/operations/workable-product-demo.md`](../docs/operations/workable-product-demo.md)
 
 Copy `.env.example` to `.env` for local app configuration.
