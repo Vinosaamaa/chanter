@@ -6,13 +6,38 @@ Positioning:
 
 > Discord for learning communities, with AI teaching assistants and instructor operations built in.
 
+---
+
+## New here? Run Chanter on your laptop
+
+**Start here:** [`docs/operations/getting-started.md`](docs/operations/getting-started.md) — install tools, start the stack, seed demo users, and try each feature step by step (no prior repo knowledge required).
+
+Quick version:
+
+```bash
+git clone https://github.com/Vinosaamaa/chanter.git && cd chanter
+cp .env.example .env
+echo 'DEMO_PASSWORD=chanter-dev-demo' >> .env
+make product-up          # first run: several minutes
+make product-health
+make product-demo-seed   # demo logins + Study Server + AI Study Assistant
+```
+
+Open **http://localhost:5173** → sign in as `dev-demo-owner@chanter.local` / password from `DEMO_PASSWORD` in `.env`.
+
+Full two-user demo checklist: [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md).
+
+---
+
 The roadmap includes realtime course chat, Study Servers, course/module channels, instructor/TA/learner roles, course resources, question workflows, office-hours queues, learning analytics, and a first-party AI Study Assistant. Later phases expand into voice agents, marketplace agents, broader enterprise learning, and paid agent templates.
 
 ## Current Status
 
-**Backend MVP (milestone 1)** — issues **#11–#24** are merged on `main`. The running `frontend/src/App.tsx` is still an API demo harness, not the production shell.
+**Backend MVP (milestone 1)** — issues **#11–#24** merged.
 
-**Active work:** **[Workable Product](https://github.com/users/Vinosaamaa/projects/4)** (milestone 4) — **#62** one-command local product stack (in progress). Production Frontend **#47–#59** is complete.
+**Production Frontend (milestone 3)** — issues **#47–#59** merged (full UI shell, live text, search, instructor tools).
+
+**Workable Product (milestone 4)** — **#60–#63**, #31–#32 merged. Run the full local product with `make product-up` — see [Getting started](docs/operations/getting-started.md).
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`
 
@@ -22,7 +47,7 @@ GitHub repository: `https://github.com/Vinosaamaa/chanter`
 |---------|-----|--------|
 | Education MVP (historical) | [projects/1](https://github.com/users/Vinosaamaa/projects/1) | Backend slices #1–#24 |
 | **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59** — **complete** |
-| **Workable Product** | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **active** |
+| [**Workable Product**](https://github.com/users/Vinosaamaa/projects/4) | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **complete** |
 
 **Agent workflow (order + loop + merge policy):** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) (mandatory for all agents).
 
@@ -49,7 +74,9 @@ Key planning files:
 | [`plan.md`](plan.md) | Roadmap, milestones, frontend/backend direction, scale and AI-agent phases |
 | [`System Design.md`](System Design.md) | Backend architecture, service boundaries, event flows (engineering diagrams in `docs/diagrams/`) |
 | [`docs/diagrams/`](docs/diagrams/) | Editable draw.io **architecture** sources + PNG exports for `plan.md` / `System Design.md` |
-| [`docs/operations/`](docs/operations/) | Issue-scoped change logs, debug logs, **cubic** fix logs |
+| [`docs/operations/getting-started.md`](docs/operations/getting-started.md) | **Run locally** — beginner step-by-step (start here if you are new) |
+| [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md) | Full two-user E2E demo checklist |
+| [`docs/operations/ai-study-assistant.md`](docs/operations/ai-study-assistant.md) | How the Study Assistant works today (no external LLM API yet) |
 
 **Product vs engineering visuals:** `docs/product-design/mockups/` = target **browser UI** concepts for educators and learners. `docs/diagrams/` = **system architecture** and data-flow diagrams. Do not confuse the API demo in `frontend/src/App.tsx` with the mockups.
 
@@ -82,18 +109,29 @@ Use `HANDOFF.md` as the first resume point for new agent sessions. For **what th
 
 ## Local Development
 
-Prerequisites: Java 21+, Node 20+, Maven 3.9+, Docker (for infra).
+**New to the project?** Use [`docs/operations/getting-started.md`](docs/operations/getting-started.md) — full beginner walkthrough.
+
+Prerequisites: Java 21+, Node 20+, Maven 3.9+, Docker Desktop running.
 
 ### One-command product stack (recommended)
 
 ```bash
 cp .env.example .env
+echo 'DEMO_PASSWORD=chanter-dev-demo' >> .env   # required for product-demo-seed
 make product-up          # infra + realtime + LiveKit + all services + frontend
 make product-health      # verify gateway, auth, realtime, LiveKit
+make product-demo-seed   # demo users, Study Server, friendship, AI Study Assistant
 make product-down        # stop app processes and product Docker services
 ```
 
 Open **http://localhost:5173** — the frontend proxies `/api` to the gateway at **http://localhost:8080**.
+
+Demo logins after seed: `dev-demo-owner@chanter.local` / `dev-demo-learner@chanter.local` — password `chanter-dev-demo`.
+
+Guides:
+
+- **Getting started (step-by-step):** [`docs/operations/getting-started.md`](docs/operations/getting-started.md)
+- **Full two-user E2E demo:** [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md)
 
 ### Manual multi-terminal setup
 
@@ -123,6 +161,8 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-**Active:** [One-command local product stack — issue #62](https://github.com/Vinosaamaa/chanter/issues/62) on [project board #4](https://github.com/users/Vinosaamaa/projects/4).
+**Active:** [Workable product E2E demo — issue #63](https://github.com/Vinosaamaa/chanter/issues/63) on [project board #4](https://github.com/users/Vinosaamaa/projects/4).
+
+**Definition of workable local product:** [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md)
 
 See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for the full ordered list through Workable Product (project #4).
