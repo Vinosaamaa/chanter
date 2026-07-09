@@ -8,8 +8,8 @@ cd "$ROOT"
 source .env 2>/dev/null || true
 
 GATEWAY="${GATEWAY:-http://localhost:8080}"
-FRONTEND="${FRONTEND:-http://127.0.0.1:${FRONTEND_PORT:-5173}}"
-DEMO_PASSWORD="${DEMO_PASSWORD:-chanter-dev-demo}"
+FRONTEND="${FRONTEND:-http://localhost:${FRONTEND_PORT:-5173}}"
+: "${DEMO_PASSWORD:?Set DEMO_PASSWORD in .env before running this script (see .env.example)}"
 OWNER_EMAIL="dev-demo-owner@chanter.local"
 LEARNER_EMAIL="dev-demo-learner@chanter.local"
 DEMO_SERVER_NAME="Workable Product Demo"
@@ -44,7 +44,7 @@ servers = json.load(sys.stdin)
 for server in servers:
   if server.get('name') == '$DEMO_SERVER_NAME':
     print(server['id']); raise SystemExit
-print(servers[0]['id'] if servers else '')
+print('')
 " 2>/dev/null || true)
 if [[ -z "$SERVER_ID" ]]; then
   CREATED=$(curl -sf -X POST "$GATEWAY/api/v1/study-servers" \
@@ -72,6 +72,7 @@ course_id = '$COURSE_ID'
 announcements = ''
 general = ''
 study_room = ''
+questions = ''
 for c in d.get('courses', []):
   if c['id'] == course_id:
     for ch in c.get('channels', []):
@@ -121,28 +122,43 @@ else
 fi
 
 echo "==> Upload AI-approved course resource for Study Assistant grounding"
-RESOURCE_FILE="$ROOT/scripts/.workable-demo-ai-resource.txt"
-cat >"$RESOURCE_FILE" <<'EOF'
+RESOURCE_TITLE="Homework Help Guide"
+EXISTING_RESOURCES=$(curl -sf "$GATEWAY/api/v1/courses/$COURSE_ID/course-resources" \
+  -H "Authorization: Bearer $OWNER_TOKEN")
+HAS_RESOURCE=$(echo "$EXISTING_RESOURCES" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+resources = data.get('resources', data if isinstance(data, list) else [])
+print('yes' if any(r.get('title') == '$RESOURCE_TITLE' for r in resources) else 'no')
+")
+if [[ "$HAS_RESOURCE" == "yes" ]]; then
+  echo "   reusing existing $RESOURCE_TITLE"
+else
+  RESOURCE_FILE="$ROOT/scripts/.workable-demo-ai-resource.txt"
+  cat >"$RESOURCE_FILE" <<'EOF'
 Homework help for the Workable Product Demo course:
 
 Submit homework assignments through the course portal before Friday at 11:59 PM.
 Late submissions receive a ten percent penalty per day unless you request an extension
 from your instructor in the questions channel.
 EOF
-curl -sf -X POST "$GATEWAY/api/v1/courses/$COURSE_ID/course-resources" \
-  -H "Authorization: Bearer $OWNER_TOKEN" \
-  -F "title=Homework Help Guide" \
-  -F "aiApproved=true" \
-  -F "file=@$RESOURCE_FILE;type=text/plain" >/dev/null
-echo "   uploaded Homework Help Guide (aiApproved=true)"
+  curl -sf -X POST "$GATEWAY/api/v1/courses/$COURSE_ID/course-resources" \
+    -H "Authorization: Bearer $OWNER_TOKEN" \
+    -F "title=$RESOURCE_TITLE" \
+    -F "aiApproved=true" \
+    -F "file=@$RESOURCE_FILE;type=text/plain" >/dev/null
+  echo "   uploaded $RESOURCE_TITLE (aiApproved=true)"
+fi
 
 echo "==> Install AI Study Assistant (idempotent)"
 ASSISTANT_INSTALLED=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant?viewerUserId=$OWNER_ID" \
+  -H "Authorization: Bearer $OWNER_TOKEN" \
   | python3 -c "import sys,json; print(json.load(sys.stdin).get('installed', False))")
 if [[ "$ASSISTANT_INSTALLED" == "True" ]]; then
-  echo "   already installed"
+  echo "   already installed (re-run on a fresh stack to pick up new resource grants)"
 else
-  PREVIEW=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install-preview?instructorUserId=$OWNER_ID")
+  PREVIEW=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install-preview?instructorUserId=$OWNER_ID" \
+    -H "Authorization: Bearer $OWNER_TOKEN")
   INSTALL_BODY=$(echo "$PREVIEW" | python3 -c "
 import sys, json
 preview = json.load(sys.stdin)
@@ -163,6 +179,7 @@ print(json.dumps({'instructorUserId': '$OWNER_ID', 'grants': grants}))
 ")
   if [[ -n "$INSTALL_BODY" ]]; then
     curl -sf -X POST "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install" \
+      -H "Authorization: Bearer $OWNER_TOKEN" \
       -H 'Content-Type: application/json' \
       -d "$INSTALL_BODY" >/dev/null
     echo "   installed with channel + resource grants"

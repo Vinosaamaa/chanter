@@ -17,12 +17,13 @@ Quick version:
 ```bash
 git clone https://github.com/Vinosaamaa/chanter.git && cd chanter
 cp .env.example .env
+echo 'DEMO_PASSWORD=chanter-dev-demo' >> .env
 make product-up          # first run: several minutes
 make product-health
-make product-demo-seed   # demo logins + Study Server
+make product-demo-seed   # demo logins + Study Server + AI Study Assistant
 ```
 
-Open **http://localhost:5173** → sign in as `dev-demo-owner@chanter.local` / password `chanter-dev-demo`.
+Open **http://localhost:5173** → sign in as `dev-demo-owner@chanter.local` / password from `DEMO_PASSWORD` in `.env`.
 
 Full two-user demo checklist: [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md).
 
@@ -36,7 +37,7 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 **Production Frontend (milestone 3)** — issues **#47–#59** merged (full UI shell, live text, search, instructor tools).
 
-**Workable Product (milestone 4)** — **#62–#32** merged; **#63** E2E demo doc in progress. You can run the full local product with `make product-up` — see [Getting started](docs/operations/getting-started.md).
+**Workable Product (milestone 4)** — **#60–#63**, #31–#32 merged. Run the full local product with `make product-up` — see [Getting started](docs/operations/getting-started.md).
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`
 
@@ -46,7 +47,7 @@ GitHub repository: `https://github.com/Vinosaamaa/chanter`
 |---------|-----|--------|
 | Education MVP (historical) | [projects/1](https://github.com/users/Vinosaamaa/projects/1) | Backend slices #1–#24 |
 | **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59** — **complete** |
-| [**Workable Product**](https://github.com/users/Vinosaamaa/projects/4) | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **#63 capstone in progress** |
+| [**Workable Product**](https://github.com/users/Vinosaamaa/projects/4) | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **complete** |
 
 **Agent workflow (order + loop + merge policy):** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) (mandatory for all agents).
 
@@ -116,9 +117,10 @@ Prerequisites: Java 21+, Node 20+, Maven 3.9+, Docker Desktop running.
 
 ```bash
 cp .env.example .env
+echo 'DEMO_PASSWORD=chanter-dev-demo' >> .env   # required for product-demo-seed
 make product-up          # infra + realtime + LiveKit + all services + frontend
 make product-health      # verify gateway, auth, realtime, LiveKit
-make product-demo-seed   # demo users, Study Server, friendship
+make product-demo-seed   # demo users, Study Server, friendship, AI Study Assistant
 make product-down        # stop app processes and product Docker services
 ```
 

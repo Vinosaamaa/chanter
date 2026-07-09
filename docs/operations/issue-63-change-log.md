@@ -10,7 +10,7 @@ Capstone E2E demo path for Workable Product (#60 epic): document and bootstrap t
 |------|--------|
 | `docs/operations/getting-started.md` | Beginner guide: install, start stack, try each feature |
 | `docs/operations/workable-product-demo.md` | Canonical demo checklist: cold start → seed → two users → live text → DM → voice → optional DM call |
-| `scripts/seed-workable-product-demo.sh` | Idempotent seed: demo personas, Study Server, enrollment, friendship, **AI assistant install** |
+| `scripts/seed-workable-product-demo.sh` | Idempotent seed: demo personas, Study Server, enrollment, friendship, **AI Study Assistant install** |
 | `docs/operations/ai-study-assistant.md` | How Study Assistant works today (keyword grounding, not OpenAI) |
 | `Makefile` | `product-demo-seed` target |
 | `.env.example` | `DEMO_PASSWORD` default for demo scripts |

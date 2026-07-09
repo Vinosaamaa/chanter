@@ -70,7 +70,9 @@ make product-demo-seed
 This now also:
 
 - Uploads an AI-approved **Homework Help Guide** (`.txt`)
-- Installs the Study Assistant with grants for the demo course and resources
+- Installs the Study Assistant with grants for the demo course and resources **on a clean demo stack**
+
+If the assistant was already installed from a prior run, re-seeding uploads the resource but **does not add new grants** — reset the local DB or use a fresh stack for a clean AI demo.
 
 ### Manual UI steps
 

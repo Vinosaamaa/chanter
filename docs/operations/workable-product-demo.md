@@ -35,6 +35,8 @@ make product-health
 
 Open **http://localhost:5173** — the app proxies `/api` to the gateway at **http://localhost:8080**.
 
+Use the **same host** (`localhost`, not `127.0.0.1`) when opening seed-script URLs so your sign-in session carries over.
+
 ---
 
 ## 2. Seed demo data
@@ -71,6 +73,7 @@ Both should land in the app shell (`/app/...`).
 2. In **Learner**, open the same channel.
 3. **Owner** types a message and sends.
 4. **Learner** sees the message appear without refresh (realtime WebSocket).
+5. **Learner** replies; **Owner** sees the reply live without refresh.
 
 Pass: bidirectional live text in the shared course channel.
 
@@ -80,6 +83,7 @@ Pass: bidirectional live text in the shared course channel.
 2. Confirm **Demo Learner** appears in the friends list (seed script created the friendship).
 3. Select the learner, send a DM.
 4. **Learner** → **Friends** → select owner → message appears live.
+5. **Learner** replies; **Owner** sees the reply live.
 
 Pass: DM delivers in real time in both directions.
 

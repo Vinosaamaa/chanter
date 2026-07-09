@@ -39,7 +39,13 @@ cd chanter
 cp .env.example .env
 ```
 
-This copies default passwords and ports. You usually do **not** need to edit `.env` for a first run.
+Add a demo password to `.env` (required for `make product-demo-seed`):
+
+```bash
+echo 'DEMO_PASSWORD=chanter-dev-demo' >> .env
+```
+
+You can pick any password; both demo accounts use the same value locally.
 
 ### Step 3 — Start everything
 
@@ -86,7 +92,7 @@ Default logins (password for both: **`chanter-dev-demo`**):
 | Role | Email | Good for trying |
 |------|-------|-----------------|
 | Owner / instructor | `dev-demo-owner@chanter.local` | Creating content, instructor tools |
-| Learner | `dev-demo-learner@chanter.local` | Student view, DM, voice |
+| Learner | `dev-demo-learner@chanter.local` | Learner view, DM, voice |
 
 The script prints **direct links** to channels — copy those into your browser.
 
@@ -138,7 +144,7 @@ Open the seeded server from the left column, or use the link from `make product-
 
 To get **low confidence** (TA handoff), ask something unrelated to the uploaded materials, e.g. “What is the weather in Tokyo?”
 
-### #resources — course files
+### #resources — Course Resources
 
 1. Open **#resources**
 2. Search or filter files
