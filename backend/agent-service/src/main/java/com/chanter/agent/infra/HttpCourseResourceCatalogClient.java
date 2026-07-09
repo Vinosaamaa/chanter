@@ -1,6 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.CourseResourceCatalogClient;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.List;
@@ -44,7 +45,8 @@ public class HttpCourseResourceCatalogClient implements CourseResourceCatalogCli
     public List<CourseResourceSummary> listAiApprovedCourseResources(UUID courseId, UUID viewerUserId) {
         try {
             CourseResourceListResponse response = restClient.get()
-                    .uri("/api/v1/courses/{courseId}/course-resources?viewerUserId={viewerUserId}", courseId, viewerUserId)
+                    .uri("/api/v1/courses/{courseId}/course-resources", courseId)
+                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(CourseResourceListResponse.class);
 

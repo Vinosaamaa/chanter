@@ -11,10 +11,10 @@ product_ensure_state_dirs
 
 while IFS= read -r module; do
   [ -n "$module" ] || continue
-  product_stop_pid_file "$(product_pids_dir)/${module}.pid" "$module"
+  product_stop_module "$module"
 done < <(product_java_modules)
 
-product_stop_pid_file "$(product_pids_dir)/frontend.pid" "frontend"
+product_stop_module frontend
 
 echo "Stopping product Docker services (realtime, LiveKit)..."
 docker compose -f "$ROOT/infra/docker-compose.yml" --env-file "$ROOT/.env" --profile product \

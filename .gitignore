@@ -50,4 +50,5 @@ logs/
 
 # Generated artifacts
 generated/
+scripts/.workable-demo-ai-resource.txt
 

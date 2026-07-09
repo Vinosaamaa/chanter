@@ -1,6 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.CourseResourceContentClient;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.UUID;
@@ -43,8 +44,8 @@ public class HttpCourseResourceContentClient implements CourseResourceContentCli
     public byte[] downloadContent(UUID resourceId, UUID viewerUserId) {
         try {
             byte[] content = restClient.get()
-                    .uri("/api/v1/course-resources/{resourceId}/content?viewerUserId={viewerUserId}",
-                            resourceId, viewerUserId)
+                    .uri("/api/v1/course-resources/{resourceId}/content", resourceId)
+                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(byte[].class);
 

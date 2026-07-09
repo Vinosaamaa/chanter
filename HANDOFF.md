@@ -29,6 +29,7 @@ Important files:
 - `docs/issues/education-mvp-issue-breakdown.md`: GitHub-ready epics and vertical-slice stories for the education MVP (**#11–#24, done**).
 - `docs/issues/production-frontend-issue-breakdown.md`: Production UI phase (**#47–#59**, project #3).
 - `docs/issues/workable-product-issue-breakdown.md`: Workable full-stack local app (**#60–#63**, #31–#32, project #4).
+- `docs/issues/public-launch-issue-breakdown.md`: Public Launch (**#82–#104**, project #5).
 - `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, completion loop, owner-only merge policy.
 - `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
 - `System Design.md`: detailed backend/system architecture explanation and diagrams.
@@ -42,11 +43,11 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4). Production Frontend **#47–#59** is **complete** (last merge: #59, PR #76).
+**Active phase:** Public Launch — [project #5](https://github.com/users/Vinosaamaa/projects/5). Workable Product **#60–#63** and Production Frontend **#47–#59** are **complete**.
 
-**Active slice:** **#63** E2E demo — branch `feature/63-workable-product-demo`.
+**Active slice:** **#86** Product stack reliability — branch `feature/86-product-stack-reliability`.
 
-**Next after #63:** Workable Product milestone capstone complete; see project #4 for follow-ups.
+**Next after #86:** **#87** mockup gap audit (UI polish epic #83).
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 

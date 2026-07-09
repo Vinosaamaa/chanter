@@ -48,6 +48,7 @@ GitHub repository: `https://github.com/Vinosaamaa/chanter`
 | Education MVP (historical) | [projects/1](https://github.com/users/Vinosaamaa/projects/1) | Backend slices #1–#24 |
 | **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59** — **complete** |
 | [**Workable Product**](https://github.com/users/Vinosaamaa/projects/4) | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **complete** |
+| **Public Launch** | [**projects/5**](https://github.com/users/Vinosaamaa/projects/5) | **#82–#104** — UI polish, real AI, launch readiness — **active** |
 
 **Agent workflow (order + loop + merge policy):** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) (mandatory for all agents).
 
@@ -161,8 +162,8 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-**Active:** [Workable product E2E demo — issue #63](https://github.com/Vinosaamaa/chanter/issues/63) on [project board #4](https://github.com/users/Vinosaamaa/projects/4).
+**Active:** [Public Launch — issue #86](https://github.com/Vinosaamaa/chanter/issues/86) on [project board #5](https://github.com/users/Vinosaamaa/projects/5) ([repo Projects tab](https://github.com/Vinosaamaa/chanter/projects)).
 
 **Definition of workable local product:** [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md)
 
-See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for the full ordered list through Workable Product (project #4).
+See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for the full ordered list through Public Launch (project #5).

@@ -37,8 +37,20 @@ media-service
 agent-service
 analytics-service
 search-service
+realtime-service
 gateway-service
 EOF
+}
+
+product_module_jar() {
+  local module="$1"
+  local jar
+  jar="$(ls "$(product_repo_root)/backend/$module/target/${module}-"*.jar 2>/dev/null | grep -v '\.original$' | head -1)"
+  if [ -z "$jar" ]; then
+    echo "missing jar for $module — run 'mvn install' in backend/" >&2
+    return 1
+  fi
+  echo "$jar"
 }
 
 product_health_checks() {
@@ -102,6 +114,53 @@ product_wait_for_url() {
   return 1
 }
 
+product_wait_for_port() {
+  local port="$1"
+  local label="$2"
+  local attempts="${3:-90}"
+  local delay="${4:-2}"
+  local i=1
+  while [ "$i" -le "$attempts" ]; do
+    if product_is_port_listening "$port"; then
+      echo "ready: $label (port $port)"
+      return 0
+    fi
+    sleep "$delay"
+    i=$((i + 1))
+  done
+  echo "timed out waiting for $label on port $port" >&2
+  return 1
+}
+
+product_module_port() {
+  case "$1" in
+    auth-service) echo "${AUTH_PORT:-8081}" ;;
+    community-service) echo "${COMMUNITY_PORT:-8082}" ;;
+    message-service) echo "${MESSAGE_PORT:-8083}" ;;
+    media-service) echo "${MEDIA_PORT:-8084}" ;;
+    agent-service) echo "${AGENT_PORT:-8085}" ;;
+    analytics-service) echo "${ANALYTICS_PORT:-8086}" ;;
+    gateway-service) echo "${GATEWAY_PORT:-8080}" ;;
+    search-service) echo "${SEARCH_PORT:-8088}" ;;
+    realtime-service) echo "${REALTIME_PORT:-8087}" ;;
+    frontend) echo "${FRONTEND_PORT:-5173}" ;;
+    *) return 1 ;;
+  esac
+}
+
+product_port_listener_pid() {
+  local port="$1"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null | head -1 || true
+}
+
+product_is_port_listening() {
+  [ -n "$(product_port_listener_pid "$1")" ]
+}
+
+product_is_module_running() {
+  product_is_port_listening "$(product_module_port "$1")"
+}
+
 product_is_pid_running() {
   local pid_file="$1"
   if [ ! -f "$pid_file" ]; then
@@ -110,6 +169,15 @@ product_is_pid_running() {
   local pid
   pid="$(cat "$pid_file")"
   kill -0 "$pid" 2>/dev/null
+}
+
+product_stop_pid_tree() {
+  local pid="$1"
+  pkill -TERM -P "$pid" 2>/dev/null || true
+  kill -TERM "$pid" 2>/dev/null || true
+  sleep 1
+  pkill -KILL -P "$pid" 2>/dev/null || true
+  kill -KILL "$pid" 2>/dev/null || true
 }
 
 product_stop_pid_file() {
@@ -121,12 +189,23 @@ product_stop_pid_file() {
   local pid
   pid="$(cat "$pid_file")"
   if kill -0 "$pid" 2>/dev/null; then
-    pkill -TERM -P "$pid" 2>/dev/null || true
-    kill -TERM "$pid" 2>/dev/null || true
-    sleep 1
-    pkill -KILL -P "$pid" 2>/dev/null || true
-    kill -KILL "$pid" 2>/dev/null || true
+    product_stop_pid_tree "$pid"
     echo "stopped: $name"
+  fi
+  rm -f "$pid_file"
+}
+
+product_stop_module() {
+  local module="$1"
+  local port pid pid_file
+  port="$(product_module_port "$module")"
+  pid_file="$(product_pids_dir)/${module}.pid"
+  pid="$(product_port_listener_pid "$port")"
+  if [ -n "$pid" ]; then
+    product_stop_pid_tree "$pid"
+    echo "stopped: $module"
+  else
+    product_stop_pid_file "$pid_file" "$module"
   fi
   rm -f "$pid_file"
 }
