@@ -38,3 +38,11 @@
 | P3: Hardcoded `authenticatedUserId` attribute key | Fixed — `AuthRequestAttributes.USER_ID` |
 | P3: Test authorizer forbidden copy drift | Fixed — align with message-service wording |
 | P3: Stale `callError` on new ring | Fixed — clear on `call_ringing` |
+
+## Pass 3
+
+| Comment | Action |
+|---------|--------|
+| P0: Ring timeout drops `call_ended` after `endIfRinging` | Fixed — deliver ended events directly from timeout handler |
+| P1: `inviteInFlightRef` stuck when `inviteCall` throws | Fixed — try/catch resets in-flight flag |
+| P3: Duplicate LiveKit token builders | Deferred — share builder in voice hardening pass |

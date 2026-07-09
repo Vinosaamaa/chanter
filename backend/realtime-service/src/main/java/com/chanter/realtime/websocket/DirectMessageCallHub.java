@@ -164,21 +164,19 @@ public class DirectMessageCallHub {
     private Mono<Void> endCall(UUID callId, String reason) {
         return Mono.fromCallable(() -> callStore.endIfPresent(callId))
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(maybeCall -> {
-                    if (maybeCall.isEmpty()) {
-                        return Mono.empty();
-                    }
-                    DirectMessageCall call = maybeCall.get();
-                    log.info("DM call ended callId={} reason={}", call.callId(), reason);
+                .flatMap(maybeCall -> maybeCall.map(call -> deliverCallEnded(call, reason)).orElse(Mono.empty()));
+    }
 
-                    Map<String, Object> ended = Map.of(
-                            "type", "call_ended",
-                            "callId", call.callId().toString(),
-                            "reason", reason
-                    );
-                    return socialRealtimeHub.deliverEventToUser(call.callerUserId(), ended)
-                            .then(socialRealtimeHub.deliverEventToUser(call.calleeUserId(), ended));
-                });
+    private Mono<Void> deliverCallEnded(DirectMessageCall call, String reason) {
+        log.info("DM call ended callId={} reason={}", call.callId(), reason);
+
+        Map<String, Object> ended = Map.of(
+                "type", "call_ended",
+                "callId", call.callId().toString(),
+                "reason", reason
+        );
+        return socialRealtimeHub.deliverEventToUser(call.callerUserId(), ended)
+                .then(socialRealtimeHub.deliverEventToUser(call.calleeUserId(), ended));
     }
 
     private DirectMessageCall resolveRingingCall(UUID callId, UUID participantUserId) {
@@ -201,7 +199,7 @@ public class DirectMessageCallHub {
     private void scheduleRingTimeout(UUID callId) {
         scheduler.schedule(
                 () -> callStore.endIfRinging(callId)
-                        .ifPresent(call -> endCall(call.callId(), "timeout").subscribe()),
+                        .ifPresent(call -> deliverCallEnded(call, "timeout").subscribe()),
                 RING_TIMEOUT_SECONDS,
                 TimeUnit.SECONDS
         );

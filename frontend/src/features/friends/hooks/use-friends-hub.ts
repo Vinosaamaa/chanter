@@ -413,7 +413,12 @@ export function useFriendsHub(): UseFriendsHubResult {
     }
     inviteInFlightRef.current = true
     setCallError(null)
-    clientRef.current?.inviteCall(selectedFriendId)
+    try {
+      clientRef.current?.inviteCall(selectedFriendId)
+    } catch {
+      inviteInFlightRef.current = false
+      setCallError('Unable to start call')
+    }
   }
 
   const acceptCall = () => {
