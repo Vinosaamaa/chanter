@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 public class SocialGraph {
 
     private final Set<String> friendships = ConcurrentHashMap.newKeySet();
+    private final Set<String> blocks = ConcurrentHashMap.newKeySet();
 
     public void befriend(UUID firstUserId, UUID secondUserId) {
         if (firstUserId.equals(secondUserId)) {
@@ -22,6 +23,16 @@ public class SocialGraph {
 
     public void clear() {
         friendships.clear();
+        blocks.clear();
+    }
+
+    public void block(UUID blockerUserId, UUID blockedUserId) {
+        blocks.add(blockKey(blockerUserId, blockedUserId));
+    }
+
+    public boolean isBlocked(UUID firstUserId, UUID secondUserId) {
+        return blocks.contains(blockKey(firstUserId, secondUserId))
+                || blocks.contains(blockKey(secondUserId, firstUserId));
     }
 
     public boolean areFriends(UUID firstUserId, UUID secondUserId) {
@@ -43,5 +54,9 @@ public class SocialGraph {
             return firstUserId + ":" + secondUserId;
         }
         return secondUserId + ":" + firstUserId;
+    }
+
+    private static String blockKey(UUID blockerUserId, UUID blockedUserId) {
+        return blockerUserId + "->" + blockedUserId;
     }
 }

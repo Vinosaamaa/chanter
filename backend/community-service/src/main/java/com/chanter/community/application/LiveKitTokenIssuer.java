@@ -31,8 +31,18 @@ public class LiveKitTokenIssuer {
         return new VoiceMediaToken(roomName, properties.url(), participantToken, canSpeak, canListen);
     }
 
+    public VoiceMediaToken issueForDmCall(UUID callId, UUID participantUserId) {
+        String roomName = dmCallRoomName(callId);
+        String participantToken = buildToken(participantUserId, roomName, true, true);
+        return new VoiceMediaToken(roomName, properties.url(), participantToken, true, true);
+    }
+
     static String voiceRoomName(UUID channelId) {
         return "voice-" + channelId;
+    }
+
+    static String dmCallRoomName(UUID callId) {
+        return "dm-call-" + callId;
     }
 
     private String buildToken(UUID participantUserId, String roomName, boolean canSpeak, boolean canListen) {

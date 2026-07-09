@@ -14,6 +14,11 @@ export function FriendsHubPage() {
   const [draft, setDraft] = useState('')
 
   const selectedFriend = hub.friends.find((friend) => friend.friendUserId === hub.selectedFriendId)
+  const isCallUiVisible =
+    hub.callState.phase !== 'idle' && hub.callState.phase !== 'ended'
+  const callPeerLabel = hub.callState.peerUserId
+    ? formatFriendLabel(hub.callState.peerUserId)
+    : 'Friend'
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -101,9 +106,11 @@ export function FriendsHubPage() {
                 <ConnectionBadge status={hub.connectionStatus} />
                 <button
                   type="button"
-                  disabled
-                  title="DM voice lands in issue #32"
-                  className="rounded-md border border-app-border px-3 py-1.5 text-sm text-app-muted"
+                  onClick={hub.startCall}
+                  disabled={
+                    hub.connectionStatus !== 'connected' || hub.callState.phase !== 'idle'
+                  }
+                  className="rounded-md border border-app-border px-3 py-1.5 text-sm text-app-text disabled:opacity-50"
                 >
                   Call
                 </button>
@@ -165,6 +172,80 @@ export function FriendsHubPage() {
           </div>
         )}
       </section>
+
+      {isCallUiVisible ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-xl border border-app-border bg-app-elevated p-5 shadow-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
+              Direct Message Voice
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-app-text">{callPeerLabel}</h2>
+            <p className="mt-2 text-sm text-app-muted">
+              {hub.callState.phase === 'incoming_ringing'
+                ? 'Incoming call…'
+                : hub.callState.phase === 'outgoing_ringing'
+                  ? 'Ringing…'
+                  : hub.callState.phase === 'connecting'
+                    ? 'Connecting audio…'
+                    : hub.callState.phase === 'in_call'
+                      ? 'Connected'
+                      : 'Call'}
+            </p>
+            {hub.callError ? (
+              <p className="mt-2 text-sm text-rose-200" role="alert">
+                {hub.callError}
+              </p>
+            ) : null}
+            <div className="mt-5 flex flex-wrap gap-2">
+              {hub.callState.phase === 'incoming_ringing' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={hub.acceptCall}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={hub.declineCall}
+                    className="rounded-lg border border-app-border px-4 py-2 text-sm text-app-text"
+                  >
+                    Decline
+                  </button>
+                </>
+              ) : null}
+              {hub.callState.phase === 'outgoing_ringing' ? (
+                <button
+                  type="button"
+                  onClick={hub.declineCall}
+                  className="rounded-lg border border-app-border px-4 py-2 text-sm text-app-text"
+                >
+                  Cancel
+                </button>
+              ) : null}
+              {hub.callState.phase === 'in_call' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void hub.toggleCallMute()}
+                    className="rounded-lg border border-app-border px-4 py-2 text-sm text-app-text"
+                  >
+                    {hub.isMuted ? 'Unmute' : 'Mute'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={hub.hangUpCall}
+                    className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white"
+                  >
+                    Hang up
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

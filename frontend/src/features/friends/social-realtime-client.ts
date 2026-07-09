@@ -1,11 +1,12 @@
 import { getApiBase } from '../../lib/api-base'
 
-import type { DirectMessage, FriendPresenceStatus, SocialRealtimeMessage } from './types'
+import type { DirectMessage, FriendPresenceStatus, SocialCallMessage, SocialRealtimeMessage } from './types'
 
 type SocialRealtimeClientOptions = {
   accessToken: string
   onDirectMessage: (message: DirectMessage) => void
   onPresenceChange: (userId: string, status: FriendPresenceStatus) => void
+  onCallEvent: (event: SocialCallMessage) => void
   onStatusChange: (status: SocialRealtimeConnectionStatus) => void
   onError: (message: string) => void
 }
@@ -22,6 +23,26 @@ type OutboundFrame =
       recipientUserId: string
       body: string
       clientMessageId: string
+    }
+  | {
+      type: 'call_invite'
+      calleeUserId: string
+    }
+  | {
+      type: 'call_accept'
+      callId: string
+    }
+  | {
+      type: 'call_decline'
+      callId: string
+    }
+  | {
+      type: 'call_cancel'
+      callId: string
+    }
+  | {
+      type: 'call_end'
+      callId: string
     }
 
 type PendingDirectMessage = {
@@ -109,6 +130,26 @@ export class SocialRealtimeClient {
     })
   }
 
+  inviteCall(calleeUserId: string): void {
+    this.sendFrame({ type: 'call_invite', calleeUserId })
+  }
+
+  acceptCall(callId: string): void {
+    this.sendFrame({ type: 'call_accept', callId })
+  }
+
+  declineCall(callId: string): void {
+    this.sendFrame({ type: 'call_decline', callId })
+  }
+
+  cancelCall(callId: string): void {
+    this.sendFrame({ type: 'call_cancel', callId })
+  }
+
+  endCall(callId: string): void {
+    this.sendFrame({ type: 'call_end', callId })
+  }
+
   private openSocket(): void {
     const status: SocialRealtimeConnectionStatus =
       this.reconnectAttempts === 0 ? 'connecting' : 'reconnecting'
@@ -133,7 +174,7 @@ export class SocialRealtimeClient {
 
     socket.onmessage = (event) => {
       try {
-        const frame = JSON.parse(String(event.data)) as SocialRealtimeMessage
+        const frame = JSON.parse(String(event.data)) as SocialRealtimeMessage | SocialCallMessage
         if (frame.type === 'dm_message') {
           this.resolvePendingDirectMessage(frame.payload)
           this.options.onDirectMessage(frame.payload)
@@ -141,6 +182,15 @@ export class SocialRealtimeClient {
         }
         if (frame.type === 'presence_changed') {
           this.options.onPresenceChange(frame.userId, frame.status)
+          return
+        }
+        if (
+          frame.type === 'call_ringing' ||
+          frame.type === 'call_accepted' ||
+          frame.type === 'call_busy' ||
+          frame.type === 'call_ended'
+        ) {
+          this.options.onCallEvent(frame)
           return
         }
         if (frame.type === 'error') {

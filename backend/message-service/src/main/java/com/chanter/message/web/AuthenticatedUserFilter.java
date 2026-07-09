@@ -54,6 +54,7 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
         return uri.contains("/friend-requests")
                 || uri.contains("/friendships")
                 || uri.contains("/direct-messages")
+                || uri.contains("/direct-message-calls")
                 || uri.contains("/user-blocks")
                 || uri.endsWith("/messages")
                 || uri.contains("/support-questions")

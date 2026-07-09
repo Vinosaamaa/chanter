@@ -304,6 +304,44 @@ class FriendRequestAndDirectMessageSmokeTest {
                 .containsExactly(userB);
     }
 
+    @Test
+    void directMessageCallEligibilityRequiresFriendshipAndRejectsBlocks() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+        UUID stranger = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/v1/direct-message-calls/eligibility")
+                        .with(asUser(userA))
+                        .param("peerUserId", userB.toString()))
+                .andExpect(status().isForbidden());
+
+        FriendRequestResponse friendRequest = sendFriendRequest(userA, userB);
+        acceptFriendRequest(friendRequest.id(), userB);
+
+        mockMvc.perform(get("/api/v1/direct-message-calls/eligibility")
+                        .with(asUser(userA))
+                        .param("peerUserId", userB.toString()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/user-blocks")
+                        .with(asUser(userB))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "blockedUserId", userA.toString()
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/direct-message-calls/eligibility")
+                        .with(asUser(userA))
+                        .param("peerUserId", userB.toString()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/direct-message-calls/eligibility")
+                        .with(asUser(stranger))
+                        .param("peerUserId", userB.toString()))
+                .andExpect(status().isForbidden());
+    }
+
     private FriendRequestResponse sendFriendRequest(UUID senderUserId, UUID recipientUserId) throws Exception {
         MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
                         .with(asUser(senderUserId))

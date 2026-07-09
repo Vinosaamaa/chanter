@@ -44,9 +44,9 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** Workable Product — [project #4](https://github.com/users/Vinosaamaa/projects/4). Production Frontend **#47–#59** is **complete** (last merge: #59, PR #76).
 
-**Active slice:** **#31** Friends Hub + live DM — branch `feature/31-friends-hub-live-dm`.
+**Active slice:** **#32** DM voice — branch `feature/32-dm-voice`.
 
-**Next after #31:** #32 DM voice.
+**Next after #32:** #63 E2E demo.
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
@@ -84,8 +84,8 @@ Workable Product (**active** — [project #4](https://github.com/users/Vinosaama
 | 1 | [#60](https://github.com/Vinosaamaa/chanter/issues/60) | Epic |
 | 2 | [**#62**](https://github.com/Vinosaamaa/chanter/issues/62) | One-command stack — **merged** (PR #77) |
 | 3 | [**#61**](https://github.com/Vinosaamaa/chanter/issues/61) | Voice WebRTC + LiveKit — **merged** (PR #78) |
-| 4 | [**#31**](https://github.com/Vinosaamaa/chanter/issues/31) | Friends Hub — **in progress** |
-| 5 | [#32](https://github.com/Vinosaamaa/chanter/issues/32) | DM voice |
+| 4 | [**#31**](https://github.com/Vinosaamaa/chanter/issues/31) | Friends Hub — **merged** (PR #79) |
+| 5 | [**#32**](https://github.com/Vinosaamaa/chanter/issues/32) | DM voice — **in progress** (`feature/32-dm-voice`) |
 | 6 | [#63](https://github.com/Vinosaamaa/chanter/issues/63) | E2E demo |
 
 Production Frontend table retained above for history; milestone **complete**.
@@ -330,14 +330,14 @@ Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24 is merged on main.
 Production Frontend #47–#59 is complete.
-Active: Workable Product project #4 — #31 in progress (PR #79).
+Active: Workable Product project #4 — #32 in progress (branch `feature/32-dm-voice`).
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/31
-Branch: feature/31-friends-hub-live-dm
+Issue: https://github.com/Vinosaamaa/chanter/issues/32
+Branch: feature/32-dm-voice
 Project: https://github.com/users/Vinosaamaa/projects/4
 ```
 
