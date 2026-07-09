@@ -9,6 +9,7 @@ ROOT="$(product_repo_root)"
 product_load_env
 product_configure_java_home
 product_ensure_state_dirs
+product_require_lsof
 
 COMPOSE_FILE="$ROOT/infra/docker-compose.yml"
 
@@ -38,9 +39,11 @@ start_java_module() {
     local jar
     jar="$(product_module_jar "$module")"
     echo "starting: $module"
-    nohup java -jar "$jar" >"$log_file" 2>&1 &
-    echo $! >"$pid_file"
-    disown -h
+    (
+      cd "$ROOT/backend"
+      nohup java -jar "$jar" >"$log_file" 2>&1 &
+      echo $! >"$pid_file"
+    )
     product_wait_for_port "$port" "$module"
   fi
 }
@@ -75,7 +78,6 @@ else
   nohup npm run dev -- --host 127.0.0.1 --port "$frontend_port" \
     >"$(product_logs_dir)/frontend.log" 2>&1 &
   echo $! >"$frontend_pid_file"
-  disown -h
   cd "$ROOT"
   product_wait_for_port "$frontend_port" "frontend" 30 1
 fi

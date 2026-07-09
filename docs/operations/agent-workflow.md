@@ -208,8 +208,8 @@ cubic may flag `TODO(#auth)` caller identity params. Those are **document and de
 ```text
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
-Backend MVP #11–#24 is merged. Active work: Production Frontend project #3.
-Start at issue #48 unless a higher-priority in-order issue is already in progress.
+Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged.
+Active work: Public Launch project #5 — start at issue #87 after #86 merges.
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.

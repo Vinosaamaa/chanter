@@ -20,6 +20,13 @@ fi
 
 MILESTONE_FLAG=(--milestone "$MILESTONE_TITLE")
 
+EXISTING_ISSUE_COUNT=$(gh api "repos/$REPO/issues?state=all&per_page=100" --jq "[.[] | select(.milestone != null and .milestone.title == \"$MILESTONE_TITLE\")] | length")
+if [[ "$EXISTING_ISSUE_COUNT" != "0" ]]; then
+  echo "Public Launch milestone already has $EXISTING_ISSUE_COUNT issue(s); refusing to create duplicates." >&2
+  echo "See docs/issues/public-launch-issue-breakdown.md" >&2
+  exit 1
+fi
+
 echo "Creating parent epic..."
 EPIC_PUBLIC=$(create_issue \
   "Epic: Public Launch" \
@@ -83,7 +90,7 @@ Production Frontend (#48–#59) and Workable Product (#31–#32) delivered funct
 
 ## Vertical Slices
 
-See child stories #68–#75 in \`docs/issues/public-launch-issue-breakdown.md\`.
+See child stories in \`docs/issues/public-launch-issue-breakdown.md\` (Phase 1 UI slices).
 
 ## Architecture Impact
 
@@ -172,7 +179,7 @@ story() {
   local url
   url=$(create_issue "$title" "$body" --label story --label ready-for-agent "$@")
   echo "  -> $url" >&2
-  echo "$url" | rg -o '[0-9]+$'
+  echo "$url" | sed -n 's|.*/\([0-9][0-9]*\)$|\1|p'
 }
 
 echo "Creating Phase 0 reliability..."
@@ -461,7 +468,7 @@ Provider abstraction for chat completions: Ollama for local dev, OpenAI-compatib
 
 ## Blocked by
 
-None — can start in parallel with #76 (merge before #80).
+None — can start in parallel with ingestion slice (merge before agent runtime orchestration).
 EOF
 )" --label ai-agent --label backend "${MILESTONE_FLAG[@]}")
 

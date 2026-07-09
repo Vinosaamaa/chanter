@@ -34,3 +34,7 @@ make product-cleanup-demo-servers   # optional
 ## GitHub projects
 
 Linked user projects **#1, #3, #4, #5** to `Vinosaamaa/chanter` so they appear on the repository **Projects** tab.
+
+## cubic
+
+See `docs/operations/issue-86-cubic-fix.md` — pass 1 addressed 16 actionable findings.

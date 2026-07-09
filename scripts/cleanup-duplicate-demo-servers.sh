@@ -14,9 +14,11 @@ OWNER_EMAIL="dev-demo-owner@chanter.local"
 KEEP_NAME="Workable Product Demo"
 
 login() {
+  local login_payload
+  login_payload=$(python3 -c 'import json, os, sys; print(json.dumps({"email": sys.argv[1], "password": os.environ["DEMO_PASSWORD"]}))' "$OWNER_EMAIL")
   curl -sf -X POST "$GATEWAY/api/v1/auth/login" \
     -H 'Content-Type: application/json' \
-    -d "{\"email\":\"$OWNER_EMAIL\",\"password\":\"$DEMO_PASSWORD\"}"
+    -d "$login_payload"
 }
 
 psql_community() {
@@ -45,6 +47,7 @@ TO_DELETE=$(psql_community -c "
 SELECT id::text
 FROM study_servers
 WHERE owner_user_id = '$OWNER_ID'
+  AND name = '$KEEP_NAME'
   AND id::text <> '$KEEP_ID'
 ORDER BY created_at;
 ")

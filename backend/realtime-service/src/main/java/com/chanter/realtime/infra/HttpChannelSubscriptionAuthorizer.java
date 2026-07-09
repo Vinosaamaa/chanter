@@ -53,6 +53,8 @@ public class HttpChannelSubscriptionAuthorizer implements ChannelSubscriptionAut
                     HttpStatus.BAD_GATEWAY,
                     "Community Service rejected channel access: " + exception.getResponseBodyAsString()
             );
+        } catch (ResponseStatusException exception) {
+            throw exception;
         } catch (Exception exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,

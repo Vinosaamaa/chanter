@@ -87,7 +87,7 @@ Workable Product (**active** — [project #4](https://github.com/users/Vinosaama
 | 3 | [**#61**](https://github.com/Vinosaamaa/chanter/issues/61) | Voice WebRTC + LiveKit — **merged** (PR #78) |
 | 4 | [**#31**](https://github.com/Vinosaamaa/chanter/issues/31) | Friends Hub — **merged** (PR #79) |
 | 5 | [**#32**](https://github.com/Vinosaamaa/chanter/issues/32) | DM voice — **merged** (PR #80) |
-| 6 | [**#63**](https://github.com/Vinosaamaa/chanter/issues/63) | E2E demo — **in progress** (`feature/63-workable-product-demo`) |
+| 6 | [**#63**](https://github.com/Vinosaamaa/chanter/issues/63) | E2E demo — **merged** (PR #81) |
 
 Production Frontend table retained above for history; milestone **complete**.
 
@@ -277,7 +277,8 @@ GitHub issues published (2026-06-17):
 - Milestone: https://github.com/Vinosaamaa/chanter/milestone/1
 - Project board: https://github.com/users/Vinosaamaa/projects/1 (Education MVP backend #1–#24)
 - **Production Frontend project:** https://github.com/users/Vinosaamaa/projects/3 (#30, #47–#59, milestone 3)
-- **Workable Product project:** https://github.com/users/Vinosaamaa/projects/4 (#30–#32, #60–#63, milestone 4)
+- **Public Launch project:** https://github.com/users/Vinosaamaa/projects/5 (#82–#104, milestone 5) — linked on [repo Projects tab](https://github.com/Vinosaamaa/chanter/projects)
+- **Workable Product project:** https://github.com/users/Vinosaamaa/projects/4 (#30–#32, #60–#63, milestone 4) — **complete**
 - ~~Social Hub project #2~~ — closed; #31–#32 live on project #4 only
 - **#11 Monorepo bootstrap — CLOSED** (merged PR #25)
 - **#12 Create A Study Server — CLOSED** (merged PR #26)
@@ -300,12 +301,14 @@ Implementation on `main`:
 Pending:
 
 - Branch protection on `main` (optional, after owner enables)
-- Complete Production Frontend (#48–#59) then Workable Product (#60–#63, #31–#32)
 
-After backend MVP (#11–#24), build in **issue order** on project boards:
+After Workable Product (#60–#63), build in **issue order** on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5):
 
-1. **Production Frontend** ([`agent-workflow.md`](docs/operations/agent-workflow.md) § Phase 2): #48 → #49+#30 → #50 → #51 → #52–#59.
-2. **Workable Product** (§ Phase 3): #62 (early ok) → #61 → #31 → #32 → #63.
+1. **#86** Product stack reliability (in PR) → **#87** mockup gap audit → **#88–#93** UI polish.
+2. **#94–#100** Real AI / RAG / MCP.
+3. **#101–#104** Launch readiness.
+
+See [`agent-workflow.md`](docs/operations/agent-workflow.md) § Phase 4.
 
 Target UX mockups: `docs/product-design/mockups/`. Social architecture: `docs/architecture/social-hub-and-dm-voice.md`.
 
@@ -329,18 +332,16 @@ Use this prompt after reloading Cursor or starting a new chat:
 ```text
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
-Backend MVP #11–#24 is merged on main.
-Production Frontend #47–#59 is complete.
-Active: Workable Product project #4 — #63 E2E demo in progress (branch `feature/63-workable-product-demo`).
+Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged on main.
+Active: Public Launch project #5 — start at issue #87 after #86 merges.
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/63
-Branch: feature/63-workable-product-demo
+Issue: https://github.com/Vinosaamaa/chanter/issues/87
+Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
-Project: https://github.com/users/Vinosaamaa/projects/4
 ```
 
 ## Notes For Future Agent

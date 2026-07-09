@@ -48,19 +48,22 @@ curl_json() {
 
 login() {
   local email="$1"
-  local body code response
+  local display_name="${2:-}"
+  local body code response login_payload register_payload
+  login_payload=$(python3 -c 'import json, os, sys; print(json.dumps({"email": sys.argv[1], "password": os.environ["DEMO_PASSWORD"]}))' "$email")
   response=$(curl -sS -w $'\n%{http_code}' -X POST "$GATEWAY/api/v1/auth/login" \
     -H 'Content-Type: application/json' \
-    -d "{\"email\":\"$email\",\"password\":\"$DEMO_PASSWORD\"}")
+    -d "$login_payload")
   code="${response##*$'\n'}"
   body="${response%$'\n'*}"
   if [[ "$code" -ge 200 && "$code" -lt 300 ]]; then
     echo "$body"
     return 0
   fi
+  register_payload=$(python3 -c 'import json, os, sys; print(json.dumps({"email": sys.argv[1], "password": os.environ["DEMO_PASSWORD"], "displayName": sys.argv[2]}))' "$email" "$display_name")
   response=$(curl -sS -w $'\n%{http_code}' -X POST "$GATEWAY/api/v1/auth/register" \
     -H 'Content-Type: application/json' \
-    -d "{\"email\":\"$email\",\"password\":\"$DEMO_PASSWORD\",\"displayName\":\"$2\"}")
+    -d "$register_payload")
   code="${response##*$'\n'}"
   body="${response%$'\n'*}"
   require_http "login/register $email" "$code" "$body"

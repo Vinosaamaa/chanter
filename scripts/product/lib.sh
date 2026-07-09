@@ -45,7 +45,7 @@ EOF
 product_module_jar() {
   local module="$1"
   local jar
-  jar="$(ls "$(product_repo_root)/backend/$module/target/${module}-"*.jar 2>/dev/null | grep -v '\.original$' | head -1)"
+  jar="$(ls -t "$(product_repo_root)/backend/$module/target/${module}-"*.jar 2>/dev/null | grep -v '\.original$' | head -1)"
   if [ -z "$jar" ]; then
     echo "missing jar for $module — run 'mvn install' in backend/" >&2
     return 1
@@ -94,6 +94,13 @@ product_load_env() {
 
 product_ensure_state_dirs() {
   mkdir -p "$(product_logs_dir)" "$(product_pids_dir)"
+}
+
+product_require_lsof() {
+  if ! command -v lsof >/dev/null 2>&1; then
+    echo "lsof is required for make product-up / product-down (e.g. brew install lsof)" >&2
+    return 1
+  fi
 }
 
 product_wait_for_url() {
@@ -197,14 +204,26 @@ product_stop_pid_file() {
 
 product_stop_module() {
   local module="$1"
-  local port pid pid_file
+  local port listener_pid recorded_pid pid_file
   port="$(product_module_port "$module")"
   pid_file="$(product_pids_dir)/${module}.pid"
-  pid="$(product_port_listener_pid "$port")"
-  if [ -n "$pid" ]; then
-    product_stop_pid_tree "$pid"
-    echo "stopped: $module"
-  else
+  recorded_pid=""
+  if [ -f "$pid_file" ]; then
+    recorded_pid="$(cat "$pid_file")"
+  fi
+  listener_pid="$(product_port_listener_pid "$port")"
+
+  if [ -n "$recorded_pid" ] && kill -0 "$recorded_pid" 2>/dev/null; then
+    product_stop_pid_tree "$recorded_pid"
+    echo "stopped: $module (pid $recorded_pid)"
+  elif [ -n "$listener_pid" ]; then
+    if [ -n "$recorded_pid" ] && [ "$listener_pid" != "$recorded_pid" ]; then
+      echo "warning: port $port is owned by pid $listener_pid (not $recorded_pid from $module); skipping kill" >&2
+    else
+      product_stop_pid_tree "$listener_pid"
+      echo "stopped: $module (port $port)"
+    fi
+  elif [ -n "$recorded_pid" ]; then
     product_stop_pid_file "$pid_file" "$module"
   fi
   rm -f "$pid_file"

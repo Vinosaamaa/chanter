@@ -162,7 +162,7 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-**Active:** [Public Launch — issue #86](https://github.com/Vinosaamaa/chanter/issues/86) on [project board #5](https://github.com/users/Vinosaamaa/projects/5) ([repo Projects tab](https://github.com/Vinosaamaa/chanter/projects)).
+**Active:** [Public Launch](https://github.com/users/Vinosaamaa/projects/5) on [project board #5](https://github.com/users/Vinosaamaa/projects/5) ([repo Projects tab](https://github.com/Vinosaamaa/chanter/projects)). Start at [#87](https://github.com/Vinosaamaa/chanter/issues/87) after [#86](https://github.com/Vinosaamaa/chanter/issues/86) merges.
 
 **Definition of workable local product:** [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md)
 

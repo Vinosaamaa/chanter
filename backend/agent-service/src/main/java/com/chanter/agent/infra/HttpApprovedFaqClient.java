@@ -45,7 +45,10 @@ public class HttpApprovedFaqClient implements ApprovedFaqClient {
     public List<ApprovedFaqSummary> listApprovedFaqs(UUID courseId, UUID viewerUserId) {
         try {
             ApprovedFaqListResponse response = restClient.get()
-                    .uri("/api/v1/courses/{courseId}/approved-faqs", courseId)
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/v1/courses/{courseId}/approved-faqs")
+                            .queryParam("viewerUserId", viewerUserId)
+                            .build(courseId))
                     .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(ApprovedFaqListResponse.class);
