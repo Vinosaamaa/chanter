@@ -25,6 +25,7 @@ import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -38,6 +39,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
     private final ChannelMessageClient channelMessageClient;
     private final RealtimeSubscriptionHub subscriptionHub;
     private final SocialRealtimeHub socialRealtimeHub;
+    private final DirectMessageCallHub directMessageCallHub;
     private final SocialFriendsClient socialFriendsClient;
     private final PresenceStore presenceStore;
     private final ObjectMapper objectMapper;
@@ -48,6 +50,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
             ChannelMessageClient channelMessageClient,
             RealtimeSubscriptionHub subscriptionHub,
             SocialRealtimeHub socialRealtimeHub,
+            DirectMessageCallHub directMessageCallHub,
             SocialFriendsClient socialFriendsClient,
             PresenceStore presenceStore,
             ObjectMapper objectMapper
@@ -57,6 +60,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         this.channelMessageClient = channelMessageClient;
         this.subscriptionHub = subscriptionHub;
         this.socialRealtimeHub = socialRealtimeHub;
+        this.directMessageCallHub = directMessageCallHub;
         this.socialFriendsClient = socialFriendsClient;
         this.presenceStore = presenceStore;
         this.objectMapper = objectMapper;
@@ -104,6 +108,11 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                 case "unsubscribe" -> handleUnsubscribe(session);
                 case "send" -> handleSend(session, userId, frame);
                 case "send_dm" -> handleSendDirectMessage(session, userId, frame);
+                case "call_invite" -> handleCallInvite(session, userId, frame);
+                case "call_accept" -> handleCallAccept(session, userId, frame);
+                case "call_decline" -> handleCallDecline(session, userId, frame);
+                case "call_cancel" -> handleCallCancel(session, userId, frame);
+                case "call_end" -> handleCallEnd(session, userId, frame);
                 default -> sendError(session, "invalid_frame", "Unsupported frame type: " + type);
             };
         } catch (ResponseStatusException exception) {
@@ -167,21 +176,65 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                 .onErrorResume(exception -> sendError(session, "error", "Realtime request failed"));
     }
 
+    private Mono<Void> handleCallInvite(WebSocketSession session, UUID userId, JsonNode frame) {
+        UUID calleeUserId = UUID.fromString(requiredText(frame, "calleeUserId"));
+        return directMessageCallHub.invite(userId, calleeUserId)
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(ResponseStatusException.class, exception ->
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
+                .onErrorResume(exception -> sendError(session, "error", "Call invite failed"));
+    }
+
+    private Mono<Void> handleCallAccept(WebSocketSession session, UUID userId, JsonNode frame) {
+        UUID callId = UUID.fromString(requiredText(frame, "callId"));
+        return directMessageCallHub.accept(userId, callId)
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(ResponseStatusException.class, exception ->
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
+                .onErrorResume(exception -> sendError(session, "error", "Call accept failed"));
+    }
+
+    private Mono<Void> handleCallDecline(WebSocketSession session, UUID userId, JsonNode frame) {
+        UUID callId = UUID.fromString(requiredText(frame, "callId"));
+        return directMessageCallHub.decline(userId, callId)
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(ResponseStatusException.class, exception ->
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
+                .onErrorResume(exception -> sendError(session, "error", "Call decline failed"));
+    }
+
+    private Mono<Void> handleCallCancel(WebSocketSession session, UUID userId, JsonNode frame) {
+        UUID callId = UUID.fromString(requiredText(frame, "callId"));
+        return directMessageCallHub.cancel(userId, callId)
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(ResponseStatusException.class, exception ->
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
+                .onErrorResume(exception -> sendError(session, "error", "Call cancel failed"));
+    }
+
+    private Mono<Void> handleCallEnd(WebSocketSession session, UUID userId, JsonNode frame) {
+        UUID callId = UUID.fromString(requiredText(frame, "callId"));
+        return directMessageCallHub.hangUp(userId, callId)
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(ResponseStatusException.class, exception ->
+                        sendError(session, statusCodeToErrorCode(exception.getStatusCode().value()), exception.getReason()))
+                .onErrorResume(exception -> sendError(session, "error", "Call end failed"));
+    }
+
     private Mono<Void> sendInitialFriendPresence(WebSocketSession session, UUID userId) {
         return socialFriendsClient.listFriendUserIds(userId)
-                .flatMap(friendUserIds -> {
-                    Mono<Void> deliveries = Mono.empty();
-                    for (UUID friendUserId : friendUserIds) {
-                        if (presenceStore.isOnline(friendUserId)) {
-                            deliveries = deliveries.then(sendJson(session, Map.of(
-                                    "type", "presence_changed",
-                                    "userId", friendUserId.toString(),
-                                    "status", "online"
-                            )));
-                        }
-                    }
-                    return deliveries;
-                });
+                .flatMap(friendUserIds -> Mono.fromCallable(() -> friendUserIds.stream()
+                                .filter(presenceStore::isOnline)
+                                .map(friendUserId -> Map.<String, Object>of(
+                                        "type", "presence_changed",
+                                        "userId", friendUserId.toString(),
+                                        "status", "online"
+                                ))
+                                .toList())
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .flatMapMany(Flux::fromIterable)
+                .concatMap(frame -> sendJson(session, frame))
+                .then();
     }
 
     private UUID authenticate(WebSocketSession session) {

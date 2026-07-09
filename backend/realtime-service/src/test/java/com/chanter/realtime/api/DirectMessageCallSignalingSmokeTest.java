@@ -3,6 +3,7 @@ package com.chanter.realtime.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.chanter.common.auth.JwtTokenService;
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.realtime.infra.InMemoryDirectMessageCallStore;
 import com.chanter.realtime.infra.SocialGraph;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,12 +15,14 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
@@ -29,8 +32,8 @@ import reactor.core.publisher.Mono;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@Order(1)
-class SocialRealtimeWebSocketSmokeTest {
+@Order(3)
+class DirectMessageCallSignalingSmokeTest {
 
     @LocalServerPort
     private int port;
@@ -54,7 +57,7 @@ class SocialRealtimeWebSocketSmokeTest {
     }
 
     @Test
-    void friendPresenceAndDirectMessagesFanOutOverWebSocket() throws Exception {
+    void friendsCanInviteAcceptAndReceiveMediaToken() throws Exception {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
         socialGraph.befriend(userA, userB);
@@ -62,12 +65,13 @@ class SocialRealtimeWebSocketSmokeTest {
         String tokenA = jwtTokenService.createAccessToken(userA);
         String tokenB = jwtTokenService.createAccessToken(userB);
         WebSocketClient client = new ReactorNettyWebSocketClient();
-        AtomicReference<JsonNode> presenceFrame = new AtomicReference<>();
-        AtomicReference<JsonNode> dmFrame = new AtomicReference<>();
-        CountDownLatch listenerReady = new CountDownLatch(1);
-        AtomicReference<Throwable> listenerFailure = new AtomicReference<>();
 
-        Thread listenerThread = new Thread(() -> {
+        AtomicReference<JsonNode> calleeRinging = new AtomicReference<>();
+        AtomicReference<JsonNode> acceptedOnCallee = new AtomicReference<>();
+        CountDownLatch calleeReady = new CountDownLatch(1);
+        AtomicReference<Throwable> calleeFailure = new AtomicReference<>();
+
+        Thread calleeThread = new Thread(() -> {
             try {
                 client.execute(
                         websocketUri(tokenB),
@@ -80,35 +84,44 @@ class SocialRealtimeWebSocketSmokeTest {
                             Mono<Void> ready = inbound
                                     .filter(payload -> payload.contains("\"type\":\"social_subscribed\""))
                                     .next()
-                                    .doOnSuccess(ignored -> listenerReady.countDown())
+                                    .doOnSuccess(ignored -> calleeReady.countDown())
                                     .then();
 
-                            Mono<Void> waitForPresence = inbound
-                                    .filter(payload -> payload.contains("\"type\":\"presence_changed\""))
+                            Mono<Void> waitRinging = inbound
+                                    .filter(payload -> payload.contains("\"type\":\"call_ringing\""))
                                     .next()
-                                    .doOnNext(payload -> captureFrame(payload, presenceFrame))
+                                    .doOnNext(payload -> captureFrame(payload, calleeRinging))
                                     .then();
 
-                            Mono<Void> waitForDm = inbound
-                                    .filter(payload -> payload.contains("\"type\":\"dm_message\""))
+                            Mono<Void> acceptCall = waitRinging.then(Mono.defer(() -> {
+                                String callId = calleeRinging.get().get("callId").asText();
+                                return session.send(Mono.just(session.textMessage(toJson(Map.of(
+                                        "type", "call_accept",
+                                        "callId", callId
+                                )))));
+                            }));
+
+                            Mono<Void> waitAccepted = inbound
+                                    .filter(payload -> payload.contains("\"type\":\"call_accepted\""))
                                     .next()
-                                    .doOnNext(payload -> captureFrame(payload, dmFrame))
+                                    .doOnNext(payload -> captureFrame(payload, acceptedOnCallee))
                                     .then();
 
-                            return ready.then(waitForPresence).then(waitForDm);
+                            return ready.then(acceptCall).then(waitAccepted);
                         }
-                ).block(Duration.ofSeconds(20));
+                ).block(Duration.ofSeconds(15));
             } catch (Throwable throwable) {
-                listenerFailure.set(throwable);
+                calleeFailure.set(throwable);
             }
         });
-        listenerThread.start();
+        calleeThread.start();
 
-        assertThat(listenerReady.await(5, TimeUnit.SECONDS)).isTrue();
-        if (listenerFailure.get() != null) {
-            throw new AssertionError(listenerFailure.get());
+        assertThat(calleeReady.await(5, TimeUnit.SECONDS)).isTrue();
+        if (calleeFailure.get() != null) {
+            throw new AssertionError(calleeFailure.get());
         }
 
+        AtomicReference<JsonNode> callerAccepted = new AtomicReference<>();
         client.execute(
                 websocketUri(tokenA),
                 session -> {
@@ -117,37 +130,64 @@ class SocialRealtimeWebSocketSmokeTest {
                             .replay()
                             .autoConnect(1);
 
-                    Mono<Void> waitForSubscribed = inbound
+                    Mono<Void> subscribed = inbound
                             .filter(payload -> payload.contains("\"type\":\"social_subscribed\""))
                             .next()
                             .then();
 
-                    Mono<Void> sendDm = session.send(Mono.just(session.textMessage(toJson(Map.of(
-                            "type", "send_dm",
-                            "recipientUserId", userB.toString(),
-                            "body", "Want to study together?"
-                    )))));
+                    Mono<Void> invite = subscribed.then(session.send(Mono.just(session.textMessage(toJson(Map.of(
+                            "type", "call_invite",
+                            "calleeUserId", userB.toString()
+                    ))))));
 
-                    return waitForSubscribed.then(sendDm);
+                    Mono<Void> waitAccepted = inbound
+                            .filter(payload -> payload.contains("\"type\":\"call_accepted\""))
+                            .next()
+                            .doOnNext(payload -> captureFrame(payload, callerAccepted))
+                            .then();
+
+                    return invite.then(waitAccepted);
                 }
-        ).block(Duration.ofSeconds(20));
+        ).block(Duration.ofSeconds(15));
 
-        listenerThread.join(25_000);
-        if (listenerFailure.get() != null) {
-            throw new AssertionError(listenerFailure.get());
+        calleeThread.join(15_000);
+        if (calleeFailure.get() != null) {
+            throw new AssertionError(calleeFailure.get());
         }
 
-        assertThat(presenceFrame.get()).isNotNull();
-        assertThat(presenceFrame.get().get("userId").asText()).isEqualTo(userA.toString());
-        assertThat(presenceFrame.get().get("status").asText()).isEqualTo("online");
+        assertThat(calleeRinging.get()).isNotNull();
+        assertThat(calleeRinging.get().get("callerUserId").asText()).isEqualTo(userA.toString());
+        assertThat(callerAccepted.get()).isNotNull();
+        assertThat(acceptedOnCallee.get()).isNotNull();
 
-        assertThat(dmFrame.get()).isNotNull();
-        assertThat(dmFrame.get().get("payload").get("body").asText()).isEqualTo("Want to study together?");
-        assertThat(dmFrame.get().get("payload").get("senderUserId").asText()).isEqualTo(userA.toString());
+        String callId = callerAccepted.get().get("callId").asText();
+        var tokenResponse = org.springframework.web.reactive.function.client.WebClient.create()
+                .post()
+                .uri("http://localhost:" + port + "/api/v1/direct-message-calls/{callId}/media-token", callId)
+                .header(HttpHeaders.AUTHORIZATION, AuthHeaders.BEARER_PREFIX + tokenA)
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .block(Duration.ofSeconds(5));
+
+        assertThat(tokenResponse).isNotNull();
+        assertThat(tokenResponse.get("roomName").asText()).isEqualTo("dm-call-" + callId);
+
+        client.execute(
+                websocketUri(tokenA),
+                session -> session.send(Mono.just(session.textMessage(toJson(Map.of(
+                        "type", "call_end",
+                        "callId", callId
+                )))))
+        ).block(Duration.ofSeconds(5));
+    }
+
+    @AfterEach
+    void tearDown() {
+        callStore.clear();
     }
 
     @Test
-    void nonFriendDirectMessageReceivesForbiddenError() throws Exception {
+    void nonFriendCallInviteReceivesForbiddenError() throws Exception {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
         String tokenA = jwtTokenService.createAccessToken(userA);
@@ -162,24 +202,23 @@ class SocialRealtimeWebSocketSmokeTest {
                             .replay()
                             .autoConnect(1);
 
-                    Mono<Void> waitForSubscribed = inbound
+                    Mono<Void> subscribed = inbound
                             .filter(payload -> payload.contains("\"type\":\"social_subscribed\""))
                             .next()
                             .then();
 
-                    Mono<Void> sendDm = session.send(Mono.just(session.textMessage(toJson(Map.of(
-                            "type", "send_dm",
-                            "recipientUserId", userB.toString(),
-                            "body", "Hello stranger"
-                    )))));
+                    Mono<Void> invite = subscribed.then(session.send(Mono.just(session.textMessage(toJson(Map.of(
+                            "type", "call_invite",
+                            "calleeUserId", userB.toString()
+                    ))))));
 
-                    Mono<Void> waitForError = inbound
+                    Mono<Void> waitError = inbound
                             .filter(payload -> payload.contains("\"type\":\"error\""))
                             .next()
                             .doOnNext(payload -> captureFrame(payload, errorFrame))
                             .then();
 
-                    return waitForSubscribed.then(sendDm).then(waitForError);
+                    return invite.then(waitError);
                 }
         ).block(Duration.ofSeconds(10));
 

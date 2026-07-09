@@ -40,3 +40,42 @@ export type SocialRealtimeMessage =
       code: string
       message: string
     }
+
+export type DmCallPhase =
+  | 'idle'
+  | 'outgoing_ringing'
+  | 'incoming_ringing'
+  | 'connecting'
+  | 'in_call'
+  | 'ended'
+
+export type DmCallState = {
+  phase: DmCallPhase
+  callId: string | null
+  peerUserId: string | null
+  reason: string | null
+}
+
+export type SocialCallMessage =
+  | {
+      type: 'call_ringing'
+      callId: string
+      callerUserId: string
+      calleeUserId: string
+      direction: 'incoming' | 'outgoing'
+    }
+  | {
+      type: 'call_accepted'
+      callId: string
+      callerUserId: string
+      calleeUserId: string
+    }
+  | {
+      type: 'call_busy'
+      userId: string
+    }
+  | {
+      type: 'call_ended'
+      callId: string
+      reason: string
+    }

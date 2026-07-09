@@ -162,6 +162,17 @@ public class SocialRealtimeHub {
         ).then();
     }
 
+    public Mono<Void> deliverEventToUser(UUID userId, Map<String, Object> payload) {
+        Set<WebSocketSession> sessions = sessionsByUser.get(userId);
+        if (sessions == null || sessions.isEmpty()) {
+            return Mono.empty();
+        }
+
+        return Flux.fromIterable(sessions)
+                .flatMap(session -> sendJson(session, payload))
+                .then();
+    }
+
     private Mono<Void> notifyFriendsPresence(UUID userId, String status) {
         return socialFriendsClient.listFriendUserIds(userId)
                 .flatMapMany(Flux::fromIterable)

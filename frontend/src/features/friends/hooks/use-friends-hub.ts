@@ -1,13 +1,28 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useAuthStore } from '../../../stores/auth-store'
+import { useLiveKitRoom } from '../../voice/hooks/use-livekit-room'
 
+import { fetchDirectMessageCallMediaToken } from '../dm-call-api'
 import { fetchDirectMessages, fetchFriends, sendDirectMessage } from '../friends-api'
 import {
   SocialRealtimeClient,
   type SocialRealtimeConnectionStatus,
 } from '../social-realtime-client'
-import type { DirectMessage, FriendPresenceStatus, FriendSummary } from '../types'
+import type {
+  DirectMessage,
+  DmCallState,
+  FriendPresenceStatus,
+  FriendSummary,
+  SocialCallMessage,
+} from '../types'
+
+const initialCallState: DmCallState = {
+  phase: 'idle',
+  callId: null,
+  peerUserId: null,
+  reason: null,
+}
 
 type UseFriendsHubResult = {
   friends: FriendSummary[]
@@ -22,6 +37,14 @@ type UseFriendsHubResult = {
   error: string | null
   sendMessage: (body: string) => Promise<boolean>
   isSending: boolean
+  callState: DmCallState
+  callError: string | null
+  isMuted: boolean
+  startCall: () => void
+  acceptCall: () => void
+  declineCall: () => void
+  hangUpCall: () => void
+  toggleCallMute: () => Promise<void>
 }
 
 const MAX_MESSAGE_BODY_LENGTH = 4000
@@ -42,7 +65,16 @@ export function useFriendsHub(): UseFriendsHubResult {
   const [friendsListError, setFriendsListError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
+  const [callState, setCallState] = useState<DmCallState>(initialCallState)
+  const [callError, setCallError] = useState<string | null>(null)
   const clientRef = useRef<SocialRealtimeClient | null>(null)
+  const callStateRef = useRef<DmCallState>(initialCallState)
+  const resetCallTimerRef = useRef<number | null>(null)
+  const inviteInFlightRef = useRef(false)
+  const livekitErrorRef = useRef<string | null>(null)
+  const livekit = useLiveKitRoom()
+  const { connect: connectLivekit, disconnect: disconnectLivekit, toggleMute, isMuted, error: livekitConnectionError } =
+    livekit
   const loadedMessagesFriendIdRef = useRef<string | null>(null)
   const selectedFriendIdRef = useRef<string | null>(null)
 
@@ -53,6 +85,89 @@ export function useFriendsHub(): UseFriendsHubResult {
   useEffect(() => {
     selectedFriendIdRef.current = selectedFriendId
   }, [selectedFriendId])
+
+  useEffect(() => {
+    callStateRef.current = callState
+  }, [callState])
+
+  useEffect(() => {
+    livekitErrorRef.current = livekitConnectionError
+  }, [livekitConnectionError])
+
+  const resetCall = useCallback(async (reason: string | null = null) => {
+    if (resetCallTimerRef.current !== null) {
+      window.clearTimeout(resetCallTimerRef.current)
+      resetCallTimerRef.current = null
+    }
+    inviteInFlightRef.current = false
+    await disconnectLivekit()
+    setCallState({ phase: 'ended', callId: null, peerUserId: null, reason })
+    const delayMs = reason === null ? 300 : 1_500
+    resetCallTimerRef.current = window.setTimeout(() => {
+      setCallState(initialCallState)
+      setCallError(null)
+      resetCallTimerRef.current = null
+    }, delayMs)
+  }, [disconnectLivekit])
+
+  const joinCallMedia = useCallback(async (callId: string) => {
+    setCallState((current) => ({ ...current, phase: 'connecting' }))
+    setCallError(null)
+    try {
+      const token = await fetchDirectMessageCallMediaToken(callId)
+      const connected = await connectLivekit(token)
+      if (!connected) {
+        setCallError(livekitErrorRef.current ?? 'Unable to join call audio')
+        await resetCall('media_failed')
+        return
+      }
+      setCallState((current) => ({ ...current, phase: 'in_call' }))
+    } catch (caught) {
+      setCallError(caught instanceof Error ? caught.message : 'Unable to join call audio')
+      await resetCall('media_failed')
+    }
+  }, [connectLivekit, resetCall])
+
+  const handleCallEvent = useCallback((event: SocialCallMessage) => {
+    if (event.type === 'call_ringing') {
+      inviteInFlightRef.current = false
+      setCallError(null)
+      const peerUserId =
+        event.direction === 'incoming' ? event.callerUserId : event.calleeUserId
+      setCallState({
+        phase: event.direction === 'incoming' ? 'incoming_ringing' : 'outgoing_ringing',
+        callId: event.callId,
+        peerUserId,
+        reason: null,
+      })
+      return
+    }
+
+    if (event.type === 'call_busy') {
+      setCallError('Friend is busy on another call')
+      void resetCall('busy')
+      return
+    }
+
+    if (event.type === 'call_accepted') {
+      const current = callStateRef.current
+      const peerUserId =
+        current.peerUserId ??
+        (event.callerUserId === currentUserId ? event.calleeUserId : event.callerUserId)
+      setCallState({
+        phase: 'connecting',
+        callId: event.callId,
+        peerUserId,
+        reason: null,
+      })
+      void joinCallMedia(event.callId)
+      return
+    }
+
+    if (event.type === 'call_ended') {
+      void resetCall(event.reason)
+    }
+  }, [currentUserId, joinCallMedia, resetCall])
 
   useEffect(() => {
     let cancelled = false
@@ -147,6 +262,7 @@ export function useFriendsHub(): UseFriendsHubResult {
           [userId]: status,
         }))
       },
+      onCallEvent: handleCallEvent,
       onStatusChange: (status) => {
         setConnectionStatus(status)
         if (status === 'connected') {
@@ -176,8 +292,9 @@ export function useFriendsHub(): UseFriendsHubResult {
     return () => {
       client.disconnect()
       clientRef.current = null
+      void disconnectLivekit()
     }
-  }, [accessToken])
+  }, [accessToken, disconnectLivekit, handleCallEvent])
 
   const reconcileThreadMessages = async (friendId: string, sent: DirectMessage): Promise<void> => {
     if (selectedFriendIdRef.current !== friendId) {
@@ -287,6 +404,53 @@ export function useFriendsHub(): UseFriendsHubResult {
     return next
   }, [friends, presenceByFriendId])
 
+  const startCall = () => {
+    if (!selectedFriendId || connectionStatus !== 'connected' || inviteInFlightRef.current) {
+      return
+    }
+    if (callStateRef.current.phase !== 'idle') {
+      return
+    }
+    inviteInFlightRef.current = true
+    setCallError(null)
+    try {
+      clientRef.current?.inviteCall(selectedFriendId)
+    } catch {
+      inviteInFlightRef.current = false
+      setCallError('Unable to start call')
+    }
+  }
+
+  const acceptCall = () => {
+    const callId = callStateRef.current.callId
+    if (!callId) {
+      return
+    }
+    setCallError(null)
+    clientRef.current?.acceptCall(callId)
+  }
+
+  const declineCall = () => {
+    const { callId, phase } = callStateRef.current
+    if (!callId) {
+      return
+    }
+    if (phase === 'outgoing_ringing') {
+      clientRef.current?.cancelCall(callId)
+    } else {
+      clientRef.current?.declineCall(callId)
+    }
+    void resetCall(phase === 'outgoing_ringing' ? 'cancelled' : 'declined')
+  }
+
+  const hangUpCall = () => {
+    const callId = callStateRef.current.callId
+    if (callId) {
+      clientRef.current?.endCall(callId)
+    }
+    void resetCall('ended')
+  }
+
   return {
     friends,
     selectedFriendId,
@@ -303,6 +467,20 @@ export function useFriendsHub(): UseFriendsHubResult {
     error,
     sendMessage,
     isSending,
+    callState,
+    callError,
+    isMuted,
+    startCall,
+    acceptCall,
+    declineCall,
+    hangUpCall,
+    toggleCallMute: async () => {
+      try {
+        await toggleMute()
+      } catch (caught) {
+        setCallError(caught instanceof Error ? caught.message : 'Unable to update microphone')
+      }
+    },
   }
 }
 
