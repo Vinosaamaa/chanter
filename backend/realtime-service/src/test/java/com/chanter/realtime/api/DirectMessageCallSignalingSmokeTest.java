@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -163,6 +164,19 @@ class DirectMessageCallSignalingSmokeTest {
 
         assertThat(tokenResponse).isNotNull();
         assertThat(tokenResponse.get("roomName").asText()).isEqualTo("dm-call-" + callId);
+
+        client.execute(
+                websocketUri(tokenA),
+                session -> session.send(Mono.just(session.textMessage(toJson(Map.of(
+                        "type", "call_end",
+                        "callId", callId
+                )))))
+        ).block(Duration.ofSeconds(5));
+    }
+
+    @AfterEach
+    void tearDown() {
+        callStore.clear();
     }
 
     @Test

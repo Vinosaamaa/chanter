@@ -25,6 +25,7 @@ import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -222,19 +223,18 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
 
     private Mono<Void> sendInitialFriendPresence(WebSocketSession session, UUID userId) {
         return socialFriendsClient.listFriendUserIds(userId)
-                .flatMap(friendUserIds -> {
-                    Mono<Void> deliveries = Mono.empty();
-                    for (UUID friendUserId : friendUserIds) {
-                        if (presenceStore.isOnline(friendUserId)) {
-                            deliveries = deliveries.then(sendJson(session, Map.of(
-                                    "type", "presence_changed",
-                                    "userId", friendUserId.toString(),
-                                    "status", "online"
-                            )));
-                        }
-                    }
-                    return deliveries;
-                });
+                .flatMap(friendUserIds -> Mono.fromCallable(() -> friendUserIds.stream()
+                                .filter(presenceStore::isOnline)
+                                .map(friendUserId -> Map.<String, Object>of(
+                                        "type", "presence_changed",
+                                        "userId", friendUserId.toString(),
+                                        "status", "online"
+                                ))
+                                .toList())
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .flatMapMany(Flux::fromIterable)
+                .flatMap(frame -> sendJson(session, frame))
+                .then();
     }
 
     private UUID authenticate(WebSocketSession session) {

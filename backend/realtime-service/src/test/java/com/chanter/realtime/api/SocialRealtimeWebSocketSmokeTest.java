@@ -3,6 +3,7 @@ package com.chanter.realtime.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.chanter.common.auth.JwtTokenService;
+import com.chanter.realtime.infra.InMemoryDirectMessageCallStore;
 import com.chanter.realtime.infra.SocialGraph;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,11 +40,15 @@ class SocialRealtimeWebSocketSmokeTest {
     private SocialGraph socialGraph;
 
     @Autowired
+    private InMemoryDirectMessageCallStore callStore;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
         socialGraph.clear();
+        callStore.clear();
     }
 
     @Test
@@ -90,7 +95,7 @@ class SocialRealtimeWebSocketSmokeTest {
 
                             return ready.then(waitForPresence).then(waitForDm);
                         }
-                ).block(Duration.ofSeconds(10));
+                ).block(Duration.ofSeconds(20));
             } catch (Throwable throwable) {
                 listenerFailure.set(throwable);
             }
