@@ -1,6 +1,6 @@
 # Issue #86 — cubic fix log
 
-## Pass 1 (18 findings)
+## Pass 1 (16 findings)
 
 | Severity | Comment | Action |
 |----------|---------|--------|
@@ -22,5 +22,14 @@
 | P3 | Redundant `disown -h` after `nohup` | Fixed — removed; use subshell + backend cwd for Java |
 
 ## Pass 2
+
+| Severity | Comment | Action |
+|----------|---------|--------|
+| P2 | Milestone duplicate guard only scanned first 100 repo issues | Fixed — `gh issue list --milestone` query |
+| P2 | Foreign port listener skip still removed pid file on next down | Fixed — `return 0` before pid file cleanup |
+| P3 | Pass 1 heading said 18 findings, table has 16 | Fixed — heading count |
+| P3 | Phase 4 table still marked #86 as START HERE | Fixed — #87 start; #86 noted as PR #105 |
+
+## Pass 3
 
 Pending re-review after push.

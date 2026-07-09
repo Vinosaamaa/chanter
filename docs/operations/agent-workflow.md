@@ -67,7 +67,7 @@ If cubic is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in t
 | Backend MVP | [Education MVP](https://github.com/Vinosaamaa/chanter/milestone/1) | [#1](https://github.com/users/Vinosaamaa/projects/1) | **Done** (#1–#24) |
 | Production Frontend | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Done** (#47–#59) |
 | Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | **Done** (#60–#63, #31–#32) |
-| Public Launch | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — start #86** |
+| Public Launch | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — start #87** (#86 in PR #105) |
 
 Legacy **Social Hub project #2** is **closed**. #31–#32 are on **project #4** only. **#30** is on **project #3** only (pairs with #49).
 
@@ -134,8 +134,8 @@ After **#50**, issues **#53–#56** may run in parallel if coordinated; default 
 | Order | Issue | Title |
 |------:|-------|-------|
 | 1 | [#82](https://github.com/Vinosaamaa/chanter/issues/82) | Epic: Public Launch |
-| 2 | [**#86**](https://github.com/Vinosaamaa/chanter/issues/86) | **← START HERE** Product stack reliability hotfixes |
-| 3 | [#87](https://github.com/Vinosaamaa/chanter/issues/87) | Mockup gap audit (HITL) |
+| 2 | [#86](https://github.com/Vinosaamaa/chanter/issues/86) | Product stack reliability (PR #105) |
+| 3 | [**#87**](https://github.com/Vinosaamaa/chanter/issues/87) | **← START HERE** Mockup gap audit (HITL) |
 | 4 | [#88–#93](https://github.com/Vinosaamaa/chanter/issues/88) | UI polish slices |
 | 5 | [#94–#100](https://github.com/Vinosaamaa/chanter/issues/94) | Real AI / RAG / MCP |
 | 6 | [#101–#104](https://github.com/Vinosaamaa/chanter/issues/101) | Launch readiness |
