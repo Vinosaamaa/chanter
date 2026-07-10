@@ -29,9 +29,9 @@ cd frontend && npm run lint && npm run build
 
 1. Sign in as demo owner (`dev-demo-owner@chanter.local` / `chanter-dev-demo`).
 2. Open `/app` — card grid lists accessible servers with course/member counts.
-3. Click **Open server** → per-server home; rail **⌂** returns to picker.
-4. As owner, **Delete** → confirm → server removed from list (no psql).
-5. Delete all servers or use fresh user → empty state with **Create Study Server** CTA.
+3. Click **Open Study Server** → per-server home; rail **⌂** returns to picker.
+4. As owner, **Delete** → confirm → Study Server removed from list (no psql).
+5. Delete all Study Servers or use fresh user → empty state with **Create Study Server** CTA.
 6. Enrolled learner (non-owner) sees cards without Delete button.
 
 ## Non-goals (deferred)

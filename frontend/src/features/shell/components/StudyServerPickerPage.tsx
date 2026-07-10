@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
-import { Button } from '../../../components/ui/button'
 import { cn } from '../../../lib/cn'
 import { formatUserFacingApiError, isUnauthorizedApiError } from '../../../lib/format-api-error'
 import { useAuthStore } from '../../../stores/auth-store'
 import { deleteStudyServer } from '../shell-api'
 import { useAccessibleStudyServersQuery } from '../hooks/use-shell-queries'
+import { studyServerInitials } from '../study-server-initials'
 import type { StudyServerSummary } from '../types'
+
+import { DeleteStudyServerDialog } from './DeleteStudyServerDialog'
 
 export function StudyServerPickerPage() {
   const navigate = useNavigate()
@@ -52,7 +54,7 @@ export function StudyServerPickerPage() {
           </p>
           <h1 className="mt-2 text-2xl font-semibold text-app-text">Your Study Servers</h1>
           <p className="mt-1 max-w-2xl text-sm text-app-muted">
-            Select a server to continue studying and collaborating with your community.
+            Select a Study Server to continue studying and collaborating with your community.
           </p>
         </div>
         <Link
@@ -106,45 +108,13 @@ export function StudyServerPickerPage() {
       </div>
 
       {pendingDelete ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-study-server-title"
-        >
-          <div className="w-full max-w-md rounded-xl border border-app-border bg-app-elevated p-5 shadow-xl">
-            <h2 id="delete-study-server-title" className="text-lg font-semibold text-app-text">
-              Delete {pendingDelete.name}?
-            </h2>
-            <p className="mt-2 text-sm text-app-muted">
-              This permanently removes the Study Server, its courses, channels, and enrollments.
-              This action cannot be undone.
-            </p>
-            {deleteError ? (
-              <p role="alert" className="mt-3 text-sm text-red-300">
-                {deleteError}
-              </p>
-            ) : null}
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={isDeleting}
-                onClick={() => setPendingDelete(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                className="bg-red-600 hover:bg-red-500"
-                disabled={isDeleting}
-                onClick={onConfirmDelete}
-              >
-                {isDeleting ? 'Deleting…' : 'Delete Study Server'}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DeleteStudyServerDialog
+          serverName={pendingDelete.name}
+          deleteError={deleteError}
+          isDeleting={isDeleting}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={onConfirmDelete}
+        />
       ) : null}
     </section>
   )
@@ -175,7 +145,7 @@ function StudyServerCard({
               accent.icon,
             )}
           >
-            {initials(server.name)}
+            {studyServerInitials(server.name)}
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-lg font-semibold text-app-text">{server.name}</h2>
@@ -201,7 +171,7 @@ function StudyServerCard({
             to={`/app/servers/${server.id}/home`}
             className="rounded-lg bg-app-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
           >
-            Open server
+            Open Study Server
           </Link>
           {server.owner ? (
             <button
@@ -216,17 +186,6 @@ function StudyServerCard({
       </div>
     </article>
   )
-}
-
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) {
-    return '?'
-  }
-  if (words.length === 1) {
-    return words[0].slice(0, 2).toUpperCase()
-  }
-  return `${words[0][0]}${words[1][0]}`.toUpperCase()
 }
 
 function serverAccent(name: string): { bar: string; icon: string } {
