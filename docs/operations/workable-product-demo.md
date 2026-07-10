@@ -105,14 +105,25 @@ Pass: both users connected; presence shows two members; audio works.
 
 Pass: 1:1 DM voice connects and tears down cleanly.
 
-### F. Optional — AI Study Assistant (#questions)
+### F. AI Study Assistant (#questions)
 
-Requires `make product-demo-seed` (installs assistant + uploads an AI-approved resource).
+You can install from the **production UI** (no seed required) or use the seed script for a one-shot demo.
 
-1. **Learner** → open **#questions** (URL from seed output)
-2. Post: *How do I submit homework before the deadline?*
-3. Click **Ask AI**
-4. Confirm a **grounded answer** with citations from “Homework Help Guide” in the right panel
+**Option A — production install (issue #91):**
+
+1. **Owner** creates a Study Server + course (onboarding) and uploads at least one **AI-approved** course resource.
+2. **Owner** opens the course **#questions** channel.
+3. In the right **AI context** panel → **Install AI Study Assistant** → review grant checkboxes → **Confirm install**.
+4. **Learner** (enrolled) posts: *How do I submit homework before the deadline?*
+5. **Learner** clicks **Ask AI** and confirms a grounded answer with citations in the right panel.
+
+**Option B — seed script (faster local demo):**
+
+```bash
+DEMO_PASSWORD=chanter-dev-demo ./scripts/seed-workable-product-demo.sh
+```
+
+Then skip to step 4 above using the seeded `#questions` URL.
 
 Pass: HIGH-confidence answer with at least one source citation.
 
@@ -139,7 +150,7 @@ Logs and PIDs live under `.product/` (gitignored).
 | Live text not live | `curl -sf http://localhost:8087/actuator/health` — realtime must be UP |
 | Voice join fails | `curl -sf http://localhost:7880` — LiveKit container running; check `.env` `LIVEKIT_*` keys |
 | Friends list empty | Re-run seed script; confirm `make product-health` passes |
-| Ask AI says not installed | Run `make product-demo-seed` |
+| Ask AI says not installed | Owner: install from `#questions` AI context panel, or run `make product-demo-seed` |
 | Ask AI low confidence | Question must share keywords with seeded `.txt` resource — see `ai-study-assistant.md` |
 | Mic blocked | Browser site settings → allow microphone for `localhost` |
 
