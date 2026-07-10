@@ -219,7 +219,6 @@ product_stop_module() {
   elif [ -n "$listener_pid" ]; then
     if [ -n "$recorded_pid" ] && [ "$listener_pid" != "$recorded_pid" ]; then
       echo "warning: port $port is owned by pid $listener_pid (not $recorded_pid from $module); skipping kill" >&2
-      return 0
     else
       product_stop_pid_tree "$listener_pid"
       echo "stopped: $module (port $port)"

@@ -26,10 +26,17 @@
 | Severity | Comment | Action |
 |----------|---------|--------|
 | P2 | Milestone duplicate guard only scanned first 100 repo issues | Fixed — `gh issue list --milestone` query |
-| P2 | Foreign port listener skip still removed pid file on next down | Fixed — `return 0` before pid file cleanup |
+| P2 | Foreign port listener skip still removed pid file on next down | Fixed — skip kill; remove stale pid file without killing foreign listener |
 | P3 | Pass 1 heading said 18 findings, table has 16 | Fixed — heading count |
 | P3 | Phase 4 table still marked #86 as START HERE | Fixed — #87 start; #86 noted as PR #105 |
 
 ## Pass 3
+
+| Severity | Comment | Action |
+|----------|---------|--------|
+| P2 | Early `return 0` left stale pid file after foreign-listener skip | Fixed — skip kill only; fall through to `rm -f` cleanup |
+| P3 | `--limit 1` made duplicate-guard count always report 1 | Fixed — `--limit 100` for accurate message |
+
+## Pass 4
 
 Pending re-review after push.

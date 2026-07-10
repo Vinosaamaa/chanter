@@ -20,7 +20,7 @@ fi
 
 MILESTONE_FLAG=(--milestone "$MILESTONE_TITLE")
 
-EXISTING_ISSUE_COUNT=$(gh issue list --repo "$REPO" --milestone "$MILESTONE_TITLE" --state all --limit 1 --json number --jq 'length')
+EXISTING_ISSUE_COUNT=$(gh issue list --repo "$REPO" --milestone "$MILESTONE_TITLE" --state all --limit 100 --json number --jq 'length')
 if [[ "$EXISTING_ISSUE_COUNT" != "0" ]]; then
   echo "Public Launch milestone already has $EXISTING_ISSUE_COUNT issue(s); refusing to create duplicates." >&2
   echo "See docs/issues/public-launch-issue-breakdown.md" >&2
