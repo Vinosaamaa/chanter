@@ -80,6 +80,17 @@ P1: #89 → #92
 #101 → #104 launch
 ```
 
+## Phase 4 — Post-launch (not on board #5 yet)
+
+Deferred mockup gaps, stretch leftovers, and commerce — tracked on **[Post-Launch project #6](https://github.com/users/Vinosaamaa/projects/6)** / **[epic #107](https://github.com/Vinosaamaa/chanter/issues/107)**.
+
+| Doc / GitHub | Purpose |
+|--------------|---------|
+| [`post-launch-ui-backlog.md`](../operations/post-launch-ui-backlog.md) | PL-01…PL-16 backlog |
+| [#107](https://github.com/Vinosaamaa/chanter/issues/107) | Epic checklist (revise after #88–#104) |
+| [Project #6](https://github.com/users/Vinosaamaa/projects/6) | Future story board |
+
+
 ## Resume / portfolio angle (Phase 2)
 
 Issues **#94–#99** are the “LLM orchestration, embeddings, MCP” story: chunking → vectors → RAG → provider adapters → runtime → MCP tools → streaming UI (**#100**).
@@ -88,6 +99,7 @@ Issues **#94–#99** are the “LLM orchestration, embeddings, MCP” story: chu
 
 - [`docs/product-design/mockups/README.md`](../product-design/mockups/README.md)
 - [`docs/operations/public-launch-ui-gap-audit.md`](../operations/public-launch-ui-gap-audit.md) — **#87** gap audit output
+- [`docs/operations/post-launch-ui-backlog.md`](../operations/post-launch-ui-backlog.md) — post-beta UI backlog (PL-01…)
 - [`docs/operations/ai-study-assistant.md`](../operations/ai-study-assistant.md)
 - [`plan.md`](../../plan.md)
 - [`CONTEXT.md`](../../CONTEXT.md)

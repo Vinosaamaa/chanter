@@ -124,6 +124,42 @@ Owner accepted deferrals **2026-07-09**. “Deferred” means **moved from Phase
 
 ---
 
+## After Public Launch (gap audit leftovers)
+
+When **#86–#104** are done, the 18 in-scope MVP mockups should be **beta-ready**. These items were **explicitly deferred** or have **no issue yet** — track them so they are not forgotten.
+
+Full backlog: [`post-launch-ui-backlog.md`](post-launch-ui-backlog.md).
+
+### UI / product (no Public Launch issue yet)
+
+| Item | Mockup | Suggested when |
+|------|--------|----------------|
+| Resource **folder** hierarchy on `#resources` | `course-resources.png` | Post-beta UX pass |
+| Global search **messages** + support-question hits | `global-search.png` | Post-beta UX pass |
+| **Dedicated** Plan & Billing settings page | `saas-billing.png` | When commerce/billing matters |
+| Landing **notification / friends** header chrome | `landing-page.png` | Marketing polish sprint |
+| Sign-in **invite / cohort-discovery** right pane | `sign-in-onboarding.png` | Optional; #89 covers in-app enroll |
+| **Course storefront** (sell courses) | `course-storefront.png` | Post-MVP commerce phase |
+| **Friend / TA display names** (profile lookup) | `friends-hub-dm.png`, `ta-queue.png` | If stretch items in #90/#92 skipped |
+| **Mobile** context panel / shell density | `app-shell.png`, `ai-support-question.png` | Dedicated mobile pass |
+| Retire or gate **`/dev/demo`** to dev-only | — | After #90/#91 merged |
+
+### Engineering / ops (beyond #104 checklist)
+
+| Item | Notes |
+|------|--------|
+| Pixel-perfect mockup parity | Issues target “owner approves P0”; not 100% visual match |
+| Production monitoring, backups, on-call | #104 starts checklist; ops evolves after launch |
+| Legal (terms, privacy) final copy | Placeholders in #104; lawyer review later |
+
+### GitHub tracking (recommendation)
+
+- **Now:** keep this section + [`post-launch-ui-backlog.md`](post-launch-ui-backlog.md) in the repo (source of truth).
+- **When Public Launch project #5 is winding down:** revise [epic #107](https://github.com/Vinosaamaa/chanter/issues/107) on [project #6](https://github.com/users/Vinosaamaa/projects/6); break PL items into child stories.
+- **Separate GitHub project:** [Post-Launch #6](https://github.com/users/Vinosaamaa/projects/6) is live for future work — keep **#88–#104** on project #5 until done.
+
+---
+
 ## Cross-cutting notes
 
 1. `/dev/demo` **leakage:** `QuestionsContextPanel`, `AppShellPlaceholderPage`, and marketing demo link still steer users to `/dev/demo` for install and API harness behaviors. P0/P1 slices should replace these with production routes.
@@ -140,4 +176,5 @@ Owner accepted deferrals **2026-07-09**. “Deferred” means **moved from Phase
 - [Public Launch issue breakdown](../issues/public-launch-issue-breakdown.md)
 - [Mockup gallery](../product-design/mockups/README.md)
 - [Issue #87 change log](issue-87-change-log.md)
+- [Post-launch UI backlog](post-launch-ui-backlog.md) — items after #86–#104
 

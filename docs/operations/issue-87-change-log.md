@@ -9,6 +9,7 @@ Mockup gap audit for Public Launch UI polish — compare 19 MVP mockups to produ
 | Artifact | Path |
 |----------|------|
 | Gap audit (master table + P0/P1 + sign-off checklist) | `docs/operations/public-launch-ui-gap-audit.md` |
+| Post-launch backlog + GitHub tracking | `docs/operations/post-launch-ui-backlog.md`, epic [#107](https://github.com/Vinosaamaa/chanter/issues/107), [project #6](https://github.com/users/Vinosaamaa/projects/6) |
 
 ## Method
 
@@ -31,6 +32,8 @@ Mockup gap audit for Public Launch UI polish — compare 19 MVP mockups to produ
 - [x] Owner P0 sign-off 2026-07-09 — P0 order #93 → #90 → #91 → #88
 - [x] GitHub issues #88–#93 enriched via `scripts/sync-gap-audit-to-issues.sh`
 - [x] Deferrals written to **#88, #90, #92, #100, #102, #104** — revised into **What to build / Acceptance criteria / Non-goals** (no orphan Deferred sections)
+
+- [x] Post-launch tracking: epic **#107**, project **#6**, milestone **Post-Launch** (`scripts/create-post-launch-tracking.sh`)
 
 ## cubic
 
