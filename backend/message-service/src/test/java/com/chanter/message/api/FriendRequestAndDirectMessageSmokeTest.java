@@ -347,10 +347,11 @@ class FriendRequestAndDirectMessageSmokeTest {
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
         UUID userC = UUID.randomUUID();
+        UUID userD = UUID.randomUUID();
 
         FriendRequestResponse requestFromA = sendFriendRequest(userA, userB);
         FriendRequestResponse requestFromC = sendFriendRequest(userC, userB);
-        FriendRequestResponse requestFromB = sendFriendRequest(userB, userA);
+        FriendRequestResponse requestFromB = sendFriendRequest(userB, userD);
 
         MvcResult inboxResult = mockMvc.perform(get("/api/v1/friend-requests").with(asUser(userB)))
                 .andExpect(status().isOk())
