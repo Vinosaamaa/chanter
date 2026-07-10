@@ -56,6 +56,18 @@ public class StudyServerService {
         return repository.findById(id);
     }
 
+    public void deleteStudyServer(UUID studyServerId, UUID requesterUserId) {
+        StudyServer studyServer = repository.findById(studyServerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
+        if (!studyServer.ownerRole().userId().equals(requesterUserId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the Study Server owner can delete this server"
+            );
+        }
+        repository.deleteById(studyServerId);
+    }
+
     public VoicePresence joinVoiceChannel(UUID channelId, UUID memberUserId) {
         StudyServerChannel channel = requireVoiceChannel(channelId);
         requireStudyServerMember(channel.studyServerId(), memberUserId);

@@ -676,8 +676,21 @@ public class JdbcCourseRepository implements CourseRepository {
     @Override
     @Transactional(readOnly = true)
     public List<AccessibleStudyServer> listAccessibleStudyServers(UUID userId) {
-        return jdbcClient.sql("""
-                        SELECT DISTINCT ss.id, ss.name
+        List<AccessibleStudyServerRow> rows = jdbcClient.sql("""
+                        SELECT ss.id,
+                               ss.name,
+                               EXISTS (
+                                   SELECT 1
+                                   FROM study_server_roles ssr
+                                   WHERE ssr.study_server_id = ss.id
+                                   AND ssr.user_id = :userId
+                                   AND ssr.role = :ownerRole
+                               ) AS is_owner,
+                               (
+                                   SELECT COUNT(*)
+                                   FROM courses co
+                                   WHERE co.study_server_id = ss.id
+                               ) AS course_count
                         FROM study_servers ss
                         WHERE EXISTS (
                             SELECT 1
@@ -707,11 +720,73 @@ public class JdbcCourseRepository implements CourseRepository {
                 .param("userId", userId)
                 .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
-                .query((rs, rowNum) -> new AccessibleStudyServer(
+                .query((rs, rowNum) -> new AccessibleStudyServerRow(
                         rs.getObject("id", UUID.class),
-                        rs.getString("name")
+                        rs.getString("name"),
+                        rs.getBoolean("is_owner"),
+                        rs.getInt("course_count")
                 ))
                 .list();
+
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, Integer> memberCounts = memberCountsForStudyServers(
+                rows.stream().map(AccessibleStudyServerRow::id).toList()
+        );
+
+        return rows.stream()
+                .map(row -> new AccessibleStudyServer(
+                        row.id(),
+                        row.name(),
+                        row.owner(),
+                        row.courseCount(),
+                        memberCounts.getOrDefault(row.id(), 0)
+                ))
+                .toList();
+    }
+
+    private Map<UUID, Integer> memberCountsForStudyServers(List<UUID> studyServerIds) {
+        Map<UUID, Integer> memberCounts = new java.util.HashMap<>();
+        jdbcClient.sql("""
+                        SELECT study_server_id, COUNT(DISTINCT member_user_id) AS member_count
+                        FROM (
+                            SELECT ssr.study_server_id, ssr.user_id AS member_user_id
+                            FROM study_server_roles ssr
+                            WHERE ssr.study_server_id IN (:studyServerIds)
+                            UNION
+                            SELECT co.study_server_id, cr.user_id AS member_user_id
+                            FROM courses co
+                            JOIN course_roles cr ON cr.course_id = co.id
+                            WHERE co.study_server_id IN (:studyServerIds)
+                            UNION
+                            SELECT co.study_server_id, ce.learner_user_id AS member_user_id
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            WHERE co.study_server_id IN (:studyServerIds)
+                        ) members
+                        GROUP BY study_server_id
+                        """)
+                .param("studyServerIds", studyServerIds)
+                .query((rs, rowNum) -> {
+                    memberCounts.put(
+                            rs.getObject("study_server_id", UUID.class),
+                            rs.getInt("member_count")
+                    );
+                    return null;
+                })
+                .list();
+        return memberCounts;
+    }
+
+    private record AccessibleStudyServerRow(
+            UUID id,
+            String name,
+            boolean owner,
+            int courseCount
+    ) {
     }
 
     private record CourseRow(UUID id, String title) {

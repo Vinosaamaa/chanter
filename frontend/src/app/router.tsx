@@ -7,8 +7,9 @@ import { DevDemoRoutePage } from '../features/dev-demo/DevDemoRoutePage'
 import { FriendsHubPage } from '../features/friends/components/FriendsHubPage'
 import { FriendsHubLayout } from '../features/friends/layouts/FriendsHubLayout'
 import { LandingPage } from '../features/marketing/pages/LandingPage'
+import { StudyServerPickerPage } from '../features/shell/components/StudyServerPickerPage'
 import { AppChannelLayout, AppShellLayout } from '../features/shell/layouts/AppShellLayout'
-import { AppHomeRedirectPage, AppServerRedirectPage } from '../features/shell/pages/AppServerRedirectPage'
+import { AppServerRedirectPage } from '../features/shell/pages/AppServerRedirectPage'
 import { SupportOperationPage } from '../features/support-operations/components/SupportOperationPage'
 import { InstructorDashboardPage } from '../features/instructor-dashboard/components/InstructorDashboardPage'
 import { ChannelSummaryPage } from '../features/channel-summary/components/ChannelSummaryPage'
@@ -44,7 +45,7 @@ export function createAppRouter() {
       children: [
         {
           index: true,
-          element: <AppHomeRedirectPage />,
+          element: <StudyServerPickerPage />,
         },
         {
           path: 'instructor-dashboard',

@@ -45,7 +45,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** Public Launch — [project #5](https://github.com/users/Vinosaamaa/projects/5). Workable Product **#60–#63** and Production Frontend **#47–#59** are **complete**.
 
-**Active slice:** **#87** in PR #106 (owner sign-off recorded). **Next:** **#93** Study Server management (P0).
+**Active slice:** **#93** Study Server management (P0) — in progress on `feature/93-study-server-management`.
 
 **P0 order (approved):** #93 → #90 → #91 → #88, then P1 #89 → #92.
 
@@ -334,13 +334,14 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged on main.
-Active: Public Launch project #5 — issue #87 mockup gap audit (branch `feature/87-mockup-gap-audit`).
+Active: Public Launch project #5 — issue #93 Study Server management (branch `feature/93-study-server-management`).
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/87
+Issue: https://github.com/Vinosaamaa/chanter/issues/93
+PR: https://github.com/Vinosaamaa/chanter/pull/108
 Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
 ```

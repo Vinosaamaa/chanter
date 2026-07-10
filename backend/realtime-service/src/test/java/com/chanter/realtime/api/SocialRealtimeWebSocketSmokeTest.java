@@ -96,7 +96,7 @@ class SocialRealtimeWebSocketSmokeTest {
                                     .doOnNext(payload -> captureFrame(payload, dmFrame))
                                     .then();
 
-                            return ready.then(Mono.when(waitForPresence, waitForDm).then());
+                            return Mono.when(ready, waitForPresence, waitForDm).then();
                         }
                 ).block(Duration.ofSeconds(30));
             } catch (Throwable throwable) {

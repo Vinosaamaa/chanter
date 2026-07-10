@@ -26,4 +26,6 @@ public interface StudyServerRepository {
     void deleteVoicePresence(UUID channelId, UUID memberUserId);
 
     Optional<UUID> findDefaultVoiceChannelId(UUID studyServerId);
+
+    void deleteById(UUID id);
 }

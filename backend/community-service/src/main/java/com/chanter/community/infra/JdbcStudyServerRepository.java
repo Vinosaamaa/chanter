@@ -302,6 +302,17 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                 .update();
     }
 
+    @Override
+    @Transactional
+    public void deleteById(UUID id) {
+        jdbcClient.sql("""
+                        DELETE FROM study_servers
+                        WHERE id = :id
+                        """)
+                .param("id", id)
+                .update();
+    }
+
     private StudyServerChannel mapStudyServerChannel(
             UUID id,
             UUID studyServerId,
