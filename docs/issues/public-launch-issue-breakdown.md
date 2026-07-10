@@ -36,15 +36,17 @@
 
 ## Phase 1 — UI polish (mockup fidelity)
 
-| # | Title | Type | Blocked by | Mockup(s) |
-|---|---|---|---|---|
-| [87](https://github.com/Vinosaamaa/chanter/issues/87) | Slice: Mockup gap audit and UI polish backlog | HITL | — | all 19 |
-| [88](https://github.com/Vinosaamaa/chanter/issues/88) | Slice: App shell, sidebar, and channel navigation polish | AFK | #87 | `app-shell.png` |
-| [89](https://github.com/Vinosaamaa/chanter/issues/89) | Slice: Study Server home, create server, and enrollment polish | AFK | #87 | `create-study-server.png`, `study-server-home.png`, `cohort-enrollment.png` |
-| [90](https://github.com/Vinosaamaa/chanter/issues/90) | Slice: Friend requests inbox and Friends Hub polish | AFK | #87 | `friend-requests.png`, `friends-hub-dm.png` |
-| [91](https://github.com/Vinosaamaa/chanter/issues/91) | Slice: AI Study Assistant install flow (production UI) | AFK | #87 | `ai-assistant-install.png` |
-| [92](https://github.com/Vinosaamaa/chanter/issues/92) | Slice: Support operations and instructor panels polish | AFK | #87 | `ta-queue.png`, `office-hours-voice.png`, `faq-approval.png`, `channel-summary.png`, `instructor-dashboard.png` |
-| [93](https://github.com/Vinosaamaa/chanter/issues/93) | Slice: Study Server management (list, delete, empty states) | AFK | #87 | `study-server-home.png` |
+> **#87 gap audit merged** — owner sign-off 2026-07-09. **P0 order:** #93 → #90 → #91 → #88. **P1:** #89 → #92. Detail: [`public-launch-ui-gap-audit.md`](../operations/public-launch-ui-gap-audit.md).
+
+| # | Title | Priority | Type | Blocked by | Mockup(s) |
+|---|-------|----------|------|------------|-----------|
+| [87](https://github.com/Vinosaamaa/chanter/issues/87) | Slice: Mockup gap audit and UI polish backlog | — | HITL | — | all 19 |
+| [93](https://github.com/Vinosaamaa/chanter/issues/93) | Slice: Study Server management (list, delete, empty states) | **P0** (1) | AFK | #87 | `study-server-home.png` |
+| [90](https://github.com/Vinosaamaa/chanter/issues/90) | Slice: Friend requests inbox and Friends Hub polish | **P0** (2) | AFK | #87 | `friend-requests.png`, `friends-hub-dm.png` |
+| [91](https://github.com/Vinosaamaa/chanter/issues/91) | Slice: AI Study Assistant install flow (production UI) | **P0** (3) | AFK | #87 | `ai-assistant-install.png` |
+| [88](https://github.com/Vinosaamaa/chanter/issues/88) | Slice: App shell, sidebar, and channel navigation polish | **P0** (4) | AFK | #87 | `app-shell.png`, `global-search.png`, … |
+| [89](https://github.com/Vinosaamaa/chanter/issues/89) | Slice: Study Server home, create server, and enrollment polish | P1 | AFK | #87, #93 | `create-study-server.png`, `study-server-home.png`, `cohort-enrollment.png` |
+| [92](https://github.com/Vinosaamaa/chanter/issues/92) | Slice: Support operations and instructor panels polish | P1 | AFK | #87 | `ta-queue.png`, … |
 
 ## Phase 2 — Real AI (LLM orchestration, embeddings, MCP)
 
@@ -70,12 +72,24 @@
 ## Recommended order
 
 ```
-#86 reliability (start now — uncommitted local fixes map here)
-#87 UI audit (HITL sign-off)
-#88 → #93 UI slices (parallel after audit)
+#86 reliability — merged (PR #105)
+#87 UI audit — merged / in PR #106 (owner sign-off 2026-07-09)
+P0: #93 → #90 → #91 → #88
+P1: #89 → #92
 #94 → #100 AI stack
 #101 → #104 launch
 ```
+
+## Phase 4 — Post-launch (not on board #5 yet)
+
+Deferred mockup gaps, stretch leftovers, and commerce — tracked on **[Post-Launch project #6](https://github.com/users/Vinosaamaa/projects/6)** / **[epic #107](https://github.com/Vinosaamaa/chanter/issues/107)**.
+
+| Doc / GitHub | Purpose |
+|--------------|---------|
+| [`post-launch-ui-backlog.md`](../operations/post-launch-ui-backlog.md) | PL-01…PL-16 backlog |
+| [#107](https://github.com/Vinosaamaa/chanter/issues/107) | Epic checklist (revise after #88–#104) |
+| [Project #6](https://github.com/users/Vinosaamaa/projects/6) | Future story board |
+
 
 ## Resume / portfolio angle (Phase 2)
 
@@ -84,6 +98,8 @@ Issues **#94–#99** are the “LLM orchestration, embeddings, MCP” story: chu
 ## Related docs
 
 - [`docs/product-design/mockups/README.md`](../product-design/mockups/README.md)
+- [`docs/operations/public-launch-ui-gap-audit.md`](../operations/public-launch-ui-gap-audit.md) — **#87** gap audit output
+- [`docs/operations/post-launch-ui-backlog.md`](../operations/post-launch-ui-backlog.md) — post-beta UI backlog (PL-01…)
 - [`docs/operations/ai-study-assistant.md`](../operations/ai-study-assistant.md)
 - [`plan.md`](../../plan.md)
 - [`CONTEXT.md`](../../CONTEXT.md)

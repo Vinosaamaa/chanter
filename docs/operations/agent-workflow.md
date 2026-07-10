@@ -67,7 +67,7 @@ If cubic is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in t
 | Backend MVP | [Education MVP](https://github.com/Vinosaamaa/chanter/milestone/1) | [#1](https://github.com/users/Vinosaamaa/projects/1) | **Done** (#1–#24) |
 | Production Frontend | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Done** (#47–#59) |
 | Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | **Done** (#60–#63, #31–#32) |
-| Public Launch | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — start #87** (#86 in PR #105) |
+| Public Launch | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — P0 #93** (#87 sign-off done) |
 
 Legacy **Social Hub project #2** is **closed**. #31–#32 are on **project #4** only. **#30** is on **project #3** only (pairs with #49).
 
@@ -134,11 +134,14 @@ After **#50**, issues **#53–#56** may run in parallel if coordinated; default 
 | Order | Issue | Title |
 |------:|-------|-------|
 | 1 | [#82](https://github.com/Vinosaamaa/chanter/issues/82) | Epic: Public Launch |
-| 2 | [#86](https://github.com/Vinosaamaa/chanter/issues/86) | Product stack reliability (PR #105) |
-| 3 | [**#87**](https://github.com/Vinosaamaa/chanter/issues/87) | **← START HERE** Mockup gap audit (HITL) |
-| 4 | [#88–#93](https://github.com/Vinosaamaa/chanter/issues/88) | UI polish slices |
-| 5 | [#94–#100](https://github.com/Vinosaamaa/chanter/issues/94) | Real AI / RAG / MCP |
-| 6 | [#101–#104](https://github.com/Vinosaamaa/chanter/issues/101) | Launch readiness |
+| 2 | [#86](https://github.com/Vinosaamaa/chanter/issues/86) | Product stack reliability — **merged** (PR #105) |
+| 3 | [#87](https://github.com/Vinosaamaa/chanter/issues/87) | Mockup gap audit — **owner sign-off 2026-07-09** (PR #106) |
+| 4 | [**#93**](https://github.com/Vinosaamaa/chanter/issues/93) | **← START HERE (P0)** Study Server management |
+| 5 | [#90](https://github.com/Vinosaamaa/chanter/issues/90) | P0 — Friend requests inbox |
+| 6 | [#91](https://github.com/Vinosaamaa/chanter/issues/91) | P0 — AI Study Assistant install |
+| 7 | [#88](https://github.com/Vinosaamaa/chanter/issues/88) | P0 — App shell polish |
+| 8 | [#89](https://github.com/Vinosaamaa/chanter/issues/89) | P1 — Onboarding / enrollment |
+| 9 | [#92](https://github.com/Vinosaamaa/chanter/issues/92) | P1 — Support ops panels |
 
 ---
 
@@ -200,6 +203,16 @@ Include: finding, fix (or deferral reason), verification commands, and any remai
 ### What to defer vs fix
 
 cubic may flag `TODO(#auth)` caller identity params. Those are **document and defer** unless the slice explicitly implements auth. Fix real bugs: timeouts, sanitization, missing tests, wrong status codes. See `issue-17-coderabbit-fix.md` for the historical defer/fix pattern (same discipline applies to cubic).
+
+### Gap-audit issue bodies (#87 onward)
+
+Public Launch UI issues use three scopes:
+
+1. **What to build** + **Acceptance criteria** — agents **must** implement (merge gate).
+2. **Non-goals** — explicitly **out of scope** for this issue; implement on the linked issue instead.
+3. **(Stretch)** items in acceptance — only after required checkboxes are done.
+
+Do **not** treat a separate “deferred” section as skippable work on the **owning** issue (#102, #104, #100 include deferred gaps inside What to build + Acceptance criteria).
 
 ---
 

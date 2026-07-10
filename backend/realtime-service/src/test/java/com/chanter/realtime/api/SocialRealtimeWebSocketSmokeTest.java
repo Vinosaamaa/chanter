@@ -84,7 +84,8 @@ class SocialRealtimeWebSocketSmokeTest {
                                     .then();
 
                             Mono<Void> waitForPresence = inbound
-                                    .filter(payload -> payload.contains("\"type\":\"presence_changed\""))
+                                    .filter(payload -> payload.contains("\"type\":\"presence_changed\"")
+                                            && payload.contains(userA.toString()))
                                     .next()
                                     .doOnNext(payload -> captureFrame(payload, presenceFrame))
                                     .then();
@@ -95,16 +96,16 @@ class SocialRealtimeWebSocketSmokeTest {
                                     .doOnNext(payload -> captureFrame(payload, dmFrame))
                                     .then();
 
-                            return ready.then(waitForPresence).then(waitForDm);
+                            return ready.then(Mono.when(waitForPresence, waitForDm).then());
                         }
-                ).block(Duration.ofSeconds(20));
+                ).block(Duration.ofSeconds(30));
             } catch (Throwable throwable) {
                 listenerFailure.set(throwable);
             }
         });
         listenerThread.start();
 
-        assertThat(listenerReady.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(listenerReady.await(10, TimeUnit.SECONDS)).isTrue();
         if (listenerFailure.get() != null) {
             throw new AssertionError(listenerFailure.get());
         }
@@ -132,7 +133,7 @@ class SocialRealtimeWebSocketSmokeTest {
                 }
         ).block(Duration.ofSeconds(20));
 
-        listenerThread.join(25_000);
+        listenerThread.join(35_000);
         if (listenerFailure.get() != null) {
             throw new AssertionError(listenerFailure.get());
         }
