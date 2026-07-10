@@ -48,6 +48,19 @@ public class HttpChannelSubscriptionAuthorizer implements ChannelSubscriptionAut
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Channel subscription denied");
         } catch (WebClientResponseException.BadRequest exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getResponseBodyAsString());
+        } catch (WebClientResponseException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Community Service rejected channel access: " + exception.getResponseBodyAsString()
+            );
+        } catch (ResponseStatusException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Unable to reach Community Service for channel access",
+                    exception
+            );
         }
     }
 

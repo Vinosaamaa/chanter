@@ -1,6 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.ApprovedFaqClient;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.List;
@@ -44,7 +45,11 @@ public class HttpApprovedFaqClient implements ApprovedFaqClient {
     public List<ApprovedFaqSummary> listApprovedFaqs(UUID courseId, UUID viewerUserId) {
         try {
             ApprovedFaqListResponse response = restClient.get()
-                    .uri("/api/v1/courses/{courseId}/approved-faqs?viewerUserId={viewerUserId}", courseId, viewerUserId)
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/v1/courses/{courseId}/approved-faqs")
+                            .queryParam("viewerUserId", viewerUserId)
+                            .build(courseId))
+                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(ApprovedFaqListResponse.class);
 

@@ -65,10 +65,13 @@ If cubic is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in t
 | Phase | GitHub milestone | Project board | Status |
 |-------|------------------|---------------|--------|
 | Backend MVP | [Education MVP](https://github.com/Vinosaamaa/chanter/milestone/1) | [#1](https://github.com/users/Vinosaamaa/projects/1) | **Done** (#1–#24) |
-| Production Frontend | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Active — start here** |
-| Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | After #51 on project #3 |
+| Production Frontend | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Done** (#47–#59) |
+| Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | **Done** (#60–#63, #31–#32) |
+| Public Launch | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — start #87** (#86 in PR #105) |
 
 Legacy **Social Hub project #2** is **closed**. #31–#32 are on **project #4** only. **#30** is on **project #3** only (pairs with #49).
+
+Repository **Projects** tab: [github.com/Vinosaamaa/chanter/projects](https://github.com/Vinosaamaa/chanter/projects) (user projects #1, #3–#5 linked to this repo).
 
 ### Phase 2: Production Frontend (project #3)
 
@@ -122,6 +125,20 @@ After **#50**, issues **#53–#56** may run in parallel if coordinated; default 
 4. Friend request → accept → live DM (#31).
 5. Join Voice Channel with real audio (#61).
 6. Optional: DM voice call (#32).
+
+### Phase 4: Public Launch (project #5)
+
+**Goal:** Mockup-faithful UI polish, real LLM/RAG AI, staging + public beta readiness.  
+**Breakdown:** [`public-launch-issue-breakdown.md`](../issues/public-launch-issue-breakdown.md)
+
+| Order | Issue | Title |
+|------:|-------|-------|
+| 1 | [#82](https://github.com/Vinosaamaa/chanter/issues/82) | Epic: Public Launch |
+| 2 | [#86](https://github.com/Vinosaamaa/chanter/issues/86) | Product stack reliability (PR #105) |
+| 3 | [**#87**](https://github.com/Vinosaamaa/chanter/issues/87) | **← START HERE** Mockup gap audit (HITL) |
+| 4 | [#88–#93](https://github.com/Vinosaamaa/chanter/issues/88) | UI polish slices |
+| 5 | [#94–#100](https://github.com/Vinosaamaa/chanter/issues/94) | Real AI / RAG / MCP |
+| 6 | [#101–#104](https://github.com/Vinosaamaa/chanter/issues/101) | Launch readiness |
 
 ---
 
@@ -191,8 +208,8 @@ cubic may flag `TODO(#auth)` caller identity params. Those are **document and de
 ```text
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
-Backend MVP #11–#24 is merged. Active work: Production Frontend project #3.
-Start at issue #48 unless a higher-priority in-order issue is already in progress.
+Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged.
+Active work: Public Launch project #5 — start at issue #87 after #86 merges.
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.

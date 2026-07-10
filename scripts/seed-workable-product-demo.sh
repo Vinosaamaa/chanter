@@ -4,24 +4,70 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-# shellcheck disable=SC1091
-source .env 2>/dev/null || true
+# shellcheck source=scripts/product/lib.sh
+source "$ROOT/scripts/product/lib.sh"
+product_load_env
 
-GATEWAY="${GATEWAY:-http://localhost:8080}"
+GATEWAY="${GATEWAY:-$(product_gateway_url)}"
 FRONTEND="${FRONTEND:-http://localhost:${FRONTEND_PORT:-5173}}"
-: "${DEMO_PASSWORD:?Set DEMO_PASSWORD in .env before running this script (see .env.example)}"
+if [[ -z "${DEMO_PASSWORD:-}" ]]; then
+  echo "ERROR: DEMO_PASSWORD is not set." >&2
+  echo "Add to .env:  echo 'DEMO_PASSWORD=chanter-dev-demo' >> .env" >&2
+  echo "Or run:       make product-demo-seed  (Makefile supplies a local default)" >&2
+  exit 1
+fi
 OWNER_EMAIL="dev-demo-owner@chanter.local"
 LEARNER_EMAIL="dev-demo-learner@chanter.local"
 DEMO_SERVER_NAME="Workable Product Demo"
 
+require_http() {
+  local label="$1"
+  local code="$2"
+  local body="$3"
+  if [[ "$code" -lt 200 || "$code" -ge 300 ]]; then
+    echo "ERROR: $label failed (HTTP $code)" >&2
+    if [[ -n "$body" ]]; then
+      echo "$body" | head -c 500 >&2
+      echo >&2
+    fi
+    echo "Hint: run make product-up && make product-health first" >&2
+    exit 1
+  fi
+}
+
+curl_json() {
+  local label="$1"
+  shift
+  local response code body
+  response=$(curl -sS -w $'\n%{http_code}' "$@")
+  code="${response##*$'\n'}"
+  body="${response%$'\n'*}"
+  require_http "$label" "$code" "$body"
+  echo "$body"
+}
+
 login() {
   local email="$1"
-  curl -sf -X POST "$GATEWAY/api/v1/auth/login" \
+  local display_name="${2:-}"
+  local body code response login_payload register_payload
+  login_payload=$(python3 -c 'import json, os, sys; print(json.dumps({"email": sys.argv[1], "password": os.environ["DEMO_PASSWORD"]}))' "$email")
+  response=$(curl -sS -w $'\n%{http_code}' -X POST "$GATEWAY/api/v1/auth/login" \
     -H 'Content-Type: application/json' \
-    -d "{\"email\":\"$email\",\"password\":\"$DEMO_PASSWORD\"}" \
-    || curl -sf -X POST "$GATEWAY/api/v1/auth/register" \
-      -H 'Content-Type: application/json' \
-      -d "{\"email\":\"$email\",\"password\":\"$DEMO_PASSWORD\",\"displayName\":\"$2\"}"
+    -d "$login_payload")
+  code="${response##*$'\n'}"
+  body="${response%$'\n'*}"
+  if [[ "$code" -ge 200 && "$code" -lt 300 ]]; then
+    echo "$body"
+    return 0
+  fi
+  register_payload=$(python3 -c 'import json, os, sys; print(json.dumps({"email": sys.argv[1], "password": os.environ["DEMO_PASSWORD"], "displayName": sys.argv[2]}))' "$email" "$display_name")
+  response=$(curl -sS -w $'\n%{http_code}' -X POST "$GATEWAY/api/v1/auth/register" \
+    -H 'Content-Type: application/json' \
+    -d "$register_payload")
+  code="${response##*$'\n'}"
+  body="${response%$'\n'*}"
+  require_http "login/register $email" "$code" "$body"
+  echo "$body"
 }
 
 json_field() {
@@ -128,7 +174,7 @@ EXISTING_RESOURCES=$(curl -sf "$GATEWAY/api/v1/courses/$COURSE_ID/course-resourc
 HAS_RESOURCE=$(echo "$EXISTING_RESOURCES" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
-resources = data.get('resources', data if isinstance(data, list) else [])
+resources = data.get('courseResources', data.get('resources', []))
 print('yes' if any(r.get('title') == '$RESOURCE_TITLE' for r in resources) else 'no')
 ")
 if [[ "$HAS_RESOURCE" == "yes" ]]; then
@@ -157,7 +203,8 @@ ASSISTANT_INSTALLED=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-a
 if [[ "$ASSISTANT_INSTALLED" == "True" ]]; then
   echo "   already installed (re-run on a fresh stack to pick up new resource grants)"
 else
-  PREVIEW=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install-preview?instructorUserId=$OWNER_ID" \
+  PREVIEW=$(curl_json "study-assistant install-preview" \
+    "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install-preview?instructorUserId=$OWNER_ID" \
     -H "Authorization: Bearer $OWNER_TOKEN")
   INSTALL_BODY=$(echo "$PREVIEW" | python3 -c "
 import sys, json
