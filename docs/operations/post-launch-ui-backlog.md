@@ -44,7 +44,7 @@ Owner accepted **2026-07-09**. These were **Non-goals** on launch issues.
 
 | ID | Item | Trigger |
 |----|------|---------|
-| PL-11 | Remove `/dev/demo` from production user paths | After #90, #91 merged |
+| PL-11 | Remove `/dev/demo` from production user paths | After #90, #91 merged; requires **#109** (send friend request UI) |
 | PL-12 | Mobile: `#questions` context panel visible on small screens | Mobile UX pass |
 | PL-13 | Mockup pixel-parity pass (all 19 PNGs) | Optional polish epic |
 

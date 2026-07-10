@@ -5,6 +5,7 @@ import { SignInPage } from '../features/auth/pages/SignInPage'
 import DevDemoApp from '../features/dev-demo/DevDemoApp'
 import { DevDemoRoutePage } from '../features/dev-demo/DevDemoRoutePage'
 import { FriendsHubPage } from '../features/friends/components/FriendsHubPage'
+import { FriendRequestsPage } from '../features/friends/components/FriendRequestsPage'
 import { FriendsHubLayout } from '../features/friends/layouts/FriendsHubLayout'
 import { LandingPage } from '../features/marketing/pages/LandingPage'
 import { StudyServerPickerPage } from '../features/shell/components/StudyServerPickerPage'
@@ -92,6 +93,10 @@ export function createAppRouter() {
         {
           index: true,
           element: <FriendsHubPage />,
+        },
+        {
+          path: 'requests',
+          element: <FriendRequestsPage />,
         },
       ],
     },

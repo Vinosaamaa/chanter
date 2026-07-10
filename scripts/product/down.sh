@@ -9,6 +9,8 @@ ROOT="$(product_repo_root)"
 product_load_env || true
 product_ensure_state_dirs
 
+product_stop_supervisor
+
 while IFS= read -r module; do
   [ -n "$module" ] || continue
   product_stop_module "$module"

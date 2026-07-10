@@ -21,6 +21,12 @@ public interface SocialMessagingRepository {
 
     boolean hasPendingFriendRequest(UUID firstUserId, UUID secondUserId);
 
+    List<FriendRequest> findPendingIncomingFriendRequests(UUID recipientUserId);
+
+    List<FriendRequest> findPendingOutgoingFriendRequests(UUID senderUserId);
+
+    boolean cancelPendingFriendRequest(UUID friendRequestId, UUID senderUserId);
+
     FriendshipSnapshot findFriendshipSnapshot(UUID firstUserId, UUID secondUserId);
 
     void removeFriendship(UUID firstUserId, UUID secondUserId);

@@ -7,6 +7,19 @@ export type FriendsListResponse = {
   friends: FriendSummary[]
 }
 
+export type FriendRequest = {
+  id: string
+  senderUserId: string
+  recipientUserId: string
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED'
+  createdAt: string
+}
+
+export type FriendRequestListResponse = {
+  incoming: FriendRequest[]
+  outgoing: FriendRequest[]
+}
+
 export type DirectMessage = {
   id: string
   senderUserId: string

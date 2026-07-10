@@ -77,14 +77,18 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
                         WHERE id = :friendRequestId
                         """)
                 .param("friendRequestId", friendRequestId)
-                .query((rs, rowNum) -> new FriendRequest(
-                        rs.getObject("id", UUID.class),
-                        rs.getObject("sender_user_id", UUID.class),
-                        rs.getObject("recipient_user_id", UUID.class),
-                        FriendRequestStatus.valueOf(rs.getString("status")),
-                        rs.getObject("created_at", OffsetDateTime.class).toInstant()
-                ))
+                .query(this::mapFriendRequestRow)
                 .optional();
+    }
+
+    private FriendRequest mapFriendRequestRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new FriendRequest(
+                rs.getObject("id", UUID.class),
+                rs.getObject("sender_user_id", UUID.class),
+                rs.getObject("recipient_user_id", UUID.class),
+                FriendRequestStatus.valueOf(rs.getString("status")),
+                rs.getObject("created_at", OffsetDateTime.class).toInstant()
+        );
     }
 
     @Override
@@ -145,6 +149,56 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
                 .single();
 
         return pendingCount > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FriendRequest> findPendingIncomingFriendRequests(UUID recipientUserId) {
+        return findPendingFriendRequestsForViewer(recipientUserId, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FriendRequest> findPendingOutgoingFriendRequests(UUID senderUserId) {
+        return findPendingFriendRequestsForViewer(senderUserId, false);
+    }
+
+    @Override
+    @Transactional
+    public boolean cancelPendingFriendRequest(UUID friendRequestId, UUID senderUserId) {
+        int deletedRows = jdbcClient.sql("""
+                        DELETE FROM friend_requests
+                        WHERE id = :friendRequestId
+                        AND sender_user_id = :senderUserId
+                        AND status = 'PENDING'
+                        """)
+                .param("friendRequestId", friendRequestId)
+                .param("senderUserId", senderUserId)
+                .update();
+
+        return deletedRows > 0;
+    }
+
+    private List<FriendRequest> findPendingFriendRequestsForViewer(UUID viewerUserId, boolean incoming) {
+        String peerColumn = incoming ? "sender_user_id" : "recipient_user_id";
+        String viewerColumn = incoming ? "recipient_user_id" : "sender_user_id";
+
+        return jdbcClient.sql("""
+                        SELECT id, sender_user_id, recipient_user_id, status, created_at
+                        FROM friend_requests fr
+                        WHERE fr.status = 'PENDING'
+                        AND fr.%s = :viewerUserId
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM user_blocks ub
+                            WHERE (ub.blocker_user_id = :viewerUserId AND ub.blocked_user_id = fr.%s)
+                            OR (ub.blocker_user_id = fr.%s AND ub.blocked_user_id = :viewerUserId)
+                        )
+                        ORDER BY fr.created_at DESC, fr.id
+                        """.formatted(viewerColumn, peerColumn, peerColumn))
+                .param("viewerUserId", viewerUserId)
+                .query(this::mapFriendRequestRow)
+                .list();
     }
 
     @Override
