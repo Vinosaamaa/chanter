@@ -39,4 +39,4 @@
 
 ## Pass 4
 
-Pending re-review after push.
+Clean — cubic check passed; zero unresolved threads. CI green after flaky `SocialRealtimeWebSocketSmokeTest` rerun.
