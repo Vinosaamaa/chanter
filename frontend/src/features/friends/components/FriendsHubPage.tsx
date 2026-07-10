@@ -1,17 +1,33 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuthStore } from '../../../stores/auth-store'
 import { cn } from '../../../lib/cn'
+import { formatFriendLabel } from '../friend-label'
 
 import { useFriendsHub } from '../hooks/use-friends-hub'
 import type { FriendPresenceStatus } from '../types'
 import type { SocialRealtimeConnectionStatus } from '../social-realtime-client'
 
+import { FriendsHubSidebar } from './FriendsHubSidebar'
+
+type FriendsTab = 'online' | 'all'
+
 export function FriendsHubPage() {
   const user = useAuthStore((state) => state.user)
   const hub = useFriendsHub()
   const [draft, setDraft] = useState('')
+  const [friendsTab, setFriendsTab] = useState<FriendsTab>('online')
+
+  const visibleFriends = useMemo(() => {
+    if (friendsTab === 'all') {
+      return hub.friends
+    }
+
+    return hub.friends.filter(
+      (friend) => (hub.presenceByFriendId[friend.friendUserId] ?? 'offline') === 'online',
+    )
+  }, [friendsTab, hub.friends, hub.presenceByFriendId])
 
   const selectedFriend = hub.friends.find((friend) => friend.friendUserId === hub.selectedFriendId)
   const isCallUiVisible =
@@ -33,13 +49,30 @@ export function FriendsHubPage() {
 
   return (
     <div className="flex min-h-0 flex-1">
+      <FriendsHubSidebar />
+
       <aside className="flex w-72 shrink-0 flex-col border-r border-app-border bg-app-elevated">
         <div className="border-b border-app-border px-4 py-3">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">Friends</p>
-          <h1 className="mt-1 text-base font-semibold text-app-text">Direct Messages</h1>
+          <h2 className="mt-1 text-base font-semibold text-app-text">Direct Messages</h2>
           <p className="mt-1 text-xs text-app-muted">
             Signed in as {user?.displayName ?? 'your account'}
           </p>
+        </div>
+
+        <div className="border-b border-app-border px-4 py-2">
+          <div className="flex gap-2" role="tablist" aria-label="Friend presence filter">
+            <FriendsTabButton
+              label="Online"
+              isActive={friendsTab === 'online'}
+              onClick={() => setFriendsTab('online')}
+            />
+            <FriendsTabButton
+              label="All"
+              isActive={friendsTab === 'all'}
+              onClick={() => setFriendsTab('all')}
+            />
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -59,9 +92,11 @@ export function FriendsHubPage() {
                 .
               </p>
             )
+          ) : visibleFriends.length === 0 ? (
+            <p className="px-2 py-3 text-sm text-app-muted">No friends are online right now.</p>
           ) : (
             <ul className="space-y-1">
-              {hub.friends.map((friend) => (
+              {visibleFriends.map((friend) => (
                 <li key={friend.friendUserId}>
                   <button
                     type="button"
@@ -256,6 +291,31 @@ export function FriendsHubPage() {
   )
 }
 
+function FriendsTabButton({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string
+  isActive: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={isActive}
+      onClick={onClick}
+      className={cn(
+        'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+        isActive ? 'bg-app-surface text-app-text' : 'text-app-muted hover:text-app-text',
+      )}
+    >
+      {label}
+    </button>
+  )
+}
+
 function PresenceDot({ status }: { status: FriendPresenceStatus }) {
   return (
     <span
@@ -281,10 +341,6 @@ function ConnectionBadge({ status }: { status: SocialRealtimeConnectionStatus })
       {label}
     </span>
   )
-}
-
-function formatFriendLabel(userId: string): string {
-  return `Friend ${userId.slice(0, 8)}`
 }
 
 const messageTimeFormatter = new Intl.DateTimeFormat(undefined, {

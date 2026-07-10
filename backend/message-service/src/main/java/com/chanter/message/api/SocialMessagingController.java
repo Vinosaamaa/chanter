@@ -63,6 +63,25 @@ public class SocialMessagingController {
         );
     }
 
+    @GetMapping("/friend-requests")
+    public FriendRequestListResponse findFriendRequests(
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
+    ) {
+        return FriendRequestListResponse.from(
+                socialMessagingService.findPendingIncomingFriendRequests(viewerUserId),
+                socialMessagingService.findPendingOutgoingFriendRequests(viewerUserId)
+        );
+    }
+
+    @PostMapping("/friend-requests/{friendRequestId}/cancellation")
+    public ResponseEntity<Void> cancelFriendRequest(
+            @PathVariable UUID friendRequestId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID senderUserId
+    ) {
+        socialMessagingService.cancelFriendRequest(friendRequestId, senderUserId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/user-blocks")
     public ResponseEntity<Void> blockUser(
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID blockerUserId,

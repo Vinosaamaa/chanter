@@ -228,3 +228,189 @@ product_stop_module() {
   fi
   rm -f "$pid_file"
 }
+
+product_supervisor_pid_file() {
+  echo "$(product_pids_dir)/supervisor.pid"
+}
+
+product_stop_supervisor() {
+  product_stop_pid_file "$(product_supervisor_pid_file)" "supervisor"
+}
+
+# Fully detach a child process (double-fork + setsid) so it survives parent shell exit.
+# Writes the child PID to pid_file and appends stdout/stderr to log_file.
+product_spawn_detached() {
+  local pid_file="$1"
+  local log_file="$2"
+  shift 2
+
+  if [ -f "$pid_file" ]; then
+    local existing_pid
+    existing_pid="$(cat "$pid_file")"
+    if kill -0 "$existing_pid" 2>/dev/null; then
+      return 0
+    fi
+  fi
+
+  mkdir -p "$(dirname "$pid_file")" "$(dirname "$log_file")"
+
+  CHANTER_SPAWN_PID_FILE="$pid_file" \
+  CHANTER_SPAWN_LOG_FILE="$log_file" \
+  python3 - "$@" <<'PY'
+import os
+import subprocess
+import sys
+
+pid_file = os.environ["CHANTER_SPAWN_PID_FILE"]
+log_file = os.environ["CHANTER_SPAWN_LOG_FILE"]
+cmd = sys.argv[1:]
+
+if os.fork() > 0:
+    os._exit(0)
+os.setsid()
+if os.fork() > 0:
+    os._exit(0)
+
+os.umask(0o22)
+with open(log_file, "ab", buffering=0) as log:
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.DEVNULL,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        close_fds=True,
+        start_new_session=True,
+    )
+with open(pid_file, "w", encoding="utf-8") as handle:
+    handle.write(str(proc.pid))
+os._exit(0)
+PY
+}
+
+product_prepare_infrastructure() {
+  local root compose_file
+  root="$(product_repo_root)"
+  compose_file="$root/infra/docker-compose.yml"
+
+  echo "Starting Chanter product infrastructure..."
+  docker compose -f "$compose_file" --env-file "$root/.env" --profile product stop realtime-service >/dev/null 2>&1 || true
+  docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --wait --wait-timeout 180 \
+    postgres redis redpanda minio livekit
+  echo "Infrastructure is healthy."
+}
+
+product_build_backend() {
+  local root
+  root="$(product_repo_root)"
+  echo "Building backend modules (skip tests)..."
+  (cd "$root/backend" && mvn -B -q install -DskipTests)
+}
+
+product_start_java_module() {
+  local module="$1"
+  local spawn_mode="${2:-detached}"
+  local root pid_file log_file port jar
+
+  root="$(product_repo_root)"
+  pid_file="$(product_pids_dir)/${module}.pid"
+  log_file="$(product_logs_dir)/${module}.log"
+  port="$(product_module_port "$module")"
+
+  if product_is_port_listening "$port"; then
+    echo "already running: $module (port $port)"
+    return 0
+  fi
+
+  jar="$(product_module_jar "$module")"
+  echo "starting: $module"
+
+  if [ "$spawn_mode" = "supervised" ]; then
+    (
+      cd "$root/backend"
+      java -jar "$jar" >>"$log_file" 2>&1 &
+      echo $! >"$pid_file"
+    )
+  else
+    product_spawn_detached "$pid_file" "$log_file" \
+      bash -c "cd \"$(printf '%q' "$root/backend")\" && exec java -jar \"$(printf '%q' "$jar")\""
+  fi
+
+  product_wait_for_port "$port" "$module"
+}
+
+product_start_java_modules() {
+  local spawn_mode="${1:-detached}"
+  local module
+
+  while IFS= read -r module; do
+    [ -n "$module" ] || continue
+    if [ "$module" = gateway-service ] || [ "$module" = realtime-service ]; then
+      continue
+    fi
+    product_start_java_module "$module" "$spawn_mode"
+    sleep 2
+  done < <(product_java_modules)
+
+  product_start_java_module realtime-service "$spawn_mode"
+  sleep 2
+  product_start_java_module gateway-service "$spawn_mode"
+}
+
+product_start_frontend() {
+  local spawn_mode="${1:-detached}"
+  local root frontend_pid_file frontend_port
+
+  root="$(product_repo_root)"
+  frontend_pid_file="$(product_pids_dir)/frontend.pid"
+  frontend_port="$(product_module_port frontend)"
+
+  if product_is_port_listening "$frontend_port"; then
+    echo "already running: frontend (port $frontend_port)"
+    return 0
+  fi
+
+  if [ ! -d "$root/frontend/node_modules" ]; then
+    echo "Installing frontend dependencies..."
+    (cd "$root/frontend" && npm install)
+  fi
+
+  echo "starting: frontend"
+  if [ "$spawn_mode" = "supervised" ]; then
+    (
+      cd "$root/frontend"
+      npm run dev -- --host 127.0.0.1 --port "$frontend_port" >>"$(product_logs_dir)/frontend.log" 2>&1 &
+      echo $! >"$frontend_pid_file"
+    )
+  else
+    product_spawn_detached "$frontend_pid_file" "$(product_logs_dir)/frontend.log" \
+      bash -c "cd \"$(printf '%q' "$root/frontend")\" && exec npm run dev -- --host 127.0.0.1 --port \"$frontend_port\""
+  fi
+
+  product_wait_for_port "$frontend_port" "frontend" 30 1
+}
+
+product_start_application_stack() {
+  local spawn_mode="${1:-detached}"
+  product_start_java_modules "$spawn_mode"
+  product_wait_for_url "$(product_gateway_url)/actuator/health" "gateway"
+  product_start_frontend "$spawn_mode"
+  product_wait_for_url "$(product_frontend_url)" "frontend" 30 2
+}
+
+product_print_stack_ready_message() {
+  local supervisor_note="${1:-}"
+  cat <<EOF
+
+Chanter product stack is up.
+
+  Frontend:  $(product_frontend_url)
+  Gateway:   $(product_gateway_url)
+  Realtime:  http://localhost:${REALTIME_PORT:-8087}
+  LiveKit:   $(product_livekit_url) (media plane for #61)
+
+Logs:      $(product_logs_dir)/
+Stop:      make product-down
+Verify:    make product-health
+${supervisor_note}
+EOF
+}

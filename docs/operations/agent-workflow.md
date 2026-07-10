@@ -30,7 +30,7 @@ An issue is **not done** when code is pushed or a PR is opened. An issue is **do
 1. **Read context** — `HANDOFF.md`, `CONTEXT.md`, this file (issue order below), the GitHub issue, and relevant mockups in `docs/product-design/mockups/` when building UI.
 2. **Branch** — `feature/<N>-<slug>` from latest `main`. Never commit feature work on `main`.
 3. **Implement** — scope limited to the issue acceptance criteria. **From issue #56 onward, use TDD** (see [Test-driven development](#test-driven-development-tdd) below).
-4. **Verify locally** — `mvn verify` (affected services), `npm run lint && npm run build`; browser demo when the slice has UI.
+4. **Verify locally** — `mvn verify` (affected services), `npm run lint && npm run build`; browser demo when the slice has UI (see [Agent browser testing](#agent-browser-testing) below).
 5. **Docs** — `docs/operations/issue-<N>-change-log.md`; update `HANDOFF.md` / `README.md` when the issue closes.
 6. **Commit + push** the feature branch only (push when the owner approves at push time).
 7. **Open PR** targeting `main` with `Closes #N` in the body.
@@ -164,6 +164,48 @@ Rules:
 - Log test commands in `docs/operations/issue-<N>-change-log.md`.
 
 Frontend test stack for production UI slices: add **Vitest** + **Testing Library** when first needed (#56), then keep using it for subsequent slices.
+
+---
+
+## Agent browser testing
+
+Use this when an issue has production UI under `/app/...` (sign-in required).
+
+### Stack (sticky)
+
+1. Start: `make product-supervise` in a **long-lived background shell** (not one-shot `make product-up` from a short agent command — processes may exit when the shell ends).
+2. Wait for `make product-health` green.
+3. **Teardown (required):** `make product-down` when browser testing finishes — every session, even if tests fail.
+
+Log browser results in `docs/operations/issue-<N>-change-log.md` (pass/fail matrix, seed steps, known flakes).
+
+### Visible browser for the owner (required default)
+
+**Owner preference (2026-07-10):** whenever an agent runs **browser testing**, the owner must be able to **watch the app in Cursor** — not silent background automation. **You do not type anything**; the agent opens the panel.
+
+#### Agent reveal sequence (every browser session)
+
+1. **`open_resource`** with the target URL (e.g. `http://localhost:5173/app`) — opens the page in **Glass browser** (most reliable way to surface the panel).
+2. **`browser_navigate`** to the same URL with **`position: "active"`** — focuses the browser tab while the agent clicks.
+3. Optional **`position: "side"`** for beside-chat layout; if the side panel is blank, use steps 1–2 with **`position: "active"`** instead.
+
+**Never skip the reveal steps** during issue browser testing.
+
+| What you might expect | Reality |
+|-----------------------|---------|
+| Chrome/Safari pops out | **No** — browser is an **in-Cursor Glass panel**, not your system browser. |
+| Side panel beside chat | Sometimes works with `position: "side"`; blank dark panel → agent uses `open_resource` + `position: "active"`. |
+| Where to look | **Browser** / **Glass** tab or panel inside Cursor (often opens when the agent calls `open_resource`). |
+
+If you still see nothing, tell the agent: *“use open_resource to show the browser.”*
+
+### Sign-in automation
+
+React controlled inputs often reject `browser_fill`. Prefer **`browser_type`** slowly on email/password fields. Smart Mode may block password entry or sign-in clicks — approve when prompted.
+
+### Demo users
+
+Product demo seed users (e.g. `dev-demo-learner@chanter.local` / `chanter-dev-demo`) — see `scripts/seed-workable-product-demo.sh` and issue change logs for per-slice seed steps.
 
 ---
 

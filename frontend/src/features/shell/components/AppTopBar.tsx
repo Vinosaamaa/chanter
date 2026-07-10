@@ -2,18 +2,20 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { logout as logoutApi } from '../../auth/auth-api'
 import { useGlobalSearch } from '../../global-search/hooks/use-global-search'
+import { usePendingFriendRequestCount } from '../../friends/hooks/use-friend-requests-queries'
 import { cn } from '../../../lib/cn'
 import { useAuthStore } from '../../../stores/auth-store'
 
 const topLinks = [
-  { label: 'Friends', to: '/app/friends' },
-  { label: 'Instructor Dashboard', to: '/app/instructor-dashboard' },
-]
+  { label: 'Friends', to: '/app/friends', matchPrefix: true },
+  { label: 'Instructor Dashboard', to: '/app/instructor-dashboard', matchPrefix: false },
+] as const
 
 export function AppTopBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { openSearch } = useGlobalSearch()
+  const { incomingCount } = usePendingFriendRequestCount()
   const user = useAuthStore((state) => state.user)
   const clearSession = useAuthStore((state) => state.clearSession)
 
@@ -33,21 +35,32 @@ export function AppTopBar() {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-app-border bg-app-elevated px-4">
       <nav className="flex items-center gap-1">
-        {topLinks.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            aria-current={location.pathname === item.to ? 'page' : undefined}
-            className={cn(
-              'rounded-md px-3 py-1.5 text-sm transition-colors',
-              location.pathname === item.to
-                ? 'bg-app-surface font-medium text-app-text'
-                : 'text-app-muted hover:bg-app-surface hover:text-app-text',
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
+        {topLinks.map((item) => {
+          const isActive = item.matchPrefix
+            ? location.pathname.startsWith(item.to)
+            : location.pathname === item.to
+
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              aria-current={isActive ? 'page' : undefined}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
+                isActive
+                  ? 'bg-app-surface font-medium text-app-text'
+                  : 'text-app-muted hover:bg-app-surface hover:text-app-text',
+              )}
+            >
+              <span>{item.label}</span>
+              {item.to === '/app/friends' && incomingCount > 0 ? (
+                <span className="rounded-full bg-app-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                  {incomingCount}
+                </span>
+              ) : null}
+            </Link>
+          )
+        })}
       </nav>
       <div className="flex items-center gap-3">
         <button

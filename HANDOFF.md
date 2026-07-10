@@ -45,9 +45,9 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** Public Launch — [project #5](https://github.com/users/Vinosaamaa/projects/5). Workable Product **#60–#63** and Production Frontend **#47–#59** are **complete**.
 
-**Active slice:** **#93** Study Server management (P0) — in progress on `feature/93-study-server-management`.
+**Active slice:** **#90** Friend requests inbox and Friends Hub polish (P0) — in progress on `feature/90-friend-requests-inbox`.
 
-**P0 order (approved):** #93 → #90 → #91 → #88, then P1 #89 → #92.
+**P0 order (approved):** #93 ✅ → **#90** → #91 → #88, then P1 #89 → #92.
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
@@ -334,7 +334,7 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged on main.
-Active: Public Launch project #5 — issue #93 Study Server management (branch `feature/93-study-server-management`).
+Active: Public Launch project #5 — issue #90 Friend requests inbox (branch `feature/90-friend-requests-inbox`).
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.

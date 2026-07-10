@@ -104,6 +104,28 @@ public class SocialMessagingService {
         return repository.findFriends(viewerUserId);
     }
 
+    public List<FriendRequest> findPendingIncomingFriendRequests(UUID viewerUserId) {
+        return repository.findPendingIncomingFriendRequests(viewerUserId);
+    }
+
+    public List<FriendRequest> findPendingOutgoingFriendRequests(UUID viewerUserId) {
+        return repository.findPendingOutgoingFriendRequests(viewerUserId);
+    }
+
+    @Transactional
+    public void cancelFriendRequest(UUID friendRequestId, UUID senderUserId) {
+        FriendRequest friendRequest = requireFriendRequest(friendRequestId);
+        requireSender(friendRequest, senderUserId);
+
+        if (friendRequest.status() != FriendRequestStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Friend Request is not pending");
+        }
+
+        if (!repository.cancelPendingFriendRequest(friendRequestId, senderUserId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Friend Request is no longer pending");
+        }
+    }
+
     @Transactional
     public void removeFriendship(UUID requesterUserId, UUID friendUserId) {
         if (requesterUserId.equals(friendUserId)) {
@@ -176,6 +198,12 @@ public class SocialMessagingService {
     private void requireRecipient(FriendRequest friendRequest, UUID recipientUserId) {
         if (!friendRequest.recipientUserId().equals(recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the recipient can respond to this Friend Request");
+        }
+    }
+
+    private void requireSender(FriendRequest friendRequest, UUID senderUserId) {
+        if (!friendRequest.senderUserId().equals(senderUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the sender can cancel this Friend Request");
         }
     }
 }

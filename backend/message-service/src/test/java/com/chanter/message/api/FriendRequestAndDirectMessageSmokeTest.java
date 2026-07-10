@@ -342,6 +342,89 @@ class FriendRequestAndDirectMessageSmokeTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void usersCanListAcceptDeclineCancelAndBlockFriendRequests() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+        UUID userC = UUID.randomUUID();
+
+        FriendRequestResponse requestFromA = sendFriendRequest(userA, userB);
+        FriendRequestResponse requestFromC = sendFriendRequest(userC, userB);
+        FriendRequestResponse requestFromB = sendFriendRequest(userB, userA);
+
+        MvcResult inboxResult = mockMvc.perform(get("/api/v1/friend-requests").with(asUser(userB)))
+                .andExpect(status().isOk())
+                .andReturn();
+        FriendRequestListResponse inboxForB = objectMapper.readValue(
+                inboxResult.getResponse().getContentAsString(),
+                FriendRequestListResponse.class
+        );
+
+        assertThat(inboxForB.incoming())
+                .extracting(FriendRequestResponse::id)
+                .containsExactlyInAnyOrder(requestFromA.id(), requestFromC.id());
+        assertThat(inboxForB.outgoing())
+                .extracting(FriendRequestResponse::id)
+                .containsExactly(requestFromB.id());
+
+        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/acceptance", requestFromA.id())
+                        .with(asUser(userB)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/decline", requestFromC.id())
+                        .with(asUser(userB)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/cancellation", requestFromB.id())
+                        .with(asUser(userB)))
+                .andExpect(status().isNoContent());
+
+        MvcResult updatedInboxResult = mockMvc.perform(get("/api/v1/friend-requests").with(asUser(userB)))
+                .andExpect(status().isOk())
+                .andReturn();
+        FriendRequestListResponse updatedInboxForB = objectMapper.readValue(
+                updatedInboxResult.getResponse().getContentAsString(),
+                FriendRequestListResponse.class
+        );
+
+        assertThat(updatedInboxForB.incoming()).isEmpty();
+        assertThat(updatedInboxForB.outgoing()).isEmpty();
+
+        FriendRequestResponse blockedRequest = sendFriendRequest(userC, userB);
+
+        mockMvc.perform(post("/api/v1/user-blocks")
+                        .with(asUser(userB))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "blockedUserId", userC.toString()
+                        ))))
+                .andExpect(status().isCreated());
+
+        MvcResult blockedInboxResult = mockMvc.perform(get("/api/v1/friend-requests").with(asUser(userB)))
+                .andExpect(status().isOk())
+                .andReturn();
+        FriendRequestListResponse inboxAfterBlock = objectMapper.readValue(
+                blockedInboxResult.getResponse().getContentAsString(),
+                FriendRequestListResponse.class
+        );
+
+        assertThat(inboxAfterBlock.incoming())
+                .extracting(FriendRequestResponse::id)
+                .doesNotContain(blockedRequest.id());
+    }
+
+    @Test
+    void onlySenderCanCancelPendingFriendRequest() throws Exception {
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+
+        FriendRequestResponse friendRequest = sendFriendRequest(userA, userB);
+
+        mockMvc.perform(post("/api/v1/friend-requests/{friendRequestId}/cancellation", friendRequest.id())
+                        .with(asUser(userB)))
+                .andExpect(status().isForbidden());
+    }
+
     private FriendRequestResponse sendFriendRequest(UUID senderUserId, UUID recipientUserId) throws Exception {
         MvcResult friendRequestResult = mockMvc.perform(post("/api/v1/friend-requests")
                         .with(asUser(senderUserId))
