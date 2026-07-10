@@ -33,7 +33,7 @@ cd frontend && npm run lint && npm run build
 **Stack:** `make product-supervise` in a long-lived background shell (not one-shot `make product-up`).  
 **Teardown (required):** `make product-down` when browser testing finishes.
 
-**Show browser to owner:** agents **must** pass `position: "side"` on every `browser_navigate` during issue browser testing (owner can watch beside chat). Do not use background navigation for browser passes.
+**Show browser to owner:** `open_resource` with the URL, then `browser_navigate` with `position: "active"` on each step (see `agent-workflow.md`). Do not use silent background navigation.
 
 ### Results (pass 2 — clean DB, `{}` POST body fix)
 
@@ -54,7 +54,7 @@ cd frontend && npm run lint && npm run build
 
 1. **“You do not have permission” (403)** on Accept — leftover `user_blocks` rows from block testing blocked new friend requests; stale inbox could show actions that then failed. **Fix:** clear blocks before inbox tests; accept retest **PASS**.
 2. **Accept click looked stuck** — concurrent API accept during UI test + missing `void` on async handler. **Fix:** `void runAction(...)` and POST `body: '{}'` on acceptance/decline/cancel.
-3. **Browser not visible to owner** — agent used background navigation. **Fix:** `agent-workflow.md` — default `position: "side"` on every navigate during browser testing.
+3. **Browser not visible to owner** — agent used background navigation. **Fix:** `agent-workflow.md` — `open_resource` + `position: "active"` reveal sequence.
 
 ### Seed data (no production send UI yet)
 

@@ -234,7 +234,23 @@ product_supervisor_pid_file() {
 }
 
 product_stop_supervisor() {
-  product_stop_pid_file "$(product_supervisor_pid_file)" "supervisor"
+  local pid_file pid cmdline
+  pid_file="$(product_supervisor_pid_file)"
+  if [ ! -f "$pid_file" ]; then
+    return 0
+  fi
+  pid="$(cat "$pid_file")"
+  if kill -0 "$pid" 2>/dev/null; then
+    cmdline="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+    if [[ "$cmdline" != *supervise.sh* ]]; then
+      echo "stale supervisor pid file (pid $pid is not supervise.sh); removing" >&2
+      rm -f "$pid_file"
+      return 0
+    fi
+    product_stop_pid_tree "$pid"
+    echo "stopped: supervisor"
+  fi
+  rm -f "$pid_file"
 }
 
 # Fully detach a child process (double-fork + setsid) so it survives parent shell exit.
@@ -332,7 +348,7 @@ product_start_java_module() {
     )
   else
     product_spawn_detached "$pid_file" "$log_file" \
-      bash -c "cd \"$(printf '%q' "$root/backend")\" && exec java -jar \"$(printf '%q' "$jar")\""
+      bash -c 'cd "$1" && exec java -jar "$2"' bash "$root/backend" "$jar"
   fi
 
   product_wait_for_port "$port" "$module"
@@ -383,7 +399,7 @@ product_start_frontend() {
     )
   else
     product_spawn_detached "$frontend_pid_file" "$(product_logs_dir)/frontend.log" \
-      bash -c "cd \"$(printf '%q' "$root/frontend")\" && exec npm run dev -- --host 127.0.0.1 --port \"$frontend_port\""
+      bash -c 'cd "$1" && exec npm run dev -- --host 127.0.0.1 --port "$2"' bash "$root/frontend" "$frontend_port"
   fi
 
   product_wait_for_port "$frontend_port" "frontend" 30 1

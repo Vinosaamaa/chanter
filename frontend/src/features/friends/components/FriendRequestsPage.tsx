@@ -18,22 +18,28 @@ import { FriendsHubSidebar } from './FriendsHubSidebar'
 
 export function FriendRequestsPage() {
   const queryClient = useQueryClient()
+  const userId = useAuthStore((state) => state.user?.id)
   const clearSession = useAuthStore((state) => state.clearSession)
   const requestsQuery = useFriendRequestsQuery()
   const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing'>('incoming')
   const [actionError, setActionError] = useState<string | null>(null)
-  const [pendingActionId, setPendingActionId] = useState<string | null>(null)
+  const [pendingActionIds, setPendingActionIds] = useState<Set<string>>(() => new Set())
 
   const incoming = requestsQuery.data?.incoming ?? []
   const outgoing = requestsQuery.data?.outgoing ?? []
   const activeRequests = activeTab === 'incoming' ? incoming : outgoing
 
+  const switchTab = (tab: 'incoming' | 'outgoing') => {
+    setActionError(null)
+    setActiveTab(tab)
+  }
+
   const refreshInbox = async () => {
-    await queryClient.invalidateQueries({ queryKey: friendRequestsQueryKey })
+    await queryClient.invalidateQueries({ queryKey: friendRequestsQueryKey(userId) })
   }
 
   const runAction = async (friendRequestId: string, action: () => Promise<unknown>) => {
-    setPendingActionId(friendRequestId)
+    setPendingActionIds((current) => new Set(current).add(friendRequestId))
     setActionError(null)
 
     try {
@@ -46,7 +52,11 @@ export function FriendRequestsPage() {
       }
       setActionError(formatUserFacingApiError(caught, 'Unable to update this friend request.'))
     } finally {
-      setPendingActionId(null)
+      setPendingActionIds((current) => {
+        const next = new Set(current)
+        next.delete(friendRequestId)
+        return next
+      })
     }
   }
 
@@ -69,12 +79,12 @@ export function FriendRequestsPage() {
           <div className="flex gap-4" role="tablist" aria-label="Friend request direction">
             <TabButton
               isActive={activeTab === 'incoming'}
-              onClick={() => setActiveTab('incoming')}
+              onClick={() => switchTab('incoming')}
               label={`Incoming (${incoming.length})`}
             />
             <TabButton
               isActive={activeTab === 'outgoing'}
-              onClick={() => setActiveTab('outgoing')}
+              onClick={() => switchTab('outgoing')}
               label={`Outgoing (${outgoing.length})`}
             />
           </div>
@@ -106,7 +116,7 @@ export function FriendRequestsPage() {
                   <FriendRequestRow
                     request={request}
                     mode={activeTab}
-                    isBusy={pendingActionId === request.id}
+                    isBusy={pendingActionIds.has(request.id)}
                     onAccept={() => {
                       void runAction(request.id, () => acceptFriendRequest(request.id))
                     }}
@@ -117,11 +127,17 @@ export function FriendRequestsPage() {
                       void runAction(request.id, () => cancelFriendRequest(request.id))
                     }}
                     onBlock={() => {
-                      void runAction(request.id, () =>
-                        blockUser(
-                          activeTab === 'incoming' ? request.senderUserId : request.recipientUserId,
-                        ),
-                      )
+                      const peerUserId =
+                        activeTab === 'incoming' ? request.senderUserId : request.recipientUserId
+                      const peerLabel = formatFriendLabel(peerUserId)
+                      if (
+                        !window.confirm(
+                          `Block ${peerLabel}? They will be hidden from your friend requests and friends list.`,
+                        )
+                      ) {
+                        return
+                      }
+                      void runAction(request.id, () => blockUser(peerUserId))
                     }}
                   />
                 </li>
@@ -179,11 +195,12 @@ function FriendRequestRow({
   onBlock: () => void
 }) {
   const peerUserId = mode === 'incoming' ? request.senderUserId : request.recipientUserId
+  const peerLabel = formatFriendLabel(peerUserId)
 
   return (
     <article className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-app-border bg-app-surface px-4 py-3">
       <div>
-        <p className="text-sm font-medium text-app-text">{formatFriendLabel(peerUserId)}</p>
+        <p className="text-sm font-medium text-app-text">{peerLabel}</p>
         <p className="text-xs text-app-muted">
           {mode === 'incoming' ? 'Wants to connect' : 'Request sent'} ·{' '}
           <time dateTime={request.createdAt}>{formatTimestamp(request.createdAt)}</time>
@@ -193,14 +210,42 @@ function FriendRequestRow({
       <div className="flex flex-wrap gap-2">
         {mode === 'incoming' ? (
           <>
-            <ActionButton label="Accept" onClick={onAccept} isBusy={isBusy} variant="primary" />
-            <ActionButton label="Decline" onClick={onDecline} isBusy={isBusy} />
-            <ActionButton label="Block" onClick={onBlock} isBusy={isBusy} variant="danger" />
+            <ActionButton
+              label="Accept"
+              ariaLabel={`Accept friend request from ${peerLabel}`}
+              onClick={onAccept}
+              isBusy={isBusy}
+              variant="primary"
+            />
+            <ActionButton
+              label="Decline"
+              ariaLabel={`Decline friend request from ${peerLabel}`}
+              onClick={onDecline}
+              isBusy={isBusy}
+            />
+            <ActionButton
+              label="Block"
+              ariaLabel={`Block ${peerLabel}`}
+              onClick={onBlock}
+              isBusy={isBusy}
+              variant="danger"
+            />
           </>
         ) : (
           <>
-            <ActionButton label="Cancel" onClick={onCancel} isBusy={isBusy} />
-            <ActionButton label="Block" onClick={onBlock} isBusy={isBusy} variant="danger" />
+            <ActionButton
+              label="Cancel"
+              ariaLabel={`Cancel friend request to ${peerLabel}`}
+              onClick={onCancel}
+              isBusy={isBusy}
+            />
+            <ActionButton
+              label="Block"
+              ariaLabel={`Block ${peerLabel}`}
+              onClick={onBlock}
+              isBusy={isBusy}
+              variant="danger"
+            />
           </>
         )}
       </div>
@@ -210,11 +255,13 @@ function FriendRequestRow({
 
 function ActionButton({
   label,
+  ariaLabel,
   onClick,
   isBusy,
   variant = 'default',
 }: {
   label: string
+  ariaLabel?: string
   onClick: () => void
   isBusy: boolean
   variant?: 'default' | 'primary' | 'danger'
@@ -224,6 +271,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={isBusy}
+      aria-label={ariaLabel ?? label}
       className={cn(
         'rounded-md px-3 py-1.5 text-sm disabled:opacity-50',
         variant === 'primary'

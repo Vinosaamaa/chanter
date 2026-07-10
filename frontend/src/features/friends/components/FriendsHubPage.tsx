@@ -29,7 +29,10 @@ export function FriendsHubPage() {
     )
   }, [friendsTab, hub.friends, hub.presenceByFriendId])
 
-  const selectedFriend = hub.friends.find((friend) => friend.friendUserId === hub.selectedFriendId)
+  const selectedFriend = useMemo(() => {
+    const pool = friendsTab === 'online' ? visibleFriends : hub.friends
+    return pool.find((friend) => friend.friendUserId === hub.selectedFriendId)
+  }, [friendsTab, hub.friends, hub.selectedFriendId, visibleFriends])
   const isCallUiVisible =
     hub.callState.phase !== 'idle' &&
     (hub.callState.phase !== 'ended' || hub.callError !== null)

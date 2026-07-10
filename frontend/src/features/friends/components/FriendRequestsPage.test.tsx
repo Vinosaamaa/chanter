@@ -14,7 +14,7 @@ const incomingRequest = {
 }
 
 vi.mock('../hooks/use-friend-requests-queries', () => ({
-  friendRequestsQueryKey: ['friend-requests'],
+  friendRequestsQueryKey: (userId: string | undefined) => ['friend-requests', userId ?? 'anonymous'],
   useFriendRequestsQuery: vi.fn(),
   usePendingFriendRequestCount: vi.fn(() => ({ incomingCount: 1 })),
 }))
@@ -60,9 +60,9 @@ describe('FriendRequestsPage', () => {
 
     expect(screen.getByRole('heading', { name: /pending requests/i })).toBeInTheDocument()
     expect(screen.getByText(/friend aaaaaaaa/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Decline' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Block' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /accept friend request from friend aaaaaaaa/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /decline friend request from friend aaaaaaaa/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /block friend aaaaaaaa/i })).toBeInTheDocument()
   })
 
   it('shows an empty state when there are no pending requests', () => {

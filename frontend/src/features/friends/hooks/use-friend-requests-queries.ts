@@ -1,13 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { useAuthStore } from '../../../stores/auth-store'
+
 import { fetchFriendRequests } from '../friends-api'
 
-export const friendRequestsQueryKey = ['friend-requests'] as const
+export const friendRequestsQueryKey = (userId: string | undefined) =>
+  ['friend-requests', userId ?? 'anonymous'] as const
 
 export function useFriendRequestsQuery() {
+  const userId = useAuthStore((state) => state.user?.id)
+
   return useQuery({
-    queryKey: friendRequestsQueryKey,
+    queryKey: friendRequestsQueryKey(userId),
     queryFn: fetchFriendRequests,
+    enabled: Boolean(userId),
   })
 }
 

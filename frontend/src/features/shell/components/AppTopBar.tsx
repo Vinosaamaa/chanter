@@ -44,7 +44,7 @@ export function AppTopBar() {
             <Link
               key={item.to}
               to={item.to}
-              aria-current={isActive ? 'page' : undefined}
+              aria-current={location.pathname === item.to ? 'page' : undefined}
               className={cn(
                 'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
                 isActive

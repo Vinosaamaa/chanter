@@ -14,7 +14,7 @@ export function FriendsHubSidebar() {
   const { incomingCount } = usePendingFriendRequestCount()
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-r border-app-border bg-app-elevated">
+    <aside aria-label="Friends Hub navigation" className="flex w-72 shrink-0 flex-col border-r border-app-border bg-app-elevated">
       <div className="border-b border-app-border px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">Social</p>
         <h1 className="mt-1 text-base font-semibold text-app-text">Friends Hub</h1>

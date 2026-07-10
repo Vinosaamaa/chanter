@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sticky product stack for long-lived shells (e.g. Cursor agent background terminals).
-# Services run as children of this supervisor so they stay up while the shell stays open.
-# For a one-shot start that returns immediately, use: make product-up
+# Services are launched with PID tracking; they survive supervisor shell exit as detached processes.
+# Use `make product-down` to stop the stack.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,12 +21,12 @@ if product_is_pid_running "$supervisor_pid_file"; then
   exit 0
 fi
 
+echo $$ >"$supervisor_pid_file"
+trap 'rm -f "$supervisor_pid_file"' EXIT INT TERM
+
 product_prepare_infrastructure
 product_build_backend
 product_start_application_stack supervised
-
-echo "$$" >"$supervisor_pid_file"
-trap 'rm -f "$supervisor_pid_file"' EXIT INT TERM
 
 supervisor_note="Supervisor: pid $$ (stack stays up while this process runs — use make product-down to stop)"
 product_print_stack_ready_message "$supervisor_note"

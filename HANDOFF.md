@@ -340,8 +340,8 @@ Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/93
-PR: https://github.com/Vinosaamaa/chanter/pull/108
+Issue: https://github.com/Vinosaamaa/chanter/issues/90
+PR: https://github.com/Vinosaamaa/chanter/pull/110
 Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
 ```
