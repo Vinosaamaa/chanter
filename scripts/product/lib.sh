@@ -266,9 +266,15 @@ product_spawn_detached() {
     if kill -0 "$existing_pid" 2>/dev/null; then
       return 0
     fi
+    rm -f "$pid_file"
   fi
 
   mkdir -p "$(dirname "$pid_file")" "$(dirname "$log_file")"
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 is required for detached process startup" >&2
+    return 1
+  fi
 
   CHANTER_SPAWN_PID_FILE="$pid_file" \
   CHANTER_SPAWN_LOG_FILE="$log_file" \

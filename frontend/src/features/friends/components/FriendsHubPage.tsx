@@ -64,7 +64,7 @@ export function FriendsHubPage() {
         </div>
 
         <div className="border-b border-app-border px-4 py-2">
-          <div className="flex gap-2" role="tablist" aria-label="Friend presence filter">
+          <div className="flex gap-2" role="group" aria-label="Friend presence filter">
             <FriendsTabButton
               label="Online"
               isActive={friendsTab === 'online'}
@@ -306,8 +306,7 @@ function FriendsTabButton({
   return (
     <button
       type="button"
-      role="tab"
-      aria-selected={isActive}
+      aria-pressed={isActive}
       onClick={onClick}
       className={cn(
         'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',

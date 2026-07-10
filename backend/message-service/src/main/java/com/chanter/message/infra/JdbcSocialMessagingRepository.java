@@ -77,14 +77,18 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
                         WHERE id = :friendRequestId
                         """)
                 .param("friendRequestId", friendRequestId)
-                .query((rs, rowNum) -> new FriendRequest(
-                        rs.getObject("id", UUID.class),
-                        rs.getObject("sender_user_id", UUID.class),
-                        rs.getObject("recipient_user_id", UUID.class),
-                        FriendRequestStatus.valueOf(rs.getString("status")),
-                        rs.getObject("created_at", OffsetDateTime.class).toInstant()
-                ))
+                .query(this::mapFriendRequestRow)
                 .optional();
+    }
+
+    private FriendRequest mapFriendRequestRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new FriendRequest(
+                rs.getObject("id", UUID.class),
+                rs.getObject("sender_user_id", UUID.class),
+                rs.getObject("recipient_user_id", UUID.class),
+                FriendRequestStatus.valueOf(rs.getString("status")),
+                rs.getObject("created_at", OffsetDateTime.class).toInstant()
+        );
     }
 
     @Override
@@ -193,13 +197,7 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
                         ORDER BY fr.created_at DESC, fr.id
                         """.formatted(viewerColumn, peerColumn, peerColumn))
                 .param("viewerUserId", viewerUserId)
-                .query((rs, rowNum) -> new FriendRequest(
-                        rs.getObject("id", UUID.class),
-                        rs.getObject("sender_user_id", UUID.class),
-                        rs.getObject("recipient_user_id", UUID.class),
-                        FriendRequestStatus.valueOf(rs.getString("status")),
-                        rs.getObject("created_at", OffsetDateTime.class).toInstant()
-                ))
+                .query(this::mapFriendRequestRow)
                 .list();
     }
 

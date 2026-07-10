@@ -5,9 +5,17 @@ import { cn } from '../../../lib/cn'
 import { usePendingFriendRequestCount } from '../hooks/use-friend-requests-queries'
 
 const navItems = [
-  { label: 'Friends', to: '/app/friends', exact: true },
-  { label: 'Pending Requests', to: '/app/friends/requests', exact: false },
+  { label: 'Friends', to: '/app/friends', exact: true, showIncomingBadge: false },
+  { label: 'Pending Requests', to: '/app/friends/requests', exact: false, showIncomingBadge: true },
 ] as const
+
+function isNavItemActive(pathname: string, to: string, exact: boolean): boolean {
+  if (exact) {
+    return pathname === to
+  }
+
+  return pathname === to || pathname.startsWith(`${to}/`)
+}
 
 export function FriendsHubSidebar() {
   const location = useLocation()
@@ -22,9 +30,7 @@ export function FriendsHubSidebar() {
 
       <nav className="flex flex-col gap-1 p-2" aria-label="Friends Hub">
         {navItems.map((item) => {
-          const isActive = item.exact
-            ? location.pathname === item.to
-            : location.pathname.startsWith(item.to)
+          const isActive = isNavItemActive(location.pathname, item.to, item.exact)
 
           return (
             <Link
@@ -39,7 +45,7 @@ export function FriendsHubSidebar() {
               )}
             >
               <span>{item.label}</span>
-              {item.to === '/app/friends/requests' && incomingCount > 0 ? (
+              {item.showIncomingBadge && incomingCount > 0 ? (
                 <span className="rounded-full bg-app-accent px-2 py-0.5 text-xs font-medium text-white">
                   {incomingCount}
                 </span>

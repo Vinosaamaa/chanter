@@ -38,7 +38,7 @@ while true; do
   unhealthy=""
   while IFS= read -r check_url; do
     [ -n "$check_url" ] || continue
-    if ! curl -fsS "$check_url" >/dev/null 2>&1; then
+    if ! curl -fsS --connect-timeout 2 --max-time 5 "$check_url" >/dev/null 2>&1; then
       unhealthy="${unhealthy} ${check_url}"
     fi
   done < <(product_health_checks)

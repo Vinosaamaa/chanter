@@ -49,7 +49,7 @@ describe('FriendRequestsPage', () => {
     mockedUseFriendRequestsQuery.mockReset()
   })
 
-  it('renders incoming friend requests with actions', async () => {
+  it('renders incoming friend requests with actions', () => {
     mockedUseFriendRequestsQuery.mockReturnValue({
       data: { incoming: [incomingRequest], outgoing: [] },
       isLoading: false,
