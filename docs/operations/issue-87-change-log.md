@@ -28,6 +28,8 @@ Mockup gap audit for Public Launch UI polish — compare 19 MVP mockups to produ
 - [x] P0 covers friend requests, AI install, study server management, app shell density
 - [x] Follow-up slices #88–#93 linked (replaces stale #69–#75 reference in issue body)
 - [ ] Owner P0 sign-off on PR (HITL)
+- [x] Owner P0 sign-off 2026-07-09 — P0 order #93 → #90 → #91 → #88
+- [x] GitHub issues #88–#93 enriched via `scripts/sync-gap-audit-to-issues.sh`
 
 ## cubic
 

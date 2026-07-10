@@ -45,11 +45,9 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** Public Launch — [project #5](https://github.com/users/Vinosaamaa/projects/5). Workable Product **#60–#63** and Production Frontend **#47–#59** are **complete**.
 
-**Active slice:** **#87** Mockup gap audit — branch `feature/87-mockup-gap-audit`. Gap doc: `docs/operations/public-launch-ui-gap-audit.md`.
+**Active slice:** **#87** in PR #106 (owner sign-off recorded). **Next:** **#93** Study Server management (P0).
 
-**#86** Product stack reliability — **merged** (PR #105).
-
-**Next after #87 sign-off:** **#88–#93** UI polish slices.
+**P0 order (approved):** #93 → #90 → #91 → #88, then P1 #89 → #92.
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
