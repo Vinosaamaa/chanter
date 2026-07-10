@@ -204,6 +204,16 @@ Include: finding, fix (or deferral reason), verification commands, and any remai
 
 cubic may flag `TODO(#auth)` caller identity params. Those are **document and defer** unless the slice explicitly implements auth. Fix real bugs: timeouts, sanitization, missing tests, wrong status codes. See `issue-17-coderabbit-fix.md` for the historical defer/fix pattern (same discipline applies to cubic).
 
+### Gap-audit issue bodies (#87 onward)
+
+Public Launch UI issues use three scopes:
+
+1. **What to build** + **Acceptance criteria** — agents **must** implement (merge gate).
+2. **Non-goals** — explicitly **out of scope** for this issue; implement on the linked issue instead.
+3. **(Stretch)** items in acceptance — only after required checkboxes are done.
+
+Do **not** treat a separate “deferred” section as skippable work on the **owning** issue (#102, #104, #100 include deferred gaps inside What to build + Acceptance criteria).
+
 ---
 
 ## Agent startup (copy-paste)

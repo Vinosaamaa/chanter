@@ -101,19 +101,26 @@ These four themes match issue #87 acceptance criteria. **Confirm or reprioritize
 
 ## Deferrals → issues
 
-Owner accepted deferrals **2026-07-09**. These gaps are **out of scope** for the owning slice; tracked on the target issue.
+Owner accepted deferrals **2026-07-09**. “Deferred” means **moved from Phase 1 UI (#88–#93) to the owning issue** — not optional forever.
 
-| Deferred gap | Mockup | Target issue | Notes |
-|--------------|--------|--------------|-------|
-| Landing marketing polish | `landing-page.png` | **#104** | Rich preview widgets, notification chrome |
-| SSO + forgot-password + sign-in panes | `sign-in-onboarding.png` | **#102** | Production auth / staging launch |
-| Resource folder hierarchy | `course-resources.png` | **#88** (deferred *from*) | Flat list shipped in #53; folders post-launch |
-| Global search: messages | `global-search.png` | **#88** (deferred *from*) | Resources + FAQs sufficient for P0 |
-| Streaming AI + Mark helpful | `ai-support-question.png` | **#100** | After LLM stack #94–#99 |
-| Full SaaS billing page | `saas-billing.png` | **#92** (deferred *from*) | Dashboard embed OK for beta |
-| Friend display names | `friends-hub-dm.png` | **#90** (deferred *from*) | Profile lookup deferred since #31 |
-| TA/dashboard display names | `ta-queue.png`, `instructor-dashboard.png` | **#92** (deferred *from*) | Same #31 deferral |
-| Course storefront | `course-storefront.png` | **Post-MVP** | Commerce phase; not Public Launch |
+**Agent rule (issue bodies):**
+
+| Section | Agent behavior |
+|---------|----------------|
+| **What to build** + **Acceptance criteria** | **Implement** — merge gate |
+| **Non-goals** | **Do not implement** on this issue; work lives on the linked issue |
+| *(Stretch)* in acceptance | Implement only if P0/P1 criteria are already done |
+
+| Gap | Mockup | Owning issue | Formerly in |
+|-----|--------|--------------|-------------|
+| Landing marketing polish | `landing-page.png` | **#104** — in What to build + AC | Phase 1 UI |
+| SSO, forgot-password, sign-in flows | `sign-in-onboarding.png` | **#102** — in What to build + AC | Phase 1 UI |
+| Streaming AI, Mark helpful | `ai-support-question.png` | **#100** — in What to build + AC | **#88** Non-goals |
+| Resource folders | `course-resources.png` | Post-launch | **#88** Non-goals |
+| Message search | `global-search.png` | Post-launch | **#88** Non-goals |
+| Full SaaS billing page | `saas-billing.png` | Post-launch | **#92** Non-goals |
+| Display names (friends / TA) | various | Stretch on **#90** / **#92** | Optional if time |
+| Course storefront | `course-storefront.png` | Post-MVP | **#104** Non-goals |
 
 ---
 
