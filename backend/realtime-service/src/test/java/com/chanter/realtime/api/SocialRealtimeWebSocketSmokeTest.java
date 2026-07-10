@@ -64,47 +64,45 @@ class SocialRealtimeWebSocketSmokeTest {
         WebSocketClient client = new ReactorNettyWebSocketClient();
         AtomicReference<JsonNode> presenceFrame = new AtomicReference<>();
         AtomicReference<JsonNode> dmFrame = new AtomicReference<>();
-        CountDownLatch listenerReady = new CountDownLatch(1);
+        CountDownLatch listenerSubscribed = new CountDownLatch(1);
+        CountDownLatch presenceReceived = new CountDownLatch(1);
+        CountDownLatch dmReceived = new CountDownLatch(1);
         AtomicReference<Throwable> listenerFailure = new AtomicReference<>();
 
         Thread listenerThread = new Thread(() -> {
             try {
                 client.execute(
                         websocketUri(tokenB),
-                        session -> {
-                            Flux<String> inbound = session.receive()
-                                    .map(WebSocketMessage::getPayloadAsText)
-                                    .replay()
-                                    .autoConnect(1);
-
-                            Mono<Void> ready = inbound
-                                    .filter(payload -> payload.contains("\"type\":\"social_subscribed\""))
-                                    .next()
-                                    .doOnSuccess(ignored -> listenerReady.countDown())
-                                    .then();
-
-                            Mono<Void> waitForPresence = inbound
-                                    .filter(payload -> payload.contains("\"type\":\"presence_changed\""))
-                                    .next()
-                                    .doOnNext(payload -> captureFrame(payload, presenceFrame))
-                                    .then();
-
-                            Mono<Void> waitForDm = inbound
-                                    .filter(payload -> payload.contains("\"type\":\"dm_message\""))
-                                    .next()
-                                    .doOnNext(payload -> captureFrame(payload, dmFrame))
-                                    .then();
-
-                            return ready.then(waitForPresence).then(waitForDm);
-                        }
-                ).block(Duration.ofSeconds(20));
+                        session -> session.receive()
+                                .map(WebSocketMessage::getPayloadAsText)
+                                .doOnNext(payload -> {
+                                    if (payload.contains("\"type\":\"social_subscribed\"")) {
+                                        listenerSubscribed.countDown();
+                                    }
+                                    if (payload.contains("\"type\":\"presence_changed\"")
+                                            && payload.contains(userA.toString())) {
+                                        captureFrame(payload, presenceFrame);
+                                        presenceReceived.countDown();
+                                    }
+                                    if (payload.contains("\"type\":\"dm_message\"")) {
+                                        captureFrame(payload, dmFrame);
+                                        dmReceived.countDown();
+                                    }
+                                })
+                                .then(Mono.fromCallable(() -> {
+                                    if (!dmReceived.await(25, TimeUnit.SECONDS)) {
+                                        throw new IllegalStateException("DM not received");
+                                    }
+                                    return true;
+                                }).then())
+                ).block(Duration.ofSeconds(30));
             } catch (Throwable throwable) {
                 listenerFailure.set(throwable);
             }
         });
         listenerThread.start();
 
-        assertThat(listenerReady.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(listenerSubscribed.await(10, TimeUnit.SECONDS)).isTrue();
         if (listenerFailure.get() != null) {
             throw new AssertionError(listenerFailure.get());
         }
@@ -132,10 +130,13 @@ class SocialRealtimeWebSocketSmokeTest {
                 }
         ).block(Duration.ofSeconds(20));
 
-        listenerThread.join(25_000);
+        listenerThread.join(35_000);
         if (listenerFailure.get() != null) {
             throw new AssertionError(listenerFailure.get());
         }
+
+        assertThat(presenceReceived.await(0, TimeUnit.SECONDS)).isTrue();
+        assertThat(dmReceived.await(0, TimeUnit.SECONDS)).isTrue();
 
         assertThat(presenceFrame.get()).isNotNull();
         assertThat(presenceFrame.get().get("userId").asText()).isEqualTo(userA.toString());
