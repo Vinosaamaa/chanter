@@ -41,7 +41,7 @@ Use the **same host** (`localhost`, not `127.0.0.1`) when opening seed-script UR
 
 ## 2. Seed demo data
 
-The seed script registers two demo personas, creates a Study Server + course, enrolls the learner, accepts a friend request, **uploads an AI-approved resource**, and **installs the AI Study Assistant**.
+The seed script registers two demo personas, creates a Study Server + course, enrolls the learner, accepts a friend request, uploads an AI-approved resource, and installs the AI Study Assistant (same outcome as the production UI flow in section F, option A).
 
 ```bash
 DEMO_PASSWORD=chanter-dev-demo ./scripts/seed-workable-product-demo.sh

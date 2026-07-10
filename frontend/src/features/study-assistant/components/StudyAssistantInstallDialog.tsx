@@ -10,9 +10,13 @@ import type { StudyAssistantInstallPreview } from '../study-assistant-types'
 function focusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(
     container.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      'button:not([disabled]), [href], fieldset:not([disabled]) input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     ),
   )
+}
+
+function initialFocusTarget(container: HTMLElement): HTMLElement | null {
+  return container.querySelector<HTMLElement>('button:not([disabled])')
 }
 
 type StudyAssistantInstallDialogProps = {
@@ -44,10 +48,14 @@ export function StudyAssistantInstallDialog({
       document.activeElement instanceof HTMLElement ? document.activeElement : null
 
     const focusable = panelRef.current ? focusableElements(panelRef.current) : []
-    focusable[0]?.focus()
+    const focusTarget = panelRef.current ? initialFocusTarget(panelRef.current) : null
+    ;(focusTarget ?? focusable[0])?.focus()
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (isInstalling) {
+          return
+        }
         event.preventDefault()
         onCancel()
         return
@@ -81,7 +89,7 @@ export function StudyAssistantInstallDialog({
       document.removeEventListener('keydown', onKeyDown)
       previouslyFocusedRef.current?.focus()
     }
-  }, [onCancel])
+  }, [isInstalling, onCancel])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -132,13 +140,14 @@ export function StudyAssistantInstallDialog({
                   {preview.candidates.studyServerChannels.map((channel) => {
                     const key = grantKey('STUDY_SERVER_CHANNEL', channel.id)
                     return (
-                      <GrantCheckboxRow
-                        key={key}
-                        id={key}
-                        label={`#${channel.name}`}
-                        checked={selectedKeys.has(key)}
-                        onChange={(checked) => onToggleKey(key, checked)}
-                      />
+                      <li key={key}>
+                        <GrantCheckboxRow
+                          id={key}
+                          label={`#${channel.name}`}
+                          checked={selectedKeys.has(key)}
+                          onChange={(checked) => onToggleKey(key, checked)}
+                        />
+                      </li>
                     )
                   })}
                 </ul>
@@ -172,13 +181,14 @@ export function StudyAssistantInstallDialog({
                           {course.channels.map((channel) => {
                             const key = grantKey('COURSE_CHANNEL', channel.id)
                             return (
-                              <GrantCheckboxRow
-                                key={key}
-                                id={key}
-                                label={`#${channel.name}`}
-                                checked={selectedKeys.has(key)}
-                                onChange={(checked) => onToggleKey(key, checked)}
-                              />
+                              <li key={key}>
+                                <GrantCheckboxRow
+                                  id={key}
+                                  label={`#${channel.name}`}
+                                  checked={selectedKeys.has(key)}
+                                  onChange={(checked) => onToggleKey(key, checked)}
+                                />
+                              </li>
                             )
                           })}
                         </ul>
@@ -194,13 +204,14 @@ export function StudyAssistantInstallDialog({
                           {course.cohorts.map((cohort) => {
                             const key = grantKey('COHORT', cohort.id)
                             return (
-                              <GrantCheckboxRow
-                                key={key}
-                                id={key}
-                                label={cohort.name}
-                                checked={selectedKeys.has(key)}
-                                onChange={(checked) => onToggleKey(key, checked)}
-                              />
+                              <li key={key}>
+                                <GrantCheckboxRow
+                                  id={key}
+                                  label={cohort.name}
+                                  checked={selectedKeys.has(key)}
+                                  onChange={(checked) => onToggleKey(key, checked)}
+                                />
+                              </li>
                             )
                           })}
                         </ul>
@@ -216,13 +227,14 @@ export function StudyAssistantInstallDialog({
                           {courseResources.map((resource) => {
                             const key = grantKey('COURSE_RESOURCE', resource.id)
                             return (
-                              <GrantCheckboxRow
-                                key={key}
-                                id={key}
-                                label={`${resource.title} (${resource.fileName})`}
-                                checked={selectedKeys.has(key)}
-                                onChange={(checked) => onToggleKey(key, checked)}
-                              />
+                              <li key={key}>
+                                <GrantCheckboxRow
+                                  id={key}
+                                  label={`${resource.title} (${resource.fileName})`}
+                                  checked={selectedKeys.has(key)}
+                                  onChange={(checked) => onToggleKey(key, checked)}
+                                />
+                              </li>
                             )
                           })}
                         </ul>

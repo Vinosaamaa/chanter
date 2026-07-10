@@ -51,7 +51,7 @@ Stack: `make product-supervise` → `make product-health` green. Glass browser v
 | Learner sees **Installed** in panel (no install CTA) | Learner | Pass |
 | Learner posts question → **Ask AI** | Learner | **500** — no AI-approved resource uploaded before install (resource grants empty at install time); pre-existing grounding path, not #91 UI |
 
-**Note:** For grounded Ask AI with citations, upload AI-approved resources **before** confirm install (or use seeded **Workable Product Demo** server). Re-install / grant update is out of #91 scope.
+**Note:** For grounded Ask AI with citations, upload AI-approved resources **before** confirm install (or use the seeded **Workable Product Demo** Study Server). Re-install / grant update is out of #91 scope.
 
 Teardown: `make product-down`.
 

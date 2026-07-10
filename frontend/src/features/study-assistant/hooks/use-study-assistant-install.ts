@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 
-import { ApiError } from '../../../lib/api-client'
 import {
   fetchStudyAssistantInstallPreview,
   installStudyAssistant,
@@ -74,11 +73,7 @@ export function useStudyAssistantInstallFlow({
       setPreview(nextPreview)
       setSelectedKeys(allGrantKeysFromPreview(nextPreview))
     } catch (error) {
-      setInstallError(
-        error instanceof ApiError && error.status === 403
-          ? studyAssistantInstallErrorMessage(error)
-          : studyAssistantInstallErrorMessage(error),
-      )
+      setInstallError(studyAssistantInstallErrorMessage(error))
       setPreview(null)
     } finally {
       setIsOpening(false)
