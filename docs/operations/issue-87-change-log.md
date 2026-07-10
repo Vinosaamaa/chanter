@@ -30,6 +30,7 @@ Mockup gap audit for Public Launch UI polish — compare 19 MVP mockups to produ
 - [ ] Owner P0 sign-off on PR (HITL)
 - [x] Owner P0 sign-off 2026-07-09 — P0 order #93 → #90 → #91 → #88
 - [x] GitHub issues #88–#93 enriched via `scripts/sync-gap-audit-to-issues.sh`
+- [x] Deferrals written to **#88, #90, #92, #100, #102, #104** (and noted on #89)
 
 ## cubic
 

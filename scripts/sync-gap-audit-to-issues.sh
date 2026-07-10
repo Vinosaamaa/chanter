@@ -1,19 +1,13 @@
 #!/usr/bin/env bash
-# Enrich #88–#93 with gap-audit checklists from #87. Idempotent section append.
+# Sync #87 gap audit: priorities, checklists, and deferrals onto GitHub issues.
 set -euo pipefail
 
 REPO="Vinosaamaa/chanter"
 AUDIT="docs/operations/public-launch-ui-gap-audit.md"
-MARKER="## Gap audit (#87)"
 
-append_if_missing() {
+update_issue() {
   local num="$1"
   local body_file="$2"
-  local current
-  current="$(gh issue view "$num" --repo "$REPO" --json body -q .body)"
-  if echo "$current" | grep -qF "$MARKER"; then
-    echo "Issue #$num already has gap audit section; updating full body."
-  fi
   gh issue edit "$num" --repo "$REPO" --body-file "$body_file"
   echo "Updated #$num"
 }
@@ -47,6 +41,10 @@ Source: [`public-launch-ui-gap-audit.md`](https://github.com/Vinosaamaa/chanter/
 - [ ] Empty state + create CTA when user has zero servers
 - [ ] `product-cleanup-demo-servers.sh` remains for dev; UI delete for normal users
 
+## Deferred from gap audit (#87)
+
+_None — this slice owns P0 server list/delete/home picker gaps. Course-card polish on server home remains in **#89**._
+
 ## Acceptance criteria
 
 - [ ] Delete Study Server API + UI (owner-only, cascade documented).
@@ -58,7 +56,7 @@ Source: [`public-launch-ui-gap-audit.md`](https://github.com/Vinosaamaa/chanter/
 
 #87 (gap audit sign-off — ready when #87 merges)
 EOF
-append_if_missing 93 /tmp/issue-93-body.md
+update_issue 93 /tmp/issue-93-body.md
 
 # #90 — P0 (2)
 cat > /tmp/issue-90-body.md <<'EOF'
@@ -88,6 +86,12 @@ Production friend-request inbox per `friend-requests.png`: pending incoming/outg
 - [ ] Friends Hub: requests entry, presence grouping polish
 - [ ] Remove reliance on `/dev/demo` for friend-request flows
 
+## Deferred from gap audit (#87)
+
+Owner deferral 2026-07-09 — **do not block P0 inbox on these:**
+
+- [ ] **Friend display names** (profile lookup) — deferred since #31; truncated user IDs acceptable for P0; polish if time remains in this slice
+
 ## Acceptance criteria
 
 - [ ] User can accept or decline friend requests from UI.
@@ -99,7 +103,7 @@ Production friend-request inbox per `friend-requests.png`: pending incoming/outg
 
 #87 (gap audit sign-off — ready when #87 merges)
 EOF
-append_if_missing 90 /tmp/issue-90-body.md
+update_issue 90 /tmp/issue-90-body.md
 
 # #91 — P0 (3)
 cat > /tmp/issue-91-body.md <<'EOF'
@@ -128,6 +132,10 @@ Instructor-facing install flow per `ai-assistant-install.png`: install preview, 
 - [ ] Update `QuestionsContextPanel` — remove `/dev/demo` steer
 - [ ] Update `workable-product-demo.md` with UI install path
 
+## Deferred from gap audit (#87)
+
+_None — this slice fully owns the deferred-out `/dev/demo` install path._
+
 ## Acceptance criteria
 
 - [ ] Instructor completes install from UI on a fresh Study Server.
@@ -139,7 +147,7 @@ Instructor-facing install flow per `ai-assistant-install.png`: install preview, 
 
 #87 (gap audit sign-off — ready when #87 merges)
 EOF
-append_if_missing 91 /tmp/issue-91-body.md
+update_issue 91 /tmp/issue-91-body.md
 
 # #88 — P0 (4)
 cat > /tmp/issue-88-body.md <<'EOF'
@@ -168,8 +176,16 @@ Align the signed-in Study Server shell with `app-shell.png` and related overlays
 
 - [ ] Context column widgets (not only `ContextPlaceholder` on non-questions channels)
 - [ ] Global search: scope/type filters per mockup where feasible
-- [ ] `#questions` context rail density vs `ai-support-question.png`
+- [ ] `#questions` context rail density vs `ai-support-question.png` (static layout; streaming → **#100**)
 - [ ] Top bar iconography and shell spacing vs `app-shell.png`
+
+## Deferred from gap audit (#87)
+
+Owner deferral 2026-07-09 — **explicitly out of #88 scope:**
+
+- [ ] `course-resources.png` **folder hierarchy** — keep flat list from #53 for launch
+- [ ] `global-search.png` **message / support-question results** — resources + FAQs only
+- [ ] `ai-support-question.png` **streaming tokens**, **Mark helpful** action, and LLM-quality answers → **#100** (blocked by #94–#99 / #98)
 
 ## Acceptance criteria
 
@@ -182,7 +198,7 @@ Align the signed-in Study Server shell with `app-shell.png` and related overlays
 
 #87 (gap audit sign-off — ready when #87 merges)
 EOF
-append_if_missing 88 /tmp/issue-88-body.md
+update_issue 88 /tmp/issue-88-body.md
 
 # #89 — P1
 cat > /tmp/issue-89-body.md <<'EOF'
@@ -212,6 +228,10 @@ Polish create Study Server, server home, and cohort enrollment flows per `create
 - [ ] Server home course cards and CTAs vs mockup
 - [ ] Enrollment admin table, invite link, TA assignment
 
+## Deferred from gap audit (#87)
+
+- [ ] `sign-in-onboarding.png` **invite-link / cohort-discovery right pane** — deferred to **#102** (auth/onboarding at staging launch); in-app enrollment stays in this slice
+
 ## Acceptance criteria
 
 - [ ] Owner can create a server and land on home with mockup-aligned cards and CTAs.
@@ -222,7 +242,7 @@ Polish create Study Server, server home, and cohort enrollment flows per `create
 
 #87, #93 (server list/delete foundation)
 EOF
-append_if_missing 89 /tmp/issue-89-body.md
+update_issue 89 /tmp/issue-89-body.md
 
 # #92 — P1
 cat > /tmp/issue-92-body.md <<'EOF'
@@ -247,13 +267,20 @@ Polish TA queue, office hours, FAQ approval, channel summary, and instructor das
 | `faq-approval.png` | `.../support/faq-approval` | Partial | No split editor / category badges |
 | `channel-summary.png` | `.../summary` | Partial | AI digest quality → #94–#100 |
 | `instructor-dashboard.png` | `/app/instructor-dashboard` | Partial | Missing charts, tables, deep links |
-| `saas-billing.png` | Dashboard embed | Partial | No full billing page (defer OK) |
+| `saas-billing.png` | Dashboard embed | Partial | No full billing page |
 
 ### Gap checklist
 
 - [ ] Each ops panel side-by-side with its mockup
 - [ ] Instructor dashboard charts and deep links into ops
-- [ ] Display names where mockup shows names (#31 deferral)
+- [ ] SaaS plan + AI usage embed matches `saas-billing.png` **subsection** (not full page)
+
+## Deferred from gap audit (#87)
+
+Owner deferral 2026-07-09 — **out of #92 scope:**
+
+- [ ] `saas-billing.png` **dedicated Plan & Billing settings page** (storage meter, invoices, upgrade CTA) — instructor dashboard embed is sufficient for public beta
+- [ ] **Display names** in TA queue / instructor dashboard — profile lookup deferred since **#31**; IDs acceptable unless time remains
 
 ## Acceptance criteria
 
@@ -265,14 +292,105 @@ Polish TA queue, office hours, FAQ approval, channel summary, and instructor das
 
 #87 (gap audit sign-off — ready when #87 merges)
 EOF
-append_if_missing 92 /tmp/issue-92-body.md
+update_issue 92 /tmp/issue-92-body.md
 
-# #87 — mark sign-off on parent issue
-gh issue comment 87 --repo "$REPO" --body "$(cat <<'EOF'
-**Owner sign-off (2026-07-09):** Gap audit approved. P0 implementation order: **#93 → #90 → #91 → #88**, then P1 **#89 → #92**.
+# #100 — deferred items from #88 / ai-support-question
+cat > /tmp/issue-100-body.md <<'EOF'
+## Parent
 
-Child issues #88–#93 updated with gap-audit checklists from `docs/operations/public-launch-ui-gap-audit.md`.
+https://github.com/Vinosaamaa/chanter/issues/84
+
+## What to build
+
+Production #questions UI: streaming answer card, live citation chips, model/source metadata, instructor-visible audit snippet. Match `ai-support-question.png` with streaming affordance.
+
+## Deferred from gap audit (#87)
+
+Owner deferral 2026-07-09 — carried **from #88** (`ai-support-question.png`):
+
+- [ ] Streaming answer tokens (vs static answer card)
+- [ ] **Mark helpful** control on AI answers
+- [ ] Full right-rail density and citation UX after real LLM (**#94–#99**)
+
+## Acceptance criteria
+
+- [ ] Learner sees tokens stream then final citations.
+- [ ] Low-confidence handoff unchanged.
+- [ ] Instructor can see that AI was used (dashboard or question metadata).
+- [ ] Frontend tests for streaming state machine.
+
+## Blocked by
+
+#98
 EOF
-)"
+update_issue 100 /tmp/issue-100-body.md
 
-echo "Done. See $AUDIT for master table."
+# #102 — sign-in / auth deferrals
+cat > /tmp/issue-102-body.md <<'EOF'
+## Parent
+
+https://github.com/Vinosaamaa/chanter/issues/85
+
+## What to build
+
+Auth flows for public users: email verification on register, password reset via email link, secure session refresh. Dev demo passwords remain for local seed only.
+
+## Deferred from gap audit (#87)
+
+Owner deferral 2026-07-09 — `sign-in-onboarding.png` gaps **out of Phase 1 UI (#88–#93)**:
+
+| Mockup gap | Notes |
+|------------|-------|
+| SSO providers (Google, Microsoft, GitHub) | Production SSO when staging auth lands |
+| Forgot-password link + reset flow UI | Pairs with password-reset acceptance criteria below |
+| Invite-link and cohort-discovery right pane | In-app enrollment in **#89**; sign-in marketing pane defer OK |
+
+## Acceptance criteria
+
+- [ ] Register → verify email → sign in on staging.
+- [ ] Forgot password → reset → sign in.
+- [ ] Rate limits on auth endpoints.
+- [ ] Documented email provider config for staging.
+
+## Blocked by
+
+#101
+EOF
+update_issue 102 /tmp/issue-102-body.md
+
+# #104 — landing / launch deferrals
+cat > /tmp/issue-104-body.md <<'EOF'
+## Parent
+
+https://github.com/Vinosaamaa/chanter/issues/85
+
+## What to build
+
+Launch checklist: security review, backup, monitoring, support email, terms/privacy placeholders, updated getting-started for public beta, known limitations list.
+
+## Deferred from gap audit (#87)
+
+Owner deferral 2026-07-09 — `landing-page.png` gaps **out of Phase 1 UI (#88–#93)**:
+
+| Mockup gap | Notes |
+|------------|-------|
+| Rich app preview (TA queue widget, course stats, Join Queue) | Marketing polish at public beta prep |
+| Notification / friends badges in marketing chrome | Post-launch marketing |
+
+Also track post-MVP: `course-storefront.png` (commerce) — not Public Launch scope.
+
+## Acceptance criteria
+
+- [ ] `docs/operations/public-beta-launch-checklist.md` complete with sign-off sections.
+- [ ] README points to staging URL and beta scope.
+- [ ] HANDOFF updated for post-launch phase.
+
+## Blocked by
+
+#101, #103
+EOF
+update_issue 104 /tmp/issue-104-body.md
+
+gh issue comment 87 --repo "$REPO" --body "Deferrals synced to #88 #90 #92 #100 #102 #104. See gap audit doc section Deferrals → issues."
+
+echo "Done. See $AUDIT"

@@ -99,7 +99,23 @@ These four themes match issue #87 acceptance criteria. **Confirm or reprioritize
 
 ---
 
+## Deferrals → issues
 
+Owner accepted deferrals **2026-07-09**. These gaps are **out of scope** for the owning slice; tracked on the target issue.
+
+| Deferred gap | Mockup | Target issue | Notes |
+|--------------|--------|--------------|-------|
+| Landing marketing polish | `landing-page.png` | **#104** | Rich preview widgets, notification chrome |
+| SSO + forgot-password + sign-in panes | `sign-in-onboarding.png` | **#102** | Production auth / staging launch |
+| Resource folder hierarchy | `course-resources.png` | **#88** (deferred *from*) | Flat list shipped in #53; folders post-launch |
+| Global search: messages | `global-search.png` | **#88** (deferred *from*) | Resources + FAQs sufficient for P0 |
+| Streaming AI + Mark helpful | `ai-support-question.png` | **#100** | After LLM stack #94–#99 |
+| Full SaaS billing page | `saas-billing.png` | **#92** (deferred *from*) | Dashboard embed OK for beta |
+| Friend display names | `friends-hub-dm.png` | **#90** (deferred *from*) | Profile lookup deferred since #31 |
+| TA/dashboard display names | `ta-queue.png`, `instructor-dashboard.png` | **#92** (deferred *from*) | Same #31 deferral |
+| Course storefront | `course-storefront.png` | **Post-MVP** | Commerce phase; not Public Launch |
+
+---
 
 ## Cross-cutting notes
 
