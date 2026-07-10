@@ -45,9 +45,11 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** Public Launch — [project #5](https://github.com/users/Vinosaamaa/projects/5). Workable Product **#60–#63** and Production Frontend **#47–#59** are **complete**.
 
-**Active slice:** **#86** Product stack reliability — branch `feature/86-product-stack-reliability`.
+**Active slice:** **#87** Mockup gap audit — branch `feature/87-mockup-gap-audit`. Gap doc: `docs/operations/public-launch-ui-gap-audit.md`.
 
-**Next after #86:** **#87** mockup gap audit (UI polish epic #83).
+**#86** Product stack reliability — **merged** (PR #105).
+
+**Next after #87 sign-off:** **#88–#93** UI polish slices.
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
@@ -304,7 +306,8 @@ Pending:
 
 After Workable Product (#60–#63), build in **issue order** on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5):
 
-1. **#86** Product stack reliability (in PR) → **#87** mockup gap audit → **#88–#93** UI polish.
+1. **#86** Product stack reliability — **merged** (PR #105).
+2. **#87** mockup gap audit (HITL sign-off) → **#88–#93** UI polish.
 2. **#94–#100** Real AI / RAG / MCP.
 3. **#101–#104** Launch readiness.
 
@@ -333,7 +336,7 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged on main.
-Active: Public Launch project #5 — start at issue #87 after #86 merges.
+Active: Public Launch project #5 — issue #87 mockup gap audit (branch `feature/87-mockup-gap-audit`).
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.

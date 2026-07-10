@@ -84,6 +84,7 @@ Issues **#94–#99** are the “LLM orchestration, embeddings, MCP” story: chu
 ## Related docs
 
 - [`docs/product-design/mockups/README.md`](../product-design/mockups/README.md)
+- [`docs/operations/public-launch-ui-gap-audit.md`](../operations/public-launch-ui-gap-audit.md) — **#87** gap audit output
 - [`docs/operations/ai-study-assistant.md`](../operations/ai-study-assistant.md)
 - [`plan.md`](../../plan.md)
 - [`CONTEXT.md`](../../CONTEXT.md)
