@@ -677,7 +677,20 @@ public class JdbcCourseRepository implements CourseRepository {
     @Transactional(readOnly = true)
     public List<AccessibleStudyServer> listAccessibleStudyServers(UUID userId) {
         return jdbcClient.sql("""
-                        SELECT DISTINCT ss.id, ss.name
+                        SELECT ss.id,
+                               ss.name,
+                               EXISTS (
+                                   SELECT 1
+                                   FROM study_server_roles ssr
+                                   WHERE ssr.study_server_id = ss.id
+                                   AND ssr.user_id = :userId
+                                   AND ssr.role = :ownerRole
+                               ) AS is_owner,
+                               (
+                                   SELECT COUNT(*)
+                                   FROM courses co
+                                   WHERE co.study_server_id = ss.id
+                               ) AS course_count
                         FROM study_servers ss
                         WHERE EXISTS (
                             SELECT 1
@@ -707,11 +720,42 @@ public class JdbcCourseRepository implements CourseRepository {
                 .param("userId", userId)
                 .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
-                .query((rs, rowNum) -> new AccessibleStudyServer(
-                        rs.getObject("id", UUID.class),
-                        rs.getString("name")
-                ))
+                .query((rs, rowNum) -> {
+                    UUID studyServerId = rs.getObject("id", UUID.class);
+                    return new AccessibleStudyServer(
+                            studyServerId,
+                            rs.getString("name"),
+                            rs.getBoolean("is_owner"),
+                            rs.getInt("course_count"),
+                            countMembersForStudyServer(studyServerId)
+                    );
+                })
                 .list();
+    }
+
+    private int countMembersForStudyServer(UUID studyServerId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(DISTINCT member_user_id)
+                        FROM (
+                            SELECT ssr.user_id AS member_user_id
+                            FROM study_server_roles ssr
+                            WHERE ssr.study_server_id = :studyServerId
+                            UNION
+                            SELECT cr.user_id
+                            FROM courses co
+                            JOIN course_roles cr ON cr.course_id = co.id
+                            WHERE co.study_server_id = :studyServerId
+                            UNION
+                            SELECT ce.learner_user_id
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            WHERE co.study_server_id = :studyServerId
+                        ) members
+                        """)
+                .param("studyServerId", studyServerId)
+                .query(Integer.class)
+                .single();
     }
 
     private record CourseRow(UUID id, String title) {

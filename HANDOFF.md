@@ -45,7 +45,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** Public Launch — [project #5](https://github.com/users/Vinosaamaa/projects/5). Workable Product **#60–#63** and Production Frontend **#47–#59** are **complete**.
 
-**Active slice:** **#87** in PR #106 (owner sign-off recorded). **Next:** **#93** Study Server management (P0).
+**Active slice:** **#93** Study Server management (P0) — in progress on `feature/93-study-server-management`.
 
 **P0 order (approved):** #93 → #90 → #91 → #88, then P1 #89 → #92.
 

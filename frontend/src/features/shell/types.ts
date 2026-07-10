@@ -19,6 +19,9 @@ export type ShellCourse = {
 export type StudyServerSummary = {
   id: string
   name: string
+  owner: boolean
+  courseCount: number
+  memberCount: number
 }
 
 export type StudyServerNavigation = {
