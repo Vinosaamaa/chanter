@@ -43,9 +43,12 @@ function GlobalSearchOverlayPanel({
   panelRef: RefObject<HTMLElement | null>
 }) {
   const { serverId: routeServerId } = useParams()
-  const serverId = routeServerId ?? readActiveStudyServerId() ?? undefined
+  const rememberedServerId = readActiveStudyServerId() ?? undefined
+  const requestedServerId = routeServerId ?? rememberedServerId
   const navigate = useNavigate()
-  const navigationQuery = useStudyServerNavigationQuery(serverId)
+  const navigationQuery = useStudyServerNavigationQuery(requestedServerId)
+  const serverId =
+    routeServerId ?? (navigationQuery.isError ? undefined : requestedServerId)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GlobalSearchHit[]>([])
   const [error, setError] = useState<string | null>(null)

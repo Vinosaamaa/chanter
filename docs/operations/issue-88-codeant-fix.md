@@ -96,4 +96,6 @@ cd frontend && npm run lint && npm run build && npm run test -- --run shell-rout
 | Search “no results” without active server | Require `serverId` before empty-state message |
 | Resources hook treats all errors as 403 | Separate `error` state from `canView` permission flag |
 | ThemeSync duplicates DOM theme logic | Reuse `applyThemeToDocument` from theme store |
+| Stale remembered server in global search | Drop remembered server id when navigation query errors |
+| Transient resource errors set `canView` false | Only 403 updates permission flag; errors use `error` state |
 | plan.md CodeAnt vs Cursor skills | Clarified GitHub App vs Cursor skills |

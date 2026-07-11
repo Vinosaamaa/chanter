@@ -41,7 +41,6 @@ export function useCourseResourcesList(courseId: string) {
           setResources([])
           setError(null)
         } else {
-          setCanView(false)
           setResources([])
           setError('Could not load course resources.')
         }
