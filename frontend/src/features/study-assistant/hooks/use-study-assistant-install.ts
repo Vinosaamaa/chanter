@@ -37,6 +37,7 @@ export function useStudyAssistantInstallFlow({
   const [isOpening, setIsOpening] = useState(false)
   const openRequestIdRef = useRef(0)
   const closeDialogRef = useRef<() => void>(() => {})
+  const installContextKeyRef = useRef<string | null>(null)
 
   const preview =
     previewState && previewState.contextKey === contextKey ? previewState.preview : null
@@ -54,10 +55,19 @@ export function useStudyAssistantInstallFlow({
       )
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: studyAssistantPresenceQueryKey(studyServerId, instructorUserId),
-      })
-      closeDialogRef.current()
+      const mutationContextKey = installContextKeyRef.current
+      if (mutationContextKey) {
+        const [installedServerId, installedUserId] = mutationContextKey.split(':')
+        await queryClient.invalidateQueries({
+          queryKey: studyAssistantPresenceQueryKey(installedServerId, installedUserId),
+        })
+      }
+
+      if (mutationContextKey === contextKey) {
+        closeDialogRef.current()
+      } else {
+        reset()
+      }
     },
     onError: (error) => {
       setInstallError(studyAssistantInstallErrorMessage(error))
@@ -127,12 +137,13 @@ export function useStudyAssistantInstallFlow({
   }, [])
 
   const confirmInstall = useCallback(() => {
-    if (!preview || preview.alreadyInstalled || selectedKeys.size === 0) {
+    if (!preview || !contextKey || preview.alreadyInstalled || selectedKeys.size === 0) {
       return
     }
+    installContextKeyRef.current = contextKey
     setInstallError(null)
     mutate()
-  }, [mutate, preview, selectedKeys.size])
+  }, [contextKey, mutate, preview, selectedKeys.size])
 
   return {
     preview,

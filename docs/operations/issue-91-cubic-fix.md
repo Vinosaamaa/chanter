@@ -63,7 +63,19 @@
 | Grant tree rescans all resources per course on every render | P3 | **Fixed** — `useMemo` map of resources by `courseId` |
 | Duplicate modal focus-trap implementation | P3 | **Deferred** — extract shared dialog primitive in **#88** (shell polish) |
 
-### Verification (pass 4)
+## Pass 5 (PR #111 — cubic review on pass 4 fixes)
+
+| Finding | Severity | Action |
+|---------|----------|--------|
+| Pending install on server A closes dialog after navigating to server B | P2 | **Fixed** — tag mutation with `contextKey`; only `closeDialog` when keys still match |
+
+### Verification (pass 5)
+
+```bash
+(cd backend && mvn -B -q -pl agent-service -am test -Dtest=AiQuotaSmokeTest -Dsurefire.failIfNoSpecifiedTests=false)
+(cd frontend && npm run test -- --run study-assistant)
+(cd frontend && npm run lint && npm run build)
+```
 
 ```bash
 (cd backend && mvn -B -q -pl agent-service -am test -Dtest=AiQuotaSmokeTest -Dsurefire.failIfNoSpecifiedTests=false)
