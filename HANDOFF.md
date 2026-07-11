@@ -334,13 +334,14 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged on main.
-#90 Friend requests inbox merged. Active: Public Launch project #5 — issue #91 AI Study Assistant install (branch `feature/91-ai-study-assistant-install`).
+#90 Friend requests inbox merged. #91 AI Study Assistant install merged.
+Active: Public Launch project #5 — issue #88 App shell polish (branch `feature/88-app-shell-polish`).
 
 Product UI: docs/product-design/README.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/91
+Issue: https://github.com/Vinosaamaa/chanter/issues/88
 Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
 ```

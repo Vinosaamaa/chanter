@@ -71,6 +71,22 @@ describe('shell-routes context helpers', () => {
         navigation,
       ),
     ).toBe('voice')
+
+    expect(
+      resolveShellContextPanelKind(
+        '/app/servers/server-1/study-channels/study-text-1',
+        'study-text-1',
+        navigation,
+      ),
+    ).toBe('general')
+
+    expect(
+      resolveShellContextPanelKind(
+        '/app/servers/server-1/study-channels/missing',
+        'missing',
+        navigation,
+      ),
+    ).toBe('placeholder')
   })
 
   it('builds breadcrumbs and descriptions', () => {

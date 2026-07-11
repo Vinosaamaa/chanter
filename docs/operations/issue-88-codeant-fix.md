@@ -48,3 +48,11 @@ cd frontend && npm run lint && npm run build && npm run test -- --run shell-rout
 | Help button no-op | Disabled with “coming soon” label |
 | Search footer misleading key hints | Removed unimplemented ↑↓ / ↵ hints |
 | HANDOFF / startup prompt stale | Point agents to active slice #88 |
+
+## Pass 3b (PR #112 — latest cubic sweep)
+
+| Finding | Fix |
+|---------|-----|
+| HANDOFF startup prompt still #91 | Updated to #88 / `feature/88-app-shell-polish` |
+| pointercancel leaves resize active | Listen for `pointercancel` in `use-panel-resize` |
+| Unknown study channel → general | Verify channel exists; placeholder when missing |

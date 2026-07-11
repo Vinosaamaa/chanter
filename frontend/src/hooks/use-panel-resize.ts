@@ -37,6 +37,7 @@ export function usePanelResize({
       const cleanupDrag = () => {
         window.removeEventListener('pointermove', onPointerMove)
         window.removeEventListener('pointerup', onPointerUp)
+        window.removeEventListener('pointercancel', onPointerUp)
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
         dragCleanupRef.current = null
@@ -58,6 +59,7 @@ export function usePanelResize({
       document.body.style.userSelect = 'none'
       window.addEventListener('pointermove', onPointerMove)
       window.addEventListener('pointerup', onPointerUp)
+      window.addEventListener('pointercancel', onPointerUp)
     },
     [getPanel, maxWidth, minWidth, onWidthChange, side],
   )

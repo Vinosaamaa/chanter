@@ -220,7 +220,11 @@ export function resolveShellContextPanelKind(
   }
 
   if (pathname.includes('/study-channels/')) {
-    return isVoiceStudyChannel(navigation, channelId) ? 'voice' : 'general'
+    const studyChannel = findStudyChannel(navigation, channelId)
+    if (!studyChannel) {
+      return 'placeholder'
+    }
+    return studyChannel.kind === 'VOICE' ? 'voice' : 'general'
   }
 
   return 'placeholder'
