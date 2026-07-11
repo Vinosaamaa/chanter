@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useDeferredValue } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
@@ -88,6 +89,7 @@ function QuestionsContextPanel({
   )
   const activeAnswer =
     selectedAnswer && channelId && selectedAnswer.channelId === channelId ? selectedAnswer : null
+  const deferredCourseContext = useDeferredValue(courseContext)
 
   const assistantQuery = useQuery({
     queryKey: studyAssistantPresenceQueryKey(resolvedServerId, userId),
@@ -151,19 +153,19 @@ function QuestionsContextPanel({
             )}
           </ContextWidgetSection>
 
-          {courseContext ? (
+          {deferredCourseContext ? (
             <>
               <CourseResourcesWidget
                 serverId={resolvedServerId ?? ''}
-                courseId={courseContext.course.id}
-                courseTitle={courseContext.course.title}
+                courseId={deferredCourseContext.course.id}
+                courseTitle={deferredCourseContext.course.title}
                 resourcesChannelId={resourcesChannel?.id ?? null}
                 limit={4}
               />
 
               <ApprovedFaqsWidget
                 serverId={resolvedServerId ?? ''}
-                courseId={courseContext.course.id}
+                courseId={deferredCourseContext.course.id}
                 limit={3}
               />
             </>

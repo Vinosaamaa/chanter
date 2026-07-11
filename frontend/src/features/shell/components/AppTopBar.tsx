@@ -4,6 +4,7 @@ import { logout as logoutApi } from '../../auth/auth-api'
 import { useGlobalSearch } from '../../global-search/hooks/use-global-search'
 import { usePendingFriendRequestCount } from '../../friends/hooks/use-friend-requests-queries'
 import { cn } from '../../../lib/cn'
+import { HeaderIconButton } from '../../../components/ui/header-icon-button'
 import { useAuthStore } from '../../../stores/auth-store'
 import { useThemeStore } from '../../../stores/theme-store'
 
@@ -79,15 +80,12 @@ export function AppTopBar() {
         </nav>
       </div>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
+        <HeaderIconButton
+          label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-app-border text-sm text-app-muted hover:text-app-text"
         >
           <span aria-hidden>{theme === 'dark' ? '☀' : '☾'}</span>
-        </button>
+        </HeaderIconButton>
         <button
           type="button"
           onClick={openSearch}
@@ -97,14 +95,7 @@ export function AppTopBar() {
           <span className="hidden sm:inline">Search</span>
           <kbd className="hidden rounded border border-app-border px-1.5 py-0.5 text-[10px] sm:inline">⌘K</kbd>
         </button>
-        <button
-          type="button"
-          title="Help"
-          aria-label="Help"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-app-border text-sm text-app-muted hover:text-app-text"
-        >
-          ?
-        </button>
+        <HeaderIconButton label="Help">?</HeaderIconButton>
         <div className="hidden items-center gap-2 sm:flex">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-app-accent text-xs font-semibold text-white">
             {(user?.displayName ?? user?.email ?? '?').slice(0, 1).toUpperCase()}

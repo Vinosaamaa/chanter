@@ -20,29 +20,30 @@ export function ApprovedFaqsWidget({
 }) {
   const userId = useAuthStore((state) => state.user?.id)
   const [faqs, setFaqs] = useState<ApprovedFaq[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [loadedKey, setLoadedKey] = useState<string | null>(null)
+
+  const requestKey = userId ? `${courseId}:${userId}` : null
+  const isLoading = requestKey !== null && loadedKey !== requestKey
 
   useEffect(() => {
-    if (!userId) {
+    if (!requestKey || !userId) {
       return
     }
 
     let cancelled = false
 
     void (async () => {
-      setIsLoading(true)
       try {
         const response = await listApprovedFaqs(courseId, userId)
-        if (!cancelled) {
-          setFaqs(response.approvedFaqs)
+        if (cancelled) {
+          return
         }
+        setFaqs(response.approvedFaqs)
+        setLoadedKey(requestKey)
       } catch {
         if (!cancelled) {
           setFaqs([])
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false)
+          setLoadedKey(requestKey)
         }
       }
     })()
@@ -50,9 +51,9 @@ export function ApprovedFaqsWidget({
     return () => {
       cancelled = true
     }
-  }, [courseId, userId])
+  }, [courseId, requestKey, userId])
 
-  const visible = faqs.slice(0, limit)
+  const visible = (requestKey ? faqs : []).slice(0, limit)
 
   return (
     <ContextWidgetSection
@@ -66,7 +67,9 @@ export function ApprovedFaqsWidget({
         </Link>
       }
     >
-      {isLoading ? (
+      {!userId ? (
+        <p className="text-xs text-app-muted">Sign in to view approved FAQs.</p>
+      ) : isLoading ? (
         <p className="text-xs text-app-muted">Loading FAQs…</p>
       ) : visible.length === 0 ? (
         <p className="text-xs text-app-muted">No approved FAQs yet for this course.</p>

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { HeaderIconButton } from '../../../components/ui/header-icon-button'
 import { useGlobalSearch } from '../../global-search/hooks/use-global-search'
-import { cn } from '../../../lib/cn'
 
 type ChannelHeaderProps = {
   channelName: string
@@ -33,36 +33,12 @@ export function ChannelHeader({
           {description ? <p className="mt-1 text-sm text-app-muted">{description}</p> : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <HeaderIconButton label="Search this Study Server" onClick={openSearch}>
+          <HeaderIconButton label="Search this Study Server" onClick={openSearch} className="bg-app-surface">
             ⌕
           </HeaderIconButton>
           {trailing}
         </div>
       </div>
     </header>
-  )
-}
-
-function HeaderIconButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string
-  onClick?: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className={cn(
-        'inline-flex h-8 w-8 items-center justify-center rounded-md border border-app-border',
-        'bg-app-surface text-sm text-app-muted transition-colors hover:text-app-text',
-      )}
-    >
-      {children}
-    </button>
   )
 }

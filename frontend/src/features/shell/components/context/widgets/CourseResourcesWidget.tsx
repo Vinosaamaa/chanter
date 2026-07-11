@@ -1,13 +1,7 @@
-import { useEffect, useState } from 'react'
-
 import { Link } from 'react-router-dom'
 
 import { useAuthStore } from '../../../../../stores/auth-store'
-import type { CourseResource } from '../../../../resources/course-resource-types'
-import {
-  fetchCourseResourceAccess,
-  listCourseResources,
-} from '../../../../resources/course-resources-api'
+import { useCourseResourcesList } from '../../../hooks/use-course-resources-list'
 import { courseChannelPath } from '../../../shell-routes'
 
 import { ContextWidgetSection } from '../ContextPanelFrame'
@@ -37,49 +31,11 @@ export function CourseResourcesWidget({
   limit?: number
 }) {
   const userId = useAuthStore((state) => state.user?.id)
-  const [resources, setResources] = useState<CourseResource[]>([])
-  const [canView, setCanView] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const { resources, canView, isLoading } = useCourseResourcesList(courseId)
 
-  useEffect(() => {
-    if (!userId) {
-      return
-    }
-
-    let cancelled = false
-
-    void (async () => {
-      setIsLoading(true)
-      try {
-        const access = await fetchCourseResourceAccess(courseId)
-        if (cancelled) {
-          return
-        }
-        setCanView(access.canViewCourseResources)
-        if (!access.canViewCourseResources) {
-          setResources([])
-          return
-        }
-
-        const list = await listCourseResources(courseId)
-        if (!cancelled) {
-          setResources(list.courseResources)
-        }
-      } catch {
-        if (!cancelled) {
-          setResources([])
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false)
-        }
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [courseId, userId])
+  if (!userId) {
+    return null
+  }
 
   if (!canView && !isLoading) {
     return null

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { cn } from '../../../lib/cn'
 import { formatUserFacingApiError } from '../../../lib/format-api-error'
 import { readActiveStudyServerId } from '../../../lib/last-active-study-server'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
+import type { ShellCourse } from '../../shell/types'
 import {
   courseChannelPath,
   supportOperationPath,
@@ -101,17 +102,42 @@ function GlobalSearchOverlayPanel({
   }, [trimmedQuery, serverId])
 
   const canManage = navigationQuery.data?.canViewFullCatalog ?? false
-  const filteredResults = (serverId && trimmedQuery.length >= 2 ? results : []).filter((hit) => {
-    if (contentTypeFilter !== 'all' && hit.documentType !== contentTypeFilter) {
-      return false
+  const groupedResults = useMemo(() => {
+    const base = (serverId && trimmedQuery.length >= 2 ? results : []).filter((hit) => {
+      if (contentTypeFilter !== 'all' && hit.documentType !== contentTypeFilter) {
+        return false
+      }
+      if (courseFilter !== 'all' && hit.courseId !== courseFilter) {
+        return false
+      }
+      return true
+    })
+
+    const resourceResults: GlobalSearchHit[] = []
+    const faqResults: GlobalSearchHit[] = []
+    for (const hit of base) {
+      if (hit.documentType === 'RESOURCE') {
+        resourceResults.push(hit)
+      } else if (hit.documentType === 'FAQ') {
+        faqResults.push(hit)
+      }
     }
-    if (courseFilter !== 'all' && hit.courseId !== courseFilter) {
-      return false
+
+    return { all: base, resourceResults, faqResults }
+  }, [contentTypeFilter, courseFilter, results, serverId, trimmedQuery])
+
+  const courseLookup = useMemo(() => {
+    const courses = navigationQuery.data?.courses ?? []
+    const courseById = new Map(courses.map((course) => [course.id, course]))
+    const resourcesChannelByCourseId = new Map<string, string>()
+    for (const course of courses) {
+      const resourcesChannel = course.channels.find((channel) => channel.name === 'resources')
+      if (resourcesChannel) {
+        resourcesChannelByCourseId.set(course.id, resourcesChannel.id)
+      }
     }
-    return true
-  })
-  const resourceResults = filteredResults.filter((hit) => hit.documentType === 'RESOURCE')
-  const faqResults = filteredResults.filter((hit) => hit.documentType === 'FAQ')
+    return { courseById, resourcesChannelByCourseId }
+  }, [navigationQuery.data?.courses])
 
   const onReindex = async () => {
     if (!serverId) {
@@ -219,16 +245,16 @@ function GlobalSearchOverlayPanel({
           </p>
         ) : null}
 
-        {!isSearching && filteredResults.length === 0 && trimmedQuery.length >= 2 && !error ? (
+        {!isSearching && groupedResults.all.length === 0 && trimmedQuery.length >= 2 && !error ? (
           <p className="px-3 py-6 text-sm text-app-muted">No matching resources or FAQs.</p>
         ) : null}
 
         <SearchResultSection
           title="Course resources"
-          count={resourceResults.length}
-          hits={resourceResults}
+          count={groupedResults.resourceResults.length}
+          hits={groupedResults.resourceResults}
           serverId={serverId}
-          navigation={navigationQuery.data}
+          courseLookup={courseLookup}
           onNavigate={(destination) => {
             onClose()
             navigate(destination)
@@ -236,10 +262,10 @@ function GlobalSearchOverlayPanel({
         />
         <SearchResultSection
           title="Approved FAQs"
-          count={faqResults.length}
-          hits={faqResults}
+          count={groupedResults.faqResults.length}
+          hits={groupedResults.faqResults}
           serverId={serverId}
-          navigation={navigationQuery.data}
+          courseLookup={courseLookup}
           onNavigate={(destination) => {
             onClose()
             navigate(destination)
@@ -304,14 +330,17 @@ function SearchResultSection({
   count,
   hits,
   serverId,
-  navigation,
+  courseLookup,
   onNavigate,
 }: {
   title: string
   count: number
   hits: GlobalSearchHit[]
   serverId: string | undefined
-  navigation: ReturnType<typeof useStudyServerNavigationQuery>['data']
+  courseLookup: {
+    courseById: Map<string, ShellCourse>
+    resourcesChannelByCourseId: Map<string, string>
+  }
   onNavigate: (destination: string) => void
 }) {
   if (hits.length === 0) {
@@ -326,9 +355,8 @@ function SearchResultSection({
       </div>
       <ul className="flex flex-col gap-1">
         {hits.map((hit) => {
-          const course = navigation?.courses.find((item) => item.id === hit.courseId)
-          const resourcesChannel = course?.channels.find((channel) => channel.name === 'resources')
-          const destination = hitDestination(serverId ?? '', hit, resourcesChannel?.id ?? null)
+          const resourcesChannelId = courseLookup.resourcesChannelByCourseId.get(hit.courseId) ?? null
+          const destination = hitDestination(serverId ?? '', hit, resourcesChannelId)
 
           return (
             <li key={`${hit.documentType}-${hit.sourceId}`}>

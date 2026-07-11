@@ -1,12 +1,6 @@
-import { useEffect, useState } from 'react'
-
 import { useAuthStore } from '../../../../stores/auth-store'
-import type { CourseResource } from '../../../resources/course-resource-types'
-import {
-  fetchCourseResourceAccess,
-  listCourseResources,
-} from '../../../resources/course-resources-api'
 import type { ShellCourse } from '../../types'
+import { useCourseResourcesList } from '../../hooks/use-course-resources-list'
 
 import { ContextPanelFrame, ContextWidgetSection } from './ContextPanelFrame'
 import { ApprovedFaqsWidget } from './widgets/ApprovedFaqsWidget'
@@ -19,53 +13,14 @@ export function ResourcesContextPanel({
   course: ShellCourse
 }) {
   const userId = useAuthStore((state) => state.user?.id)
-  const [resources, setResources] = useState<CourseResource[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    if (!userId) {
-      return
-    }
-
-    let cancelled = false
-
-    void (async () => {
-      setIsLoading(true)
-      try {
-        const access = await fetchCourseResourceAccess(course.id)
-        if (!access.canViewCourseResources) {
-          setResources([])
-          return
-        }
-        const list = await listCourseResources(course.id)
-        if (!cancelled) {
-          setResources(list.courseResources)
-        }
-      } catch {
-        if (!cancelled) {
-          setResources([])
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false)
-        }
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [course.id, userId])
-
-  const aiApprovedCount = resources.filter((resource) => resource.aiApproved).length
-  const recent = [...resources]
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-    .slice(0, 5)
+  const { aiApprovedCount, isLoading, recentResources } = useCourseResourcesList(course.id)
 
   return (
     <ContextPanelFrame eyebrow="Resources" title={course.title}>
       <ContextWidgetSection title="Approved for AI">
-        {isLoading ? (
+        {!userId ? (
+          <p className="text-xs text-app-muted">Sign in to view resource summary.</p>
+        ) : isLoading ? (
           <p className="text-xs text-app-muted">Loading resource summary…</p>
         ) : (
           <p className="text-xs text-app-text">
@@ -79,13 +34,15 @@ export function ResourcesContextPanel({
       </ContextWidgetSection>
 
       <ContextWidgetSection title="Recent uploads">
-        {isLoading ? (
+        {!userId ? (
+          <p className="text-xs text-app-muted">Sign in to view recent uploads.</p>
+        ) : isLoading ? (
           <p className="text-xs text-app-muted">Loading uploads…</p>
-        ) : recent.length === 0 ? (
+        ) : recentResources.length === 0 ? (
           <p className="text-xs text-app-muted">Upload materials in the main panel to get started.</p>
         ) : (
           <ul className="space-y-2">
-            {recent.map((resource) => (
+            {recentResources.map((resource) => (
               <li key={resource.id} className="text-xs text-app-text">
                 <span className="font-medium">{resource.title}</span>
                 <span className="block text-app-muted">
