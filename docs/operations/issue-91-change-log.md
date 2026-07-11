@@ -12,6 +12,7 @@ Instructors and Study Server owners can install the AI Study Assistant from the 
 
 | Area | File | What |
 |------|------|------|
+| Backend | `backend/agent-service/.../AiQuotaEnforcementService.java` | Fix PostgreSQL `pg_advisory_xact_lock` JDBC mapping (Ask AI 500) |
 | API | `frontend/src/features/study-assistant/study-assistant-api.ts` | `install-preview` + `install` wrappers |
 | Grants | `frontend/src/features/study-assistant/study-assistant-grants.ts` | Grant keys, selection → confirmed grants |
 | Types | `frontend/src/features/study-assistant/study-assistant-types.ts` | Install preview shapes |
@@ -38,6 +39,8 @@ Instructors and Study Server owners can install the AI Study Assistant from the 
 (cd frontend && npm run lint && npm run build)
 ```
 
+**Note:** For grounded Ask AI with citations, upload AI-approved resources **before** confirm install (or use the seeded **Workable Product Demo** Study Server). Re-install / grant update is out of #91 scope.
+
 ## Browser testing (2026-07-10)
 
 Stack: `make product-supervise` → `make product-health` green. Glass browser via `open_resource` + `position: "active"`.
@@ -49,9 +52,7 @@ Stack: `make product-supervise` → `make product-health` green. Glass browser v
 | No `/dev/demo` or seed copy in panel | Owner | Pass |
 | Enroll demo learner via **Manage enrollment** UI | Owner | Pass |
 | Learner sees **Installed** in panel (no install CTA) | Learner | Pass |
-| Learner posts question → **Ask AI** | Learner | **500** — no AI-approved resource uploaded before install (resource grants empty at install time); pre-existing grounding path, not #91 UI |
-
-**Note:** For grounded Ask AI with citations, upload AI-approved resources **before** confirm install (or use the seeded **Workable Product Demo** Study Server). Re-install / grant update is out of #91 scope.
+| Learner posts question → **Ask AI** | Learner | Pass after `AiQuotaEnforcementService` PostgreSQL advisory-lock fix (was 500; see pass 2 in `issue-91-cubic-fix.md`) |
 
 Teardown: `make product-down`.
 

@@ -17,3 +17,18 @@
 (cd frontend && npm run test -- --run study-assistant)
 (cd frontend && npm run lint && npm run build)
 ```
+
+## Pass 2 (PR #111 — Ask AI 500 on PostgreSQL)
+
+| Finding | Severity | Action |
+|---------|----------|--------|
+| `pg_advisory_xact_lock` mapped to `Long.class` — void return crashes Ask AI with 500 on product stack | P1 | **Fixed** — execute lock without reading void column (`query((rs, rowNum) -> true)`) |
+
+### Verification (pass 2)
+
+```bash
+(cd backend && mvn -B -q -pl agent-service -am test -Dtest=AiQuotaSmokeTest)
+(cd frontend && npm run test -- --run study-assistant)
+(cd frontend && npm run lint && npm run build)
+# product stack: learner Ask AI returns 200 (low confidence OK without pre-install resources)
+```

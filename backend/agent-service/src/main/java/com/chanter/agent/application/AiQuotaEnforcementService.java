@@ -60,9 +60,10 @@ public class AiQuotaEnforcementService {
         }
 
         long lockKey = studyServerId.getMostSignificantBits() ^ studyServerId.getLeastSignificantBits();
+        // pg_advisory_xact_lock returns void; execute the lock without reading the result column.
         jdbcClient.sql("SELECT pg_advisory_xact_lock(:lockKey)")
                 .param("lockKey", lockKey)
-                .query(Long.class)
+                .query((rs, rowNum) -> true)
                 .single();
     }
 
