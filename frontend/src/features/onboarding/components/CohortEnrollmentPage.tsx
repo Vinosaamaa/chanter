@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/button'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
 import { courseChannelPath } from '../../shell/shell-routes'
 
-import { cohortEnrollmentsQueryKey, useCohortEnrollments } from '../hooks/use-cohort-enrollments'
+import { useCohortEnrollments } from '../hooks/use-cohort-enrollments'
 import { useCohortEnrollment } from '../hooks/use-cohort-enrollment'
 
 const pageSize = 8
@@ -28,27 +28,33 @@ export function CohortEnrollmentPage() {
   const [selectedCohortId, setSelectedCohortId] = useState('')
   const cohort =
     course?.cohorts.find((item) => item.id === selectedCohortId) ?? course?.cohorts[0]
-  const enrollment = useCohortEnrollment(cohort?.id ?? '')
-  const enrollmentsQuery = useCohortEnrollments(cohort?.id)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const searchActive = search.trim().length > 0
+  const listOptions = searchActive
+    ? { limit: 500, offset: 0 }
+    : { limit: pageSize, offset: (page - 1) * pageSize }
+  const enrollment = useCohortEnrollment(cohort?.id ?? '')
+  const enrollmentsQuery = useCohortEnrollments(cohort?.id, listOptions)
   const [copyMessage, setCopyMessage] = useState<string | null>(null)
 
   const filteredEnrollments = useMemo(() => {
-    const rows = enrollmentsQuery.data ?? []
+    const rows = enrollmentsQuery.data?.enrollments ?? []
     const query = search.trim().toLowerCase()
     if (!query) {
       return rows
     }
     return rows.filter((row) => row.learnerUserId.toLowerCase().includes(query))
-  }, [enrollmentsQuery.data, search])
+  }, [enrollmentsQuery.data?.enrollments, search])
 
-  const totalPages = Math.max(1, Math.ceil(filteredEnrollments.length / pageSize))
+  const totalCount = searchActive
+    ? filteredEnrollments.length
+    : (enrollmentsQuery.data?.totalCount ?? 0)
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const currentPage = Math.min(page, totalPages)
-  const pageRows = filteredEnrollments.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  )
+  const pageRows = searchActive
+    ? filteredEnrollments.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : filteredEnrollments
 
   if (!serverId || !courseId) {
     return null
@@ -92,7 +98,7 @@ export function CohortEnrollmentPage() {
   const onEnroll = async () => {
     const enrolled = await enrollment.enroll()
     if (enrolled && cohort) {
-      await queryClient.invalidateQueries({ queryKey: cohortEnrollmentsQueryKey(cohort.id) })
+      await queryClient.invalidateQueries({ queryKey: ['cohort-enrollments', cohort.id] })
     }
   }
 
@@ -137,7 +143,7 @@ export function CohortEnrollmentPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-app-text">
-              Learners ({filteredEnrollments.length})
+              Learners ({totalCount})
             </h2>
             <input
               value={search}
@@ -197,12 +203,11 @@ export function CohortEnrollmentPage() {
             </table>
           </div>
 
-          {filteredEnrollments.length > pageSize ? (
+          {totalCount > pageSize ? (
             <div className="flex items-center justify-between text-xs text-app-muted">
               <span>
                 {(currentPage - 1) * pageSize + 1}–
-                {Math.min(currentPage * pageSize, filteredEnrollments.length)} of{' '}
-                {filteredEnrollments.length}
+                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
               </span>
               <div className="flex gap-2">
                 <Button

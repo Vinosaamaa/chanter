@@ -1,6 +1,6 @@
 import { apiFetch } from '../../lib/api-client'
 
-import type { CohortEnrollmentRecord, CreatedCourse, CreatedStudyServer } from './onboarding-types'
+import type { CohortEnrollmentListResult, CreatedCourse, CreatedStudyServer } from './onboarding-types'
 
 export async function createStudyServer(name: string): Promise<CreatedStudyServer> {
   return apiFetch<CreatedStudyServer>('/api/v1/study-servers', {
@@ -29,9 +29,18 @@ export async function enrollLearner(cohortId: string, learnerUserId: string): Pr
   })
 }
 
-export async function listCohortEnrollments(cohortId: string): Promise<CohortEnrollmentRecord[]> {
-  const response = await apiFetch<{ enrollments: CohortEnrollmentRecord[] }>(
-    `/api/v1/cohorts/${cohortId}/enrollments`,
-  )
-  return response.enrollments
+export async function listCohortEnrollments(
+  cohortId: string,
+  options?: { limit?: number; offset?: number },
+): Promise<CohortEnrollmentListResult> {
+  const params = new URLSearchParams()
+  if (options?.limit !== undefined) {
+    params.set('limit', String(options.limit))
+  }
+  if (options?.offset !== undefined) {
+    params.set('offset', String(options.offset))
+  }
+  const query = params.toString()
+  const path = `/api/v1/cohorts/${cohortId}/enrollments${query ? `?${query}` : ''}`
+  return apiFetch<CohortEnrollmentListResult>(path)
 }

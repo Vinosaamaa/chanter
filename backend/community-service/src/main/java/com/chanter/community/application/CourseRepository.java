@@ -2,6 +2,7 @@ package com.chanter.community.application;
 
 import com.chanter.community.domain.AccessibleStudyServer;
 import com.chanter.community.domain.CohortEnrollment;
+import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CohortTaQueueAccess;
@@ -21,7 +22,7 @@ public interface CourseRepository {
 
     void enrollLearner(UUID cohortId, UUID learnerUserId, UUID enrolledByUserId, Instant enrolledAt);
 
-    List<CohortEnrollment> listCohortEnrollments(UUID cohortId);
+    CohortEnrollmentList listCohortEnrollments(UUID cohortId, int limit, int offset);
 
     boolean cohortExists(UUID cohortId);
 

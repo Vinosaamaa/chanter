@@ -5,6 +5,7 @@ import com.chanter.community.domain.Cohort;
 import com.chanter.community.domain.CohortOfficeHoursAccess;
 import com.chanter.community.domain.CohortTaQueueAccess;
 import com.chanter.community.domain.CohortEnrollment;
+import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseChannelMessageAccess;
@@ -22,6 +23,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CourseService {
+
+    public static final int MAX_COHORT_ENROLLMENT_PAGE_SIZE = 500;
+    public static final int DEFAULT_COHORT_ENROLLMENT_PAGE_SIZE = 50;
 
     private final StudyServerRepository studyServerRepository;
     private final CourseRepository courseRepository;
@@ -79,7 +83,12 @@ public class CourseService {
         courseRepository.enrollLearner(cohortId, learnerUserId, instructorUserId, clock.instant());
     }
 
-    public List<CohortEnrollment> listCohortEnrollments(UUID cohortId, UUID instructorUserId) {
+    public CohortEnrollmentList listCohortEnrollments(
+            UUID cohortId,
+            UUID instructorUserId,
+            int limit,
+            int offset
+    ) {
         if (!courseRepository.cohortExists(cohortId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
         }
@@ -87,7 +96,9 @@ public class CourseService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can view enrollments");
         }
 
-        return courseRepository.listCohortEnrollments(cohortId);
+        int boundedLimit = Math.min(Math.max(limit, 1), MAX_COHORT_ENROLLMENT_PAGE_SIZE);
+        int boundedOffset = Math.max(offset, 0);
+        return courseRepository.listCohortEnrollments(cohortId, boundedLimit, boundedOffset);
     }
 
     public Optional<CourseChannel> findAccessibleChannel(UUID channelId, UUID viewerUserId) {

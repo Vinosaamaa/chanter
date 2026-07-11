@@ -68,13 +68,32 @@ describe('onboarding-api', () => {
       enrollments: [
         { learnerUserId: 'learner-9', enrolledAt: '2026-06-01T12:00:00Z' },
       ],
+      totalCount: 1,
+      limit: 50,
+      offset: 0,
     })
 
     const result = await listCohortEnrollments('cohort-1')
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort-1/enrollments')
-    expect(result).toEqual([
+    expect(result.enrollments).toEqual([
       { learnerUserId: 'learner-9', enrolledAt: '2026-06-01T12:00:00Z' },
     ])
+    expect(result.totalCount).toBe(1)
+  })
+
+  it('listCohortEnrollments passes limit and offset query params', async () => {
+    mockedApiFetch.mockResolvedValue({
+      enrollments: [],
+      totalCount: 0,
+      limit: 8,
+      offset: 16,
+    })
+
+    await listCohortEnrollments('cohort-1', { limit: 8, offset: 16 })
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/api/v1/cohorts/cohort-1/enrollments?limit=8&offset=16',
+    )
   })
 })

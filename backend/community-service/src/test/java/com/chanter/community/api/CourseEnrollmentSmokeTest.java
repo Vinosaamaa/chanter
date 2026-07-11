@@ -102,6 +102,7 @@ class CourseEnrollmentSmokeTest {
         assertThat(enrollments.enrollments())
                 .extracting(CohortEnrollmentResponse::learnerUserId)
                 .containsExactly(learnerUserId);
+        assertThat(enrollments.totalCount()).isEqualTo(1);
 
         MvcResult channelResult = mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}", course.channels().getFirst().id()

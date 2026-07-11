@@ -64,12 +64,16 @@ public class CourseController {
     @GetMapping("/cohorts/{cohortId}/enrollments")
     public CohortEnrollmentListResponse listCohortEnrollments(
             @PathVariable UUID cohortId,
+            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(defaultValue = "0") int offset,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID instructorUserId
     ) {
+        var page = courseService.listCohortEnrollments(cohortId, instructorUserId, limit, offset);
         return new CohortEnrollmentListResponse(
-                courseService.listCohortEnrollments(cohortId, instructorUserId).stream()
-                        .map(CohortEnrollmentResponse::from)
-                        .toList()
+                page.enrollments().stream().map(CohortEnrollmentResponse::from).toList(),
+                page.totalCount(),
+                Math.min(Math.max(limit, 1), CourseService.MAX_COHORT_ENROLLMENT_PAGE_SIZE),
+                Math.max(offset, 0)
         );
     }
 
