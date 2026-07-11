@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../../../components/ui/card'
 import { CohortInviteRedirect } from '../components/CohortInviteRedirect'
 import { login, register } from '../auth-api'
 import { useAuthStore } from '../../../stores/auth-store'
-import {
-  completePendingCohortJoin,
-  rememberCohortInviteFromSearch,
-} from '../../onboarding/cohort-invite'
-import { joinCohort } from '../../onboarding/onboarding-api'
+import { rememberCohortInviteFromSearch } from '../../onboarding/cohort-invite'
 
 type AuthMode = 'sign-in' | 'register'
 
 export function SignInPage() {
-  const navigate = useNavigate()
   const location = useLocation()
   const accessToken = useAuthStore((state) => state.accessToken)
   const setSession = useAuthStore((state) => state.setSession)
@@ -25,6 +20,7 @@ export function SignInPage() {
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [sessionReady, setSessionReady] = useState(false)
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app'
 
@@ -32,7 +28,7 @@ export function SignInPage() {
     rememberCohortInviteFromSearch(location.search)
   }, [location.search])
 
-  if (accessToken) {
+  if (accessToken || sessionReady) {
     return <CohortInviteRedirect to={redirectTo} />
   }
 
@@ -47,8 +43,7 @@ export function SignInPage() {
           ? await login({ email, password })
           : await register({ email, password, displayName })
       setSession(session)
-      void completePendingCohortJoin(joinCohort)
-      navigate(redirectTo, { replace: true })
+      setSessionReady(true)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to authenticate')
     } finally {

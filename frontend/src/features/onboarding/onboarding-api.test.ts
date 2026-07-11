@@ -64,13 +64,14 @@ describe('onboarding-api', () => {
     })
   })
 
-  it('joinCohort posts to the learner self-enroll endpoint', async () => {
+  it('joinCohort posts invite code to the learner self-enroll endpoint', async () => {
     mockedApiFetch.mockResolvedValue(undefined)
 
-    await joinCohort('cohort-1')
+    await joinCohort('cohort-1', 'invite-code-1')
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort-1/join', {
       method: 'POST',
+      body: JSON.stringify({ inviteCode: 'invite-code-1' }),
     })
   })
 
@@ -109,10 +110,10 @@ describe('onboarding-api', () => {
       offset: 16,
     })
 
-    await listCohortEnrollments('cohort-1', { limit: 8, offset: 16 })
+    await listCohortEnrollments('cohort-1', { limit: 8, offset: 16, search: 'learner' })
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/api/v1/cohorts/cohort-1/enrollments?limit=8&offset=16',
+      '/api/v1/cohorts/cohort-1/enrollments?limit=8&offset=16&search=learner',
     )
   })
 })

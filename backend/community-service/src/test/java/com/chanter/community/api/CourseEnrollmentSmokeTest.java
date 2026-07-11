@@ -84,8 +84,21 @@ class CourseEnrollmentSmokeTest {
                 .andExpect(status().isForbidden());
 
         UUID inviteLearnerUserId = UUID.randomUUID();
+        MvcResult inviteResult = mockMvc.perform(get("/api/v1/cohorts/{cohortId}/invite", course.cohort().id())
+                        .with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+        CohortInviteResponse invite = objectMapper.readValue(
+                inviteResult.getResponse().getContentAsString(),
+                CohortInviteResponse.class
+        );
+
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/join", course.cohort().id())
-                        .with(asUser(inviteLearnerUserId)))
+                        .with(asUser(inviteLearnerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "inviteCode", invite.inviteCode().toString()
+                        ))))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}", course.channels().getFirst().id())

@@ -70,6 +70,9 @@ export function CreateStudyServerWizard() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (isSubmitting) {
+      return
+    }
     if (step !== 'review' || !trimmedName) {
       return
     }

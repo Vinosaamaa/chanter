@@ -1,48 +1,74 @@
+import { ApiError } from '../../lib/api-client'
+
 const PENDING_COHORT_INVITE_KEY = 'chanter:pending-cohort-invite'
 
-export function readCohortInviteParam(search: string): string | null {
-  const cohortId = new URLSearchParams(search).get('cohort')?.trim()
-  return cohortId || null
+type PendingCohortInvite = {
+  cohortId: string
+  inviteCode: string
 }
 
-export function storePendingCohortInvite(cohortId: string): void {
+export type CohortJoinResult = 'success' | 'failed' | 'none'
+
+export function readCohortInviteParams(search: string): PendingCohortInvite | null {
+  const params = new URLSearchParams(search)
+  const cohortId = params.get('cohort')?.trim()
+  const inviteCode = params.get('invite')?.trim()
+  if (!cohortId || !inviteCode) {
+    return null
+  }
+  return { cohortId, inviteCode }
+}
+
+export function storePendingCohortInvite(invite: PendingCohortInvite): void {
   try {
-    sessionStorage.setItem(PENDING_COHORT_INVITE_KEY, cohortId)
+    sessionStorage.setItem(PENDING_COHORT_INVITE_KEY, JSON.stringify(invite))
   } catch {
     // Storage may be blocked; invite join is best-effort.
   }
 }
 
-function consumePendingCohortInvite(): string | null {
+function consumePendingCohortInvite(): PendingCohortInvite | null {
   try {
-    const cohortId = sessionStorage.getItem(PENDING_COHORT_INVITE_KEY)
-    if (cohortId) {
+    const raw = sessionStorage.getItem(PENDING_COHORT_INVITE_KEY)
+    if (raw) {
       sessionStorage.removeItem(PENDING_COHORT_INVITE_KEY)
+      return JSON.parse(raw) as PendingCohortInvite
     }
-    return cohortId
+    return null
   } catch {
     return null
   }
 }
 
+function isTransientJoinError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) {
+    return true
+  }
+  return error.status >= 500
+}
+
 export async function completePendingCohortJoin(
-  joinCohort: (cohortId: string) => Promise<void>,
-): Promise<void> {
-  const cohortId = consumePendingCohortInvite()
-  if (!cohortId) {
-    return
+  joinCohort: (cohortId: string, inviteCode: string) => Promise<void>,
+): Promise<CohortJoinResult> {
+  const pending = consumePendingCohortInvite()
+  if (!pending) {
+    return 'none'
   }
 
   try {
-    await joinCohort(cohortId)
-  } catch {
-    storePendingCohortInvite(cohortId)
+    await joinCohort(pending.cohortId, pending.inviteCode)
+    return 'success'
+  } catch (error) {
+    if (isTransientJoinError(error)) {
+      storePendingCohortInvite(pending)
+    }
+    return 'failed'
   }
 }
 
 export function rememberCohortInviteFromSearch(search: string): void {
-  const cohortId = readCohortInviteParam(search)
-  if (cohortId) {
-    storePendingCohortInvite(cohortId)
+  const invite = readCohortInviteParams(search)
+  if (invite) {
+    storePendingCohortInvite(invite)
   }
 }

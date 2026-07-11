@@ -64,10 +64,20 @@ public class CourseController {
     @PostMapping("/cohorts/{cohortId}/join")
     public ResponseEntity<Void> joinCohort(
             @PathVariable UUID cohortId,
+            @Valid @RequestBody CreateJoinCohortRequest request,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID learnerUserId
     ) {
-        courseService.joinCohort(cohortId, learnerUserId);
+        courseService.joinCohort(cohortId, learnerUserId, request.inviteCode());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/cohorts/{cohortId}/invite")
+    public CohortInviteResponse getCohortInvite(
+            @PathVariable UUID cohortId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID instructorUserId
+    ) {
+        UUID inviteCode = courseService.getCohortInviteCode(cohortId, instructorUserId);
+        return new CohortInviteResponse(cohortId, inviteCode);
     }
 
     @GetMapping("/cohorts/{cohortId}/enrollments")
@@ -75,9 +85,10 @@ public class CourseController {
             @PathVariable UUID cohortId,
             @RequestParam(defaultValue = "50") int limit,
             @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(required = false) String search,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID instructorUserId
     ) {
-        var page = courseService.listCohortEnrollments(cohortId, instructorUserId, limit, offset);
+        var page = courseService.listCohortEnrollments(cohortId, instructorUserId, limit, offset, search);
         return new CohortEnrollmentListResponse(
                 page.enrollments().stream().map(CohortEnrollmentResponse::from).toList(),
                 page.totalCount(),

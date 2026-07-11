@@ -22,7 +22,11 @@ public interface CourseRepository {
 
     void enrollLearner(UUID cohortId, UUID learnerUserId, UUID enrolledByUserId, Instant enrolledAt);
 
-    CohortEnrollmentList listCohortEnrollments(UUID cohortId, int limit, int offset);
+    CohortEnrollmentList listCohortEnrollments(UUID cohortId, int limit, int offset, String learnerSearch);
+
+    boolean cohortInviteCodeMatches(UUID cohortId, UUID inviteCode);
+
+    Optional<UUID> findCohortInviteCode(UUID cohortId);
 
     boolean cohortExists(UUID cohortId);
 

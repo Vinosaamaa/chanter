@@ -65,12 +65,13 @@ public class JdbcCourseRepository implements CourseRepository {
                 .update();
 
         jdbcClient.sql("""
-                        INSERT INTO cohorts (id, course_id, name)
-                        VALUES (:id, :courseId, :name)
+                        INSERT INTO cohorts (id, course_id, name, invite_code)
+                        VALUES (:id, :courseId, :name, :inviteCode)
                         """)
                 .param("id", course.cohort().id())
                 .param("courseId", course.id())
                 .param("name", course.cohort().name())
+                .param("inviteCode", course.cohort().inviteCode())
                 .update();
 
         for (CourseChannel channel : course.channels()) {
@@ -114,13 +115,25 @@ public class JdbcCourseRepository implements CourseRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public CohortEnrollmentList listCohortEnrollments(UUID cohortId, int limit, int offset) {
+    public CohortEnrollmentList listCohortEnrollments(
+            UUID cohortId,
+            int limit,
+            int offset,
+            String learnerSearch
+    ) {
+        String searchPattern = learnerSearch == null ? null : "%" + learnerSearch + "%";
+
         int totalCount = jdbcClient.sql("""
                         SELECT COUNT(*)
                         FROM cohort_enrollments
                         WHERE cohort_id = :cohortId
+                        AND (
+                            :searchPattern IS NULL
+                            OR LOWER(CAST(learner_user_id AS TEXT)) LIKE :searchPattern
+                        )
                         """)
                 .param("cohortId", cohortId)
+                .param("searchPattern", searchPattern)
                 .query(Integer.class)
                 .single();
 
@@ -128,10 +141,15 @@ public class JdbcCourseRepository implements CourseRepository {
                         SELECT learner_user_id, enrolled_by_user_id, enrolled_at
                         FROM cohort_enrollments
                         WHERE cohort_id = :cohortId
-                        ORDER BY enrolled_at DESC
+                        AND (
+                            :searchPattern IS NULL
+                            OR LOWER(CAST(learner_user_id AS TEXT)) LIKE :searchPattern
+                        )
+                        ORDER BY enrolled_at DESC, learner_user_id ASC
                         LIMIT :limit OFFSET :offset
                         """)
                 .param("cohortId", cohortId)
+                .param("searchPattern", searchPattern)
                 .param("limit", limit)
                 .param("offset", offset)
                 .query((rs, rowNum) -> new CohortEnrollment(
@@ -142,6 +160,34 @@ public class JdbcCourseRepository implements CourseRepository {
                 .list();
 
         return new CohortEnrollmentList(enrollments, totalCount, limit, offset);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean cohortInviteCodeMatches(UUID cohortId, UUID inviteCode) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM cohorts
+                        WHERE id = :cohortId
+                        AND invite_code = :inviteCode
+                        """)
+                .param("cohortId", cohortId)
+                .param("inviteCode", inviteCode)
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> findCohortInviteCode(UUID cohortId) {
+        return jdbcClient.sql("""
+                        SELECT invite_code
+                        FROM cohorts
+                        WHERE id = :cohortId
+                        """)
+                .param("cohortId", cohortId)
+                .query(UUID.class)
+                .optional();
     }
 
     @Override

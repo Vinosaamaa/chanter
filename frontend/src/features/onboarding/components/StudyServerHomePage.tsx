@@ -150,7 +150,7 @@ export function StudyServerHomePage() {
                         ) : null}
                       </div>
                       <span
-                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white"
+                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-black/20"
                         style={{ backgroundColor: accent }}
                       >
                         Course

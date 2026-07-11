@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -6,14 +6,15 @@ import { Button } from '../../../components/ui/button'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
 import { courseChannelPath } from '../../shell/shell-routes'
 
-import { useCohortEnrollments } from '../hooks/use-cohort-enrollments'
+import { useCohortEnrollments, useCohortInvite } from '../hooks/use-cohort-enrollments'
 import { useCohortEnrollment } from '../hooks/use-cohort-enrollment'
 
 const pageSize = 8
 
-function cohortInviteUrl(cohortId: string): string {
+function cohortInviteUrl(cohortId: string, inviteCode: string): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.chanter.local'
-  return `${origin}/sign-in?cohort=${cohortId}`
+  const params = new URLSearchParams({ cohort: cohortId, invite: inviteCode })
+  return `${origin}/sign-in?${params.toString()}`
 }
 
 function formatLearnerLabel(userId: string): string {
@@ -29,32 +30,26 @@ export function CohortEnrollmentPage() {
   const cohort =
     course?.cohorts.find((item) => item.id === selectedCohortId) ?? course?.cohorts[0]
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
-  const searchActive = search.trim().length > 0
-  const listOptions = searchActive
-    ? { limit: 500, offset: 0 }
-    : { limit: pageSize, offset: (page - 1) * pageSize }
   const enrollment = useCohortEnrollment(cohort?.id ?? '')
-  const enrollmentsQuery = useCohortEnrollments(cohort?.id, listOptions)
+  const inviteQuery = useCohortInvite(cohort?.id)
+  const enrollmentsQuery = useCohortEnrollments(cohort?.id, {
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    search: debouncedSearch || undefined,
+  })
   const [copyMessage, setCopyMessage] = useState<string | null>(null)
 
-  const filteredEnrollments = useMemo(() => {
-    const rows = enrollmentsQuery.data?.enrollments ?? []
-    const query = search.trim().toLowerCase()
-    if (!query) {
-      return rows
-    }
-    return rows.filter((row) => row.learnerUserId.toLowerCase().includes(query))
-  }, [enrollmentsQuery.data?.enrollments, search])
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
 
-  const totalCount = searchActive
-    ? filteredEnrollments.length
-    : (enrollmentsQuery.data?.totalCount ?? 0)
+  const totalCount = enrollmentsQuery.data?.totalCount ?? 0
+  const pageRows = enrollmentsQuery.data?.enrollments ?? []
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const currentPage = Math.min(page, totalPages)
-  const pageRows = searchActive
-    ? filteredEnrollments.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-    : filteredEnrollments
 
   if (!serverId || !courseId) {
     return null
@@ -84,9 +79,15 @@ export function CohortEnrollmentPage() {
     )
   }
 
-  const inviteUrl = cohortInviteUrl(cohort.id)
+  const inviteUrl =
+    inviteQuery.data != null
+      ? cohortInviteUrl(inviteQuery.data.cohortId, inviteQuery.data.inviteCode)
+      : null
 
   const onCopyInvite = async () => {
+    if (!inviteUrl) {
+      return
+    }
     try {
       await navigator.clipboard.writeText(inviteUrl)
       setCopyMessage('Invite link copied.')
@@ -143,18 +144,19 @@ export function CohortEnrollmentPage() {
       <div className="grid flex-1 gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-app-text">
-              Learners ({totalCount})
-            </h2>
-            <input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value)
-                setPage(1)
-              }}
-              placeholder="Search learners by user id…"
-              className="w-full max-w-xs rounded-lg border border-app-border bg-app-surface px-3 py-2 text-sm"
-            />
+            <h2 className="text-sm font-semibold text-app-text">Learners ({totalCount})</h2>
+            <label className="flex w-full max-w-xs flex-col gap-1 text-xs text-app-muted">
+              Search learners
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value)
+                  setPage(1)
+                }}
+                placeholder="Search by user id…"
+                className="rounded-lg border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text"
+              />
+            </label>
           </div>
 
           <div className="overflow-hidden rounded-xl border border-app-border bg-app-surface">
@@ -274,17 +276,30 @@ export function CohortEnrollmentPage() {
             <p className="mt-1 text-xs text-app-muted">
               Share this link so learners can sign in and join this cohort.
             </p>
-            <p className="mt-3 break-all rounded-lg border border-app-border bg-app-bg px-3 py-2 text-xs text-app-text">
-              {inviteUrl}
-            </p>
-            {copyMessage ? (
-              <p role="status" className="mt-2 text-xs text-emerald-200">
-                {copyMessage}
-              </p>
-            ) : null}
-            <Button type="button" variant="secondary" className="mt-3" onClick={() => void onCopyInvite()}>
-              Copy invite link
-            </Button>
+            {inviteQuery.isLoading ? (
+              <p className="mt-3 text-xs text-app-muted">Loading invite link…</p>
+            ) : inviteQuery.isError || !inviteUrl ? (
+              <p className="mt-3 text-xs text-red-300">Could not load invite link.</p>
+            ) : (
+              <>
+                <p className="mt-3 break-all rounded-lg border border-app-border bg-app-bg px-3 py-2 text-xs text-app-text">
+                  {inviteUrl}
+                </p>
+                {copyMessage ? (
+                  <p role="status" className="mt-2 text-xs text-emerald-200">
+                    {copyMessage}
+                  </p>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => void onCopyInvite()}
+                >
+                  Copy invite link
+                </Button>
+              </>
+            )}
           </article>
 
           <article className="rounded-xl border border-app-border bg-app-surface p-5">

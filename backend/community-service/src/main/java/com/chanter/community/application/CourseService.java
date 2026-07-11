@@ -26,6 +26,7 @@ public class CourseService {
 
     public static final int MAX_COHORT_ENROLLMENT_PAGE_SIZE = 500;
     public static final int DEFAULT_COHORT_ENROLLMENT_PAGE_SIZE = 50;
+    public static final int MAX_COHORT_ENROLLMENT_OFFSET = 10_000;
 
     private final StudyServerRepository studyServerRepository;
     private final CourseRepository courseRepository;
@@ -60,7 +61,7 @@ public class CourseService {
                 studyServerId,
                 title.trim(),
                 new InstructorRole(instructorUserId, CourseRole.INSTRUCTOR),
-                new Cohort(UUID.randomUUID(), courseId, cohortName.trim()),
+                new Cohort(UUID.randomUUID(), courseId, cohortName.trim(), UUID.randomUUID()),
                 List.of(
                         new CourseChannel(UUID.randomUUID(), courseId, "announcements", ChannelKind.TEXT, 0),
                         new CourseChannel(UUID.randomUUID(), courseId, "questions", ChannelKind.TEXT, 1),
@@ -83,29 +84,58 @@ public class CourseService {
         courseRepository.enrollLearner(cohortId, learnerUserId, instructorUserId, clock.instant());
     }
 
-    public void joinCohort(UUID cohortId, UUID learnerUserId) {
+    public void joinCohort(UUID cohortId, UUID learnerUserId, UUID inviteCode) {
         if (!courseRepository.cohortExists(cohortId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
         }
+        if (!courseRepository.cohortInviteCodeMatches(cohortId, inviteCode)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid cohort invite code");
+        }
 
         courseRepository.enrollLearner(cohortId, learnerUserId, learnerUserId, clock.instant());
+    }
+
+    public UUID getCohortInviteCode(UUID cohortId, UUID instructorUserId) {
+        if (courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
+            return courseRepository.findCohortInviteCode(cohortId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found"));
+        }
+        if (!courseRepository.cohortExists(cohortId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can view invite details");
     }
 
     public CohortEnrollmentList listCohortEnrollments(
             UUID cohortId,
             UUID instructorUserId,
             int limit,
-            int offset
+            int offset,
+            String learnerSearch
     ) {
         if (courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
             int boundedLimit = Math.min(Math.max(limit, 1), MAX_COHORT_ENROLLMENT_PAGE_SIZE);
-            int boundedOffset = Math.max(offset, 0);
-            return courseRepository.listCohortEnrollments(cohortId, boundedLimit, boundedOffset);
+            int boundedOffset = Math.min(Math.max(offset, 0), MAX_COHORT_ENROLLMENT_OFFSET);
+            String normalizedSearch = normalizeLearnerSearch(learnerSearch);
+            return courseRepository.listCohortEnrollments(
+                    cohortId,
+                    boundedLimit,
+                    boundedOffset,
+                    normalizedSearch
+            );
         }
         if (!courseRepository.cohortExists(cohortId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can view enrollments");
+    }
+
+    private static String normalizeLearnerSearch(String learnerSearch) {
+        if (learnerSearch == null) {
+            return null;
+        }
+        String trimmed = learnerSearch.trim();
+        return trimmed.isEmpty() ? null : trimmed.toLowerCase();
     }
 
     public Optional<CourseChannel> findAccessibleChannel(UUID channelId, UUID viewerUserId) {
