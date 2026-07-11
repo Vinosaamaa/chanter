@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import { cn } from '../../../lib/cn'
 import { formatUserFacingApiError } from '../../../lib/format-api-error'
+import { readActiveStudyServerId } from '../../../lib/last-active-study-server'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
 import {
   courseChannelPath,
@@ -11,6 +12,8 @@ import {
 import { useGlobalSearch } from '../hooks/use-global-search'
 import { reindexStudyServer, searchStudyServer } from '../global-search-api'
 import type { GlobalSearchHit } from '../global-search-types'
+
+type ContentTypeFilter = 'all' | 'RESOURCE' | 'FAQ'
 
 function hitDestination(serverId: string, hit: GlobalSearchHit, resourcesChannelId: string | null): string {
   if (hit.documentType === 'FAQ') {
@@ -39,7 +42,8 @@ function GlobalSearchOverlayPanel({
   onClose: () => void
   panelRef: RefObject<HTMLElement | null>
 }) {
-  const { serverId } = useParams()
+  const { serverId: routeServerId } = useParams()
+  const serverId = routeServerId ?? readActiveStudyServerId() ?? undefined
   const navigate = useNavigate()
   const navigationQuery = useStudyServerNavigationQuery(serverId)
   const [query, setQuery] = useState('')
@@ -48,6 +52,8 @@ function GlobalSearchOverlayPanel({
   const [isSearching, setIsSearching] = useState(false)
   const [isReindexing, setIsReindexing] = useState(false)
   const [reindexMessage, setReindexMessage] = useState<string | null>(null)
+  const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all')
+  const [courseFilter, setCourseFilter] = useState<string>('all')
 
   const trimmedQuery = query.trim()
 
@@ -95,7 +101,17 @@ function GlobalSearchOverlayPanel({
   }, [trimmedQuery, serverId])
 
   const canManage = navigationQuery.data?.canViewFullCatalog ?? false
-  const visibleResults = serverId && trimmedQuery.length >= 2 ? results : []
+  const filteredResults = (serverId && trimmedQuery.length >= 2 ? results : []).filter((hit) => {
+    if (contentTypeFilter !== 'all' && hit.documentType !== contentTypeFilter) {
+      return false
+    }
+    if (courseFilter !== 'all' && hit.courseId !== courseFilter) {
+      return false
+    }
+    return true
+  })
+  const resourceResults = filteredResults.filter((hit) => hit.documentType === 'RESOURCE')
+  const faqResults = filteredResults.filter((hit) => hit.documentType === 'FAQ')
 
   const onReindex = async () => {
     if (!serverId) {
@@ -125,8 +141,23 @@ function GlobalSearchOverlayPanel({
       className="relative z-10 w-full max-w-2xl overflow-hidden rounded-2xl border border-app-border bg-app-surface shadow-2xl"
     >
       <header className="border-b border-app-border px-4 py-3">
-        <label className="flex flex-col gap-1 text-xs text-app-muted">
-          Search this Study Server
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-app-accent">
+              Search
+            </p>
+            <h2 className="text-sm font-semibold text-app-text">Course knowledge</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-app-border px-2 py-1 text-xs text-app-muted hover:text-app-text"
+          >
+            esc
+          </button>
+        </div>
+        <label className="mt-3 flex flex-col gap-1 text-xs text-app-muted">
+          Search resources and approved FAQs
           <input
             autoFocus
             value={query}
@@ -135,9 +166,30 @@ function GlobalSearchOverlayPanel({
             className="rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm text-app-text"
           />
         </label>
-        <p className="mt-2 text-[11px] text-app-muted">
-          Results are limited to courses you can access. Press Esc to close.
-        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <FilterSelect
+            label="Course"
+            value={courseFilter}
+            onChange={setCourseFilter}
+            options={[
+              { value: 'all', label: 'All courses' },
+              ...(navigationQuery.data?.courses.map((course) => ({
+                value: course.id,
+                label: course.title,
+              })) ?? []),
+            ]}
+          />
+          <FilterSelect
+            label="Content"
+            value={contentTypeFilter}
+            onChange={(value) => setContentTypeFilter(value as ContentTypeFilter)}
+            options={[
+              { value: 'all', label: 'All types' },
+              { value: 'RESOURCE', label: 'Resources' },
+              { value: 'FAQ', label: 'FAQs' },
+            ]}
+          />
+        </div>
       </header>
 
       <div className="max-h-[28rem] overflow-y-auto p-2">
@@ -167,38 +219,32 @@ function GlobalSearchOverlayPanel({
           </p>
         ) : null}
 
-        {!isSearching && visibleResults.length === 0 && trimmedQuery.length >= 2 && !error ? (
+        {!isSearching && filteredResults.length === 0 && trimmedQuery.length >= 2 && !error ? (
           <p className="px-3 py-6 text-sm text-app-muted">No matching resources or FAQs.</p>
         ) : null}
 
-        <ul className="flex flex-col gap-1">
-          {visibleResults.map((hit) => {
-            const course = navigationQuery.data?.courses.find((item) => item.id === hit.courseId)
-            const resourcesChannel = course?.channels.find((channel) => channel.name === 'resources')
-            const destination = hitDestination(serverId ?? '', hit, resourcesChannel?.id ?? null)
-
-            return (
-              <li key={`${hit.documentType}-${hit.sourceId}`}>
-                <button
-                  type="button"
-                  className={cn(
-                    'flex w-full flex-col rounded-lg px-3 py-2 text-left transition-colors hover:bg-app-elevated',
-                  )}
-                  onClick={() => {
-                    onClose()
-                    navigate(destination)
-                  }}
-                >
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-app-accent">
-                    {hit.documentType === 'RESOURCE' ? 'Resource' : 'FAQ'} · {hit.courseTitle}
-                  </span>
-                  <span className="mt-1 text-sm font-medium text-app-text">{hit.title}</span>
-                  <span className="mt-1 text-xs text-app-muted">{hit.snippet}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+        <SearchResultSection
+          title="Course resources"
+          count={resourceResults.length}
+          hits={resourceResults}
+          serverId={serverId}
+          navigation={navigationQuery.data}
+          onNavigate={(destination) => {
+            onClose()
+            navigate(destination)
+          }}
+        />
+        <SearchResultSection
+          title="Approved FAQs"
+          count={faqResults.length}
+          hits={faqResults}
+          serverId={serverId}
+          navigation={navigationQuery.data}
+          onNavigate={(destination) => {
+            onClose()
+            navigate(destination)
+          }}
+        />
       </div>
 
       {serverId && canManage ? (
@@ -217,12 +263,92 @@ function GlobalSearchOverlayPanel({
 
       {serverId && !canManage ? (
         <footer className="border-t border-app-border px-4 py-3 text-xs text-app-muted">
-          Showing enrollment-scoped results only.
-          {visibleResults.length === 0 && trimmedQuery.length >= 2 ? (
-            <> Ask your instructor to refresh the search index if content is missing.</>
-          ) : null}
+          Showing enrollment-scoped results only. ↑↓ navigate · ↵ open · ⌘K search · esc close
         </footer>
       ) : null}
+    </section>
+  )
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <label className="text-[11px] text-app-muted">
+      {label}
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="ml-1 rounded-md border border-app-border bg-app-bg px-2 py-1 text-xs text-app-text"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function SearchResultSection({
+  title,
+  count,
+  hits,
+  serverId,
+  navigation,
+  onNavigate,
+}: {
+  title: string
+  count: number
+  hits: GlobalSearchHit[]
+  serverId: string | undefined
+  navigation: ReturnType<typeof useStudyServerNavigationQuery>['data']
+  onNavigate: (destination: string) => void
+}) {
+  if (hits.length === 0) {
+    return null
+  }
+
+  return (
+    <section className="px-2 py-2">
+      <div className="flex items-center justify-between px-2 py-1">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-app-muted">{title}</h3>
+        <span className="rounded-full bg-app-elevated px-2 py-0.5 text-[10px] text-app-muted">{count}</span>
+      </div>
+      <ul className="flex flex-col gap-1">
+        {hits.map((hit) => {
+          const course = navigation?.courses.find((item) => item.id === hit.courseId)
+          const resourcesChannel = course?.channels.find((channel) => channel.name === 'resources')
+          const destination = hitDestination(serverId ?? '', hit, resourcesChannel?.id ?? null)
+
+          return (
+            <li key={`${hit.documentType}-${hit.sourceId}`}>
+              <button
+                type="button"
+                className={cn(
+                  'flex w-full flex-col rounded-lg px-3 py-2 text-left transition-colors hover:bg-app-elevated',
+                )}
+                onClick={() => onNavigate(destination)}
+              >
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-app-accent">
+                  {hit.documentType === 'RESOURCE' ? 'Resource' : 'FAQ'} · {hit.courseTitle}
+                </span>
+                <span className="mt-1 text-sm font-medium text-app-text">{hit.title}</span>
+                <span className="mt-1 text-xs text-app-muted">{hit.snippet}</span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
     </section>
   )
 }

@@ -1,0 +1,123 @@
+import { useEffect, useState } from 'react'
+
+import { Link } from 'react-router-dom'
+
+import { useAuthStore } from '../../../../../stores/auth-store'
+import type { CourseResource } from '../../../../resources/course-resource-types'
+import {
+  fetchCourseResourceAccess,
+  listCourseResources,
+} from '../../../../resources/course-resources-api'
+import { courseChannelPath } from '../../../shell-routes'
+
+import { ContextWidgetSection } from '../ContextPanelFrame'
+
+function resourceIcon(fileName: string): string {
+  const lower = fileName.toLowerCase()
+  if (lower.endsWith('.pdf')) {
+    return '📄'
+  }
+  if (lower.endsWith('.md') || lower.endsWith('.txt')) {
+    return '📝'
+  }
+  return '📎'
+}
+
+export function CourseResourcesWidget({
+  serverId,
+  courseId,
+  courseTitle,
+  resourcesChannelId,
+  limit = 5,
+}: {
+  serverId: string
+  courseId: string
+  courseTitle: string
+  resourcesChannelId: string | null
+  limit?: number
+}) {
+  const userId = useAuthStore((state) => state.user?.id)
+  const [resources, setResources] = useState<CourseResource[]>([])
+  const [canView, setCanView] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (!userId) {
+      return
+    }
+
+    let cancelled = false
+
+    void (async () => {
+      setIsLoading(true)
+      try {
+        const access = await fetchCourseResourceAccess(courseId)
+        if (cancelled) {
+          return
+        }
+        setCanView(access.canViewCourseResources)
+        if (!access.canViewCourseResources) {
+          setResources([])
+          return
+        }
+
+        const list = await listCourseResources(courseId)
+        if (!cancelled) {
+          setResources(list.courseResources)
+        }
+      } catch {
+        if (!cancelled) {
+          setResources([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [courseId, userId])
+
+  if (!canView && !isLoading) {
+    return null
+  }
+
+  const visible = resources.slice(0, limit)
+
+  return (
+    <ContextWidgetSection
+      title="Course resources"
+      action={
+        resourcesChannelId ? (
+          <Link
+            to={courseChannelPath(serverId, resourcesChannelId)}
+            className="text-[11px] font-medium text-app-accent hover:text-app-accent-hover"
+          >
+            Open hub
+          </Link>
+        ) : null
+      }
+    >
+      {isLoading ? (
+        <p className="text-xs text-app-muted">Loading resources…</p>
+      ) : visible.length === 0 ? (
+        <p className="text-xs text-app-muted">No resources uploaded for {courseTitle} yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {visible.map((resource) => (
+            <li key={resource.id} className="flex items-start gap-2 text-xs text-app-text">
+              <span aria-hidden>{resourceIcon(resource.fileName)}</span>
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{resource.title}</span>
+                <span className="block truncate text-app-muted">{resource.fileName}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </ContextWidgetSection>
+  )
+}

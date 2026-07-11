@@ -30,7 +30,7 @@ Important files:
 - `docs/issues/production-frontend-issue-breakdown.md`: Production UI phase (**#47–#59**, project #3).
 - `docs/issues/workable-product-issue-breakdown.md`: Workable full-stack local app (**#60–#63**, #31–#32, project #4).
 - `docs/issues/public-launch-issue-breakdown.md`: Public Launch (**#82–#104**, project #5).
-- `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, completion loop, owner-only merge policy.
+- `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, completion loop, owner-only merge policy, **CodeAnt AI** PR review (cubic retired).
 - `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
 - `System Design.md`: detailed backend/system architecture explanation and diagrams.
 - `docs/diagrams/`: editable draw.io **engineering** diagram sources plus embedded PNG exports referenced from `plan.md` and `System Design.md` (not product UI mockups — those live under `docs/product-design/`).
@@ -45,9 +45,9 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** Public Launch — [project #5](https://github.com/users/Vinosaamaa/projects/5). Workable Product **#60–#63** and Production Frontend **#47–#59** are **complete**.
 
-**Active slice:** **#91** AI Study Assistant install flow (P0) — in progress on `feature/91-ai-study-assistant-install`.
+**Active slice:** **#88** App shell polish (P0) — in progress on `feature/88-app-shell-polish`.
 
-**P0 order (approved):** #93 ✅ → #90 ✅ → **#91** → #88, then P1 #89 → #92.
+**P0 order (approved):** #93 ✅ → #90 ✅ → #91 ✅ → **#88**, then P1 #89 → #92.
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
@@ -167,7 +167,7 @@ Scale direction:
 
 Use installed Cursor workflow skills directly rather than the deleted local `chanter-engineering-workflow` skill.
 
-**Git workflow (required):** one branch per GitHub issue → pull request → **full cubic loop** → **owner merges** → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. **Agents never merge.** Do not stop after opening a PR.
+**Git workflow (required):** one branch per GitHub issue → pull request → **full CodeAnt loop** → **owner merges** → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. **Agents never merge.** Do not stop after opening a PR.
 
 **Testing workflow:** backend bootstrap (#11) may use smoke tests; **backend domain features #12–#24 use TDD**. Production frontend **#47–#55** were test-last; **from #56 onward** use vertical-slice TDD per `agent-workflow.md`.
 
@@ -180,11 +180,11 @@ The expected workflow includes:
 - Diagnose loop for bugs and regressions.
 - Issue-scoped change logs for non-trivial implementation slices.
 - Issue-scoped debug logs for meaningful local/browser failures.
-- Issue-scoped **cubic** fix logs for every cubic suggestion that changes code or records an explicit follow-up (`docs/operations/issue-<N>-cubic-fix.md`). See `docs/operations/agent-workflow.md`. Historical CodeRabbit logs: `issue-*-coderabbit-fix.md`.
+- Issue-scoped **CodeAnt** fix logs for every CodeAnt suggestion that changes code or records an explicit follow-up (`docs/operations/issue-<N>-codeant-fix.md`). See `docs/operations/agent-workflow.md`. Historical cubic logs: `issue-*-cubic-fix.md`. Historical CodeRabbit logs: `issue-*-coderabbit-fix.md`.
 - Zoom-out architecture review after milestones.
 - Prototyping for uncertain UX/system flows.
 - Pre-commit and CI-style quality gates once code exists.
-- **cubic PR review** loops after GitHub PRs are open (current; replaces CodeRabbit and Greptile).
+- **CodeAnt AI PR review** loops after GitHub PRs are open (current; replaces cubic, CodeRabbit, and Greptile).
 
 Use these installed skills by name when relevant:
 
@@ -196,7 +196,7 @@ Use these installed skills by name when relevant:
 - `zoom-out` or `improve-codebase-architecture`: review architecture boundaries after major changes.
 - `prototype`: explore uncertain UI or system flows before production implementation.
 - `setup-pre-commit`: add quality gates after runnable code exists.
-- **cubic review:** push to PR → GitHub review (or comment `@cubic-dev-ai review this PR`). See `docs/operations/agent-workflow.md`.
+- **CodeAnt review:** push to PR → wait for CodeAnt AI check + inline comments. See `docs/operations/agent-workflow.md`.
 
 Diagram workflow:
 
@@ -355,7 +355,7 @@ Demo: docs/operations/workable-product-demo.md
 - **TDD:** backend #12–#24 used TDD for domain behavior; production frontend **#47–#55** test-last; **#56+** vertical-slice TDD per `agent-workflow.md`.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
-- For every **cubic** suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-cubic-fix.md` (see `docs/operations/agent-workflow.md`). Historical CodeRabbit logs remain under `issue-*-coderabbit-fix.md`.
+- For every **CodeAnt** suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-codeant-fix.md` (see `docs/operations/agent-workflow.md`). Historical cubic logs remain under `issue-*-cubic-fix.md`. Historical CodeRabbit logs remain under `issue-*-coderabbit-fix.md`.
 - Keep explanations beginner-friendly but production-oriented.
 - Preserve and update the docs when architecture or process decisions change.
 - Ask before creating remote repositories, pushing code, creating tickets, or installing third-party integrations.

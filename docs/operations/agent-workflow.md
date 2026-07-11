@@ -1,7 +1,7 @@
 # Chanter Agent Workflow
 
-**Last updated:** 2026-07-08  
-**This is the single canonical doc for agents.** It covers issue order, the per-issue completion loop, merge policy, and **cubic Dev AI** PR review. Enforced in `.cursor/rules/git-workflow.mdc`.
+**Last updated:** 2026-07-10  
+**This is the single canonical doc for agents.** It covers issue order, the per-issue completion loop, merge policy, and **CodeAnt AI** PR review. Enforced in `.cursor/rules/git-workflow.mdc`.
 
 ---
 
@@ -9,13 +9,13 @@
 
 **Only the repository owner merges pull requests.** Agents must **never** run `gh pr merge`, squash-merge on GitHub, or push to `main`.
 
-After CI is green and **cubic** review is clean, the agent:
+After CI is green and **CodeAnt** review is clean, the agent:
 
 1. Tells the owner the PR is ready.
 2. **Stops and waits** for the owner to merge.
 3. Pulls latest `main` and starts the **next** issue only **after** the owner confirms merge (or `main` contains the merge).
 
-Agents may open PRs, push feature branches, and fix cubic comments. Merging is owner-only.
+Agents may open PRs, push feature branches, and fix CodeAnt comments. Merging is owner-only.
 
 ---
 
@@ -35,24 +35,24 @@ An issue is **not done** when code is pushed or a PR is opened. An issue is **do
 6. **Commit + push** the feature branch only (push when the owner approves at push time).
 7. **Open PR** targeting `main` with `Closes #N` in the body.
 8. **Wait for CI green** (`backend`, `frontend`).
-9. **Wait for cubic** — GitHub check **Review completed** (or equivalent cubic status; not `pending`, not `in progress`).
-10. **cubic fix loop** — read all inline comments; fix actionable items; log in `docs/operations/issue-<N>-cubic-fix.md`; commit; push; **go back to step 8** until clean or only documented deferrals remain.
+9. **Wait for CodeAnt** — GitHub **CodeAnt AI** check complete (not `pending`, not `in progress`).
+10. **CodeAnt fix loop** — read all inline comments; fix actionable items; log in `docs/operations/issue-<N>-codeant-fix.md`; commit; push; **go back to step 8** until clean or only documented deferrals remain.
 11. **Hand off for merge** — notify the owner; **do not merge**. Wait for owner merge.
 12. **Next issue** — pull `main`, new branch, repeat from step 1.
 
 ### Forbidden (caused regressions on #20 and #21)
 
 - **Agents merging PRs** (owner only).
-- Merging while cubic is still `pending`.
+- Merging while CodeAnt is still `pending`.
 - Ending a session or reporting “done” right after opening a PR.
-- Treating “CI green” as sufficient without cubic review complete.
+- Treating “CI green” as sufficient without CodeAnt review complete.
 - Launching background agents on multiple issues in parallel on the same repo.
-- Skipping `issue-<N>-cubic-fix.md` when cubic feedback changed code or recorded deferrals.
+- Skipping `issue-<N>-codeant-fix.md` when CodeAnt feedback changed code or recorded deferrals.
 - `git push origin main` or any direct push to `main`.
 
 ### Polling
 
-If cubic is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in the same session until it completes, then run the fix loop. Do not hand off with “waiting for cubic.”
+If CodeAnt is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in the same session until it completes, then run the fix loop. Do not hand off with “waiting for CodeAnt.”
 
 ---
 
@@ -209,42 +209,43 @@ Product demo seed users (e.g. `dev-demo-learner@chanter.local` / `chanter-dev-de
 
 ---
 
-## cubic review
+## CodeAnt review
 
-Date adopted: 2026-07-08. Replaces **CodeRabbit** (trial expired 2026-07-07) and **Greptile** / `greploop` (trial expired 2026-06).
+Date adopted: 2026-07-10. Replaces **cubic Dev AI** (trial expired 2026-07-10), **CodeRabbit** (trial expired 2026-07-07), and **Greptile** / `greploop` (trial expired 2026-06).
 
-**From issue #31 onward, use [cubic Dev AI](https://www.cubic.dev/) for AI PR review.** Historical logs:
+**From issue #88 onward (and all new PRs), use [CodeAnt AI](https://www.codeant.ai/) for AI PR review.** Historical logs:
 
 | Tool | Fix log pattern | Status |
 |------|-----------------|--------|
-| cubic | `docs/operations/issue-<number>-cubic-fix.md` | **Current** |
+| CodeAnt AI | `docs/operations/issue-<number>-codeant-fix.md` | **Current** |
+| cubic | `docs/operations/issue-*-cubic-fix.md` | Retired (trial expired 2026-07-10) |
 | CodeRabbit | `docs/operations/issue-*-coderabbit-fix.md` | Retired |
 | Greptile | `docs/operations/issue-*-greptile-fix.md` | Retired |
 
-For each issue where **cubic** feedback changes code or records an explicit deferral, add or update:
+For each issue where **CodeAnt** feedback changes code or records an explicit deferral, add or update:
 
-`docs/operations/issue-<number>-cubic-fix.md`
+`docs/operations/issue-<number>-codeant-fix.md`
 
-Include: finding, fix (or deferral reason), verification commands, and any remaining threads. Use the same table format as `issue-59-coderabbit-fix.md` / `issue-61-coderabbit-fix.md`.
+Include: finding, fix (or deferral reason), verification commands, and any remaining threads. Use the same table format as `issue-59-coderabbit-fix.md` / `issue-91-cubic-fix.md`.
 
 ### Prerequisites (one-time)
 
-1. [cubic GitHub app](https://www.cubic.dev/) installed on `Vinosaamaa/chanter`.
-2. Optional local CLI: see [cubic CLI review docs](https://docs.cubic.dev/ide/cli-review).
+1. [CodeAnt AI GitHub app](https://github.com/marketplace/codeant-ai) installed on `Vinosaamaa/chanter`.
+2. Control center: [app.codeant.ai](https://app.codeant.ai/) for repository settings and re-runs.
 
 ### GitHub PR flow (merge gate)
 
 1. Open PR targeting `main`.
 2. Push feature branch.
-3. Wait for **cubic** check — **Review completed** (new PRs are reviewed automatically).
-4. To re-run on an existing PR, comment: `@cubic-dev-ai review this PR`.
-5. Fix comments → commit → push → re-review until clean.
-6. Log every pass in `issue-<N>-cubic-fix.md`.
+3. Wait for **CodeAnt AI** check — review completes automatically on new PRs and pushes.
+4. Read inline PR review comments and summary; fix actionable items.
+5. Commit → push → wait for re-review until clean.
+6. Log every pass in `issue-<N>-codeant-fix.md`.
 7. Owner merges.
 
 ### What to defer vs fix
 
-cubic may flag `TODO(#auth)` caller identity params. Those are **document and defer** unless the slice explicitly implements auth. Fix real bugs: timeouts, sanitization, missing tests, wrong status codes. See `issue-17-coderabbit-fix.md` for the historical defer/fix pattern (same discipline applies to cubic).
+CodeAnt may flag `TODO(#auth)` caller identity params. Those are **document and defer** unless the slice explicitly implements auth. Fix real bugs: timeouts, sanitization, missing tests, wrong status codes. See `issue-17-coderabbit-fix.md` for the historical defer/fix pattern (same discipline applies to CodeAnt).
 
 ### Gap-audit issue bodies (#87 onward)
 
@@ -267,6 +268,7 @@ Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60�
 Active work: Public Launch project #5 — start at issue #87 after #86 merges.
 
 Product UI: docs/product-design/README.md
+PR review: CodeAnt AI (cubic trial expired) — docs/operations/agent-workflow.md § CodeAnt review
 Do not merge PRs — owner merges only.
 ```
 
@@ -280,4 +282,5 @@ Do not merge PRs — owner merges only.
 | [`CONTEXT.md`](../../CONTEXT.md) | Product glossary |
 | [`production-frontend-issue-breakdown.md`](../issues/production-frontend-issue-breakdown.md) | Phase 2 slice details |
 | [`workable-product-issue-breakdown.md`](../issues/workable-product-issue-breakdown.md) | Phase 3 slice details |
+| [`codeant-review-workflow.md`](codeant-review-workflow.md) | CodeAnt AI PR review (current) |
 | [`.cursor/rules/git-workflow.mdc`](../../.cursor/rules/git-workflow.mdc) | Cursor always-on git rules |

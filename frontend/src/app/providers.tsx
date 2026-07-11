@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { RouterProvider } from 'react-router-dom'
 
+import { ThemeSync } from '../components/theme/ThemeSync'
 import './api-auth'
 import { createAppRouter } from './router'
 
@@ -31,6 +32,7 @@ export function AppProviders({ children }: AppProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ThemeSync />
       <RouterProvider router={router} />
     </QueryClientProvider>
   )

@@ -99,7 +99,7 @@ Use `HANDOFF.md` as the first resume point for new agent sessions. For **what th
 - `zoom-out` or `improve-codebase-architecture` for architecture reviews.
 - `prototype` for uncertain UI or system interaction flows.
 - `setup-pre-commit` after runnable code and checks exist.
-- **cubic Dev AI** for PR review loops — see [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) § cubic review. CodeRabbit and Greptile/`greploop` retired (trials expired).
+- **CodeAnt AI** for PR review loops — see [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) § CodeAnt review. cubic Dev AI, CodeRabbit, and Greptile/`greploop` retired (trials expired).
 
 ## Architecture Direction
 

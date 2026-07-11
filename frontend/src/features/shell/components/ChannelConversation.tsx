@@ -6,9 +6,12 @@ import { useAuthStore } from '../../../stores/auth-store'
 import { QuestionsChannelGate } from './QuestionsChannelConversation'
 import { ResourcesChannelGate } from './ResourcesChannelConversation'
 import { VoiceChannelPanel } from '../../voice/components/VoiceChannelPanel'
+import { ChannelHeader } from './ChannelHeader'
 import { useChannelConversation } from '../hooks/use-channel-conversation'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
 import {
+  channelBreadcrumb,
+  channelDescription,
   findChannelLabel,
   findCourseChannelContext,
   findStudyChannel,
@@ -96,7 +99,7 @@ function ChannelConversationPanel({
     <LiveChannelConversation
       channelId={channelId}
       channelScope={channelScope}
-      channelLabel={channelLabel}
+      navigation={navigationQuery.data!}
     />
   )
 }
@@ -104,15 +107,20 @@ function ChannelConversationPanel({
 function LiveChannelConversation({
   channelId,
   channelScope,
-  channelLabel,
+  navigation,
 }: {
   channelId: string
   channelScope: ChannelScope
-  channelLabel: string
+  navigation: NonNullable<ReturnType<typeof useStudyServerNavigationQuery>['data']>
 }) {
   const currentUserId = useAuthStore((state) => state.user?.id)
   const conversation = useChannelConversation(channelScope, channelId)
   const [draft, setDraft] = useState('')
+  const breadcrumb = channelBreadcrumb(navigation, channelScope, channelId)
+
+  if (!breadcrumb) {
+    return null
+  }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -125,15 +133,12 @@ function LiveChannelConversation({
 
   return (
     <section className="flex min-w-0 flex-1 flex-col bg-app-bg">
-      <header className="border-b border-app-border px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
-          Conversation
-        </p>
-        <div className="mt-1 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-app-text">#{channelLabel}</h2>
-          <ConnectionBadge status={conversation.connectionStatus} />
-        </div>
-      </header>
+      <ChannelHeader
+        channelName={breadcrumb.channelName}
+        courseTitle={breadcrumb.courseTitle}
+        description={channelDescription(channelScope, breadcrumb.channelName)}
+        trailing={<ConnectionBadge status={conversation.connectionStatus} />}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col">
         {conversation.isLoadingHistory ? (
@@ -164,7 +169,7 @@ function LiveChannelConversation({
 
         <form className="border-t border-app-border p-4" onSubmit={onSubmit}>
           <label className="sr-only" htmlFor="channel-message-input">
-            Message #{channelLabel}
+            Message #{breadcrumb.channelName}
           </label>
           <div className="flex gap-2">
             <input
@@ -172,7 +177,7 @@ function LiveChannelConversation({
               className="min-w-0 flex-1 rounded-md border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text outline-none ring-app-accent focus:ring-2"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder={`Message #${channelLabel}`}
+              placeholder={`Message #${breadcrumb.channelName}`}
               disabled={conversation.isSending || conversation.connectionStatus === 'connecting'}
             />
             <button
