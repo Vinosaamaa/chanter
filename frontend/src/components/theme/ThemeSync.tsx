@@ -1,17 +1,12 @@
 import { useLayoutEffect } from 'react'
 
-import { useThemeStore } from '../../stores/theme-store'
-
-function applyTheme(theme: 'dark' | 'light') {
-  document.documentElement.dataset.theme = theme
-  document.documentElement.style.colorScheme = theme
-}
+import { applyThemeToDocument, useThemeStore } from '../../stores/theme-store'
 
 export function ThemeSync() {
   const theme = useThemeStore((state) => state.theme)
 
   useLayoutEffect(() => {
-    applyTheme(theme)
+    applyThemeToDocument(theme)
   }, [theme])
 
   return null

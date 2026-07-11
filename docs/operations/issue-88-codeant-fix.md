@@ -88,4 +88,12 @@ cd frontend && npm run lint && npm run build && npm run test -- --run shell-rout
 | Finding | Fix |
 |---------|-----|
 | Hardcoded #questions link in general panel | `courseChannelPath` helper |
+
+## Pass 7 (PR #112 — incremental round 2)
+
+| Finding | Fix |
+|---------|-----|
+| Search “no results” without active server | Require `serverId` before empty-state message |
+| Resources hook treats all errors as 403 | Separate `error` state from `canView` permission flag |
+| ThemeSync duplicates DOM theme logic | Reuse `applyThemeToDocument` from theme store |
 | plan.md CodeAnt vs Cursor skills | Clarified GitHub App vs Cursor skills |

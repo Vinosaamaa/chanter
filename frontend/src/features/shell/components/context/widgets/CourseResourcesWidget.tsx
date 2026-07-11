@@ -31,10 +31,18 @@ export function CourseResourcesWidget({
   limit?: number
 }) {
   const userId = useAuthStore((state) => state.user?.id)
-  const { resources, canView, isLoading } = useCourseResourcesList(courseId)
+  const { resources, canView, error, isLoading } = useCourseResourcesList(courseId)
 
   if (!userId) {
     return null
+  }
+
+  if (!isLoading && error) {
+    return (
+      <ContextWidgetSection title="Course resources">
+        <p className="text-xs text-rose-200">{error}</p>
+      </ContextWidgetSection>
+    )
   }
 
   if (!canView && !isLoading) {

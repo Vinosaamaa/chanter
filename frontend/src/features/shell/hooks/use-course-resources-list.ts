@@ -9,6 +9,7 @@ export function useCourseResourcesList(courseId: string) {
   const userId = useAuthStore((state) => state.user?.id ?? null)
   const [resources, setResources] = useState<CourseResource[]>([])
   const [canView, setCanView] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [loadedKey, setLoadedKey] = useState<string | null>(null)
 
   const requestKey = courseId && userId ? `${courseId}:${userId}` : null
@@ -29,6 +30,7 @@ export function useCourseResourcesList(courseId: string) {
         }
         setResources(list.courseResources)
         setCanView(true)
+        setError(null)
         setLoadedKey(requestKey)
       } catch (caught) {
         if (cancelled) {
@@ -37,9 +39,11 @@ export function useCourseResourcesList(courseId: string) {
         if (caught instanceof ApiError && caught.status === 403) {
           setCanView(false)
           setResources([])
+          setError(null)
         } else {
           setCanView(false)
           setResources([])
+          setError('Could not load course resources.')
         }
         setLoadedKey(requestKey)
       }
@@ -72,6 +76,7 @@ export function useCourseResourcesList(courseId: string) {
   return {
     resources: activeResources,
     canView: activeCanView,
+    error: requestKey ? error : null,
     isLoading: requestKey ? isLoading : false,
     aiApprovedCount,
     recentResources,

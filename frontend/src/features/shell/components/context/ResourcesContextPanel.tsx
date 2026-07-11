@@ -13,7 +13,7 @@ export function ResourcesContextPanel({
   course: ShellCourse
 }) {
   const userId = useAuthStore((state) => state.user?.id)
-  const { aiApprovedCount, canView, isLoading, recentResources } = useCourseResourcesList(course.id)
+  const { aiApprovedCount, canView, error, isLoading, recentResources } = useCourseResourcesList(course.id)
 
   return (
     <ContextPanelFrame eyebrow="Resources" title={course.title}>
@@ -22,6 +22,8 @@ export function ResourcesContextPanel({
           <p className="text-xs text-app-muted">Sign in to view resource summary.</p>
         ) : isLoading ? (
           <p className="text-xs text-app-muted">Loading resource summary…</p>
+        ) : error ? (
+          <p className="text-xs text-rose-200">{error}</p>
         ) : !canView ? (
           <p className="text-xs text-app-muted">You do not have permission to view course resources.</p>
         ) : (
@@ -40,6 +42,8 @@ export function ResourcesContextPanel({
           <p className="text-xs text-app-muted">Sign in to view recent uploads.</p>
         ) : isLoading ? (
           <p className="text-xs text-app-muted">Loading uploads…</p>
+        ) : error ? (
+          <p className="text-xs text-rose-200">{error}</p>
         ) : !canView ? (
           <p className="text-xs text-app-muted">You do not have permission to view course resources.</p>
         ) : recentResources.length === 0 ? (

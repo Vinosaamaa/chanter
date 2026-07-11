@@ -249,7 +249,7 @@ function GlobalSearchOverlayPanel({
           </p>
         ) : null}
 
-        {!isSearching && groupedResults.all.length === 0 && trimmedQuery.length >= 2 && !error ? (
+        {!isSearching && serverId && groupedResults.all.length === 0 && trimmedQuery.length >= 2 && !error ? (
           <p className="px-3 py-6 text-sm text-app-muted">No matching resources or FAQs.</p>
         ) : null}
 
