@@ -4,6 +4,7 @@ import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.Cohort;
 import com.chanter.community.domain.CohortOfficeHoursAccess;
 import com.chanter.community.domain.CohortTaQueueAccess;
+import com.chanter.community.domain.CohortEnrollment;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseChannelMessageAccess;
@@ -76,6 +77,17 @@ public class CourseService {
         }
 
         courseRepository.enrollLearner(cohortId, learnerUserId, instructorUserId, clock.instant());
+    }
+
+    public List<CohortEnrollment> listCohortEnrollments(UUID cohortId, UUID instructorUserId) {
+        if (!courseRepository.cohortExists(cohortId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
+        }
+        if (!courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can view enrollments");
+        }
+
+        return courseRepository.listCohortEnrollments(cohortId);
     }
 
     public Optional<CourseChannel> findAccessibleChannel(UUID channelId, UUID viewerUserId) {

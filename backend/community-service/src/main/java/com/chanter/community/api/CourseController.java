@@ -61,6 +61,18 @@ public class CourseController {
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest().build().toUri()).build();
     }
 
+    @GetMapping("/cohorts/{cohortId}/enrollments")
+    public CohortEnrollmentListResponse listCohortEnrollments(
+            @PathVariable UUID cohortId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID instructorUserId
+    ) {
+        return new CohortEnrollmentListResponse(
+                courseService.listCohortEnrollments(cohortId, instructorUserId).stream()
+                        .map(CohortEnrollmentResponse::from)
+                        .toList()
+        );
+    }
+
     @GetMapping("/course-channels/{channelId}")
     public CourseChannelResponse getCourseChannel(
             @PathVariable UUID channelId,

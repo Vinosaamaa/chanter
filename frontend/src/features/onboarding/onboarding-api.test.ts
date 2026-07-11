@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { apiFetch } from '../../lib/api-client'
 
-import { createCourse, createStudyServer, enrollLearner } from './onboarding-api'
+import {
+  createCourse,
+  createStudyServer,
+  enrollLearner,
+  listCohortEnrollments,
+} from './onboarding-api'
 
 vi.mock('../../lib/api-client', () => ({
   apiFetch: vi.fn(),
@@ -56,5 +61,20 @@ describe('onboarding-api', () => {
       method: 'POST',
       body: JSON.stringify({ learnerUserId: 'learner-9' }),
     })
+  })
+
+  it('listCohortEnrollments fetches enrollments for a cohort', async () => {
+    mockedApiFetch.mockResolvedValue({
+      enrollments: [
+        { learnerUserId: 'learner-9', enrolledAt: '2026-06-01T12:00:00Z' },
+      ],
+    })
+
+    const result = await listCohortEnrollments('cohort-1')
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort-1/enrollments')
+    expect(result).toEqual([
+      { learnerUserId: 'learner-9', enrolledAt: '2026-06-01T12:00:00Z' },
+    ])
   })
 })

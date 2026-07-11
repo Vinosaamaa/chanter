@@ -3,6 +3,7 @@ package com.chanter.community.infra;
 import com.chanter.community.application.CourseRepository;
 import com.chanter.community.domain.AccessibleStudyServer;
 import com.chanter.community.domain.ChannelKind;
+import com.chanter.community.domain.CohortEnrollment;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
@@ -108,6 +109,24 @@ public class JdbcCourseRepository implements CourseRepository {
         } catch (DuplicateKeyException ignored) {
             // Re-enrolling the same learner is idempotent for this vertical slice.
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CohortEnrollment> listCohortEnrollments(UUID cohortId) {
+        return jdbcClient.sql("""
+                        SELECT learner_user_id, enrolled_by_user_id, enrolled_at
+                        FROM cohort_enrollments
+                        WHERE cohort_id = :cohortId
+                        ORDER BY enrolled_at DESC
+                        """)
+                .param("cohortId", cohortId)
+                .query((rs, rowNum) -> new CohortEnrollment(
+                        rs.getObject("learner_user_id", UUID.class),
+                        rs.getObject("enrolled_by_user_id", UUID.class),
+                        rs.getObject("enrolled_at", OffsetDateTime.class).toInstant()
+                ))
+                .list();
     }
 
     @Override

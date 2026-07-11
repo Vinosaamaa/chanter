@@ -91,6 +91,18 @@ class CourseEnrollmentSmokeTest {
                         ))))
                 .andExpect(status().isCreated());
 
+        MvcResult enrollmentsResult = mockMvc.perform(get("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
+                        .with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+        CohortEnrollmentListResponse enrollments = objectMapper.readValue(
+                enrollmentsResult.getResponse().getContentAsString(),
+                CohortEnrollmentListResponse.class
+        );
+        assertThat(enrollments.enrollments())
+                .extracting(CohortEnrollmentResponse::learnerUserId)
+                .containsExactly(learnerUserId);
+
         MvcResult channelResult = mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}", course.channels().getFirst().id()
                 ).with(asUser(learnerUserId)))
