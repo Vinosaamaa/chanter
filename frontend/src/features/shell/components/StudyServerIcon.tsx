@@ -1,4 +1,4 @@
-import { studyServerIconStyle } from '../study-server-icon-style'
+import { studyServerIconForeground, studyServerIconStyle } from '../study-server-icon-style'
 
 type StudyServerIconProps = {
   serverId: string
@@ -21,6 +21,7 @@ function StudyServerGlyph({ className }: { className?: string }) {
 
 export function StudyServerIcon({ serverId, active = false, size = 'md' }: StudyServerIconProps) {
   const { color } = studyServerIconStyle(serverId)
+  const foreground = studyServerIconForeground(color, active)
   const dimension = size === 'sm' ? 'h-10 w-10' : 'h-12 w-12'
   const iconSize = size === 'sm' ? 'h-5 w-5' : 'h-6 w-6'
 
@@ -29,7 +30,7 @@ export function StudyServerIcon({ serverId, active = false, size = 'md' }: Study
       className={`inline-flex ${dimension} items-center justify-center rounded-2xl transition-transform`}
       style={{
         backgroundColor: active ? color : `${color}40`,
-        color: active ? '#ffffff' : color,
+        color: foreground,
         boxShadow: active ? `0 0 0 2px ${color}` : undefined,
       }}
       aria-hidden

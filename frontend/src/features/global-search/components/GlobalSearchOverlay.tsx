@@ -289,7 +289,7 @@ function GlobalSearchOverlayPanel({
 
       {serverId && !canManage ? (
         <footer className="border-t border-app-border px-4 py-3 text-xs text-app-muted">
-          Showing enrollment-scoped results only. ↑↓ navigate · ↵ open · ⌘K search · esc close
+          Showing enrollment-scoped results only. ⌘K search · esc close
         </footer>
       ) : null}
     </section>

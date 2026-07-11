@@ -14,11 +14,13 @@ import { grantLabel } from '../../study-assistant/study-assistant-grants'
 import { useQuestionsPanel } from '../context/use-questions-panel'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
 import {
+  findCourseById,
   findCourseChannelContext,
   findStudyChannel,
   resolveShellContextPanelKind,
 } from '../shell-routes'
 
+import { StudyServerContextPanel } from './context/StudyServerContextPanel'
 import { ContextPlaceholder } from './ContextPlaceholder'
 import { GeneralContextPanel } from './context/GeneralContextPanel'
 import { ResourcesContextPanel } from './context/ResourcesContextPanel'
@@ -28,16 +30,33 @@ import { ApprovedFaqsWidget } from './context/widgets/ApprovedFaqsWidget'
 import { CourseResourcesWidget } from './context/widgets/CourseResourcesWidget'
 
 export function ShellContextPanel() {
-  const { serverId, channelId } = useParams()
+  const { serverId, channelId, courseId } = useParams()
   const location = useLocation()
   const navigationQuery = useStudyServerNavigationQuery(serverId)
+
+  if (!serverId) {
+    return <ContextPlaceholder />
+  }
+
+  const supportCourse =
+    location.pathname.includes('/support/') && courseId
+      ? findCourseById(navigationQuery.data, courseId)
+      : null
+  if (supportCourse) {
+    return <GeneralContextPanel serverId={serverId} course={supportCourse} />
+  }
+
+  if (!channelId) {
+    return <ContextPlaceholder />
+  }
+
   const panelKind = resolveShellContextPanelKind(
     location.pathname,
     channelId,
     navigationQuery.data,
   )
 
-  if (!serverId || !channelId || panelKind === 'placeholder') {
+  if (panelKind === 'placeholder') {
     return <ContextPlaceholder />
   }
 
@@ -51,8 +70,15 @@ export function ShellContextPanel() {
     return <ResourcesContextPanel serverId={serverId} course={courseContext.course} />
   }
 
-  if (panelKind === 'general' && courseContext) {
-    return <GeneralContextPanel serverId={serverId} course={courseContext.course} />
+  if (panelKind === 'general') {
+    if (courseContext) {
+      return <GeneralContextPanel serverId={serverId} course={courseContext.course} />
+    }
+
+    const studyChannel = findStudyChannel(navigationQuery.data, channelId)
+    if (studyChannel) {
+      return <StudyServerContextPanel channel={studyChannel} />
+    }
   }
 
   if (panelKind === 'voice') {

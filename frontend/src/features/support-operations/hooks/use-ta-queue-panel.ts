@@ -151,10 +151,10 @@ export function useTaQueuePanel(cohortId: string | undefined): UseTaQueuePanelRe
   )
 
   return {
-    items,
-    isLoading,
-    accessDenied,
-    canManage,
+    items: requestKey ? items : [],
+    isLoading: requestKey ? isLoading : false,
+    accessDenied: requestKey ? accessDenied : false,
+    canManage: requestKey ? canManage : false,
     error,
     actionMessage,
     actingItemId,

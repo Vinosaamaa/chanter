@@ -24,6 +24,15 @@ export function TaQueueSummaryWidget({
   cohortId: string | undefined
 }) {
   const queue = useTaQueuePanel(cohortId)
+
+  if (!cohortId) {
+    return (
+      <ContextWidgetSection title="TA queue">
+        <p className="text-xs text-app-muted">This course has no cohort configured yet.</p>
+      </ContextWidgetSection>
+    )
+  }
+
   const openItems = queue.items.filter((item) => item.status !== 'RESOLVED').slice(0, 3)
 
   return (

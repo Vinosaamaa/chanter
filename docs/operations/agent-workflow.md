@@ -265,7 +265,7 @@ Do **not** treat a separate “deferred” section as skippable work on the **ow
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged.
-Active work: Public Launch project #5 — start at issue #87 after #86 merges.
+Active work: Public Launch project #5 — active slice **#88** App shell polish (`feature/88-app-shell-polish`).
 
 Product UI: docs/product-design/README.md
 PR review: CodeAnt AI (cubic trial expired) — docs/operations/agent-workflow.md § CodeAnt review

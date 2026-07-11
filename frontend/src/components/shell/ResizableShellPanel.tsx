@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 
 import { usePanelResize } from '../../hooks/use-panel-resize'
 import { cn } from '../../lib/cn'
@@ -30,7 +30,9 @@ export function ResizableShellPanel({
   className,
   children,
 }: ResizableShellPanelProps) {
-  const { onPointerDown } = usePanelResize({
+  const panelRef = useRef<HTMLDivElement>(null)
+  const { onPointerDown, onSeparatorKeyDown } = usePanelResize({
+    getPanel: () => panelRef.current,
     side,
     onWidthChange,
     minWidth,
@@ -40,6 +42,10 @@ export function ResizableShellPanel({
   const edgePosition = side === 'left' ? 'right-0 translate-x-1/2' : 'left-0 -translate-x-1/2'
   const collapseChevron = side === 'left' ? '‹' : '›'
   const expandChevron = side === 'left' ? '›' : '‹'
+  const collapseButtonClassName = cn(
+    'absolute top-1/2 z-20 flex h-10 w-3 -translate-y-1/2 items-center justify-center rounded-full border border-app-border/80 bg-app-elevated text-[10px] text-app-muted shadow-sm transition-all hover:text-app-text focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent',
+    edgePosition,
+  )
 
   if (collapsed) {
     return (
@@ -55,10 +61,7 @@ export function ResizableShellPanel({
           onClick={onToggleCollapsed}
           aria-label={expandLabel}
           title={expandLabel}
-          className={cn(
-            'absolute top-1/2 z-20 flex h-10 w-3 -translate-y-1/2 items-center justify-center rounded-full border border-app-border/80 bg-app-elevated text-[10px] text-app-muted opacity-70 shadow-sm transition-all hover:opacity-100 hover:text-app-text',
-            edgePosition,
-          )}
+          className={cn(collapseButtonClassName, 'opacity-70 hover:opacity-100')}
         >
           {expandChevron}
         </button>
@@ -67,7 +70,12 @@ export function ResizableShellPanel({
   }
 
   return (
-    <div className={cn('group/panel relative flex shrink-0 flex-col', className)} style={{ width }}>
+    <div
+      ref={panelRef}
+      data-shell-panel=""
+      className={cn('group/panel relative flex shrink-0 flex-col', className)}
+      style={{ width }}
+    >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
       <div
         className={cn(
@@ -79,9 +87,14 @@ export function ResizableShellPanel({
           role="separator"
           aria-orientation="vertical"
           aria-label="Resize panel"
+          aria-valuemin={minWidth}
+          aria-valuemax={maxWidth}
+          aria-valuenow={width}
+          tabIndex={0}
           onPointerDown={onPointerDown}
+          onKeyDown={onSeparatorKeyDown}
           onDoubleClick={onToggleCollapsed}
-          className="absolute inset-0 cursor-col-resize bg-transparent hover:bg-app-accent/15"
+          className="absolute inset-0 cursor-col-resize bg-transparent hover:bg-app-accent/15 focus-visible:bg-app-accent/20 focus-visible:outline-none"
         />
         <button
           type="button"
@@ -91,10 +104,7 @@ export function ResizableShellPanel({
           }}
           aria-label={collapseLabel}
           title={`${collapseLabel} (double-click edge)`}
-          className={cn(
-            'absolute top-1/2 z-20 flex h-10 w-3 -translate-y-1/2 items-center justify-center rounded-full border border-app-border/80 bg-app-elevated text-[10px] text-app-muted opacity-0 shadow-sm transition-all group-hover/edge:opacity-100 hover:text-app-text',
-            edgePosition,
-          )}
+          className={cn(collapseButtonClassName, 'opacity-0 group-hover/edge:opacity-100')}
         >
           {collapseChevron}
         </button>

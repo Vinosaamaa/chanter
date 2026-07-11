@@ -28,4 +28,23 @@ cd frontend && npm run lint && npm run build && npm run test -- --run shell-rout
 |------|--------|
 | CI `backend` / `frontend` | Green after flaky `SocialRealtimeWebSocketSmokeTest` rerun |
 | CodeAnt re-review on `abd3d0d` | Awaiting second bot pass (pass 1 findings addressed) |
-| cubic | Skipping (trial expired) |
+| cubic | Still comments via installed GitHub app (trial expired — uninstall in repo settings) |
+
+## Pass 3 (PR #112 — cubic + CodeAnt follow-up)
+
+| Finding | Fix |
+|---------|-----|
+| P0 panel resize wrong baseline width | `usePanelResize` reads width from panel ref, not handle wrapper |
+| P1 TA queue stale when cohort missing | Guard widget + empty hook state when `cohortId` absent |
+| P2 collapse button invisible on keyboard focus | `focus-visible:opacity-100` on edge controls |
+| P2 separator not keyboard-resizable | `tabIndex={0}` + arrow-key width adjust |
+| P2 study server icon low contrast on bright colors | Luminance-based foreground color |
+| P2 theme flash on load | Inline bootstrap in `index.html` + `useLayoutEffect` |
+| P2 invalid persisted theme strings | `normalizeTheme` on rehydrate |
+| P2 sessionStorage throws | try/catch in last-active-study-server helpers |
+| P2 drag listeners leak on unmount | `dragCleanupRef` + effect teardown |
+| Support routes show placeholder context | Route support pages to `GeneralContextPanel` |
+| Study text channels show placeholder | Added `StudyServerContextPanel` |
+| Help button no-op | Disabled with “coming soon” label |
+| Search footer misleading key hints | Removed unimplemented ↑↓ / ↵ hints |
+| HANDOFF / startup prompt stale | Point agents to active slice #88 |
