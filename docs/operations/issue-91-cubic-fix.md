@@ -32,3 +32,23 @@
 (cd frontend && npm run lint && npm run build)
 # product stack: learner Ask AI returns 200 (low confidence OK without pre-install resources)
 ```
+
+## Pass 3 (PR #111 — second cubic review, post advisory-lock fix)
+
+| Finding | Severity | Action |
+|---------|----------|--------|
+| (none) | — | **Clean** — cubic check passed; zero new unresolved threads |
+
+### Pass 1 follow-up
+
+| Finding | Severity | Action |
+|---------|----------|--------|
+| `ai-study-assistant.md` still said production install UI missing | P3 | **Fixed** — document `#questions` panel install path |
+
+### Verification (pass 3)
+
+```bash
+(cd backend && mvn -B -q -pl agent-service -am test -Dtest=AiQuotaSmokeTest)
+(cd frontend && npm run test -- --run study-assistant)
+(cd frontend && npm run lint && npm run build)
+```
