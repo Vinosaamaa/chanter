@@ -29,6 +29,12 @@ export async function enrollLearner(cohortId: string, learnerUserId: string): Pr
   })
 }
 
+export async function joinCohort(cohortId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/cohorts/${cohortId}/join`, {
+    method: 'POST',
+  })
+}
+
 export async function listCohortEnrollments(
   cohortId: string,
   options?: { limit?: number; offset?: number },

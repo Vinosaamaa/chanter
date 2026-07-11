@@ -61,6 +61,15 @@ public class CourseController {
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest().build().toUri()).build();
     }
 
+    @PostMapping("/cohorts/{cohortId}/join")
+    public ResponseEntity<Void> joinCohort(
+            @PathVariable UUID cohortId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID learnerUserId
+    ) {
+        courseService.joinCohort(cohortId, learnerUserId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/cohorts/{cohortId}/enrollments")
     public CohortEnrollmentListResponse listCohortEnrollments(
             @PathVariable UUID cohortId,

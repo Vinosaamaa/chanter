@@ -13,7 +13,8 @@ Polish onboarding flows toward mockup density: a three-step create Study Server 
 | Area | File | What |
 |------|------|------|
 | API | `CohortEnrollment.java`, `CohortEnrollmentResponse.java`, `CohortEnrollmentListResponse.java` | Domain + DTO for enrollment rows |
-| Backend | `CourseRepository`, `JdbcCourseRepository`, `CourseService`, `CourseController` | `GET /api/v1/cohorts/{cohortId}/enrollments` with `limit`/`offset` (max 500) and `totalCount` |
+| Backend | `CourseRepository`, `JdbcCourseRepository`, `CourseService`, `CourseController` | `GET /api/v1/cohorts/{cohortId}/enrollments` with `limit`/`offset`; `POST /api/v1/cohorts/{cohortId}/join` for invite self-enroll |
+| Invite join | `cohort-invite.ts`, `SignInPage.tsx`, `CohortInviteRedirect.tsx` | Persist `?cohort=` through sign-in and self-enroll after auth |
 | Test | `CourseEnrollmentSmokeTest.java` | Assert list after manual enroll |
 | Types | `onboarding-types.ts` | `CohortEnrollmentRecord` |
 | API client | `onboarding-api.ts`, `onboarding-api.test.ts` | `listCohortEnrollments()` |

@@ -80,7 +80,14 @@ export function CreateStudyServerWizard() {
     try {
       const created = await createStudyServer(trimmedName)
       if (trimmedDescription) {
-        sessionStorage.setItem(`chanter:study-server-description:${created.id}`, trimmedDescription)
+        try {
+          sessionStorage.setItem(
+            `chanter:study-server-description:${created.id}`,
+            trimmedDescription,
+          )
+        } catch {
+          // Description preview is optional when storage is unavailable.
+        }
       }
       await queryClient.invalidateQueries({ queryKey: ['study-servers'] })
       navigate(`/app/servers/${created.id}/home`, { replace: true })

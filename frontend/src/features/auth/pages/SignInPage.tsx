@@ -1,10 +1,16 @@
-import { useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../../../components/ui/card'
+import { CohortInviteRedirect } from '../components/CohortInviteRedirect'
 import { login, register } from '../auth-api'
 import { useAuthStore } from '../../../stores/auth-store'
+import {
+  completePendingCohortJoin,
+  rememberCohortInviteFromSearch,
+} from '../../onboarding/cohort-invite'
+import { joinCohort } from '../../onboarding/onboarding-api'
 
 type AuthMode = 'sign-in' | 'register'
 
@@ -22,8 +28,12 @@ export function SignInPage() {
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app'
 
+  useEffect(() => {
+    rememberCohortInviteFromSearch(location.search)
+  }, [location.search])
+
   if (accessToken) {
-    return <Navigate to={redirectTo} replace />
+    return <CohortInviteRedirect to={redirectTo} />
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -37,6 +47,7 @@ export function SignInPage() {
           ? await login({ email, password })
           : await register({ email, password, displayName })
       setSession(session)
+      await completePendingCohortJoin(joinCohort)
       navigate(redirectTo, { replace: true })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to authenticate')

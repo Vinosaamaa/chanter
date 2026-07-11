@@ -6,6 +6,7 @@ import {
   createCourse,
   createStudyServer,
   enrollLearner,
+  joinCohort,
   listCohortEnrollments,
 } from './onboarding-api'
 
@@ -63,10 +64,24 @@ describe('onboarding-api', () => {
     })
   })
 
+  it('joinCohort posts to the learner self-enroll endpoint', async () => {
+    mockedApiFetch.mockResolvedValue(undefined)
+
+    await joinCohort('cohort-1')
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort-1/join', {
+      method: 'POST',
+    })
+  })
+
   it('listCohortEnrollments fetches enrollments for a cohort', async () => {
     mockedApiFetch.mockResolvedValue({
       enrollments: [
-        { learnerUserId: 'learner-9', enrolledAt: '2026-06-01T12:00:00Z' },
+        {
+          learnerUserId: 'learner-9',
+          enrolledByUserId: 'instructor-1',
+          enrolledAt: '2026-06-01T12:00:00Z',
+        },
       ],
       totalCount: 1,
       limit: 50,
@@ -77,7 +92,11 @@ describe('onboarding-api', () => {
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort-1/enrollments')
     expect(result.enrollments).toEqual([
-      { learnerUserId: 'learner-9', enrolledAt: '2026-06-01T12:00:00Z' },
+      {
+        learnerUserId: 'learner-9',
+        enrolledByUserId: 'instructor-1',
+        enrolledAt: '2026-06-01T12:00:00Z',
+      },
     ])
     expect(result.totalCount).toBe(1)
   })

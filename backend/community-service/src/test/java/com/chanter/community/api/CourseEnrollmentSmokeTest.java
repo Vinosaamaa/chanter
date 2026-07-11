@@ -83,6 +83,15 @@ class CourseEnrollmentSmokeTest {
                         ))))
                 .andExpect(status().isForbidden());
 
+        UUID inviteLearnerUserId = UUID.randomUUID();
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/join", course.cohort().id())
+                        .with(asUser(inviteLearnerUserId)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/course-channels/{channelId}", course.channels().getFirst().id())
+                        .with(asUser(inviteLearnerUserId)))
+                .andExpect(status().isOk());
+
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
                         .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -101,8 +110,8 @@ class CourseEnrollmentSmokeTest {
         );
         assertThat(enrollments.enrollments())
                 .extracting(CohortEnrollmentResponse::learnerUserId)
-                .containsExactly(learnerUserId);
-        assertThat(enrollments.totalCount()).isEqualTo(1);
+                .contains(learnerUserId);
+        assertThat(enrollments.totalCount()).isEqualTo(2);
 
         MvcResult channelResult = mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}", course.channels().getFirst().id()

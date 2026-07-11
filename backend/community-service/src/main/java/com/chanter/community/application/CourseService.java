@@ -83,6 +83,14 @@ public class CourseService {
         courseRepository.enrollLearner(cohortId, learnerUserId, instructorUserId, clock.instant());
     }
 
+    public void joinCohort(UUID cohortId, UUID learnerUserId) {
+        if (!courseRepository.cohortExists(cohortId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
+        }
+
+        courseRepository.enrollLearner(cohortId, learnerUserId, learnerUserId, clock.instant());
+    }
+
     public CohortEnrollmentList listCohortEnrollments(
             UUID cohortId,
             UUID instructorUserId,

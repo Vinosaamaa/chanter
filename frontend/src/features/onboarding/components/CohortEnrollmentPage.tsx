@@ -124,6 +124,7 @@ export function CohortEnrollmentPage() {
                 setSelectedCohortId(event.target.value)
                 enrollment.reset()
                 setPage(1)
+                setCopyMessage(null)
               }}
               className="max-w-xs rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm text-app-text"
             >
