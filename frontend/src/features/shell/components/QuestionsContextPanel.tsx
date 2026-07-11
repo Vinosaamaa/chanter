@@ -64,7 +64,10 @@ export function ShellContextPanel() {
     return <QuestionsContextPanel studyServerId={serverId} channelId={channelId} />
   }
 
-  const courseContext = findCourseChannelContext(navigationQuery.data, channelId)
+  const navigation = navigationQuery.data
+  const courseContext =
+    channelId && navigation ? findCourseChannelContext(navigation, channelId) : null
+  const studyChannel = channelId && navigation ? findStudyChannel(navigation, channelId) : null
 
   if (panelKind === 'resources' && courseContext) {
     return <ResourcesContextPanel serverId={serverId} course={courseContext.course} />
@@ -75,14 +78,12 @@ export function ShellContextPanel() {
       return <GeneralContextPanel serverId={serverId} course={courseContext.course} />
     }
 
-    const studyChannel = findStudyChannel(navigationQuery.data, channelId)
     if (studyChannel) {
       return <StudyServerContextPanel channel={studyChannel} />
     }
   }
 
   if (panelKind === 'voice') {
-    const studyChannel = findStudyChannel(navigationQuery.data, channelId)
     return (
       <VoiceContextPanel
         serverId={serverId}
@@ -110,12 +111,13 @@ function QuestionsContextPanel({
   const courseContext = channelId
     ? findCourseChannelContext(navigationQuery.data, channelId)
     : null
-  const resourcesChannel = courseContext?.course.channels.find(
+  const deferredCourseContext = useDeferredValue(courseContext)
+  const resourcesChannel = deferredCourseContext?.course.channels.find(
     (channel) => channel.name === 'resources',
   )
+
   const activeAnswer =
     selectedAnswer && channelId && selectedAnswer.channelId === channelId ? selectedAnswer : null
-  const deferredCourseContext = useDeferredValue(courseContext)
 
   const assistantQuery = useQuery({
     queryKey: studyAssistantPresenceQueryKey(resolvedServerId, userId),

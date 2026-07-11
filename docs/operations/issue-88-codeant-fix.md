@@ -70,4 +70,16 @@ cd frontend && npm run lint && npm run build && npm run test -- --run shell-rout
 | Study `general` description wrong | Scope-aware `channelDescription` |
 | Voice panel hardcoded office-hours path | `supportOperationPath` helper |
 | Double `channelBreadcrumb` lookup | Thread breadcrumb from parent panel |
+
+## Pass 5 (PR #112 — CodeAnt full review after quality gates)
+
+| Finding | Fix |
+|---------|-----|
+| Duplicate channel unavailable UI | `ChannelUnavailable` helper; single breadcrumb guard |
+| Unused `courseById` in search lookup | Removed from `courseLookup` + prop type |
+| Repeated navigation scans in context panel | Precompute `courseContext` + `studyChannel` once |
+| Deferred vs immediate course in questions panel | Derive `resourcesChannel` from `deferredCourseContext` |
+| Stale course filter on server switch | Ignore stale `courseFilter` when course id absent from server |
+| Resources panel ignores `canView` on 403 | Gate success/empty UI on permission flag |
+| FAQ errors shown as empty list | Explicit `error` state in `ApprovedFaqsWidget` |
 | plan.md CodeAnt vs Cursor skills | Clarified GitHub App vs Cursor skills |

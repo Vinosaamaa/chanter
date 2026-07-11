@@ -21,6 +21,7 @@ export function ApprovedFaqsWidget({
   const userId = useAuthStore((state) => state.user?.id)
   const [faqs, setFaqs] = useState<ApprovedFaq[]>([])
   const [loadedKey, setLoadedKey] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const requestKey = userId ? `${courseId}:${userId}` : null
   const isLoading = requestKey !== null && loadedKey !== requestKey
@@ -41,12 +42,14 @@ export function ApprovedFaqsWidget({
           return
         }
         setFaqs(response.approvedFaqs)
+        setError(null)
         setLoadedKey(requestKey)
       } catch (caught) {
         if (cancelled || (caught instanceof DOMException && caught.name === 'AbortError')) {
           return
         }
         setFaqs([])
+        setError('Could not load approved FAQs.')
         setLoadedKey(requestKey)
       }
     })()
@@ -75,6 +78,8 @@ export function ApprovedFaqsWidget({
         <p className="text-xs text-app-muted">Sign in to view approved FAQs.</p>
       ) : isLoading ? (
         <p className="text-xs text-app-muted">Loading FAQs…</p>
+      ) : error ? (
+        <p className="text-xs text-rose-200">{error}</p>
       ) : visible.length === 0 ? (
         <p className="text-xs text-app-muted">No approved FAQs yet for this course.</p>
       ) : (

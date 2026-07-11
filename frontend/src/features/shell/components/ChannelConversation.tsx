@@ -12,7 +12,6 @@ import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
 import {
   channelBreadcrumb,
   channelDescription,
-  findChannelLabel,
   findCourseChannelContext,
   findStudyChannel,
   isQuestionsChannel,
@@ -84,26 +83,9 @@ function ChannelConversationPanel({
     }
   }
 
-  const channelLabel = findChannelLabel(navigationQuery.data, channelScope, channelId)
-  if (!channelLabel) {
-    return (
-      <ConversationFrame title="Channel unavailable">
-        <p className="text-sm text-app-muted">
-          This channel was not found or you do not have permission to open it.
-        </p>
-      </ConversationFrame>
-    )
-  }
-
   const breadcrumb = channelBreadcrumb(navigationQuery.data, channelScope, channelId)
   if (!breadcrumb) {
-    return (
-      <ConversationFrame title="Channel unavailable">
-        <p className="text-sm text-app-muted">
-          This channel was not found or you do not have permission to open it.
-        </p>
-      </ConversationFrame>
-    )
+    return <ChannelUnavailable />
   }
 
   return (
@@ -112,6 +94,16 @@ function ChannelConversationPanel({
       channelScope={channelScope}
       breadcrumb={breadcrumb}
     />
+  )
+}
+
+function ChannelUnavailable() {
+  return (
+    <ConversationFrame title="Channel unavailable">
+      <p className="text-sm text-app-muted">
+        This channel was not found or you do not have permission to open it.
+      </p>
+    </ConversationFrame>
   )
 }
 

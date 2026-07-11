@@ -5,7 +5,6 @@ import { cn } from '../../../lib/cn'
 import { formatUserFacingApiError } from '../../../lib/format-api-error'
 import { readActiveStudyServerId } from '../../../lib/last-active-study-server'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
-import type { ShellCourse } from '../../shell/types'
 import {
   courseChannelPath,
   supportOperationPath,
@@ -102,12 +101,19 @@ function GlobalSearchOverlayPanel({
   }, [trimmedQuery, serverId])
 
   const canManage = navigationQuery.data?.canViewFullCatalog ?? false
+  const courseIds = useMemo(
+    () => new Set((navigationQuery.data?.courses ?? []).map((course) => course.id)),
+    [navigationQuery.data?.courses],
+  )
+  const activeCourseFilter =
+    courseFilter !== 'all' && !courseIds.has(courseFilter) ? 'all' : courseFilter
+
   const groupedResults = useMemo(() => {
     const base = (serverId && trimmedQuery.length >= 2 ? results : []).filter((hit) => {
       if (contentTypeFilter !== 'all' && hit.documentType !== contentTypeFilter) {
         return false
       }
-      if (courseFilter !== 'all' && hit.courseId !== courseFilter) {
+      if (activeCourseFilter !== 'all' && hit.courseId !== activeCourseFilter) {
         return false
       }
       return true
@@ -124,19 +130,17 @@ function GlobalSearchOverlayPanel({
     }
 
     return { all: base, resourceResults, faqResults }
-  }, [contentTypeFilter, courseFilter, results, serverId, trimmedQuery])
+  }, [activeCourseFilter, contentTypeFilter, results, serverId, trimmedQuery])
 
   const courseLookup = useMemo(() => {
-    const courses = navigationQuery.data?.courses ?? []
-    const courseById = new Map(courses.map((course) => [course.id, course]))
     const resourcesChannelByCourseId = new Map<string, string>()
-    for (const course of courses) {
+    for (const course of navigationQuery.data?.courses ?? []) {
       const resourcesChannel = course.channels.find((channel) => channel.name === 'resources')
       if (resourcesChannel) {
         resourcesChannelByCourseId.set(course.id, resourcesChannel.id)
       }
     }
-    return { courseById, resourcesChannelByCourseId }
+    return { resourcesChannelByCourseId }
   }, [navigationQuery.data?.courses])
 
   const onReindex = async () => {
@@ -195,7 +199,7 @@ function GlobalSearchOverlayPanel({
         <div className="mt-3 flex flex-wrap gap-2">
           <FilterSelect
             label="Course"
-            value={courseFilter}
+            value={activeCourseFilter}
             onChange={setCourseFilter}
             options={[
               { value: 'all', label: 'All courses' },
@@ -338,7 +342,6 @@ function SearchResultSection({
   hits: GlobalSearchHit[]
   serverId: string | undefined
   courseLookup: {
-    courseById: Map<string, ShellCourse>
     resourcesChannelByCourseId: Map<string, string>
   }
   onNavigate: (destination: string) => void
