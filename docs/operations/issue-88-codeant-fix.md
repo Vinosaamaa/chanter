@@ -21,3 +21,11 @@ Verification:
 ```bash
 cd frontend && npm run lint && npm run build && npm run test -- --run shell-routes
 ```
+
+## Pass 2 (PR #112 — post-fix push)
+
+| Item | Status |
+|------|--------|
+| CI `backend` / `frontend` | Green after flaky `SocialRealtimeWebSocketSmokeTest` rerun |
+| CodeAnt re-review on `abd3d0d` | Awaiting second bot pass (pass 1 findings addressed) |
+| cubic | Skipping (trial expired) |
