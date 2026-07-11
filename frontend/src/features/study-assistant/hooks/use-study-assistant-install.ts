@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   fetchStudyAssistantInstallPreview,
@@ -16,6 +16,11 @@ export function studyAssistantPresenceQueryKey(
   return ['study-assistant-presence', studyServerId, userId] as const
 }
 
+type PreviewState = {
+  contextKey: string
+  preview: StudyAssistantInstallPreview
+}
+
 export function useStudyAssistantInstallFlow({
   studyServerId,
   instructorUserId,
@@ -24,10 +29,17 @@ export function useStudyAssistantInstallFlow({
   instructorUserId: string | undefined
 }) {
   const queryClient = useQueryClient()
-  const [preview, setPreview] = useState<StudyAssistantInstallPreview | null>(null)
+  const contextKey =
+    studyServerId && instructorUserId ? `${studyServerId}:${instructorUserId}` : null
+  const [previewState, setPreviewState] = useState<PreviewState | null>(null)
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [installError, setInstallError] = useState<string | null>(null)
   const [isOpening, setIsOpening] = useState(false)
+  const openRequestIdRef = useRef(0)
+  const closeDialogRef = useRef<() => void>(() => {})
+
+  const preview =
+    previewState && previewState.contextKey === contextKey ? previewState.preview : null
 
   const installMutation = useMutation({
     mutationFn: async () => {
@@ -45,40 +57,62 @@ export function useStudyAssistantInstallFlow({
       await queryClient.invalidateQueries({
         queryKey: studyAssistantPresenceQueryKey(studyServerId, instructorUserId),
       })
-      closeDialog()
+      closeDialogRef.current()
     },
     onError: (error) => {
       setInstallError(studyAssistantInstallErrorMessage(error))
     },
   })
 
+  const { mutate, reset, isPending } = installMutation
+
   const closeDialog = useCallback(() => {
-    setPreview(null)
+    setPreviewState(null)
     setSelectedKeys(new Set())
     setInstallError(null)
     setIsOpening(false)
-    installMutation.reset()
-  }, [installMutation])
+    reset()
+  }, [reset])
+
+  useEffect(() => {
+    closeDialogRef.current = closeDialog
+  }, [closeDialog])
+
+  useEffect(() => {
+    openRequestIdRef.current += 1
+  }, [contextKey])
 
   const openInstallDialog = useCallback(async () => {
-    if (!studyServerId || !instructorUserId) {
+    if (!studyServerId || !instructorUserId || !contextKey) {
       return
     }
 
+    const requestId = ++openRequestIdRef.current
+    const requestContextKey = contextKey
     setIsOpening(true)
     setInstallError(null)
 
     try {
       const nextPreview = await fetchStudyAssistantInstallPreview(studyServerId, instructorUserId)
-      setPreview(nextPreview)
+      if (requestId !== openRequestIdRef.current || requestContextKey !== contextKey) {
+        return
+      }
+
+      setPreviewState({ contextKey: requestContextKey, preview: nextPreview })
       setSelectedKeys(allGrantKeysFromPreview(nextPreview))
     } catch (error) {
+      if (requestId !== openRequestIdRef.current || requestContextKey !== contextKey) {
+        return
+      }
+
       setInstallError(studyAssistantInstallErrorMessage(error))
-      setPreview(null)
+      setPreviewState(null)
     } finally {
-      setIsOpening(false)
+      if (requestId === openRequestIdRef.current) {
+        setIsOpening(false)
+      }
     }
-  }, [instructorUserId, studyServerId])
+  }, [contextKey, instructorUserId, studyServerId])
 
   const toggleGrantKey = useCallback((key: string, checked: boolean) => {
     setSelectedKeys((current) => {
@@ -97,8 +131,8 @@ export function useStudyAssistantInstallFlow({
       return
     }
     setInstallError(null)
-    installMutation.mutate()
-  }, [installMutation, preview, selectedKeys.size])
+    mutate()
+  }, [mutate, preview, selectedKeys.size])
 
   return {
     preview,
@@ -106,7 +140,7 @@ export function useStudyAssistantInstallFlow({
     installError,
     isDialogOpen: preview !== null,
     isOpening,
-    isInstalling: installMutation.isPending,
+    isInstalling: isPending,
     openInstallDialog,
     closeDialog,
     toggleGrantKey,

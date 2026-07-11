@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import { Button } from '../../../components/ui/button'
 import {
@@ -42,6 +42,20 @@ export function StudyAssistantInstallDialog({
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
   const alreadyInstalled = preview.alreadyInstalled
   const canConfirm = !alreadyInstalled && selectedKeys.size > 0 && !isInstalling
+  const resourcesByCourseId = useMemo(() => {
+    const grouped = new Map<string, StudyAssistantInstallPreview['courseResources']>()
+
+    for (const resource of preview.courseResources) {
+      const existing = grouped.get(resource.courseId)
+      if (existing) {
+        existing.push(resource)
+      } else {
+        grouped.set(resource.courseId, [resource])
+      }
+    }
+
+    return grouped
+  }, [preview.courseResources])
 
   useEffect(() => {
     previouslyFocusedRef.current =
@@ -155,9 +169,7 @@ export function StudyAssistantInstallDialog({
             ) : null}
 
             {preview.candidates.courses.map((course) => {
-              const courseResources = preview.courseResources.filter(
-                (resource) => resource.courseId === course.id,
-              )
+              const courseResources = resourcesByCourseId.get(course.id) ?? []
 
               return (
                 <section

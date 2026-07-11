@@ -27,7 +27,7 @@
 ### Verification (pass 2)
 
 ```bash
-(cd backend && mvn -B -q -pl agent-service -am test -Dtest=AiQuotaSmokeTest)
+(cd backend && mvn -B -q -pl agent-service -am test -Dtest=AiQuotaSmokeTest -Dsurefire.failIfNoSpecifiedTests=false)
 (cd frontend && npm run test -- --run study-assistant)
 (cd frontend && npm run lint && npm run build)
 # product stack: learner Ask AI returns 200 (low confidence OK without pre-install resources)
@@ -48,7 +48,25 @@
 ### Verification (pass 3)
 
 ```bash
-(cd backend && mvn -B -q -pl agent-service -am test -Dtest=AiQuotaSmokeTest)
+(cd backend && mvn -B -q -pl agent-service -am test -Dtest=AiQuotaSmokeTest -Dsurefire.failIfNoSpecifiedTests=false)
+(cd frontend && npm run test -- --run study-assistant)
+(cd frontend && npm run lint && npm run build)
+```
+
+## Pass 4 (PR #111 — cubic review on advisory-lock + doc commits)
+
+| Finding | Severity | Action |
+|---------|----------|--------|
+| `mvn -am test -Dtest=AiQuotaSmokeTest` fails in `common` module | P2 | **Fixed** — add `-Dsurefire.failIfNoSpecifiedTests=false` in verification blocks |
+| `closeDialog` unstable → focus jumps on each checkbox toggle | P2 | **Fixed** — depend on stable `reset`/`mutate`; `closeDialogRef` for mutation `onSuccess` |
+| Stale install preview if Study Server / user changes mid-flight | P2 | **Fixed** — invalidate open requests + reset state on id change |
+| Grant tree rescans all resources per course on every render | P3 | **Fixed** — `useMemo` map of resources by `courseId` |
+| Duplicate modal focus-trap implementation | P3 | **Deferred** — extract shared dialog primitive in **#88** (shell polish) |
+
+### Verification (pass 4)
+
+```bash
+(cd backend && mvn -B -q -pl agent-service -am test -Dtest=AiQuotaSmokeTest -Dsurefire.failIfNoSpecifiedTests=false)
 (cd frontend && npm run test -- --run study-assistant)
 (cd frontend && npm run lint && npm run build)
 ```
