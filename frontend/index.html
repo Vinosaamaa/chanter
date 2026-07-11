@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <script>
+      try {
+        const stored = localStorage.getItem('chanter-theme')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          const theme = parsed?.state?.theme === 'dark' ? 'dark' : 'light'
+          document.documentElement.dataset.theme = theme
+          document.documentElement.style.colorScheme = theme
+        }
+      } catch {
+        // Ignore malformed persisted theme.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

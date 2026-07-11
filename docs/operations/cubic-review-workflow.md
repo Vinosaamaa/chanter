@@ -1,11 +1,10 @@
-# cubic Review Workflow (moved)
+# cubic Review Workflow (retired)
 
-**Issue completion loop, cubic fix loop, and merge policy** are documented in the single canonical agent doc:
+**cubic Dev AI** trial expired **2026-07-10**. Chanter now uses **CodeAnt AI** for PR review.
 
-**[`docs/operations/agent-workflow.md`](agent-workflow.md)**
+See:
 
-Historical review fix logs:
+- [`docs/operations/agent-workflow.md`](agent-workflow.md) § CodeAnt review
+- [`docs/operations/codeant-review-workflow.md`](codeant-review-workflow.md)
 
-- **cubic** (current): `docs/operations/issue-*-cubic-fix.md`
-- **CodeRabbit** (retired 2026-07): `docs/operations/issue-*-coderabbit-fix.md`
-- **Greptile** (retired 2026-06): `docs/operations/issue-*-greptile-fix.md`
+Historical cubic fix logs remain under `docs/operations/issue-*-cubic-fix.md`.

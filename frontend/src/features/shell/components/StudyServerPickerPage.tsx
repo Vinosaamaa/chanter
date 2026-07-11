@@ -7,10 +7,11 @@ import { formatUserFacingApiError, isUnauthorizedApiError } from '../../../lib/f
 import { useAuthStore } from '../../../stores/auth-store'
 import { deleteStudyServer } from '../shell-api'
 import { useAccessibleStudyServersQuery } from '../hooks/use-shell-queries'
-import { studyServerInitials } from '../study-server-initials'
 import type { StudyServerSummary } from '../types'
 
 import { DeleteStudyServerDialog } from './DeleteStudyServerDialog'
+import { StudyServerIcon } from './StudyServerIcon'
+import { studyServerIconStyle } from '../study-server-icon-style'
 
 export function StudyServerPickerPage() {
   const navigate = useNavigate()
@@ -127,26 +128,19 @@ function StudyServerCard({
   server: StudyServerSummary
   onDelete: () => void
 }) {
-  const accent = serverAccent(server.name)
+  const { color } = studyServerIconStyle(server.id)
 
   return (
     <article
       className={cn(
         'group relative flex flex-col overflow-hidden rounded-2xl border border-app-border bg-app-surface',
-        'transition hover:border-app-accent/40 hover:shadow-lg hover:shadow-black/20',
+        'transition hover:border-app-accent/40 hover:shadow-lg hover:shadow-black/10',
       )}
     >
-      <div className={cn('h-1.5 w-full bg-gradient-to-r', accent.bar)} />
+      <div className="h-1.5 w-full" style={{ backgroundColor: color }} />
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start gap-3">
-          <span
-            className={cn(
-              'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white',
-              accent.icon,
-            )}
-          >
-            {studyServerInitials(server.name)}
-          </span>
+          <StudyServerIcon serverId={server.id} size="sm" />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-lg font-semibold text-app-text">{server.name}</h2>
             <p className="mt-1 line-clamp-2 text-sm text-app-muted">
@@ -186,23 +180,4 @@ function StudyServerCard({
       </div>
     </article>
   )
-}
-
-function serverAccent(name: string): { bar: string; icon: string } {
-  const palette = [
-    { bar: 'from-violet-500 to-fuchsia-500', icon: 'bg-violet-600' },
-    { bar: 'from-emerald-500 to-teal-500', icon: 'bg-emerald-600' },
-    { bar: 'from-sky-500 to-blue-600', icon: 'bg-sky-600' },
-    { bar: 'from-amber-500 to-orange-500', icon: 'bg-amber-600' },
-  ]
-  const index = Math.abs(hashString(name)) % palette.length
-  return palette[index]
-}
-
-function hashString(value: string): number {
-  let hash = 0
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) | 0
-  }
-  return hash
 }

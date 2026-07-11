@@ -1,6 +1,6 @@
 export function ContextPlaceholder() {
   return (
-    <aside className="hidden w-80 shrink-0 flex-col border-l border-app-border bg-app-surface lg:flex">
+    <aside aria-label="Context" className="flex h-full min-h-0 flex-col">
       <div className="border-b border-app-border px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
           Context

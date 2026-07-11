@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useDeferredValue } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
@@ -12,24 +13,87 @@ import {
 import { grantLabel } from '../../study-assistant/study-assistant-grants'
 import { useQuestionsPanel } from '../context/use-questions-panel'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
-import { findCourseChannelContext, isQuestionsChannel } from '../shell-routes'
+import {
+  findCourseById,
+  findCourseChannelContext,
+  findStudyChannel,
+  resolveShellContextPanelKind,
+} from '../shell-routes'
 
+import { StudyServerContextPanel } from './context/StudyServerContextPanel'
 import { ContextPlaceholder } from './ContextPlaceholder'
+import { GeneralContextPanel } from './context/GeneralContextPanel'
+import { ResourcesContextPanel } from './context/ResourcesContextPanel'
+import { VoiceContextPanel } from './context/VoiceContextPanel'
+import { ContextPanelFrame, ContextWidgetSection } from './context/ContextPanelFrame'
+import { ApprovedFaqsWidget } from './context/widgets/ApprovedFaqsWidget'
+import { CourseResourcesWidget } from './context/widgets/CourseResourcesWidget'
 
 export function ShellContextPanel() {
-  const { serverId, channelId } = useParams()
+  const { serverId, channelId, courseId } = useParams()
   const location = useLocation()
   const navigationQuery = useStudyServerNavigationQuery(serverId)
-  const channelContext =
-    location.pathname.includes('/course-channels/') && channelId
-      ? findCourseChannelContext(navigationQuery.data, channelId)
-      : null
 
-  if (!isQuestionsChannel(channelContext)) {
+  if (!serverId) {
     return <ContextPlaceholder />
   }
 
-  return <QuestionsContextPanel studyServerId={serverId} channelId={channelId} />
+  const supportCourse =
+    location.pathname.includes('/support/') && courseId
+      ? findCourseById(navigationQuery.data, courseId)
+      : null
+  if (supportCourse) {
+    return <GeneralContextPanel serverId={serverId} course={supportCourse} />
+  }
+
+  if (!channelId) {
+    return <ContextPlaceholder />
+  }
+
+  const panelKind = resolveShellContextPanelKind(
+    location.pathname,
+    channelId,
+    navigationQuery.data,
+  )
+
+  if (panelKind === 'placeholder') {
+    return <ContextPlaceholder />
+  }
+
+  if (panelKind === 'questions') {
+    return <QuestionsContextPanel studyServerId={serverId} channelId={channelId} />
+  }
+
+  const navigation = navigationQuery.data
+  const courseContext =
+    channelId && navigation ? findCourseChannelContext(navigation, channelId) : null
+  const studyChannel = channelId && navigation ? findStudyChannel(navigation, channelId) : null
+
+  if (panelKind === 'resources' && courseContext) {
+    return <ResourcesContextPanel serverId={serverId} course={courseContext.course} />
+  }
+
+  if (panelKind === 'general') {
+    if (courseContext) {
+      return <GeneralContextPanel serverId={serverId} course={courseContext.course} />
+    }
+
+    if (studyChannel) {
+      return <StudyServerContextPanel channel={studyChannel} />
+    }
+  }
+
+  if (panelKind === 'voice') {
+    return (
+      <VoiceContextPanel
+        serverId={serverId}
+        courseId={courseContext?.course.id}
+        channelLabel={studyChannel?.name ?? courseContext?.channel.name ?? 'voice'}
+      />
+    )
+  }
+
+  return <ContextPlaceholder />
 }
 
 function QuestionsContextPanel({
@@ -44,6 +108,14 @@ function QuestionsContextPanel({
   const resolvedServerId = studyServerId ?? panelServerId ?? undefined
   const navigationQuery = useStudyServerNavigationQuery(resolvedServerId)
   const canInstall = navigationQuery.data?.canViewFullCatalog ?? false
+  const courseContext = channelId
+    ? findCourseChannelContext(navigationQuery.data, channelId)
+    : null
+  const deferredCourseContext = useDeferredValue(courseContext)
+  const resourcesChannel = deferredCourseContext?.course.channels.find(
+    (channel) => channel.name === 'resources',
+  )
+
   const activeAnswer =
     selectedAnswer && channelId && selectedAnswer.channelId === channelId ? selectedAnswer : null
 
@@ -60,19 +132,8 @@ function QuestionsContextPanel({
 
   return (
     <>
-      <aside className="hidden w-80 shrink-0 flex-col border-l border-app-border bg-app-surface lg:flex">
-        <div className="border-b border-app-border px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
-            AI context
-          </p>
-          <h2 className="mt-1 text-sm font-semibold text-app-text">Study Assistant</h2>
-        </div>
-
-        <div className="flex-1 space-y-4 overflow-y-auto p-4">
-          <section className="rounded-lg border border-app-border bg-app-bg p-3">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-app-muted">
-              Install status
-            </h3>
+      <ContextPanelFrame eyebrow="AI context" title="Study Assistant">
+        <ContextWidgetSection title="Install status">
             {assistantQuery.isLoading ? (
               <p className="mt-2 text-xs text-app-muted">Loading assistant grants…</p>
             ) : assistantQuery.isError ? (
@@ -118,12 +179,27 @@ function QuestionsContextPanel({
                 to install it from this panel.
               </p>
             )}
-          </section>
+          </ContextWidgetSection>
 
-          <section className="rounded-lg border border-app-border bg-app-bg p-3">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-app-muted">
-              Grounding sources
-            </h3>
+          {deferredCourseContext ? (
+            <>
+              <CourseResourcesWidget
+                serverId={resolvedServerId ?? ''}
+                courseId={deferredCourseContext.course.id}
+                courseTitle={deferredCourseContext.course.title}
+                resourcesChannelId={resourcesChannel?.id ?? null}
+                limit={4}
+              />
+
+              <ApprovedFaqsWidget
+                serverId={resolvedServerId ?? ''}
+                courseId={deferredCourseContext.course.id}
+                limit={3}
+              />
+            </>
+          ) : null}
+
+          <ContextWidgetSection title="Grounding sources">
             {activeAnswer && activeAnswer.sources.length > 0 ? (
               <ul className="mt-2 space-y-2">
                 {activeAnswer.sources.map((source) => (
@@ -141,21 +217,17 @@ function QuestionsContextPanel({
                 Ask AI on a support question to see grounded citation cards here.
               </p>
             )}
-          </section>
+          </ContextWidgetSection>
 
           {activeAnswer?.handoffRecommended ? (
-            <section className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-200">
-                Low confidence
-              </h3>
-              <p className="mt-2 text-xs text-amber-100">
+            <ContextWidgetSection title="Low confidence">
+              <p className="text-xs text-amber-100">
                 The assistant recommends human review. Use <strong>Add to TA Queue</strong> in the
                 conversation when you want a teaching assistant to follow up.
               </p>
-            </section>
+            </ContextWidgetSection>
           ) : null}
-        </div>
-      </aside>
+      </ContextPanelFrame>
 
       {installFlow.isDialogOpen && installFlow.preview ? (
         <StudyAssistantInstallDialog

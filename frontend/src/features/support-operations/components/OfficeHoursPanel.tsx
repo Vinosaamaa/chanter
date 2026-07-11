@@ -17,11 +17,11 @@ export function OfficeHoursPanel({ courseTitle, cohortName, cohortId }: OfficeHo
 
   return (
     <section className="flex min-w-0 flex-1 flex-col bg-app-bg">
-      <header className="border-b border-app-border px-4 py-4">
+      <header className="border-b border-app-border px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
           Support operations
         </p>
-        <h2 className="mt-1 text-xl font-semibold text-app-text">Office Hours</h2>
+        <h2 className="mt-1 text-base font-semibold text-app-text">Office Hours</h2>
         <p className="mt-1 text-sm text-app-muted">
           {courseTitle} · {cohortName}
         </p>

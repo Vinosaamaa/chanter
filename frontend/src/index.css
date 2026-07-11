@@ -14,6 +14,17 @@
   --color-app-accent-hover: #818cf8;
 }
 
+:root[data-theme='light'] {
+  --color-app-bg: #ebedef;
+  --color-app-surface: #ffffff;
+  --color-app-elevated: #f2f3f5;
+  --color-app-border: #d4d7dc;
+  --color-app-text: #060607;
+  --color-app-muted: #4e5058;
+  --color-app-accent: #5865f2;
+  --color-app-accent-hover: #4752c4;
+}
+
 @layer base {
   * {
     @apply box-border;

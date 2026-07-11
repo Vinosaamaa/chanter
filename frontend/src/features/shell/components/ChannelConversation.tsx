@@ -6,10 +6,12 @@ import { useAuthStore } from '../../../stores/auth-store'
 import { QuestionsChannelGate } from './QuestionsChannelConversation'
 import { ResourcesChannelGate } from './ResourcesChannelConversation'
 import { VoiceChannelPanel } from '../../voice/components/VoiceChannelPanel'
+import { ChannelHeader } from './ChannelHeader'
 import { useChannelConversation } from '../hooks/use-channel-conversation'
 import { useStudyServerNavigationQuery } from '../hooks/use-shell-queries'
 import {
-  findChannelLabel,
+  channelBreadcrumb,
+  channelDescription,
   findCourseChannelContext,
   findStudyChannel,
   isQuestionsChannel,
@@ -81,34 +83,38 @@ function ChannelConversationPanel({
     }
   }
 
-  const channelLabel = findChannelLabel(navigationQuery.data, channelScope, channelId)
-  if (!channelLabel) {
-    return (
-      <ConversationFrame title="Channel unavailable">
-        <p className="text-sm text-app-muted">
-          This channel was not found or you do not have permission to open it.
-        </p>
-      </ConversationFrame>
-    )
+  const breadcrumb = channelBreadcrumb(navigationQuery.data, channelScope, channelId)
+  if (!breadcrumb) {
+    return <ChannelUnavailable />
   }
 
   return (
     <LiveChannelConversation
       channelId={channelId}
       channelScope={channelScope}
-      channelLabel={channelLabel}
+      breadcrumb={breadcrumb}
     />
+  )
+}
+
+function ChannelUnavailable() {
+  return (
+    <ConversationFrame title="Channel unavailable">
+      <p className="text-sm text-app-muted">
+        This channel was not found or you do not have permission to open it.
+      </p>
+    </ConversationFrame>
   )
 }
 
 function LiveChannelConversation({
   channelId,
   channelScope,
-  channelLabel,
+  breadcrumb,
 }: {
   channelId: string
   channelScope: ChannelScope
-  channelLabel: string
+  breadcrumb: NonNullable<ReturnType<typeof channelBreadcrumb>>
 }) {
   const currentUserId = useAuthStore((state) => state.user?.id)
   const conversation = useChannelConversation(channelScope, channelId)
@@ -125,15 +131,12 @@ function LiveChannelConversation({
 
   return (
     <section className="flex min-w-0 flex-1 flex-col bg-app-bg">
-      <header className="border-b border-app-border px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
-          Conversation
-        </p>
-        <div className="mt-1 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-app-text">#{channelLabel}</h2>
-          <ConnectionBadge status={conversation.connectionStatus} />
-        </div>
-      </header>
+      <ChannelHeader
+        channelName={breadcrumb.channelName}
+        courseTitle={breadcrumb.courseTitle}
+        description={channelDescription(channelScope, breadcrumb.channelName)}
+        trailing={<ConnectionBadge status={conversation.connectionStatus} />}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col">
         {conversation.isLoadingHistory ? (
@@ -164,7 +167,7 @@ function LiveChannelConversation({
 
         <form className="border-t border-app-border p-4" onSubmit={onSubmit}>
           <label className="sr-only" htmlFor="channel-message-input">
-            Message #{channelLabel}
+            Message #{breadcrumb.channelName}
           </label>
           <div className="flex gap-2">
             <input
@@ -172,7 +175,7 @@ function LiveChannelConversation({
               className="min-w-0 flex-1 rounded-md border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text outline-none ring-app-accent focus:ring-2"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder={`Message #${channelLabel}`}
+              placeholder={`Message #${breadcrumb.channelName}`}
               disabled={conversation.isSending || conversation.connectionStatus === 'connecting'}
             />
             <button

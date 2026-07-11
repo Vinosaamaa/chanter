@@ -2,7 +2,8 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 
 import { cn } from '../../../lib/cn'
 import { useAccessibleStudyServersQuery } from '../hooks/use-shell-queries'
-import { studyServerInitials } from '../study-server-initials'
+
+import { StudyServerIcon } from './StudyServerIcon'
 
 export function ServerSwitcherColumn() {
   const { serverId } = useParams()
@@ -43,18 +44,9 @@ export function ServerSwitcherColumn() {
             to={targetPath}
             aria-current={isActive ? 'page' : undefined}
             aria-label={isActive ? `${server.name} home` : `Switch to ${server.name}`}
+            title={server.name}
           >
-            <span
-              className={cn(
-                'flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold transition-colors',
-                isActive
-                  ? 'bg-app-accent text-white'
-                  : 'bg-app-surface text-app-muted hover:bg-app-elevated hover:text-app-text',
-              )}
-              title={server.name}
-            >
-              {studyServerInitials(server.name)}
-            </span>
+            <StudyServerIcon serverId={server.id} active={isActive} />
           </Link>
         )
       })}
