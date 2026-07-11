@@ -48,14 +48,14 @@ Install is a **human-in-the-loop grant confirmation** (built in Education MVP #1
 | Step | Who | What |
 |------|-----|------|
 | Preview | Instructor | `GET .../study-assistant/install-preview` — lists candidate channels, courses, cohorts, and AI-approved resources |
-| Confirm | Instructor | `POST .../study-assistant/install` — saves explicit grants (one assistant per Study Server) |
+| Confirm | Instructor | `POST .../study-assistant/install` — saves explicit grants (one assistant per Study Server), or use the **Install AI Study Assistant** dialog in `#questions` |
 | Presence | Anyone with access | `GET .../study-assistant?viewerUserId=` — shows installed + visible grants |
 
 Grants types: `STUDY_SERVER_CHANNEL`, `COURSE`, `COHORT`, `COURSE_CHANNEL`, `COURSE_RESOURCE`.
 
 Without install, **Ask AI** returns “not installed”. Without **AI-approved resources** (or FAQs) whose text matches the question, you get **low confidence** handoff.
 
-Production UI for install is still missing — the seed script (`make product-demo-seed`) installs automatically for the demo.
+**Install UI (production):** Study Server owners and instructors can install from the `#questions` context panel (**Install AI Study Assistant**). See `workable-product-demo.md` § F. The seed script (`make product-demo-seed`) still works for a one-shot demo without manual install.
 
 ---
 
