@@ -1,5 +1,7 @@
 import { apiFetch } from '../../lib/api-client'
 
+import type { ApiFetchInit } from '../../lib/api-client'
+
 import type {
   ApprovedFaq,
   ApprovedFaqListResponse,
@@ -36,9 +38,11 @@ export async function upsertApprovedFaq(
 export async function listApprovedFaqs(
   courseId: string,
   viewerUserId: string,
+  init?: ApiFetchInit,
 ): Promise<ApprovedFaqListResponse> {
   const params = new URLSearchParams({ viewerUserId })
   return apiFetch<ApprovedFaqListResponse>(
     `/api/v1/courses/${courseId}/approved-faqs?${params.toString()}`,
+    init,
   )
 }

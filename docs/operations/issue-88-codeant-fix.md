@@ -56,3 +56,18 @@ cd frontend && npm run lint && npm run build && npm run test -- --run shell-rout
 | HANDOFF startup prompt still #91 | Updated to #88 / `feature/88-app-shell-polish` |
 | pointercancel leaves resize active | Listen for `pointercancel` in `use-panel-resize` |
 | Unknown study channel → general | Verify channel exists; placeholder when missing |
+
+## Pass 4 (PR #112 — thread cleanup + cubic P2/P3)
+
+| Finding | Fix |
+|---------|-----|
+| AppTopBar repeated icon markup | `TopNavIconLink` shared component |
+| FAQ fetch not aborted on unmount | `AbortController` in `ApprovedFaqsWidget` |
+| Multi-cohort TA queue wrong cohort | `resolveCourseCohortId` — only when single cohort |
+| Learner “View all” on TA queue | Hide link unless `queue.canManage` |
+| Context placeholder a11y | `aside` with `aria-label` |
+| `courseChannelGroup` duplicate | Delegate to `studyChannelGroup` |
+| Study `general` description wrong | Scope-aware `channelDescription` |
+| Voice panel hardcoded office-hours path | `supportOperationPath` helper |
+| Double `channelBreadcrumb` lookup | Thread breadcrumb from parent panel |
+| plan.md CodeAnt vs Cursor skills | Clarified GitHub App vs Cursor skills |

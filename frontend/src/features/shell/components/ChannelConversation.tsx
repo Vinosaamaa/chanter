@@ -95,11 +95,22 @@ function ChannelConversationPanel({
     )
   }
 
+  const breadcrumb = channelBreadcrumb(navigationQuery.data, channelScope, channelId)
+  if (!breadcrumb) {
+    return (
+      <ConversationFrame title="Channel unavailable">
+        <p className="text-sm text-app-muted">
+          This channel was not found or you do not have permission to open it.
+        </p>
+      </ConversationFrame>
+    )
+  }
+
   return (
     <LiveChannelConversation
       channelId={channelId}
       channelScope={channelScope}
-      navigation={navigationQuery.data!}
+      breadcrumb={breadcrumb}
     />
   )
 }
@@ -107,20 +118,15 @@ function ChannelConversationPanel({
 function LiveChannelConversation({
   channelId,
   channelScope,
-  navigation,
+  breadcrumb,
 }: {
   channelId: string
   channelScope: ChannelScope
-  navigation: NonNullable<ReturnType<typeof useStudyServerNavigationQuery>['data']>
+  breadcrumb: NonNullable<ReturnType<typeof channelBreadcrumb>>
 }) {
   const currentUserId = useAuthStore((state) => state.user?.id)
   const conversation = useChannelConversation(channelScope, channelId)
   const [draft, setDraft] = useState('')
-  const breadcrumb = channelBreadcrumb(navigation, channelScope, channelId)
-
-  if (!breadcrumb) {
-    return null
-  }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

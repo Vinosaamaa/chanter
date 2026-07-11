@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import type { ShellCourse } from '../../types'
-import { findQuestionsChannel, supportOperationPath } from '../../shell-routes'
+import { findQuestionsChannel, resolveCourseCohortId, supportOperationPath } from '../../shell-routes'
 
 import { ContextPanelFrame, ContextWidgetSection } from './ContextPanelFrame'
 import { CourseResourcesWidget } from './widgets/CourseResourcesWidget'
@@ -16,13 +16,15 @@ export function GeneralContextPanel({
 }) {
   const resourcesChannel = course.channels.find((channel) => channel.name === 'resources')
   const questionsChannel = findQuestionsChannel(course)
+  const cohortId = resolveCourseCohortId(course)
 
   return (
     <ContextPanelFrame eyebrow="Course context" title={course.title}>
       <TaQueueSummaryWidget
         serverId={serverId}
         courseId={course.id}
-        cohortId={course.cohorts[0]?.id}
+        cohortId={cohortId}
+        ambiguousCohort={course.cohorts.length > 1}
       />
       <CourseResourcesWidget
         serverId={serverId}

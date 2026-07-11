@@ -171,15 +171,11 @@ export function studyChannelGroup(channel: ShellChannel): CourseChannelGroup {
 }
 
 export function courseChannelGroup(channel: ShellCourse['channels'][number]): CourseChannelGroup {
-  if (channel.kind === 'VOICE') {
-    return 'voice'
-  }
+  return studyChannelGroup(channel)
+}
 
-  if (channel.name === 'announcements') {
-    return 'information'
-  }
-
-  return 'text'
+export function resolveCourseCohortId(course: ShellCourse): string | undefined {
+  return course.cohorts.length === 1 ? course.cohorts[0]?.id : undefined
 }
 
 export function courseChannelGroupLabel(group: CourseChannelGroup): string {
@@ -234,7 +230,7 @@ export function channelDescription(
   scope: 'study' | 'course',
   channelName: string,
 ): string | null {
-  const descriptions: Record<string, string> = {
+  const courseDescriptions: Record<string, string> = {
     general: 'Course-wide chat. Be respectful and help each other learn!',
     questions: 'Post support questions and ask the AI Study Assistant for grounded help.',
     resources: 'Upload and browse AI-approved course materials.',
@@ -242,11 +238,17 @@ export function channelDescription(
     'study-room': 'Voice study room for live collaboration.',
   }
 
-  if (descriptions[channelName]) {
-    return descriptions[channelName]
+  const studyDescriptions: Record<string, string> = {
+    general: 'Study Server-wide chat. Be respectful and help each other learn!',
+    announcements: 'Important updates for the whole Study Server.',
+    'study-room': 'Voice study room for live collaboration.',
   }
 
-  return scope === 'study' ? 'Study Server channel.' : 'Course channel.'
+  if (scope === 'study') {
+    return studyDescriptions[channelName] ?? 'Study Server channel.'
+  }
+
+  return courseDescriptions[channelName] ?? 'Course channel.'
 }
 
 export function channelBreadcrumb(

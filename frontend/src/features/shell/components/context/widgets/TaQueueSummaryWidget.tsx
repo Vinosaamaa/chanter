@@ -18,17 +18,23 @@ export function TaQueueSummaryWidget({
   serverId,
   courseId,
   cohortId,
+  ambiguousCohort = false,
 }: {
   serverId: string
   courseId: string
   cohortId: string | undefined
+  ambiguousCohort?: boolean
 }) {
   const queue = useTaQueuePanel(cohortId)
 
   if (!cohortId) {
     return (
       <ContextWidgetSection title="TA queue">
-        <p className="text-xs text-app-muted">This course has no cohort configured yet.</p>
+        <p className="text-xs text-app-muted">
+          {ambiguousCohort
+            ? 'This course has multiple cohorts. Open TA queue from the support sidebar for your cohort.'
+            : 'This course has no cohort configured yet.'}
+        </p>
       </ContextWidgetSection>
     )
   }
@@ -39,12 +45,14 @@ export function TaQueueSummaryWidget({
     <ContextWidgetSection
       title="TA queue"
       action={
-        <Link
-          to={supportOperationPath(serverId, courseId, 'ta-queue')}
-          className="text-[11px] font-medium text-app-accent hover:text-app-accent-hover"
-        >
-          View all
-        </Link>
+        queue.canManage ? (
+          <Link
+            to={supportOperationPath(serverId, courseId, 'ta-queue')}
+            className="text-[11px] font-medium text-app-accent hover:text-app-accent-hover"
+          >
+            View all
+          </Link>
+        ) : null
       }
     >
       {queue.isLoading ? (

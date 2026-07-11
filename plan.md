@@ -325,7 +325,7 @@ Use an incremental production workflow:
 13. For every **CodeAnt** suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-codeant-fix.md` (see `docs/operations/agent-workflow.md`).
 14. Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
 
-Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, `setup-pre-commit` for quality gates, and **CodeAnt AI** for PR review loops (`docs/operations/agent-workflow.md`).
+Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, and `setup-pre-commit` for local quality gates. For GitHub PR review loops, use the **CodeAnt AI GitHub App** (`docs/operations/agent-workflow.md`) — not a Cursor skill.
 
 Definition of Done for each feature:
 

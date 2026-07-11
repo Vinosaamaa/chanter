@@ -1,6 +1,6 @@
 export function ContextPlaceholder() {
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <aside aria-label="Context" className="flex h-full min-h-0 flex-col">
       <div className="border-b border-app-border px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
           Context
@@ -13,6 +13,6 @@ export function ContextPlaceholder() {
           Course resources, TA queue, and AI context panels will open in this column.
         </p>
       </div>
-    </div>
+    </aside>
   )
 }

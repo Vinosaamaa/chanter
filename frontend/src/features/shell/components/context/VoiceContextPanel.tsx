@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 
+import { supportOperationPath } from '../../shell-routes'
+
 import { ContextPanelFrame, ContextWidgetSection } from './ContextPanelFrame'
 
 export function VoiceContextPanel({
@@ -26,7 +28,7 @@ export function VoiceContextPanel({
             Check scheduled office hours for instructor-led voice sessions.
           </p>
           <Link
-            to={`/app/servers/${serverId}/courses/${courseId}/support/office-hours`}
+            to={supportOperationPath(serverId, courseId, 'office-hours')}
             className="mt-2 inline-flex text-xs font-medium text-app-accent hover:text-app-accent-hover"
           >
             Open office hours

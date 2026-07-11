@@ -3,8 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { logout as logoutApi } from '../../auth/auth-api'
 import { useGlobalSearch } from '../../global-search/hooks/use-global-search'
 import { usePendingFriendRequestCount } from '../../friends/hooks/use-friend-requests-queries'
-import { cn } from '../../../lib/cn'
 import { HeaderIconButton } from '../../../components/ui/header-icon-button'
+import { TopNavIconLink } from '../../../components/ui/top-nav-icon-link'
 import { useAuthStore } from '../../../stores/auth-store'
 import { useThemeStore } from '../../../stores/theme-store'
 
@@ -55,26 +55,20 @@ export function AppTopBar() {
               : location.pathname === item.to
 
             return (
-              <Link
+              <TopNavIconLink
                 key={item.id}
                 to={item.to}
-                title={item.label}
-                aria-label={item.label}
-                aria-current={isActive ? 'page' : undefined}
-                className={cn(
-                  'relative inline-flex h-8 w-8 items-center justify-center rounded-md text-base transition-colors',
-                  isActive
-                    ? 'bg-app-surface text-app-text'
-                    : 'text-app-muted hover:bg-app-surface hover:text-app-text',
-                )}
-              >
-                <span aria-hidden>{item.icon}</span>
-                {item.id === 'friends' && incomingCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 rounded-full bg-app-accent px-1 py-0.5 text-[9px] font-semibold leading-none text-white">
-                    {incomingCount}
-                  </span>
-                ) : null}
-              </Link>
+                label={item.label}
+                icon={item.icon}
+                isActive={isActive}
+                badge={
+                  item.id === 'friends' && incomingCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 rounded-full bg-app-accent px-1 py-0.5 text-[9px] font-semibold leading-none text-white">
+                      {incomingCount}
+                    </span>
+                  ) : null
+                }
+              />
             )
           })}
         </nav>

@@ -32,24 +32,28 @@ export function ApprovedFaqsWidget({
 
     let cancelled = false
 
+    const controller = new AbortController()
+
     void (async () => {
       try {
-        const response = await listApprovedFaqs(courseId, userId)
+        const response = await listApprovedFaqs(courseId, userId, { signal: controller.signal })
         if (cancelled) {
           return
         }
         setFaqs(response.approvedFaqs)
         setLoadedKey(requestKey)
-      } catch {
-        if (!cancelled) {
-          setFaqs([])
-          setLoadedKey(requestKey)
+      } catch (caught) {
+        if (cancelled || (caught instanceof DOMException && caught.name === 'AbortError')) {
+          return
         }
+        setFaqs([])
+        setLoadedKey(requestKey)
       }
     })()
 
     return () => {
       cancelled = true
+      controller.abort()
     }
   }, [courseId, requestKey, userId])
 

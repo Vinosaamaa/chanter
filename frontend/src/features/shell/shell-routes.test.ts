@@ -96,5 +96,6 @@ describe('shell-routes context helpers', () => {
     })
 
     expect(channelDescription('course', 'general')).toContain('Course-wide chat')
+    expect(channelDescription('study', 'general')).toContain('Study Server-wide chat')
   })
 })
