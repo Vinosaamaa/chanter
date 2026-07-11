@@ -82,4 +82,10 @@ cd frontend && npm run lint && npm run build && npm run test -- --run shell-rout
 | Stale course filter on server switch | Ignore stale `courseFilter` when course id absent from server |
 | Resources panel ignores `canView` on 403 | Gate success/empty UI on permission flag |
 | FAQ errors shown as empty list | Explicit `error` state in `ApprovedFaqsWidget` |
+
+## Pass 6 (PR #112 — incremental)
+
+| Finding | Fix |
+|---------|-----|
+| Hardcoded #questions link in general panel | `courseChannelPath` helper |
 | plan.md CodeAnt vs Cursor skills | Clarified GitHub App vs Cursor skills |

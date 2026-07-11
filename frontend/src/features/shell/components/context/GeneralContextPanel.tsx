@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import type { ShellCourse } from '../../types'
-import { findQuestionsChannel, resolveCourseCohortId, supportOperationPath } from '../../shell-routes'
+import { findQuestionsChannel, courseChannelPath, resolveCourseCohortId, supportOperationPath } from '../../shell-routes'
 
 import { ContextPanelFrame, ContextWidgetSection } from './ContextPanelFrame'
 import { CourseResourcesWidget } from './widgets/CourseResourcesWidget'
@@ -39,7 +39,7 @@ export function GeneralContextPanel({
             for grounded answers.
           </p>
           <Link
-            to={`/app/servers/${serverId}/course-channels/${questionsChannel.id}`}
+            to={courseChannelPath(serverId, questionsChannel.id)}
             className="mt-2 inline-flex text-xs font-medium text-app-accent hover:text-app-accent-hover"
           >
             Open #questions
