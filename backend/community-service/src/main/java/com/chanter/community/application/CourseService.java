@@ -97,16 +97,15 @@ public class CourseService {
             int limit,
             int offset
     ) {
+        if (courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
+            int boundedLimit = Math.min(Math.max(limit, 1), MAX_COHORT_ENROLLMENT_PAGE_SIZE);
+            int boundedOffset = Math.max(offset, 0);
+            return courseRepository.listCohortEnrollments(cohortId, boundedLimit, boundedOffset);
+        }
         if (!courseRepository.cohortExists(cohortId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
         }
-        if (!courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can view enrollments");
-        }
-
-        int boundedLimit = Math.min(Math.max(limit, 1), MAX_COHORT_ENROLLMENT_PAGE_SIZE);
-        int boundedOffset = Math.max(offset, 0);
-        return courseRepository.listCohortEnrollments(cohortId, boundedLimit, boundedOffset);
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can view enrollments");
     }
 
     public Optional<CourseChannel> findAccessibleChannel(UUID channelId, UUID viewerUserId) {

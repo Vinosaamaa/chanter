@@ -47,7 +47,7 @@ export function SignInPage() {
           ? await login({ email, password })
           : await register({ email, password, displayName })
       setSession(session)
-      await completePendingCohortJoin(joinCohort)
+      void completePendingCohortJoin(joinCohort)
       navigate(redirectTo, { replace: true })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to authenticate')

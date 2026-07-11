@@ -141,7 +141,7 @@ public class JdbcCourseRepository implements CourseRepository {
                 ))
                 .list();
 
-        return new CohortEnrollmentList(enrollments, totalCount);
+        return new CohortEnrollmentList(enrollments, totalCount, limit, offset);
     }
 
     @Override

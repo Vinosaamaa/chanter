@@ -81,8 +81,8 @@ public class CourseController {
         return new CohortEnrollmentListResponse(
                 page.enrollments().stream().map(CohortEnrollmentResponse::from).toList(),
                 page.totalCount(),
-                Math.min(Math.max(limit, 1), CourseService.MAX_COHORT_ENROLLMENT_PAGE_SIZE),
-                Math.max(offset, 0)
+                page.limit(),
+                page.offset()
         );
     }
 
