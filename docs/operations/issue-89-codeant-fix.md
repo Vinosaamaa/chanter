@@ -83,3 +83,8 @@
 - **Fix:** synchronous `rememberCohortInviteFromSearch` on render; invite banner when URL has cohort params.
 - **Finding:** `CohortInviteRedirect` coordinated multiple booleans.
 - **Fix:** single `InviteRedirectStatus` enum (`joining` | `failed` | `ready`).
+
+## Pass 8 (invite storage effect ordering)
+
+- **Finding:** sync `rememberCohortInviteFromSearch` during `SignInPage` render is a render-path side effect.
+- **Fix:** `CohortInviteRedirect` persists invite in `useLayoutEffect` keyed to `search` before join `useEffect` runs; `SignInPage` passes `location.search`.

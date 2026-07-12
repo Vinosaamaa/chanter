@@ -1,19 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
-import { completePendingCohortJoin } from '../../onboarding/cohort-invite'
+import { completePendingCohortJoin, rememberCohortInviteFromSearch } from '../../onboarding/cohort-invite'
 import { joinCohort } from '../../onboarding/onboarding-api'
 
 type CohortInviteRedirectProps = {
   to: string
+  search?: string
 }
 
 type InviteRedirectStatus = 'joining' | 'failed' | 'ready'
 
-export function CohortInviteRedirect({ to }: CohortInviteRedirectProps) {
+export function CohortInviteRedirect({ to, search = '' }: CohortInviteRedirectProps) {
   const [status, setStatus] = useState<InviteRedirectStatus>('joining')
   const [retryKey, setRetryKey] = useState(0)
+
+  useLayoutEffect(() => {
+    rememberCohortInviteFromSearch(search)
+  }, [search])
 
   useEffect(() => {
     let cancelled = false
@@ -26,7 +31,7 @@ export function CohortInviteRedirect({ to }: CohortInviteRedirectProps) {
     return () => {
       cancelled = true
     }
-  }, [retryKey])
+  }, [retryKey, search])
 
   const onRetry = () => {
     setStatus('joining')

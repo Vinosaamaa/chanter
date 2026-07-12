@@ -8,7 +8,6 @@ import { login, register } from '../auth-api'
 import { useAuthStore } from '../../../stores/auth-store'
 import {
   readCohortInviteParams,
-  rememberCohortInviteFromSearch,
 } from '../../onboarding/cohort-invite'
 
 type AuthMode = 'sign-in' | 'register'
@@ -26,11 +25,10 @@ export function SignInPage() {
   const [sessionReady, setSessionReady] = useState(false)
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app'
-  rememberCohortInviteFromSearch(location.search)
   const inviteFromUrl = readCohortInviteParams(location.search)
 
   if (accessToken || sessionReady) {
-    return <CohortInviteRedirect to={redirectTo} />
+    return <CohortInviteRedirect to={redirectTo} search={location.search} />
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
