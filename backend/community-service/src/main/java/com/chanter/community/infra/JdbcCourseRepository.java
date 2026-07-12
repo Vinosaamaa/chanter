@@ -121,43 +121,64 @@ public class JdbcCourseRepository implements CourseRepository {
             int offset,
             String learnerSearch
     ) {
-        String searchPattern = learnerSearch == null ? null : "%" + learnerSearch + "%";
+        boolean hasLearnerSearch = learnerSearch != null;
+        String searchPattern = hasLearnerSearch ? "%" + learnerSearch + "%" : null;
 
-        int totalCount = jdbcClient.sql("""
+        int totalCount = hasLearnerSearch
+                ? jdbcClient.sql("""
                         SELECT COUNT(*)
                         FROM cohort_enrollments
                         WHERE cohort_id = :cohortId
-                        AND (
-                            :searchPattern IS NULL
-                            OR LOWER(CAST(learner_user_id AS TEXT)) LIKE :searchPattern
-                        )
+                        AND LOWER(CAST(learner_user_id AS TEXT)) LIKE :searchPattern
                         """)
-                .param("cohortId", cohortId)
-                .param("searchPattern", searchPattern)
-                .query(Integer.class)
-                .single();
+                        .param("cohortId", cohortId)
+                        .param("searchPattern", searchPattern)
+                        .query(Integer.class)
+                        .single()
+                : jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM cohort_enrollments
+                        WHERE cohort_id = :cohortId
+                        """)
+                        .param("cohortId", cohortId)
+                        .query(Integer.class)
+                        .single();
 
-        List<CohortEnrollment> enrollments = jdbcClient.sql("""
+        List<CohortEnrollment> enrollments = hasLearnerSearch
+                ? jdbcClient.sql("""
                         SELECT learner_user_id, enrolled_by_user_id, enrolled_at
                         FROM cohort_enrollments
                         WHERE cohort_id = :cohortId
-                        AND (
-                            :searchPattern IS NULL
-                            OR LOWER(CAST(learner_user_id AS TEXT)) LIKE :searchPattern
-                        )
+                        AND LOWER(CAST(learner_user_id AS TEXT)) LIKE :searchPattern
                         ORDER BY enrolled_at DESC, learner_user_id ASC
                         LIMIT :limit OFFSET :offset
                         """)
-                .param("cohortId", cohortId)
-                .param("searchPattern", searchPattern)
-                .param("limit", limit)
-                .param("offset", offset)
-                .query((rs, rowNum) -> new CohortEnrollment(
-                        rs.getObject("learner_user_id", UUID.class),
-                        rs.getObject("enrolled_by_user_id", UUID.class),
-                        rs.getObject("enrolled_at", OffsetDateTime.class).toInstant()
-                ))
-                .list();
+                        .param("cohortId", cohortId)
+                        .param("searchPattern", searchPattern)
+                        .param("limit", limit)
+                        .param("offset", offset)
+                        .query((rs, rowNum) -> new CohortEnrollment(
+                                rs.getObject("learner_user_id", UUID.class),
+                                rs.getObject("enrolled_by_user_id", UUID.class),
+                                rs.getObject("enrolled_at", OffsetDateTime.class).toInstant()
+                        ))
+                        .list()
+                : jdbcClient.sql("""
+                        SELECT learner_user_id, enrolled_by_user_id, enrolled_at
+                        FROM cohort_enrollments
+                        WHERE cohort_id = :cohortId
+                        ORDER BY enrolled_at DESC, learner_user_id ASC
+                        LIMIT :limit OFFSET :offset
+                        """)
+                        .param("cohortId", cohortId)
+                        .param("limit", limit)
+                        .param("offset", offset)
+                        .query((rs, rowNum) -> new CohortEnrollment(
+                                rs.getObject("learner_user_id", UUID.class),
+                                rs.getObject("enrolled_by_user_id", UUID.class),
+                                rs.getObject("enrolled_at", OffsetDateTime.class).toInstant()
+                        ))
+                        .list();
 
         return new CohortEnrollmentList(enrollments, totalCount, limit, offset);
     }
