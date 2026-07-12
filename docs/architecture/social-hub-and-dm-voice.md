@@ -18,7 +18,7 @@ The product direction is a familiar social surface:
 
 Education deployments still treat Course Channels, Support Questions, TA Queue, and Office Hours as the primary learning-support paths. Social messaging remains platform-wide and separate from course workflows.
 
-**Visibility model:** the Friends list and DMs are **global**; course channels and cohort rosters are **enrollment-scoped** (learners see only **My courses** in the server sidebar). Friend requests should require **co-membership** in at least one Study Server. See [`docs/product-design/visibility-and-social-model.md`](../product-design/visibility-and-social-model.md).
+**Visibility model:** the Friends list and DMs are **global**; course workspace and cohort rosters are **enrollment-scoped** (learners see only their courses in the sidebar). Friend requests should require **co-membership** in at least one Study Server. See [`docs/product-design/visibility-and-social-model.md`](../product-design/visibility-and-social-model.md) and v2 UI shell [`DESIGN-DECISIONS.md`](../product-design/DESIGN-DECISIONS.md).
 
 ## What Exists Today (#15 MVP slice)
 

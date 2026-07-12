@@ -1,94 +1,47 @@
-# UI mockup gallery
+# UI mockups — learner & owner flows
 
-Concept screens for the Chanter Education MVP and later phases. All are **browser web app** UI — dark theme, indigo accents, Discord-familiar layout.
+Canonical PNG gallery for the **course-first** redesign (2026-07).
 
-Generated: 2026-06-17. Replace PNGs here when designs evolve; keep filenames stable so links in `vision.md` keep working.
+**Design:** [#114](https://github.com/Vinosaamaa/chanter/issues/114) (closed). **Implementation:** [`ui-v2-issue-breakdown.md`](../../issues/ui-v2-issue-breakdown.md) — epic [#115](https://github.com/Vinosaamaa/chanter/issues/115), start [#116](https://github.com/Vinosaamaa/chanter/issues/116).
 
-## Onboarding and navigation
+## Start here (agents)
 
-| Mockup | Slice | Description |
-|---|---|---|
-| [landing-page.png](landing-page.png) | Marketing | Public homepage for educators |
-| [sign-in-onboarding.png](sign-in-onboarding.png) | #30 | Sign in, SSO, invite link, cohort join |
-| [create-study-server.png](create-study-server.png) | #12 | Owner creates Study Server + default channels |
-| [study-server-home.png](study-server-home.png) | #12–#13 | Server picker and course cards |
+| Doc | Purpose |
+|-----|---------|
+| **[`../DESIGN-DECISIONS.md`](../DESIGN-DECISIONS.md)** | **Canonical decision record** — shell, tabs, roles, onboarding |
+| [`../specs/layout-rules.md`](../specs/layout-rules.md) | Mockup generation rules |
+| [`learner-flow/`](learner-flow/) | Learner journey PNGs + index |
+| [`owner-flow/`](owner-flow/) | Owner / instructor PNGs (O1–O10) + index |
 
-## Core Study Server shell
+## Folders
 
-| Mockup | Slice | Description |
-|---|---|---|
-| [app-shell.png](app-shell.png) | #12–#16 | Channels, chat, AI + queue context panel |
-| [global-search.png](global-search.png) | #17+ | Search resources, FAQs, messages (enrollment-scoped) |
+| Folder | Audience |
+|--------|----------|
+| [`learner-flow/`](learner-flow/) | Students / enrolled learners — journeys 1–7, community 5a–5e |
+| [`owner-flow/`](owner-flow/) | Study server owners & instructors — O1–O10 |
 
-## Course channels
+Component spec sheets: [`../specs/`](../specs/).
 
-| Mockup | Slice | Description |
-|---|---|---|
-| [ai-support-question.png](ai-support-question.png) | #16–#19 | `#questions` — Support Question + AI citations |
-| [course-resources.png](course-resources.png) | #17 | `#resources` — uploads, folders, AI-approved badge |
+## Design direction (locked)
 
-## Learning support operations
+### Shell (learner + owner)
 
-| Mockup | Slice | Description |
-|---|---|---|
-| [ta-queue.png](ta-queue.png) | #21 | Cohort TA async queue — pick up, resolve |
-| [office-hours-voice.png](office-hours-voice.png) | #22 | Scheduled live voice window + waiting queue |
-| [faq-approval.png](faq-approval.png) | #20 | Instructor approves repeated questions as FAQs |
-| [channel-summary.png](channel-summary.png) | #7 | Weekly AI digest of channel activity |
+- **Sidebar:** Home · **[Teaching]** (instructor/owner) · Inbox · Calendar · Friends + server-grouped course list + `+ Join or create`
+- **Top bar:** breadcrumb · search (**⌘F**, context-scoped) · one bell — **no avatar**
+- **Profile:** flush bottom of sidebar; Settings = Discord-style modal
 
-## Instructor and admin
+### Course workspace
 
-| Mockup | Slice | Description |
-|---|---|---|
-| [instructor-dashboard.png](instructor-dashboard.png) | #23 | Unanswered Qs, queue load, AI usage, top topics |
-| [cohort-enrollment.png](cohort-enrollment.png) | #13 | Enroll learners, assign TAs, channel access |
-| [ai-assistant-install.png](ai-assistant-install.png) | #18 | HITL grant review before installing assistant |
-| [saas-billing.png](saas-billing.png) | #24 | Plan tier, AI quota, usage meters |
+`Overview · Chat · Questions · Resources · Office Hours · People`
 
-## Social (platform-wide)
+### Community hub
 
-| Mockup | Slice | Description |
-|---|---|---|
-| [friends-hub-dm.png](friends-hub-dm.png) | #31 | Friends list, online presence, DM conversation |
-| [friend-requests.png](friend-requests.png) | #15–#31 | Pending requests — accept / decline / block |
+`Announcements · Lounge · Events · Discover courses · Members`
 
-## Later phases (post-MVP)
+### Search
 
-| Mockup | Phase | Description |
-|---|---|---|
-| [course-storefront.png](course-storefront.png) | Commerce | Sell courses inside a Study Server |
+Route-scoped top-bar search; **⌘F** focuses. **No** global ⌘K overlay.
 
-## Full gallery (preview)
+## Legacy note
 
-### Onboarding
-![Landing page](landing-page.png)
-![Sign in](sign-in-onboarding.png)
-![Create Study Server](create-study-server.png)
-![Study Server home](study-server-home.png)
-
-### Core app
-![App shell](app-shell.png)
-![Global search](global-search.png)
-
-### Course work
-![AI support question](ai-support-question.png)
-![Course resources](course-resources.png)
-
-### Operations
-![TA queue](ta-queue.png)
-![Office hours](office-hours-voice.png)
-![FAQ approval](faq-approval.png)
-![Channel summary](channel-summary.png)
-
-### Instructor
-![Instructor dashboard](instructor-dashboard.png)
-![Cohort enrollment](cohort-enrollment.png)
-![AI assistant install](ai-assistant-install.png)
-![SaaS billing](saas-billing.png)
-
-### Social
-![Friends hub](friends-hub-dm.png)
-![Friend requests](friend-requests.png)
-
-### Later
-![Course storefront](course-storefront.png)
+The flat 2026-06 PNG gallery in this folder root was retired July 2026. All screens now live in `learner-flow/` and `owner-flow/`.

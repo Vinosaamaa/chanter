@@ -117,8 +117,12 @@ A private 1:1 voice conversation between two friends, initiated from the Friends
 _Avoid_: Phone call, meeting, Voice Channel
 
 **Instructor Dashboard**:
-An Instructor-facing view of actionable learning operations for a Study Server or Course: unanswered Support Questions, repeated questions, Approved FAQs, Office Hours and TA Queue load, engagement signals, and AI Study Assistant usage.
+Cross-course ops view for instructors and owners — opened from **Teaching** nav in the v2 shell. Surfaces unanswered Support Questions, TA queue load, upcoming Office Hours, FAQ candidate counts, and links into course workspace tabs. Replaces the legacy standalone dashboard mockup. TAs do not get Teaching nav; they work in the course **Questions** tab only.
 _Avoid_: Analytics page, admin panel, reports
+
+**Teaching** (nav item):
+Sidebar entry between Home and Inbox, visible when the user has instructor or owner role on any study server. Opens the Instructor Dashboard. Not shown to learners or TA-only users.
+_Avoid_: Admin mode, instructor portal
 
 **SaaS Plan**:
 The subscription tier attached to a Study Server. The Study Server Owner pays for the plan, which controls limits such as AI usage, resource capacity, and advanced dashboard access.
@@ -137,6 +141,7 @@ _Avoid_: Workspace, tenant, account
 | Doc | Role |
 |---|---|
 | [`docs/product-design/README.md`](docs/product-design/README.md) | Product showcase index — mockups, vision, journeys |
+| [**`docs/product-design/DESIGN-DECISIONS.md`**](docs/product-design/DESIGN-DECISIONS.md) | **v2 UI decisions** — course-first shell, tabs, roles (agents read first) |
 | [`docs/product-design/visibility-and-social-model.md`](docs/product-design/visibility-and-social-model.md) | Global friends vs enrollment-scoped course sidebar |
 | [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Requirements and user stories |
 | [`plan.md`](../plan.md) | Implementation milestones and frontend direction |

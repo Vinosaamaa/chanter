@@ -2,13 +2,36 @@
 
 This document describes the **finished Education MVP product** — the experience educators and learners should have once vertical slices #12–#24 ship. It complements the [Education MVP PRD](../product/education-mvp-prd.md) with screens, navigation, and user stories.
 
-Last updated: 2026-06-17
+Last updated: 2026-07-12
+
+## UI redesign v2 (course-first shell) — current target
+
+**Status:** Learner + owner mockups complete ([#114](https://github.com/Vinosaamaa/chanter/issues/114), closed). Implement via epic [#115](https://github.com/Vinosaamaa/chanter/issues/115) against [`DESIGN-DECISIONS.md`](DESIGN-DECISIONS.md).
+
+| Doc | Role |
+|-----|------|
+| **[`DESIGN-DECISIONS.md`](DESIGN-DECISIONS.md)** | **Canonical v2 decisions** — agents read this first |
+| [`mockups/learner-flow/`](mockups/learner-flow/) | Signed-off learner PNGs |
+| [`specs/`](specs/) | Component specs + `layout-rules.md` |
+
+**What changed from the 2026-06 gallery below:**
+
+- **Course-first navigation** — sidebar lists courses; workspace uses **tabs** (Overview · Chat · Questions · Resources · Office Hours · People), not a nested `#channel` tree.
+- **One shell for everyone** — learners, instructors, TAs, and owners share the same chrome; **Teaching** nav and in-tab actions are role-gated.
+- **Community hub** — separate from course workspace: Announcements · Lounge · Events · Discover courses · Members.
+- **Search** — route-scoped top-bar field, **⌘F** to focus (not Discord server-wide); optional scope preview in course workspace.
+- **Settings** — Discord-style modal from sidebar profile; billing under Study server settings.
+- **Enrollment** — course **People** tab, not a separate LMS page.
+
+The PNG gallery in [`mockups/`](mockups/) below is **legacy (2026-06)** — kept for issue traceability until v2 exports replace those files. **Implement against v2**, not the four-column channel tree in `app-shell.png`.
+
+---
 
 ## Visibility and social model
 
 Chanter separates **global social** (friends, DMs) from **enrollment-scoped learning** (courses, `#questions`, TA queue). Learners see **only their courses** in the Study Server sidebar — not every course on the server — while Friends Hub stays one global list.
 
-Full decision record: **[visibility-and-social-model.md](visibility-and-social-model.md)** (sidebar rules, co-membership guardrail for friend requests, cross-course vs cross-server behavior).
+Full decision record: **[visibility-and-social-model.md](visibility-and-social-model.md)** (sidebar rules, co-membership guardrail for friend requests, cross-course vs cross-server behavior). **v2 UI shell:** [`DESIGN-DECISIONS.md`](DESIGN-DECISIONS.md).
 
 ## Platform: website first, not a desktop app
 
@@ -38,7 +61,7 @@ Chanter is not a generic Discord clone. It sells to **educators** (bootcamps, co
 
 ### Marketing home (public)
 
-![Chanter landing page concept](mockups/landing-page.png)
+![Sign up and invite](mockups/learner-flow/journey-1-signup-invite.png)
 
 **Visitor path:** hero value prop → feature bands → pricing → **Create Study Server** or **Sign in**.
 
@@ -46,9 +69,11 @@ Chanter is not a generic Discord clone. It sells to **educators** (bootcamps, co
 
 ### Study Server shell (signed-in core app)
 
-![Chanter app shell concept](mockups/app-shell.png)
+> **v2 (current):** Course-first shell — Home · Inbox · Calendar · Friends + server-grouped course list. Course workspace = tab strip (Overview · Chat · Questions · Resources · Office Hours · People). See [`mockups/learner-flow/journey-4b-course-chat.png`](mockups/learner-flow/journey-4b-course-chat.png) and [`DESIGN-DECISIONS.md`](DESIGN-DECISIONS.md).
 
-**Layout (four columns):**
+![Course workspace — Chat](mockups/learner-flow/journey-4b-course-chat.png)
+
+**Legacy layout (2026-06 — superseded for new UI):**
 
 | Col 1 | Col 2 — channels | Col 3 — conversation | Col 4 — context |
 |---|---|---|---|
@@ -61,7 +86,7 @@ Chanter is not a generic Discord clone. It sells to **educators** (bootcamps, co
 
 ### Friends hub & direct messages
 
-![Friends hub and DM chat concept](mockups/friends-hub-dm.png)
+![Friends hub and DM](mockups/learner-flow/journey-7-friends-dm.png)
 
 Opened from the **Friends** icon in the Study Server shell (or a global top bar). This is the **social plane** — platform-wide, separate from course Support Questions and TA Queue.
 
@@ -83,101 +108,103 @@ Opened from the **Friends** icon in the Study Server shell (or a global top bar)
 
 ### Sign in and onboarding
 
-![Sign in](mockups/sign-in-onboarding.png)
+![Sign in](mockups/learner-flow/journey-1-signup-invite.png)
 
 Global account, email/SSO (#30), invite links, and cohort enrollment paths.
 
 ### Study Server home
 
-![Study Server home](mockups/study-server-home.png)
+![Home dashboard](mockups/learner-flow/journey-3-home.png)
 
 Server picker after auth — courses per Study Server, **Create Study Server** for owners.
 
 ### Create Study Server
 
-![Create Study Server](mockups/create-study-server.png)
+![Create Study Server](mockups/owner-flow/owner-o1-create-study-server-wizard.png)
 
 Owner onboarding wizard — name, icon, default channels (`#announcements`, `#general`, `> study-room`).
 
 ### `#questions` with AI citations
 
-![AI support question](mockups/ai-support-question.png)
+![AI support question](mockups/learner-flow/journey-4c-course-questions.png)
 
 Learner Support Question → **AI Study Assistant** answer with source cards → **Add to TA Queue** when confidence is low (#16–#19).
 
 ### `#resources`
 
-![Course resources](mockups/course-resources.png)
+![Course resources](mockups/learner-flow/journey-4d-course-resources.png)
 
 Instructor uploads, folder structure, **approved for AI** badges, learner download/search (#17).
 
 ### TA Queue
 
-![TA queue](mockups/ta-queue.png)
+![TA queue and FAQ](mockups/owner-flow/owner-o5-questions-faq-ta-queue.png)
 
 Cohort-scoped async queue — TAs pick up items routed from low-confidence AI or learner request (#21).
 
 ### Office Hours
 
-![Office hours](mockups/office-hours-voice.png)
+![Office hours](mockups/learner-flow/journey-4e-course-office-hours.png)
 
 Scheduled live voice window per cohort; waiting queue alongside participant grid (#22).
 
 ### FAQ approval
 
-![FAQ approval](mockups/faq-approval.png)
+![FAQ and TA queue (instructor)](mockups/owner-flow/owner-o5-questions-faq-ta-queue.png)
 
 Instructor reviews **FAQ candidates** from repeated Support Questions; approved FAQs feed search and AI (#20).
 
 ### Channel summary
 
-![Channel summary](mockups/channel-summary.png)
+![Course overview](mockups/learner-flow/journey-4a-course-overview.png)
 
 Weekly AI digest of `#questions` activity — top topics, follow-ups, export (#7 epic).
 
 ### Instructor dashboard
 
-![Instructor dashboard](mockups/instructor-dashboard.png)
+![Teaching dashboard](mockups/owner-flow/owner-o8-teaching-dashboard.png)
 
 Buyer-facing ops view — unanswered questions, repeated topics, queue load, Office Hours, AI quota (#23).
 
 ### Cohort enrollment
 
-![Cohort enrollment](mockups/cohort-enrollment.png)
+![People — enroll and TA assign](mockups/owner-flow/owner-o7a-people-roster-default.png)
 
 Instructor enrolls learners, assigns TAs, previews channel access (#13).
 
 ### Install AI Study Assistant
 
-![AI assistant install](mockups/ai-assistant-install.png)
+![Install AI Study Assistant](mockups/owner-flow/owner-o4-resources-upload-ai-install.png)
 
 Human-in-the-loop grant review — channels, courses, cohorts, resources before install (#18).
 
 ### SaaS billing and quotas
 
-![SaaS billing](mockups/saas-billing.png)
+![Plan and Billing](mockups/owner-flow/owner-o9-settings-plan-billing.png)
 
 Study Server Owner plan tier, AI usage meters, quota warnings (#24).
 
 ### Global search
 
-![Global search](mockups/global-search.png)
+> **v2:** No full-screen ⌘K overlay. **Route-scoped** top-bar search — scope follows navigation; **⌘F** focuses only (not Discord’s channel-lock). Optional scope preview in course tabs. See [`DESIGN-DECISIONS.md` §2.3](DESIGN-DECISIONS.md).
 
-Search across resources, Approved FAQs, and messages — enrollment-scoped (#17+).
+_Route-scoped search (⌘F) — no full-screen overlay mockup; see [`DESIGN-DECISIONS.md` §2.3](DESIGN-DECISIONS.md)._
+
+**Legacy concept (2026-06):** enrollment-scoped search across resources, Approved FAQs, and messages (#17+).
 
 ### Friend requests
 
-![Friend requests](mockups/friend-requests.png)
+![Friends and DMs](mockups/learner-flow/journey-7-friends-dm.png)
 
 Pending inbox — accept, decline, block — separate from the DM conversation panel (#15, #31).
 
 ### Course storefront (later phase)
 
-![Course storefront](mockups/course-storefront.png)
+_Post-MVP — no mockup yet._
 
 Post-MVP: sell courses inside a Study Server; purchase unlocks cohort enrollment.
 
-> Full visual catalog: [mockups/README.md](mockups/README.md)
+> Full visual catalog: [mockups/README.md](mockups/README.md) · learner [`mockups/learner-flow/`](mockups/learner-flow/) · owner [`mockups/owner-flow/`](mockups/owner-flow/)
 
 ### Full click-flow map
 
@@ -187,7 +214,9 @@ Editable source: [`user-journey.drawio`](diagrams/user-journey.drawio)
 
 ## Navigation and user stories
 
-### Top-level journey
+> **v2 (current):** After sign-in, learners land on **Home** (`journey-3-home`). Sidebar lists enrolled courses under server groups. Clicking a course opens the **workspace tabs** (Overview · Chat · Questions · Resources · Office Hours · People). Community hub = Announcements · Lounge · Events · Discover courses · Members. See [`DESIGN-DECISIONS.md`](DESIGN-DECISIONS.md).
+
+### Top-level journey (legacy 2026-06 gallery)
 
 ```
 Marketing home → Sign in → Study Server home → Study Server shell
@@ -278,7 +307,7 @@ Access is scoped by **Cohort Enrollment** and role (Owner, Instructor, TA, Learn
 
 **Active:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) (#48–#59). **Next:** [Workable Product](https://github.com/users/Vinosaamaa/projects/4) (#60–#63, #31–#32). Agent order: [`docs/operations/agent-workflow.md`](../operations/agent-workflow.md).
 
-Today's `frontend/src/App.tsx` is a **vertical-slice demo** (forms and buttons proving APIs). The mockups in `mockups/` show the **production shell** implemented in Production Frontend slices #48–#59.
+Today's `frontend/src/App.tsx` is a **vertical-slice demo** (forms and buttons proving APIs). The **target production shell** is the v2 course-first design in [`DESIGN-DECISIONS.md`](DESIGN-DECISIONS.md), implemented in Production Frontend slices #48–#59.
 
 ## Later phases (post-MVP)
 

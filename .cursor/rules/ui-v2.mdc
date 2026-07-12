@@ -1,0 +1,15 @@
+---
+description: UI v2 implementation — course-first shell mockups and DESIGN-DECISIONS
+globs: frontend/**/*
+alwaysApply: false
+---
+
+# UI v2 (course-first shell)
+
+When changing production UI under `frontend/`:
+
+1. **Read first:** `docs/product-design/DESIGN-DECISIONS.md`, then `docs/product-design/specs/layout-rules.md`.
+2. **Visual target:** PNGs in `docs/product-design/mockups/learner-flow/` and `docs/product-design/mockups/owner-flow/` for the active GitHub issue — not retired flat PNGs under `docs/product-design/mockups/` root.
+3. **Active phase:** UI v2 slices **#116–#128** ([`docs/issues/ui-v2-issue-breakdown.md`](../../docs/issues/ui-v2-issue-breakdown.md)). Legacy shell (#48–#59) is superseded for layout.
+4. **Shell rules:** Sidebar full-height; top bar only over right pane; profile in sidebar bottom; search ⌘F (not ⌘K); route-scoped search per DESIGN-DECISIONS §2.3.
+5. **One issue per branch** — see `docs/operations/agent-workflow.md`.

@@ -24,10 +24,11 @@ Important files:
 - `README.md`: current project overview and repository entry point.
 - `HANDOFF.md`: this file.
 - `CONTEXT.md`: canonical product glossary from the active `/grill-with-docs` session.
-- `docs/product-design/`: **product showcase for agents and stakeholders** — start at `README.md`; includes `vision.md`, `visibility-and-social-model.md`, 19 UI mockups in `mockups/`, user-journey diagram in `diagrams/`, and optional interactive tour in `interactive/`.
+- `docs/product-design/`: **product showcase for agents and stakeholders** — start at `README.md`; **v2 UI:** [`DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md) + approved PNGs in `mockups/learner-flow/` and `mockups/owner-flow/`; includes `vision.md`, `visibility-and-social-model.md`, legacy gallery in `mockups/`, user-journey diagram in `diagrams/`, and optional interactive tour in `interactive/`.
 - `docs/product/education-mvp-prd.md`: PRD for the education-focused Study Server MVP.
 - `docs/issues/education-mvp-issue-breakdown.md`: GitHub-ready epics and vertical-slice stories for the education MVP (**#11–#24, done**).
-- `docs/issues/production-frontend-issue-breakdown.md`: Production UI phase (**#47–#59**, project #3).
+- `docs/issues/production-frontend-issue-breakdown.md`: Legacy Production UI phase (**#47–#59**, project #3) — **superseded for layout**.
+- `docs/issues/ui-v2-issue-breakdown.md`: **UI v2 implementation** — course-first shell (**#115–#128**, milestone 7).
 - `docs/issues/workable-product-issue-breakdown.md`: Workable full-stack local app (**#60–#63**, #31–#32, project #4).
 - `docs/issues/public-launch-issue-breakdown.md`: Public Launch (**#82–#104**, project #5).
 - `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, completion loop, owner-only merge policy, **CodeAnt AI** PR review (cubic retired).
@@ -43,11 +44,13 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Public Launch — [project #5](https://github.com/users/Vinosaamaa/projects/5). Workable Product **#60–#63** and Production Frontend **#47–#59** are **complete**.
+**Active phase:** **UI v2 — course-first shell** — [milestone 7](https://github.com/Vinosaamaa/chanter/milestone/7), [project #5](https://github.com/users/Vinosaamaa/projects/5). Design [#114](https://github.com/Vinosaamaa/chanter/issues/114) **closed**; implementation epic [**#115**](https://github.com/Vinosaamaa/chanter/issues/115).
 
-**Active slice:** **#89** Study Server home, create server, and enrollment polish (P1) — in progress on `feature/89-study-server-enrollment-polish`.
+**Active slice:** **#116** v2 app shell foundation — **START HERE** on `feature/116-v2-app-shell`.
 
-**P0 order (approved):** #93 ✅ → #90 ✅ → #91 ✅ → #88 ✅, then P1 **#89** → #92.
+**Paused:** Public Launch legacy UI polish **#88–#93** until **#116** merges (polish targeted the old Discord-style shell). AI + launch slices **#94+** unchanged.
+
+**Agent read order for UI work:** `DESIGN-DECISIONS.md` → `specs/layout-rules.md` → issue mockup PNG(s) → `visibility-and-social-model.md`. Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
 
 **TDD policy:** Issues **#47–#55** were built test-last (manual/browser verification). **From #56 onward**, agents must follow vertical-slice TDD per `docs/operations/agent-workflow.md` § Test-driven development.
 
@@ -89,7 +92,30 @@ Workable Product (**active** — [project #4](https://github.com/users/Vinosaama
 | 5 | [**#32**](https://github.com/Vinosaamaa/chanter/issues/32) | DM voice — **merged** (PR #80) |
 | 6 | [**#63**](https://github.com/Vinosaamaa/chanter/issues/63) | E2E demo — **merged** (PR #81) |
 
-Production Frontend table retained above for history; milestone **complete**.
+Production Frontend table retained above for history; milestone **complete** (legacy shell — superseded by UI v2 **#115–#128**).
+
+### UI v2 — Course-first shell (active)
+
+**Goal:** Rebuild production frontend to match v2 mockups and [`DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).  
+**Breakdown:** [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md)  
+**Design parent:** [#114](https://github.com/Vinosaamaa/chanter/issues/114) (closed)
+
+| Order | Issue | Notes |
+|------:|-------|-------|
+| 1 | [#115](https://github.com/Vinosaamaa/chanter/issues/115) | Epic |
+| 2 | [**#116**](https://github.com/Vinosaamaa/chanter/issues/116) | **← START HERE** v2 app shell foundation |
+| 3 | [#117](https://github.com/Vinosaamaa/chanter/issues/117) | Auth and onboarding v2 |
+| 4 | [#118](https://github.com/Vinosaamaa/chanter/issues/118) | Home, Inbox, Calendar |
+| 5 | [#119](https://github.com/Vinosaamaa/chanter/issues/119) | Course workspace — Overview + Chat |
+| 6 | [#120](https://github.com/Vinosaamaa/chanter/issues/120) | Course workspace — Questions + AI |
+| 7 | [#121](https://github.com/Vinosaamaa/chanter/issues/121) | Course workspace — Resources |
+| 8 | [#122](https://github.com/Vinosaamaa/chanter/issues/122) | Course workspace — Office Hours |
+| 9 | [#123](https://github.com/Vinosaamaa/chanter/issues/123) | Course workspace — People |
+| 10 | [#124](https://github.com/Vinosaamaa/chanter/issues/124) | Community hub — five tabs |
+| 11 | [#125](https://github.com/Vinosaamaa/chanter/issues/125) | Teaching dashboard + billing |
+| 12 | [#126](https://github.com/Vinosaamaa/chanter/issues/126) | Friends + DM v2 chrome |
+| 13 | [#127](https://github.com/Vinosaamaa/chanter/issues/127) | Owner course/cohort + events |
+| 14 | [#128](https://github.com/Vinosaamaa/chanter/issues/128) | Landing and marketing v2 |
 
 **#30** ships in phase 2 with **#49** (project #3).
 
@@ -102,7 +128,7 @@ Frontend:
 - Use React + TypeScript + Vite.
 - Use React Router, TanStack Query, Zustand, and Tailwind/shadcn-style UI (**#48** landed the base stack).
 - Build a Discord-like learning community shell focused on Study Servers, course/module channels, resources, question workflows, office hours, instructor dashboards, and AI Study Assistant controls.
-- **Target product UI** (mockups, screen flows, platform delivery = browser web app): `docs/product-design/`. **Visibility:** global friends + enrollment-scoped **My courses** sidebar — `docs/product-design/visibility-and-social-model.md`. Legacy API demo: `/dev/demo`.
+- **Target product UI** (mockups, screen flows, platform delivery = browser web app): `docs/product-design/`. **v2 canonical:** `docs/product-design/DESIGN-DECISIONS.md`. **Visibility:** global friends + enrollment-scoped course sidebar — `docs/product-design/visibility-and-social-model.md`. Legacy API demo: `/dev/demo`.
 
 Backend:
 
@@ -200,7 +226,7 @@ Use these installed skills by name when relevant:
 
 Diagram workflow:
 
-- **Product UI** (mockups, user journeys): `docs/product-design/` — see `mockups/README.md` for the 19-screen gallery.
+- **Product UI** (mockups, user journeys): `docs/product-design/` — **v2:** `DESIGN-DECISIONS.md` + `mockups/learner-flow/` + `mockups/owner-flow/`; legacy gallery: `mockups/README.md`.
 - **Engineering architecture** (services, data flows): `docs/diagrams/*.drawio` referenced from `plan.md` and `System Design.md`.
 - PNG exports live beside draw.io sources as `*.drawio.png`, generated with embedded draw.io XML so they can be reopened for editing.
 - Use `/drawio-skill` for future polished architecture/sequence diagram revisions.
@@ -302,16 +328,17 @@ Pending:
 
 - Branch protection on `main` (optional, after owner enables)
 
-After Workable Product (#60–#63), build in **issue order** on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5):
+After UI v2 shell (**#116**), resume Public Launch on [project #5](https://github.com/users/Vinosaamaa/projects/5):
 
 1. **#86** Product stack reliability — **merged** (PR #105).
-2. **#87** mockup gap audit (HITL sign-off) → **#88–#93** UI polish.
-2. **#94–#100** Real AI / RAG / MCP.
-3. **#101–#104** Launch readiness.
+2. **#87** mockup gap audit — owner sign-off 2026-07-09.
+3. **#116–#128** UI v2 course-first shell (**active** — blocks legacy #88–#93 polish).
+4. **#94–#100** Real AI / RAG / MCP.
+5. **#101–#104** Launch readiness.
 
 See [`agent-workflow.md`](docs/operations/agent-workflow.md) § Phase 4.
 
-Target UX mockups: `docs/product-design/mockups/`. Social architecture: `docs/architecture/social-hub-and-dm-voice.md`.
+Target UX mockups: `docs/product-design/DESIGN-DECISIONS.md`. Social architecture: `docs/architecture/social-hub-and-dm-voice.md`.
 
 Recent operations documentation artifacts:
 
@@ -334,14 +361,14 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged on main.
-#90 Friend requests inbox merged. #91 AI Study Assistant install merged.
-#88 App shell polish merged. Active: issue #89 Study Server home / create / enrollment polish (branch `feature/89-study-server-enrollment-polish`).
+UI redesign #114 (mockups) is closed. Active phase: UI v2 implementation — epic #115, START at #116.
 
-Product UI: docs/product-design/README.md
+Product UI: docs/product-design/DESIGN-DECISIONS.md + mockups/learner-flow/ and owner-flow/
+Breakdown: docs/issues/ui-v2-issue-breakdown.md
 Do not merge PRs — owner merges only.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Issue: https://github.com/Vinosaamaa/chanter/issues/89
+Issue: https://github.com/Vinosaamaa/chanter/issues/116
 Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
 ```
@@ -349,7 +376,7 @@ Demo: docs/operations/workable-product-demo.md
 ## Notes For Future Agent
 
 - **Agent workflow:** read [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) before picking work; follow project board order on [#3](https://github.com/users/Vinosaamaa/projects/3) then [#4](https://github.com/users/Vinosaamaa/projects/4). **Agents never merge PRs.**
-- **Product showcase:** `docs/product-design/` has target UI mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** (global friends vs my-courses sidebar). Use it when implementing frontend routes or explaining scope to stakeholders. `frontend/src/App.tsx` is an API demo, not the final shell.
+- **Product showcase:** `docs/product-design/` has target UI mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** (global friends vs enrollment-scoped course sidebar). **Implement against v2:** `DESIGN-DECISIONS.md`. Use it when implementing frontend routes or explaining scope to stakeholders. `frontend/src/App.tsx` is an API demo, not the final shell.
 - **Engineering diagrams:** `docs/diagrams/` is for service architecture — do not put product mockups there.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
 - Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.

@@ -66,7 +66,7 @@ Identity direction:
 
 Supporting planning docs:
 
-- `docs/product-design/` — **product showcase**: target browser UI mockups, `vision.md`, `visibility-and-social-model.md`, user-journey diagram, interactive screen tour (`README.md` is the index)
+- `docs/product-design/` — **product showcase**: v2 course-first UI (`docs/product-design/DESIGN-DECISIONS.md`), `vision.md`, `visibility-and-social-model.md`, user-journey diagram, interactive screen tour (`README.md` is the index)
 - `docs/product/education-mvp-prd.md`
 - `docs/issues/education-mvp-issue-breakdown.md`
 - `CONTEXT.md` — canonical glossary
@@ -195,7 +195,7 @@ Key backend standards:
 
 Use React + TypeScript + Vite with React Router, TanStack Query, a lightweight state store such as Zustand, and a component library strategy we can choose during implementation.
 
-**Product UI reference (for agents and designers):** [`docs/product-design/README.md`](docs/product-design/README.md) — 19 concept mockups, screen flows, and `vision.md`. **Visibility:** global Friends Hub + enrollment-scoped **My courses** sidebar — [`visibility-and-social-model.md`](docs/product-design/visibility-and-social-model.md). Delivery is a **browser web app** (not a native desktop app for MVP). The running `frontend/` code is still a vertical-slice API demo until Milestone 3 realtime shell lands.
+**Product UI reference (for agents and designers):** [`docs/product-design/docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/docs/product-design/DESIGN-DECISIONS.md) — canonical v2 shell, tabs, roles. Also [`docs/product-design/README.md`](docs/product-design/README.md) and `vision.md`. **Visibility:** global Friends Hub + enrollment-scoped course sidebar — [`visibility-and-social-model.md`](docs/product-design/visibility-and-social-model.md). Delivery is a **browser web app** (not a native desktop app for MVP). The running `frontend/` code is still a vertical-slice API demo until Milestone 3 realtime shell lands.
 
 Core frontend areas:
 
@@ -502,7 +502,7 @@ Milestone 9: Hardening
 
 Backend MVP **#11–#24** is merged on `main`. **Active work:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — start at **[issue #48](https://github.com/Vinosaamaa/chanter/issues/48)**.
 
-Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for mandatory issue order. For UI intent, align with `docs/product-design/mockups/` and the slice rows in `docs/issues/production-frontend-issue-breakdown.md`. Use TDD and issue-scoped change logs in `docs/operations/`.
+Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for mandatory issue order. For UI intent, align with `docs/product-design/docs/product-design/DESIGN-DECISIONS.md` and the slice rows in `docs/issues/production-frontend-issue-breakdown.md`. Use TDD and issue-scoped change logs in `docs/operations/`.
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

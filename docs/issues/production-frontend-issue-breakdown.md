@@ -1,6 +1,8 @@
 # Chanter Production Frontend Issue Breakdown
 
-> **Context:** Education MVP backend vertical slices **#11–#24** are merged. APIs exist; `frontend/src/App.tsx` is still a vertical-slice demo. This breakdown tracks the **production UI phase** that matches [`docs/product-design/mockups/`](../product-design/mockups/README.md).
+> **⚠️ Superseded for layout (2026-07):** New UI work uses the **course-first shell** — epic [**#115**](https://github.com/Vinosaamaa/chanter/issues/115), slices **#116–#128**. See [`ui-v2-issue-breakdown.md`](ui-v2-issue-breakdown.md). This doc is **historical** for #47–#59.
+>
+> **Context:** Education MVP backend vertical slices **#11–#24** are merged. APIs exist; `frontend/src/App.tsx` is still a vertical-slice demo. This breakdown tracked the **legacy production UI phase** (Discord-style channel tree) that matched the retired flat mockup gallery.
 >
 > **PRD addendum:** [`docs/product/education-mvp-prd.md`](../product/education-mvp-prd.md) — *Phase 2: Production Frontend* section.
 

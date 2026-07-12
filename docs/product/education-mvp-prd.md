@@ -1,6 +1,6 @@
 # Chanter Education MVP PRD
 
-> **Product showcase:** screens, mockups, and click-flow diagrams live in [`docs/product-design/`](../product-design/README.md).  
+> **Product showcase:** screens, mockups, and click-flow diagrams live in [`docs/product-design/`](../product-design/README.md). **v2 UI (current):** [`DESIGN-DECISIONS.md`](../product-design/DESIGN-DECISIONS.md).
 > **Visibility model:** global friends + per-user course sidebar — [`visibility-and-social-model.md`](../product-design/visibility-and-social-model.md).
 
 ## Problem Statement
@@ -188,7 +188,7 @@ Domain language is canonical in `CONTEXT.md`. Grill session decisions are logged
 
 ## Phase 2: Production Frontend (post–backend MVP)
 
-**Status (2026-06):** Vertical slices **#11–#24** delivered backend APIs and a single-file demo UI (`frontend/src/App.tsx`). The **buyer-facing product** — matching [`docs/product-design/mockups/`](../product-design/mockups/README.md) — is a separate delivery phase tracked as **[Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3)**.
+**Status (2026-06):** Vertical slices **#11–#24** delivered backend APIs and a single-file demo UI (`frontend/src/App.tsx`). The **buyer-facing product** — matching [`docs/product-design/mockups/`](../product-design/DESIGN-DECISIONS.md) (course-first v2 shell; legacy gallery in `mockups/`) — is a separate delivery phase tracked as **[Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3)**.
 
 ### Problem
 
@@ -201,7 +201,7 @@ Build the production React shell (React Router, TanStack Query, design system) a
 ### Phase 2 user stories (additive)
 
 44. As a user, I want to sign in through a proper auth screen, so that I do not paste user IDs into demo forms.
-45. As a learner, I want the Study Server app shell with enrollment-scoped **My courses** in the sidebar, so that navigation matches the product mockups.
+45. As a learner, I want the course-first app shell with enrollment-scoped **my courses** in the sidebar and workspace tabs (Overview · Chat · Questions · Resources · Office Hours · People), so that navigation matches the v2 product mockups.
 46. As a learner, I want live message delivery in Course Channels, so that `#questions` feels like Discord rather than a form POST.
 47. As a learner, I want Support Questions and AI answers rendered in the conversation with citation cards, so that I trust grounded responses.
 48. As an Instructor, I want TA Queue, Office Hours, and FAQ approval as dedicated screens, so that support operations are usable without the dev demo panel.
