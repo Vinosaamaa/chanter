@@ -54,3 +54,17 @@
 - **Fix:** visible “Search learners” label on enrollment page.
 - **Finding:** extra DB round-trip for instructor auth pre-check.
 - **Fix:** check `cohortHasInstructor` first; existence fallback only on forbidden path.
+
+## Pass 5 (`4f8e85d`)
+
+- **Finding:** PostgreSQL `NULL` search parameter typing broke enrollment list on real Postgres.
+- **Fix:** split list query into search vs no-search SQL paths in `JdbcCourseRepository`.
+- **Finding:** empty channel/context panels on `/app` picker with no `serverId`.
+- **Fix:** render shell side panels only when `serverId` is present in `AppShellLayout`.
+
+## Pass 6 (CodeAnt re-scan hardening)
+
+- Added `cohort-invite.test.ts` covering invite param parsing, post-login storage, transient-only retry.
+- Added `joinCohort` path-encoding test and backend smoke tests for invalid invite + server-side search.
+- Hardened wizard submit with synchronous `useRef` guard; improved course badge text shadow for contrast.
+- Prior pass 4 fixes remain in place for all 17 reported gate findings; this pass adds explicit test coverage.

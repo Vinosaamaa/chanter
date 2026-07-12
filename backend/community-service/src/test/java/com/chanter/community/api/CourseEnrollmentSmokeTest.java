@@ -220,6 +220,81 @@ class CourseEnrollmentSmokeTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void joinCohortRejectsInvalidInviteCode() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+
+        MvcResult courseResult = mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/courses", studyServer.id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "Algorithms",
+                                "cohortName", "Fall 2026"
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        CourseResponse course = objectMapper.readValue(
+                courseResult.getResponse().getContentAsString(),
+                CourseResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/join", course.cohort().id())
+                        .with(asUser(learnerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "inviteCode", UUID.randomUUID().toString()
+                        ))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listCohortEnrollmentsSupportsServerSideSearch() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+
+        MvcResult courseResult = mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/courses", studyServer.id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "Databases",
+                                "cohortName", "Winter 2026"
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        CourseResponse course = objectMapper.readValue(
+                courseResult.getResponse().getContentAsString(),
+                CourseResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "learnerUserId", learnerUserId.toString()
+                        ))))
+                .andExpect(status().isCreated());
+
+        MvcResult searchResult = mockMvc.perform(get(
+                        "/api/v1/cohorts/{cohortId}/enrollments?search={search}",
+                        course.cohort().id(),
+                        learnerUserId.toString().substring(0, 8)
+                ).with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+        CohortEnrollmentListResponse searchMatches = objectMapper.readValue(
+                searchResult.getResponse().getContentAsString(),
+                CohortEnrollmentListResponse.class
+        );
+
+        assertThat(searchMatches.enrollments())
+                .extracting(CohortEnrollmentResponse::learnerUserId)
+                .containsExactly(learnerUserId);
+        assertThat(searchMatches.totalCount()).isEqualTo(1);
+    }
+
     private StudyServerResponse createStudyServer(UUID ownerUserId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/study-servers")
                         .with(asUser(ownerUserId))

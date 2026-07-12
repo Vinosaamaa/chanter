@@ -75,6 +75,17 @@ describe('onboarding-api', () => {
     })
   })
 
+  it('joinCohort encodes cohort ids in the request path', async () => {
+    mockedApiFetch.mockResolvedValue(undefined)
+
+    await joinCohort('cohort/with/slash', 'invite-code-1')
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort%2Fwith%2Fslash/join', {
+      method: 'POST',
+      body: JSON.stringify({ inviteCode: 'invite-code-1' }),
+    })
+  })
+
   it('listCohortEnrollments fetches enrollments for a cohort', async () => {
     mockedApiFetch.mockResolvedValue({
       enrollments: [

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -30,6 +30,7 @@ export function CreateStudyServerWizard() {
   const [inviteNote, setInviteNote] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const submittingRef = useRef(false)
 
   const stepIndex = steps.findIndex((item) => item.id === step)
   const trimmedName = name.trim()
@@ -70,13 +71,14 @@ export function CreateStudyServerWizard() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (isSubmitting) {
+    if (submittingRef.current || isSubmitting) {
       return
     }
     if (step !== 'review' || !trimmedName) {
       return
     }
 
+    submittingRef.current = true
     setIsSubmitting(true)
     setError(null)
 
@@ -105,6 +107,7 @@ export function CreateStudyServerWizard() {
       }
       setError(formatUserFacingApiError(caught, 'Unable to create Study Server.'))
     } finally {
+      submittingRef.current = false
       setIsSubmitting(false)
     }
   }
