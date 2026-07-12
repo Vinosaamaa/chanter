@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { apiFetch } from '../../lib/api-client'
 
-import { createCourse, createStudyServer, enrollLearner } from './onboarding-api'
+import {
+  createCourse,
+  createStudyServer,
+  enrollLearner,
+  joinCohort,
+  listCohortEnrollments,
+} from './onboarding-api'
 
 vi.mock('../../lib/api-client', () => ({
   apiFetch: vi.fn(),
@@ -56,5 +62,69 @@ describe('onboarding-api', () => {
       method: 'POST',
       body: JSON.stringify({ learnerUserId: 'learner-9' }),
     })
+  })
+
+  it('joinCohort posts invite code to the learner self-enroll endpoint', async () => {
+    mockedApiFetch.mockResolvedValue(undefined)
+
+    await joinCohort('cohort-1', 'invite-code-1')
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort-1/join', {
+      method: 'POST',
+      body: JSON.stringify({ inviteCode: 'invite-code-1' }),
+    })
+  })
+
+  it('joinCohort encodes cohort ids in the request path', async () => {
+    mockedApiFetch.mockResolvedValue(undefined)
+
+    await joinCohort('cohort/with/slash', 'invite-code-1')
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort%2Fwith%2Fslash/join', {
+      method: 'POST',
+      body: JSON.stringify({ inviteCode: 'invite-code-1' }),
+    })
+  })
+
+  it('listCohortEnrollments fetches enrollments for a cohort', async () => {
+    mockedApiFetch.mockResolvedValue({
+      enrollments: [
+        {
+          learnerUserId: 'learner-9',
+          enrolledByUserId: 'instructor-1',
+          enrolledAt: '2026-06-01T12:00:00Z',
+        },
+      ],
+      totalCount: 1,
+      limit: 50,
+      offset: 0,
+    })
+
+    const result = await listCohortEnrollments('cohort-1')
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort-1/enrollments')
+    expect(result.enrollments).toEqual([
+      {
+        learnerUserId: 'learner-9',
+        enrolledByUserId: 'instructor-1',
+        enrolledAt: '2026-06-01T12:00:00Z',
+      },
+    ])
+    expect(result.totalCount).toBe(1)
+  })
+
+  it('listCohortEnrollments passes limit and offset query params', async () => {
+    mockedApiFetch.mockResolvedValue({
+      enrollments: [],
+      totalCount: 0,
+      limit: 8,
+      offset: 16,
+    })
+
+    await listCohortEnrollments('cohort-1', { limit: 8, offset: 16, search: 'learner' })
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/api/v1/cohorts/cohort-1/enrollments?limit=8&offset=16&search=learner',
+    )
   })
 })

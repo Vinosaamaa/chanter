@@ -3,6 +3,8 @@ package com.chanter.community.infra;
 import com.chanter.community.application.CourseRepository;
 import com.chanter.community.domain.AccessibleStudyServer;
 import com.chanter.community.domain.ChannelKind;
+import com.chanter.community.domain.CohortEnrollment;
+import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
@@ -32,6 +34,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class JdbcCourseRepository implements CourseRepository {
+
+    private static final String COHORT_ENROLLMENT_FROM_WHERE = """
+            FROM cohort_enrollments
+            WHERE cohort_id = :cohortId
+            """;
 
     private final JdbcClient jdbcClient;
 
@@ -63,12 +70,13 @@ public class JdbcCourseRepository implements CourseRepository {
                 .update();
 
         jdbcClient.sql("""
-                        INSERT INTO cohorts (id, course_id, name)
-                        VALUES (:id, :courseId, :name)
+                        INSERT INTO cohorts (id, course_id, name, invite_code)
+                        VALUES (:id, :courseId, :name, :inviteCode)
                         """)
                 .param("id", course.cohort().id())
                 .param("courseId", course.id())
                 .param("name", course.cohort().name())
+                .param("inviteCode", course.cohort().inviteCode())
                 .update();
 
         for (CourseChannel channel : course.channels()) {
@@ -108,6 +116,86 @@ public class JdbcCourseRepository implements CourseRepository {
         } catch (DuplicateKeyException ignored) {
             // Re-enrolling the same learner is idempotent for this vertical slice.
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CohortEnrollmentList listCohortEnrollments(
+            UUID cohortId,
+            int limit,
+            int offset,
+            String learnerSearch
+    ) {
+        boolean hasLearnerSearch = learnerSearch != null;
+        String searchPattern = hasLearnerSearch ? "%" + learnerSearch + "%" : null;
+        String searchFilter = hasLearnerSearch
+                ? " AND LOWER(CAST(learner_user_id AS TEXT)) LIKE :searchPattern\n"
+                : "";
+        String enrollmentOrderAndPage = """
+                        ORDER BY enrolled_at DESC, learner_user_id ASC
+                        LIMIT :limit OFFSET :offset
+                        """;
+
+        var countQuery = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        """ + COHORT_ENROLLMENT_FROM_WHERE + searchFilter)
+                .param("cohortId", cohortId);
+        if (hasLearnerSearch) {
+            countQuery = countQuery.param("searchPattern", searchPattern);
+        }
+        int totalCount = countQuery.query(Integer.class).single();
+
+        var enrollmentQuery = jdbcClient.sql("""
+                        SELECT learner_user_id, enrolled_by_user_id, enrolled_at
+                        """ + COHORT_ENROLLMENT_FROM_WHERE + searchFilter + enrollmentOrderAndPage)
+                .param("cohortId", cohortId)
+                .param("limit", limit)
+                .param("offset", offset);
+        if (hasLearnerSearch) {
+            enrollmentQuery = enrollmentQuery.param("searchPattern", searchPattern);
+        }
+        List<CohortEnrollment> enrollments = enrollmentQuery.query(this::mapCohortEnrollment).list();
+
+        return new CohortEnrollmentList(enrollments, totalCount, limit, offset);
+    }
+
+    private CohortEnrollment mapCohortEnrollment(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new CohortEnrollment(
+                rs.getObject("learner_user_id", UUID.class),
+                rs.getObject("enrolled_by_user_id", UUID.class),
+                rs.getObject("enrolled_at", OffsetDateTime.class).toInstant()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> findCohortInviteCode(UUID cohortId) {
+        return jdbcClient.sql("""
+                        SELECT invite_code
+                        FROM cohorts
+                        WHERE id = :cohortId
+                        """)
+                .param("cohortId", cohortId)
+                .query(UUID.class)
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> findCohortInviteCodeForInstructor(UUID cohortId, UUID instructorUserId) {
+        return jdbcClient.sql("""
+                        SELECT c.invite_code
+                        FROM cohorts c
+                        JOIN course_roles cr ON cr.course_id = c.course_id
+                        WHERE c.id = :cohortId
+                        AND cr.user_id = :instructorUserId
+                        AND cr.role = :role
+                        """)
+                .param("cohortId", cohortId)
+                .param("instructorUserId", instructorUserId)
+                .param("role", CourseRole.INSTRUCTOR.name())
+                .query(UUID.class)
+                .optional();
     }
 
     @Override

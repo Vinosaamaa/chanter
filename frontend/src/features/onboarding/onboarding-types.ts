@@ -19,3 +19,16 @@ export type CreatedCourse = {
   }
   channels: CourseChannel[]
 }
+
+export type CohortEnrollmentRecord = {
+  learnerUserId: string
+  enrolledByUserId: string
+  enrolledAt: string
+}
+
+export type CohortEnrollmentListResult = {
+  enrollments: CohortEnrollmentRecord[]
+  totalCount: number
+  limit: number
+  offset: number
+}

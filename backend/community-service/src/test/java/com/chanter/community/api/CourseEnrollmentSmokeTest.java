@@ -83,6 +83,28 @@ class CourseEnrollmentSmokeTest {
                         ))))
                 .andExpect(status().isForbidden());
 
+        UUID inviteLearnerUserId = UUID.randomUUID();
+        MvcResult inviteResult = mockMvc.perform(get("/api/v1/cohorts/{cohortId}/invite", course.cohort().id())
+                        .with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+        CohortInviteResponse invite = objectMapper.readValue(
+                inviteResult.getResponse().getContentAsString(),
+                CohortInviteResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/join", course.cohort().id())
+                        .with(asUser(inviteLearnerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "inviteCode", invite.inviteCode().toString()
+                        ))))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/course-channels/{channelId}", course.channels().getFirst().id())
+                        .with(asUser(inviteLearnerUserId)))
+                .andExpect(status().isOk());
+
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
                         .with(asUser(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -90,6 +112,19 @@ class CourseEnrollmentSmokeTest {
                                 "learnerUserId", learnerUserId.toString()
                         ))))
                 .andExpect(status().isCreated());
+
+        MvcResult enrollmentsResult = mockMvc.perform(get("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
+                        .with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+        CohortEnrollmentListResponse enrollments = objectMapper.readValue(
+                enrollmentsResult.getResponse().getContentAsString(),
+                CohortEnrollmentListResponse.class
+        );
+        assertThat(enrollments.enrollments())
+                .extracting(CohortEnrollmentResponse::learnerUserId)
+                .contains(learnerUserId);
+        assertThat(enrollments.totalCount()).isEqualTo(2);
 
         MvcResult channelResult = mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}", course.channels().getFirst().id()
@@ -183,6 +218,81 @@ class CourseEnrollmentSmokeTest {
         mockMvc.perform(get("/api/v1/course-channels/{channelId}", course.channels().getFirst().id())
                         .with(asUser(nonEnrolledUserId)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void joinCohortRejectsInvalidInviteCode() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+
+        MvcResult courseResult = mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/courses", studyServer.id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "Algorithms",
+                                "cohortName", "Fall 2026"
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        CourseResponse course = objectMapper.readValue(
+                courseResult.getResponse().getContentAsString(),
+                CourseResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/join", course.cohort().id())
+                        .with(asUser(learnerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "inviteCode", UUID.randomUUID().toString()
+                        ))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listCohortEnrollmentsSupportsServerSideSearch() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+
+        MvcResult courseResult = mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/courses", studyServer.id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "Databases",
+                                "cohortName", "Winter 2026"
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        CourseResponse course = objectMapper.readValue(
+                courseResult.getResponse().getContentAsString(),
+                CourseResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "learnerUserId", learnerUserId.toString()
+                        ))))
+                .andExpect(status().isCreated());
+
+        MvcResult searchResult = mockMvc.perform(get(
+                        "/api/v1/cohorts/{cohortId}/enrollments?search={search}",
+                        course.cohort().id(),
+                        learnerUserId.toString().substring(0, 8)
+                ).with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+        CohortEnrollmentListResponse searchMatches = objectMapper.readValue(
+                searchResult.getResponse().getContentAsString(),
+                CohortEnrollmentListResponse.class
+        );
+
+        assertThat(searchMatches.enrollments())
+                .extracting(CohortEnrollmentResponse::learnerUserId)
+                .containsExactly(learnerUserId);
+        assertThat(searchMatches.totalCount()).isEqualTo(1);
     }
 
     private StudyServerResponse createStudyServer(UUID ownerUserId) throws Exception {

@@ -4,6 +4,8 @@ import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.Cohort;
 import com.chanter.community.domain.CohortOfficeHoursAccess;
 import com.chanter.community.domain.CohortTaQueueAccess;
+import com.chanter.community.domain.CohortEnrollment;
+import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseChannelMessageAccess;
@@ -21,6 +23,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CourseService {
+
+    public static final int MAX_COHORT_ENROLLMENT_PAGE_SIZE = 500;
+    public static final int DEFAULT_COHORT_ENROLLMENT_PAGE_SIZE = 50;
+    public static final int MAX_COHORT_ENROLLMENT_OFFSET = 10_000;
 
     private final StudyServerRepository studyServerRepository;
     private final CourseRepository courseRepository;
@@ -55,7 +61,7 @@ public class CourseService {
                 studyServerId,
                 title.trim(),
                 new InstructorRole(instructorUserId, CourseRole.INSTRUCTOR),
-                new Cohort(UUID.randomUUID(), courseId, cohortName.trim()),
+                new Cohort(UUID.randomUUID(), courseId, cohortName.trim(), UUID.randomUUID()),
                 List.of(
                         new CourseChannel(UUID.randomUUID(), courseId, "announcements", ChannelKind.TEXT, 0),
                         new CourseChannel(UUID.randomUUID(), courseId, "questions", ChannelKind.TEXT, 1),
@@ -68,14 +74,83 @@ public class CourseService {
     }
 
     public void enrollLearner(UUID cohortId, UUID instructorUserId, UUID learnerUserId) {
+        requireCohortInstructor(
+                cohortId,
+                instructorUserId,
+                "Only the Course Instructor can enroll learners"
+        );
+        courseRepository.enrollLearner(cohortId, learnerUserId, instructorUserId, clock.instant());
+    }
+
+    public void joinCohort(UUID cohortId, UUID learnerUserId, UUID inviteCode) {
+        UUID storedInviteCode = courseRepository.findCohortInviteCode(cohortId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found"));
+        if (!storedInviteCode.equals(inviteCode)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid cohort invite code");
+        }
+
+        courseRepository.enrollLearner(cohortId, learnerUserId, learnerUserId, clock.instant());
+    }
+
+    public UUID getCohortInviteCode(UUID cohortId, UUID instructorUserId) {
+        return courseRepository.findCohortInviteCodeForInstructor(cohortId, instructorUserId)
+                .orElseThrow(() -> {
+                    if (!courseRepository.cohortExists(cohortId)) {
+                        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
+                    }
+                    return new ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "Only the Course Instructor can view invite details"
+                    );
+                });
+    }
+
+    public CohortEnrollmentList listCohortEnrollments(
+            UUID cohortId,
+            UUID instructorUserId,
+            int limit,
+            int offset,
+            String learnerSearch
+    ) {
+        requireCohortInstructor(
+                cohortId,
+                instructorUserId,
+                "Only the Course Instructor can view enrollments"
+        );
+        int boundedLimit = clampEnrollmentLimit(limit);
+        int boundedOffset = Math.min(Math.max(offset, 0), MAX_COHORT_ENROLLMENT_OFFSET);
+        String normalizedSearch = normalizeLearnerSearch(learnerSearch);
+        return courseRepository.listCohortEnrollments(
+                cohortId,
+                boundedLimit,
+                boundedOffset,
+                normalizedSearch
+        );
+    }
+
+    private void requireCohortInstructor(UUID cohortId, UUID instructorUserId, String forbiddenMessage) {
+        if (courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
+            return;
+        }
         if (!courseRepository.cohortExists(cohortId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
         }
-        if (!courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can enroll learners");
-        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
+    }
 
-        courseRepository.enrollLearner(cohortId, learnerUserId, instructorUserId, clock.instant());
+    private static int clampEnrollmentLimit(int limit) {
+        if (limit <= 0) {
+            return DEFAULT_COHORT_ENROLLMENT_PAGE_SIZE;
+        }
+        return Math.min(limit, MAX_COHORT_ENROLLMENT_PAGE_SIZE);
+    }
+
+    private static String normalizeLearnerSearch(String learnerSearch) {
+        if (learnerSearch == null) {
+            return null;
+        }
+        String trimmed = learnerSearch.trim();
+        return trimmed.isEmpty() ? null : trimmed.toLowerCase();
     }
 
     public Optional<CourseChannel> findAccessibleChannel(UUID channelId, UUID viewerUserId) {
