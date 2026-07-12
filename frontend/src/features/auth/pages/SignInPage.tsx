@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
@@ -6,7 +6,10 @@ import { Card, CardDescription, CardTitle } from '../../../components/ui/card'
 import { CohortInviteRedirect } from '../components/CohortInviteRedirect'
 import { login, register } from '../auth-api'
 import { useAuthStore } from '../../../stores/auth-store'
-import { rememberCohortInviteFromSearch } from '../../onboarding/cohort-invite'
+import {
+  readCohortInviteParams,
+  rememberCohortInviteFromSearch,
+} from '../../onboarding/cohort-invite'
 
 type AuthMode = 'sign-in' | 'register'
 
@@ -23,10 +26,8 @@ export function SignInPage() {
   const [sessionReady, setSessionReady] = useState(false)
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app'
-
-  useEffect(() => {
-    rememberCohortInviteFromSearch(location.search)
-  }, [location.search])
+  rememberCohortInviteFromSearch(location.search)
+  const inviteFromUrl = readCohortInviteParams(location.search)
 
   if (accessToken || sessionReady) {
     return <CohortInviteRedirect to={redirectTo} />
@@ -58,6 +59,12 @@ export function SignInPage() {
         <CardDescription>
           Email and password for the production MVP. SSO and onboarding polish ship later.
         </CardDescription>
+
+        {inviteFromUrl ? (
+          <p className="mt-4 rounded-lg border border-app-border bg-app-elevated px-3 py-2 text-sm text-app-text">
+            You have a cohort invite. Sign in or create an account to join after authentication.
+          </p>
+        ) : null}
 
         <div className="mt-4 flex gap-2">
           <Button

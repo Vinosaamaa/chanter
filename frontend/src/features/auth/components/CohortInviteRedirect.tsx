@@ -9,10 +9,11 @@ type CohortInviteRedirectProps = {
   to: string
 }
 
+type InviteRedirectStatus = 'joining' | 'failed' | 'ready'
+
 export function CohortInviteRedirect({ to }: CohortInviteRedirectProps) {
-  const [ready, setReady] = useState(false)
-  const [failed, setFailed] = useState(false)
-  const [attempt, setAttempt] = useState(0)
+  const [status, setStatus] = useState<InviteRedirectStatus>('joining')
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -20,21 +21,19 @@ export function CohortInviteRedirect({ to }: CohortInviteRedirectProps) {
       if (cancelled) {
         return
       }
-      setFailed(result === 'failed')
-      setReady(true)
+      setStatus(result === 'failed' ? 'failed' : 'ready')
     })
     return () => {
       cancelled = true
     }
-  }, [attempt])
+  }, [retryKey])
 
   const onRetry = () => {
-    setReady(false)
-    setFailed(false)
-    setAttempt((value) => value + 1)
+    setStatus('joining')
+    setRetryKey((value) => value + 1)
   }
 
-  if (!ready) {
+  if (status === 'joining') {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-app-muted">
         Joining cohort…
@@ -42,7 +41,7 @@ export function CohortInviteRedirect({ to }: CohortInviteRedirectProps) {
     )
   }
 
-  if (failed) {
+  if (status === 'failed') {
     return (
       <div className="flex min-h-screen items-center justify-center px-6">
         <div className="w-full max-w-md rounded-xl border border-app-border bg-app-surface p-6 text-center">

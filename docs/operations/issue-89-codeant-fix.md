@@ -68,3 +68,18 @@
 - Added `joinCohort` path-encoding test and backend smoke tests for invalid invite + server-side search.
 - Hardened wizard submit with synchronous `useRef` guard; improved course badge text shadow for contrast.
 - Prior pass 4 fixes remain in place for all 17 reported gate findings; this pass adds explicit test coverage.
+
+## Pass 7 (CodeAnt dedup + auth refactor)
+
+- **Finding:** duplicated enrollment list SQL and row mapping in `JdbcCourseRepository`.
+- **Fix:** shared `searchFilter` + `mapCohortEnrollment` path; split count vs list queries with explicit newline before `ORDER BY` (Spring JDBC `:searchPatternORDER` parse bug).
+- **Finding:** `joinCohort` double DB round-trip (`cohortExists` + `cohortInviteCodeMatches`).
+- **Fix:** single `findCohortInviteCode` lookup in `CourseService.joinCohort`.
+- **Finding:** repeated instructor 404/403 flow across invite + enrollment list.
+- **Fix:** `requireCohortInstructor()` helper in `CourseService`.
+- **Finding:** non-positive `limit` clamped to `1` instead of default page size `50`.
+- **Fix:** `clampEnrollmentLimit()` returns `DEFAULT_COHORT_ENROLLMENT_PAGE_SIZE` when `limit <= 0`.
+- **Finding:** `SignInPage` stored invite in `useEffect` after render — race with `CohortInviteRedirect`.
+- **Fix:** synchronous `rememberCohortInviteFromSearch` on render; invite banner when URL has cohort params.
+- **Finding:** `CohortInviteRedirect` coordinated multiple booleans.
+- **Fix:** single `InviteRedirectStatus` enum (`joining` | `failed` | `ready`).
