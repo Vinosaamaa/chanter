@@ -35,6 +35,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public class JdbcCourseRepository implements CourseRepository {
 
+    private static final String COHORT_ENROLLMENT_FROM_WHERE = """
+            FROM cohort_enrollments
+            WHERE cohort_id = :cohortId
+            """;
+
     private final JdbcClient jdbcClient;
 
     public JdbcCourseRepository(JdbcClient jdbcClient) {
@@ -133,9 +138,7 @@ public class JdbcCourseRepository implements CourseRepository {
 
         var countQuery = jdbcClient.sql("""
                         SELECT COUNT(*)
-                        FROM cohort_enrollments
-                        WHERE cohort_id = :cohortId
-                        """ + searchFilter)
+                        """ + COHORT_ENROLLMENT_FROM_WHERE + searchFilter)
                 .param("cohortId", cohortId);
         if (hasLearnerSearch) {
             countQuery = countQuery.param("searchPattern", searchPattern);
@@ -144,9 +147,7 @@ public class JdbcCourseRepository implements CourseRepository {
 
         var enrollmentQuery = jdbcClient.sql("""
                         SELECT learner_user_id, enrolled_by_user_id, enrolled_at
-                        FROM cohort_enrollments
-                        WHERE cohort_id = :cohortId
-                        """ + searchFilter + enrollmentOrderAndPage)
+                        """ + COHORT_ENROLLMENT_FROM_WHERE + searchFilter + enrollmentOrderAndPage)
                 .param("cohortId", cohortId)
                 .param("limit", limit)
                 .param("offset", offset);
@@ -168,21 +169,6 @@ public class JdbcCourseRepository implements CourseRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean cohortInviteCodeMatches(UUID cohortId, UUID inviteCode) {
-        return jdbcClient.sql("""
-                        SELECT COUNT(*)
-                        FROM cohorts
-                        WHERE id = :cohortId
-                        AND invite_code = :inviteCode
-                        """)
-                .param("cohortId", cohortId)
-                .param("inviteCode", inviteCode)
-                .query(Integer.class)
-                .single() > 0;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Optional<UUID> findCohortInviteCode(UUID cohortId) {
         return jdbcClient.sql("""
                         SELECT invite_code
@@ -190,6 +176,24 @@ public class JdbcCourseRepository implements CourseRepository {
                         WHERE id = :cohortId
                         """)
                 .param("cohortId", cohortId)
+                .query(UUID.class)
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> findCohortInviteCodeForInstructor(UUID cohortId, UUID instructorUserId) {
+        return jdbcClient.sql("""
+                        SELECT c.invite_code
+                        FROM cohorts c
+                        JOIN course_roles cr ON cr.course_id = c.course_id
+                        WHERE c.id = :cohortId
+                        AND cr.user_id = :instructorUserId
+                        AND cr.role = :role
+                        """)
+                .param("cohortId", cohortId)
+                .param("instructorUserId", instructorUserId)
+                .param("role", CourseRole.INSTRUCTOR.name())
                 .query(UUID.class)
                 .optional();
     }

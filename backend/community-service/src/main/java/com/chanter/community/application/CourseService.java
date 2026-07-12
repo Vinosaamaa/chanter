@@ -74,13 +74,11 @@ public class CourseService {
     }
 
     public void enrollLearner(UUID cohortId, UUID instructorUserId, UUID learnerUserId) {
-        if (!courseRepository.cohortExists(cohortId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
-        }
-        if (!courseRepository.cohortHasInstructor(cohortId, instructorUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can enroll learners");
-        }
-
+        requireCohortInstructor(
+                cohortId,
+                instructorUserId,
+                "Only the Course Instructor can enroll learners"
+        );
         courseRepository.enrollLearner(cohortId, learnerUserId, instructorUserId, clock.instant());
     }
 
@@ -95,13 +93,16 @@ public class CourseService {
     }
 
     public UUID getCohortInviteCode(UUID cohortId, UUID instructorUserId) {
-        requireCohortInstructor(
-                cohortId,
-                instructorUserId,
-                "Only the Course Instructor can view invite details"
-        );
-        return courseRepository.findCohortInviteCode(cohortId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found"));
+        return courseRepository.findCohortInviteCodeForInstructor(cohortId, instructorUserId)
+                .orElseThrow(() -> {
+                    if (!courseRepository.cohortExists(cohortId)) {
+                        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
+                    }
+                    return new ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "Only the Course Instructor can view invite details"
+                    );
+                });
     }
 
     public CohortEnrollmentList listCohortEnrollments(

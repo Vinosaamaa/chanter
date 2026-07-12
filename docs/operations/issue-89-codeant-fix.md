@@ -88,3 +88,12 @@
 
 - **Finding:** sync `rememberCohortInviteFromSearch` during `SignInPage` render is a render-path side effect.
 - **Fix:** `CohortInviteRedirect` persists invite in `useLayoutEffect` keyed to `search` before join `useEffect` runs; `SignInPage` passes `location.search`.
+
+## Pass 9 (single-query instructor paths)
+
+- **Finding:** `enrollLearner` still used separate `cohortExists` + `cohortHasInstructor` round-trips.
+- **Fix:** reuse `requireCohortInstructor()` helper.
+- **Finding:** `getCohortInviteCode` used instructor check then separate invite lookup.
+- **Fix:** `findCohortInviteCodeForInstructor()` single join query; removed unused `cohortInviteCodeMatches`.
+- **Finding:** duplicated enrollment `FROM/WHERE` SQL between count and list queries.
+- **Fix:** shared `COHORT_ENROLLMENT_FROM_WHERE` constant.

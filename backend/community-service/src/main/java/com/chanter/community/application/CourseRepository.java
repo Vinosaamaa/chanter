@@ -24,9 +24,9 @@ public interface CourseRepository {
 
     CohortEnrollmentList listCohortEnrollments(UUID cohortId, int limit, int offset, String learnerSearch);
 
-    boolean cohortInviteCodeMatches(UUID cohortId, UUID inviteCode);
-
     Optional<UUID> findCohortInviteCode(UUID cohortId);
+
+    Optional<UUID> findCohortInviteCodeForInstructor(UUID cohortId, UUID instructorUserId);
 
     boolean cohortExists(UUID cohortId);
 
