@@ -35,7 +35,9 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 **Backend MVP (milestone 1)** — issues **#11–#24** merged.
 
-**Production Frontend (milestone 3)** — issues **#47–#59** merged (full UI shell, live text, search, instructor tools).
+**Production Frontend (milestone 3)** — issues **#47–#59** merged (legacy Discord-style shell — features work, layout superseded).
+
+**UI v2 — Course-first shell (milestone 7)** — **active**. Design **#114** closed; implementation epic **#115**, start at **[#116](https://github.com/Vinosaamaa/chanter/issues/116)**. Mockups + criteria: [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md). Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
 
 **Workable Product (milestone 4)** — **#60–#63**, #31–#32 merged. Run the full local product with `make product-up` — see [Getting started](docs/operations/getting-started.md).
 
@@ -46,9 +48,9 @@ GitHub repository: `https://github.com/Vinosaamaa/chanter`
 | Project | URL | Scope |
 |---------|-----|--------|
 | Education MVP (historical) | [projects/1](https://github.com/users/Vinosaamaa/projects/1) | Backend slices #1–#24 |
-| **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59** — **complete** |
+| **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59** — **complete** (legacy shell) |
 | [**Workable Product**](https://github.com/users/Vinosaamaa/projects/4) | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **complete** |
-| **Public Launch** | [**projects/5**](https://github.com/users/Vinosaamaa/projects/5) | **#82–#104** — UI polish, real AI, launch readiness — **active** |
+| **Public Launch + UI v2** | [**projects/5**](https://github.com/users/Vinosaamaa/projects/5) | **#115–#128** UI v2 (**active**, start **#116**) · #82–#104 launch — **#88–#93 paused** until #116 |
 
 **Agent workflow (order + loop + merge policy):** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) (mandatory for all agents).
 
@@ -65,10 +67,11 @@ Key planning files:
 |---|---|
 | [`HANDOFF.md`](HANDOFF.md) | **Start here** for new agent sessions — current slice, workflow, startup prompt |
 | [`CONTEXT.md`](CONTEXT.md) | Canonical product glossary (Study Server, Cohort, Support Question, …) |
-| [`docs/product-design/`](docs/product-design/README.md) | **Product showcase** — target UI mockups (19 screens), vision walkthrough, **visibility and social model**, user-journey diagram, interactive screen tour |
+| [`docs/product-design/`](docs/product-design/README.md) | **Product showcase** — UI (`DESIGN-DECISIONS.md`), mockups, vision, visibility model, user-journey diagram, interactive tour |
 | [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Education MVP PRD — problem, user stories, out of scope |
 | [`docs/issues/education-mvp-issue-breakdown.md`](docs/issues/education-mvp-issue-breakdown.md) | Backend epics and slices (#11–#24) — **done** |
-| [`docs/issues/production-frontend-issue-breakdown.md`](docs/issues/production-frontend-issue-breakdown.md) | Production UI slices (#47–#59) — **active** |
+| [`docs/issues/production-frontend-issue-breakdown.md`](docs/issues/production-frontend-issue-breakdown.md) | Legacy Production UI slices (#47–#59) — **superseded for layout** |
+| [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md) | **UI v2** course-first shell (#115–#128) — **active** |
 | [`docs/issues/workable-product-issue-breakdown.md`](docs/issues/workable-product-issue-breakdown.md) | Workable full-stack app (#60–#63, #31–#32) |
 | [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) | **Mandatory agent workflow** — issue order, completion loop, owner-only merge |
 | [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) | Redirect → `agent-workflow.md` |
@@ -79,7 +82,7 @@ Key planning files:
 | [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md) | Full two-user E2E demo checklist |
 | [`docs/operations/ai-study-assistant.md`](docs/operations/ai-study-assistant.md) | How the Study Assistant works today (no external LLM API yet) |
 
-**Product vs engineering visuals:** `docs/product-design/mockups/` = target **browser UI** concepts for educators and learners. `docs/diagrams/` = **system architecture** and data-flow diagrams. Do not confuse the API demo in `frontend/src/App.tsx` with the mockups.
+**Product vs engineering visuals:** `docs/product-design/mockups/` = **current** course-first UI PNGs (see `DESIGN-DECISIONS.md`). `docs/diagrams/` = **system architecture** and data-flow diagrams. Do not confuse the API demo in `frontend/src/App.tsx` with the mockups.
 
 Diagram workflow:
 
@@ -89,7 +92,7 @@ Diagram workflow:
 
 ## Agent Workflow
 
-Use `HANDOFF.md` as the first resume point for new agent sessions. For **what the finished product should look like**, read [`docs/product-design/README.md`](docs/product-design/README.md) and [`docs/product-design/visibility-and-social-model.md`](docs/product-design/visibility-and-social-model.md) before building UI. Then apply the installed workflow skills by name as needed, especially:
+Use `HANDOFF.md` as the first resume point for new agent sessions. For **what the finished product should look like**, read [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md), [`docs/product-design/README.md`](docs/product-design/README.md), and [`docs/product-design/visibility-and-social-model.md`](docs/product-design/visibility-and-social-model.md) before building UI. Then apply the installed workflow skills by name as needed, especially:
 
 - `grill-with-docs` for questioning and tightening docs before major decisions.
 - `to-prd` for turning unclear product ideas into requirements and acceptance criteria.

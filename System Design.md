@@ -12,18 +12,22 @@ Editable source: [`system-backend-architecture.drawio`](docs/diagrams/system-bac
 
 | Location | Contents | Use when |
 |---|---|---|
-| [`docs/product-design/`](docs/product-design/README.md) | Target **browser UI** mockups, user journeys, `vision.md`, **`visibility-and-social-model.md`**, interactive tour | Frontend routes, stakeholder demos, slice UX scope |
+| [`docs/product-design/`](docs/product-design/README.md) | Target **browser UI** mockups, user journeys, `vision.md`, **`visibility-and-social-model.md`**, [**`DESIGN-DECISIONS.md`**](docs/product-design/DESIGN-DECISIONS.md) (v2 canonical), interactive tour | Frontend routes, stakeholder demos, slice UX scope |
 | [`docs/diagrams/`](docs/diagrams/) | **Engineering** service topology, message paths, agent invocation | Service boundaries, events, scaling, implementation |
 
 The education MVP ships as a **web application** (React SPA in the browser). Native mobile and desktop wrappers are out of scope for the first MVP; see `docs/product-design/vision.md` § Platform.
+
+**UI direction (2026-07):** Course-first shell — sidebar course list + workspace tabs (not nested channel tree). One layout for learners and instructors; role-gated **Teaching** nav and in-tab owner actions. Canonical spec: [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
 
 ## Implementation Tracking (agent order)
 
 | Phase | Milestone | Project | Status |
 |-------|-----------|---------|--------|
 | Backend MVP | [Education MVP](https://github.com/Vinosaamaa/chanter/milestone/1) | [#1](https://github.com/users/Vinosaamaa/projects/1) | Done (#11–#24) |
-| Production UI | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Active** (#48+) |
-| Workable app | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | After #51 |
+| Production Frontend (legacy) | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | Done (#47–#59) |
+| Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | Done (#60–#63, #31–#32) |
+| **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — #116** |
+| Public Launch | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **#94+ after UI v2** (#88–#93 paused) |
 
 **Mandatory agent workflow:** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
@@ -32,11 +36,11 @@ The education MVP ships as a **web application** (React SPA in the browser). Nat
 The initial product is a Study Server:
 
 - Educators create Study Servers for cohorts or courses.
-- Study Servers contain course/module channels, announcements, support channels, and office-hours workflows.
+- Study Servers contain courses organized as **workspace tabs** (Overview, Chat, Questions, Resources, Office Hours, People), community hub spaces (Announcements, Lounge, Events, Discover courses, Members), and office-hours workflows. Legacy channel names (`#questions`, `#resources`) map to these tabs in the v2 UI.
 - Instructors and TAs manage roles, resources, questions, FAQ entries, and support queues.
 - Learners use a familiar Discord-like chat experience while getting better answers, summaries, search, and human handoff.
 - The first-party AI Study Assistant is a visible, permissioned member that can answer only from approved resources and allowed context.
-- Instructor dashboards expose actionable learning operations: unanswered questions, repeated questions, misconceptions, engagement, office-hours load, and AI usage.
+- Instructor dashboards expose actionable learning operations: unanswered questions, repeated questions, misconceptions, engagement, office-hours load, and AI usage. In v2 UI this is the **Teaching** nav dashboard plus in-context actions on course tabs.
 
 The system should not begin as a full LMS replacement. Gradebooks, SCORM import, accreditation workflows, public agent marketplace, enterprise SSO/compliance, and voice agents are later phases.
 

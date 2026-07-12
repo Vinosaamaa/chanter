@@ -1,5 +1,7 @@
 # Chanter Public Launch Issue Breakdown
 
+> **⚠️ UI v2 precedence (2026-07):** Course-first shell implementation **#115–#128** is **active** and **pauses** legacy Phase 1 UI polish **#88–#93** until **#116** merges. See [`ui-v2-issue-breakdown.md`](ui-v2-issue-breakdown.md).
+>
 > **Goal:** Move from **Workable Product** (local full-stack demo) to a **publicly launchable** education product: mockup-faithful UI, real LLM/RAG AI (resume-grade orchestration), and staging/production readiness.
 >
 > **Depends on:** [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) (**#60–#63**, **#31–#32**) and [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) (**#48–#59**).
@@ -36,7 +38,9 @@
 
 ## Phase 1 — UI polish (mockup fidelity)
 
-> **#87 gap audit merged** — owner sign-off 2026-07-09. **P0 order:** #93 → #90 → #91 → #88. **P1:** #89 → #92. Detail: [`public-launch-ui-gap-audit.md`](../operations/public-launch-ui-gap-audit.md).
+> **Paused** until UI v2 **#116** merges — legacy polish targeted the old Discord-style shell. Prefer folding remaining gaps into **#116–#128** slices.
+>
+> **#87 gap audit merged** — owner sign-off 2026-07-09. **P0 order (when resumed):** #93 → #90 → #91 → #88. **P1:** #89 → #92. Detail: [`public-launch-ui-gap-audit.md`](../operations/public-launch-ui-gap-audit.md).
 
 | # | Title | Priority | Type | Blocked by | Mockup(s) |
 |---|-------|----------|------|------------|-----------|
