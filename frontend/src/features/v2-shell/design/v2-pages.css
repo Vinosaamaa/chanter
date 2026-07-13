@@ -620,3 +620,24 @@
   .v2-app-shell .resource-row { min-height: 65px; }
   .v2-app-shell .resource-type-icon { width: 43px; height: 44px; }
 }
+
+/* Join or create */
+.v2-app-shell .join-or-create-page { min-height: 100%; overflow: auto; padding: clamp(24px,4vw,64px); }
+.v2-app-shell .join-or-create-page > header { max-width: 900px; margin: 0 auto 28px; }
+.v2-app-shell .join-or-create-page > header h1 { margin: 0; font-size: 34px; }
+.v2-app-shell .join-or-create-page > header p { margin: 8px 0 0; color: #aeb8c4; font-size: 18px; }
+.v2-app-shell .join-or-create-grid { max-width: 900px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 0 auto; }
+.v2-app-shell .join-or-create-grid > form, .v2-app-shell .join-or-create-grid > article { min-height: 320px; border: 1px solid #405164; border-radius: 8px; padding: 28px; background: #081b30; }
+.v2-app-shell .join-choice-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 8px; color: #dce4ff; background: #304aa8; }
+.v2-app-shell .join-choice-icon.create { color: #dff8e6; background: #1f7048; }
+.v2-app-shell .join-or-create-grid h2 { margin: 20px 0 10px; font-size: 23px; }
+.v2-app-shell .join-or-create-grid > article > p { min-height: 68px; margin: 0; color: #aeb8c4; line-height: 1.55; }
+.v2-app-shell .join-or-create-grid label { display: grid; gap: 8px; margin: 20px 0; color: #d7dde5; font-size: 14px; }
+.v2-app-shell .join-or-create-grid input { height: 46px; border: 1px solid #485b70; border-radius: 7px; padding: 0 12px; color: #fff; background: #031426; font-size: 16px; }
+.v2-app-shell .join-or-create-grid button, .v2-app-shell .join-or-create-grid a { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 22px; text-decoration: none; }
+.v2-app-shell .join-or-create-grid button svg, .v2-app-shell .join-or-create-grid a svg { width: 18px; height: 18px; }
+@media (max-width: 760px) {
+  .v2-app-shell .join-or-create-page { padding: 22px 16px; }
+  .v2-app-shell .join-or-create-grid { grid-template-columns: 1fr; }
+  .v2-app-shell .join-or-create-grid > form, .v2-app-shell .join-or-create-grid > article { min-height: 0; padding: 22px; }
+}

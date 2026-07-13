@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Outlet, useParams } from 'react-router-dom'
 
+import { GlobalSearchOverlay } from '../../global-search/components/GlobalSearchOverlay'
+import { GlobalSearchProvider } from '../../global-search/context/GlobalSearchProvider'
 import { V2Sidebar } from '../components/V2Sidebar'
 import { V2TopBar } from '../components/V2TopBar'
 import { useV2SidebarData } from '../hooks/use-v2-sidebar-data'
@@ -11,6 +13,7 @@ export function V2AppShellLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
+    <GlobalSearchProvider>
       <div className="v2-app-shell h-dvh w-full">
         <div className="app-shell">
           <button
@@ -29,6 +32,8 @@ export function V2AppShellLayout() {
             </main>
           </section>
         </div>
+        <GlobalSearchOverlay variant="v2" />
       </div>
+    </GlobalSearchProvider>
   )
 }

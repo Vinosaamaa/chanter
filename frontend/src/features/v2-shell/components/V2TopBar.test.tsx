@@ -3,6 +3,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { V2TopBar } from './V2TopBar'
+import { GlobalSearchProvider } from '../../global-search/context/GlobalSearchProvider'
+import { useGlobalSearch } from '../../global-search/hooks/use-global-search'
 
 const navigation = vi.hoisted(() => ({ value: {} as Record<string, unknown> }))
 
@@ -13,19 +15,15 @@ vi.mock('../../shell/hooks/use-shell-queries', () => ({
 describe('V2TopBar', () => {
   afterEach(cleanup)
 
-  it('focuses route-scoped search with Command-F', () => {
-    render(
-      <MemoryRouter initialEntries={['/app/inbox']}>
-        <V2TopBar onOpenMenu={vi.fn()} />
-      </MemoryRouter>,
-    )
+  it('opens real route-scoped search from the top bar', () => {
+    renderTopBar('/app/inbox')
 
     const search = screen.getByRole('searchbox', { name: /search inbox/i })
     expect(screen.getByText('⌘F')).toBeInTheDocument()
 
-    fireEvent.keyDown(window, { key: 'f', metaKey: true })
+    fireEvent.click(search)
 
-    expect(search).toHaveFocus()
+    expect(screen.getByTestId('search-state')).toHaveTextContent('open')
   })
 
   it('shows the real selected cohort in a course breadcrumb', () => {
@@ -43,14 +41,26 @@ describe('V2TopBar', () => {
       },
     }
 
-    render(
-      <MemoryRouter initialEntries={['/app/servers/server-real/courses/course-real/questions?cohort=cohort-fall']}>
-        <V2TopBar onOpenMenu={vi.fn()} />
-      </MemoryRouter>,
-    )
+    renderTopBar('/app/servers/server-real/courses/course-real/questions?cohort=cohort-fall')
 
     expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toHaveTextContent(
       'Spring Bootcamp Hub / CS 101 / Fall 2026',
     )
   })
 })
+
+function renderTopBar(entry: string) {
+  render(
+    <MemoryRouter initialEntries={[entry]}>
+      <GlobalSearchProvider>
+        <V2TopBar onOpenMenu={vi.fn()} />
+        <SearchStateProbe />
+      </GlobalSearchProvider>
+    </MemoryRouter>,
+  )
+}
+
+function SearchStateProbe() {
+  const { isOpen } = useGlobalSearch()
+  return <p data-testid="search-state">{isOpen ? 'open' : 'closed'}</p>
+}

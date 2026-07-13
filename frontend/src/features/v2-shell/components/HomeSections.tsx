@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import {
   CalendarDays,
   ClipboardList,
-  FileText,
   Megaphone,
   MessageSquare,
   UsersRound,
@@ -88,17 +87,6 @@ export function HomeCourseCardView({ course }: { course: HomeCourseCard }) {
         <small>{course.progress}% complete</small>
       </div>
 
-      <div className="course-meta">
-        <div>
-          <MessageSquare size={25} />
-          <span>{course.messageSummary}</span>
-        </div>
-        <i />
-        <div>
-          <FileText size={24} />
-          <span>{course.resourceSummary}</span>
-        </div>
-      </div>
     </Link>
   )
 }

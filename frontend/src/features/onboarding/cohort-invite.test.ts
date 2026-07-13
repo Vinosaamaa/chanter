@@ -4,6 +4,7 @@ import { ApiError } from '../../lib/api-client'
 
 import {
   completePendingCohortJoin,
+  readCohortInviteInput,
   readCohortInviteParams,
   rememberCohortInviteFromSearch,
 } from './cohort-invite'
@@ -31,6 +32,13 @@ describe('cohort-invite', () => {
     })
     expect(readCohortInviteParams('?cohort=cohort-1')).toBeNull()
     expect(readCohortInviteParams('?invite=code-1')).toBeNull()
+  })
+
+  it('reads the full enrollment link copied by an instructor', () => {
+    expect(readCohortInviteInput(
+      'http://localhost:5173/sign-in?cohort=cohort-1&invite=code-1',
+    )).toEqual({ cohortId: 'cohort-1', inviteCode: 'code-1' })
+    expect(readCohortInviteInput('not an invite')).toBeNull()
   })
 
   it('rememberCohortInviteFromSearch stores invite params for post-login join', () => {

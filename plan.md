@@ -371,8 +371,8 @@ Current implementation status as of 2026-07-13:
 - **Education MVP backend (milestone 1):** issues **#11–#24** merged on `main`.
 - **Production Frontend** and **Workable Product:** merged.
 - **UI v2 course-first shell:** **#116–#128** merged in PR #130.
-- **Active:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), beginning with **#132** explicit Course capabilities and Cohort context.
-- **Next after #132:** **#133** operational shell search, account, and join flows; continue the ordered #131 roadmap through **#145** before final AI, E2E, staging, and beta gates.
+- **Active:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), with **#132** merged and **#133** operational shell search, account, and join flows complete locally.
+- **Next after #133:** **#134** truthful Course Resources and AI install controls; continue the ordered #131 roadmap through **#145** before final AI, E2E, staging, and beta gates.
 
 Milestone -1: Project operations bootstrap
 
@@ -502,7 +502,7 @@ Milestone 9: Hardening
 
 Backend MVP **#11–#24**, Production Frontend **#47–#59**, Workable Product **#60–#63**, and UI v2 **#116–#128** are merged on `main`.
 
-Active: [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131). **#132** is the security foundation and is complete locally on `feature/132-course-capabilities-cohort-context`: explicit Study Server/Course/Cohort capabilities, canonical Cohort context, backend authorization, and owner/learner browser proof. Finish its PR/CI/CodeAnt/merge loop, then start **#133** and continue the epic order. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent remains [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
+Active: [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131). **#132** is merged. **#133** is complete locally on `feature/133-operational-v2-shell-flows`: accessible route-scoped search, real account/sign-out behavior, durable Cohort invite joining, public Terms, responsive mobile navigation, and removal of synthetic unread signals. Finish its PR/CI/CodeAnt/merge loop, then start **#134** and continue the epic order. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent remains [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

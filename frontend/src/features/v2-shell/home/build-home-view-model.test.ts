@@ -11,7 +11,6 @@ const sampleCourses: V2SidebarCourse[] = [
     title: 'CS 101 — Intro to CS',
     cohortLabel: 'Spring cohort',
     accentColor: '#3b82f6',
-    unreadCount: 3,
   },
   {
     id: 'c2',
@@ -20,7 +19,6 @@ const sampleCourses: V2SidebarCourse[] = [
     title: 'MATH 201 — Linear Algebra',
     cohortLabel: 'Spring cohort',
     accentColor: '#22c55e',
-    unreadCount: 1,
   },
 ]
 
@@ -33,5 +31,13 @@ describe('buildHomeViewModel', () => {
     expect(model.attention).toHaveLength(3)
     expect(model.courses).toHaveLength(2)
     expect(model.upNext.length).toBeGreaterThan(0)
+  })
+
+  it('does not invent unread message, resource, or announcement counts', () => {
+    const model = buildHomeViewModel('Sam', sampleCourses, new Date('2026-07-11T20:00:00'))
+
+    expect(model.courses[0]).not.toHaveProperty('messageSummary')
+    expect(model.courses[0]).not.toHaveProperty('resourceSummary')
+    expect(model.attention.find((item) => item.kind === 'announcements')?.headline).toBe('Announcements')
   })
 })

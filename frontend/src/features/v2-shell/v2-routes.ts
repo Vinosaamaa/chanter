@@ -51,7 +51,7 @@ export function v2CommunityPath(
 }
 
 export function v2JoinCreatePath(): string {
-  return '/app/onboarding/create-study-server'
+  return '/app/onboarding/join-or-create'
 }
 
 export function resolveV2PrimaryNav(pathname: string): V2PrimaryNav | null {

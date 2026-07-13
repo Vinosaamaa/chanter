@@ -23,7 +23,6 @@ vi.mock('../hooks/use-v2-sidebar-data', () => ({
         title: 'CS 101 — Intro to CS',
         cohortLabel: 'Spring cohort',
         accentColor: '#3b82f6',
-        unreadCount: 3,
       },
     ],
   }),

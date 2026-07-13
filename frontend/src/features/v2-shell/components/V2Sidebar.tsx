@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
-import { Link, NavLink, useLocation, useParams } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   CalendarDays,
   ChevronDown,
+  CreditCard,
   GraduationCap,
   Home as HomeIcon,
   Inbox,
+  LogOut,
   Plus,
   Sprout,
   UsersRound,
@@ -24,10 +26,10 @@ import {
 } from '../v2-routes'
 import type { V2SidebarData, V2SidebarServerGroup } from '../hooks/use-v2-sidebar-data'
 import { useAuthStore } from '../../../stores/auth-store'
+import { logout as logoutApi } from '../../auth/auth-api'
 
 type V2SidebarProps = {
   data: V2SidebarData
-  inboxUnread?: number
   menuOpen: boolean
   onCloseMenu: () => void
 }
@@ -79,7 +81,6 @@ function ServerGroupSection({
             >
               <i style={{ background: course.accentColor }} />
               <span>{course.title}</span>
-              {course.unreadCount > 0 ? <b>{course.unreadCount}</b> : null}
             </Link>
           ))}
         </div>
@@ -88,11 +89,15 @@ function ServerGroupSection({
   )
 }
 
-export function V2Sidebar({ data, inboxUnread = 4, menuOpen, onCloseMenu }: V2SidebarProps) {
+export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
   const { serverId, courseId } = useParams()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
+  const clearSession = useAuthStore((state) => state.clearSession)
   const displayName = user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'You'
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
 
   const initialCollapsed = useMemo(() => {
     const ids = new Set<string>()
@@ -119,6 +124,21 @@ export function V2Sidebar({ data, inboxUnread = 4, menuOpen, onCloseMenu }: V2Si
   }
 
   const navClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'active' : undefined)
+
+  const signOut = async () => {
+    setSigningOut(true)
+    const refreshToken = useAuthStore.getState().refreshToken
+    if (refreshToken) {
+      try {
+        await logoutApi(refreshToken)
+      } catch {
+        // A local sign-out must still complete if token revocation is unavailable.
+      }
+    }
+    clearSession()
+    onCloseMenu()
+    navigate('/sign-in', { replace: true })
+  }
 
   return (
     <aside className={`sidebar${menuOpen ? ' open' : ''}`}>
@@ -153,7 +173,6 @@ export function V2Sidebar({ data, inboxUnread = 4, menuOpen, onCloseMenu }: V2Si
           <NavLink to={v2InboxPath()} className={navClass} onClick={onCloseMenu}>
             <Inbox />
             <span>Inbox</span>
-            {inboxUnread > 0 ? <b>{inboxUnread}</b> : null}
           </NavLink>
           <NavLink to={v2CalendarPath()} className={navClass} onClick={onCloseMenu}>
             <CalendarDays />
@@ -190,15 +209,54 @@ export function V2Sidebar({ data, inboxUnread = 4, menuOpen, onCloseMenu }: V2Si
         </Link>
       </div>
 
-      <Link to="/app/settings/billing" className="profile" onClick={onCloseMenu}>
-        <span className="avatar" aria-hidden="true">
-          <span className="hair" />
-          <span className="face">⌣</span>
-          <i />
-        </span>
-        <strong>{displayName}</strong>
-        <ChevronDown size={20} />
-      </Link>
+      <div className="profile-menu-wrap">
+        {accountOpen ? (
+          <div className="account-menu" role="menu" aria-label="Account">
+            <p>
+              <strong>{user?.displayName ?? displayName}</strong>
+              <small>{user?.email}</small>
+            </p>
+            {data.showBillingNav ? (
+              <Link
+                role="menuitem"
+                to="/app/settings/billing"
+                onClick={() => {
+                  setAccountOpen(false)
+                  onCloseMenu()
+                }}
+              >
+                <CreditCard />
+                Billing
+              </Link>
+            ) : null}
+            <button
+              role="menuitem"
+              type="button"
+              disabled={signingOut}
+              onClick={() => void signOut()}
+            >
+              <LogOut />
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </button>
+          </div>
+        ) : null}
+        <button
+          type="button"
+          className="profile"
+          aria-label="Open account menu"
+          aria-haspopup="menu"
+          aria-expanded={accountOpen}
+          onClick={() => setAccountOpen((current) => !current)}
+        >
+          <span className="avatar" aria-hidden="true">
+            <span className="hair" />
+            <span className="face">⌣</span>
+            <i />
+          </span>
+          <strong>{displayName}</strong>
+          <ChevronDown size={20} />
+        </button>
+      </div>
     </aside>
   )
 }

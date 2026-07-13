@@ -7,7 +7,7 @@ type InboxFilter = 'All' | 'Mentions' | 'Announcements'
 
 const threads = [
   { id: 'math-answer', course: 'MATH 201', title: 'Your question was answered', time: '1h', kind: 'Mentions', tone: 'blue' as const },
-  { id: 'cs-announcement', course: 'CS 101', title: '2 new announcements', time: '3h', kind: 'Announcements', tone: 'blue' as const },
+  { id: 'cs-announcement', course: 'CS 101', title: 'Course announcements', time: '3h', kind: 'Announcements', tone: 'blue' as const },
   { id: 'bio-resource', course: 'BIO 150', title: 'New resource uploaded', time: 'yesterday', kind: 'All', tone: 'green' as const },
   { id: 'econ-ta', course: 'ECON 210', title: 'TA replied to queue', time: 'yesterday', kind: 'Mentions', tone: 'purple' as const },
 ]

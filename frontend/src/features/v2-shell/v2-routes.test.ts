@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveV2PrimaryNav, v2CoursePath, v2HomePath } from './v2-routes'
+import { resolveV2PrimaryNav, v2CoursePath, v2HomePath, v2JoinCreatePath } from './v2-routes'
 import { resolveV2SearchConfig } from './v2-search-config'
 
 describe('v2-routes', () => {
@@ -12,6 +12,10 @@ describe('v2-routes', () => {
     expect(v2CoursePath('srv-1', 'course-1', 'chat')).toBe(
       '/app/servers/srv-1/courses/course-1/chat',
     )
+  })
+
+  it('builds the join-or-create chooser path', () => {
+    expect(v2JoinCreatePath()).toBe('/app/onboarding/join-or-create')
   })
 
   it('resolves primary nav from pathname', () => {

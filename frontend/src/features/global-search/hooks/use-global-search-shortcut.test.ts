@@ -28,6 +28,26 @@ describe('useGlobalSearchShortcut', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('opens on meta+f for the v2 search shortcut', () => {
+    const onOpen = vi.fn()
+    const onClose = vi.fn()
+
+    renderHook(() =>
+      useGlobalSearchShortcut({
+        isOpen: false,
+        onOpen,
+        onClose,
+      }),
+    )
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true }),
+    )
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('opens on ctrl+k', () => {
     const onOpen = vi.fn()
     const onClose = vi.fn()
