@@ -371,3 +371,77 @@
   .v2-app-shell .answer-sources > article { min-height: 61px; padding-block: 6px; }
   .v2-app-shell .question-composer { min-height: 57px; }
 }
+
+/* Course Resources */
+.v2-app-shell .resources-page { min-height: 100%; padding: 18px 28px 28px; }
+.v2-app-shell .resources-toolbar { display: grid; grid-template-columns: minmax(250px,1.25fr) auto auto; align-items: center; gap: 16px; margin-bottom: 17px; }
+.v2-app-shell .resources-toolbar > label { height: 50px; display: grid; grid-template-columns: 40px minmax(0,1fr); align-items: center; border: 1px solid #33465b; border-radius: 9px; padding: 0 14px; color: #c8cdd5; }
+.v2-app-shell .resources-toolbar > label input { min-width: 0; border: 0; outline: 0; color: #f5f6f8; background: transparent; font-size: 16px; }
+.v2-app-shell .resource-filters, .v2-app-shell .resource-owner-actions { display: flex; align-items: center; gap: 12px; }
+.v2-app-shell .resource-filters button { min-height: 50px; border: 1px solid #33465b; border-radius: 9px; padding: 0 25px; color: #c1c6cf; background: transparent; cursor: pointer; }
+.v2-app-shell .resource-filters button.active { border-color: #5e76ff; color: #fff; background: rgba(53,73,177,.48); }
+.v2-app-shell .resource-owner-actions { justify-content: flex-end; }
+.v2-app-shell .resource-owner-actions button { min-height: 50px; }
+.v2-app-shell .resource-week-list { display: grid; gap: 3px; }
+.v2-app-shell .resource-week { border: 1px solid rgba(151,161,177,.34); border-radius: 12px; padding: 14px 19px 18px; background: rgba(7,23,41,.48); }
+.v2-app-shell .resource-week > header { min-height: 38px; display: grid; grid-template-columns: 36px minmax(0,1fr) 25px; align-items: center; }
+.v2-app-shell .resource-week > header h2 { margin: 0; font-size: 19px; font-weight: 500; }
+.v2-app-shell .resource-week > header svg { color: #c8ccd3; }
+.v2-app-shell .resource-rows { margin-top: 5px; overflow: hidden; border: 1px solid rgba(151,161,177,.3); border-radius: 10px; }
+.v2-app-shell .resource-row { min-height: 80px; display: grid; grid-template-columns: 62px minmax(0,1fr) auto 48px; align-items: center; gap: 14px; border-bottom: 1px solid rgba(151,161,177,.2); padding: 9px 15px; }
+.v2-app-shell .resource-row:last-child { border-bottom: 0; }
+.v2-app-shell .resource-type-icon { width: 51px; height: 53px; display: grid; place-items: center; border-radius: 8px; color: #fff; background: linear-gradient(145deg,#df483e,#bb262c); }
+.v2-app-shell .resource-type-icon.recording { background: linear-gradient(145deg,#765ce0,#4835a6); }
+.v2-app-shell .resource-type-icon.assignment { color: #ffb72a; background: transparent; }
+.v2-app-shell .resource-type-icon.slides { background: linear-gradient(145deg,#f48028,#c94d0d); }
+.v2-app-shell .resource-type-icon.link, .v2-app-shell .resource-type-icon.other { background: linear-gradient(145deg,#5374dd,#293c89); }
+.v2-app-shell .resource-type-icon svg { width: 29px; height: 29px; }
+.v2-app-shell .pdf-label { font-size: 17px; font-weight: 700; }
+.v2-app-shell .resource-row > div > strong { display: block; font-size: 18px; }
+.v2-app-shell .resource-row > div > p { margin: 7px 0 0; color: #aeb5c1; font-size: 15px; }
+.v2-app-shell .resource-statuses { display: flex; align-items: center; gap: 15px; }
+.v2-app-shell .resource-statuses b { min-height: 35px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #27834d; border-radius: 8px; padding: 0 11px; color: #65d88e; font-size: 14px; font-weight: 500; background: rgba(22,96,49,.16); }
+.v2-app-shell .resource-statuses b svg { width: 19px; }
+.v2-app-shell .resource-statuses b.due { border-color: #b67d00; color: #ffba13; background: rgba(119,77,0,.15); }
+.v2-app-shell .resource-statuses i { color: #6680ff; font-style: normal; white-space: nowrap; }
+.v2-app-shell .resource-row > button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; color: #c7cbd3; background: transparent; cursor: pointer; }
+.v2-app-shell .resource-empty { border: 1px dashed #405269; border-radius: 10px; padding: 35px; color: #9fa8b6; text-align: center; }
+.v2-app-shell .v2-modal-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgba(0,7,17,.66); }
+.v2-app-shell .assistant-install-modal { position: relative; width: min(540px,100%); border: 1px solid #3d4e64; border-radius: 12px; padding: 25px 29px 22px; color: #f6f7f9; background: #0c1f33; box-shadow: 0 24px 70px rgba(0,0,0,.48); }
+.v2-app-shell .assistant-install-modal .modal-close { position: absolute; top: 19px; right: 20px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; color: #c6cbd3; background: transparent; cursor: pointer; }
+.v2-app-shell .assistant-install-modal h2 { margin: 0; font-size: 26px; }
+.v2-app-shell .assistant-install-modal > p { margin: 18px 0 24px; color: #b8bec8; font-size: 16px; line-height: 1.5; }
+.v2-app-shell .assistant-install-modal h3 { margin: 0 0 15px; font-size: 16px; font-weight: 500; }
+.v2-app-shell .assistant-permissions { display: grid; gap: 13px; }
+.v2-app-shell .assistant-permissions label { display: flex; align-items: center; gap: 13px; color: #c3c8d0; }
+.v2-app-shell .assistant-permissions input { width: 20px; height: 20px; accent-color: #5671f2; }
+.v2-app-shell .assistant-install-modal .modal-error { margin: 14px 0 0; color: #fda4af; font-size: 13px; }
+.v2-app-shell .assistant-install-modal footer { display: flex; justify-content: flex-end; gap: 14px; margin-top: 28px; }
+.v2-app-shell .assistant-install-modal footer button { min-width: 145px; min-height: 53px; justify-content: center; }
+
+@media (max-width: 1220px) {
+  .v2-app-shell .resources-toolbar { grid-template-columns: minmax(250px,1fr) auto; }
+  .v2-app-shell .resource-owner-actions { grid-column: 1 / -1; }
+}
+@media (max-width: 850px) {
+  .v2-app-shell .resources-toolbar { grid-template-columns: 1fr; }
+  .v2-app-shell .resource-owner-actions { grid-column: auto; justify-content: flex-start; flex-wrap: wrap; }
+  .v2-app-shell .resource-filters { overflow-x: auto; }
+  .v2-app-shell .resource-row { grid-template-columns: 52px minmax(0,1fr) 42px; }
+  .v2-app-shell .resource-statuses { grid-column: 2 / -1; grid-row: 2; }
+}
+@media (max-width: 560px) {
+  .v2-app-shell .resources-page { padding: 12px; }
+  .v2-app-shell .resource-filters button { padding-inline: 16px; }
+  .v2-app-shell .resource-week { padding-inline: 10px; }
+  .v2-app-shell .resource-row { gap: 8px; padding-inline: 8px; }
+  .v2-app-shell .resource-row > div > strong { font-size: 15px; }
+  .v2-app-shell .resource-statuses { flex-wrap: wrap; }
+}
+@media (max-height: 760px) and (min-width: 851px) {
+  .v2-app-shell .resources-page { padding-top: 10px; }
+  .v2-app-shell .resources-toolbar { margin-bottom: 9px; }
+  .v2-app-shell .resources-toolbar > label, .v2-app-shell .resource-filters button, .v2-app-shell .resource-owner-actions button { min-height: 42px; height: 42px; }
+  .v2-app-shell .resource-row { min-height: 65px; }
+  .v2-app-shell .resource-type-icon { width: 43px; height: 44px; }
+}

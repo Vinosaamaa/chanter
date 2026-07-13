@@ -27,6 +27,9 @@ export function resolveV2SearchConfig(pathname: string): V2SearchConfig {
     if (pathname.endsWith('/chat')) {
       return { placeholder: 'Search in:#general', scopeLabel: 'Chat' }
     }
+    if (pathname.endsWith('/resources')) {
+      return { placeholder: 'Search in: resources', scopeLabel: 'Resources' }
+    }
     return { placeholder: 'Search this course…', scopeLabel: 'Course' }
   }
   if (isV2CommunityRoute(pathname)) {
