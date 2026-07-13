@@ -27,7 +27,10 @@ describe('v2-search-config', () => {
     expect(resolveV2SearchConfig('/app/home').placeholder).toBe('Search your courses…')
     expect(resolveV2SearchConfig('/app/inbox').placeholder).toBe('Search inbox…')
     expect(resolveV2SearchConfig('/app/servers/a/courses/b/chat').placeholder).toBe(
-      'Search this course…',
+      'Search in:#general',
+    )
+    expect(resolveV2SearchConfig('/app/servers/a/courses/b/questions').placeholder).toBe(
+      'Search @questions',
     )
   })
 })

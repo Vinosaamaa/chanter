@@ -22,6 +22,7 @@ import { CalendarPage } from '../features/v2-shell/pages/CalendarPage'
 import { V2CourseWorkspaceLayout } from '../features/v2-shell/layouts/V2CourseWorkspaceLayout'
 import { CourseOverviewPage } from '../features/v2-shell/pages/course/CourseOverviewPage'
 import { CourseChatPage } from '../features/v2-shell/pages/course/CourseChatPage'
+import { CourseQuestionsPage } from '../features/v2-shell/pages/course/CourseQuestionsPage'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -75,6 +76,7 @@ export function createAppRouter() {
                 { index: true, element: <Navigate to="overview" replace /> },
                 { path: 'overview', element: <CourseOverviewPage /> },
                 { path: 'chat', element: <CourseChatPage /> },
+                { path: 'questions', element: <CourseQuestionsPage /> },
               ],
             },
           ],

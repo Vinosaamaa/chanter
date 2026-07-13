@@ -21,6 +21,12 @@ export function resolveV2SearchConfig(pathname: string): V2SearchConfig {
     return { placeholder: 'Search friends and messages…', scopeLabel: 'Friends' }
   }
   if (isV2CourseRoute(pathname)) {
+    if (pathname.endsWith('/questions')) {
+      return { placeholder: 'Search @questions', scopeLabel: 'Questions' }
+    }
+    if (pathname.endsWith('/chat')) {
+      return { placeholder: 'Search in:#general', scopeLabel: 'Chat' }
+    }
     return { placeholder: 'Search this course…', scopeLabel: 'Course' }
   }
   if (isV2CommunityRoute(pathname)) {
