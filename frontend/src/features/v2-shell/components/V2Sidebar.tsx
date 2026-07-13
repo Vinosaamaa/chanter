@@ -190,7 +190,7 @@ export function V2Sidebar({ data, inboxUnread = 4, menuOpen, onCloseMenu }: V2Si
         </Link>
       </div>
 
-      <button type="button" className="profile">
+      <Link to="/app/settings/billing" className="profile" onClick={onCloseMenu}>
         <span className="avatar" aria-hidden="true">
           <span className="hair" />
           <span className="face">⌣</span>
@@ -198,7 +198,7 @@ export function V2Sidebar({ data, inboxUnread = 4, menuOpen, onCloseMenu }: V2Si
         </span>
         <strong>{displayName}</strong>
         <ChevronDown size={20} />
-      </button>
+      </Link>
     </aside>
   )
 }

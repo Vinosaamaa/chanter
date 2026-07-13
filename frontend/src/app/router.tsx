@@ -28,6 +28,8 @@ import { CourseOfficeHoursPage } from '../features/v2-shell/pages/course/CourseO
 import { CoursePeoplePage } from '../features/v2-shell/pages/course/CoursePeoplePage'
 import { V2CommunityHubLayout } from '../features/v2-shell/layouts/V2CommunityHubLayout'
 import { CommunityAnnouncementsPage, CommunityDiscoverPage, CommunityEventsPage, CommunityLoungePage, CommunityMembersPage } from '../features/v2-shell/pages/community/CommunityPages'
+import { TeachingPage } from '../features/v2-shell/pages/TeachingPage'
+import { BillingSettingsPage } from '../features/v2-shell/pages/BillingSettingsPage'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -74,6 +76,8 @@ export function createAppRouter() {
               path: 'calendar',
               element: <CalendarPage />,
             },
+            { path: 'teaching', element: <TeachingPage /> },
+            { path: 'settings/billing', element: <BillingSettingsPage /> },
             {
               path: 'servers/:serverId/courses/:courseId',
               element: <V2CourseWorkspaceLayout />,

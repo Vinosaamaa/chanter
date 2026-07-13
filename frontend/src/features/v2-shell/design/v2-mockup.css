@@ -39,6 +39,7 @@
   min-width: 0;
   display: flex;
   overflow: hidden;
+  color: #f7f7fa;
   background: #001124;
 }
 
