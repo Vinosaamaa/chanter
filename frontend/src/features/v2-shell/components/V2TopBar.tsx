@@ -1,17 +1,27 @@
 import { useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Bell, Home as HomeIcon, Menu, Search } from 'lucide-react'
 
+import { resolveV2PrimaryNav } from '../v2-routes'
 import { resolveV2SearchConfig } from '../v2-search-config'
-import { useV2Chrome } from '../hooks/use-v2-chrome'
 
 type V2TopBarProps = {
   notificationCount?: number
   onOpenMenu: () => void
 }
 
+function resolveTopBarChrome(pathname: string) {
+  const primary = resolveV2PrimaryNav(pathname)
+  if (primary === 'home') {
+    return { pageTitle: 'Home', showHomeIcon: true, breadcrumbs: [] as { label: string; href?: string }[] }
+  }
+
+  return { pageTitle: 'Home', showHomeIcon: true, breadcrumbs: [] as { label: string; href?: string }[] }
+}
+
 export function V2TopBar({ notificationCount = 2, onOpenMenu }: V2TopBarProps) {
-  const { pathname, pageTitle, showHomeIcon, breadcrumbs } = useV2Chrome()
+  const { pathname } = useLocation()
+  const { pageTitle, showHomeIcon, breadcrumbs } = resolveTopBarChrome(pathname)
   const search = resolveV2SearchConfig(pathname)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
