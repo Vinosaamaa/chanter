@@ -24,7 +24,7 @@ export function SignInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sessionReady, setSessionReady] = useState(false)
 
-  const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app'
+  const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app/home'
   const inviteFromUrl = readCohortInviteParams(location.search)
 
   if (accessToken || sessionReady) {
