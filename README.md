@@ -73,7 +73,7 @@ Key planning files:
 | [`docs/issues/production-frontend-issue-breakdown.md`](docs/issues/production-frontend-issue-breakdown.md) | Legacy Production UI slices (#47–#59) — **superseded for layout** |
 | [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md) | **UI v2** course-first shell (#115–#128) — **active** |
 | [`docs/issues/workable-product-issue-breakdown.md`](docs/issues/workable-product-issue-breakdown.md) | Workable full-stack app (#60–#63, #31–#32) |
-| [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) | **Mandatory agent workflow** — issue order, completion loop, owner-only merge |
+| [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) | **Mandatory agent workflow** — issue order, completion loop, autonomous gated merge |
 | [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) | Redirect → `agent-workflow.md` |
 | [`plan.md`](plan.md) | Roadmap, milestones, frontend/backend direction, scale and AI-agent phases |
 | [`System Design.md`](System Design.md) | Backend architecture, service boundaries, event flows (engineering diagrams in `docs/diagrams/`) |

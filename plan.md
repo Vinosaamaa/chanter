@@ -502,7 +502,7 @@ Milestone 9: Hardening
 
 Backend MVP **#11–#24**, Production Frontend **#47–#59**, and Workable Product **#60–#63** are merged on `main`. UI v2 **#116–#128** is implemented locally on `feature/116-v2-app-shell` with issue-scoped commits and has not been pushed.
 
-Next: complete the final diff review, push only after explicit owner approval, open one PR for #116–#128, finish the CodeAnt review loop, and let the owner merge. After merge, resume the Public Launch board at **#94–#100** (real AI/RAG/MCP), then **#101–#104** (launch readiness). Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent is [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
+Next: push and open one PR for #116–#128, finish the CodeAnt review loop, and merge after the required gates. Then audit v2 interactions against existing APIs before resuming the Public Launch board at **#94–#100** (real AI/RAG/MCP), then **#101–#104** (launch readiness). Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent is [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

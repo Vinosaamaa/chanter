@@ -31,7 +31,7 @@ Important files:
 - `docs/issues/ui-v2-issue-breakdown.md`: **UI v2 implementation** — course-first shell (**#115–#128**, milestone 7).
 - `docs/issues/workable-product-issue-breakdown.md`: Workable full-stack local app (**#60–#63**, #31–#32, project #4).
 - `docs/issues/public-launch-issue-breakdown.md`: Public Launch (**#82–#104**, project #5).
-- `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, completion loop, owner-only merge policy, **CodeAnt AI** PR review (cubic retired).
+- `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, autonomous gated merge policy, **CodeAnt AI** PR review (cubic retired).
 - `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
 - `System Design.md`: detailed backend/system architecture explanation and diagrams.
 - `docs/diagrams/`: editable draw.io **engineering** diagram sources plus embedded PNG exports referenced from `plan.md` and `System Design.md` (not product UI mockups — those live under `docs/product-design/`).
@@ -46,7 +46,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** **UI v2 — course-first shell** — implementation complete locally; one PR and review loop remain for [milestone 7](https://github.com/Vinosaamaa/chanter/milestone/7), [project #5](https://github.com/users/Vinosaamaa/projects/5).
 
-**Active slice:** **#116–#128 are complete locally** on `feature/116-v2-app-shell` (one issue commit per #117–#128, plus the two #116 foundation commits). The branch is **not pushed**. Next: final diff check, owner-approved push, one PR, CodeAnt loop, then owner merge.
+**Active slice:** **#116–#128 are complete locally** on `feature/116-v2-app-shell` (one issue commit per #117–#128, plus the two #116 foundation commits). The branch is **not pushed**. Next: push, open one PR, complete the CodeAnt loop, then merge under the autonomous gated merge policy.
 
 **Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
 
@@ -195,7 +195,7 @@ Scale direction:
 
 Use installed Cursor workflow skills directly rather than the deleted local `chanter-engineering-workflow` skill.
 
-**Git workflow (required):** one branch per GitHub issue → pull request → **full CodeAnt loop** → **owner merges** → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. **Agents never merge.** Do not stop after opening a PR.
+**Git workflow (required):** one issue per branch and PR → CI → initial CodeAnt review → up to three remediation rounds → agent merge → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. Never push directly to `main`; do not stop after opening a PR.
 
 **Testing workflow:** backend bootstrap (#11) may use smoke tests; **backend domain features #12–#24 use TDD**. Production frontend **#47–#55** were test-last; **from #56 onward** use vertical-slice TDD per `agent-workflow.md`.
 
@@ -378,7 +378,7 @@ Demo: docs/operations/workable-product-demo.md
 
 ## Notes For Future Agent
 
-- **Agent workflow:** read [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) before picking work; follow project board order on [#3](https://github.com/users/Vinosaamaa/projects/3) then [#4](https://github.com/users/Vinosaamaa/projects/4). **Agents never merge PRs.**
+- **Agent workflow:** read [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) before picking work; follow the active project board order. Agents may merge after CI and CodeAnt gates; never push directly to `main`.
 - **Product showcase:** `docs/product-design/` has target UI mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** (global friends vs enrollment-scoped course sidebar). **Implement against v2:** `DESIGN-DECISIONS.md`. Use it when implementing frontend routes or explaining scope to stakeholders. `frontend/src/App.tsx` is an API demo, not the final shell.
 - **Engineering diagrams:** `docs/diagrams/` is for service architecture — do not put product mockups there.
 - **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
