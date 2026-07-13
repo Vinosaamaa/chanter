@@ -30,6 +30,7 @@ import { V2CommunityHubLayout } from '../features/v2-shell/layouts/V2CommunityHu
 import { CommunityAnnouncementsPage, CommunityDiscoverPage, CommunityEventsPage, CommunityLoungePage, CommunityMembersPage } from '../features/v2-shell/pages/community/CommunityPages'
 import { TeachingPage } from '../features/v2-shell/pages/TeachingPage'
 import { BillingSettingsPage } from '../features/v2-shell/pages/BillingSettingsPage'
+import { FriendsPage } from '../features/v2-shell/pages/FriendsPage'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -78,6 +79,7 @@ export function createAppRouter() {
             },
             { path: 'teaching', element: <TeachingPage /> },
             { path: 'settings/billing', element: <BillingSettingsPage /> },
+            { path: 'friends', element: <FriendsPage /> },
             {
               path: 'servers/:serverId/courses/:courseId',
               element: <V2CourseWorkspaceLayout />,
