@@ -26,6 +26,8 @@ import { CourseQuestionsPage } from '../features/v2-shell/pages/course/CourseQue
 import { CourseResourcesPage } from '../features/v2-shell/pages/course/CourseResourcesPage'
 import { CourseOfficeHoursPage } from '../features/v2-shell/pages/course/CourseOfficeHoursPage'
 import { CoursePeoplePage } from '../features/v2-shell/pages/course/CoursePeoplePage'
+import { V2CommunityHubLayout } from '../features/v2-shell/layouts/V2CommunityHubLayout'
+import { CommunityAnnouncementsPage, CommunityDiscoverPage, CommunityEventsPage, CommunityLoungePage, CommunityMembersPage } from '../features/v2-shell/pages/community/CommunityPages'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -85,6 +87,14 @@ export function createAppRouter() {
                 { path: 'people', element: <CoursePeoplePage /> },
               ],
             },
+            { path: 'servers/:serverId/community', element: <V2CommunityHubLayout />, children: [
+              { index: true, element: <Navigate to="announcements" replace /> },
+              { path: 'announcements', element: <CommunityAnnouncementsPage /> },
+              { path: 'lounge', element: <CommunityLoungePage /> },
+              { path: 'events', element: <CommunityEventsPage /> },
+              { path: 'discover', element: <CommunityDiscoverPage /> },
+              { path: 'members', element: <CommunityMembersPage /> },
+            ] },
           ],
         },
         {

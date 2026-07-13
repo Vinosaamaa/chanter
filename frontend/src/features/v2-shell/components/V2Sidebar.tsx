@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, NavLink, useParams } from 'react-router-dom'
+import { Link, NavLink, useLocation, useParams } from 'react-router-dom'
 import {
   CalendarDays,
   ChevronDown,
@@ -20,6 +20,7 @@ import {
   v2InboxPath,
   v2JoinCreatePath,
   v2TeachingPath,
+  v2CommunityPath,
 } from '../v2-routes'
 import type { V2SidebarData, V2SidebarServerGroup } from '../hooks/use-v2-sidebar-data'
 import { useAuthStore } from '../../../stores/auth-store'
@@ -51,6 +52,7 @@ function ServerGroupSection({
   activeServerId,
   activeCourseId,
   onNavigate,
+  communityActive,
 }: {
   group: V2SidebarServerGroup
   index: number
@@ -59,14 +61,11 @@ function ServerGroupSection({
   activeServerId?: string
   activeCourseId?: string
   onNavigate: () => void
+  communityActive: boolean
 }) {
   return (
     <section className={`community${index > 0 ? ' second' : ''}`}>
-      <button type="button" className="community-header" onClick={onToggle}>
-        {communityIcon(index)}
-        <span>{group.name}</span>
-        <ChevronDown size={18} className={collapsed ? '-rotate-90' : ''} style={{ transition: 'transform 220ms ease' }} />
-      </button>
+      <div className={`community-header-row${communityActive ? ' active' : ''}`}><Link to={v2CommunityPath(group.id,'announcements')} onClick={onNavigate}>{communityIcon(index)}<span>{group.name}</span></Link><button type="button" onClick={onToggle} aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${group.name}`}><ChevronDown size={18} className={collapsed ? '-rotate-90' : ''} style={{ transition: 'transform 220ms ease' }} /></button></div>
       {!collapsed ? (
         <div className={`community-list${group.courses.length === 1 ? ' one-item' : ''}`}>
           {group.courses.map((course) => (
@@ -91,6 +90,7 @@ function ServerGroupSection({
 
 export function V2Sidebar({ data, inboxUnread = 4, menuOpen, onCloseMenu }: V2SidebarProps) {
   const { serverId, courseId } = useParams()
+  const { pathname } = useLocation()
   const user = useAuthStore((state) => state.user)
   const displayName = user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'You'
 
@@ -180,6 +180,7 @@ export function V2Sidebar({ data, inboxUnread = 4, menuOpen, onCloseMenu }: V2Si
             activeServerId={serverId}
             activeCourseId={courseId}
             onNavigate={onCloseMenu}
+            communityActive={pathname.includes(`/app/servers/${group.id}/community/`)}
           />
         ))}
 

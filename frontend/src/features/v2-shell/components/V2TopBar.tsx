@@ -23,6 +23,10 @@ function resolveTopBarChrome(pathname: string) {
       ],
     }
   }
+  const communityMatch = pathname.match(/^\/app\/servers\/[^/]+\/community\//)
+  if (communityMatch) {
+    return { pageTitle: 'Community', showHomeIcon: false, breadcrumbs: [{ label: 'Spring Bootcamp Hub' }, { label: 'Community' }] }
+  }
   const pageTitle = primary ? primary[0].toUpperCase() + primary.slice(1) : 'Home'
   return {
     pageTitle,
