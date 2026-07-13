@@ -27,7 +27,7 @@ export function V2TopBar({ notificationCount = 2, onOpenMenu }: V2TopBarProps) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
         event.preventDefault()
         searchInputRef.current?.focus()
       }
@@ -73,11 +73,11 @@ export function V2TopBar({ notificationCount = 2, onOpenMenu }: V2TopBarProps) {
         <Search size={28} />
         <input
           ref={searchInputRef}
-          aria-label="Search courses, messages, and files"
+          aria-label={search.placeholder}
           placeholder={search.placeholder}
           type="search"
         />
-        <span>⌘K</span>
+        <span>⌘F</span>
       </label>
 
       <button type="button" className="bell-button" aria-label="Notifications">

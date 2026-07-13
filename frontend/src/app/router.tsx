@@ -11,11 +11,12 @@ import { AppServerRedirectPage } from '../features/shell/pages/AppServerRedirect
 import { SupportOperationPage } from '../features/support-operations/components/SupportOperationPage'
 import { InstructorDashboardPage } from '../features/instructor-dashboard/components/InstructorDashboardPage'
 import { ChannelSummaryPage } from '../features/channel-summary/components/ChannelSummaryPage'
-import { CreateStudyServerPage } from '../features/onboarding/components/CreateStudyServerPage'
 import { CohortEnrollmentPage } from '../features/onboarding/components/CohortEnrollmentPage'
 import { StudyServerHomePage } from '../features/onboarding/components/StudyServerHomePage'
 import { V2AppShellLayout } from '../features/v2-shell/layouts/V2AppShellLayout'
 import { HomePage } from '../features/v2-shell/pages/HomePage'
+import { WelcomeJoinedPage } from '../features/v2-shell/pages/WelcomeJoinedPage'
+import { CreateStudyServerV2Page } from '../features/v2-shell/pages/onboarding/CreateStudyServerV2Page'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -26,14 +27,6 @@ export function createAppRouter() {
     {
       path: '/sign-in',
       element: <SignInPage />,
-    },
-    {
-      path: '/app/onboarding/create-study-server',
-      element: (
-        <ProtectedRoute>
-          <CreateStudyServerPage />
-        </ProtectedRoute>
-      ),
     },
     {
       path: '/app',
@@ -53,6 +46,14 @@ export function createAppRouter() {
             {
               path: 'home',
               element: <HomePage />,
+            },
+            {
+              path: 'welcome',
+              element: <WelcomeJoinedPage />,
+            },
+            {
+              path: 'onboarding/create-study-server',
+              element: <CreateStudyServerV2Page />,
             },
           ],
         },
