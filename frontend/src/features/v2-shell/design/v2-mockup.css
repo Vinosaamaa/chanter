@@ -198,8 +198,9 @@
 .v2-app-shell .join-create:hover { border-color: white; color: white; }
 
 .v2-app-shell .profile {
+  width: 100%;
+  height: 93px;
   min-height: 93px;
-  flex: 0 0 93px;
   border: 0;
   border-top: 1px solid #364451;
   display: grid;
@@ -214,6 +215,28 @@
 
 .v2-app-shell .profile strong { font-size: 20px; color: #f7f7fa; }
 .v2-app-shell .profile svg { color: #c6c2ca; flex-shrink: 0; }
+
+.v2-app-shell .profile-menu-wrap { position: relative; flex: 0 0 93px; }
+.v2-app-shell .account-menu {
+  position: absolute;
+  z-index: 30;
+  right: 14px;
+  bottom: calc(100% + 8px);
+  left: 14px;
+  overflow: hidden;
+  border: 1px solid #465565;
+  border-radius: 8px;
+  padding: 8px;
+  background: #071a2e;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.38);
+}
+.v2-app-shell .account-menu p { margin: 0 0 7px; padding: 8px 10px 11px; border-bottom: 1px solid #314153; }
+.v2-app-shell .account-menu p strong, .v2-app-shell .account-menu p small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2-app-shell .account-menu p small { margin-top: 3px; color: #aeb8c4; }
+.v2-app-shell .account-menu a, .v2-app-shell .account-menu button { width: 100%; min-height: 42px; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 6px; padding: 0 10px; color: #eef1f5; background: transparent; text-decoration: none; text-align: left; cursor: pointer; }
+.v2-app-shell .account-menu a:hover, .v2-app-shell .account-menu button:hover { background: #142b43; }
+.v2-app-shell .account-menu button:disabled { cursor: wait; opacity: .65; }
+.v2-app-shell .account-menu svg { width: 18px; height: 18px; }
 
 .v2-app-shell .avatar {
   position: relative;
@@ -399,7 +422,7 @@
 
 .v2-app-shell .course-card {
   min-width: 0;
-  min-height: 219px;
+  min-height: 154px;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 18px 17px;
@@ -416,10 +439,6 @@
 .v2-app-shell .progress-track { height: 12px; overflow: hidden; border-radius: 99px; background: #273646; }
 .v2-app-shell .progress-track span { display: block; width: var(--course-progress); height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--course-color), var(--course-end)); }
 .v2-app-shell .progress-row small { color: #b9b6bd; font-size: 14px; white-space: nowrap; }
-.v2-app-shell .course-meta { min-height: 51px; margin-top: 24px; border-top: 1px solid #34414d; display: flex; align-items: flex-end; gap: 19px; color: #bdbac1; }
-.v2-app-shell .course-meta div { display: flex; align-items: center; gap: 16px; white-space: nowrap; font-size: 16px; }
-.v2-app-shell .course-meta svg { flex: 0 0 auto; color: white; stroke-width: 1.8; }
-.v2-app-shell .course-meta i { width: 1px; height: 20px; margin-left: auto; background: #3e4954; }
 .v2-app-shell .empty-search { grid-column: 1 / -1; min-height: 219px; border: 1px dashed var(--line); border-radius: 14px; display: grid; place-items: center; padding: 24px; color: var(--muted); text-align: center; font-size: 18px; }
 
 .v2-app-shell .up-next { min-height: 544px; border: 1px solid var(--line); border-radius: 18px; padding: 17px 19px; background: rgba(2, 20, 39, 0.4); }
@@ -474,8 +493,6 @@
   .v2-app-shell .notice.announcements { grid-column: 1 / -1; }
   .v2-app-shell .timeline { grid-template-columns: 1fr; }
   .v2-app-shell .timeline-item:nth-last-child(2) .timeline-copy { border-bottom: 1px solid #34414d; }
-  .v2-app-shell .course-meta { gap: 12px; }
-  .v2-app-shell .course-meta div { gap: 9px; font-size: 14px; }
   .v2-app-shell .topbar { gap: 18px; }
 }
 
@@ -520,8 +537,6 @@
   .v2-app-shell .course-title-row { grid-template-columns: 29px minmax(0, 1fr); gap: 12px; }
   .v2-app-shell .course-title-row h3 { font-size: 18px; }
   .v2-app-shell .progress-row { margin-top: 24px; }
-  .v2-app-shell .course-meta { flex-wrap: wrap; align-content: flex-end; gap: 8px 14px; }
-  .v2-app-shell .course-meta i { display: none; }
 }
 
 @media (min-width: 2200px) {
@@ -529,7 +544,7 @@
   .v2-app-shell .topbar { min-height: 94px; flex-basis: 94px; }
   .v2-app-shell .dashboard { padding-top: 42px; }
   .v2-app-shell .notice { min-height: 138px; }
-  .v2-app-shell .course-card { min-height: 236px; }
+  .v2-app-shell .course-card { min-height: 168px; }
   .v2-app-shell .up-next { min-height: 582px; }
 }
 
@@ -540,9 +555,8 @@
   .v2-app-shell .greeting p { margin-bottom: 14px; }
   .v2-app-shell .notice { min-height: 108px; padding-top: 12px; padding-bottom: 12px; }
   .v2-app-shell .learning { padding-top: 8px; }
-  .v2-app-shell .course-card { min-height: 196px; }
+  .v2-app-shell .course-card { min-height: 148px; }
   .v2-app-shell .progress-row { margin-top: 20px; }
-  .v2-app-shell .course-meta { margin-top: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

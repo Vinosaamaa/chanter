@@ -1,14 +1,13 @@
-import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Bell, Home as HomeIcon, Menu, Search } from 'lucide-react'
 
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
+import { useGlobalSearch } from '../../global-search/hooks/use-global-search'
 import { resolveV2PrimaryNav } from '../v2-routes'
 import { v2CommunityPath } from '../v2-routes'
 import { resolveV2SearchConfig } from '../v2-search-config'
 
 type V2TopBarProps = {
-  notificationCount?: number
   onOpenMenu: () => void
 }
 
@@ -37,24 +36,12 @@ function resolveTopBarChrome(pathname: string) {
   }
 }
 
-export function V2TopBar({ notificationCount = 2, onOpenMenu }: V2TopBarProps) {
+export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
   const { pathname, search: locationSearch } = useLocation()
   const { pageTitle, showHomeIcon, breadcrumbs } = resolveTopBarChrome(pathname)
   const courseRoute = resolveCourseRoute(pathname)
   const search = resolveV2SearchConfig(pathname)
-  const searchInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
-        event.preventDefault()
-        searchInputRef.current?.focus()
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  const { openSearch } = useGlobalSearch()
 
   return (
     <header className="topbar">
@@ -97,18 +84,18 @@ export function V2TopBar({ notificationCount = 2, onOpenMenu }: V2TopBarProps) {
       <label className="search-box">
         <Search size={28} />
         <input
-          ref={searchInputRef}
           aria-label={search.placeholder.replace('…', '')}
           placeholder={search.placeholder}
           type="search"
+          readOnly
+          onClick={openSearch}
         />
         <span>⌘F</span>
       </label>
 
-      <button type="button" className="bell-button" aria-label="Notifications">
+      <Link to="/app/inbox" className="bell-button" aria-label="Open inbox">
         <Bell size={29} />
-        {notificationCount > 0 ? <b>{notificationCount}</b> : null}
-      </button>
+      </Link>
     </header>
   )
 }

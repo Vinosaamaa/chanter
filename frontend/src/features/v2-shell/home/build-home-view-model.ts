@@ -25,8 +25,6 @@ export type HomeCourseCard = {
   color: string
   colorEnd: string
   progress: number
-  messageSummary: string
-  resourceSummary: string
 }
 
 export type HomeUpNextItem = {
@@ -94,8 +92,6 @@ export function mapSidebarCourseToHomeCard(
   index: number,
 ): HomeCourseCard {
   const progress = defaultProgress(course.title)
-  const messageCount = course.unreadCount > 0 ? course.unreadCount : index === 0 ? 5 : 0
-  const resourceCount = progress > 40 ? 1 : 0
   const { code, title } = splitCourseTitle(course.title)
   const accent = accentForCourse(course, index)
 
@@ -109,8 +105,6 @@ export function mapSidebarCourseToHomeCard(
     color: accent.color,
     colorEnd: accent.colorEnd,
     progress,
-    messageSummary: `${messageCount} new message${messageCount === 1 ? '' : 's'}`,
-    resourceSummary: `${resourceCount} new resource${resourceCount === 1 ? '' : 's'}`,
   }
 }
 
@@ -158,7 +152,7 @@ export function buildHomeViewModel(
       kind: 'announcements',
       tone: 'blue',
       icon: 'megaphone',
-      headline: '2 new announcements',
+      headline: 'Announcements',
       suffix: ` · ${first?.code ?? 'Course'}, ${third?.code ?? second?.code ?? 'Course'}`,
       suffixOnNewLine: true,
     })

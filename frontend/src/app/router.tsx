@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute'
 import { SignInPage } from '../features/auth/pages/SignInPage'
+import { TermsPage } from '../features/auth/pages/TermsPage'
 import DevDemoApp from '../features/dev-demo/DevDemoApp'
 import { DevDemoRoutePage } from '../features/dev-demo/DevDemoRoutePage'
 import { LandingPage } from '../features/marketing/pages/LandingPage'
@@ -17,6 +18,7 @@ import { V2AppShellLayout } from '../features/v2-shell/layouts/V2AppShellLayout'
 import { HomePage } from '../features/v2-shell/pages/HomePage'
 import { WelcomeJoinedPage } from '../features/v2-shell/pages/WelcomeJoinedPage'
 import { CreateStudyServerV2Page } from '../features/v2-shell/pages/onboarding/CreateStudyServerV2Page'
+import { JoinOrCreatePage } from '../features/v2-shell/pages/onboarding/JoinOrCreatePage'
 import { InboxPage } from '../features/v2-shell/pages/InboxPage'
 import { CalendarPage } from '../features/v2-shell/pages/CalendarPage'
 import { V2CourseWorkspaceLayout } from '../features/v2-shell/layouts/V2CourseWorkspaceLayout'
@@ -43,6 +45,10 @@ export function createAppRouter() {
       element: <SignInPage />,
     },
     {
+      path: '/terms',
+      element: <TermsPage />,
+    },
+    {
       path: '/app',
       element: (
         <ProtectedRoute>
@@ -64,6 +70,10 @@ export function createAppRouter() {
             {
               path: 'welcome',
               element: <WelcomeJoinedPage />,
+            },
+            {
+              path: 'onboarding/join-or-create',
+              element: <JoinOrCreatePage />,
             },
             {
               path: 'onboarding/create-study-server',

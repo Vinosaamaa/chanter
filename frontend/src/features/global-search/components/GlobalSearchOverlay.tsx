@@ -12,10 +12,25 @@ import {
 import { useGlobalSearch } from '../hooks/use-global-search'
 import { reindexStudyServer, searchStudyServer } from '../global-search-api'
 import type { GlobalSearchHit } from '../global-search-types'
+import { v2CoursePath } from '../../v2-shell/v2-routes'
 
 type ContentTypeFilter = 'all' | 'RESOURCE' | 'FAQ'
+type SearchDestinationVariant = 'legacy' | 'v2'
 
-function hitDestination(serverId: string, hit: GlobalSearchHit, resourcesChannelId: string | null): string {
+function hitDestination(
+  serverId: string,
+  hit: GlobalSearchHit,
+  resourcesChannelId: string | null,
+  variant: SearchDestinationVariant,
+): string {
+  if (variant === 'v2') {
+    return v2CoursePath(
+      serverId,
+      hit.courseId,
+      hit.documentType === 'FAQ' ? 'questions' : 'resources',
+    )
+  }
+
   if (hit.documentType === 'FAQ') {
     return supportOperationPath(serverId, hit.courseId, 'faq-approval')
   }
@@ -38,11 +53,13 @@ function focusableElements(container: HTMLElement): HTMLElement[] {
 function GlobalSearchOverlayPanel({
   onClose,
   panelRef,
+  variant,
 }: {
   onClose: () => void
   panelRef: RefObject<HTMLElement | null>
+  variant: SearchDestinationVariant
 }) {
-  const { serverId: routeServerId } = useParams()
+  const { serverId: routeServerId, courseId: routeCourseId } = useParams()
   const rememberedServerId = readActiveStudyServerId() ?? undefined
   const requestedServerId = routeServerId ?? rememberedServerId
   const navigate = useNavigate()
@@ -110,11 +127,15 @@ function GlobalSearchOverlayPanel({
     () => new Set((navigationQuery.data?.courses ?? []).map((course) => course.id)),
     [navigationQuery.data?.courses],
   )
-  const activeCourseFilter =
-    courseFilter !== 'all' && !courseIds.has(courseFilter) ? 'all' : courseFilter
+  const activeCourseFilter = variant === 'v2' && routeCourseId
+    ? routeCourseId
+    : courseFilter !== 'all' && !courseIds.has(courseFilter) ? 'all' : courseFilter
 
   const groupedResults = useMemo(() => {
     const base = (serverId && trimmedQuery.length >= 2 ? results : []).filter((hit) => {
+      if (!courseIds.has(hit.courseId)) {
+        return false
+      }
       if (contentTypeFilter !== 'all' && hit.documentType !== contentTypeFilter) {
         return false
       }
@@ -135,7 +156,7 @@ function GlobalSearchOverlayPanel({
     }
 
     return { all: base, resourceResults, faqResults }
-  }, [activeCourseFilter, contentTypeFilter, results, serverId, trimmedQuery])
+  }, [activeCourseFilter, contentTypeFilter, courseIds, results, serverId, trimmedQuery])
 
   const courseLookup = useMemo(() => {
     const resourcesChannelByCourseId = new Map<string, string>()
@@ -206,6 +227,7 @@ function GlobalSearchOverlayPanel({
             label="Course"
             value={activeCourseFilter}
             onChange={setCourseFilter}
+            disabled={variant === 'v2' && Boolean(routeCourseId)}
             options={[
               { value: 'all', label: 'All courses' },
               ...(navigationQuery.data?.courses.map((course) => ({
@@ -264,6 +286,7 @@ function GlobalSearchOverlayPanel({
           hits={groupedResults.resourceResults}
           serverId={serverId}
           courseLookup={courseLookup}
+          variant={variant}
           onNavigate={(destination) => {
             onClose()
             navigate(destination)
@@ -275,6 +298,7 @@ function GlobalSearchOverlayPanel({
           hits={groupedResults.faqResults}
           serverId={serverId}
           courseLookup={courseLookup}
+          variant={variant}
           onNavigate={(destination) => {
             onClose()
             navigate(destination)
@@ -298,7 +322,7 @@ function GlobalSearchOverlayPanel({
 
       {serverId && !canManage ? (
         <footer className="border-t border-app-border px-4 py-3 text-xs text-app-muted">
-          Showing enrollment-scoped results only. ⌘K search · esc close
+          Showing enrollment-scoped results only. ⌘F search · esc close
         </footer>
       ) : null}
     </section>
@@ -309,11 +333,13 @@ function FilterSelect({
   label,
   value,
   onChange,
+  disabled = false,
   options,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
+  disabled?: boolean
   options: { value: string; label: string }[]
 }) {
   return (
@@ -321,8 +347,9 @@ function FilterSelect({
       {label}
       <select
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="ml-1 rounded-md border border-app-border bg-app-bg px-2 py-1 text-xs text-app-text"
+        className="ml-1 rounded-md border border-app-border bg-app-bg px-2 py-1 text-xs text-app-text disabled:cursor-not-allowed disabled:opacity-60"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -340,6 +367,7 @@ function SearchResultSection({
   hits,
   serverId,
   courseLookup,
+  variant,
   onNavigate,
 }: {
   title: string
@@ -349,6 +377,7 @@ function SearchResultSection({
   courseLookup: {
     resourcesChannelByCourseId: Map<string, string>
   }
+  variant: SearchDestinationVariant
   onNavigate: (destination: string) => void
 }) {
   if (hits.length === 0) {
@@ -364,7 +393,7 @@ function SearchResultSection({
       <ul className="flex flex-col gap-1">
         {hits.map((hit) => {
           const resourcesChannelId = courseLookup.resourcesChannelByCourseId.get(hit.courseId) ?? null
-          const destination = hitDestination(serverId ?? '', hit, resourcesChannelId)
+          const destination = hitDestination(serverId ?? '', hit, resourcesChannelId, variant)
 
           return (
             <li key={`${hit.documentType}-${hit.sourceId}`}>
@@ -389,7 +418,7 @@ function SearchResultSection({
   )
 }
 
-export function GlobalSearchOverlay() {
+export function GlobalSearchOverlay({ variant = 'legacy' }: { variant?: SearchDestinationVariant }) {
   const { isOpen, closeSearch } = useGlobalSearch()
   const panelRef = useRef<HTMLElement>(null)
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
@@ -445,7 +474,7 @@ export function GlobalSearchOverlay() {
         className="absolute inset-0"
         onClick={closeSearch}
       />
-      <GlobalSearchOverlayPanel onClose={closeSearch} panelRef={panelRef} />
+      <GlobalSearchOverlayPanel onClose={closeSearch} panelRef={panelRef} variant={variant} />
     </div>
   )
 }

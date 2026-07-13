@@ -60,7 +60,7 @@ export function SignInPage() {
           <div className="preview-card preview-back two" />
           <div className="preview-card preview-back one" />
           <article className="preview-card preview-front">
-            <div className="preview-title"><span>CS</span><strong>CS 101 — Intro to<br />Computer Science</strong><b>3 new</b></div>
+            <div className="preview-title"><span>CS</span><strong>CS 101 — Intro to<br />Computer Science</strong></div>
             <div className="preview-tabs">
               <span><MessageSquare />Chat</span>
               <span><HelpCircle />Questions</span>
@@ -102,8 +102,9 @@ export function SignInPage() {
           </form>
 
           <div className="auth-divider"><span />or<span /></div>
-          <button type="button" className="google-button" onClick={() => setError('Google sign-in is not enabled for this local environment.')}><b>G</b> Continue with Google</button>
-          <p className="auth-terms">By continuing you agree to the <a href="#terms">Terms</a></p>
+          <button type="button" className="google-button" disabled aria-describedby="google-sign-in-status"><b aria-hidden="true">G</b> Continue with Google</button>
+          <p id="google-sign-in-status" className="auth-provider-status">Google sign-in is not available yet.</p>
+          <p className="auth-terms">By continuing you agree to the <Link to="/terms">Terms</Link></p>
           <Link className="auth-back" to="/">Back to Chanter</Link>
         </div>
       </section>

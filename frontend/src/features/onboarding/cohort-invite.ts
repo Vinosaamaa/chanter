@@ -19,6 +19,15 @@ export function readCohortInviteParams(search: string): PendingCohortInvite | nu
   return { cohortId, inviteCode }
 }
 
+export function readCohortInviteInput(input: string): PendingCohortInvite | null {
+  try {
+    const url = new URL(input.trim(), window.location.origin)
+    return readCohortInviteParams(url.search)
+  } catch {
+    return null
+  }
+}
+
 export function storePendingCohortInvite(invite: PendingCohortInvite): void {
   try {
     sessionStorage.setItem(PENDING_COHORT_INVITE_KEY, JSON.stringify(invite))

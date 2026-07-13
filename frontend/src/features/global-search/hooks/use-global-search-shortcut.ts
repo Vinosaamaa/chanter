@@ -19,7 +19,10 @@ export function useGlobalSearchShortcut({
         || target instanceof HTMLTextAreaElement
         || (target instanceof HTMLElement && target.isContentEditable)
 
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if (
+        (event.metaKey || event.ctrlKey)
+        && ['f', 'k'].includes(event.key.toLowerCase())
+      ) {
         event.preventDefault()
         if (!isOpen) {
           onOpen()

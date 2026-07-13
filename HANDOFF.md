@@ -46,7 +46,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5). UI v2 **#116–#128** is merged in PR #130.
 
-**Active slice:** [**#132 — Explicit Course capabilities and Cohort context**](https://github.com/Vinosaamaa/chanter/issues/132) on `feature/132-course-capabilities-cohort-context`. Implementation, automated tests, and owner/learner browser verification are complete locally. Next: final verification, issue commit, PR, CI + CodeAnt loop, autonomous merge, then **#133**.
+**Active slice:** [**#133 — Operational v2 shell search, account, and join flows**](https://github.com/Vinosaamaa/chanter/issues/133) on `feature/133-operational-v2-shell-flows`. Implementation, 85 frontend tests, desktop/mobile browser verification, and product health checks are complete locally. Next: issue commit, PR, CI + CodeAnt loop, autonomous merge, then **#134**.
 
 **Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
 
@@ -123,7 +123,7 @@ Production Frontend table retained above for history; milestone **complete** (le
 
 Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turns the approved UI into a truthful full-stack product. Work in this order: **#132**, **#133**, **#134**, **#109**, **#135**, **#92**, **#136–#145**, then AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta **#104**.
 
-Current #132 establishes the security foundation: Owner at Study Server scope, Instructor at Course scope, TA at Cohort scope, and Learner via Cohort Enrollment. The navigation API now projects explicit action capabilities and only accessible Courses/Cohorts; the frontend must never infer authorization from presentation flags.
+#132 established the security foundation and is merged. Current #133 operationalizes route-scoped search, account/sign-out, and Cohort invite joining while removing synthetic unread signals until #143. Next, #134 makes Course Resources and AI install controls truthful.
 
 **#30** ships in phase 2 with **#49** (project #3).
 

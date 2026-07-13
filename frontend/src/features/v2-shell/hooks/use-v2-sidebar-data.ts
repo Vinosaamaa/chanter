@@ -13,7 +13,6 @@ export type V2SidebarCourse = {
   title: string
   cohortLabel: string
   accentColor: string
-  unreadCount: number
 }
 
 export type V2SidebarServerGroup = {
@@ -27,6 +26,7 @@ export type V2SidebarData = {
   isLoading: boolean
   isError: boolean
   showTeachingNav: boolean
+  showBillingNav: boolean
   serverGroups: V2SidebarServerGroup[]
   allCourses: V2SidebarCourse[]
 }
@@ -44,7 +44,6 @@ function mapCourse(
     title: course.title,
     cohortLabel,
     accentColor: courseAccentGradient(course.id, index).color,
-    unreadCount: index === 0 ? 3 : index === 1 ? 1 : 0,
   }
 }
 
@@ -85,6 +84,7 @@ export function useV2SidebarData(activeServerId?: string): V2SidebarData {
     isLoading,
     isError,
     showTeachingNav: navigationQueries.some((query) => query.data?.capabilities.canTeach),
+    showBillingNav: navigationQueries.some((query) => query.data?.capabilities.canManageBilling),
     serverGroups,
     allCourses,
   }
