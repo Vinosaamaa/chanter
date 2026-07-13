@@ -27,5 +27,5 @@ export function resolveV2SearchConfig(pathname: string): V2SearchConfig {
     return { placeholder: 'Search this hub…', scopeLabel: 'Hub' }
   }
 
-  return { placeholder: 'Search courses, messages, files...', scopeLabel: 'Home' }
+  return { placeholder: 'Search your courses…', scopeLabel: 'Home' }
 }

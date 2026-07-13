@@ -12,11 +12,12 @@ type V2TopBarProps = {
 
 function resolveTopBarChrome(pathname: string) {
   const primary = resolveV2PrimaryNav(pathname)
-  if (primary === 'home') {
-    return { pageTitle: 'Home', showHomeIcon: true, breadcrumbs: [] as { label: string; href?: string }[] }
+  const pageTitle = primary ? primary[0].toUpperCase() + primary.slice(1) : 'Home'
+  return {
+    pageTitle,
+    showHomeIcon: primary === 'home',
+    breadcrumbs: [] as { label: string; href?: string }[],
   }
-
-  return { pageTitle: 'Home', showHomeIcon: true, breadcrumbs: [] as { label: string; href?: string }[] }
 }
 
 export function V2TopBar({ notificationCount = 2, onOpenMenu }: V2TopBarProps) {
@@ -73,7 +74,7 @@ export function V2TopBar({ notificationCount = 2, onOpenMenu }: V2TopBarProps) {
         <Search size={28} />
         <input
           ref={searchInputRef}
-          aria-label={search.placeholder}
+          aria-label={search.placeholder.replace('…', '')}
           placeholder={search.placeholder}
           type="search"
         />

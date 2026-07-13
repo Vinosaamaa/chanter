@@ -17,6 +17,8 @@ import { V2AppShellLayout } from '../features/v2-shell/layouts/V2AppShellLayout'
 import { HomePage } from '../features/v2-shell/pages/HomePage'
 import { WelcomeJoinedPage } from '../features/v2-shell/pages/WelcomeJoinedPage'
 import { CreateStudyServerV2Page } from '../features/v2-shell/pages/onboarding/CreateStudyServerV2Page'
+import { InboxPage } from '../features/v2-shell/pages/InboxPage'
+import { CalendarPage } from '../features/v2-shell/pages/CalendarPage'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -54,6 +56,14 @@ export function createAppRouter() {
             {
               path: 'onboarding/create-study-server',
               element: <CreateStudyServerV2Page />,
+            },
+            {
+              path: 'inbox',
+              element: <InboxPage />,
+            },
+            {
+              path: 'calendar',
+              element: <CalendarPage />,
             },
           ],
         },
