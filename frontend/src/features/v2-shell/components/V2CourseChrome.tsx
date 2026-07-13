@@ -24,6 +24,7 @@ export function V2CourseChrome({ context }: { context: CourseChromeContext }) {
   const location = useLocation()
   const cohortName = context.course.cohorts[0]?.name ?? 'Spring cohort'
   const activeTab = tabs.find((tab) => location.pathname.endsWith(`/${tab.id}`))?.id ?? 'overview'
+  const showHeadingActions = !(activeTab === 'people' && context.isOwner)
 
   return (
     <header className="course-workspace-chrome">
@@ -39,10 +40,10 @@ export function V2CourseChrome({ context }: { context: CourseChromeContext }) {
             </p>
           </div>
         </div>
-        <div className="course-heading-actions">
+        {showHeadingActions ? <div className="course-heading-actions">
           <span className="study-room-status"><i /> <Radio size={17} /> Study Room · 2 live</span>
           <button type="button" className="v2-outline-button"><UserPlus size={18} /> Invite</button>
-        </div>
+        </div> : null}
       </div>
       <nav className="workspace-tabs" aria-label="Course workspace tabs">
         {tabs.map((tab) => (

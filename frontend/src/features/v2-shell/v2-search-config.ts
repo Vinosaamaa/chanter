@@ -33,6 +33,9 @@ export function resolveV2SearchConfig(pathname: string): V2SearchConfig {
     if (pathname.endsWith('/office-hours')) {
       return { placeholder: 'Search in: office-hours', scopeLabel: 'Office Hours' }
     }
+    if (pathname.endsWith('/people')) {
+      return { placeholder: 'Search people…', scopeLabel: 'People' }
+    }
     return { placeholder: 'Search this course…', scopeLabel: 'Course' }
   }
   if (isV2CommunityRoute(pathname)) {

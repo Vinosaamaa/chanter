@@ -25,6 +25,7 @@ import { CourseChatPage } from '../features/v2-shell/pages/course/CourseChatPage
 import { CourseQuestionsPage } from '../features/v2-shell/pages/course/CourseQuestionsPage'
 import { CourseResourcesPage } from '../features/v2-shell/pages/course/CourseResourcesPage'
 import { CourseOfficeHoursPage } from '../features/v2-shell/pages/course/CourseOfficeHoursPage'
+import { CoursePeoplePage } from '../features/v2-shell/pages/course/CoursePeoplePage'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -81,6 +82,7 @@ export function createAppRouter() {
                 { path: 'questions', element: <CourseQuestionsPage /> },
                 { path: 'resources', element: <CourseResourcesPage /> },
                 { path: 'office-hours', element: <CourseOfficeHoursPage /> },
+                { path: 'people', element: <CoursePeoplePage /> },
               ],
             },
           ],
