@@ -56,22 +56,29 @@ Recommended hierarchy:
 Global User Account
   -> optional Organization or Workspace
     -> Study Server
-      -> Channels
-      -> Members
-      -> Roles
-      -> Permissions
+      -> Owner / Admin governance
+      -> Course
+        -> Instructor role
+        -> Cohort
+          -> TA role
+          -> Learner Enrollment
+      -> Study Server and Course Channels
 ```
 
 Default role model:
 
-- `Owner`: created the Study Server or owns the organization workspace.
-- `Instructor`: manages course content, assistant access, office hours, FAQs, and analytics.
-- `TA`: helps answer questions, manage office-hours queues, and moderate selected channels.
-- `Learner`: participates in channels, asks questions, joins office hours, and views allowed resources.
+- `Owner`: Study Server-scoped governance, Course creation, community/event management, and billing.
+- `Instructor`: Course-scoped management of content, assistant access, office hours, FAQs, people, and analytics.
+- `TA`: Cohort-scoped support for questions and TA queues, plus allowed Course/Cohort participation.
+- `Learner`: Cohort-scoped participation through Enrollment; asks questions, joins office hours, and views allowed resources.
 - `Alumni`: keeps limited access after a course ends if the owner allows it.
 - `Guest`: temporary or restricted participant.
 
 Roles are assigned by the Study Server owner/admin or organization policy. A learner cannot self-promote into an instructor role. A global profile may show a verified educator badge later, but that badge should not grant permissions inside a Study Server by itself.
+
+The Community Service is the canonical authorization owner. Its navigation response projects explicit Study Server, Course, and Cohort capabilities for the current principal; clients render controls from those capabilities and do not infer authorization from catalog visibility or other presentation fields. Course and Cohort lists are authorization-filtered before they reach the client.
+
+Canonical Study Server membership is satisfied by any of: Study Server owner/admin, Instructor on a Course in that Study Server, learner Enrollment in one of its Cohorts, or TA assignment in one of its Cohorts. Membership grants access only to Study Server-level community channels; Course and Cohort operations still require their narrower scoped capability.
 
 Teacher/student verification should start simple and become stronger over time:
 

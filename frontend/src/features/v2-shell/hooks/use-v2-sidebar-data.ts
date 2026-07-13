@@ -84,7 +84,7 @@ export function useV2SidebarData(activeServerId?: string): V2SidebarData {
   return {
     isLoading,
     isError,
-    showTeachingNav: servers.some((server) => server.owner),
+    showTeachingNav: navigationQueries.some((query) => query.data?.capabilities.canTeach),
     serverGroups,
     allCourses,
   }

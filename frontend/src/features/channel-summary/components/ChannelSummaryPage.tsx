@@ -110,7 +110,7 @@ export function ChannelSummaryPage() {
     channelId && navigationQuery.data
       ? findCourseChannelContext(navigationQuery.data, channelId)
       : null
-  const canViewSummary = Boolean(navigationQuery.data?.canViewFullCatalog)
+  const canViewSummary = channelContext?.course.capabilities.canManageCourse ?? false
   const summaryState = useChannelSummary(channelId, windowDays)
 
   if (!serverId || !channelId) {

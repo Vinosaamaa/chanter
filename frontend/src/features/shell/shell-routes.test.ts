@@ -12,6 +12,14 @@ const navigation: StudyServerNavigation = {
   studyServerId: 'server-1',
   studyServerName: 'Demo Server',
   canViewFullCatalog: true,
+  capabilities: {
+    owner: true,
+    canTeach: true,
+    canCreateCourse: true,
+    canManageCommunity: true,
+    canManageEvents: true,
+    canManageBilling: true,
+  },
   studyServerChannels: [
     { id: 'study-voice-1', name: 'study-room', kind: 'VOICE' },
     { id: 'study-text-1', name: 'lobby', kind: 'TEXT' },
@@ -20,7 +28,23 @@ const navigation: StudyServerNavigation = {
     {
       id: 'course-1',
       title: 'CS 101',
-      cohorts: [{ id: 'cohort-1', name: 'Summer 2026' }],
+      capabilities: {
+        instructor: true,
+        teachingAssistant: false,
+        enrolled: false,
+        canManageCourse: true,
+        canManageQuestions: true,
+        canApproveFaq: true,
+        canManageTaQueue: true,
+        canUploadResources: true,
+        canScheduleOfficeHours: true,
+        canManagePeople: true,
+      },
+      cohorts: [{
+        id: 'cohort-1',
+        name: 'Summer 2026',
+        capabilities: { enrolled: false, teachingAssistant: false, canManage: true },
+      }],
       channels: [
         { id: 'ch-announce', name: 'announcements', kind: 'TEXT' },
         { id: 'ch-general', name: 'general', kind: 'TEXT' },

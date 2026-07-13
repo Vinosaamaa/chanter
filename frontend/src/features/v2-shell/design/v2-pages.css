@@ -173,6 +173,11 @@
 .v2-app-shell .course-heading-copy h1 { margin: 0; overflow: hidden; color: #f7f7fa; font-size: 31px; line-height: 1.2; letter-spacing: 0; white-space: nowrap; text-overflow: ellipsis; }
 .v2-app-shell .course-heading-copy p { display: flex; align-items: center; gap: 5px; margin: 8px 0 0; color: #b7bac2; font-size: 17px; }
 .v2-app-shell .course-heading-copy p i { padding-inline: 7px; font-style: normal; }
+.v2-app-shell .course-cohort-picker { position: relative; display: inline-flex; }
+.v2-app-shell .course-cohort-picker > button { display: inline-flex; align-items: center; gap: 4px; border: 0; padding: 0; color: inherit; background: transparent; font: inherit; }
+.v2-app-shell .course-cohort-menu { position: absolute; z-index: 20; top: calc(100% + 8px); left: 0; min-width: 180px; display: grid; border: 1px solid #3a4d62; border-radius: 8px; padding: 6px; background: #0c2035; box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+.v2-app-shell .course-cohort-menu button { border: 0; border-radius: 5px; padding: 9px 10px; color: #d8dde5; background: transparent; text-align: left; }
+.v2-app-shell .course-cohort-menu button:hover, .v2-app-shell .course-cohort-menu button[aria-checked="true"] { background: #1a3048; color: #fff; }
 .v2-app-shell .course-heading-actions { display: flex; gap: 12px; }
 .v2-app-shell .study-room-status { min-height: 46px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(70,168,103,.48); border-radius: 9px; padding: 0 14px; color: #63d58b; background: rgba(23,92,52,.15); white-space: nowrap; }
 .v2-app-shell .study-room-status > i { width: 11px; height: 11px; border-radius: 50%; background: #52cc7d; }

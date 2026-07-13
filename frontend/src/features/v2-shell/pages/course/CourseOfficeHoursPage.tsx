@@ -14,14 +14,13 @@ const listeners = [
 const ownerListeners = [...listeners, ['Alex', 'blue'], ['Maya', 'purple']] as readonly (readonly [string, 'blue' | 'amber' | 'purple' | 'green'])[]
 
 export function CourseOfficeHoursPage() {
-  const { course, isOwner } = useV2CourseWorkspace()
-  const cohort = course.cohorts[0]
+  const { course, courseCapabilities, selectedCohort: cohort } = useV2CourseWorkspace()
   const officeHours = useOfficeHoursPanel(cohort?.id)
   const voiceChannel = course.channels.find((channel) => channel.kind === 'VOICE')
   const officeVoice = useOfficeHoursVoice(officeHours.activeSession?.id ?? null, officeHours.activeSession?.voiceChannelId ?? voiceChannel?.id ?? null)
   const channelVoice = useVoiceChannel(voiceChannel?.id ?? 'voice-demo')
   const voice = officeHours.activeSession ? officeVoice : channelVoice
-  const ownerMode = isOwner || officeHours.canSchedule || officeHours.canManage
+  const ownerMode = courseCapabilities.canScheduleOfficeHours && (officeHours.canSchedule || officeHours.canManage)
   const [showSchedule, setShowSchedule] = useState(false)
   const [handRaised, setHandRaised] = useState(false)
   const [repeatWeekly, setRepeatWeekly] = useState(true)
@@ -39,7 +38,7 @@ export function CourseOfficeHoursPage() {
     <div className={`office-hours-page ${ownerMode ? 'owner' : 'learner'}`}>
       {ownerMode ? (
         <>
-          <OwnerLivePanel officeHours={officeHours} voice={voice} />
+          <OwnerLivePanel officeHours={officeHours} voice={voice} cohortName={cohort?.name ?? 'Cohort'} />
           <section className="upcoming-office-panel">
             <header><h2>Upcoming office hours</h2><button type="button" className="v2-outline-button" onClick={() => setShowSchedule(true)}><Plus />Schedule</button></header>
             {[['Thu, May 16','2:00 – 3:00 PM'],['Thu, May 23','2:00 – 3:00 PM']].map(([date,time]) => <article key={date}><span className="office-calendar-icon"><CalendarDays /></span><div><strong>{date}</strong><p>{time} <b>Weekly</b></p></div><button type="button" onClick={() => setShowSchedule(true)}>Edit</button><button type="button" className="danger-link">Cancel session</button></article>)}
@@ -47,7 +46,7 @@ export function CourseOfficeHoursPage() {
         </>
       ) : (
         <section className="learner-office-panel">
-          <OfficeHeading />
+          <OfficeHeading cohortName={cohort?.name ?? 'Cohort'} />
           <div className="office-speakers"><h3>SPEAKING NOW</h3><Person name="Dr. Alex Johnson" badge="HOST" tone="amber" speaking /><Person name="Maria Gonzalez" badge="TA" tone="purple" muted /></div>
           <div className="office-listeners"><h3>LISTENING (24)</h3><div>{listeners.map(([name,tone], index) => <span key={name}><V2Avatar name={name} tone={tone} size="lg" /><small>{name}</small>{index === 0 ? <b>Listening</b> : null}</span>)}<span className="more-listeners"><i>+20</i><small>more</small></span></div></div>
           <div className="office-raised"><h3>HANDS RAISED</h3><Person name="Daniel Anderson" tone="green" hand /><Person name="Maya Gonzalez" tone="purple" hand /><p>Host will call on you to speak</p></div>
@@ -64,16 +63,16 @@ export function CourseOfficeHoursPage() {
 type OfficeHook = ReturnType<typeof useOfficeHoursPanel>
 type VoiceHook = ReturnType<typeof useOfficeHoursVoice> | ReturnType<typeof useVoiceChannel>
 
-function OfficeHeading() {
-  return <header className="office-heading"><span><Headphones /></span><div><h2>Office Hours <b>LIVE</b></h2><p>Spring cohort · Today 2:00 – 3:00 PM</p><small>Open voice session — join to listen, raise hand to speak</small></div></header>
+function OfficeHeading({ cohortName }: { cohortName: string }) {
+  return <header className="office-heading"><span><Headphones /></span><div><h2>Office Hours <b>LIVE</b></h2><p>{cohortName} · Today 2:00 – 3:00 PM</p><small>Open voice session — join to listen, raise hand to speak</small></div></header>
 }
 
 function Person({ name, badge, tone, speaking, muted, hand }: { name: string; badge?: string; tone: 'amber' | 'purple' | 'green'; speaking?: boolean; muted?: boolean; hand?: boolean }) {
   return <article className={speaking ? 'speaking' : undefined}><V2Avatar name={name} tone={tone} size="lg" online={speaking} /><strong>{name}</strong>{badge ? <b className={badge === 'TA' ? 'ta' : ''}>{badge}</b> : null}{muted ? <MicOff /> : null}{hand ? <span className="hand-icon"><Hand /></span> : null}</article>
 }
 
-function OwnerLivePanel({ officeHours, voice }: { officeHours: OfficeHook; voice: VoiceHook }) {
-  return <section className="owner-live-office"><OfficeHeading /><div className="owner-host"><h3>HOST</h3><article><V2Avatar name="Dr. Alex Johnson" tone="amber" size="lg" online /><strong>Dr. Alex Johnson</strong><span className="audio-wave">▂▅▇▄▆▃▇▅▂▆▃▇</span></article></div><div className="owner-listeners"><h3>LISTENING (12)</h3><div>{ownerListeners.map(([name,tone]) => <V2Avatar key={name} name={name} tone={tone} size="md" />)}<span>+4</span></div></div><div className="owner-hands"><h3>HANDS RAISED (2)</h3><Person name="Daniel Anderson" tone="green" hand /><Person name="Maya Gonzalez" tone="purple" hand /></div><button type="button" className="end-session-button" onClick={() => { void voice.leaveVoice(); void officeHours.endSession() }}><Phone />End session</button></section>
+function OwnerLivePanel({ officeHours, voice, cohortName }: { officeHours: OfficeHook; voice: VoiceHook; cohortName: string }) {
+  return <section className="owner-live-office"><OfficeHeading cohortName={cohortName} /><div className="owner-host"><h3>HOST</h3><article><V2Avatar name="Dr. Alex Johnson" tone="amber" size="lg" online /><strong>Dr. Alex Johnson</strong><span className="audio-wave">▂▅▇▄▆▃▇▅▂▆▃▇</span></article></div><div className="owner-listeners"><h3>LISTENING (12)</h3><div>{ownerListeners.map(([name,tone]) => <V2Avatar key={name} name={name} tone={tone} size="md" />)}<span>+4</span></div></div><div className="owner-hands"><h3>HANDS RAISED (2)</h3><Person name="Daniel Anderson" tone="green" hand /><Person name="Maya Gonzalez" tone="purple" hand /></div><button type="button" className="end-session-button" onClick={() => { void voice.leaveVoice(); void officeHours.endSession() }}><Phone />End session</button></section>
 }
 
 function OwnerScheduleView({ officeHours, repeatWeekly, setRepeatWeekly, onBack }: { officeHours: OfficeHook; repeatWeekly: boolean; setRepeatWeekly: (value: boolean) => void; onBack: () => void }) {

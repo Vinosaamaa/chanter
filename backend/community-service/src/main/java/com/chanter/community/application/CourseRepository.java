@@ -50,6 +50,10 @@ public interface CourseRepository {
 
     boolean isInstructorOnAnyCourseInStudyServer(UUID studyServerId, UUID userId);
 
+    List<UUID> findInstructedCourseIds(UUID studyServerId, UUID userId);
+
+    List<UUID> findTeachingAssistantCohortIds(UUID studyServerId, UUID userId);
+
     boolean studyServerExists(UUID studyServerId);
 
     Optional<StudyAssistantGrantCandidates> findGrantCandidates(UUID studyServerId);

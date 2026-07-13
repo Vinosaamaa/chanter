@@ -179,18 +179,41 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     @Override
     @Transactional(readOnly = true)
     public boolean isStudyServerMember(UUID studyServerId, UUID userId) {
-        Integer roleCount = jdbcClient.sql("""
+        Integer membershipCount = jdbcClient.sql("""
                         SELECT COUNT(*)
-                        FROM study_server_roles
-                        WHERE study_server_id = :studyServerId
-                        AND user_id = :userId
+                        FROM (
+                            SELECT ssr.user_id
+                            FROM study_server_roles ssr
+                            WHERE ssr.study_server_id = :studyServerId
+                            AND ssr.user_id = :userId
+                            UNION
+                            SELECT cr.user_id
+                            FROM courses co
+                            JOIN course_roles cr ON cr.course_id = co.id
+                            WHERE co.study_server_id = :studyServerId
+                            AND cr.user_id = :userId
+                            UNION
+                            SELECT ce.learner_user_id
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            WHERE co.study_server_id = :studyServerId
+                            AND ce.learner_user_id = :userId
+                            UNION
+                            SELECT cor.user_id
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_roles cor ON cor.cohort_id = c.id
+                            WHERE co.study_server_id = :studyServerId
+                            AND cor.user_id = :userId
+                        ) memberships
                         """)
                 .param("studyServerId", studyServerId)
                 .param("userId", userId)
                 .query(Integer.class)
                 .single();
 
-        return roleCount > 0;
+        return membershipCount > 0;
     }
 
     @Override
@@ -213,6 +236,12 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                             INNER JOIN cohorts c ON c.course_id = co.id
                             INNER JOIN cohort_enrollments ce ON ce.cohort_id = c.id
                             WHERE ce.learner_user_id = :firstUserId
+                            UNION
+                            SELECT co.study_server_id
+                            FROM courses co
+                            INNER JOIN cohorts c ON c.course_id = co.id
+                            INNER JOIN cohort_roles cor ON cor.cohort_id = c.id
+                            WHERE cor.user_id = :firstUserId
                         ) first_access
                         INNER JOIN (
                             SELECT study_server_id
@@ -229,6 +258,12 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                             INNER JOIN cohorts c ON c.course_id = co.id
                             INNER JOIN cohort_enrollments ce ON ce.cohort_id = c.id
                             WHERE ce.learner_user_id = :secondUserId
+                            UNION
+                            SELECT co.study_server_id
+                            FROM courses co
+                            INNER JOIN cohorts c ON c.course_id = co.id
+                            INNER JOIN cohort_roles cor ON cor.cohort_id = c.id
+                            WHERE cor.user_id = :secondUserId
                         ) second_access ON first_access.study_server_id = second_access.study_server_id
                         """)
                 .param("firstUserId", firstUserId)

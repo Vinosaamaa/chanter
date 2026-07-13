@@ -83,7 +83,7 @@ export function ChannelSidebarColumn() {
         {navigationQuery.data && navigationQuery.data.courses.length > 0 && (
           <section>
             <CollapsibleSidebarHeader
-              label={navigationQuery.data.canViewFullCatalog ? 'Courses' : 'My courses'}
+              label={navigationQuery.data.capabilities.owner ? 'Courses' : 'My courses'}
               sectionKey={`${serverId}:courses`}
             />
             <CoursesSection

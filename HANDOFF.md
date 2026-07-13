@@ -44,9 +44,9 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** **UI v2 — course-first shell** — implementation complete locally; one PR and review loop remain for [milestone 7](https://github.com/Vinosaamaa/chanter/milestone/7), [project #5](https://github.com/users/Vinosaamaa/projects/5).
+**Active phase:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5). UI v2 **#116–#128** is merged in PR #130.
 
-**Active slice:** **#116–#128 are complete locally** on `feature/116-v2-app-shell` (one issue commit per #117–#128, plus the two #116 foundation commits). The branch is **not pushed**. Next: push, open one PR, complete the CodeAnt loop, then merge under the autonomous gated merge policy.
+**Active slice:** [**#132 — Explicit Course capabilities and Cohort context**](https://github.com/Vinosaamaa/chanter/issues/132) on `feature/132-course-capabilities-cohort-context`. Implementation, automated tests, and owner/learner browser verification are complete locally. Next: final verification, issue commit, PR, CI + CodeAnt loop, autonomous merge, then **#133**.
 
 **Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
 
@@ -96,7 +96,7 @@ Workable Product (**active** — [project #4](https://github.com/users/Vinosaama
 
 Production Frontend table retained above for history; milestone **complete** (legacy shell — superseded by UI v2 **#115–#128**).
 
-### UI v2 — Course-first shell (complete locally; PR pending)
+### UI v2 — Course-first shell (merged)
 
 **Goal:** Rebuild production frontend to match v2 mockups and [`DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).  
 **Breakdown:** [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md)  
@@ -105,19 +105,25 @@ Production Frontend table retained above for history; milestone **complete** (le
 | Order | Issue | Notes |
 |------:|-------|-------|
 | 1 | [#115](https://github.com/Vinosaamaa/chanter/issues/115) | Epic |
-| 2 | [**#116**](https://github.com/Vinosaamaa/chanter/issues/116) | v2 app shell foundation — **complete locally** |
-| 3 | [#117](https://github.com/Vinosaamaa/chanter/issues/117) | Auth and onboarding v2 — **complete locally** |
-| 4 | [#118](https://github.com/Vinosaamaa/chanter/issues/118) | Home, Inbox, Calendar — **complete locally** |
-| 5 | [#119](https://github.com/Vinosaamaa/chanter/issues/119) | Course workspace — Overview + Chat — **complete locally** |
-| 6 | [#120](https://github.com/Vinosaamaa/chanter/issues/120) | Course workspace — Questions + AI — **complete locally** |
-| 7 | [#121](https://github.com/Vinosaamaa/chanter/issues/121) | Course workspace — Resources — **complete locally** |
-| 8 | [#122](https://github.com/Vinosaamaa/chanter/issues/122) | Course workspace — Office Hours — **complete locally** |
-| 9 | [#123](https://github.com/Vinosaamaa/chanter/issues/123) | Course workspace — People — **complete locally** |
-| 10 | [#124](https://github.com/Vinosaamaa/chanter/issues/124) | Community hub — five tabs — **complete locally** |
-| 11 | [#125](https://github.com/Vinosaamaa/chanter/issues/125) | Teaching dashboard + billing — **complete locally** |
-| 12 | [#126](https://github.com/Vinosaamaa/chanter/issues/126) | Friends + DM v2 chrome — **complete locally** |
-| 13 | [#127](https://github.com/Vinosaamaa/chanter/issues/127) | Owner course/cohort + events — **complete locally** |
-| 14 | [#128](https://github.com/Vinosaamaa/chanter/issues/128) | Landing and marketing v2 — **complete locally** |
+| 2 | [**#116**](https://github.com/Vinosaamaa/chanter/issues/116) | v2 app shell foundation — **merged** |
+| 3 | [#117](https://github.com/Vinosaamaa/chanter/issues/117) | Auth and onboarding v2 — **merged** |
+| 4 | [#118](https://github.com/Vinosaamaa/chanter/issues/118) | Home, Inbox, Calendar — **merged** |
+| 5 | [#119](https://github.com/Vinosaamaa/chanter/issues/119) | Course workspace — Overview + Chat — **merged** |
+| 6 | [#120](https://github.com/Vinosaamaa/chanter/issues/120) | Course workspace — Questions + AI — **merged** |
+| 7 | [#121](https://github.com/Vinosaamaa/chanter/issues/121) | Course workspace — Resources — **merged** |
+| 8 | [#122](https://github.com/Vinosaamaa/chanter/issues/122) | Course workspace — Office Hours — **merged** |
+| 9 | [#123](https://github.com/Vinosaamaa/chanter/issues/123) | Course workspace — People — **merged** |
+| 10 | [#124](https://github.com/Vinosaamaa/chanter/issues/124) | Community hub — five tabs — **merged** |
+| 11 | [#125](https://github.com/Vinosaamaa/chanter/issues/125) | Teaching dashboard + billing — **merged** |
+| 12 | [#126](https://github.com/Vinosaamaa/chanter/issues/126) | Friends + DM v2 chrome — **merged** |
+| 13 | [#127](https://github.com/Vinosaamaa/chanter/issues/127) | Owner course/cohort + events — **merged** |
+| 14 | [#128](https://github.com/Vinosaamaa/chanter/issues/128) | Landing and marketing v2 — **merged** |
+
+### UI v2 operationalization (active)
+
+Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turns the approved UI into a truthful full-stack product. Work in this order: **#132**, **#133**, **#134**, **#109**, **#135**, **#92**, **#136–#145**, then AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta **#104**.
+
+Current #132 establishes the security foundation: Owner at Study Server scope, Instructor at Course scope, TA at Cohort scope, and Learner via Cohort Enrollment. The navigation API now projects explicit action capabilities and only accessible Courses/Cohorts; the frontend must never infer authorization from presentation flags.
 
 **#30** ships in phase 2 with **#49** (project #3).
 

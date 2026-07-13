@@ -86,7 +86,7 @@ export function StudyServerHomePage() {
   }
 
   const navigation = navigationQuery.data
-  const canManage = navigation?.canViewFullCatalog ?? false
+  const canManage = navigation?.capabilities.canCreateCourse ?? false
 
   return (
     <section className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-app-bg">
