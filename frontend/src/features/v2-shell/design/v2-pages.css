@@ -372,6 +372,113 @@
   .v2-app-shell .question-composer { min-height: 57px; }
 }
 
+/* Course Office Hours */
+.v2-app-shell .office-hours-page { position: relative; min-height: 100%; display: grid; gap: 14px; padding: 24px; }
+.v2-app-shell .office-hours-page.owner { grid-template-columns: minmax(380px,.8fr) minmax(480px,1.05fr); }
+.v2-app-shell .learner-office-panel, .v2-app-shell .owner-live-office, .v2-app-shell .upcoming-office-panel, .v2-app-shell .next-office-summary, .v2-app-shell .office-schedule-form { border: 1px solid rgba(151,161,177,.36); border-radius: 12px; background: rgba(7,23,41,.5); }
+.v2-app-shell .learner-office-panel { padding: 24px 28px 20px; }
+.v2-app-shell .office-heading { min-height: 124px; display: flex; align-items: flex-start; gap: 22px; border-bottom: 1px solid rgba(151,161,177,.25); }
+.v2-app-shell .office-heading > span { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 10px; color: #eef0f4; background: #182a3e; }
+.v2-app-shell .office-heading h2 { margin: 2px 0 10px; font-size: 28px; }
+.v2-app-shell .office-heading h2 b { margin-left: 12px; border-radius: 6px; padding: 5px 9px; color: #fff; background: linear-gradient(#e95151,#bc2328); font-size: 15px; font-weight: 600; vertical-align: middle; }
+.v2-app-shell .office-heading p { margin: 0 0 10px; color: #b7bec8; font-size: 17px; }
+.v2-app-shell .office-heading small { color: #adb5c1; font-size: 16px; }
+.v2-app-shell .office-speakers, .v2-app-shell .office-listeners, .v2-app-shell .office-raised, .v2-app-shell .owner-host, .v2-app-shell .owner-listeners, .v2-app-shell .owner-hands { border-bottom: 1px solid rgba(151,161,177,.24); padding: 18px 0; }
+.v2-app-shell .office-speakers, .v2-app-shell .office-raised { display: grid; grid-template-columns: 180px 1fr 1fr; align-items: center; gap: 20px; }
+.v2-app-shell .office-hours-page h3 { margin: 0; color: #b8bec8; font-size: 15px; font-weight: 500; letter-spacing: 1.5px; }
+.v2-app-shell .office-speakers article, .v2-app-shell .office-raised article, .v2-app-shell .owner-host article, .v2-app-shell .owner-hands article { min-width: 0; display: flex; align-items: center; gap: 15px; }
+.v2-app-shell .office-speakers article > strong, .v2-app-shell .office-raised article > strong, .v2-app-shell .owner-host article > strong, .v2-app-shell .owner-hands article > strong { font-size: 18px; }
+.v2-app-shell .office-speakers article > b { border-radius: 5px; padding: 4px 8px; color: #fff; background: #4f5ce3; font-size: 12px; }
+.v2-app-shell .office-speakers article > b.ta { background: #399b5f; }
+.v2-app-shell .office-speakers article > svg { color: #aab1bd; }
+.v2-app-shell .office-listeners { display: grid; grid-template-columns: 180px minmax(0,1fr); align-items: center; }
+.v2-app-shell .office-listeners > div { display: flex; align-items: flex-start; gap: 32px; }
+.v2-app-shell .office-listeners > div > span { display: grid; justify-items: center; gap: 5px; color: #e5e8ed; }
+.v2-app-shell .office-listeners small { font-size: 13px; }
+.v2-app-shell .office-listeners b { color: #6680ff; font-size: 12px; font-weight: 500; }
+.v2-app-shell .more-listeners i { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; background: #192c40; font-size: 17px; font-style: normal; }
+.v2-app-shell .office-raised > p { color: #afb6c1; text-align: right; }
+.v2-app-shell .hand-icon { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #5f72ef; }
+.v2-app-shell .hand-icon svg { width: 16px; }
+.v2-app-shell .office-control-bar { min-height: 104px; display: grid; grid-template-columns: minmax(210px,1fr) 72px minmax(210px,1.15fr) minmax(170px,.9fr); align-items: center; gap: 18px; margin-top: 16px; border: 1px solid rgba(151,161,177,.28); border-radius: 10px; padding: 15px; }
+.v2-app-shell .office-control-bar > span { display: flex; align-items: center; gap: 9px; border: 1px solid #3b4b5f; border-radius: 9px; padding: 13px; }
+.v2-app-shell .office-control-bar > span i { width: 12px; height: 12px; border-radius: 50%; background: #48ca78; }
+.v2-app-shell .office-control-bar button { min-height: 60px; display: flex; align-items: center; justify-content: center; gap: 12px; border: 0; border-radius: 9px; color: #fff; cursor: pointer; }
+.v2-app-shell .office-control-bar .mute-control { background: #17283b; }
+.v2-app-shell .office-control-bar .hand { background: linear-gradient(135deg,#5267ed,#3d4bd7); }
+.v2-app-shell .office-control-bar .hand.active { background: #2e9a5e; }
+.v2-app-shell .office-control-bar .leave, .v2-app-shell .end-session-button { background: linear-gradient(135deg,#e2393f,#bd262a); }
+.v2-app-shell .office-hours-error { position: absolute; left: 30px; right: 30px; bottom: 8px; }
+.v2-app-shell .owner-live-office { padding: 22px 27px; }
+.v2-app-shell .owner-live-office .office-heading { min-height: 110px; }
+.v2-app-shell .owner-live-office .office-heading > span { display: none; }
+.v2-app-shell .owner-host h3, .v2-app-shell .owner-listeners h3, .v2-app-shell .owner-hands h3 { margin-bottom: 14px; }
+.v2-app-shell .audio-wave { margin-left: auto; color: #667dff; font-size: 22px; letter-spacing: 1px; }
+.v2-app-shell .owner-listeners > div { display: flex; align-items: center; }
+.v2-app-shell .owner-listeners .v2-avatar + .v2-avatar { margin-left: -6px; }
+.v2-app-shell .owner-listeners > div > span { width: 46px; height: 46px; display: grid; place-items: center; margin-left: 8px; border-radius: 50%; background: #172b40; }
+.v2-app-shell .owner-hands article { min-height: 48px; }
+.v2-app-shell .owner-hands .hand-icon { margin-left: auto; }
+.v2-app-shell .end-session-button { width: 100%; min-height: 58px; display: flex; align-items: center; justify-content: center; gap: 12px; border: 0; border-radius: 8px; margin-top: 14px; color: #fff; cursor: pointer; }
+.v2-app-shell .upcoming-office-panel { padding: 23px 28px; }
+.v2-app-shell .upcoming-office-panel > header { min-height: 58px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid rgba(151,161,177,.23); }
+.v2-app-shell .upcoming-office-panel h2 { margin: 5px 0 0; font-size: 22px; }
+.v2-app-shell .upcoming-office-panel article { min-height: 118px; display: grid; grid-template-columns: 60px minmax(0,1fr) auto auto; align-items: center; gap: 16px; border-bottom: 1px solid rgba(151,161,177,.2); }
+.v2-app-shell .office-calendar-icon { width: 55px; height: 55px; display: grid; place-items: center; border-radius: 10px; color: #e2e6ec; background: #172a3e; }
+.v2-app-shell .upcoming-office-panel article strong { font-size: 17px; }
+.v2-app-shell .upcoming-office-panel article p { margin: 9px 0 0; color: #c3c8d0; }
+.v2-app-shell .upcoming-office-panel article p b { margin-left: 8px; border: 1px solid #2d8d52; border-radius: 6px; padding: 3px 6px; color: #61d187; font-size: 12px; font-weight: 500; }
+.v2-app-shell .upcoming-office-panel article > button { border: 0; color: #6380ff; background: transparent; cursor: pointer; }
+.v2-app-shell .upcoming-office-panel article > button.danger-link { color: #ff5258; }
+.v2-app-shell .office-schedule-layout { min-height: 100%; display: grid; grid-template-columns: minmax(330px,.8fr) minmax(480px,1.2fr); gap: 16px; padding: 24px; }
+.v2-app-shell .next-office-summary, .v2-app-shell .office-schedule-form { padding: 28px 30px; }
+.v2-app-shell .next-office-summary h2, .v2-app-shell .office-schedule-form h2 { margin: 0 0 27px; font-size: 24px; }
+.v2-app-shell .next-office-summary article { display: grid; grid-template-columns: 68px minmax(0,1fr); align-items: start; }
+.v2-app-shell .next-office-summary article strong { font-size: 19px; }
+.v2-app-shell .next-office-summary article p { margin: 9px 0; color: #c8cdd4; font-size: 17px; }
+.v2-app-shell .next-office-summary article b { display: inline-block; border: 1px solid #2d8d52; border-radius: 6px; padding: 4px 8px; color: #61d187; font-size: 13px; font-weight: 500; }
+.v2-app-shell .next-office-summary > p { margin-top: 28px; color: #bcc2cb; }
+.v2-app-shell .next-office-summary hr { border: 0; border-top: 1px solid rgba(151,161,177,.2); margin: 28px 0; }
+.v2-app-shell .next-office-summary > button { width: 70%; min-height: 54px; border: 1px solid #455568; border-radius: 8px; color: #67717e; background: transparent; }
+.v2-app-shell .back-link { display: flex; align-items: center; gap: 8px; border: 0; margin-bottom: 25px; color: #627eff; background: transparent; cursor: pointer; }
+.v2-app-shell .office-schedule-form > label, .v2-app-shell .office-form-row label { display: grid; gap: 10px; color: #e1e4e9; }
+.v2-app-shell .office-schedule-form label > div { height: 57px; display: grid; grid-template-columns: minmax(0,1fr) 35px; align-items: center; border: 1px solid #3a4c62; border-radius: 9px; padding: 0 16px; }
+.v2-app-shell .office-schedule-form input { min-width: 0; border: 0; outline: 0; color: #f0f2f5; background: transparent; font-size: 17px; }
+.v2-app-shell .office-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 25px; }
+.v2-app-shell .repeat-row { display: flex; justify-content: space-between; margin-top: 24px; border-top: 1px solid rgba(151,161,177,.2); padding-top: 22px; }
+.v2-app-shell .repeat-row strong, .v2-app-shell .repeat-row small { display: block; }
+.v2-app-shell .repeat-row small { margin-top: 7px; color: #aeb5c0; }
+.v2-app-shell .repeat-row > button { width: 58px; height: 33px; border: 0; border-radius: 99px; padding: 3px; background: #26374a; cursor: pointer; }
+.v2-app-shell .repeat-row > button i { display: block; width: 27px; height: 27px; border-radius: 50%; background: #d9dde2; transition: transform .2s; }
+.v2-app-shell .repeat-row > button.active { background: #4f64ea; }
+.v2-app-shell .repeat-row > button.active i { transform: translateX(25px); }
+.v2-app-shell .office-schedule-form footer { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+.v2-app-shell .office-schedule-form footer button { min-height: 57px; justify-content: center; }
+.v2-app-shell .delete-session { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-top: 1px solid rgba(151,161,177,.2); margin-top: 28px; padding-top: 24px; color: #ff4c53; background: transparent; cursor: pointer; }
+
+@media (max-width: 1100px) {
+  .v2-app-shell .office-hours-page.owner, .v2-app-shell .office-schedule-layout { grid-template-columns: 1fr; }
+  .v2-app-shell .office-control-bar { grid-template-columns: 1fr 65px 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  .v2-app-shell .office-hours-page, .v2-app-shell .office-schedule-layout { padding: 12px; }
+  .v2-app-shell .office-speakers, .v2-app-shell .office-raised { grid-template-columns: 1fr; }
+  .v2-app-shell .office-listeners { grid-template-columns: 1fr; gap: 18px; }
+  .v2-app-shell .office-listeners > div { flex-wrap: wrap; gap: 17px; }
+  .v2-app-shell .office-control-bar { grid-template-columns: 1fr 60px; }
+  .v2-app-shell .office-control-bar .hand, .v2-app-shell .office-control-bar .leave { grid-column: span 1; }
+  .v2-app-shell .upcoming-office-panel article { grid-template-columns: 55px minmax(0,1fr); padding-block: 12px; }
+  .v2-app-shell .upcoming-office-panel article > button { grid-column: span 1; }
+  .v2-app-shell .office-form-row { grid-template-columns: 1fr; }
+}
+@media (max-height: 760px) and (min-width: 1101px) {
+  .v2-app-shell .office-hours-page { padding-top: 10px; }
+  .v2-app-shell .owner-live-office, .v2-app-shell .upcoming-office-panel { padding-block: 15px; }
+  .v2-app-shell .owner-live-office .office-heading { min-height: 90px; }
+  .v2-app-shell .owner-host, .v2-app-shell .owner-listeners, .v2-app-shell .owner-hands { padding-block: 10px; }
+  .v2-app-shell .upcoming-office-panel article { min-height: 94px; }
+}
+
 /* Course Resources */
 .v2-app-shell .resources-page { min-height: 100%; padding: 18px 28px 28px; }
 .v2-app-shell .resources-toolbar { display: grid; grid-template-columns: minmax(250px,1.25fr) auto auto; align-items: center; gap: 16px; margin-bottom: 17px; }
