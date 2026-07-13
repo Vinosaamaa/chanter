@@ -1,29 +1,31 @@
 # Chanter Agent Workflow
 
-**Last updated:** 2026-07-12  
+**Last updated:** 2026-07-13
 **This is the single canonical doc for agents.** It covers issue order, the per-issue completion loop, merge policy, and **CodeAnt AI** PR review. Enforced in `.cursor/rules/git-workflow.mdc`.
 
 ---
 
-## Merge policy (non-negotiable)
+## Autonomous merge policy
 
-**Only the repository owner merges pull requests.** Agents must **never** run `gh pr merge`, squash-merge on GitHub, or push to `main`.
+**Owner authorization (2026-07-13): agents may merge pull requests after the required verification and review gates complete.** Agents must still never push directly to `main`.
 
-After CI is green and **CodeAnt** review is clean, the agent:
+After CI is green, the agent:
 
-1. Tells the owner the PR is ready.
-2. **Stops and waits** for the owner to merge.
-3. Pulls latest `main` and starts the **next** issue only **after** the owner confirms merge (or `main` contains the merge).
+1. Waits for **CodeAnt** to complete and fixes actionable findings.
+2. Runs at most **three CodeAnt remediation rounds**. Each round is fix, verify, push, and re-review.
+3. If non-blocking CodeAnt findings remain after round three, documents each deferral in `docs/operations/issue-<N>-codeant-fix.md` and merges. Failing CI and confirmed security, authorization, or data-loss defects remain blocking.
+4. Merges the PR using the repository's normal merge method and deletes the remote feature branch when appropriate.
+5. Pulls latest `main`, selects the next unblocked issue, creates a fresh feature branch, and continues.
 
-Agents may open PRs, push feature branches, and fix CodeAnt comments. Merging is owner-only.
+Agents may create or revise issues, push feature branches, open PRs, fix CodeAnt comments, and merge gated PRs without per-action owner approval. Direct pushes to `main` remain forbidden.
 
 ---
 
 ## Issue completion loop (mandatory)
 
-An issue is **not done** when code is pushed or a PR is opened. An issue is **done** only after the owner **merges** the PR to `main` following the full loop below.
+An issue is **not done** when code is pushed or a PR is opened. An issue is **done** only after its PR is merged to `main` following the full loop below.
 
-**One issue → one branch → one PR at a time.** Do not start the next issue, launch parallel sub-agents, or end your turn while a PR is still in review.
+**One issue → one branch → one PR.** Independent issues may run in parallel only in isolated worktrees/branches with separate PRs and no unresolved dependency between them. Never mix two agents' edits in one worktree.
 
 ### Required steps (in order)
 
@@ -32,17 +34,18 @@ An issue is **not done** when code is pushed or a PR is opened. An issue is **do
 3. **Implement** — scope limited to the issue acceptance criteria. **From issue #56 onward, use TDD** (see [Test-driven development](#test-driven-development-tdd) below).
 4. **Verify locally** — `mvn verify` (affected services), `npm run lint && npm run build`; browser demo when the slice has UI (see [Agent browser testing](#agent-browser-testing) below).
 5. **Docs** — `docs/operations/issue-<N>-change-log.md`; update `HANDOFF.md` / `README.md` when the issue closes.
-6. **Commit + push** the feature branch only (push when the owner approves at push time).
+6. **Commit + push** the feature branch only. Owner pre-approval is no longer required.
 7. **Open PR** targeting `main` with `Closes #N` in the body.
 8. **Wait for CI green** (`backend`, `frontend`).
 9. **Wait for CodeAnt** — GitHub **CodeAnt AI** check complete (not `pending`, not `in progress`).
-10. **CodeAnt fix loop** — read all inline comments; fix actionable items; log in `docs/operations/issue-<N>-codeant-fix.md`; commit; push; **go back to step 8** until clean or only documented deferrals remain.
-11. **Hand off for merge** — notify the owner; **do not merge**. Wait for owner merge.
+10. **CodeAnt fix loop** — read all inline comments; fix actionable items; log in `docs/operations/issue-<N>-codeant-fix.md`; commit; push; **go back to step 8**. Stop after at most three remediation rounds; document remaining non-blocking deferrals.
+11. **Merge** — when CI is green and CodeAnt is clean or the three-round limit is reached with only documented non-blocking findings, merge the PR and remove the remote feature branch when appropriate.
 12. **Next issue** — pull `main`, new branch, repeat from step 1.
 
 ### Forbidden (caused regressions on #20 and #21)
 
-- **Agents merging PRs** (owner only).
+- Merging before CI is green or before CodeAnt completes its initial review.
+- Merging with a confirmed security, authorization, or data-loss defect.
 - Merging while CodeAnt is still `pending`.
 - Ending a session or reporting “done” right after opening a PR.
 - Treating “CI green” as sufficient without CodeAnt review complete.
@@ -266,7 +269,7 @@ Include: finding, fix (or deferral reason), verification commands, and any remai
 4. Read inline PR review comments and summary; fix actionable items.
 5. Commit → push → wait for re-review until clean.
 6. Log every pass in `issue-<N>-codeant-fix.md`.
-7. Owner merges.
+7. Agent merges after the gates above; owner may still merge manually at any time.
 
 ### What to defer vs fix
 
@@ -294,7 +297,7 @@ Active work: Public Launch project #5 — active slice **#88** App shell polish 
 
 Product UI: docs/product-design/README.md
 PR review: CodeAnt AI (cubic trial expired) — docs/operations/agent-workflow.md § CodeAnt review
-Do not merge PRs — owner merges only.
+Agents may merge PRs after CI and CodeAnt gates; never push directly to main.
 ```
 
 ---

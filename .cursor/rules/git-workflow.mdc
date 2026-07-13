@@ -13,17 +13,18 @@ alwaysApply: true
 2. Commit and push the **feature branch** only
 3. Open a PR targeting `main`
 4. **Complete the issue** — CI green + **CodeAnt AI** review finished + fix loop. See `docs/operations/agent-workflow.md` (**Issue completion loop**). Do not start the next issue until the loop is done and the PR is merged.
-5. **Only the repository owner merges.** Agents must never run `gh pr merge` or push to `main`. Wait for owner merge after CodeAnt is clean.
+5. **Agents may merge gated PRs.** Wait for CI and the initial CodeAnt review, run at most three remediation rounds, document remaining non-blocking findings, then merge. Never push directly to `main`.
 
 ## Forbidden
 
 - `git push origin main`
 - `git push origin HEAD:main`
 - Committing feature or doc work directly on `main` then pushing
-- **Agents merging PRs** (owner only)
+- Merging before CI and CodeAnt gates complete
+- Merging with a confirmed security, authorization, or data-loss defect
 - **Merging a PR while CodeAnt is still `pending`**
-- **Stopping after opening a PR** without waiting for CodeAnt, fixing comments, and owner merge
-- **Parallel sub-agents** implementing multiple issues on the same repo at once
+- **Stopping after opening a PR** without waiting for CodeAnt, fixing comments, and completing the gated merge
+- **Parallel sub-agents sharing one worktree**; independent parallel work requires isolated worktrees, branches, and PRs
 
 ## Doc-only changes
 

@@ -1,14 +1,12 @@
 import { useState } from 'react'
+import { Eye, EyeOff, FileText, HelpCircle, MessageSquare, CalendarDays } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
-import { Button } from '../../../components/ui/button'
-import { Card, CardDescription, CardTitle } from '../../../components/ui/card'
 import { CohortInviteRedirect } from '../components/CohortInviteRedirect'
 import { login, register } from '../auth-api'
 import { useAuthStore } from '../../../stores/auth-store'
-import {
-  readCohortInviteParams,
-} from '../../onboarding/cohort-invite'
+import { readCohortInviteParams } from '../../onboarding/cohort-invite'
+import { V2Brand } from '../../v2-shell/components/V2Brand'
 
 type AuthMode = 'sign-in' | 'register'
 
@@ -16,16 +14,18 @@ export function SignInPage() {
   const location = useLocation()
   const accessToken = useAuthStore((state) => state.accessToken)
   const setSession = useAuthStore((state) => state.setSession)
-  const [mode, setMode] = useState<AuthMode>('sign-in')
+  const inviteFromUrl = readCohortInviteParams(location.search)
+  const [mode, setMode] = useState<AuthMode>(inviteFromUrl ? 'register' : 'sign-in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sessionReady, setSessionReady] = useState(false)
 
-  const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app'
-  const inviteFromUrl = readCohortInviteParams(location.search)
+  const defaultRedirect = inviteFromUrl ? '/app/welcome' : '/app/home'
+  const redirectTo = (location.state as { from?: string } | null)?.from ?? defaultRedirect
 
   if (accessToken || sessionReady) {
     return <CohortInviteRedirect to={redirectTo} search={location.search} />
@@ -35,12 +35,10 @@ export function SignInPage() {
     event.preventDefault()
     setIsSubmitting(true)
     setError(null)
-
     try {
-      const session =
-        mode === 'sign-in'
-          ? await login({ email, password })
-          : await register({ email, password, displayName })
+      const session = mode === 'sign-in'
+        ? await login({ email, password })
+        : await register({ email, password, displayName })
       setSession(session)
       setSessionReady(true)
     } catch (caught) {
@@ -51,86 +49,64 @@ export function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-12">
-      <Card className="w-full max-w-md">
-        <CardTitle>{mode === 'sign-in' ? 'Sign in' : 'Create account'}</CardTitle>
-        <CardDescription>
-          Email and password for the production MVP. SSO and onboarding polish ship later.
-        </CardDescription>
-
-        {inviteFromUrl ? (
-          <p className="mt-4 rounded-lg border border-app-border bg-app-elevated px-3 py-2 text-sm text-app-text">
-            You have a cohort invite. Sign in or create an account to join after authentication.
-          </p>
-        ) : null}
-
-        <div className="mt-4 flex gap-2">
-          <Button
-            type="button"
-            variant={mode === 'sign-in' ? 'primary' : 'secondary'}
-            onClick={() => setMode('sign-in')}
-          >
-            Sign in
-          </Button>
-          <Button
-            type="button"
-            variant={mode === 'register' ? 'primary' : 'secondary'}
-            onClick={() => setMode('register')}
-          >
-            Register
-          </Button>
+    <main className="v2-auth-page">
+      <section className="v2-auth-hero">
+        <V2Brand to="/" className="v2-auth-brand" />
+        <div className="auth-hero-copy">
+          <h1>Where your<br />courses come<br /><span>together</span></h1>
+          <p>Chat, questions, resources, and<br />office hours — one place per course.</p>
         </div>
+        <div className="auth-course-preview" aria-hidden="true">
+          <div className="preview-card preview-back two" />
+          <div className="preview-card preview-back one" />
+          <article className="preview-card preview-front">
+            <div className="preview-title"><span>CS</span><strong>CS 101 — Intro to<br />Computer Science</strong><b>3 new</b></div>
+            <div className="preview-tabs">
+              <span><MessageSquare />Chat</span>
+              <span><HelpCircle />Questions</span>
+              <span><FileText />Resources</span>
+              <span><CalendarDays />Office Hours</span>
+            </div>
+            <div className="preview-message"><i>AJ</i><p><strong>Dr. Alex Johnson</strong><small>Welcome to CS 101! I&apos;m excited to learn together…</small></p><time>2h ago</time></div>
+          </article>
+        </div>
+      </section>
 
-        <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-          {mode === 'register' ? (
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-app-muted">Display name</span>
-              <input
-                className="rounded-md border border-app-border bg-app-bg px-3 py-2 text-app-text"
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                required
-                autoComplete="name"
-              />
-            </label>
-          ) : null}
+      <section className="v2-auth-panel">
+        <div className="v2-auth-card">
+          {inviteFromUrl ? (
+            <div className="v2-auth-invite">
+              <span className="invite-course-icon">CS</span>
+              <p><small>You&apos;ve been invited to join</small><strong>CS 101 — Intro to Computer Science</strong><span>Spring cohort · Dr. Alex Johnson</span></p>
+            </div>
+          ) : (
+            <div className="v2-auth-invite compact">
+              <span className="invite-course-icon">C</span>
+              <p><small>Welcome to Chanter</small><strong>Your courses, conversations, and support</strong><span>Sign in to continue learning.</span></p>
+            </div>
+          )}
 
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-app-muted">Email</span>
-            <input
-              className="rounded-md border border-app-border bg-app-bg px-3 py-2 text-app-text"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              autoComplete="email"
-            />
-          </label>
+          <div className="v2-auth-tabs" role="tablist" aria-label="Authentication mode">
+            <button type="button" className={mode === 'sign-in' ? 'active' : undefined} onClick={() => setMode('sign-in')}>Sign in</button>
+            <button type="button" className={mode === 'register' ? 'active' : undefined} onClick={() => setMode('register')}>Create account</button>
+          </div>
 
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-app-muted">Password</span>
-            <input
-              className="rounded-md border border-app-border bg-app-bg px-3 py-2 text-app-text"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              minLength={8}
-              autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-            />
-          </label>
+          <form className="v2-auth-form" onSubmit={handleSubmit}>
+            {mode === 'register' ? (
+              <label>Full name<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Sam Lee" required autoComplete="name" /></label>
+            ) : null}
+            <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required autoComplete="email" /></label>
+            <label>Password<span className="password-field"><input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••••••" required minLength={8} autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'} /><button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((current) => !current)}>{showPassword ? <EyeOff /> : <Eye />}</button></span></label>
+            {error ? <p role="alert" className="v2-auth-error">{error}</p> : null}
+            <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Working…' : mode === 'register' ? `Create account${inviteFromUrl ? ' & join CS 101' : ''}` : 'Sign in'}</button>
+          </form>
 
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
-
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Working…' : mode === 'sign-in' ? 'Sign in' : 'Create account'}
-          </Button>
-        </form>
-
-        <Link className="mt-4 block text-center text-sm text-app-muted hover:text-app-text" to="/">
-          Back to landing
-        </Link>
-      </Card>
-    </div>
+          <div className="auth-divider"><span />or<span /></div>
+          <button type="button" className="google-button" onClick={() => setError('Google sign-in is not enabled for this local environment.')}><b>G</b> Continue with Google</button>
+          <p className="auth-terms">By continuing you agree to the <a href="#terms">Terms</a></p>
+          <Link className="auth-back" to="/">Back to Chanter</Link>
+        </div>
+      </section>
+    </main>
   )
 }

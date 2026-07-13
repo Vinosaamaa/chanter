@@ -146,5 +146,5 @@ _Avoid_: Workspace, tenant, account
 | [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Requirements and user stories |
 | [`plan.md`](../plan.md) | Implementation milestones and frontend direction |
 | [`System Design.md`](../System Design.md) | Backend services and engineering diagrams |
-| [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) | **Mandatory agent workflow** — issue order, loop, owner-only merge |
+| [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) | **Mandatory agent workflow** — issue order, loop, autonomous gated merge |
 | [`HANDOFF.md`](../HANDOFF.md) | Agent session startup and current slice |

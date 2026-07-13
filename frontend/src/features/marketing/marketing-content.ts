@@ -1,8 +1,13 @@
+export type MarketingFeatureId =
+  | 'ai-assistant'
+  | 'course-channels'
+  | 'ta-queue'
+  | 'instructor-dashboard'
+
 export type MarketingFeature = {
-  id: string
+  id: MarketingFeatureId
   title: string
   description: string
-  icon: string
 }
 
 export const MARKETING_FEATURES: MarketingFeature[] = [
@@ -11,28 +16,24 @@ export const MARKETING_FEATURES: MarketingFeature[] = [
     title: 'AI Study Assistant',
     description:
       '24/7 AI support that explains concepts, summarizes content, and helps students learn faster.',
-    icon: '✨',
   },
   {
     id: 'course-channels',
     title: 'Course Channels',
     description:
-      'Organized spaces for lectures, discussions, and collaboration — just like Discord, built for learning.',
-    icon: '#',
+      'Organized spaces for lectures, discussions, and collaboration, designed around the course.',
   },
   {
     id: 'ta-queue',
     title: 'TA Queue',
     description:
       'Transparent help queue system so every student gets the support they need, when they need it.',
-    icon: '👥',
   },
   {
     id: 'instructor-dashboard',
     title: 'Instructor Dashboard',
     description:
       'Real-time insights into student activity, help requests, and course engagement.',
-    icon: '📊',
   },
 ]
 

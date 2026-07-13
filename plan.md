@@ -500,9 +500,9 @@ Milestone 9: Hardening
 
 ## Next Build Step
 
-Backend MVP **#11–#24** is merged on `main`. **Active work:** [Production Frontend](https://github.com/users/Vinosaamaa/projects/3) — start at **[issue #48](https://github.com/Vinosaamaa/chanter/issues/48)**.
+Backend MVP **#11–#24**, Production Frontend **#47–#59**, and Workable Product **#60–#63** are merged on `main`. UI v2 **#116–#128** is implemented locally on `feature/116-v2-app-shell` with issue-scoped commits and has not been pushed.
 
-Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for mandatory issue order. For UI intent, align with `docs/product-design/docs/product-design/DESIGN-DECISIONS.md` and the slice rows in `docs/issues/production-frontend-issue-breakdown.md`. Use TDD and issue-scoped change logs in `docs/operations/`.
+Next: push and open one PR for #116–#128, finish the CodeAnt review loop, and merge after the required gates. Then audit v2 interactions against existing APIs before resuming the Public Launch board at **#94–#100** (real AI/RAG/MCP), then **#101–#104** (launch readiness). Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent is [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

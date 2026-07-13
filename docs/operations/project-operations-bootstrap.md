@@ -78,7 +78,7 @@ Decision status: confirmed.
 1. Create a **new branch per GitHub issue** (one issue → one branch → one PR).
 2. Implement on that branch; run tests locally before pushing.
 3. Open a **pull request** targeting `main` with acceptance criteria and test plan.
-4. **Owner merges only** — agents never merge. Wait until the repository owner merges after **CodeAnt AI** review is complete (see `docs/operations/agent-workflow.md` — **Issue completion loop**).
+4. **Autonomous gated merge** — agents may merge after CI passes and **CodeAnt AI** completes, with at most three documented remediation rounds (see `docs/operations/agent-workflow.md` — **Issue completion loop**). Never push directly to `main`.
 5. After merge, the linked issue closes (use `Closes #<number>` in the PR body).
 
 Branch naming:

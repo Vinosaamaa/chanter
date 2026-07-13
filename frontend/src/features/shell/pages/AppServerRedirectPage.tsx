@@ -16,15 +16,10 @@ export function AppServerRedirectPage() {
       return <ShellMessage>Could not load study servers.</ShellMessage>
     }
 
-    const firstServer = serversQuery.data?.[0]
-    if (!firstServer) {
-      return <Navigate to="/app/onboarding/create-study-server" replace />
-    }
-
-    return <Navigate to={`/app/servers/${firstServer.id}/home`} replace />
+    return <Navigate to="/app/home" replace />
   }
 
-  return <Navigate to={`/app/servers/${serverId}/home`} replace />
+  return <Navigate to="/app/home" replace />
 }
 
 export function AppHomeRedirectPage() {
