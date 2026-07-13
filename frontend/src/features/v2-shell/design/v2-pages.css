@@ -163,3 +163,127 @@
   .v2-app-shell .upcoming-heading { margin-top: 20px !important; }
   .v2-app-shell .upcoming-row { min-height: 67px; padding-block: 7px; }
 }
+
+/* Course workspace and Overview / Chat */
+.v2-app-shell .course-workspace-page { display: flex; flex-direction: column; overflow: hidden; }
+.v2-app-shell .course-workspace-chrome { flex: 0 0 auto; border-bottom: 1px solid rgba(151,161,177,.28); padding: 18px clamp(20px,2.2vw,42px) 0; }
+.v2-app-shell .course-heading-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.v2-app-shell .course-heading-copy { min-width: 0; display: flex; align-items: flex-start; gap: 16px; }
+.v2-app-shell .course-workspace-dot { width: 29px; height: 29px; flex: 0 0 29px; margin-top: 3px; border-radius: 50%; background: linear-gradient(145deg,#5c72ff,#3852e3); box-shadow: 0 0 20px rgba(69,92,237,.3); }
+.v2-app-shell .course-heading-copy h1 { margin: 0; overflow: hidden; color: #f7f7fa; font-size: 31px; line-height: 1.2; letter-spacing: 0; white-space: nowrap; text-overflow: ellipsis; }
+.v2-app-shell .course-heading-copy p { display: flex; align-items: center; gap: 5px; margin: 8px 0 0; color: #b7bac2; font-size: 17px; }
+.v2-app-shell .course-heading-copy p i { padding-inline: 7px; font-style: normal; }
+.v2-app-shell .course-heading-actions { display: flex; gap: 12px; }
+.v2-app-shell .study-room-status { min-height: 46px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(70,168,103,.48); border-radius: 9px; padding: 0 14px; color: #63d58b; background: rgba(23,92,52,.15); white-space: nowrap; }
+.v2-app-shell .study-room-status > i { width: 11px; height: 11px; border-radius: 50%; background: #52cc7d; }
+.v2-app-shell .workspace-tabs { display: grid; grid-template-columns: repeat(6,minmax(110px,1fr)); margin-top: 12px; overflow-x: auto; }
+.v2-app-shell .workspace-tabs a { position: relative; min-height: 57px; display: flex; align-items: center; justify-content: center; gap: 8px; border-bottom: 3px solid transparent; color: #c3c5cc; font-size: 17px; text-decoration: none; white-space: nowrap; }
+.v2-app-shell .workspace-tabs a.active { border-bottom-color: #5d73ff; color: #6680ff; }
+.v2-app-shell .workspace-tabs a > i { width: 9px; height: 9px; border-radius: 50%; background: #506aff; }
+.v2-app-shell .course-tab-panel { min-height: 0; flex: 1; overflow: auto; }
+
+.v2-app-shell .v2-panel { border: 1px solid rgba(151,161,177,.32); border-radius: 12px; color: #f4f5f8; background: rgba(7,23,41,.52); }
+.v2-app-shell .v2-panel h2 { margin: 0; font-size: 21px; letter-spacing: 0; }
+.v2-app-shell .course-overview-layout { position: relative; min-height: 100%; display: grid; grid-template-columns: minmax(0,1.15fr) minmax(330px,.92fr); gap: 22px; padding: 24px 30px 28px; }
+.v2-app-shell .overview-main-column { display: grid; align-content: start; gap: 14px; }
+.v2-app-shell .progress-panel { min-height: 194px; padding: 22px 28px; }
+.v2-app-shell .progress-panel > strong { display: block; margin-top: 17px; font-size: 40px; line-height: 1; }
+.v2-app-shell .overview-progress { height: 13px; margin-top: 13px; overflow: hidden; border-radius: 99px; background: #263444; }
+.v2-app-shell .overview-progress span { display: block; width: 65%; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#566cff,#7283ff); }
+.v2-app-shell .progress-panel > p { margin: 14px 0 0; color: #aeb5c1; font-size: 17px; }
+.v2-app-shell .this-week-panel, .v2-app-shell .recent-panel { padding: 20px 28px 12px; }
+.v2-app-shell .this-week-panel > p, .v2-app-shell .recent-panel > p { min-height: 51px; display: flex; align-items: center; gap: 15px; margin: 0; border-bottom: 1px solid rgba(151,161,177,.2); font-size: 17px; }
+.v2-app-shell .this-week-panel > p:last-child, .v2-app-shell .recent-panel > p:last-child { border-bottom: 0; }
+.v2-app-shell .this-week-panel p > b { margin-left: auto; border: 1px solid #bd8500; border-radius: 8px; padding: 5px 9px; color: #ffbd17; font-size: 13px; font-weight: 500; }
+.v2-app-shell .round-icon, .v2-app-shell .square-icon { width: 34px; height: 34px; flex: 0 0 34px; display: inline-grid; place-items: center; color: #7e5bdf; }
+.v2-app-shell .round-icon { border-radius: 50%; }
+.v2-app-shell .square-icon { border-radius: 8px; background: #1f4eac; color: #fff; }
+.v2-app-shell .round-icon.green { border: 2px solid #2ab36c; color: #36c379; }
+.v2-app-shell .round-icon.amber { color: #ffb515; }
+.v2-app-shell .round-icon.purple { color: #875cdb; }
+.v2-app-shell .round-icon.blue { color: #4692e7; }
+.v2-app-shell .round-icon svg, .v2-app-shell .square-icon svg { width: 25px; height: 25px; }
+.v2-app-shell .recent-panel p > span:nth-child(2) { min-width: 0; flex: 1; color: #c5c8cf; }
+.v2-app-shell .recent-panel time { margin-left: auto; color: #9da5b2; white-space: nowrap; }
+.v2-app-shell .course-up-next { min-height: 100%; padding: 23px 28px; }
+.v2-app-shell .course-up-next > h2 { padding-bottom: 16px; border-bottom: 1px solid rgba(151,161,177,.22); }
+.v2-app-shell .course-timeline { margin-top: 16px; }
+.v2-app-shell .course-timeline article { position: relative; display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 13px; min-height: 125px; }
+.v2-app-shell .course-timeline article:not(:last-child)::after { content: ''; position: absolute; left: 7px; top: 23px; bottom: -4px; border-left: 1px dashed #667080; }
+.v2-app-shell .course-timeline article > i { width: 17px; height: 17px; margin-top: 3px; border-radius: 50%; background: #4e72ff; z-index: 1; }
+.v2-app-shell .course-timeline article > i.amber { background: #ffb514; }
+.v2-app-shell .course-timeline article > i.purple { background: #7655cb; }
+.v2-app-shell .course-timeline article > i.green { background: #45ae69; }
+.v2-app-shell .course-timeline small { color: #aeb5c0; font-size: 14px; }
+.v2-app-shell .course-timeline small b { margin-left: 30px; color: #5276ff; }
+.v2-app-shell .course-timeline p { display: flex; align-items: center; gap: 14px; margin: 14px 0 0; font-size: 18px; }
+.v2-app-shell .course-timeline p button { margin-left: auto; min-height: 42px; border: 1px solid #5570ff; border-radius: 8px; padding: 0 18px; color: #fff; background: rgba(54,77,184,.3); cursor: pointer; }
+.v2-app-shell .due-badge { margin-left: auto; border: 1px solid #c68d00; border-radius: 8px; padding: 5px 8px; color: #ffbe16; font-size: 12px; white-space: nowrap; }
+.v2-app-shell .overview-accessibility-copy { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+
+.v2-app-shell .course-chat-layout { min-height: 100%; display: grid; grid-template-columns: minmax(240px,29%) minmax(0,1fr); gap: 16px; padding: 18px; }
+.v2-app-shell .channel-panel, .v2-app-shell .chat-panel { min-height: 0; border: 1px solid rgba(151,161,177,.38); border-radius: 12px; overflow: hidden; }
+.v2-app-shell .channel-panel { padding: 16px 14px; background: #0a1729; }
+.v2-app-shell .channel-panel section > header { height: 37px; display: grid; grid-template-columns: 1fr 22px 30px; align-items: center; color: #c8cbd2; letter-spacing: 1px; }
+.v2-app-shell .channel-panel section > header > svg { width: 18px; }
+.v2-app-shell .channel-panel section > header button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: transparent; color: #d2d6de; cursor: pointer; }
+.v2-app-shell .channel-list { display: grid; gap: 5px; margin-top: 4px; }
+.v2-app-shell .channel-list > button { min-height: 55px; display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; border: 0; border-radius: 8px; padding: 0 13px; color: #c8ccd4; background: transparent; text-align: left; cursor: pointer; }
+.v2-app-shell .channel-list > button.active { color: #fff; background: linear-gradient(115deg,rgba(56,77,185,.52),rgba(62,64,145,.35)); }
+.v2-app-shell .channel-list svg { width: 26px; height: 26px; }
+.v2-app-shell .channel-list b { min-width: 25px; height: 25px; display: grid; place-items: center; border-radius: 6px; background: #4c64e7; font-weight: 500; }
+.v2-app-shell .voice-section { margin-top: 18px; padding-top: 15px; border-top: 1px solid rgba(151,161,177,.22); }
+.v2-app-shell .voice-channel-row { width: 100%; min-height: 62px; display: grid; grid-template-columns: 32px minmax(0,1fr) auto; align-items: center; border: 0; padding: 0 8px; color: #d0d3d9; background: transparent; text-align: left; cursor: pointer; }
+.v2-app-shell .voice-avatars { display: flex; }
+.v2-app-shell .voice-avatars .v2-avatar + .v2-avatar { margin-left: -9px; }
+.v2-app-shell .chat-panel { display: flex; flex-direction: column; background: #11213a; }
+.v2-app-shell .chat-message-list { min-height: 0; flex: 1; overflow-y: auto; padding: 22px 24px; }
+.v2-app-shell .course-chat-message { display: grid; grid-template-columns: 60px minmax(0,1fr); gap: 18px; margin-bottom: 26px; }
+.v2-app-shell .course-chat-message p { display: flex; align-items: center; gap: 10px; margin: 5px 0 11px; }
+.v2-app-shell .course-chat-message strong { font-size: 19px; }
+.v2-app-shell .course-chat-message p b { border-radius: 5px; padding: 3px 7px; color: #fff; background: #5564e8; font-size: 12px; font-weight: 500; }
+.v2-app-shell .course-chat-message p b.ta { background: #3fa866; }
+.v2-app-shell .course-chat-message time { color: #9ca5b4; font-size: 13px; }
+.v2-app-shell .course-chat-message > div > span { color: #edf0f5; font-size: 18px; line-height: 1.55; }
+.v2-app-shell .inline-error { margin: 0 0 15px; border: 1px solid rgba(244,63,94,.35); border-radius: 8px; padding: 9px; color: #fda4af; background: rgba(136,19,55,.14); }
+.v2-app-shell .chat-composer { min-height: 86px; display: grid; grid-template-columns: 45px minmax(0,1fr) 45px 57px; align-items: center; gap: 10px; margin: 0 20px 20px; border: 1px solid rgba(151,161,177,.38); border-radius: 12px; padding: 10px 12px; background: rgba(8,22,39,.55); }
+.v2-app-shell .chat-composer input { min-width: 0; border: 0; outline: 0; color: #f7f7fa; background: transparent; font-size: 17px; }
+.v2-app-shell .chat-composer button { width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 10px; color: #e5e8ee; background: rgba(20,40,68,.5); cursor: pointer; }
+.v2-app-shell .chat-composer .send-button { width: 53px; height: 53px; border-radius: 50%; color: #fff; background: linear-gradient(145deg,#5f74ff,#3e4bda); }
+.v2-app-shell .chat-composer button:disabled { opacity: .45; }
+
+@media (max-width: 1180px) {
+  .v2-app-shell .course-heading-copy h1 { font-size: 26px; }
+  .v2-app-shell .workspace-tabs { grid-template-columns: repeat(6,minmax(100px,1fr)); }
+}
+
+@media (max-width: 900px) {
+  .v2-app-shell .course-heading-row { flex-direction: column; }
+  .v2-app-shell .course-overview-layout { grid-template-columns: 1fr; }
+  .v2-app-shell .course-up-next { min-height: 560px; }
+  .v2-app-shell .course-chat-layout { grid-template-columns: 1fr; }
+  .v2-app-shell .channel-panel { min-height: 330px; }
+  .v2-app-shell .chat-panel { min-height: 620px; }
+}
+
+@media (max-width: 620px) {
+  .v2-app-shell .course-heading-actions { width: 100%; flex-wrap: wrap; }
+  .v2-app-shell .course-heading-copy h1 { white-space: normal; }
+  .v2-app-shell .course-overview-layout { padding: 14px; }
+  .v2-app-shell .this-week-panel p { align-items: flex-start; padding-block: 9px; }
+  .v2-app-shell .this-week-panel p > b { margin-left: 0; }
+  .v2-app-shell .course-chat-layout { padding: 10px; }
+}
+
+@media (max-height: 760px) and (min-width: 901px) {
+  .v2-app-shell .course-workspace-chrome { padding-top: 10px; }
+  .v2-app-shell .workspace-tabs a { min-height: 46px; }
+  .v2-app-shell .course-overview-layout { padding-top: 14px; }
+  .v2-app-shell .progress-panel { min-height: 150px; padding-block: 15px; }
+  .v2-app-shell .progress-panel > strong { margin-top: 8px; font-size: 32px; }
+  .v2-app-shell .this-week-panel > p, .v2-app-shell .recent-panel > p { min-height: 43px; }
+  .v2-app-shell .course-chat-layout { padding-top: 10px; }
+  .v2-app-shell .chat-message-list { padding-block: 14px; }
+  .v2-app-shell .course-chat-message { margin-bottom: 18px; }
+  .v2-app-shell .chat-composer { min-height: 66px; margin-bottom: 12px; }
+}

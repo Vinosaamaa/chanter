@@ -19,6 +19,9 @@ import { WelcomeJoinedPage } from '../features/v2-shell/pages/WelcomeJoinedPage'
 import { CreateStudyServerV2Page } from '../features/v2-shell/pages/onboarding/CreateStudyServerV2Page'
 import { InboxPage } from '../features/v2-shell/pages/InboxPage'
 import { CalendarPage } from '../features/v2-shell/pages/CalendarPage'
+import { V2CourseWorkspaceLayout } from '../features/v2-shell/layouts/V2CourseWorkspaceLayout'
+import { CourseOverviewPage } from '../features/v2-shell/pages/course/CourseOverviewPage'
+import { CourseChatPage } from '../features/v2-shell/pages/course/CourseChatPage'
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -64,6 +67,15 @@ export function createAppRouter() {
             {
               path: 'calendar',
               element: <CalendarPage />,
+            },
+            {
+              path: 'servers/:serverId/courses/:courseId',
+              element: <V2CourseWorkspaceLayout />,
+              children: [
+                { index: true, element: <Navigate to="overview" replace /> },
+                { path: 'overview', element: <CourseOverviewPage /> },
+                { path: 'chat', element: <CourseChatPage /> },
+              ],
             },
           ],
         },

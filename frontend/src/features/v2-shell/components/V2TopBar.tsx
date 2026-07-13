@@ -12,6 +12,17 @@ type V2TopBarProps = {
 
 function resolveTopBarChrome(pathname: string) {
   const primary = resolveV2PrimaryNav(pathname)
+  const courseMatch = pathname.match(/^\/app\/servers\/[^/]+\/courses\/[^/]+/)
+  if (courseMatch) {
+    return {
+      pageTitle: 'CS 101',
+      showHomeIcon: false,
+      breadcrumbs: [
+        { label: 'Spring Bootcamp Hub' },
+        { label: 'CS 101' },
+      ],
+    }
+  }
   const pageTitle = primary ? primary[0].toUpperCase() + primary.slice(1) : 'Home'
   return {
     pageTitle,
