@@ -13,7 +13,7 @@ const demoMessages = [
 ]
 
 export function CourseChatPage() {
-  const { course, isOwner } = useV2CourseWorkspace()
+  const { course, courseCapabilities } = useV2CourseWorkspace()
   const textChannels = useMemo(
     () => course.channels.filter((channel) => channel.kind === 'TEXT' && !['questions', 'resources'].includes(channel.name.toLowerCase())),
     [course.channels],
@@ -34,7 +34,7 @@ export function CourseChatPage() {
     <div className="course-chat-layout">
       <aside className="channel-panel">
         <section>
-          <header><span>CHANNELS</span><ChevronDown />{isOwner ? <button type="button" aria-label="Add text channel"><Plus /></button> : null}</header>
+          <header><span>CHANNELS</span><ChevronDown />{courseCapabilities.canManageCourse ? <button type="button" aria-label="Add text channel"><Plus /></button> : null}</header>
           <div className="channel-list">
             {(textChannels.length ? textChannels : [{ id: 'general-demo', name: 'general', kind: 'TEXT' as const }, { id: 'study-demo', name: 'study-group', kind: 'TEXT' as const }, { id: 'memes-demo', name: 'memes', kind: 'TEXT' as const }]).map((channel, index) => (
               <button key={channel.id} type="button" className={(selectedChannel?.id ?? 'general-demo') === channel.id ? 'active' : undefined} onClick={() => setSelectedChannelId(channel.id)}>
@@ -44,7 +44,7 @@ export function CourseChatPage() {
           </div>
         </section>
         <section className="voice-section">
-          <header><span>VOICE</span><ChevronDown />{isOwner ? <button type="button" aria-label="Add voice channel"><Plus /></button> : null}</header>
+          <header><span>VOICE</span><ChevronDown />{courseCapabilities.canManageCourse ? <button type="button" aria-label="Add voice channel"><Plus /></button> : null}</header>
           {(voiceChannels.length ? voiceChannels : [{ id: 'voice-demo', name: 'Study Room', kind: 'VOICE' as const }]).map((channel) => (
             <button className="voice-channel-row" type="button" key={channel.id}><Volume2 /><span>{channel.name}</span><span className="voice-avatars"><V2Avatar name="Alex" size="sm" tone="amber" /><V2Avatar name="Maria" size="sm" tone="green" /><V2Avatar name="Sam" size="sm" tone="blue" /></span></button>
           ))}

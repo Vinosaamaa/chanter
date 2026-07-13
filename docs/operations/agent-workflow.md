@@ -70,8 +70,8 @@ If CodeAnt is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in
 | Backend MVP | [Education MVP](https://github.com/Vinosaamaa/chanter/milestone/1) | [#1](https://github.com/users/Vinosaamaa/projects/1) | **Done** (#1–#24) |
 | Production Frontend (legacy) | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Done** (#47–#59) |
 | Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | **Done** (#60–#63, #31–#32) |
-| **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — #116** |
-| Public Launch | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **#94+ after UI v2** (#88–#93 paused) |
+| **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Done** (#116–#128, PR #130) |
+| **UI v2 operationalization** | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — #132** under epic #131 |
 
 Legacy **Social Hub project #2** is **closed**. #31–#32 are on **project #4** only. **#30** is on **project #3** only (pairs with #49).
 
@@ -108,7 +108,7 @@ After **#50**, issues **#53–#56** may run in parallel if coordinated; default 
 **Breakdown:** [`ui-v2-issue-breakdown.md`](../issues/ui-v2-issue-breakdown.md)  
 **Design parent:** [#114](https://github.com/Vinosaamaa/chanter/issues/114) (closed)
 
-**Pauses:** Public Launch legacy UI polish **#88–#93** until **#116** merges.
+UI v2 **#116–#128** is merged in PR #130. The operational follow-through is tracked under epic **#131** below.
 
 | Order | Issue | Title |
 |------:|-------|-------|
@@ -128,6 +128,32 @@ After **#50**, issues **#53–#56** may run in parallel if coordinated; default 
 | 14 | [#128](https://github.com/Vinosaamaa/chanter/issues/128) | Landing and marketing v2 |
 
 Serial order only — one issue per branch.
+
+### Phase 2c: Make UI v2 fully operational (project #5)
+
+**Goal:** Replace presentation-only data and dead controls with truthful API, realtime, media, and durable-state behavior without regressing the approved v2 design.
+**Epic:** [#131](https://github.com/Vinosaamaa/chanter/issues/131)
+
+| Order | Issue | Title |
+|------:|-------|-------|
+| 1 | [**#132**](https://github.com/Vinosaamaa/chanter/issues/132) | **← ACTIVE** Explicit Course capabilities and Cohort context |
+| 2 | [#133](https://github.com/Vinosaamaa/chanter/issues/133) | Operational shell search, account, and join flows |
+| 3 | [#134](https://github.com/Vinosaamaa/chanter/issues/134) | Truthful Course Resources and AI install controls |
+| 4 | [#109](https://github.com/Vinosaamaa/chanter/issues/109) | Real v2 Friend Requests and co-member discovery |
+| 5 | [#135](https://github.com/Vinosaamaa/chanter/issues/135) | Durable Office Hours scheduling and live controls |
+| 6 | [#92](https://github.com/Vinosaamaa/chanter/issues/92) | Operational v2 Questions, support, and Teaching |
+| 7 | [#136](https://github.com/Vinosaamaa/chanter/issues/136) | Real Cohort roster, Enrollment, and TA assignment |
+| 8 | [#137](https://github.com/Vinosaamaa/chanter/issues/137) | Course Chat channel management and voice entry |
+| 9 | [#138](https://github.com/Vinosaamaa/chanter/issues/138) | Community Course discovery and Enrollment |
+| 10 | [#139](https://github.com/Vinosaamaa/chanter/issues/139) | Truthful Study Server and Course lifecycle |
+| 11 | [#140](https://github.com/Vinosaamaa/chanter/issues/140) | Durable Community events and RSVP |
+| 12 | [#141](https://github.com/Vinosaamaa/chanter/issues/141) | Operational announcements, members, and invitations |
+| 13 | [#142](https://github.com/Vinosaamaa/chanter/issues/142) | Truthful Home and Course Overview aggregates |
+| 14 | [#143](https://github.com/Vinosaamaa/chanter/issues/143) | Durable Inbox, notifications, and unread counts |
+| 15 | [#144](https://github.com/Vinosaamaa/chanter/issues/144) | Real cross-Course Calendar and join actions |
+| 16 | [#145](https://github.com/Vinosaamaa/chanter/issues/145) | Truthful owner billing and usage settings |
+
+After #145: AI **#94–#100**, critical-path E2E/no-dead-controls **#103**, staging/auth **#101–#102**, and public beta **#104**.
 
 ### Phase 3: Workable Product (project #4)
 
@@ -159,7 +185,7 @@ Serial order only — one issue per branch.
 
 ### Phase 4: Public Launch (project #5)
 
-**Goal:** Real LLM/RAG AI, staging + public beta readiness. Legacy UI polish (#88–#93) **paused** until UI v2 **#116** merges.  
+**Goal:** Real LLM/RAG AI, staging + public beta readiness after UI v2 operationalization.
 **Breakdown:** [`public-launch-issue-breakdown.md`](../issues/public-launch-issue-breakdown.md)
 
 | Order | Issue | Title |
@@ -167,9 +193,9 @@ Serial order only — one issue per branch.
 | 1 | [#82](https://github.com/Vinosaamaa/chanter/issues/82) | Epic: Public Launch |
 | 2 | [#86](https://github.com/Vinosaamaa/chanter/issues/86) | Product stack reliability — **merged** (PR #105) |
 | 3 | [#87](https://github.com/Vinosaamaa/chanter/issues/87) | Mockup gap audit — **owner sign-off 2026-07-09** (PR #106) |
-| — | **#115–#128** | **UI v2** — see [Phase 2b](#phase-2b-ui-v2--course-first-shell-project-5) (**active**) |
-| 4 | [#88](https://github.com/Vinosaamaa/chanter/issues/88)–[#93](https://github.com/Vinosaamaa/chanter/issues/93) | Legacy UI polish — **paused** until #116 |
-| 5 | [#94](https://github.com/Vinosaamaa/chanter/issues/94)+ | Real AI + launch readiness |
+| — | **#115–#128** | **UI v2** — merged in PR #130 |
+| 4 | [#131](https://github.com/Vinosaamaa/chanter/issues/131) | Make UI v2 fully operational — **active at #132** |
+| 5 | [#94](https://github.com/Vinosaamaa/chanter/issues/94)+ | Real AI + launch readiness after #145 |
 
 ---
 
@@ -293,7 +319,7 @@ Do **not** treat a separate “deferred” section as skippable work on the **ow
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged.
-Active work: Public Launch project #5 — active slice **#88** App shell polish (`feature/88-app-shell-polish`).
+Active work: Public Launch project #5 — epic **#131**, active slice **#132** (`feature/132-course-capabilities-cohort-context`).
 
 Product UI: docs/product-design/README.md
 PR review: CodeAnt AI (cubic trial expired) — docs/operations/agent-workflow.md § CodeAnt review

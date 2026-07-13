@@ -1,11 +1,19 @@
 import { useCallback, useState } from 'react'
 import { CalendarDays, ChevronRight, CircleHelp, ClipboardCheck, Clock, FileText, Sparkles, UsersRound } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 
 import { useAuthStore } from '../../../stores/auth-store'
 import { useInstructorDashboardPage } from '../../instructor-dashboard/hooks/use-instructor-dashboard-page'
+import { useV2SidebarData } from '../hooks/use-v2-sidebar-data'
 
 export function TeachingPage() {
+  const access = useV2SidebarData()
+  if (access.isLoading) return <section className="v2-workspace-page course-workspace-state" role="status"><p>Loading teaching…</p></section>
+  if (!access.showTeachingNav) return <Navigate to="/app/home" replace />
+  return <TeachingContent />
+}
+
+function TeachingContent() {
   const [selectedServerId,setSelectedServerId]=useState<string|null>(null)
   const selectServer=useCallback((id:string)=>setSelectedServerId(id),[])
   const page=useInstructorDashboardPage(selectedServerId,selectServer)

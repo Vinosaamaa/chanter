@@ -21,11 +21,12 @@ const demoAnswer = {
 }
 
 export function CourseQuestionsPage() {
-  const { course, isOwner } = useV2CourseWorkspace()
+  const { course, courseCapabilities, selectedCohort } = useV2CourseWorkspace()
+  const manageQuestions = courseCapabilities.canManageQuestions
   const questionChannel = course.channels.find((channel) => channel.name.toLowerCase() === 'questions')
   const questions = useQuestionsChannel({
     channelId: questionChannel?.id ?? 'questions-demo',
-    cohortId: course.cohorts[0]?.id ?? 'cohort-demo',
+    cohortId: selectedCohort?.id ?? 'cohort-demo',
   })
   const [filter, setFilter] = useState<'open' | 'answered' | 'mine'>('open')
   const [selectedId, setSelectedId] = useState('recursion')
@@ -57,7 +58,7 @@ export function CourseQuestionsPage() {
   }
 
   return (
-    <div className={`questions-layout ${isOwner ? 'owner-view' : ''}`}>
+    <div className={`questions-layout ${manageQuestions ? 'owner-view' : ''}`}>
       <aside className="questions-list-pane">
         <h2>QUESTIONS</h2>
         <div className="question-filters" role="group" aria-label="Question filters">
@@ -87,7 +88,7 @@ export function CourseQuestionsPage() {
       </aside>
 
       <section className="question-detail-pane">
-        {isOwner ? <h2 className="question-pane-label">THREAD</h2> : null}
+        {manageQuestions ? <h2 className="question-pane-label">THREAD</h2> : null}
         <article className="question-message">
           <V2Avatar name={selectedLive ? 'You' : selectedDemo.author} tone={selectedLive ? 'blue' : selectedDemo.tone} size="lg" />
           <div><p><strong>{selectedLive ? 'You' : selectedDemo.author}</strong><time>{selectedLive ? 'just now' : selectedDemo.age}</time></p><span>{selectedLive?.message.body ?? selectedDemo.body}</span></div>
@@ -117,22 +118,22 @@ export function CourseQuestionsPage() {
           <button type="button" onClick={() => {
             if (selectedLive?.supportQuestion && selectedAnswer?.handoffRecommended) void questions.addToTaQueue(selectedLive.supportQuestion.id)
           }}><Plus />Add to TA Queue</button>
-          {!isOwner ? <button type="button" className={helpful ? 'active' : undefined} onClick={() => setHelpful((value) => !value)}><ThumbsUp />{helpful ? 'Helpful' : 'Mark helpful'}</button> : null}
+          {!manageQuestions ? <button type="button" className={helpful ? 'active' : undefined} onClick={() => setHelpful((value) => !value)}><ThumbsUp />{helpful ? 'Helpful' : 'Mark helpful'}</button> : null}
         </div>
         {questions.error && questionChannel ? <p className="inline-error">{questions.error}</p> : null}
         {questions.taQueueSuccess ? <p className="inline-success">{questions.taQueueSuccess}</p> : null}
         <form className="question-composer" onSubmit={submitQuestion}>
           <button type="button" aria-label="Add attachment"><Plus /></button>
-          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={selectedLive || isOwner ? 'Ask a follow-up…' : 'Ask a support question…'} />
+          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={selectedLive || manageQuestions ? 'Ask a follow-up…' : 'Ask a support question…'} />
           <button type="button" aria-label="Add emoji"><Smile /></button>
           <button type="submit" className="send-button" aria-label="Send question" disabled={!draft.trim() || questions.isPosting}><Send /></button>
         </form>
       </section>
 
-      {isOwner ? (
+      {manageQuestions ? (
         <aside className="question-owner-tools">
-          <section><h2>FAQ CANDIDATES <Info /></h2>{[['12','Tracing Recursion'],['8','Merge Sort Steps'],['7','Recursion Base Case'],['5','Recursion Tree']].map(([count,label]) => <p key={label}><b>{count}</b><span>{label}</span></p>)}<button type="button" className="owner-tool-link">View all</button></section>
-          <section><h2>TA QUEUE <Info /></h2>{demoQuestions.map((question,index) => <p key={question.id}><b>{3-index}</b><span><strong>{question.body}</strong><small>{question.author} · {question.age}</small></span><button type="button" disabled={pickedQueueIds.includes(question.id)} onClick={() => setPickedQueueIds((items) => [...items,question.id])}>{pickedQueueIds.includes(question.id) ? 'Picked up' : 'Pick up'}</button></p>)}<button type="button" className="owner-tool-link">View queue</button></section>
+          {courseCapabilities.canApproveFaq ? <section><h2>FAQ CANDIDATES <Info /></h2>{[['12','Tracing Recursion'],['8','Merge Sort Steps'],['7','Recursion Base Case'],['5','Recursion Tree']].map(([count,label]) => <p key={label}><b>{count}</b><span>{label}</span></p>)}<button type="button" className="owner-tool-link">View all</button></section> : null}
+          {courseCapabilities.canManageTaQueue ? <section><h2>TA QUEUE <Info /></h2>{demoQuestions.map((question,index) => <p key={question.id}><b>{3-index}</b><span><strong>{question.body}</strong><small>{question.author} · {question.age}</small></span><button type="button" disabled={pickedQueueIds.includes(question.id)} onClick={() => setPickedQueueIds((items) => [...items,question.id])}>{pickedQueueIds.includes(question.id) ? 'Picked up' : 'Pick up'}</button></p>)}<button type="button" className="owner-tool-link">View queue</button></section> : null}
         </aside>
       ) : null}
     </div>

@@ -1,12 +1,16 @@
 import { createContext, useContext } from 'react'
 
-import type { ShellCourse } from '../../shell/types'
+import type { CourseCapabilities, ShellCohort, ShellCourse, StudyServerCapabilities } from '../../shell/types'
 
 export type V2CourseWorkspaceContextValue = {
   serverId: string
   courseId: string
   serverName: string
   course: ShellCourse
+  studyServerCapabilities: StudyServerCapabilities
+  courseCapabilities: CourseCapabilities
+  selectedCohort: ShellCohort | undefined
+  selectCohort: (cohortId: string) => void
   isOwner: boolean
   isLoading: boolean
   isError: boolean

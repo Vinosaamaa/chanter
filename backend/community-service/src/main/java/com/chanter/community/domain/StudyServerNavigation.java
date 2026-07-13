@@ -7,7 +7,8 @@ public record StudyServerNavigation(
         UUID studyServerId,
         String studyServerName,
         boolean canViewFullCatalog,
+        StudyServerCapabilities capabilities,
         List<StudyServerChannel> studyServerChannels,
-        List<GrantCandidateCourse> courses
+        List<StudyServerNavigationCourse> courses
 ) {
 }

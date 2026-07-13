@@ -103,7 +103,9 @@ function GlobalSearchOverlayPanel({
     }
   }, [trimmedQuery, serverId])
 
-  const canManage = navigationQuery.data?.canViewFullCatalog ?? false
+  const canManage = navigationQuery.data?.courses.some(
+    (course) => course.capabilities.canUploadResources,
+  ) ?? false
   const courseIds = useMemo(
     () => new Set((navigationQuery.data?.courses ?? []).map((course) => course.id)),
     [navigationQuery.data?.courses],

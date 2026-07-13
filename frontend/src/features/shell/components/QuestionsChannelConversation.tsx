@@ -20,8 +20,7 @@ export function QuestionsChannelConversation({
   channelContext,
 }: QuestionsChannelConversationProps) {
   const currentUserId = useAuthStore((state) => state.user?.id)
-  const navigationQuery = useStudyServerNavigationQuery(serverId)
-  const canViewSummary = Boolean(navigationQuery.data?.canViewFullCatalog)
+  const canViewSummary = channelContext.course.capabilities.canManageCourse
   const cohortId = channelContext.course.cohorts[0]?.id
   const { setStudyServerId, setSelectedAnswer } = useQuestionsPanel()
   const questions = useQuestionsChannel({

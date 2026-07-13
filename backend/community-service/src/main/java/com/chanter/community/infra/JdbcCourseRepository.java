@@ -5,6 +5,7 @@ import com.chanter.community.domain.AccessibleStudyServer;
 import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.CohortEnrollment;
 import com.chanter.community.domain.CohortEnrollmentList;
+import com.chanter.community.domain.CohortRole;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
@@ -258,11 +259,20 @@ public class JdbcCourseRepository implements CourseRepository {
                                 AND cr.role = :instructorRole
                             )
                             OR ce.learner_user_id = :viewerUserId
+                            OR EXISTS (
+                                SELECT 1
+                                FROM cohorts ta_cohort
+                                JOIN cohort_roles cor ON cor.cohort_id = ta_cohort.id
+                                WHERE ta_cohort.course_id = cc.course_id
+                                AND cor.user_id = :viewerUserId
+                                AND cor.role = :teachingAssistantRole
+                            )
                         )
                         """)
                 .param("channelId", channelId)
                 .param("viewerUserId", viewerUserId)
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .param("teachingAssistantRole", CohortRole.TA.name())
                 .query((rs, rowNum) -> new CourseChannel(
                         rs.getObject("id", UUID.class),
                         rs.getObject("course_id", UUID.class),
@@ -299,6 +309,14 @@ public class JdbcCourseRepository implements CourseRepository {
                                     WHERE cr.course_id = cc.course_id
                                     AND cr.user_id = :userId
                                     AND cr.role = :instructorRole
+                                )
+                                OR EXISTS (
+                                    SELECT 1
+                                    FROM cohorts c
+                                    JOIN cohort_roles cor ON cor.cohort_id = c.id
+                                    WHERE c.course_id = cc.course_id
+                                    AND cor.user_id = :userId
+                                    AND cor.role = :teachingAssistantRole
                                 ) THEN TRUE
                                 ELSE FALSE
                             END AS can_view
@@ -322,6 +340,14 @@ public class JdbcCourseRepository implements CourseRepository {
                                 AND cr.user_id = :userId
                                 AND cr.role = :instructorRole
                             )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM cohorts c
+                                JOIN cohort_roles cor ON cor.cohort_id = c.id
+                                WHERE c.course_id = cc.course_id
+                                AND cor.user_id = :userId
+                                AND cor.role = :teachingAssistantRole
+                            )
                         )
                         """)
                 .param("channelId", channelId)
@@ -329,6 +355,7 @@ public class JdbcCourseRepository implements CourseRepository {
                 .param("textKind", ChannelKind.TEXT.name())
                 .param("questionsChannelName", "questions")
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .param("teachingAssistantRole", CohortRole.TA.name())
                 .query((rs, rowNum) -> new SupportQuestionChannelAccess(
                         rs.getObject("id", UUID.class),
                         rs.getObject("course_id", UUID.class),
@@ -383,6 +410,14 @@ public class JdbcCourseRepository implements CourseRepository {
                                     JOIN cohort_enrollments ce ON ce.cohort_id = co.id
                                     WHERE co.course_id = c.id
                                     AND ce.learner_user_id = :userId
+                                )
+                                OR EXISTS (
+                                    SELECT 1
+                                    FROM cohorts co
+                                    JOIN cohort_roles cor ON cor.cohort_id = co.id
+                                    WHERE co.course_id = c.id
+                                    AND cor.user_id = :userId
+                                    AND cor.role = :teachingAssistantRole
                                 ) THEN TRUE
                                 ELSE FALSE
                             END AS can_view
@@ -403,11 +438,20 @@ public class JdbcCourseRepository implements CourseRepository {
                                 WHERE co.course_id = c.id
                                 AND ce.learner_user_id = :userId
                             )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM cohorts co
+                                JOIN cohort_roles cor ON cor.cohort_id = co.id
+                                WHERE co.course_id = c.id
+                                AND cor.user_id = :userId
+                                AND cor.role = :teachingAssistantRole
+                            )
                         )
                         """)
                 .param("courseId", courseId)
                 .param("userId", userId)
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .param("teachingAssistantRole", CohortRole.TA.name())
                 .query((rs, rowNum) -> new CourseResourceAccess(
                         rs.getObject("course_id", UUID.class),
                         rs.getBoolean("can_upload"),
@@ -449,6 +493,45 @@ public class JdbcCourseRepository implements CourseRepository {
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
                 .query(Integer.class)
                 .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> findInstructedCourseIds(UUID studyServerId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT c.id
+                        FROM courses c
+                        JOIN course_roles cr ON cr.course_id = c.id
+                        WHERE c.study_server_id = :studyServerId
+                        AND cr.user_id = :userId
+                        AND cr.role = :instructorRole
+                        ORDER BY c.id
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("userId", userId)
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .query(UUID.class)
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> findTeachingAssistantCohortIds(UUID studyServerId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT c.id
+                        FROM cohorts c
+                        JOIN courses co ON co.id = c.course_id
+                        JOIN cohort_roles cor ON cor.cohort_id = c.id
+                        WHERE co.study_server_id = :studyServerId
+                        AND cor.user_id = :userId
+                        AND cor.role = :teachingAssistantRole
+                        ORDER BY c.id
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("userId", userId)
+                .param("teachingAssistantRole", CohortRole.TA.name())
+                .query(UUID.class)
+                .list();
     }
 
     @Override
@@ -599,11 +682,14 @@ public class JdbcCourseRepository implements CourseRepository {
                 .query(UUID.class)
                 .list();
 
-        if (!canViewAllGrants && enrolledCourseIds.isEmpty()) {
+        List<UUID> teachingAssistantCohortIds = findTeachingAssistantCohortIds(studyServerId, userId);
+
+        if (!canViewAllGrants && enrolledCourseIds.isEmpty() && teachingAssistantCohortIds.isEmpty()) {
             return Optional.empty();
         }
 
         List<UUID> accessibleCourseChannelIds = enrolledCourseIds.isEmpty()
+                && teachingAssistantCohortIds.isEmpty()
                 ? List.of()
                 : jdbcClient.sql("""
                                 SELECT cc.id
@@ -616,10 +702,20 @@ public class JdbcCourseRepository implements CourseRepository {
                                     WHERE co.study_server_id = :studyServerId
                                     AND ce.learner_user_id = :userId
                                 )
+                                OR cc.course_id IN (
+                                    SELECT co.id
+                                    FROM courses co
+                                    JOIN cohorts c ON c.course_id = co.id
+                                    JOIN cohort_roles cor ON cor.cohort_id = c.id
+                                    WHERE co.study_server_id = :studyServerId
+                                    AND cor.user_id = :userId
+                                    AND cor.role = :teachingAssistantRole
+                                )
                                 ORDER BY cc.position
                                 """)
                         .param("studyServerId", studyServerId)
                         .param("userId", userId)
+                        .param("teachingAssistantRole", CohortRole.TA.name())
                         .query(UUID.class)
                         .list();
 
@@ -656,6 +752,13 @@ public class JdbcCourseRepository implements CourseRepository {
                                     WHERE cr.course_id = c.course_id
                                     AND cr.user_id = :userId
                                     AND cr.role = :instructorRole
+                                )
+                                OR EXISTS (
+                                    SELECT 1
+                                    FROM cohort_roles cor
+                                    WHERE cor.cohort_id = c.id
+                                    AND cor.user_id = :userId
+                                    AND cor.role = :teachingAssistantRole
                                 ) THEN TRUE
                                 ELSE FALSE
                             END AS can_manage
@@ -676,11 +779,19 @@ public class JdbcCourseRepository implements CourseRepository {
                                 AND cr.user_id = :userId
                                 AND cr.role = :instructorRole
                             )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM cohort_roles cor
+                                WHERE cor.cohort_id = c.id
+                                AND cor.user_id = :userId
+                                AND cor.role = :teachingAssistantRole
+                            )
                         )
                         """)
                 .param("cohortId", cohortId)
                 .param("userId", userId)
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .param("teachingAssistantRole", CohortRole.TA.name())
                 .query((rs, rowNum) -> new CohortTaQueueAccess(
                         rs.getObject("cohort_id", UUID.class),
                         rs.getObject("course_id", UUID.class),
@@ -715,6 +826,13 @@ public class JdbcCourseRepository implements CourseRepository {
                                     FROM cohort_enrollments ce
                                     WHERE ce.cohort_id = c.id
                                     AND ce.learner_user_id = :userId
+                                )
+                                OR EXISTS (
+                                    SELECT 1
+                                    FROM cohort_roles cor
+                                    WHERE cor.cohort_id = c.id
+                                    AND cor.user_id = :userId
+                                    AND cor.role = :teachingAssistantRole
                                 ) THEN TRUE
                                 ELSE FALSE
                             END AS can_join,
@@ -745,11 +863,19 @@ public class JdbcCourseRepository implements CourseRepository {
                                 AND cr.user_id = :userId
                                 AND cr.role = :instructorRole
                             )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM cohort_roles cor
+                                WHERE cor.cohort_id = c.id
+                                AND cor.user_id = :userId
+                                AND cor.role = :teachingAssistantRole
+                            )
                         )
                         """)
                 .param("cohortId", cohortId)
                 .param("userId", userId)
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .param("teachingAssistantRole", CohortRole.TA.name())
                 .query((rs, rowNum) -> new CohortOfficeHoursAccess(
                         rs.getObject("cohort_id", UUID.class),
                         rs.getObject("course_id", UUID.class),
@@ -803,11 +929,21 @@ public class JdbcCourseRepository implements CourseRepository {
                             WHERE co.study_server_id = ss.id
                             AND ce.learner_user_id = :userId
                         )
+                        OR EXISTS (
+                            SELECT 1
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_roles cor ON cor.cohort_id = c.id
+                            WHERE co.study_server_id = ss.id
+                            AND cor.user_id = :userId
+                            AND cor.role = :teachingAssistantRole
+                        )
                         ORDER BY ss.name
                         """)
                 .param("userId", userId)
                 .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .param("teachingAssistantRole", CohortRole.TA.name())
                 .query((rs, rowNum) -> new AccessibleStudyServerRow(
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
@@ -853,6 +989,12 @@ public class JdbcCourseRepository implements CourseRepository {
                             FROM courses co
                             JOIN cohorts c ON c.course_id = co.id
                             JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            WHERE co.study_server_id IN (:studyServerIds)
+                            UNION
+                            SELECT co.study_server_id, cor.user_id AS member_user_id
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_roles cor ON cor.cohort_id = c.id
                             WHERE co.study_server_id IN (:studyServerIds)
                         ) members
                         GROUP BY study_server_id

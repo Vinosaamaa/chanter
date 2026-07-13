@@ -37,7 +37,7 @@ const filters: { id: CourseResourceFilter; label: string }[] = [
 ]
 
 export function CourseResourcesPage() {
-  const { course, serverId, isOwner } = useV2CourseWorkspace()
+  const { course, serverId, courseCapabilities } = useV2CourseWorkspace()
   const userId = useAuthStore((state) => state.user?.id)
   const resources = useCourseResourcesChannel(course.id)
   const install = useStudyAssistantInstallFlow({ studyServerId: serverId, instructorUserId: userId })
@@ -80,7 +80,7 @@ export function CourseResourcesPage() {
       <div className="resources-toolbar">
         <label><Search /><input value={resources.searchQuery} onChange={(event) => resources.setSearchQuery(event.target.value)} placeholder="Search resources…" /></label>
         <div className="resource-filters">{filters.map((filter) => <button type="button" key={filter.id} className={resources.activeFilter === filter.id ? 'active' : undefined} onClick={() => resources.setActiveFilter(filter.id)}>{filter.label}</button>)}</div>
-        {isOwner || resources.canUpload ? <div className="resource-owner-actions"><button type="button" className="v2-primary-button" onClick={chooseFile} disabled={resources.isUploading}>{resources.isUploading ? 'Uploading…' : 'Upload'}</button><input ref={fileInputRef} type="file" hidden onChange={onFileSelected} /><button type="button" className="v2-outline-button" onClick={openInstall}><Sparkles />Install AI Study Assistant</button></div> : null}
+        {courseCapabilities.canUploadResources && resources.canUpload ? <div className="resource-owner-actions"><button type="button" className="v2-primary-button" onClick={chooseFile} disabled={resources.isUploading}>{resources.isUploading ? 'Uploading…' : 'Upload'}</button><input ref={fileInputRef} type="file" hidden onChange={onFileSelected} /><button type="button" className="v2-outline-button" onClick={openInstall}><Sparkles />Install AI Study Assistant</button></div> : null}
       </div>
 
       {resources.error && course.id !== 'course-demo' ? <p className="inline-error">{resources.error}</p> : null}

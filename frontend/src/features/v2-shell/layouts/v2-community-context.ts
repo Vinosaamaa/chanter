@@ -1,11 +1,12 @@
 import { useOutletContext } from 'react-router-dom'
 
-import type { StudyServerNavigation } from '../../shell/types'
+import type { StudyServerCapabilities, StudyServerNavigation } from '../../shell/types'
 
 export type V2CommunityContext = {
   serverId: string
   serverName: string
   isOwner: boolean
+  studyServerCapabilities: StudyServerCapabilities | undefined
   navigation: StudyServerNavigation | undefined
 }
 

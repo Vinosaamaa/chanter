@@ -1,13 +1,22 @@
 import { useCallback, useState } from 'react'
 import { BarChart3, CreditCard, Download, ExternalLink, Info, Plug, Settings, Sparkles, Sprout, UserCircle, UsersRound, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 
 import { updateSaasPlan } from '../../instructor-dashboard/instructor-dashboard-api'
 import { useInstructorDashboardPage } from '../../instructor-dashboard/hooks/use-instructor-dashboard-page'
+import { useAccessibleStudyServersQuery } from '../../shell/hooks/use-shell-queries'
 import { HomePage } from './HomePage'
 
 export function BillingSettingsPage() {
-  const [selectedServerId,setSelectedServerId]=useState<string|null>(null)
+  const servers = useAccessibleStudyServersQuery()
+  if (servers.isLoading) return <section className="v2-workspace-page course-workspace-state" role="status"><p>Loading billing…</p></section>
+  const ownerServer = servers.data?.find((server) => server.owner)
+  if (!ownerServer) return <Navigate to="/app/home" replace />
+  return <OwnerBillingSettingsPage initialServerId={ownerServer.id} />
+}
+
+function OwnerBillingSettingsPage({ initialServerId }: { initialServerId: string }) {
+  const [selectedServerId,setSelectedServerId]=useState<string|null>(initialServerId)
   const selectServer=useCallback((id:string)=>setSelectedServerId(id),[])
   const page=useInstructorDashboardPage(selectedServerId,selectServer)
   const navigate=useNavigate()

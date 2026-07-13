@@ -107,10 +107,10 @@ function QuestionsContextPanel({
   const { selectedAnswer, studyServerId: panelServerId } = useQuestionsPanel()
   const resolvedServerId = studyServerId ?? panelServerId ?? undefined
   const navigationQuery = useStudyServerNavigationQuery(resolvedServerId)
-  const canInstall = navigationQuery.data?.canViewFullCatalog ?? false
   const courseContext = channelId
     ? findCourseChannelContext(navigationQuery.data, channelId)
     : null
+  const canInstall = courseContext?.course.capabilities.canUploadResources ?? false
   const deferredCourseContext = useDeferredValue(courseContext)
   const resourcesChannel = deferredCourseContext?.course.channels.find(
     (channel) => channel.name === 'resources',

@@ -22,26 +22,27 @@ const assistants = [
 ]
 
 export function CoursePeoplePage() {
-  const { course, isOwner } = useV2CourseWorkspace()
-  const cohortId = course.cohorts[0]?.id
+  const { courseCapabilities, selectedCohort } = useV2CourseWorkspace()
+  const canManagePeople = courseCapabilities.canManagePeople
+  const cohortId = selectedCohort?.id
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState(isOwner ? 'all' : 'all')
+  const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState<string[]>([])
   const [showAddTa, setShowAddTa] = useState(false)
   const [showAssign, setShowAssign] = useState(false)
   const [showEnroll, setShowEnroll] = useState(false)
   const [copied, setCopied] = useState(false)
   const enrollment = useCohortEnrollment(cohortId ?? '')
-  const enrollmentQuery = useCohortEnrollments(isOwner ? cohortId : undefined, { limit: 50, search: query || undefined })
-  const inviteQuery = useCohortInvite(isOwner ? cohortId : undefined)
+  const enrollmentQuery = useCohortEnrollments(canManagePeople ? cohortId : undefined, { limit: 50, search: query || undefined })
+  const inviteQuery = useCohortInvite(canManagePeople ? cohortId : undefined)
 
   const visibleClassmates = useMemo(() => classmates.filter((person) => {
     const matchesQuery = person.name.toLowerCase().includes(query.toLowerCase())
-    const matchesFilter = !isOwner || filter === 'all' || person.status.toLowerCase() === filter
+    const matchesFilter = !canManagePeople || filter === 'all' || person.status.toLowerCase() === filter
     return matchesQuery && matchesFilter
-  }), [filter, isOwner, query])
+  }), [canManagePeople, filter, query])
 
   const copyInvite = async () => {
     if (!cohortId || !inviteQuery.data) return
@@ -61,22 +62,22 @@ export function CoursePeoplePage() {
   }
 
   return (
-    <div className={`people-page ${isOwner ? 'owner' : 'learner'}`}>
+    <div className={`people-page ${canManagePeople ? 'owner' : 'learner'}`}>
       <div className="people-toolbar">
         <label><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search people…" /></label>
-        <div className="people-filters">{(isOwner ? ['all','enrolled','pending'] : ['all','online','staff']).map((value) => <button type="button" key={value} className={filter === value ? 'active' : undefined} onClick={() => setFilter(value)}>{value[0].toUpperCase() + value.slice(1)}</button>)}</div>
-        {isOwner ? <div className="people-owner-actions"><button type="button" className="v2-outline-button" onClick={() => void copyInvite()}><Link2 />{copied ? 'Link copied' : 'Copy invite link'}</button><button type="button" className="v2-primary-button" onClick={() => setShowEnroll(true)}><Plus />Enroll learner</button></div> : null}
+        <div className="people-filters">{(canManagePeople ? ['all','enrolled','pending'] : ['all','online','staff']).map((value) => <button type="button" key={value} className={filter === value ? 'active' : undefined} onClick={() => setFilter(value)}>{value[0].toUpperCase() + value.slice(1)}</button>)}</div>
+        {canManagePeople ? <div className="people-owner-actions"><button type="button" className="v2-outline-button" onClick={() => void copyInvite()}><Link2 />{copied ? 'Link copied' : 'Copy invite link'}</button><button type="button" className="v2-primary-button" onClick={() => setShowEnroll(true)}><Plus />Enroll learner</button></div> : null}
       </div>
-      {isOwner ? <p className="people-summary">{enrollmentQuery.data?.totalCount ?? 24} learners · 2 TAs · 1 pending</p> : null}
+      {canManagePeople ? <p className="people-summary">{enrollmentQuery.data?.totalCount ?? 24} learners · 2 TAs · 1 pending</p> : null}
 
-      <RosterSection title="INSTRUCTOR"><PersonRow name="Dr. Alex Johnson" tone="amber" subtitle="Course instructor" badge="OWNER" learnerView={!isOwner} /></RosterSection>
-      <RosterSection title="TEACHING ASSISTANTS" action={isOwner ? <button type="button" onClick={() => setShowAddTa((value) => !value)}><Plus />Add TA</button> : null}>
-        <div className="add-ta-anchor">{assistants.map((person) => <PersonRow key={person.name} name={person.name} tone={person.tone} badge="TA" learnerView={!isOwner} menu={isOwner} />)}{showAddTa ? <AddTaPopover onChoose={() => setShowAddTa(false)} /> : null}</div>
+      <RosterSection title="INSTRUCTOR"><PersonRow name="Dr. Alex Johnson" tone="amber" subtitle="Course instructor" badge="OWNER" learnerView={!canManagePeople} /></RosterSection>
+      <RosterSection title="TEACHING ASSISTANTS" action={canManagePeople ? <button type="button" onClick={() => setShowAddTa((value) => !value)}><Plus />Add TA</button> : null}>
+        <div className="add-ta-anchor">{assistants.map((person) => <PersonRow key={person.name} name={person.name} tone={person.tone} badge="TA" learnerView={!canManagePeople} menu={canManagePeople} />)}{showAddTa ? <AddTaPopover onChoose={() => setShowAddTa(false)} /> : null}</div>
       </RosterSection>
 
       <section className="people-roster-section learners-section">
-        <h2>{isOwner ? 'LEARNERS (24)' : 'CLASSMATES (18)'}</h2>
-        {isOwner ? (
+        <h2>{canManagePeople ? 'LEARNERS (24)' : 'CLASSMATES (18)'}</h2>
+        {canManagePeople ? (
           <div className="learner-table">
             <div className={`learner-table-head ${selected.length ? 'selected' : ''}`}>
               <input type="checkbox" checked={selected.length === visibleClassmates.length && visibleClassmates.length > 0} onChange={(event) => setSelected(event.target.checked ? visibleClassmates.map((person) => person.id) : [])} />
@@ -88,7 +89,7 @@ export function CoursePeoplePage() {
         ) : <div className="learner-classmate-list">{visibleClassmates.map((person,index) => <div className={index === 0 ? 'current' : ''} key={person.id}><V2Avatar name={person.name} tone={person.tone} size="md" online={person.status === 'Enrolled'} /><strong>{person.name}{index === 0 ? ' (You)' : ''}</strong><button type="button" onClick={() => navigate('/app/friends')}><MessageCircle />Message</button></div>)}<button type="button" className="more-people">+13 more</button></div>}
       </section>
 
-      {showEnroll ? <EnrollLearnerModal enrollment={enrollment} onSubmit={enroll} onClose={() => { setShowEnroll(false); enrollment.reset() }} /> : null}
+      {showEnroll ? <EnrollLearnerModal cohortName={selectedCohort?.name ?? 'this cohort'} enrollment={enrollment} onSubmit={enroll} onClose={() => { setShowEnroll(false); enrollment.reset() }} /> : null}
     </div>
   )
 }
@@ -98,4 +99,4 @@ function PersonRow({ name, tone, subtitle, badge, learnerView, menu }: { name: s
 function AddTaPopover({ onChoose }: { onChoose: () => void }) { return <div className="people-popover add-ta-popover"><h3>Add teaching assistant</h3><label><Search /><input placeholder="Search members…" /></label>{[['Priya Patel','Learner · CS 101'],['Daniel Anderson','Learner · CS 101'],['Noah Smith','Learner · CS 101'],['Marcus Webb','Hub member']].map(([name,detail],index) => <button type="button" key={name} className={index === 0 ? 'active' : ''} onClick={onChoose}><V2Avatar name={name} tone={index % 2 ? 'green' : 'amber'} size="sm" /><span><strong>{name}</strong><small>{detail}</small></span></button>)}</div> }
 function AssignTaPopover({ onChoose }: { onChoose: () => void }) { return <div className="people-popover assign-ta-popover">{['Maria Gonzalez','Jordan Kim','Unassigned'].map((name,index) => <button type="button" className={index === 0 ? 'active' : ''} key={name} onClick={onChoose}>{name}{index === 0 ? <Check /> : null}</button>)}</div> }
 type EnrollmentHook = ReturnType<typeof useCohortEnrollment>
-function EnrollLearnerModal({ enrollment, onSubmit, onClose }: { enrollment: EnrollmentHook; onSubmit: (event: FormEvent) => void; onClose: () => void }) { const [assignTa,setAssignTa]=useState(false); return <div className="v2-modal-backdrop"><form className="enroll-learner-modal" onSubmit={onSubmit}><button type="button" className="modal-close" onClick={onClose}><X /></button><h2>Enroll learner</h2><p>Add a learner directly to the Spring cohort.</p><label>Email or user ID<input value={enrollment.learnerUserId} onChange={(event) => enrollment.setLearnerUserId(event.target.value)} placeholder="learner@example.edu" /></label><label className="assign-on-enroll"><input type="checkbox" checked={assignTa} onChange={(event) => setAssignTa(event.target.checked)} />Assign a teaching assistant after enrollment</label>{enrollment.error ? <p className="modal-error">{enrollment.error}</p> : null}<footer><button type="button" className="v2-outline-button" onClick={onClose}>Cancel</button><button type="submit" className="v2-primary-button" disabled={enrollment.isSubmitting}>{enrollment.isSubmitting ? 'Enrolling…' : 'Enroll learner'}</button></footer></form></div> }
+function EnrollLearnerModal({ cohortName, enrollment, onSubmit, onClose }: { cohortName: string; enrollment: EnrollmentHook; onSubmit: (event: FormEvent) => void; onClose: () => void }) { const [assignTa,setAssignTa]=useState(false); return <div className="v2-modal-backdrop"><form className="enroll-learner-modal" onSubmit={onSubmit}><button type="button" className="modal-close" onClick={onClose}><X /></button><h2>Enroll learner</h2><p>Add a learner directly to {cohortName}.</p><label>Email or user ID<input value={enrollment.learnerUserId} onChange={(event) => enrollment.setLearnerUserId(event.target.value)} placeholder="learner@example.edu" /></label><label className="assign-on-enroll"><input type="checkbox" checked={assignTa} onChange={(event) => setAssignTa(event.target.checked)} />Assign a teaching assistant after enrollment</label>{enrollment.error ? <p className="modal-error">{enrollment.error}</p> : null}<footer><button type="button" className="v2-outline-button" onClick={onClose}>Cancel</button><button type="submit" className="v2-primary-button" disabled={enrollment.isSubmitting}>{enrollment.isSubmitting ? 'Enrolling…' : 'Enroll learner'}</button></footer></form></div> }
