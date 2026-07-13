@@ -1,35 +1,35 @@
 import { Outlet, useParams } from 'react-router-dom'
 
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
-import type { ShellCourse } from '../../shell/types'
 import { V2CourseChrome } from '../components/V2CourseChrome'
 import { V2CourseWorkspaceContext, type V2CourseWorkspaceContextValue } from './v2-course-workspace-context'
 
-const fallbackCourse: ShellCourse = {
-  id: 'course-demo',
-  title: 'CS 101 — Intro to Computer Science',
-  cohorts: [{ id: 'cohort-demo', name: 'Spring cohort' }],
-  channels: [
-    { id: 'general-demo', name: 'general', kind: 'TEXT' },
-    { id: 'study-group-demo', name: 'study-group', kind: 'TEXT' },
-    { id: 'questions-demo', name: 'questions', kind: 'TEXT' },
-    { id: 'resources-demo', name: 'resources', kind: 'TEXT' },
-    { id: 'voice-demo', name: 'Study Room', kind: 'VOICE' },
-  ],
-}
-
 export function V2CourseWorkspaceLayout() {
-  const { serverId = 'server-demo', courseId = 'course-demo' } = useParams()
+  const { serverId, courseId } = useParams()
   const navigation = useStudyServerNavigationQuery(serverId)
-  const course = navigation.data?.courses.find((item) => item.id === courseId) ?? fallbackCourse
+
+  if (navigation.isLoading) {
+    return <CourseWorkspaceState message="Loading course…" />
+  }
+
+  if (navigation.isError) {
+    return <CourseWorkspaceState title="Unable to load course" message="Refresh the page to try again." tone="error" />
+  }
+
+  const navigationData = navigation.data
+  const course = navigationData?.courses.find((item) => item.id === courseId)
+  if (!serverId || !courseId || !navigationData || !course) {
+    return <CourseWorkspaceState title="Course not found" message="This course is unavailable or you no longer have access." />
+  }
+
   const value: V2CourseWorkspaceContextValue = {
     serverId,
     courseId,
-    serverName: navigation.data?.studyServerName ?? 'Spring Bootcamp Hub',
+    serverName: navigationData.studyServerName,
     course,
-    isOwner: navigation.data?.canViewFullCatalog ?? false,
-    isLoading: navigation.isLoading,
-    isError: navigation.isError,
+    isOwner: navigationData.canViewFullCatalog,
+    isLoading: false,
+    isError: false,
   }
 
   return (
@@ -41,5 +41,14 @@ export function V2CourseWorkspaceLayout() {
         </div>
       </section>
     </V2CourseWorkspaceContext.Provider>
+  )
+}
+
+function CourseWorkspaceState({ title, message, tone }: { title?: string; message: string; tone?: 'error' }) {
+  return (
+    <section className={`v2-workspace-page course-workspace-state${tone ? ` ${tone}` : ''}`} role="status">
+      {title ? <h1>{title}</h1> : null}
+      <p>{message}</p>
+    </section>
   )
 }

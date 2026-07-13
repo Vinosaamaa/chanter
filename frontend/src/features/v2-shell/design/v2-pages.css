@@ -246,6 +246,10 @@
 .v2-app-shell .course-chat-message time { color: #9ca5b4; font-size: 13px; }
 .v2-app-shell .course-chat-message > div > span { color: #edf0f5; font-size: 18px; line-height: 1.55; }
 .v2-app-shell .inline-error { margin: 0 0 15px; border: 1px solid rgba(244,63,94,.35); border-radius: 8px; padding: 9px; color: #fda4af; background: rgba(136,19,55,.14); }
+.v2-app-shell .course-workspace-state { min-height: 100%; display: grid; place-content: center; gap: 8px; padding: 32px; color: #aeb6c1; text-align: center; }
+.v2-app-shell .course-workspace-state h1, .v2-app-shell .course-workspace-state p { margin: 0; }
+.v2-app-shell .course-workspace-state h1 { color: #f7f7fa; font-size: 24px; }
+.v2-app-shell .course-workspace-state.error h1 { color: #fda4af; }
 .v2-app-shell .chat-composer { min-height: 86px; display: grid; grid-template-columns: 45px minmax(0,1fr) 45px 57px; align-items: center; gap: 10px; margin: 0 20px 20px; border: 1px solid rgba(151,161,177,.38); border-radius: 12px; padding: 10px 12px; background: rgba(8,22,39,.55); }
 .v2-app-shell .chat-composer input { min-width: 0; border: 0; outline: 0; color: #f7f7fa; background: transparent; font-size: 17px; }
 .v2-app-shell .chat-composer button { width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 10px; color: #e5e8ee; background: rgba(20,40,68,.5); cursor: pointer; }
