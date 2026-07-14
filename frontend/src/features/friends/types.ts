@@ -20,6 +20,28 @@ export type FriendRequestListResponse = {
   outgoing: FriendRequest[]
 }
 
+export type CoMember = {
+  userId: string
+  sharedStudyServerName: string
+}
+
+export type CoMemberListResponse = {
+  coMembers: CoMember[]
+}
+
+export type PublicUserProfile = {
+  userId: string
+  displayName: string
+}
+
+export type PublicUserProfileListResponse = {
+  profiles: PublicUserProfile[]
+}
+
+export type UserBlockListResponse = {
+  blockedUserIds: string[]
+}
+
 export type DirectMessage = {
   id: string
   senderUserId: string

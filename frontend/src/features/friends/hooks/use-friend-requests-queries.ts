@@ -14,6 +14,7 @@ export function useFriendRequestsQuery() {
     queryKey: friendRequestsQueryKey(userId),
     queryFn: fetchFriendRequests,
     enabled: Boolean(userId),
+    refetchInterval: 15_000,
   })
 }
 

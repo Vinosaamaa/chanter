@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.chanter.common.auth.AuthHeaders;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -102,5 +104,58 @@ class AuthSessionSmokeTest {
                                 "refreshToken", refreshed.refreshToken()
                         ))))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void authenticatedUsersCanResolvePublicDisplayNamesWithoutEmailDisclosure() throws Exception {
+        AuthSessionResponse viewer = register(
+                "profile-viewer@study.local",
+                "Profile Viewer"
+        );
+        AuthSessionResponse peer = register(
+                "profile-peer@study.local",
+                "Profile Peer"
+        );
+        UUID missingUserId = UUID.randomUUID();
+        String requestBody = objectMapper.writeValueAsString(Map.of(
+                "userIds", List.of(peer.user().id(), missingUserId)
+        ));
+
+        mockMvc.perform(post("/api/v1/auth/profiles/query")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isUnauthorized());
+
+        MvcResult lookupResult = mockMvc.perform(post("/api/v1/auth/profiles/query")
+                        .header(
+                                AuthHeaders.AUTHORIZATION,
+                                AuthHeaders.BEARER_PREFIX + viewer.accessToken()
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andReturn();
+        String responseBody = lookupResult.getResponse().getContentAsString();
+
+        assertThat(responseBody).contains(peer.user().id().toString(), "Profile Peer");
+        assertThat(responseBody).doesNotContain("profile-peer@study.local", "email");
+        assertThat(responseBody).doesNotContain(missingUserId.toString());
+    }
+
+    private AuthSessionResponse register(String email, String displayName) throws Exception {
+        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", email,
+                                "password", "password123",
+                                "displayName", displayName
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return objectMapper.readValue(
+                registerResult.getResponse().getContentAsString(),
+                AuthSessionResponse.class
+        );
     }
 }

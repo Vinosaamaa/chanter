@@ -318,6 +318,20 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<UUID> findBlockedUserIds(UUID blockerUserId) {
+        return jdbcClient.sql("""
+                        SELECT blocked_user_id
+                        FROM user_blocks
+                        WHERE blocker_user_id = :blockerUserId
+                        ORDER BY created_at DESC, blocked_user_id
+                        """)
+                .param("blockerUserId", blockerUserId)
+                .query(UUID.class)
+                .list();
+    }
+
+    @Override
     @Transactional
     public DirectMessage saveDirectMessage(DirectMessage directMessage) {
         jdbcClient.sql("""

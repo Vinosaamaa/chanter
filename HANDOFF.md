@@ -46,7 +46,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5). UI v2 **#116–#128** is merged in PR #130.
 
-**Active slice:** [**#134 — Truthful Course Resources and AI install controls**](https://github.com/Vinosaamaa/chanter/issues/134) on `feature/134-truthful-course-resources-ai-install`. Durable resource loading/upload/download, real Study Assistant grants, TDD coverage, browser verification, and product health checks are complete locally. Next: issue commit, PR, CI + CodeAnt loop, autonomous merge, then **#109**.
+**Active slice:** [**#109 — Real v2 Friend Requests and co-member discovery**](https://github.com/Vinosaamaa/chanter/issues/109) on `feature/109-real-v2-friend-requests`. #134 merged in PR #148. #109 implementation, TDD coverage, full tests, two-user Chrome verification, and cross-account cache isolation are complete locally. Next: commit, PR, CI + CodeAnt loop, autonomous merge, then **#135**.
 
 **Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
 
@@ -123,7 +123,7 @@ Production Frontend table retained above for history; milestone **complete** (le
 
 Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turns the approved UI into a truthful full-stack product. Work in this order: **#132**, **#133**, **#134**, **#109**, **#135**, **#92**, **#136–#145**, then AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta **#104**.
 
-#132 established the security foundation and #133 operationalized route-scoped search, account/sign-out, and Cohort invite joining; both are merged. Current #134 connects Course Resources and AI installation to durable backend state. Next, #109 makes Friend Requests and co-member discovery real in the v2 shell.
+#132–#134 are merged. Current #109 makes Friend Requests, shared-server discovery, real profile names, relationship actions, and exact DM context truthful in the v2 shell. Next, #135 operationalizes Office Hours scheduling and live controls.
 
 **#30** ships in phase 2 with **#49** (project #3).
 
@@ -340,7 +340,7 @@ After UI v2 shell (**#116**), resume Public Launch on [project #5](https://githu
 
 1. **#86** Product stack reliability — **merged** (PR #105).
 2. **#87** mockup gap audit — owner sign-off 2026-07-09.
-3. **#116–#128** UI v2 course-first shell (**complete locally; PR pending** — blocks legacy #88–#93 polish until merge).
+3. **#116–#128** UI v2 course-first shell (**merged** in PR #130).
 4. **#94–#100** Real AI / RAG / MCP.
 5. **#101–#104** Launch readiness.
 

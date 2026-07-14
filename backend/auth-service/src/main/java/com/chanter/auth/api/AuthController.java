@@ -70,4 +70,18 @@ public class AuthController {
         UUID userId = authSessionService.requireUserIdFromAccessToken(authorizationHeader);
         return AuthUserResponse.from(authSessionService.requireUser(userId));
     }
+
+    @PostMapping("/profiles/query")
+    public PublicProfileListResponse findPublicProfiles(
+            @RequestHeader(value = AuthHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @Valid @RequestBody PublicProfileQueryRequest request
+    ) {
+        if (authorizationHeader == null || authorizationHeader.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        authSessionService.requireUserIdFromAccessToken(authorizationHeader);
+        return PublicProfileListResponse.from(
+                authSessionService.findPublicProfiles(request.userIds())
+        );
+    }
 }

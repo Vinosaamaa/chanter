@@ -371,8 +371,8 @@ Current implementation status as of 2026-07-13:
 - **Education MVP backend (milestone 1):** issues **#11–#24** merged on `main`.
 - **Production Frontend** and **Workable Product:** merged.
 - **UI v2 course-first shell:** **#116–#128** merged in PR #130.
-- **Active:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), with **#132–#133** merged and **#134** truthful Course Resources and AI install controls complete locally.
-- **Next after #134:** **#109** real v2 Friend Requests and co-member discovery; continue the ordered #131 roadmap through **#145** before final AI, E2E, staging, and beta gates.
+- **Active:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), with **#132–#134** merged and **#109** real v2 Friend Requests and co-member discovery complete locally.
+- **Next after #109:** **#135** durable Office Hours scheduling and live controls; continue the ordered #131 roadmap through **#145** before final AI, E2E, staging, and beta gates.
 
 Milestone -1: Project operations bootstrap
 
@@ -502,7 +502,7 @@ Milestone 9: Hardening
 
 Backend MVP **#11–#24**, Production Frontend **#47–#59**, Workable Product **#60–#63**, and UI v2 **#116–#128** are merged on `main`.
 
-Active: [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131). **#132–#133** are merged. **#134** is complete locally on `feature/134-truthful-course-resources-ai-install`: durable Resources states and controls, explicit AI approval, and backend-derived Study Assistant grants/installed state. Finish its PR/CI/CodeAnt/merge loop, then start **#109** and continue the epic order. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent remains [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
+Active: [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131). **#132–#134** are merged. **#109** is complete locally on `feature/109-real-v2-friend-requests`: privacy-scoped co-member discovery, real profile names and relationship actions, exact DM context, honest unsupported controls, and cross-account query isolation. Finish its PR/CI/CodeAnt/merge loop, then start **#135** and continue the epic order. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent remains [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

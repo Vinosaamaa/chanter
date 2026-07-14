@@ -1,5 +1,7 @@
 package com.chanter.community.application;
 
+import com.chanter.community.domain.CoMember;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -18,5 +20,9 @@ public class SocialMembershipService {
         }
 
         return studyServerRepository.shareStudyServerMembership(firstUserId, secondUserId);
+    }
+
+    public List<CoMember> findCoMembers(UUID viewerUserId) {
+        return studyServerRepository.findCoMembers(viewerUserId);
     }
 }

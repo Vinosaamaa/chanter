@@ -146,6 +146,10 @@ public class SocialMessagingService {
         repository.saveUserBlock(blockerUserId, blockedUserId);
     }
 
+    public List<UUID> findBlockedUserIds(UUID blockerUserId) {
+        return repository.findBlockedUserIds(blockerUserId);
+    }
+
     @Transactional
     public DirectMessage sendDirectMessage(UUID senderUserId, UUID recipientUserId, String body) {
         if (senderUserId.equals(recipientUserId)) {

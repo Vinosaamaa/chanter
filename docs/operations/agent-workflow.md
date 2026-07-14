@@ -71,7 +71,7 @@ If CodeAnt is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in
 | Production Frontend (legacy) | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Done** (#47–#59) |
 | Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | **Done** (#60–#63, #31–#32) |
 | **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Done** (#116–#128, PR #130) |
-| **UI v2 operationalization** | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — #134** under epic #131 |
+| **UI v2 operationalization** | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — #109** under epic #131 |
 
 Legacy **Social Hub project #2** is **closed**. #31–#32 are on **project #4** only. **#30** is on **project #3** only (pairs with #49).
 
@@ -138,8 +138,8 @@ Serial order only — one issue per branch.
 |------:|-------|-------|
 | 1 | [**#132**](https://github.com/Vinosaamaa/chanter/issues/132) | Explicit Course capabilities and Cohort context — **merged** |
 | 2 | [**#133**](https://github.com/Vinosaamaa/chanter/issues/133) | Operational shell search, account, and join flows — **merged** |
-| 3 | [**#134**](https://github.com/Vinosaamaa/chanter/issues/134) | **← ACTIVE** Truthful Course Resources and AI install controls |
-| 4 | [#109](https://github.com/Vinosaamaa/chanter/issues/109) | Real v2 Friend Requests and co-member discovery |
+| 3 | [**#134**](https://github.com/Vinosaamaa/chanter/issues/134) | Truthful Course Resources and AI install controls — **merged** (PR #148) |
+| 4 | [**#109**](https://github.com/Vinosaamaa/chanter/issues/109) | **← ACTIVE** Real v2 Friend Requests and co-member discovery |
 | 5 | [#135](https://github.com/Vinosaamaa/chanter/issues/135) | Durable Office Hours scheduling and live controls |
 | 6 | [#92](https://github.com/Vinosaamaa/chanter/issues/92) | Operational v2 Questions, support, and Teaching |
 | 7 | [#136](https://github.com/Vinosaamaa/chanter/issues/136) | Real Cohort roster, Enrollment, and TA assignment |
@@ -319,7 +319,7 @@ Do **not** treat a separate “deferred” section as skippable work on the **ow
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged.
-Active work: Public Launch project #5 — epic **#131**, active slice **#134** (`feature/134-truthful-course-resources-ai-install`).
+Active work: Public Launch project #5 — epic **#131**, active slice **#109** (`feature/109-real-v2-friend-requests`).
 
 Product UI: docs/product-design/README.md
 PR review: CodeAnt AI (cubic trial expired) — docs/operations/agent-workflow.md § CodeAnt review

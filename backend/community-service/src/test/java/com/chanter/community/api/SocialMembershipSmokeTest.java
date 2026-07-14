@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,38 @@ class SocialMembershipSmokeTest {
         );
 
         assertThat(response.coMembers()).isFalse();
+    }
+
+    @Test
+    void discoveryReturnsOnlyUsersWhoShareAStudyServer() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        UUID strangerUserId = UUID.randomUUID();
+
+        StudyServerResponse sharedServer = createStudyServer(ownerUserId);
+        CourseResponse course = createCourse(sharedServer.id(), ownerUserId);
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "learnerUserId", learnerUserId.toString()
+                        ))))
+                .andExpect(status().isCreated());
+        createStudyServer(strangerUserId);
+
+        MvcResult discoveryResult = mockMvc.perform(get("/api/v1/social/co-members")
+                        .with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode candidates = objectMapper.readTree(
+                discoveryResult.getResponse().getContentAsString()
+        ).path("coMembers");
+
+        assertThat(candidates).hasSize(1);
+        assertThat(candidates.get(0).path("userId").asText()).isEqualTo(learnerUserId.toString());
+        assertThat(candidates.get(0).path("sharedStudyServerName").asText())
+                .isEqualTo("Shared Study Group");
+        assertThat(candidates.toString()).doesNotContain(strangerUserId.toString());
     }
 
     private StudyServerResponse createStudyServer(UUID ownerUserId) throws Exception {

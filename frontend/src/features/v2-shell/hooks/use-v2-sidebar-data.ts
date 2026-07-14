@@ -1,8 +1,12 @@
 import { useQueries } from '@tanstack/react-query'
 
+import { useAuthStore } from '../../../stores/auth-store'
 import { fetchStudyServerNavigation } from '../../shell/shell-api'
 import type { ShellCourse, StudyServerSummary } from '../../shell/types'
-import { useAccessibleStudyServersQuery } from '../../shell/hooks/use-shell-queries'
+import {
+  studyServerNavigationQueryKey,
+  useAccessibleStudyServersQuery,
+} from '../../shell/hooks/use-shell-queries'
 
 import { courseAccentGradient } from '../course-accent'
 
@@ -48,14 +52,15 @@ function mapCourse(
 }
 
 export function useV2SidebarData(activeServerId?: string): V2SidebarData {
+  const userId = useAuthStore((state) => state.user?.id)
   const serversQuery = useAccessibleStudyServersQuery()
   const servers = serversQuery.data ?? []
 
   const navigationQueries = useQueries({
     queries: servers.map((server) => ({
-      queryKey: ['study-server-navigation', server.id],
+      queryKey: studyServerNavigationQueryKey(userId, server.id),
       queryFn: () => fetchStudyServerNavigation(server.id),
-      enabled: servers.length > 0,
+      enabled: Boolean(userId && servers.length > 0),
     })),
   })
 

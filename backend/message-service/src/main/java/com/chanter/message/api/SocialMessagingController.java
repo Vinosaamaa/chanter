@@ -91,6 +91,13 @@ public class SocialMessagingController {
         return ResponseEntity.status(201).build();
     }
 
+    @GetMapping("/user-blocks")
+    public UserBlockListResponse findUserBlocks(
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID blockerUserId
+    ) {
+        return new UserBlockListResponse(socialMessagingService.findBlockedUserIds(blockerUserId));
+    }
+
     @GetMapping("/friendships")
     public FriendsListResponse findFriends(
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId

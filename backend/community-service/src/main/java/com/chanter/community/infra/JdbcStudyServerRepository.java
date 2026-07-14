@@ -2,6 +2,7 @@ package com.chanter.community.infra;
 
 import com.chanter.community.application.StudyServerRepository;
 import com.chanter.community.domain.ChannelKind;
+import com.chanter.community.domain.CoMember;
 import com.chanter.community.domain.OwnerRole;
 import com.chanter.community.domain.SaasPlanTier;
 import com.chanter.community.domain.StudyServer;
@@ -272,6 +273,46 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                 .single();
 
         return sharedServerCount > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CoMember> findCoMembers(UUID viewerUserId) {
+        return jdbcClient.sql("""
+                        WITH memberships AS (
+                            SELECT user_id, study_server_id
+                            FROM study_server_roles
+                            UNION
+                            SELECT cr.user_id, co.study_server_id
+                            FROM courses co
+                            INNER JOIN course_roles cr ON cr.course_id = co.id
+                            UNION
+                            SELECT ce.learner_user_id, co.study_server_id
+                            FROM courses co
+                            INNER JOIN cohorts c ON c.course_id = co.id
+                            INNER JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            UNION
+                            SELECT cor.user_id, co.study_server_id
+                            FROM courses co
+                            INNER JOIN cohorts c ON c.course_id = co.id
+                            INNER JOIN cohort_roles cor ON cor.cohort_id = c.id
+                        )
+                        SELECT peer.user_id, MIN(ss.name) AS shared_study_server_name
+                        FROM memberships viewer
+                        INNER JOIN memberships peer
+                            ON peer.study_server_id = viewer.study_server_id
+                            AND peer.user_id <> viewer.user_id
+                        INNER JOIN study_servers ss ON ss.id = peer.study_server_id
+                        WHERE viewer.user_id = :viewerUserId
+                        GROUP BY peer.user_id
+                        ORDER BY MIN(ss.name), peer.user_id
+                        """)
+                .param("viewerUserId", viewerUserId)
+                .query((rs, rowNum) -> new CoMember(
+                        rs.getObject("user_id", UUID.class),
+                        rs.getString("shared_study_server_name")
+                ))
+                .list();
     }
 
     @Override

@@ -35,6 +35,8 @@ public interface SocialMessagingRepository {
 
     void saveUserBlock(UUID blockerUserId, UUID blockedUserId);
 
+    List<UUID> findBlockedUserIds(UUID blockerUserId);
+
     DirectMessage saveDirectMessage(DirectMessage directMessage);
 
     List<DirectMessage> findDirectMessages(UUID viewerUserId, UUID peerUserId);

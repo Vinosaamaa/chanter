@@ -6,8 +6,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -67,6 +69,24 @@ public class JdbcAuthUserRepository implements AuthUserRepository {
                 )
                 .stream()
                 .findFirst();
+    }
+
+    @Override
+    public List<AuthUser> findByIds(List<UUID> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = ids.stream().map(ignored -> "?").collect(Collectors.joining(", "));
+        return jdbcTemplate.query(
+                """
+                SELECT id, email, password_hash, display_name, created_at
+                FROM auth_users
+                WHERE id IN (%s)
+                """.formatted(placeholders),
+                ROW_MAPPER,
+                ids.toArray()
+        );
     }
 
     @Override
