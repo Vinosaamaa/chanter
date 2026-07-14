@@ -12,6 +12,7 @@ import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.StudyAssistantGrantCandidates;
 import com.chanter.community.domain.StudyAssistantViewerScope;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
+import com.chanter.community.domain.VoicePresence;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,35 @@ import java.util.UUID;
 public interface CourseRepository {
 
     Course save(Course course);
+
+    CourseChannel saveChannel(CourseChannel channel);
+
+    Optional<CourseChannel> findActiveChannelById(UUID channelId);
+
+    void renameChannel(UUID channelId, String name);
+
+    void archiveChannel(UUID channelId, Instant archivedAt);
+
+    void lockCohortForChannelMutation(UUID cohortId);
+
+    boolean activeChannelNameExists(UUID cohortId, String name);
+
+    boolean activeChannelNameExistsExcluding(UUID cohortId, String name, UUID excludedChannelId);
+
+    VoicePresence saveCourseVoicePresence(
+            UUID channelId,
+            UUID memberUserId,
+            Instant joinedAt,
+            Instant expiresAt
+    );
+
+    List<VoicePresence> findCourseVoicePresences(UUID channelId, Instant activeAt);
+
+    void deleteCourseVoicePresence(UUID channelId, UUID memberUserId);
+
+    Optional<UUID> findCourseIdByCohortId(UUID cohortId);
+
+    int findNextChannelPosition(UUID cohortId);
 
     void enrollLearner(UUID cohortId, UUID learnerUserId, UUID enrolledByUserId, Instant enrolledAt);
 

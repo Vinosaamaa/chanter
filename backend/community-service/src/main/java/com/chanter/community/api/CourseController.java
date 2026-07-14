@@ -68,6 +68,84 @@ public class CourseController {
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest().build().toUri()).build();
     }
 
+    @PostMapping("/cohorts/{cohortId}/channels")
+    public ResponseEntity<CourseChannelResponse> createCohortChannel(
+            @PathVariable UUID cohortId,
+            @Valid @RequestBody CreateCourseChannelRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        CourseChannelResponse response = CourseChannelResponse.from(
+                courseService.createCohortChannel(cohortId, actorUserId, request.name(), request.kind())
+        );
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path(ServiceInfo.API_V1_PREFIX + "/course-channels/{channelId}")
+                .buildAndExpand(response.id())
+                .toUri();
+        return ResponseEntity.created(location).body(response);
+    }
+
+    @PatchMapping("/course-channels/{channelId}")
+    public CourseChannelResponse renameCohortChannel(
+            @PathVariable UUID channelId,
+            @Valid @RequestBody UpdateCourseChannelRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        return CourseChannelResponse.from(
+                courseService.renameCohortChannel(channelId, actorUserId, request.name())
+        );
+    }
+
+    @DeleteMapping("/course-channels/{channelId}")
+    public ResponseEntity<Void> archiveCohortChannel(
+            @PathVariable UUID channelId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.archiveCohortChannel(channelId, actorUserId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/course-channels/{channelId}/voice-presences")
+    public ResponseEntity<VoicePresenceResponse> joinCourseVoiceChannel(
+            @PathVariable UUID channelId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID memberUserId
+    ) {
+        VoicePresenceResponse response = VoicePresenceResponse.from(
+                courseService.joinCourseVoiceChannel(channelId, memberUserId)
+        );
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{memberUserId}")
+                .buildAndExpand(response.memberUserId())
+                .toUri();
+        return ResponseEntity.created(location).body(response);
+    }
+
+    @GetMapping("/course-channels/{channelId}/voice-presences")
+    public VoicePresenceListResponse getCourseVoicePresences(
+            @PathVariable UUID channelId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
+    ) {
+        return VoicePresenceListResponse.from(courseService.findCourseVoicePresences(channelId, viewerUserId));
+    }
+
+    @DeleteMapping("/course-channels/{channelId}/voice-presences")
+    public ResponseEntity<Void> leaveCourseVoiceChannel(
+            @PathVariable UUID channelId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID memberUserId
+    ) {
+        courseService.leaveCourseVoiceChannel(channelId, memberUserId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/course-channels/{channelId}/media-token")
+    public VoiceMediaTokenResponse issueCourseVoiceMediaToken(
+            @PathVariable UUID channelId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID memberUserId
+    ) {
+        return VoiceMediaTokenResponse.from(
+                courseService.issueCourseVoiceChannelMediaToken(channelId, memberUserId)
+        );
+    }
+
     @GetMapping("/cohorts/{cohortId}/roster")
     public CohortRosterResponse getCohortRoster(
             @PathVariable UUID cohortId,

@@ -29,13 +29,13 @@ public record StudyAssistantGrantCandidatesResponse(
         );
     }
 
-    public record ChannelResponse(UUID id, String name, String kind) {
+    public record ChannelResponse(UUID id, UUID cohortId, String name, String kind) {
         static ChannelResponse fromStudyServerChannel(StudyServerChannel channel) {
-            return new ChannelResponse(channel.id(), channel.name(), channel.kind().name());
+            return new ChannelResponse(channel.id(), null, channel.name(), channel.kind().name());
         }
 
         static ChannelResponse fromCourseChannel(CourseChannel channel) {
-            return new ChannelResponse(channel.id(), channel.name(), channel.kind().name());
+            return new ChannelResponse(channel.id(), channel.cohortId(), channel.name(), channel.kind().name());
         }
     }
 

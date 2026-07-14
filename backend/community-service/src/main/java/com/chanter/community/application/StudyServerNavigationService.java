@@ -66,6 +66,7 @@ public class StudyServerNavigationService {
         );
         Set<UUID> enrolledCourseIds = Set.copyOf(viewerScope.enrolledCourseIds());
         Set<UUID> enrolledCohortIds = Set.copyOf(viewerScope.enrolledCohortIds());
+        Set<UUID> accessibleCourseChannelIds = Set.copyOf(viewerScope.accessibleCourseChannelIds());
         List<StudyServerNavigationCourse> courses = candidates.courses().stream()
                 .filter(course -> owner
                         || instructedCourseIds.contains(course.id())
@@ -78,7 +79,8 @@ public class StudyServerNavigationService {
                         instructedCourseIds.contains(course.id()),
                         enrolledCourseIds.contains(course.id()),
                         enrolledCohortIds,
-                        teachingAssistantCohortIds
+                        teachingAssistantCohortIds,
+                        accessibleCourseChannelIds
                 ))
                 .toList();
 
@@ -98,7 +100,8 @@ public class StudyServerNavigationService {
             boolean instructor,
             boolean enrolled,
             Set<UUID> enrolledCohortIds,
-            Set<UUID> teachingAssistantCohortIds
+            Set<UUID> teachingAssistantCohortIds,
+            Set<UUID> accessibleCourseChannelIds
     ) {
         boolean canManageCourse = owner || instructor;
         boolean teachingAssistant = course.cohorts().stream()
@@ -135,7 +138,9 @@ public class StudyServerNavigationService {
                 course.title(),
                 capabilities,
                 cohorts,
-                course.channels()
+                course.channels().stream()
+                        .filter(channel -> canManageCourse || accessibleCourseChannelIds.contains(channel.id()))
+                        .toList()
         );
     }
 }

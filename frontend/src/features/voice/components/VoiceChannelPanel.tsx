@@ -1,16 +1,18 @@
 import { useAuthStore } from '../../../stores/auth-store'
 
 import { useVoiceChannel } from '../hooks/use-voice-channel'
+import type { VoiceChannelScope } from '../voice-api'
 import type { VoiceConnectionStatus } from '../voice-types'
 
 type VoiceChannelPanelProps = {
   channelId: string
   channelLabel: string
+  scope?: VoiceChannelScope
 }
 
-export function VoiceChannelPanel({ channelId, channelLabel }: VoiceChannelPanelProps) {
+export function VoiceChannelPanel({ channelId, channelLabel, scope = 'study' }: VoiceChannelPanelProps) {
   const currentUserId = useAuthStore((state) => state.user?.id)
-  const voice = useVoiceChannel(channelId)
+  const voice = useVoiceChannel(channelId, scope)
   const isConnected = voice.status === 'connected'
 
   return (

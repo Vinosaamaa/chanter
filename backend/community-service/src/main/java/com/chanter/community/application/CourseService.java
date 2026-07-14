@@ -19,7 +19,10 @@ import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.CourseRole;
 import com.chanter.community.domain.InstructorRole;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
+import com.chanter.community.domain.VoiceMediaToken;
+import com.chanter.community.domain.VoicePresence;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +31,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -36,21 +40,25 @@ public class CourseService {
     public static final int MAX_COHORT_ENROLLMENT_PAGE_SIZE = 500;
     public static final int DEFAULT_COHORT_ENROLLMENT_PAGE_SIZE = 50;
     public static final int MAX_COHORT_ENROLLMENT_OFFSET = 10_000;
+    private static final Duration COURSE_VOICE_PRESENCE_TTL = Duration.ofSeconds(30);
 
     private final StudyServerRepository studyServerRepository;
     private final CourseRepository courseRepository;
     private final AuthUserDirectoryClient authUserDirectoryClient;
+    private final LiveKitTokenIssuer liveKitTokenIssuer;
     private final Clock clock;
 
     public CourseService(
             StudyServerRepository studyServerRepository,
             CourseRepository courseRepository,
             AuthUserDirectoryClient authUserDirectoryClient,
+            LiveKitTokenIssuer liveKitTokenIssuer,
             Clock clock
     ) {
         this.studyServerRepository = studyServerRepository;
         this.courseRepository = courseRepository;
         this.authUserDirectoryClient = authUserDirectoryClient;
+        this.liveKitTokenIssuer = liveKitTokenIssuer;
         this.clock = clock;
     }
 
@@ -68,21 +76,116 @@ public class CourseService {
         }
 
         UUID courseId = UUID.randomUUID();
+        Cohort cohort = new Cohort(UUID.randomUUID(), courseId, cohortName.trim(), UUID.randomUUID());
         Course course = new Course(
                 courseId,
                 studyServerId,
                 title.trim(),
                 new InstructorRole(instructorUserId, CourseRole.INSTRUCTOR),
-                new Cohort(UUID.randomUUID(), courseId, cohortName.trim(), UUID.randomUUID()),
+                cohort,
                 List.of(
-                        new CourseChannel(UUID.randomUUID(), courseId, "announcements", ChannelKind.TEXT, 0),
-                        new CourseChannel(UUID.randomUUID(), courseId, "questions", ChannelKind.TEXT, 1),
-                        new CourseChannel(UUID.randomUUID(), courseId, "resources", ChannelKind.TEXT, 2)
+                        new CourseChannel(UUID.randomUUID(), courseId, cohort.id(), "announcements", ChannelKind.TEXT, 0),
+                        new CourseChannel(UUID.randomUUID(), courseId, cohort.id(), "questions", ChannelKind.TEXT, 1),
+                        new CourseChannel(UUID.randomUUID(), courseId, cohort.id(), "resources", ChannelKind.TEXT, 2),
+                        new CourseChannel(UUID.randomUUID(), courseId, cohort.id(), "study-room", ChannelKind.VOICE, 3)
                 ),
                 clock.instant()
         );
 
         return courseRepository.save(course);
+    }
+
+    @Transactional
+    public CourseChannel createCohortChannel(
+            UUID cohortId,
+            UUID actorUserId,
+            String name,
+            ChannelKind kind
+    ) {
+        requireCohortPeopleManager(
+                cohortId,
+                actorUserId,
+                "Only a Course Instructor or Study Server Owner can create channels"
+        );
+        UUID courseId = courseRepository.findCourseIdByCohortId(cohortId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found"));
+        String normalizedName = normalizeChannelName(name);
+        courseRepository.lockCohortForChannelMutation(cohortId);
+        if (courseRepository.activeChannelNameExists(cohortId, normalizedName)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "An active channel already uses that name");
+        }
+        CourseChannel channel = new CourseChannel(
+                UUID.randomUUID(),
+                courseId,
+                cohortId,
+                normalizedName,
+                kind,
+                courseRepository.findNextChannelPosition(cohortId)
+        );
+        return courseRepository.saveChannel(channel);
+    }
+
+    @Transactional
+    public CourseChannel renameCohortChannel(UUID channelId, UUID actorUserId, String name) {
+        CourseChannel channel = requireManagedActiveChannel(channelId, actorUserId, "rename");
+        String normalizedName = normalizeChannelName(name);
+        courseRepository.lockCohortForChannelMutation(channel.cohortId());
+        channel = requireManagedActiveChannel(channelId, actorUserId, "rename");
+        if (courseRepository.activeChannelNameExistsExcluding(channel.cohortId(), normalizedName, channelId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "An active channel already uses that name");
+        }
+        courseRepository.renameChannel(channelId, normalizedName);
+        return new CourseChannel(
+                channel.id(),
+                channel.courseId(),
+                channel.cohortId(),
+                normalizedName,
+                channel.kind(),
+                channel.position()
+        );
+    }
+
+    @Transactional
+    public void archiveCohortChannel(UUID channelId, UUID actorUserId) {
+        CourseChannel channel = requireManagedActiveChannel(channelId, actorUserId, "archive");
+        courseRepository.lockCohortForChannelMutation(channel.cohortId());
+        requireManagedActiveChannel(channelId, actorUserId, "archive");
+        courseRepository.archiveChannel(channelId, clock.instant());
+    }
+
+    public VoicePresence joinCourseVoiceChannel(UUID channelId, UUID memberUserId) {
+        requireAccessibleVoiceChannel(channelId, memberUserId);
+        var joinedAt = clock.instant();
+        return courseRepository.saveCourseVoicePresence(
+                channelId,
+                memberUserId,
+                joinedAt,
+                joinedAt.plus(COURSE_VOICE_PRESENCE_TTL)
+        );
+    }
+
+    public List<VoicePresence> findCourseVoicePresences(UUID channelId, UUID viewerUserId) {
+        requireAccessibleVoiceChannel(channelId, viewerUserId);
+        return courseRepository.findCourseVoicePresences(channelId, clock.instant());
+    }
+
+    public void leaveCourseVoiceChannel(UUID channelId, UUID memberUserId) {
+        CourseChannel channel = courseRepository.findActiveChannelById(channelId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Channel not found"));
+        if (channel.kind() != ChannelKind.VOICE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Channel is not a Voice Channel");
+        }
+        courseRepository.deleteCourseVoicePresence(channelId, memberUserId);
+    }
+
+    public VoiceMediaToken issueCourseVoiceChannelMediaToken(UUID channelId, UUID memberUserId) {
+        CourseChannel channel = requireAccessibleVoiceChannel(channelId, memberUserId);
+        return liveKitTokenIssuer.issueForVoiceChannel(
+                channel.id(),
+                memberUserId,
+                true,
+                true
+        );
     }
 
     public void enrollLearner(UUID cohortId, UUID instructorUserId, UUID learnerUserId) {
@@ -360,8 +463,43 @@ public class CourseService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
     }
 
+    private CourseChannel requireManagedActiveChannel(UUID channelId, UUID actorUserId, String action) {
+        CourseChannel channel = courseRepository.findActiveChannelById(channelId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Channel not found"));
+        requireCohortPeopleManager(
+                channel.cohortId(),
+                actorUserId,
+                "Only a Course Instructor or Study Server Owner can " + action + " channels"
+        );
+        return channel;
+    }
+
+    private CourseChannel requireAccessibleVoiceChannel(UUID channelId, UUID viewerUserId) {
+        CourseChannel channel = findAccessibleChannel(channelId, viewerUserId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Course Voice Channel access requires Cohort membership"
+                ));
+        if (channel.kind() != ChannelKind.VOICE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Channel is not a Voice Channel");
+        }
+        return channel;
+    }
+
     private static String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizeChannelName(String name) {
+        String normalizedName = name.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-|-$", "");
+        if (normalizedName.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Channel name must contain at least one letter or number"
+            );
+        }
+        return normalizedName;
     }
 
     public void joinCohort(UUID cohortId, UUID learnerUserId, UUID inviteCode) {
