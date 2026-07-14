@@ -77,21 +77,30 @@ product_configure_java_home() {
 }
 
 product_load_env() {
-  local root
+  local root env_file
   root="$(product_repo_root)"
-  if [ ! -f "$root/.env" ]; then
-    cp "$root/.env.example" "$root/.env"
+  env_file="${CHANTER_PRODUCT_ENV_FILE:-$root/.env}"
+  if [ ! -f "$env_file" ]; then
+    if [ -n "${CHANTER_PRODUCT_ENV_FILE:-}" ]; then
+      echo "Product environment file not found: $env_file" >&2
+      return 1
+    fi
+    cp "$root/.env.example" "$env_file"
   fi
   set -a
   # shellcheck disable=SC1091
-  source "$root/.env"
+  source "$env_file"
   set +a
+  export LIVEKIT_URL="${LIVEKIT_URL:-ws://localhost:7880}"
+  export LIVEKIT_HTTP_URL="${LIVEKIT_HTTP_URL:-http://localhost:7880}"
+  export LIVEKIT_API_KEY="${LIVEKIT_API_KEY:-devkey}"
+  export LIVEKIT_API_SECRET="${LIVEKIT_API_SECRET:-secret}"
   if [ -z "${CHANTER_JWT_SECRET:-}" ] || [ "${#CHANTER_JWT_SECRET}" -lt 32 ]; then
-    echo "CHANTER_JWT_SECRET must be set to at least 32 characters in .env" >&2
+    echo "CHANTER_JWT_SECRET must be set to at least 32 characters in $env_file" >&2
     return 1
   fi
   if [ -z "${CHANTER_INTERNAL_SERVICE_TOKEN:-}" ] || [ "${#CHANTER_INTERNAL_SERVICE_TOKEN}" -lt 32 ]; then
-    echo "CHANTER_INTERNAL_SERVICE_TOKEN must be set to at least 32 characters in .env" >&2
+    echo "CHANTER_INTERNAL_SERVICE_TOKEN must be set to at least 32 characters in $env_file" >&2
     return 1
   fi
 }

@@ -57,7 +57,8 @@ class CourseEnrollmentSmokeTest {
         assertThat(course.cohort().name()).isEqualTo("Summer 2026");
         assertThat(course.channels())
                 .extracting(CourseChannelResponse::name)
-                .containsExactly("announcements", "questions", "resources");
+                .containsExactly("announcements", "questions", "resources", "study-room");
+        assertThat(course.channels().getLast().kind()).isEqualTo("VOICE");
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}", course.channels().getFirst().id())
                         .with(asUser(ownerUserId)))

@@ -1,5 +1,6 @@
 export type ShellChannel = {
   id: string
+  cohortId?: string | null
   name: string
   kind: 'TEXT' | 'VOICE'
 }

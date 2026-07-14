@@ -35,6 +35,27 @@ assert_eq "frontend url" "http://localhost:5173" "$(product_frontend_url)"
 assert_eq "gateway url" "http://localhost:8080" "$(product_gateway_url)"
 assert_eq "livekit url" "ws://localhost:7880" "$(product_livekit_url)"
 
+stale_env="$(mktemp)"
+trap 'rm -f "$stale_env"' EXIT
+printf '%s\n' \
+  'CHANTER_JWT_SECRET=issue137-test-jwt-secret-at-least-32-chars' \
+  'CHANTER_INTERNAL_SERVICE_TOKEN=issue137-test-service-token-at-least-32' \
+  > "$stale_env"
+livekit_defaults="$({
+  unset LIVEKIT_URL LIVEKIT_HTTP_URL LIVEKIT_API_KEY LIVEKIT_API_SECRET
+  export CHANTER_PRODUCT_ENV_FILE="$stale_env"
+  product_load_env
+  printf '%s|%s|%s|%s|%s' \
+    "$LIVEKIT_URL" \
+    "$LIVEKIT_HTTP_URL" \
+    "$LIVEKIT_API_KEY" \
+    "$LIVEKIT_API_SECRET" \
+    "$CHANTER_JWT_SECRET"
+})"
+assert_eq "stale env receives LiveKit defaults" \
+  "ws://localhost:7880|http://localhost:7880|devkey|secret|issue137-test-jwt-secret-at-least-32-chars" \
+  "$livekit_defaults"
+
 java_modules="$(product_java_modules | tr '\n' ' ')"
 assert_contains "auth module" "auth-service" "$java_modules"
 assert_contains "gateway module" "gateway-service" "$java_modules"

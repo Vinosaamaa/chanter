@@ -6,6 +6,7 @@ import {
   fetchOfficeHoursMediaToken,
   fetchVoiceChannelMediaToken,
   fetchVoicePresences,
+  joinVoiceChannel,
   leaveVoiceChannel,
 } from './voice-api'
 
@@ -33,6 +34,43 @@ describe('voice-api', () => {
       method: 'POST',
     })
     expect(token.participantToken).toBe('jwt')
+  })
+
+  it('uses the course channel contract for course voice', async () => {
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce({
+        roomName: 'voice-course-1',
+        serverUrl: 'ws://localhost:7880',
+        participantToken: 'course-jwt',
+        canSpeak: true,
+        canListen: true,
+      })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ presences: [] })
+      .mockResolvedValueOnce(undefined)
+
+    await fetchVoiceChannelMediaToken('course-1', 'course')
+    await joinVoiceChannel('course-1', 'course')
+    await fetchVoicePresences('course-1', 'course')
+    await leaveVoiceChannel('course-1', 'course')
+
+    expect(apiFetch).toHaveBeenNthCalledWith(1, '/api/v1/course-channels/course-1/media-token', {
+      method: 'POST',
+    })
+    expect(apiFetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/course-channels/course-1/voice-presences',
+      { method: 'POST' },
+    )
+    expect(apiFetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/course-channels/course-1/voice-presences',
+    )
+    expect(apiFetch).toHaveBeenNthCalledWith(
+      4,
+      '/api/v1/course-channels/course-1/voice-presences',
+      { method: 'DELETE' },
+    )
   })
 
   it('requests an office hours media token', async () => {

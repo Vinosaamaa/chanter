@@ -226,6 +226,15 @@ class StudyServerNavigationSmokeTest {
                 .param("courseId", course.id())
                 .param("inviteCode", UUID.randomUUID())
                 .update();
+        UUID inaccessibleChannelId = UUID.randomUUID();
+        jdbcClient.sql("""
+                        INSERT INTO course_channels (id, course_id, cohort_id, name, kind, position)
+                        VALUES (:id, :courseId, :cohortId, 'winter-private', 'TEXT', 20)
+                        """)
+                .param("id", inaccessibleChannelId)
+                .param("courseId", course.id())
+                .param("cohortId", inaccessibleCohortId)
+                .update();
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", course.cohort().id())
                         .with(asUser(ownerUserId))
@@ -234,6 +243,25 @@ class StudyServerNavigationSmokeTest {
                                 "learnerUserId", learnerUserId.toString()
                         ))))
                 .andExpect(status().isCreated());
+
+        UUID otherCohortLearnerUserId = UUID.randomUUID();
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/enrollments", inaccessibleCohortId)
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "learnerUserId", otherCohortLearnerUserId.toString()
+                        ))))
+                .andExpect(status().isCreated());
+        UUID summerQuestionsChannelId = course.channels().stream()
+                .filter(channel -> channel.name().equals("questions"))
+                .map(CourseChannelResponse::id)
+                .findFirst()
+                .orElseThrow();
+        mockMvc.perform(get(
+                        "/api/v1/course-channels/{channelId}/support-question-access",
+                        summerQuestionsChannelId
+                ).with(asUser(otherCohortLearnerUserId)))
+                .andExpect(status().isForbidden());
 
         MvcResult ownerListResult = mockMvc.perform(get("/api/v1/study-servers").with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
@@ -323,7 +351,10 @@ class StudyServerNavigationSmokeTest {
                 .andExpect(jsonPath("$.canPostMessages").value(true));
         assertThat(learnerNavigation.courses()).hasSize(1);
         assertThat(learnerNavigation.courses().getFirst().id()).isEqualTo(course.id());
-        assertThat(learnerNavigation.courses().getFirst().channels()).hasSize(3);
+        assertThat(learnerNavigation.courses().getFirst().channels())
+                .hasSize(4)
+                .extracting(StudyAssistantGrantCandidatesResponse.ChannelResponse::id)
+                .doesNotContain(inaccessibleChannelId);
         assertThat(learnerNavigation.courses().getFirst().cohorts())
                 .extracting(StudyServerNavigationResponse.CohortResponse::id)
                 .containsExactly(course.cohort().id())

@@ -76,7 +76,10 @@ class StudyAssistantGrantCandidatesSmokeTest {
                 .contains("announcements", "general");
         assertThat(ownerCandidates.courses()).hasSize(1);
         assertThat(ownerCandidates.courses().getFirst().cohorts()).hasSize(1);
-        assertThat(ownerCandidates.courses().getFirst().channels()).hasSize(3);
+        assertThat(ownerCandidates.courses().getFirst().channels())
+                .hasSize(4)
+                .extracting(StudyAssistantGrantCandidatesResponse.ChannelResponse::name)
+                .contains("study-room");
 
         mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates",

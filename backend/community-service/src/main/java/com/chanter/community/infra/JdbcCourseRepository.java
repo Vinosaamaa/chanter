@@ -21,6 +21,9 @@ import com.chanter.community.domain.StudyAssistantViewerScope;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerRole;
 import com.chanter.community.domain.SupportQuestionChannelAccess;
+import com.chanter.community.domain.VoicePresence;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -30,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -44,9 +48,31 @@ public class JdbcCourseRepository implements CourseRepository {
             """;
 
     private final JdbcClient jdbcClient;
+    private final DataSource dataSource;
+    private volatile Boolean postgresDatabase;
 
-    public JdbcCourseRepository(JdbcClient jdbcClient) {
+    public JdbcCourseRepository(JdbcClient jdbcClient, DataSource dataSource) {
         this.jdbcClient = jdbcClient;
+        this.dataSource = dataSource;
+    }
+
+    private boolean usePostgresUpsert() {
+        if (postgresDatabase == null) {
+            synchronized (this) {
+                if (postgresDatabase == null) {
+                    postgresDatabase = isPostgresDatabase(dataSource);
+                }
+            }
+        }
+        return postgresDatabase;
+    }
+
+    private static boolean isPostgresDatabase(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection()) {
+            return connection.getMetaData().getDatabaseProductName().toLowerCase().contains("postgres");
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Unable to detect database product", ex);
+        }
     }
 
     @Override
@@ -84,11 +110,12 @@ public class JdbcCourseRepository implements CourseRepository {
 
         for (CourseChannel channel : course.channels()) {
             jdbcClient.sql("""
-                            INSERT INTO course_channels (id, course_id, name, kind, position)
-                            VALUES (:id, :courseId, :name, :kind, :position)
+                            INSERT INTO course_channels (id, course_id, cohort_id, name, kind, position)
+                            VALUES (:id, :courseId, :cohortId, :name, :kind, :position)
                             """)
                     .param("id", channel.id())
                     .param("courseId", channel.courseId())
+                    .param("cohortId", channel.cohortId())
                     .param("name", channel.name())
                     .param("kind", channel.kind().name())
                     .param("position", channel.position())
@@ -96,6 +123,219 @@ public class JdbcCourseRepository implements CourseRepository {
         }
 
         return course;
+    }
+
+    @Override
+    @Transactional
+    public CourseChannel saveChannel(CourseChannel channel) {
+        jdbcClient.sql("""
+                        INSERT INTO course_channels (id, course_id, cohort_id, name, kind, position)
+                        VALUES (:id, :courseId, :cohortId, :name, :kind, :position)
+                        """)
+                .param("id", channel.id())
+                .param("courseId", channel.courseId())
+                .param("cohortId", channel.cohortId())
+                .param("name", channel.name())
+                .param("kind", channel.kind().name())
+                .param("position", channel.position())
+                .update();
+        return channel;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CourseChannel> findActiveChannelById(UUID channelId) {
+        return jdbcClient.sql("""
+                        SELECT id, course_id, cohort_id, name, kind, position
+                        FROM course_channels
+                        WHERE id = :channelId
+                        AND archived_at IS NULL
+                        """)
+                .param("channelId", channelId)
+                .query((rs, rowNum) -> new CourseChannel(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("course_id", UUID.class),
+                        rs.getObject("cohort_id", UUID.class),
+                        rs.getString("name"),
+                        ChannelKind.valueOf(rs.getString("kind")),
+                        rs.getInt("position")
+                ))
+                .optional();
+    }
+
+    @Override
+    @Transactional
+    public void renameChannel(UUID channelId, String name) {
+        jdbcClient.sql("""
+                        UPDATE course_channels
+                        SET name = :name
+                        WHERE id = :channelId
+                        AND archived_at IS NULL
+                        """)
+                .param("channelId", channelId)
+                .param("name", name)
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public void archiveChannel(UUID channelId, Instant archivedAt) {
+        jdbcClient.sql("""
+                        UPDATE course_channels
+                        SET archived_at = :archivedAt
+                        WHERE id = :channelId
+                        AND archived_at IS NULL
+                        """)
+                .param("channelId", channelId)
+                .param("archivedAt", OffsetDateTime.ofInstant(archivedAt, ZoneOffset.UTC))
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public void lockCohortForChannelMutation(UUID cohortId) {
+        jdbcClient.sql("SELECT id FROM cohorts WHERE id = :cohortId FOR UPDATE")
+                .param("cohortId", cohortId)
+                .query(UUID.class)
+                .single();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean activeChannelNameExists(UUID cohortId, String name) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM course_channels
+                        WHERE cohort_id = :cohortId
+                        AND name = :name
+                        AND archived_at IS NULL
+                        """)
+                .param("cohortId", cohortId)
+                .param("name", name)
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean activeChannelNameExistsExcluding(UUID cohortId, String name, UUID excludedChannelId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM course_channels
+                        WHERE cohort_id = :cohortId
+                        AND name = :name
+                        AND id <> :excludedChannelId
+                        AND archived_at IS NULL
+                        """)
+                .param("cohortId", cohortId)
+                .param("name", name)
+                .param("excludedChannelId", excludedChannelId)
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional
+    public VoicePresence saveCourseVoicePresence(
+            UUID channelId,
+            UUID memberUserId,
+            Instant joinedAt,
+            Instant expiresAt
+    ) {
+        OffsetDateTime joinedAtUtc = OffsetDateTime.ofInstant(joinedAt, ZoneOffset.UTC);
+        OffsetDateTime expiresAtUtc = OffsetDateTime.ofInstant(expiresAt, ZoneOffset.UTC);
+        if (usePostgresUpsert()) {
+            jdbcClient.sql("""
+                            INSERT INTO course_voice_channel_presences (
+                                channel_id,
+                                member_user_id,
+                                joined_at,
+                                expires_at
+                            )
+                            VALUES (:channelId, :memberUserId, :joinedAt, :expiresAt)
+                            ON CONFLICT (channel_id, member_user_id)
+                            DO UPDATE SET joined_at = EXCLUDED.joined_at,
+                                          expires_at = EXCLUDED.expires_at
+                            """)
+                    .param("channelId", channelId)
+                    .param("memberUserId", memberUserId)
+                    .param("joinedAt", joinedAtUtc)
+                    .param("expiresAt", expiresAtUtc)
+                    .update();
+        } else {
+            jdbcClient.sql("""
+                            MERGE INTO course_voice_channel_presences (
+                                channel_id,
+                                member_user_id,
+                                joined_at,
+                                expires_at
+                            )
+                            KEY (channel_id, member_user_id)
+                            VALUES (:channelId, :memberUserId, :joinedAt, :expiresAt)
+                            """)
+                    .param("channelId", channelId)
+                    .param("memberUserId", memberUserId)
+                    .param("joinedAt", joinedAtUtc)
+                    .param("expiresAt", expiresAtUtc)
+                    .update();
+        }
+        return new VoicePresence(channelId, memberUserId, true, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VoicePresence> findCourseVoicePresences(UUID channelId, Instant activeAt) {
+        return jdbcClient.sql("""
+                        SELECT channel_id, member_user_id
+                        FROM course_voice_channel_presences
+                        WHERE channel_id = :channelId
+                        AND expires_at > :activeAt
+                        ORDER BY joined_at, member_user_id
+                        """)
+                .param("channelId", channelId)
+                .param("activeAt", OffsetDateTime.ofInstant(activeAt, ZoneOffset.UTC))
+                .query((rs, rowNum) -> new VoicePresence(
+                        rs.getObject("channel_id", UUID.class),
+                        rs.getObject("member_user_id", UUID.class),
+                        true,
+                        true
+                ))
+                .list();
+    }
+
+    @Override
+    @Transactional
+    public void deleteCourseVoicePresence(UUID channelId, UUID memberUserId) {
+        jdbcClient.sql("""
+                        DELETE FROM course_voice_channel_presences
+                        WHERE channel_id = :channelId
+                        AND member_user_id = :memberUserId
+                        """)
+                .param("channelId", channelId)
+                .param("memberUserId", memberUserId)
+                .update();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> findCourseIdByCohortId(UUID cohortId) {
+        return jdbcClient.sql("SELECT course_id FROM cohorts WHERE id = :cohortId")
+                .param("cohortId", cohortId)
+                .query(UUID.class)
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int findNextChannelPosition(UUID cohortId) {
+        return jdbcClient.sql("""
+                        SELECT COALESCE(MAX(position), -1) + 1
+                        FROM course_channels
+                        WHERE cohort_id = :cohortId
+                        """)
+                .param("cohortId", cohortId)
+                .query(Integer.class)
+                .single();
     }
 
     @Override
@@ -595,6 +835,7 @@ public class JdbcCourseRepository implements CourseRepository {
                         SELECT COUNT(*)
                         FROM course_channels
                         WHERE id = :channelId
+                        AND archived_at IS NULL
                         """)
                 .param("channelId", channelId)
                 .query(Integer.class)
@@ -605,12 +846,13 @@ public class JdbcCourseRepository implements CourseRepository {
     @Transactional(readOnly = true)
     public Optional<CourseChannel> findAccessibleChannel(UUID channelId, UUID viewerUserId) {
         return jdbcClient.sql("""
-                        SELECT DISTINCT cc.id, cc.course_id, cc.name, cc.kind, cc.position
+                        SELECT DISTINCT cc.id, cc.course_id, cc.cohort_id, cc.name, cc.kind, cc.position
                         FROM course_channels cc
                         LEFT JOIN course_roles cr ON cr.course_id = cc.course_id
-                        LEFT JOIN cohorts c ON c.course_id = cc.course_id
+                        LEFT JOIN cohorts c ON c.id = cc.cohort_id
                         LEFT JOIN cohort_enrollments ce ON ce.cohort_id = c.id
                         WHERE cc.id = :channelId
+                        AND cc.archived_at IS NULL
                         AND (
                             (
                                 cr.user_id = :viewerUserId
@@ -619,11 +861,18 @@ public class JdbcCourseRepository implements CourseRepository {
                             OR ce.learner_user_id = :viewerUserId
                             OR EXISTS (
                                 SELECT 1
-                                FROM cohorts ta_cohort
-                                JOIN cohort_roles cor ON cor.cohort_id = ta_cohort.id
-                                WHERE ta_cohort.course_id = cc.course_id
+                                FROM cohort_roles cor
+                                WHERE cor.cohort_id = cc.cohort_id
                                 AND cor.user_id = :viewerUserId
                                 AND cor.role = :teachingAssistantRole
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM courses co
+                                JOIN study_server_roles ssr ON ssr.study_server_id = co.study_server_id
+                                WHERE co.id = cc.course_id
+                                AND ssr.user_id = :viewerUserId
+                                AND ssr.role = :studyServerOwnerRole
                             )
                         )
                         """)
@@ -631,9 +880,11 @@ public class JdbcCourseRepository implements CourseRepository {
                 .param("viewerUserId", viewerUserId)
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
                 .param("teachingAssistantRole", CohortRole.TA.name())
+                .param("studyServerOwnerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
                 .query((rs, rowNum) -> new CourseChannel(
                         rs.getObject("id", UUID.class),
                         rs.getObject("course_id", UUID.class),
+                        rs.getObject("cohort_id", UUID.class),
                         rs.getString("name"),
                         ChannelKind.valueOf(rs.getString("kind")),
                         rs.getInt("position")
@@ -653,9 +904,8 @@ public class JdbcCourseRepository implements CourseRepository {
                             CASE
                                 WHEN EXISTS (
                                     SELECT 1
-                                    FROM cohorts c
-                                    JOIN cohort_enrollments ce ON ce.cohort_id = c.id
-                                    WHERE c.course_id = cc.course_id
+                                    FROM cohort_enrollments ce
+                                    WHERE ce.cohort_id = cc.cohort_id
                                     AND ce.learner_user_id = :userId
                                 ) THEN TRUE
                                 ELSE FALSE
@@ -670,9 +920,8 @@ public class JdbcCourseRepository implements CourseRepository {
                                 )
                                 OR EXISTS (
                                     SELECT 1
-                                    FROM cohorts c
-                                    JOIN cohort_roles cor ON cor.cohort_id = c.id
-                                    WHERE c.course_id = cc.course_id
+                                    FROM cohort_roles cor
+                                    WHERE cor.cohort_id = cc.cohort_id
                                     AND cor.user_id = :userId
                                     AND cor.role = :teachingAssistantRole
                                 ) THEN TRUE
@@ -681,14 +930,14 @@ public class JdbcCourseRepository implements CourseRepository {
                         FROM course_channels cc
                         JOIN courses co ON co.id = cc.course_id
                         WHERE cc.id = :channelId
+                        AND cc.archived_at IS NULL
                         AND cc.kind = :textKind
                         AND cc.name = :questionsChannelName
                         AND (
                             EXISTS (
                                 SELECT 1
-                                FROM cohorts c
-                                JOIN cohort_enrollments ce ON ce.cohort_id = c.id
-                                WHERE c.course_id = cc.course_id
+                                FROM cohort_enrollments ce
+                                WHERE ce.cohort_id = cc.cohort_id
                                 AND ce.learner_user_id = :userId
                             )
                             OR EXISTS (
@@ -700,9 +949,8 @@ public class JdbcCourseRepository implements CourseRepository {
                             )
                             OR EXISTS (
                                 SELECT 1
-                                FROM cohorts c
-                                JOIN cohort_roles cor ON cor.cohort_id = c.id
-                                WHERE c.course_id = cc.course_id
+                                FROM cohort_roles cor
+                                WHERE cor.cohort_id = cc.cohort_id
                                 AND cor.user_id = :userId
                                 AND cor.role = :teachingAssistantRole
                             )
@@ -968,10 +1216,11 @@ public class JdbcCourseRepository implements CourseRepository {
 
         Map<UUID, List<CourseChannel>> channelsByCourse = new HashMap<>();
         jdbcClient.sql("""
-                        SELECT cc.id, cc.course_id, cc.name, cc.kind, cc.position
+                        SELECT cc.id, cc.course_id, cc.cohort_id, cc.name, cc.kind, cc.position
                         FROM course_channels cc
                         JOIN courses c ON c.id = cc.course_id
                         WHERE c.study_server_id = :studyServerId
+                        AND cc.archived_at IS NULL
                         ORDER BY cc.course_id, cc.position
                         """)
                 .param("studyServerId", studyServerId)
@@ -982,6 +1231,7 @@ public class JdbcCourseRepository implements CourseRepository {
                             .add(new CourseChannel(
                                     rs.getObject("id", UUID.class),
                                     courseId,
+                                    rs.getObject("cohort_id", UUID.class),
                                     rs.getString("name"),
                                     ChannelKind.valueOf(rs.getString("kind")),
                                     rs.getInt("position")
@@ -1052,22 +1302,23 @@ public class JdbcCourseRepository implements CourseRepository {
                 : jdbcClient.sql("""
                                 SELECT cc.id
                                 FROM course_channels cc
-                                WHERE cc.course_id IN (
-                                    SELECT co.id
-                                    FROM courses co
-                                    JOIN cohorts c ON c.course_id = co.id
-                                    JOIN cohort_enrollments ce ON ce.cohort_id = c.id
-                                    WHERE co.study_server_id = :studyServerId
+                                JOIN courses co ON co.id = cc.course_id
+                                WHERE cc.archived_at IS NULL
+                                AND co.study_server_id = :studyServerId
+                                AND (
+                                    EXISTS (
+                                        SELECT 1
+                                        FROM cohort_enrollments ce
+                                        WHERE ce.cohort_id = cc.cohort_id
                                     AND ce.learner_user_id = :userId
-                                )
-                                OR cc.course_id IN (
-                                    SELECT co.id
-                                    FROM courses co
-                                    JOIN cohorts c ON c.course_id = co.id
-                                    JOIN cohort_roles cor ON cor.cohort_id = c.id
-                                    WHERE co.study_server_id = :studyServerId
-                                    AND cor.user_id = :userId
-                                    AND cor.role = :teachingAssistantRole
+                                    )
+                                    OR EXISTS (
+                                        SELECT 1
+                                        FROM cohort_roles cor
+                                        WHERE cor.cohort_id = cc.cohort_id
+                                        AND cor.user_id = :userId
+                                        AND cor.role = :teachingAssistantRole
+                                    )
                                 )
                                 ORDER BY cc.position
                                 """)
