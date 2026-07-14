@@ -315,7 +315,7 @@ Use an incremental production workflow:
 3. API-first design for each backend slice.
 4. Implement backend and frontend in vertical slices, not isolated layers.
 5. Add automated tests with each slice.
-6. **Git:** one GitHub issue → one branch → one pull request → merge to `main` only after owner approval (`docs/operations/project-operations-bootstrap.md`).
+6. **Git:** one GitHub issue → one branch → one pull request → CI and CodeAnt gates → agent merge; never push directly to `main` (`docs/operations/agent-workflow.md`).
 7. **TDD** for domain features from issue #12 onward; infra/bootstrap may use smoke tests only.
 8. Run local Docker smoke tests before considering a feature done.
 9. Review security, performance, observability, and migration impact before release.
@@ -323,7 +323,7 @@ Use an incremental production workflow:
 11. For every non-trivial implementation slice, add an issue-scoped change log under `docs/operations/` with the files changed, behavior added, verification commands, and representative code snippets.
 12. For every meaningful local or browser-debugging failure, add an issue-scoped debug log under `docs/operations/` with symptoms, hypotheses, commands run, findings, fixes, and final verification.
 13. For every **CodeAnt** suggestion that is fixed or explicitly deferred, add an issue-scoped fix log under `docs/operations/issue-<number>-codeant-fix.md` (see `docs/operations/agent-workflow.md`).
-14. Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
+14. Agents may push feature branches and merge gated PRs under the current owner authorization in `docs/operations/agent-workflow.md`.
 
 Use installed Cursor workflow skills directly when they fit the task: `grill-with-docs` for doc review, `to-prd` for requirements, `to-issues` for work breakdown, `tdd` for risky implementation logic, `diagnose` for bugs, `zoom-out` or `improve-codebase-architecture` for architecture review, `prototype` for uncertain flows, and `setup-pre-commit` for local quality gates. For GitHub PR review loops, use the **CodeAnt AI GitHub App** (`docs/operations/agent-workflow.md`) — not a Cursor skill.
 
@@ -502,7 +502,7 @@ Milestone 9: Hardening
 
 Backend MVP **#11–#24**, Production Frontend **#47–#59**, Workable Product **#60–#63**, and UI v2 **#116–#128** are merged on `main`.
 
-Progress: [**#131 - Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131) is complete through **#138**, including **#109** and **#92**. **#138** shipped through PR #154: published server-scoped catalog, open/invite Cohort enrollment, truthful search/filter states, exact navigation, PostgreSQL V14 preservation, and responsive owner/learner browser verification. Work is paused before **#139**; resume it only when the owner asks. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent remains [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
+Progress: [**#131 - Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131) is complete through **#138**, including **#109** and **#92**. **#138** shipped through PR #154: published server-scoped catalog, open/invite Cohort enrollment, truthful search/filter states, exact navigation, PostgreSQL V14 preservation, and responsive owner/learner browser verification. **#139 is active** on `feature/139-truthful-study-server-course-lifecycle` and has been handed to Cursor Composer 2.5 for implementation. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent remains [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 
