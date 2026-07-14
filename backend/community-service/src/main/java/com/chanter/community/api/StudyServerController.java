@@ -4,6 +4,8 @@ import com.chanter.common.ServiceInfo;
 import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.community.application.StudyServerNavigationService;
 import com.chanter.community.application.StudyServerService;
+import com.chanter.community.application.CourseService;
+import com.chanter.community.domain.CourseCatalogFilter;
 import com.chanter.community.domain.StudyServer;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -29,13 +32,16 @@ public class StudyServerController {
 
     private final StudyServerService studyServerService;
     private final StudyServerNavigationService studyServerNavigationService;
+    private final CourseService courseService;
 
     public StudyServerController(
             StudyServerService studyServerService,
-            StudyServerNavigationService studyServerNavigationService
+            StudyServerNavigationService studyServerNavigationService,
+            CourseService courseService
     ) {
         this.studyServerService = studyServerService;
         this.studyServerNavigationService = studyServerNavigationService;
+        this.courseService = courseService;
     }
 
     @PostMapping
@@ -74,6 +80,16 @@ public class StudyServerController {
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
     ) {
         return StudyServerNavigationResponse.from(studyServerNavigationService.findNavigation(id, userId));
+    }
+
+    @GetMapping("/{id}/course-catalog")
+    public CourseCatalogResponse getCourseCatalog(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "ALL") CourseCatalogFilter filter,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
+    ) {
+        return CourseCatalogResponse.from(courseService.findCourseCatalog(id, userId, search, filter));
     }
 
     @DeleteMapping("/{id}")

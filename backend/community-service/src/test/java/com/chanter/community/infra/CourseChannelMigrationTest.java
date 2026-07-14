@@ -35,11 +35,28 @@ class CourseChannelMigrationTest {
                 assertThat(resultSet.getObject(1, UUID.class)).isEqualTo(fixture.cohortId());
             }
 
+            try (ResultSet resultSet = statement.executeQuery("""
+                        SELECT enrollment_policy
+                        FROM cohorts
+                        WHERE id = '%s'
+                        """.formatted(fixture.cohortId()))) {
+                assertThat(resultSet.next()).isTrue();
+                assertThat(resultSet.getString(1)).isEqualTo("INVITE_ONLY");
+            }
+
             UUID secondCohortId = UUID.randomUUID();
             statement.executeUpdate("""
                     INSERT INTO cohorts (id, course_id, name, invite_code)
                     VALUES ('%s', '%s', 'Second Cohort', '%s')
                     """.formatted(secondCohortId, fixture.courseId(), UUID.randomUUID()));
+            try (ResultSet resultSet = statement.executeQuery("""
+                        SELECT enrollment_policy
+                        FROM cohorts
+                        WHERE id = '%s'
+                        """.formatted(secondCohortId))) {
+                assertThat(resultSet.next()).isTrue();
+                assertThat(resultSet.getString(1)).isEqualTo("OPEN");
+            }
             statement.executeUpdate("""
                     INSERT INTO course_channels (id, course_id, cohort_id, name, kind, position)
                     VALUES ('%s', '%s', '%s', 'announcements', 'TEXT', 0)

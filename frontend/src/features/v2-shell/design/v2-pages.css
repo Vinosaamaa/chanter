@@ -697,6 +697,16 @@
 @keyframes v2-resource-spin { to { transform: rotate(360deg); } }
 .v2-app-shell .resource-empty { border: 1px dashed #405269; border-radius: 10px; padding: 35px; color: #9fa8b6; text-align: center; }
 .v2-app-shell .v2-modal-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgba(0,7,17,.66); }
+.v2-app-shell .cohort-picker select { min-width: 0; max-width: 180px; border: 0; outline: 0; color: inherit; background: transparent; font: inherit; }
+.v2-app-shell .discover-course-grid footer > a { min-height: 38px; display: inline-flex; align-items: center; margin-left: auto; border: 1px solid #3a4d62; border-radius: 7px; padding: 0 13px; color: #d5d9df; text-decoration: none; }
+.v2-app-shell .discover-course-grid footer > .v2-primary-button:only-child { margin-left: 0; }
+.v2-app-shell .discover-course-grid .unavailable { color: #ffbc62; background: rgba(116,72,18,.38); }
+.v2-app-shell .discover-status { min-height: 145px; display: grid; place-items: center; align-content: center; gap: 8px; border: 1px solid rgba(151,161,177,.28); border-radius: 9px; margin: 0 0 18px; padding: 24px; color: #aeb7c3; text-align: center; background: rgba(8,25,44,.42); }
+.v2-app-shell .discover-status > svg { width: 30px; height: 30px; }
+.v2-app-shell .discover-status > strong { color: #f0f2f5; font-size: 18px; }
+.v2-app-shell .discover-status > button { border: 0; color: #7890ff; background: transparent; cursor: pointer; }
+.v2-app-shell .invite-code-modal .modal-error, .v2-app-shell .create-course-modal .modal-error { margin: 14px 0 0; color: #f2a6af; }
+@media(max-width:650px){.v2-app-shell .discover-filters{flex-wrap:wrap}.v2-app-shell .discover-filters button{flex:1 1 auto;padding-inline:12px}.v2-app-shell .discover-course-grid>article{min-height:205px}.v2-app-shell .cohort-picker select{max-width:calc(100vw - 105px)}.v2-app-shell .v2-modal-backdrop{padding:10px}.v2-app-shell .apply-instructor-modal,.v2-app-shell .create-course-modal{max-height:calc(100dvh - 20px);overflow:auto;padding:20px}}
 .v2-app-shell .resource-upload-modal { position: relative; width: min(520px,100%); display: grid; gap: 19px; border: 1px solid #3d4e64; border-radius: 10px; padding: 25px 29px 22px; color: #f6f7f9; background: #0c1f33; box-shadow: 0 24px 70px rgba(0,0,0,.48); }
 .v2-app-shell .resource-upload-modal .modal-close { position: absolute; top: 17px; right: 18px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; color: #c6cbd3; background: transparent; cursor: pointer; }
 .v2-app-shell .resource-upload-modal h2 { margin: 0 40px 0 0; font-size: 24px; }
