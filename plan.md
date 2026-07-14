@@ -371,8 +371,8 @@ Current implementation status as of 2026-07-13:
 - **Education MVP backend (milestone 1):** issues **#11–#24** merged on `main`.
 - **Production Frontend** and **Workable Product:** merged.
 - **UI v2 course-first shell:** **#116–#128** merged in PR #130.
-- **Active:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), with **#132–#134** merged and **#109** real v2 Friend Requests and co-member discovery complete locally.
-- **Next after #109:** **#135** durable Office Hours scheduling and live controls; continue the ordered #131 roadmap through **#145** before final AI, E2E, staging, and beta gates.
+- **Active:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), with **#132–#134** and **#109** merged and **#135** durable Office Hours complete locally before its PR gate.
+- **Next after #135:** **#92** operational Questions, support, and Teaching; continue the ordered #131 roadmap through **#145** before final AI, E2E, staging, and beta gates.
 
 Milestone -1: Project operations bootstrap
 

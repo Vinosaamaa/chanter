@@ -26,7 +26,7 @@ The education MVP ships as a **web application** (React SPA in the browser). Nat
 | Backend MVP | [Education MVP](https://github.com/Vinosaamaa/chanter/milestone/1) | [#1](https://github.com/users/Vinosaamaa/projects/1) | Done (#11–#24) |
 | Production Frontend (legacy) | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | Done (#47–#59) |
 | Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | Done (#60–#63, #31–#32) |
-| **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active — #116** |
+| **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | Done (#116–#128); operationalization #131 active at #135 |
 | Public Launch | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **#94+ after UI v2** (#88–#93 paused) |
 
 **Mandatory agent workflow:** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
@@ -114,7 +114,7 @@ The backend uses Spring Boot microservices. Each service owns one business capab
 - Gateway Service owns public REST routing, CORS, edge rate limiting coordination, request correlation, and routing to internal services.
 - Auth Service owns registration, login, password hashing, access tokens, refresh token rotation, sessions, and logout.
 - User Service is the target owner for profiles, display names, avatars metadata, user settings, account status, social graph preferences, and verified educator profile signals. Until it exists, Auth Service supplies the bounded public display-name read while Message Service owns the durable social graph and blocks.
-- Community Service owns organizations/workspaces, Study Servers, course/module channels, members, instructor/TA/learner roles, permissions, invites, and canonical permission evaluation.
+- Community Service owns organizations/workspaces, Study Servers, course/module channels, members, instructor/TA/learner roles, permissions, invites, Office Hours sessions/participants, and canonical permission evaluation.
 - Message Command Service owns message writes, edit/delete commands, question markers, reactions, read receipts, idempotency keys, and durable message creation.
 - Message Query Service owns message reads, pagination, history lookup, query-optimized message views, and course-channel history views.
 - Realtime WebSocket Gateway owns connected clients, subscriptions, channel authorization, reconnects, typing indicators, presence fan-out, **friend presence subscriptions**, **live DM delivery**, and **DM call signaling** (issues #31–#32).
@@ -211,7 +211,7 @@ Each service owns its own database or storage system. Other services do not quer
 - Analytics data is stored in a data lake or OLAP system.
 - Media binaries are stored in object storage, while metadata stays in Media Service storage.
 - Agent configuration is stored by server, channel, installed listing version, and permission grant.
-- Education MVP data is owned by the service responsible for the action: organizations, Study Server structure, membership, roles, and co-member discovery live in Community Service; current Friend Requests, friendships, blocks, durable questions, and messages live in Message Service; Auth Service temporarily supplies bounded public display names; course resource metadata lives in Media Service; FAQ/search read models live in Search Service; instructor insight read models live in Analytics Service; assistant installs/grants live in Agent Service; grounded answer attempts live in Agent Runtime Service; and plan/quota state lives in Billing Service.
+- Education MVP data is owned by the service responsible for the action: organizations, Study Server structure, membership, roles, co-member discovery, Office Hours lifecycle, and Office Hours participant permissions live in Community Service; current Friend Requests, friendships, blocks, durable questions, and messages live in Message Service; Auth Service temporarily supplies bounded public display names; course resource metadata lives in Media Service; FAQ/search read models live in Search Service; instructor insight read models live in Analytics Service; assistant installs/grants live in Agent Service; grounded answer attempts live in Agent Runtime Service; and plan/quota state lives in Billing Service.
 - Agent memory is stored in a scoped vector store and summary store with explicit retention and deletion policies.
 - Marketplace data stores listings, versions, creator profiles, installs, reviews, and governance state.
 - Later course-commerce data is split by ownership: Marketplace Service owns course listings, storefront metadata, creator profiles, and listing review state; Billing Service owns purchases, refunds, invoices, creator payouts, and platform take-rate records; Community Service owns enrollment-derived Study Server membership and channel access grants; Media Service owns recording metadata and storage authorization.
@@ -220,6 +220,14 @@ Each service owns its own database or storage system. Other services do not quer
 - Redis stores cache, sessions, rate limit counters, presence, and typing state.
 
 Redis is not the durable source of truth. It is used for fast ephemeral or cache-oriented data.
+
+### Durable Office Hours And Live Audio
+
+Office Hours are Cohort-scoped durable sessions owned by Community Service. Instructors schedule, edit, cancel, start, and end sessions using the authenticated principal; request bodies never choose the actor identity. The implemented lifecycle is `SCHEDULED -> LIVE -> ENDED`, with `SCHEDULED -> CANCELLED` for cancellation. Recurrence is intentionally absent until a durable recurrence model exists.
+
+Each live attendee has one `office_hours_participants` row keyed by `(sessionId, userId)`. It records active membership, raised-hand state, and whether the instructor granted speaking access. Learners join an open live session as listeners, may raise or lower a hand, and leave explicitly. Instructors can promote or return active participants and ending a session deactivates the roster and removes voice presence.
+
+LiveKit remains the media plane, not the source of authorization. Community Service issues a short-lived media token only for an active participant and derives `canSpeak` from the durable participant row. The client reconnects with a fresh token when speaking permission changes; it polls the durable roster for near-realtime UI state while LiveKit carries realtime audio. This keeps authorization recoverable across refreshes and prevents a client from self-selecting speaker permission.
 
 ### Control Plane
 
@@ -413,7 +421,7 @@ Strong consistency is required for:
 - Message writes within a channel.
 - Moderation actions that restrict access.
 - Course resource access grants.
-- Office-hours queue state transitions.
+- Office Hours session lifecycle, active participation, hand state, and speaking grants.
 - Agent install permissions, Study Assistant resource grants, tool permissions, billing limits, memory deletion, and marketplace purchase state.
 
 Eventual consistency is acceptable for:

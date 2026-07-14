@@ -46,7 +46,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5). UI v2 **#116–#128** is merged in PR #130.
 
-**Active slice:** [**#109 — Real v2 Friend Requests and co-member discovery**](https://github.com/Vinosaamaa/chanter/issues/109) on `feature/109-real-v2-friend-requests`. #134 merged in PR #148. #109 implementation, TDD coverage, full tests, two-user Chrome verification, and cross-account cache isolation are complete locally. Next: commit, PR, CI + CodeAnt loop, autonomous merge, then **#135**.
+**Active slice:** [**#135 — Durable Office Hours scheduling and live controls**](https://github.com/Vinosaamaa/chanter/issues/135) on `feature/135-durable-office-hours`. #109 merged in PR #149. #135 implementation, TDD coverage, full frontend/community-service tests, and a live two-user gateway/LiveKit-token smoke are complete locally. The visible browser/audio pass remains pending because the Mac was locked during automation. Next: commit, PR, CI + CodeAnt loop, autonomous merge, then **#92**.
 
 **Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
 
@@ -123,7 +123,7 @@ Production Frontend table retained above for history; milestone **complete** (le
 
 Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turns the approved UI into a truthful full-stack product. Work in this order: **#132**, **#133**, **#134**, **#109**, **#135**, **#92**, **#136–#145**, then AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta **#104**.
 
-#132–#134 are merged. Current #109 makes Friend Requests, shared-server discovery, real profile names, relationship actions, and exact DM context truthful in the v2 shell. Next, #135 operationalizes Office Hours scheduling and live controls.
+#132–#134 and #109 are merged. Current #135 operationalizes durable Office Hours scheduling, direct listener joins, hand raising, speaking grants, LiveKit permissions, and instructor lifecycle controls. Next, #92 operationalizes Questions, support, and Teaching.
 
 **#30** ships in phase 2 with **#49** (project #3).
 
