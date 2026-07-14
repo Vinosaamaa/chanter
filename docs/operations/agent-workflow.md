@@ -71,7 +71,7 @@ If CodeAnt is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in
 | Production Frontend (legacy) | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Done** (#47–#59) |
 | Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | **Done** (#60–#63, #31–#32) |
 | **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Done** (#116–#128, PR #130) |
-| **UI v2 operationalization** | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active - #138** under epic #131 |
+| **UI v2 operationalization** | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Paused after #138** under epic #131 |
 
 Legacy **Social Hub project #2** is **closed**. #31–#32 are on **project #4** only. **#30** is on **project #3** only (pairs with #49).
 
@@ -144,7 +144,7 @@ Serial order only — one issue per branch.
 | 6 | [**#92**](https://github.com/Vinosaamaa/chanter/issues/92) | Operational v2 Questions, support, and Teaching — **merged** |
 | 7 | [**#136**](https://github.com/Vinosaamaa/chanter/issues/136) | Real Cohort roster, Enrollment, and TA assignment - **merged** |
 | 8 | [**#137**](https://github.com/Vinosaamaa/chanter/issues/137) | Course Chat channel management and voice entry - **merged** (PR #153) |
-| 9 | [**#138**](https://github.com/Vinosaamaa/chanter/issues/138) | **ACTIVE** Community Course discovery and Enrollment - complete locally |
+| 9 | [**#138**](https://github.com/Vinosaamaa/chanter/issues/138) | Community Course discovery and Enrollment - **complete** (PR #154) |
 | 10 | [#139](https://github.com/Vinosaamaa/chanter/issues/139) | **NEXT WHEN RESUMED** Truthful Study Server and Course lifecycle |
 | 11 | [#140](https://github.com/Vinosaamaa/chanter/issues/140) | Durable Community events and RSVP |
 | 12 | [#141](https://github.com/Vinosaamaa/chanter/issues/141) | Operational announcements, members, and invitations |
@@ -194,7 +194,7 @@ After #145: AI **#94–#100**, critical-path E2E/no-dead-controls **#103**, stag
 | 2 | [#86](https://github.com/Vinosaamaa/chanter/issues/86) | Product stack reliability — **merged** (PR #105) |
 | 3 | [#87](https://github.com/Vinosaamaa/chanter/issues/87) | Mockup gap audit — **owner sign-off 2026-07-09** (PR #106) |
 | — | **#115–#128** | **UI v2** — merged in PR #130 |
-| 4 | [#131](https://github.com/Vinosaamaa/chanter/issues/131) | Make UI v2 fully operational - **active at #138** |
+| 4 | [#131](https://github.com/Vinosaamaa/chanter/issues/131) | Make UI v2 fully operational - **paused after #138** |
 | 5 | [#94](https://github.com/Vinosaamaa/chanter/issues/94)+ | Real AI + launch readiness after #145 |
 
 ---
@@ -319,7 +319,7 @@ Do **not** treat a separate “deferred” section as skippable work on the **ow
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged.
-Active work: Public Launch project #5 - epic **#131**, active slice **#138** (`feature/138-community-course-discovery-enrollment`). #138 is locally complete; finish PR/CI/CodeAnt/merge, then pause. #139 is next when work resumes.
+Current pause point: Public Launch project #5 - epic **#131** is complete through **#138** (PR #154). Work is paused before #139; resume #139 only when the owner asks.
 
 Product UI: docs/product-design/README.md
 PR review: CodeAnt AI (cubic trial expired) — docs/operations/agent-workflow.md § CodeAnt review

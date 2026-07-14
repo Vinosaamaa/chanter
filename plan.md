@@ -371,8 +371,8 @@ Current implementation status as of 2026-07-14:
 - **Education MVP backend (milestone 1):** issues **#11–#24** merged on `main`.
 - **Production Frontend** and **Workable Product:** merged.
 - **UI v2 course-first shell:** **#116–#128** merged in PR #130.
-- **Active:** [**#131 - Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), with **#132-#137**, **#109**, and **#92** merged and **#138** Community Course discovery/enrollment complete locally before its PR gate.
-- **Pause point:** finish the **#138** gated merge, then pause per owner direction. **#139** remains next when work resumes.
+- **Progress:** [**#131 - Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131) is complete through **#138**, including **#109** and **#92**; #138 shipped through PR #154.
+- **Pause point:** work is paused before **#139** per owner direction. **#139** remains next when work resumes.
 
 Milestone -1: Project operations bootstrap
 
@@ -502,7 +502,7 @@ Milestone 9: Hardening
 
 Backend MVP **#11–#24**, Production Frontend **#47–#59**, Workable Product **#60–#63**, and UI v2 **#116–#128** are merged on `main`.
 
-Active: [**#131 - Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131). **#132-#137**, **#109**, and **#92** are merged. **#138** is complete locally on `feature/138-community-course-discovery-enrollment`: published server-scoped catalog, open/invite Cohort enrollment, truthful search/filter states, exact navigation, PostgreSQL V14 preservation, and responsive owner/learner browser verification. Finish its PR/CI/CodeAnt/merge loop, then pause; **#139** is next when work resumes. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent remains [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
+Progress: [**#131 - Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131) is complete through **#138**, including **#109** and **#92**. **#138** shipped through PR #154: published server-scoped catalog, open/invite Cohort enrollment, truthful search/filter states, exact navigation, PostgreSQL V14 preservation, and responsive owner/learner browser verification. Work is paused before **#139**; resume it only when the owner asks. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent remains [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 
