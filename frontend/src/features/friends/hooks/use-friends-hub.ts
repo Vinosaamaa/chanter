@@ -28,6 +28,7 @@ type UseFriendsHubResult = {
   friends: FriendSummary[]
   selectedFriendId: string | null
   selectFriend: (friendUserId: string) => void
+  refreshFriends: () => Promise<void>
   messages: DirectMessage[]
   presenceByFriendId: Record<string, FriendPresenceStatus>
   connectionStatus: SocialRealtimeConnectionStatus
@@ -404,6 +405,25 @@ export function useFriendsHub(): UseFriendsHubResult {
     return next
   }, [friends, presenceByFriendId])
 
+  const refreshFriends = useCallback(async () => {
+    setIsLoadingFriends(true)
+    setFriendsListError(null)
+    try {
+      const response = await fetchFriends()
+      setFriends(response.friends)
+      setSelectedFriendId((current) => {
+        if (current && response.friends.some((friend) => friend.friendUserId === current)) {
+          return current
+        }
+        return response.friends[0]?.friendUserId ?? null
+      })
+    } catch (caught) {
+      setFriendsListError(caught instanceof Error ? caught.message : 'Unable to load friends')
+    } finally {
+      setIsLoadingFriends(false)
+    }
+  }, [])
+
   const startCall = () => {
     if (!selectedFriendId || connectionStatus !== 'connected' || inviteInFlightRef.current) {
       return
@@ -458,6 +478,7 @@ export function useFriendsHub(): UseFriendsHubResult {
       setError(null)
       setSelectedFriendId(friendUserId)
     },
+    refreshFriends,
     messages,
     presenceByFriendId: presenceMap,
     connectionStatus,

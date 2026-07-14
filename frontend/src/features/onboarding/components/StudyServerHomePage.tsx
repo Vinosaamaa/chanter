@@ -69,7 +69,7 @@ export function StudyServerHomePage() {
       setCourseTitle('')
       setCohortName('')
       setCourseMessage(`Created ${title} (${cohort}).`)
-      await queryClient.invalidateQueries({ queryKey: ['study-server-navigation', serverId] })
+      await queryClient.invalidateQueries({ queryKey: ['study-server-navigation'] })
     } catch (caught) {
       if (isUnauthorizedApiError(caught)) {
         clearSession()

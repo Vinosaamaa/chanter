@@ -29,4 +29,11 @@ public class SocialMembershipController {
                 socialMembershipService.shareStudyServerMembership(userId, peerUserId)
         );
     }
+
+    @GetMapping("/social/co-members")
+    public CoMemberListResponse findCoMembers(
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID userId
+    ) {
+        return CoMemberListResponse.from(socialMembershipService.findCoMembers(userId));
+    }
 }

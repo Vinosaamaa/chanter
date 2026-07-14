@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { RouterProvider } from 'react-router-dom'
 
 import { ThemeSync } from '../components/theme/ThemeSync'
+import { AuthenticatedQueryCacheBoundary } from './AuthenticatedQueryCacheBoundary'
 import './api-auth'
 import { createAppRouter } from './router'
 
@@ -27,13 +28,19 @@ export function AppProviders({ children }: AppProvidersProps) {
   const [router] = useState(() => createAppRouter())
 
   if (children !== undefined) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    return (
+      <QueryClientProvider client={queryClient}>
+        <AuthenticatedQueryCacheBoundary>{children}</AuthenticatedQueryCacheBoundary>
+      </QueryClientProvider>
+    )
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeSync />
-      <RouterProvider router={router} />
+      <AuthenticatedQueryCacheBoundary>
+        <ThemeSync />
+        <RouterProvider router={router} />
+      </AuthenticatedQueryCacheBoundary>
     </QueryClientProvider>
   )
 }

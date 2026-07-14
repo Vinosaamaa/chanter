@@ -7,9 +7,13 @@ import {
   blockUser,
   cancelFriendRequest,
   declineFriendRequest,
+  fetchBlockedUsers,
+  fetchCoMembers,
   fetchDirectMessages,
   fetchFriendRequests,
   fetchFriends,
+  fetchPublicProfiles,
+  sendFriendRequest,
   sendDirectMessage,
 } from './friends-api'
 
@@ -108,6 +112,73 @@ describe('friends-api', () => {
     expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/user-blocks', {
       method: 'POST',
       body: JSON.stringify({ blockedUserId: 'user-a' }),
+    })
+  })
+
+  it('loads only co-member discovery candidates', async () => {
+    mockedApiFetch.mockResolvedValue({ coMembers: [] })
+
+    await fetchCoMembers()
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/social/co-members')
+  })
+
+  it('resolves public profiles without requesting email fields', async () => {
+    mockedApiFetch.mockResolvedValue({ profiles: [] })
+
+    await fetchPublicProfiles(['user-a', 'user-b'])
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/auth/profiles/query', {
+      method: 'POST',
+      body: JSON.stringify({ userIds: ['user-a', 'user-b'] }),
+    })
+  })
+
+  it('batches public profile lookups at the API limit', async () => {
+    const userIds = Array.from({ length: 101 }, (_, index) => `user-${index}`)
+    mockedApiFetch
+      .mockResolvedValueOnce({
+        profiles: userIds.slice(0, 100).map((userId) => ({ userId, displayName: userId })),
+      })
+      .mockResolvedValueOnce({
+        profiles: [{ userId: 'user-100', displayName: 'user-100' }],
+      })
+
+    const response = await fetchPublicProfiles(userIds)
+
+    expect(mockedApiFetch).toHaveBeenNthCalledWith(1, '/api/v1/auth/profiles/query', {
+      method: 'POST',
+      body: JSON.stringify({ userIds: userIds.slice(0, 100) }),
+    })
+    expect(mockedApiFetch).toHaveBeenNthCalledWith(2, '/api/v1/auth/profiles/query', {
+      method: 'POST',
+      body: JSON.stringify({ userIds: ['user-100'] }),
+    })
+    expect(response.profiles).toHaveLength(101)
+  })
+
+  it('loads the current users blocked ids', async () => {
+    mockedApiFetch.mockResolvedValue({ blockedUserIds: ['user-a'] })
+
+    await fetchBlockedUsers()
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/user-blocks')
+  })
+
+  it('sends a friend request to a selected co-member', async () => {
+    mockedApiFetch.mockResolvedValue({
+      id: 'req-1',
+      senderUserId: 'me',
+      recipientUserId: 'user-a',
+      status: 'PENDING',
+      createdAt: '2026-07-05T00:00:00Z',
+    })
+
+    await sendFriendRequest('user-a')
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/friend-requests', {
+      method: 'POST',
+      body: JSON.stringify({ recipientUserId: 'user-a' }),
     })
   })
 

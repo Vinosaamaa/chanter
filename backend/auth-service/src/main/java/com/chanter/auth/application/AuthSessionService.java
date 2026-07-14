@@ -8,7 +8,10 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -99,6 +102,20 @@ public class AuthSessionService {
 
     public UUID requireUserIdFromAccessToken(String authorizationHeader) {
         return jwtTokenService.parseUserId(authorizationHeader);
+    }
+
+    public List<AuthUserProfile> findPublicProfiles(List<UUID> requestedUserIds) {
+        List<UUID> distinctIds = requestedUserIds.stream().distinct().toList();
+        Map<UUID, AuthUser> usersById = new LinkedHashMap<>();
+        for (AuthUser user : authUserRepository.findByIds(distinctIds)) {
+            usersById.put(user.id(), user);
+        }
+
+        return distinctIds.stream()
+                .map(usersById::get)
+                .filter(java.util.Objects::nonNull)
+                .map(AuthUserProfile::from)
+                .toList();
     }
 
     private AuthSession issueSession(AuthUser user) {

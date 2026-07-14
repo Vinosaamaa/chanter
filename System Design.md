@@ -95,6 +95,8 @@ Friends and direct messages can exist, but they are not the core MVP learning wo
 - Organization workspaces can enforce stricter policies for minors, schools, or compliance-sensitive programs.
 - Abuse reports and blocks should be available before broad DM rollout.
 
+Current implementation through #109 is an explicit transition toward the target User Service boundary: Community Service owns privacy-scoped co-member discovery, Message Service owns Friend Requests, friendships, blocks, and DMs, and Auth Service provides a bounded authenticated `userId`/`displayName` batch read. Profile reads move to User Service when that service is introduced; email and authentication data are not part of the public profile contract.
+
 The first version should prioritize Study Server channels, office-hours queues, and instructor/TA workflows over a broad social network. Universal self-serve registration is still useful: anyone can create a Study Server, but trustworthy instructor powers come from server ownership, admin assignment, or later organization verification.
 
 ## Architecture Layers
@@ -111,7 +113,7 @@ The backend uses Spring Boot microservices. Each service owns one business capab
 
 - Gateway Service owns public REST routing, CORS, edge rate limiting coordination, request correlation, and routing to internal services.
 - Auth Service owns registration, login, password hashing, access tokens, refresh token rotation, sessions, and logout.
-- User Service owns profiles, display names, avatars metadata, user settings, account status, social graph preferences, friend requests, blocks, and verified educator profile signals.
+- User Service is the target owner for profiles, display names, avatars metadata, user settings, account status, social graph preferences, and verified educator profile signals. Until it exists, Auth Service supplies the bounded public display-name read while Message Service owns the durable social graph and blocks.
 - Community Service owns organizations/workspaces, Study Servers, course/module channels, members, instructor/TA/learner roles, permissions, invites, and canonical permission evaluation.
 - Message Command Service owns message writes, edit/delete commands, question markers, reactions, read receipts, idempotency keys, and durable message creation.
 - Message Query Service owns message reads, pagination, history lookup, query-optimized message views, and course-channel history views.
@@ -201,7 +203,7 @@ Consumers must be idempotent because events can be delivered more than once.
 Each service owns its own database or storage system. Other services do not query that database directly.
 
 - Auth data is partitioned by `userId`.
-- User profile, social preferences, friend requests, blocks, and verified educator profile signals are partitioned by `userId`.
+- User profile and social-preference target data is partitioned by `userId`; the current Friend Request, friendship, and block tables remain service-owned by Message Service during the User Service transition.
 - Organization and Study Server data is partitioned by `organizationId` where present and `serverId` for Study Server-local data.
 - Message data is partitioned by `channelId`, with time buckets for hot channels.
 - Notification data is partitioned by `userId`.
@@ -209,7 +211,7 @@ Each service owns its own database or storage system. Other services do not quer
 - Analytics data is stored in a data lake or OLAP system.
 - Media binaries are stored in object storage, while metadata stays in Media Service storage.
 - Agent configuration is stored by server, channel, installed listing version, and permission grant.
-- Education MVP data is owned by the service responsible for the action: organizations, Study Server structure, membership, and roles live in Community Service; user profiles, friend requests, and blocks live in User Service; durable questions and messages live in Message Service; course resource metadata lives in Media Service; FAQ/search read models live in Search Service; instructor insight read models live in Analytics Service; assistant installs/grants live in Agent Service; grounded answer attempts live in Agent Runtime Service; and plan/quota state lives in Billing Service.
+- Education MVP data is owned by the service responsible for the action: organizations, Study Server structure, membership, roles, and co-member discovery live in Community Service; current Friend Requests, friendships, blocks, durable questions, and messages live in Message Service; Auth Service temporarily supplies bounded public display names; course resource metadata lives in Media Service; FAQ/search read models live in Search Service; instructor insight read models live in Analytics Service; assistant installs/grants live in Agent Service; grounded answer attempts live in Agent Runtime Service; and plan/quota state lives in Billing Service.
 - Agent memory is stored in a scoped vector store and summary store with explicit retention and deletion policies.
 - Marketplace data stores listings, versions, creator profiles, installs, reviews, and governance state.
 - Later course-commerce data is split by ownership: Marketplace Service owns course listings, storefront metadata, creator profiles, and listing review state; Billing Service owns purchases, refunds, invoices, creator payouts, and platform take-rate records; Community Service owns enrollment-derived Study Server membership and channel access grants; Media Service owns recording metadata and storage authorization.

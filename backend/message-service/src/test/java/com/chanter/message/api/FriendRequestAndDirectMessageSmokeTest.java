@@ -401,6 +401,14 @@ class FriendRequestAndDirectMessageSmokeTest {
                         ))))
                 .andExpect(status().isCreated());
 
+        MvcResult blockedUsersResult = mockMvc.perform(get("/api/v1/user-blocks")
+                        .with(asUser(userB)))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(blockedUsersResult.getResponse().getContentAsString())
+                .contains(userC.toString())
+                .doesNotContain(userA.toString());
+
         MvcResult blockedInboxResult = mockMvc.perform(get("/api/v1/friend-requests").with(asUser(userB)))
                 .andExpect(status().isOk())
                 .andReturn();

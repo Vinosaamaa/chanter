@@ -1,5 +1,6 @@
 package com.chanter.community.application;
 
+import com.chanter.community.domain.CoMember;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.VoicePresence;
@@ -18,6 +19,8 @@ public interface StudyServerRepository {
     boolean isStudyServerMember(UUID studyServerId, UUID userId);
 
     boolean shareStudyServerMembership(UUID firstUserId, UUID secondUserId);
+
+    List<CoMember> findCoMembers(UUID viewerUserId);
 
     VoicePresence saveVoicePresence(UUID channelId, UUID memberUserId);
 
