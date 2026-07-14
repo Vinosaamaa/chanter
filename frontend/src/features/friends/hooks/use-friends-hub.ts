@@ -50,7 +50,7 @@ type UseFriendsHubResult = {
 
 const MAX_MESSAGE_BODY_LENGTH = 4000
 
-export function useFriendsHub(): UseFriendsHubResult {
+export function useFriendsHub(preferredFriendId: string | null = null): UseFriendsHubResult {
   const accessToken = useAuthStore((state) => state.accessToken)
   const currentUserId = useAuthStore((state) => state.user?.id ?? null)
   const [friends, setFriends] = useState<FriendSummary[]>([])
@@ -78,6 +78,7 @@ export function useFriendsHub(): UseFriendsHubResult {
     livekit
   const loadedMessagesFriendIdRef = useRef<string | null>(null)
   const selectedFriendIdRef = useRef<string | null>(null)
+  const initialPreferredFriendIdRef = useRef(preferredFriendId)
 
   useEffect(() => {
     loadedMessagesFriendIdRef.current = loadedMessagesFriendId
@@ -178,7 +179,16 @@ export function useFriendsHub(): UseFriendsHubResult {
         if (!cancelled) {
           setFriends(response.friends)
           if (response.friends.length > 0) {
-            setSelectedFriendId((current) => current ?? response.friends[0]?.friendUserId ?? null)
+            const preferredIsAccepted = response.friends.some(
+              (friend) => friend.friendUserId === initialPreferredFriendIdRef.current,
+            )
+            setSelectedFriendId((current) =>
+              current ??
+              (preferredIsAccepted
+                ? initialPreferredFriendIdRef.current
+                : response.friends[0]?.friendUserId) ??
+              null,
+            )
           }
         }
       })

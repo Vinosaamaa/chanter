@@ -6,6 +6,7 @@ import java.util.UUID;
 public record CohortEnrollment(
         UUID learnerUserId,
         UUID enrolledByUserId,
-        Instant enrolledAt
+        Instant enrolledAt,
+        UUID assignedTeachingAssistantUserId
 ) {
 }

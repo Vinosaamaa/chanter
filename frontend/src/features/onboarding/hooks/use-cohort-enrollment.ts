@@ -6,8 +6,8 @@ import { formatUserFacingApiError } from '../../../lib/format-api-error'
 import { enrollLearner } from '../onboarding-api'
 
 type UseCohortEnrollmentResult = {
-  learnerUserId: string
-  setLearnerUserId: (value: string) => void
+  learnerEmail: string
+  setLearnerEmail: (value: string) => void
   isSubmitting: boolean
   error: string | null
   successMessage: string | null
@@ -23,13 +23,13 @@ function enrollmentErrorMessage(caught: unknown): string {
 }
 
 export function useCohortEnrollment(cohortId: string): UseCohortEnrollmentResult {
-  const [learnerUserId, setLearnerUserId] = useState('')
+  const [learnerEmail, setLearnerEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const reset = useCallback(() => {
-    setLearnerUserId('')
+    setLearnerEmail('')
     setError(null)
     setSuccessMessage(null)
   }, [])
@@ -45,10 +45,10 @@ export function useCohortEnrollment(cohortId: string): UseCohortEnrollmentResult
       return false
     }
 
-    const trimmed = learnerUserId.trim()
+    const trimmed = learnerEmail.trim()
     if (!trimmed) {
       setSuccessMessage(null)
-      setError('Enter the learner user id to enroll.')
+      setError('Enter the learner email to enroll.')
       return false
     }
 
@@ -66,11 +66,11 @@ export function useCohortEnrollment(cohortId: string): UseCohortEnrollmentResult
     } finally {
       setIsSubmitting(false)
     }
-  }, [cohortId, isSubmitting, learnerUserId])
+  }, [cohortId, isSubmitting, learnerEmail])
 
   return {
-    learnerUserId,
-    setLearnerUserId,
+    learnerEmail,
+    setLearnerEmail,
     isSubmitting,
     error,
     successMessage,

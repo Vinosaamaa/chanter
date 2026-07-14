@@ -53,14 +53,14 @@ describe('onboarding-api', () => {
     expect(result.id).toBe('course-1')
   })
 
-  it('enrollLearner posts the learner user id', async () => {
+  it('enrollLearner posts the learner registered account email', async () => {
     mockedApiFetch.mockResolvedValue(undefined)
 
-    await enrollLearner('cohort-1', 'learner-9')
+    await enrollLearner('cohort-1', 'learner@example.edu')
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/cohorts/cohort-1/enrollments', {
       method: 'POST',
-      body: JSON.stringify({ learnerUserId: 'learner-9' }),
+      body: JSON.stringify({ email: 'learner@example.edu' }),
     })
   })
 

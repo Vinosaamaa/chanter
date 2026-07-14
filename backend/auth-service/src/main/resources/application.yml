@@ -12,6 +12,7 @@ spring:
     enabled: true
 
 chanter:
+  internal-service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   jwt:
     secret: ${CHANTER_JWT_SECRET}
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}

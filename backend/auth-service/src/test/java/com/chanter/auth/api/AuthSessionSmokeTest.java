@@ -24,6 +24,8 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 class AuthSessionSmokeTest {
 
+    private static final String INTERNAL_SERVICE_TOKEN = "test-internal-service-token-for-auth";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -140,6 +142,69 @@ class AuthSessionSmokeTest {
         assertThat(responseBody).contains(peer.user().id().toString(), "Profile Peer");
         assertThat(responseBody).doesNotContain("profile-peer@study.local", "email");
         assertThat(responseBody).doesNotContain(missingUserId.toString());
+    }
+
+    @Test
+    void internalDirectoryRequiresServiceAuthentication() throws Exception {
+        mockMvc.perform(get("/internal/v1/users/by-email")
+                        .queryParam("email", "private@study.local"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/internal/v1/users/by-email")
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "wrong-token")
+                        .queryParam("email", "private@study.local"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/internal/v1/users/profiles/query")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "userIds", List.of(UUID.randomUUID())
+                        ))))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/internal/v1/users/profiles/query")
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "wrong-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "userIds", List.of(UUID.randomUUID())
+                        ))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void internalDirectoryResolvesCanonicalProfileByNormalizedEmail() throws Exception {
+        AuthSessionResponse learner = register(
+                "roster-learner@study.local",
+                "Roster Learner"
+        );
+
+        mockMvc.perform(get("/internal/v1/users/by-email")
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_SERVICE_TOKEN)
+                        .queryParam("email", " ROSTER-LEARNER@study.local "))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.userId").value(learner.user().id().toString()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.email").value("roster-learner@study.local"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.displayName").value("Roster Learner"));
+    }
+
+    @Test
+    void internalDirectoryBatchesCanonicalProfilesInRequestedOrder() throws Exception {
+        AuthSessionResponse first = register("first-roster@study.local", "First Roster");
+        AuthSessionResponse second = register("second-roster@study.local", "Second Roster");
+
+        mockMvc.perform(post("/internal/v1/users/profiles/query")
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_SERVICE_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "userIds", List.of(second.user().id(), UUID.randomUUID(), first.user().id())
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.profiles.length()").value(2))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.profiles[0].displayName").value("Second Roster"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.profiles[1].displayName").value("First Roster"));
     }
 
     private AuthSessionResponse register(String email, String displayName) throws Exception {

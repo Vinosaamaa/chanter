@@ -46,7 +46,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5). UI v2 **#116–#128** is merged in PR #130.
 
-**Active slice:** [**#92 — Operational v2 Questions, support, and Teaching**](https://github.com/Vinosaamaa/chanter/issues/92) on `feature/92-operational-questions-teaching`. #135 is merged. #92 implementation, TDD coverage, full Java/frontend verification, responsive browser checks, and a signed-in learner/instructor support loop are complete locally. Next: commit, PR, CI + CodeAnt loop, autonomous merge, then **#136**.
+**Active slice:** [**#136 — Real Cohort roster, Enrollment, and TA assignment**](https://github.com/Vinosaamaa/chanter/issues/136) on `feature/136-real-cohort-roster-enrollment-ta`. #92 is merged. #136 implementation, TDD coverage, full Java/frontend verification, responsive browser checks, and signed-in owner/learner People and friend-DM journeys are complete locally. Next: commit, PR, CI + CodeAnt loop, autonomous merge, then **#137**.
 
 **Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
 
@@ -123,7 +123,7 @@ Production Frontend table retained above for history; milestone **complete** (le
 
 Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turns the approved UI into a truthful full-stack product. Work in this order: **#132**, **#133**, **#134**, **#109**, **#135**, **#92**, **#136–#145**, then AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta **#104**.
 
-#132–#135 and #109 are merged. Current #92 operationalizes durable Questions, grounded/persisted AI answers, human replies, TA Queue/FAQ operations, and real Teaching dashboard identities. Next, #136 operationalizes the Cohort roster, Enrollment, and TA assignment.
+#132–#135, #109, and #92 are merged. Current #136 operationalizes registered-account email Enrollment, durable invitations, the real Cohort roster, TA roles/assignments, and friend-only DM entry. Next, #137 operationalizes Course Chat channel management and voice entry.
 
 **#30** ships in phase 2 with **#49** (project #3).
 
@@ -369,15 +369,15 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, Workable Product #60–#63, and UI v2 #116–#128 are merged on main.
-UI v2 operationalization #132–#135 and #109 are merged. #92 is locally complete on feature/92-operational-questions-teaching.
+UI v2 operationalization #132–#135, #109, and #92 are merged. #136 is locally complete on feature/136-real-cohort-roster-enrollment-ta.
 
 Product UI: docs/product-design/DESIGN-DECISIONS.md + mockups/learner-flow/ and owner-flow/
 Breakdown: docs/issues/ui-v2-issue-breakdown.md
-Next: finish the #92 PR/CI/CodeAnt/merge gate, then start #136 and continue the #131 order.
+Next: finish the #136 PR/CI/CodeAnt/merge gate, then start #137 and continue the #131 order.
 
 Repo: https://github.com/Vinosaamaa/chanter
 Epic: https://github.com/Vinosaamaa/chanter/issues/131
-Current slice: https://github.com/Vinosaamaa/chanter/issues/92
+Current slice: https://github.com/Vinosaamaa/chanter/issues/136
 Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
 ```

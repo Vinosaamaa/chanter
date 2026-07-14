@@ -242,15 +242,16 @@ export function CohortEnrollmentPage() {
           >
             <h2 className="text-sm font-semibold text-app-text">Enroll learner manually</h2>
             <p className="mt-1 text-xs text-app-muted">
-              Paste the learner&apos;s user id from registration or the dev demo personas panel.
+              Enter the email address from the learner&apos;s registered Chanter account.
             </p>
             <label className="mt-4 flex flex-col gap-1 text-xs text-app-muted">
-              Learner user id
+              Learner email
               <input
-                value={enrollment.learnerUserId}
-                onChange={(event) => enrollment.setLearnerUserId(event.target.value)}
+                type="email"
+                value={enrollment.learnerEmail}
+                onChange={(event) => enrollment.setLearnerEmail(event.target.value)}
                 disabled={enrollment.isSubmitting}
-                placeholder="UUID"
+                placeholder="learner@example.edu"
                 className="rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm text-app-text"
               />
             </label>

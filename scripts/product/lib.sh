@@ -90,6 +90,10 @@ product_load_env() {
     echo "CHANTER_JWT_SECRET must be set to at least 32 characters in .env" >&2
     return 1
   fi
+  if [ -z "${CHANTER_INTERNAL_SERVICE_TOKEN:-}" ] || [ "${#CHANTER_INTERNAL_SERVICE_TOKEN}" -lt 32 ]; then
+    echo "CHANTER_INTERNAL_SERVICE_TOKEN must be set to at least 32 characters in .env" >&2
+    return 1
+  fi
 }
 
 product_ensure_state_dirs() {

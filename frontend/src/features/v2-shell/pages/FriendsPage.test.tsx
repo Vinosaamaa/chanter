@@ -1,10 +1,12 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FriendsPage } from './FriendsPage'
 
 const mocks = vi.hoisted(() => ({
+  preferredFriendId: null as string | null,
   hub: {
     friends: [{ friendUserId: 'friend-alex', friendsSince: '2026-07-01T00:00:00Z' }],
     selectedFriendId: 'friend-alex',
@@ -87,7 +89,10 @@ vi.mock('../../../stores/auth-store', () => ({
 }))
 
 vi.mock('../../friends/hooks/use-friends-hub', () => ({
-  useFriendsHub: () => mocks.hub,
+  useFriendsHub: (preferredFriendId?: string | null) => {
+    mocks.preferredFriendId = preferredFriendId ?? null
+    return mocks.hub
+  },
 }))
 
 vi.mock('../../friends/hooks/use-friend-relationships', () => ({
@@ -102,10 +107,11 @@ describe('FriendsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.preferredFriendId = null
   })
 
   it('renders real friend profiles, exact DM context, and no demo fallback', () => {
-    render(<FriendsPage />)
+    renderPage()
 
     expect(screen.getAllByText('Alex Chen').length).toBeGreaterThan(0)
     expect(screen.getByText('Real message from Alex')).toBeInTheDocument()
@@ -120,7 +126,7 @@ describe('FriendsPage', () => {
 
   it('lists only co-member candidates and sends to the selected user id', async () => {
     const user = userEvent.setup()
-    render(<FriendsPage />)
+    renderPage()
 
     await user.click(screen.getByRole('button', { name: 'Add friend' }))
 
@@ -136,7 +142,7 @@ describe('FriendsPage', () => {
 
   it('opens the add-friend dialog on its search and closes it with Escape', async () => {
     const user = userEvent.setup()
-    render(<FriendsPage />)
+    renderPage()
 
     await user.click(screen.getByRole('button', { name: 'Add friend' }))
 
@@ -147,7 +153,7 @@ describe('FriendsPage', () => {
 
   it('shows truthful incoming and outgoing actions with the real unread count', async () => {
     const user = userEvent.setup()
-    render(<FriendsPage />)
+    renderPage()
 
     await user.click(screen.getByRole('button', { name: /Pending requests 1/i }))
 
@@ -164,7 +170,7 @@ describe('FriendsPage', () => {
   it('requires confirmation before blocking the exact incoming peer', async () => {
     const user = userEvent.setup()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
-    render(<FriendsPage />)
+    renderPage()
 
     await user.click(screen.getByRole('button', { name: /Pending requests 1/i }))
     const blockButton = screen.getByRole('button', { name: 'Block Morgan Liu' })
@@ -178,4 +184,14 @@ describe('FriendsPage', () => {
     await user.click(blockButton)
     expect(mocks.relationships.blockPeer).toHaveBeenCalledWith('request-morgan')
   })
+
+  it('passes a requested friend deep link into the accepted-friends hub', () => {
+    renderPage('/app/friends?friend=friend-alex')
+
+    expect(mocks.preferredFriendId).toBe('friend-alex')
+  })
 })
+
+function renderPage(initialEntry = '/app/friends') {
+  return render(<MemoryRouter initialEntries={[initialEntry]}><FriendsPage /></MemoryRouter>)
+}

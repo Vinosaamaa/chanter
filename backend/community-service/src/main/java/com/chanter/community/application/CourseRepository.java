@@ -3,6 +3,7 @@ package com.chanter.community.application;
 import com.chanter.community.domain.AccessibleStudyServer;
 import com.chanter.community.domain.CohortEnrollment;
 import com.chanter.community.domain.CohortEnrollmentList;
+import com.chanter.community.domain.CohortInvitation;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CohortTaQueueAccess;
@@ -31,6 +32,32 @@ public interface CourseRepository {
     boolean cohortExists(UUID cohortId);
 
     boolean cohortHasInstructor(UUID cohortId, UUID instructorUserId);
+
+    boolean cohortHasRosterViewer(UUID cohortId, UUID viewerUserId);
+
+    boolean cohortHasPeopleManager(UUID cohortId, UUID viewerUserId);
+
+    Optional<UUID> findCohortInstructorUserId(UUID cohortId);
+
+    void addTeachingAssistant(UUID cohortId, UUID userId);
+
+    void removeTeachingAssistant(UUID cohortId, UUID userId);
+
+    List<UUID> findTeachingAssistantUserIds(UUID cohortId);
+
+    boolean cohortHasTeachingAssistant(UUID cohortId, UUID userId);
+
+    boolean cohortHasEnrollments(UUID cohortId, List<UUID> learnerUserIds);
+
+    void assignTeachingAssistant(UUID cohortId, List<UUID> learnerUserIds, UUID teachingAssistantUserId);
+
+    void removeEnrollment(UUID cohortId, UUID learnerUserId);
+
+    CohortInvitation saveInvitation(CohortInvitation invitation);
+
+    List<CohortInvitation> findPendingInvitations(UUID cohortId);
+
+    void cancelInvitation(UUID cohortId, UUID invitationId, java.time.Instant resolvedAt);
 
     boolean courseChannelExists(UUID channelId);
 

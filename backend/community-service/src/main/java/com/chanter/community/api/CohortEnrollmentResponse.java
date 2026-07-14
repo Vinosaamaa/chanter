@@ -7,14 +7,16 @@ import java.util.UUID;
 public record CohortEnrollmentResponse(
         UUID learnerUserId,
         UUID enrolledByUserId,
-        Instant enrolledAt
+        Instant enrolledAt,
+        UUID assignedTeachingAssistantUserId
 ) {
 
     static CohortEnrollmentResponse from(CohortEnrollment enrollment) {
         return new CohortEnrollmentResponse(
                 enrollment.learnerUserId(),
                 enrollment.enrolledByUserId(),
-                enrollment.enrolledAt()
+                enrollment.enrolledAt(),
+                enrollment.assignedTeachingAssistantUserId()
         );
     }
 }
