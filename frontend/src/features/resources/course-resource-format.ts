@@ -29,6 +29,14 @@ export function resourceFileKind(resource: CourseResource): CourseResourceFilter
     return 'slides'
   }
 
+  if (
+    resource.contentType.startsWith('audio/') ||
+    resource.contentType.startsWith('video/') ||
+    /\.(m4a|mov|mp3|mp4|mpeg|ogg|wav|webm)$/.test(lowerName)
+  ) {
+    return 'recordings'
+  }
+
   return 'other'
 }
 
@@ -40,6 +48,8 @@ export function resourceKindLabel(kind: CourseResourceFilter): string {
       return 'Slides'
     case 'assignments':
       return 'Assignment'
+    case 'recordings':
+      return 'Recording'
     default:
       return 'File'
   }
