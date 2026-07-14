@@ -39,15 +39,26 @@ public CourseCatalogResponse getCourseCatalog(
 ### Truthful joining
 
 - `POST /api/v1/cohorts/{cohortId}/join` now accepts an empty body for an open Cohort.
-- Open enrollment requires Study Server membership, with the existing valid-invite path retained for bootstrap compatibility.
+- Open enrollment requires Study Server membership unconditionally; an invite code never substitutes for that boundary.
 - Invite-only Cohorts require the exact durable invite code.
 - Opening-soon and closed Cohorts return `409`; unpublished or unknown Cohorts return `404`.
 - Enrollment remains idempotent through the existing persistence boundary.
 
 ```java
 switch (joinDetails.enrollmentPolicy()) {
-    case OPEN -> requireMembershipOrValidInvite(joinDetails, learnerUserId, validInvite);
-    case INVITE_ONLY -> requireValidInvite(validInvite);
+    case OPEN -> {
+        boolean member = courseRepository.listAccessibleStudyServers(learnerUserId).stream()
+                .anyMatch(server -> server.id().equals(joinDetails.studyServerId()));
+        if (!member) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Open Cohort enrollment requires Study Server membership");
+        }
+    }
+    case INVITE_ONLY -> {
+        if (!validInvite) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid cohort invite code");
+        }
+    }
     case OPENING_SOON -> throw new ResponseStatusException(HttpStatus.CONFLICT, "Cohort enrollment is not open yet");
     case CLOSED -> throw new ResponseStatusException(HttpStatus.CONFLICT, "Cohort enrollment is closed");
 }
@@ -85,6 +96,7 @@ Red-green-refactor cycles cover:
 - authenticated, server-scoped published catalog reads with real counts and instructor identity;
 - backend search and each supported filter;
 - open joining without an invite and the resulting enrolled projection;
+- denial when an outsider presents a valid invite for an open Cohort;
 - invite-only success/failure, opening-soon conflicts, hidden Courses, and outsider denial;
 - migration preservation of legacy invite-only state plus the new open default;
 - frontend API paths and open/invite payloads;

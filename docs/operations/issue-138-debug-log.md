@@ -118,6 +118,38 @@ Scoped Create Course submission to its dialog and selected Invite Code by textbo
 
 The normal Community database was at V13. It was dumped to `.product/backups/chanter-community-pre-v14-20260714-070622.sql` before restart. V14 then applied successfully, and a direct query confirmed all 45 legacy Cohorts remained `INVITE_ONLY`.
 
+## 9. CodeAnt found an open-enrollment authorization bypass
+
+**Symptom**
+
+An authenticated outsider could submit the valid invite code attached to an `OPEN` Cohort and receive `204`, even without Study Server membership.
+
+**Diagnosis**
+
+The open-policy condition rejected only `!member && !validInvite`. That made an invite code a substitute for the documented Study Server membership boundary, even though invite authorization belongs only to `INVITE_ONLY` Cohorts.
+
+**Red test**
+
+`outsiderCannotUseAnOpenCohortInviteAsStudyServerMembership` exercised the public join endpoint and initially received `204` instead of `403`.
+
+**Fix**
+
+The `OPEN` branch now rejects every non-member regardless of invite validity. Invite matching remains scoped to `INVITE_ONLY`. The focused discovery suite passes all four tests on Java 21.
+
+## 10. A legacy enrollment test depended on the removed bypass
+
+**Symptom**
+
+The first full reactor run failed `CourseEnrollmentSmokeTest` because its invite-driven join expected `204` from a newly created `OPEN` Cohort and now correctly received `403`.
+
+**Diagnosis**
+
+The test predates explicit enrollment policies. Its behavior was an invite-only journey, but its fixture inherited the new `OPEN` default and therefore accidentally depended on the authorization bypass.
+
+**Fix**
+
+The two invitation-specific test fixtures now explicitly use `INVITE_ONLY`. Their invite success/failure behavior remains covered, the new OPEN boundary remains strict, the focused seven discovery/enrollment tests pass, and the complete Java reactor passes on Java 21.
+
 ## Final proof
 
 ```text
@@ -126,6 +158,7 @@ owner created a persisted open Course and the truthful catalog count updated
 learner discovered, filtered, and joined an open Cohort without an invite
 enrollment invalidated navigation and catalog caches
 learner joined an invite-only Cohort with a valid code
+outsider with a leaked open-Cohort invite received 403
 390x844 discovery rendered without horizontal overflow
 consoleErrors: []
 responseErrors: []

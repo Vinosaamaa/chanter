@@ -113,6 +113,26 @@ class CourseDiscoverySmokeTest {
     }
 
     @Test
+    void outsiderCannotUseAnOpenCohortInviteAsStudyServerMembership() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID outsiderUserId = UUID.randomUUID();
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+        CourseResponse openCourse = createCourse(
+                studyServer.id(),
+                ownerUserId,
+                "MATH 201 - Linear Algebra",
+                "Fall cohort"
+        );
+        UUID inviteCode = getInviteCode(openCourse.cohort().id(), ownerUserId);
+
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/join", openCourse.cohort().id())
+                        .with(asUser(outsiderUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("inviteCode", inviteCode))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void enforcesInviteAvailabilityPublicationAndMembershipBoundaries() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();

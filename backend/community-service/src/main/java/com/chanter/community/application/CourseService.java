@@ -539,7 +539,7 @@ public class CourseService {
             case OPEN -> {
                 boolean member = courseRepository.listAccessibleStudyServers(learnerUserId).stream()
                         .anyMatch(server -> server.id().equals(joinDetails.studyServerId()));
-                if (!member && !validInvite) {
+                if (!member) {
                     throw new ResponseStatusException(
                             HttpStatus.FORBIDDEN,
                             "Open Cohort enrollment requires Study Server membership"
