@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Ban,
   Check,
@@ -25,7 +26,8 @@ type FriendsTab = 'friends' | 'pending'
 type AvatarTone = 'blue' | 'purple' | 'amber' | 'green'
 
 export function FriendsPage() {
-  const hub = useFriendsHub()
+  const [searchParams] = useSearchParams()
+  const hub = useFriendsHub(searchParams.get('friend'))
   const user = useAuthStore((state) => state.user)
   const friendUserIds = useMemo(
     () => hub.friends.map((friend) => friend.friendUserId),

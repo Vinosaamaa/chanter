@@ -1,7 +1,8 @@
-import { ChevronDown, Radio, UserPlus } from 'lucide-react'
+import { ChevronDown, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
+import { useCohortRosterQuery } from '../../people/use-cohort-roster'
 import type { ShellCohort } from '../../shell/types'
 import type { V2CourseTab } from '../v2-routes'
 import { v2CoursePath } from '../v2-routes'
@@ -26,11 +27,13 @@ const tabs: { id: V2CourseTab; label: string }[] = [
 
 export function V2CourseChrome({ context }: { context: CourseChromeContext }) {
   const location = useLocation()
+  const roster = useCohortRosterQuery(context.selectedCohort?.id)
   const [cohortMenuOpen, setCohortMenuOpen] = useState(false)
   const cohortName = context.selectedCohort?.name ?? 'Cohort'
   const activeTab = tabs.find((tab) => location.pathname.endsWith(`/${tab.id}`))?.id ?? 'overview'
-  const showHeadingActions = !(activeTab === 'people' && context.courseCapabilities.canManagePeople)
+  const showInviteAction = activeTab !== 'people' && context.courseCapabilities.canManagePeople
   const canSwitchCohort = context.course.cohorts.length > 1
+  const instructorName = roster.data?.instructor.displayName ?? 'Course instructor'
 
   return (
     <header className="course-workspace-chrome">
@@ -70,13 +73,17 @@ export function V2CourseChrome({ context }: { context: CourseChromeContext }) {
                   ) : null}
                 </span>
               ) : cohortName}
-              <i>·</i> Dr. Alex Johnson
+              <i>·</i> {instructorName}
             </p>
           </div>
         </div>
-        {showHeadingActions ? <div className="course-heading-actions">
-          <span className="study-room-status"><i /> <Radio size={17} /> Study Room · 2 live</span>
-          {context.courseCapabilities.canManagePeople ? <button type="button" className="v2-outline-button"><UserPlus size={18} /> Invite</button> : null}
+        {showInviteAction ? <div className="course-heading-actions">
+          <NavLink
+            className="v2-outline-button"
+            to={`${v2CoursePath(context.serverId, context.courseId, 'people')}${context.selectedCohort ? `?cohort=${encodeURIComponent(context.selectedCohort.id)}` : ''}`}
+          >
+            <UserPlus size={18} /> Invite
+          </NavLink>
         </div> : null}
       </div>
       <nav className="workspace-tabs" aria-label="Course workspace tabs">

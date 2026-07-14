@@ -7,6 +7,7 @@ spring:
     enabled: true
 
 chanter:
+  internal-service-token: test-internal-service-token-for-auth
   jwt:
     secret: test-jwt-secret-for-auth-service-smoke-tests-only
     access-token-ttl: 15m

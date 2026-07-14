@@ -6,9 +6,18 @@ import { V2CourseWorkspaceLayout } from './V2CourseWorkspaceLayout'
 import { useV2CourseWorkspace } from './v2-course-workspace-context'
 
 const navigation = vi.hoisted(() => ({ value: {} as Record<string, unknown> }))
+const roster = vi.hoisted(() => ({ instructorName: 'Instructor Rivera' }))
 
 vi.mock('../../shell/hooks/use-shell-queries', () => ({
   useStudyServerNavigationQuery: () => navigation.value,
+}))
+
+vi.mock('../../people/use-cohort-roster', () => ({
+  useCohortRosterQuery: (cohortId: string | undefined) => ({
+    data: cohortId
+      ? { instructor: { displayName: roster.instructorName } }
+      : undefined,
+  }),
 }))
 
 describe('V2CourseWorkspaceLayout', () => {
@@ -17,6 +26,7 @@ describe('V2CourseWorkspaceLayout', () => {
   beforeEach(() => {
     localStorage.clear()
     navigation.value = { data: undefined, isLoading: false, isError: false }
+    roster.instructorName = 'Instructor Rivera'
   })
 
   it('does not mount course children while navigation is loading', () => {
@@ -80,7 +90,11 @@ describe('V2CourseWorkspaceLayout', () => {
     renderWorkspace()
 
     expect(screen.getByTestId('course-probe')).toHaveTextContent('course-real')
-    expect(screen.getByRole('button', { name: 'Invite' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Invite' })).toHaveAttribute(
+      'href',
+      '/app/servers/server-real/courses/course-real/people',
+    )
+    expect(screen.queryByText(/Study Room/)).not.toBeInTheDocument()
   })
 
   it('uses explicit owner and per-course instructor capabilities instead of catalog visibility', () => {
@@ -122,7 +136,10 @@ describe('V2CourseWorkspaceLayout', () => {
     renderWorkspace()
 
     expect(screen.getByTestId('owner-probe')).toHaveTextContent('learner')
-    expect(screen.getByRole('button', { name: 'Invite' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Invite' })).toHaveAttribute(
+      'href',
+      '/app/servers/server-real/courses/course-real/people',
+    )
   })
 
   it('restores and switches the selected cohort across the workspace', async () => {
@@ -168,6 +185,8 @@ describe('V2CourseWorkspaceLayout', () => {
     renderWorkspace()
 
     expect(screen.getByTestId('cohort-probe')).toHaveTextContent('cohort-fall')
+    expect(screen.getByText('Instructor Rivera')).toBeInTheDocument()
+    expect(screen.queryByText('Dr. Alex Johnson')).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByTestId('location-probe')).toHaveTextContent('?cohort=cohort-fall'))
     fireEvent.click(screen.getByRole('button', { name: 'Change cohort' }))
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Spring 2026' }))
@@ -217,7 +236,7 @@ describe('V2CourseWorkspaceLayout', () => {
 
     expect(screen.getByTestId('role-probe')).toHaveTextContent('teaching-assistant')
     expect(screen.getByTestId('question-management-probe')).toHaveTextContent('can-manage-questions')
-    expect(screen.queryByRole('button', { name: 'Invite' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Invite' })).not.toBeInTheDocument()
   })
 
   it('exposes an enrolled learner without teaching controls', () => {
@@ -262,7 +281,7 @@ describe('V2CourseWorkspaceLayout', () => {
 
     expect(screen.getByTestId('role-probe')).toHaveTextContent('learner')
     expect(screen.getByTestId('question-management-probe')).toHaveTextContent('cannot-manage-questions')
-    expect(screen.queryByRole('button', { name: 'Invite' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Invite' })).not.toBeInTheDocument()
   })
 })
 

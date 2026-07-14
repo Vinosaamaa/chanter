@@ -9,8 +9,10 @@ import java.net.URI;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -57,8 +59,94 @@ public class CourseController {
             @Valid @RequestBody CreateEnrollmentRequest request,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID instructorUserId
     ) {
-        courseService.enrollLearner(cohortId, instructorUserId, request.learnerUserId());
+        courseService.enrollLearnerByIdentity(
+                cohortId,
+                instructorUserId,
+                request.email(),
+                request.learnerUserId()
+        );
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest().build().toUri()).build();
+    }
+
+    @GetMapping("/cohorts/{cohortId}/roster")
+    public CohortRosterResponse getCohortRoster(
+            @PathVariable UUID cohortId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
+    ) {
+        return CohortRosterResponse.from(courseService.getCohortRoster(cohortId, viewerUserId));
+    }
+
+    @PostMapping("/cohorts/{cohortId}/teaching-assistants/{userId}")
+    public ResponseEntity<Void> addTeachingAssistant(
+            @PathVariable UUID cohortId,
+            @PathVariable UUID userId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.addTeachingAssistant(cohortId, actorUserId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/cohorts/{cohortId}/teaching-assistants/{userId}")
+    public ResponseEntity<Void> removeTeachingAssistant(
+            @PathVariable UUID cohortId,
+            @PathVariable UUID userId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.removeTeachingAssistant(cohortId, actorUserId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/cohorts/{cohortId}/invitations")
+    public ResponseEntity<CohortInvitationResponse> createCohortInvitation(
+            @PathVariable UUID cohortId,
+            @Valid @RequestBody CreateCohortInvitationRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        CohortInvitationResponse response = CohortInvitationResponse.from(
+                courseService.createCohortInvitation(cohortId, actorUserId, request.email())
+        );
+        return ResponseEntity.created(
+                        ServletUriComponentsBuilder.fromCurrentRequest()
+                                .path("/{invitationId}")
+                                .buildAndExpand(response.id())
+                                .toUri()
+                )
+                .body(response);
+    }
+
+    @DeleteMapping("/cohorts/{cohortId}/invitations/{invitationId}")
+    public ResponseEntity<Void> cancelCohortInvitation(
+            @PathVariable UUID cohortId,
+            @PathVariable UUID invitationId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.cancelCohortInvitation(cohortId, actorUserId, invitationId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/cohorts/{cohortId}/enrollments/{learnerUserId}")
+    public ResponseEntity<Void> removeEnrollment(
+            @PathVariable UUID cohortId,
+            @PathVariable UUID learnerUserId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.removeEnrollment(cohortId, actorUserId, learnerUserId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/cohorts/{cohortId}/enrollments/teaching-assistant")
+    public ResponseEntity<Void> assignTeachingAssistant(
+            @PathVariable UUID cohortId,
+            @Valid @RequestBody AssignTeachingAssistantRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.assignTeachingAssistant(
+                cohortId,
+                actorUserId,
+                request.learnerUserIds(),
+                request.teachingAssistantUserId()
+        );
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/cohorts/{cohortId}/join")

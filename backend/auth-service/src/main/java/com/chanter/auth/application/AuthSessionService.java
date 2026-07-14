@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -116,6 +117,10 @@ public class AuthSessionService {
                 .filter(java.util.Objects::nonNull)
                 .map(AuthUserProfile::from)
                 .toList();
+    }
+
+    public Optional<AuthUserProfile> findProfileByEmail(String email) {
+        return authUserRepository.findByEmail(normalizeEmail(email)).map(AuthUserProfile::from);
     }
 
     private AuthSession issueSession(AuthUser user) {

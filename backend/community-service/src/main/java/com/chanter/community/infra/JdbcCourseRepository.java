@@ -5,6 +5,8 @@ import com.chanter.community.domain.AccessibleStudyServer;
 import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.CohortEnrollment;
 import com.chanter.community.domain.CohortEnrollmentList;
+import com.chanter.community.domain.CohortInvitation;
+import com.chanter.community.domain.CohortInvitationStatus;
 import com.chanter.community.domain.CohortRole;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseChannel;
@@ -117,6 +119,20 @@ public class JdbcCourseRepository implements CourseRepository {
         } catch (DuplicateKeyException ignored) {
             // Re-enrolling the same learner is idempotent for this vertical slice.
         }
+        jdbcClient.sql("""
+                        UPDATE cohort_invitations
+                        SET status = :status,
+                            resolved_at = :resolvedAt
+                        WHERE cohort_id = :cohortId
+                        AND invited_user_id = :learnerUserId
+                        AND status = :pendingStatus
+                        """)
+                .param("status", CohortInvitationStatus.ACCEPTED.name())
+                .param("resolvedAt", OffsetDateTime.ofInstant(enrolledAt, ZoneOffset.UTC))
+                .param("cohortId", cohortId)
+                .param("learnerUserId", learnerUserId)
+                .param("pendingStatus", CohortInvitationStatus.PENDING.name())
+                .update();
     }
 
     @Override
@@ -147,7 +163,7 @@ public class JdbcCourseRepository implements CourseRepository {
         int totalCount = countQuery.query(Integer.class).single();
 
         var enrollmentQuery = jdbcClient.sql("""
-                        SELECT learner_user_id, enrolled_by_user_id, enrolled_at
+                        SELECT learner_user_id, enrolled_by_user_id, enrolled_at, assigned_ta_user_id
                         """ + COHORT_ENROLLMENT_FROM_WHERE + searchFilter + enrollmentOrderAndPage)
                 .param("cohortId", cohortId)
                 .param("limit", limit)
@@ -164,7 +180,8 @@ public class JdbcCourseRepository implements CourseRepository {
         return new CohortEnrollment(
                 rs.getObject("learner_user_id", UUID.class),
                 rs.getObject("enrolled_by_user_id", UUID.class),
-                rs.getObject("enrolled_at", OffsetDateTime.class).toInstant()
+                rs.getObject("enrolled_at", OffsetDateTime.class).toInstant(),
+                rs.getObject("assigned_ta_user_id", UUID.class)
         );
     }
 
@@ -228,6 +245,347 @@ public class JdbcCourseRepository implements CourseRepository {
                 .param("role", CourseRole.INSTRUCTOR.name())
                 .query(Integer.class)
                 .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean cohortHasRosterViewer(UUID cohortId, UUID viewerUserId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM cohorts c
+                        JOIN courses co ON co.id = c.course_id
+                        WHERE c.id = :cohortId
+                        AND (
+                            EXISTS (
+                                SELECT 1
+                                FROM course_roles cr
+                                WHERE cr.course_id = c.course_id
+                                AND cr.user_id = :viewerUserId
+                                AND cr.role = :instructorRole
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM cohort_enrollments ce
+                                WHERE ce.cohort_id = c.id
+                                AND ce.learner_user_id = :viewerUserId
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM cohort_roles cor
+                                WHERE cor.cohort_id = c.id
+                                AND cor.user_id = :viewerUserId
+                                AND cor.role = :teachingAssistantRole
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM study_server_roles ssr
+                                WHERE ssr.study_server_id = co.study_server_id
+                                AND ssr.user_id = :viewerUserId
+                                AND ssr.role = :ownerRole
+                            )
+                        )
+                        """)
+                .param("cohortId", cohortId)
+                .param("viewerUserId", viewerUserId)
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .param("teachingAssistantRole", CohortRole.TA.name())
+                .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean cohortHasPeopleManager(UUID cohortId, UUID viewerUserId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM cohorts c
+                        JOIN courses co ON co.id = c.course_id
+                        WHERE c.id = :cohortId
+                        AND (
+                            EXISTS (
+                                SELECT 1
+                                FROM course_roles cr
+                                WHERE cr.course_id = c.course_id
+                                AND cr.user_id = :viewerUserId
+                                AND cr.role = :instructorRole
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM study_server_roles ssr
+                                WHERE ssr.study_server_id = co.study_server_id
+                                AND ssr.user_id = :viewerUserId
+                                AND ssr.role = :ownerRole
+                            )
+                        )
+                        """)
+                .param("cohortId", cohortId)
+                .param("viewerUserId", viewerUserId)
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> findCohortInstructorUserId(UUID cohortId) {
+        return jdbcClient.sql("""
+                        SELECT cr.user_id
+                        FROM cohorts c
+                        JOIN course_roles cr ON cr.course_id = c.course_id
+                        WHERE c.id = :cohortId
+                        AND cr.role = :role
+                        """)
+                .param("cohortId", cohortId)
+                .param("role", CourseRole.INSTRUCTOR.name())
+                .query(UUID.class)
+                .optional();
+    }
+
+    @Override
+    @Transactional
+    public void addTeachingAssistant(UUID cohortId, UUID userId) {
+        try {
+            jdbcClient.sql("""
+                            INSERT INTO cohort_roles (cohort_id, user_id, role)
+                            VALUES (:cohortId, :userId, :role)
+                            """)
+                    .param("cohortId", cohortId)
+                    .param("userId", userId)
+                    .param("role", CohortRole.TA.name())
+                    .update();
+        } catch (DuplicateKeyException ignored) {
+            // Adding the same TA twice is idempotent.
+        }
+    }
+
+    @Override
+    @Transactional
+    public void removeTeachingAssistant(UUID cohortId, UUID userId) {
+        jdbcClient.sql("""
+                        UPDATE cohort_enrollments
+                        SET assigned_ta_user_id = NULL
+                        WHERE cohort_id = :cohortId
+                        AND assigned_ta_user_id = :userId
+                        """)
+                .param("cohortId", cohortId)
+                .param("userId", userId)
+                .update();
+        jdbcClient.sql("""
+                        DELETE FROM cohort_roles
+                        WHERE cohort_id = :cohortId
+                        AND user_id = :userId
+                        AND role = :role
+                        """)
+                .param("cohortId", cohortId)
+                .param("userId", userId)
+                .param("role", CohortRole.TA.name())
+                .update();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> findTeachingAssistantUserIds(UUID cohortId) {
+        return jdbcClient.sql("""
+                        SELECT user_id
+                        FROM cohort_roles
+                        WHERE cohort_id = :cohortId
+                        AND role = :role
+                        ORDER BY user_id
+                        """)
+                .param("cohortId", cohortId)
+                .param("role", CohortRole.TA.name())
+                .query(UUID.class)
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean cohortHasTeachingAssistant(UUID cohortId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM cohort_roles
+                        WHERE cohort_id = :cohortId
+                        AND user_id = :userId
+                        AND role = :role
+                        """)
+                .param("cohortId", cohortId)
+                .param("userId", userId)
+                .param("role", CohortRole.TA.name())
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean cohortHasEnrollments(UUID cohortId, List<UUID> learnerUserIds) {
+        if (learnerUserIds.isEmpty()) {
+            return false;
+        }
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM cohort_enrollments
+                        WHERE cohort_id = :cohortId
+                        AND learner_user_id IN (:learnerUserIds)
+                        """)
+                .param("cohortId", cohortId)
+                .param("learnerUserIds", learnerUserIds)
+                .query(Integer.class)
+                .single() == learnerUserIds.size();
+    }
+
+    @Override
+    @Transactional
+    public void assignTeachingAssistant(
+            UUID cohortId,
+            List<UUID> learnerUserIds,
+            UUID teachingAssistantUserId
+    ) {
+        jdbcClient.sql("""
+                        UPDATE cohort_enrollments
+                        SET assigned_ta_user_id = :teachingAssistantUserId
+                        WHERE cohort_id = :cohortId
+                        AND learner_user_id IN (:learnerUserIds)
+                        """)
+                .param("teachingAssistantUserId", teachingAssistantUserId)
+                .param("cohortId", cohortId)
+                .param("learnerUserIds", learnerUserIds)
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public void removeEnrollment(UUID cohortId, UUID learnerUserId) {
+        jdbcClient.sql("""
+                        UPDATE cohort_enrollments
+                        SET assigned_ta_user_id = NULL
+                        WHERE cohort_id = :cohortId
+                        AND assigned_ta_user_id = :learnerUserId
+                        """)
+                .param("cohortId", cohortId)
+                .param("learnerUserId", learnerUserId)
+                .update();
+        jdbcClient.sql("""
+                        DELETE FROM cohort_roles
+                        WHERE cohort_id = :cohortId
+                        AND user_id = :learnerUserId
+                        """)
+                .param("cohortId", cohortId)
+                .param("learnerUserId", learnerUserId)
+                .update();
+        jdbcClient.sql("""
+                        DELETE FROM cohort_enrollments
+                        WHERE cohort_id = :cohortId
+                        AND learner_user_id = :learnerUserId
+                        """)
+                .param("cohortId", cohortId)
+                .param("learnerUserId", learnerUserId)
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public CohortInvitation saveInvitation(CohortInvitation invitation) {
+        int updated = jdbcClient.sql("""
+                        UPDATE cohort_invitations
+                        SET id = :id,
+                            email = :email,
+                            invited_by_user_id = :invitedByUserId,
+                            status = :status,
+                            created_at = :createdAt,
+                            resolved_at = NULL
+                        WHERE cohort_id = :cohortId
+                        AND invited_user_id = :invitedUserId
+                        """)
+                .param("id", invitation.id())
+                .param("email", invitation.email())
+                .param("invitedByUserId", invitation.invitedByUserId())
+                .param("status", invitation.status().name())
+                .param("createdAt", OffsetDateTime.ofInstant(invitation.createdAt(), ZoneOffset.UTC))
+                .param("cohortId", invitation.cohortId())
+                .param("invitedUserId", invitation.invitedUserId())
+                .update();
+        if (updated == 0) {
+            jdbcClient.sql("""
+                            INSERT INTO cohort_invitations (
+                                id,
+                                cohort_id,
+                                invited_user_id,
+                                email,
+                                invited_by_user_id,
+                                status,
+                                created_at
+                            )
+                            VALUES (
+                                :id,
+                                :cohortId,
+                                :invitedUserId,
+                                :email,
+                                :invitedByUserId,
+                                :status,
+                                :createdAt
+                            )
+                            """)
+                    .param("id", invitation.id())
+                    .param("cohortId", invitation.cohortId())
+                    .param("invitedUserId", invitation.invitedUserId())
+                    .param("email", invitation.email())
+                    .param("invitedByUserId", invitation.invitedByUserId())
+                    .param("status", invitation.status().name())
+                    .param("createdAt", OffsetDateTime.ofInstant(invitation.createdAt(), ZoneOffset.UTC))
+                    .update();
+        }
+        return invitation;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CohortInvitation> findPendingInvitations(UUID cohortId) {
+        return jdbcClient.sql("""
+                        SELECT id,
+                               cohort_id,
+                               invited_user_id,
+                               email,
+                               invited_by_user_id,
+                               status,
+                               created_at
+                        FROM cohort_invitations
+                        WHERE cohort_id = :cohortId
+                        AND status = :status
+                        ORDER BY created_at DESC, id ASC
+                        """)
+                .param("cohortId", cohortId)
+                .param("status", CohortInvitationStatus.PENDING.name())
+                .query((rs, rowNum) -> new CohortInvitation(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("cohort_id", UUID.class),
+                        rs.getObject("invited_user_id", UUID.class),
+                        rs.getString("email"),
+                        rs.getObject("invited_by_user_id", UUID.class),
+                        CohortInvitationStatus.valueOf(rs.getString("status")),
+                        rs.getObject("created_at", OffsetDateTime.class).toInstant()
+                ))
+                .list();
+    }
+
+    @Override
+    @Transactional
+    public void cancelInvitation(UUID cohortId, UUID invitationId, Instant resolvedAt) {
+        jdbcClient.sql("""
+                        UPDATE cohort_invitations
+                        SET status = :status,
+                            resolved_at = :resolvedAt
+                        WHERE cohort_id = :cohortId
+                        AND id = :invitationId
+                        AND status = :pendingStatus
+                        """)
+                .param("status", CohortInvitationStatus.CANCELLED.name())
+                .param("resolvedAt", OffsetDateTime.ofInstant(resolvedAt, ZoneOffset.UTC))
+                .param("cohortId", cohortId)
+                .param("invitationId", invitationId)
+                .param("pendingStatus", CohortInvitationStatus.PENDING.name())
+                .update();
     }
 
     @Override

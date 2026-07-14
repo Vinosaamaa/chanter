@@ -15,7 +15,7 @@ describe('useCohortEnrollment', () => {
     mockedEnrollLearner.mockReset()
   })
 
-  it('rejects empty learner user id', async () => {
+  it('rejects empty learner email', async () => {
     const { result } = renderHook(() => useCohortEnrollment('cohort-1'))
 
     let enrolled = true
@@ -24,7 +24,7 @@ describe('useCohortEnrollment', () => {
     })
 
     expect(enrolled).toBe(false)
-    expect(result.current.error).toMatch(/enter the learner user id/i)
+    expect(result.current.error).toMatch(/enter the learner email/i)
     expect(mockedEnrollLearner).not.toHaveBeenCalled()
   })
 
@@ -32,7 +32,7 @@ describe('useCohortEnrollment', () => {
     const { result } = renderHook(() => useCohortEnrollment(''))
 
     act(() => {
-      result.current.setLearnerUserId('learner-42')
+      result.current.setLearnerEmail('learner@example.edu')
     })
 
     let enrolled = true
@@ -45,12 +45,12 @@ describe('useCohortEnrollment', () => {
     expect(mockedEnrollLearner).not.toHaveBeenCalled()
   })
 
-  it('enrolls trimmed learner user id', async () => {
+  it('enrolls trimmed learner email', async () => {
     mockedEnrollLearner.mockResolvedValue(undefined)
     const { result } = renderHook(() => useCohortEnrollment('cohort-1'))
 
     act(() => {
-      result.current.setLearnerUserId('  learner-42  ')
+      result.current.setLearnerEmail('  learner@example.edu  ')
     })
 
     let enrolled = false
@@ -59,7 +59,7 @@ describe('useCohortEnrollment', () => {
     })
 
     expect(enrolled).toBe(true)
-    expect(mockedEnrollLearner).toHaveBeenCalledWith('cohort-1', 'learner-42')
+    expect(mockedEnrollLearner).toHaveBeenCalledWith('cohort-1', 'learner@example.edu')
     expect(result.current.successMessage).toMatch(/learner enrolled/i)
   })
 })

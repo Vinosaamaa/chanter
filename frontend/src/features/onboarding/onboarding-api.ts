@@ -26,10 +26,10 @@ export async function createCourse(
   })
 }
 
-export async function enrollLearner(cohortId: string, learnerUserId: string): Promise<void> {
+export async function enrollLearner(cohortId: string, email: string): Promise<void> {
   await apiFetch<void>(`${cohortPath(cohortId)}/enrollments`, {
     method: 'POST',
-    body: JSON.stringify({ learnerUserId }),
+    body: JSON.stringify({ email }),
   })
 }
 

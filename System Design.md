@@ -95,7 +95,7 @@ Friends and direct messages can exist, but they are not the core MVP learning wo
 - Organization workspaces can enforce stricter policies for minors, schools, or compliance-sensitive programs.
 - Abuse reports and blocks should be available before broad DM rollout.
 
-Current implementation through #109 is an explicit transition toward the target User Service boundary: Community Service owns privacy-scoped co-member discovery, Message Service owns Friend Requests, friendships, blocks, and DMs, and Auth Service provides a bounded authenticated `userId`/`displayName` batch read. Profile reads move to User Service when that service is introduced; email and authentication data are not part of the public profile contract.
+Current implementation through #136 is an explicit transition toward the target User Service boundary: Community Service owns privacy-scoped co-member discovery and Cohort roster projections, Message Service owns Friend Requests, friendships, blocks, and DMs, and Auth Service provides bounded internal identity reads. Public profile responses remain limited to `userId` and `displayName`; registered-account email lookup is internal-only, requires the shared backend service credential, and exists for enrollment/invitation resolution. Profile reads move to User Service when that service is introduced; authentication data does not become part of the public profile contract.
 
 The first version should prioritize Study Server channels, office-hours queues, and instructor/TA workflows over a broad social network. Universal self-serve registration is still useful: anyone can create a Study Server, but trustworthy instructor powers come from server ownership, admin assignment, or later organization verification.
 
@@ -112,9 +112,9 @@ The edge layer exists to keep obvious bad traffic away from the application, rou
 The backend uses Spring Boot microservices. Each service owns one business capability and should be deployable independently.
 
 - Gateway Service owns public REST routing, CORS, edge rate limiting coordination, request correlation, and routing to internal services.
-- Auth Service owns registration, login, password hashing, access tokens, refresh token rotation, sessions, and logout.
+- Auth Service owns registration, login, password hashing, access tokens, refresh token rotation, sessions, logout, and the temporary internal account directory used by service-to-service enrollment workflows.
 - User Service is the target owner for profiles, display names, avatars metadata, user settings, account status, social graph preferences, and verified educator profile signals. Until it exists, Auth Service supplies the bounded public display-name read while Message Service owns the durable social graph and blocks.
-- Community Service owns organizations/workspaces, Study Servers, course/module channels, members, instructor/TA/learner roles, permissions, invites, Office Hours sessions/participants, and canonical permission evaluation.
+- Community Service owns organizations/workspaces, Study Servers, course/module channels, members, Cohort enrollments/invitations, instructor/TA/learner roles and assignments, permissions, Office Hours sessions/participants, and canonical permission evaluation.
 - Message Command Service owns message writes, edit/delete commands, question markers, reactions, read receipts, idempotency keys, and durable message creation.
 - Message Query Service owns message reads, pagination, history lookup, query-optimized message views, and course-channel history views.
 - Realtime WebSocket Gateway owns connected clients, subscriptions, channel authorization, reconnects, typing indicators, presence fan-out, **friend presence subscriptions**, **live DM delivery**, and **DM call signaling** (issues #31–#32).
@@ -220,6 +220,12 @@ Each service owns its own database or storage system. Other services do not quer
 - Redis stores cache, sessions, rate limit counters, presence, and typing state.
 
 Redis is not the durable source of truth. It is used for fast ephemeral or cache-oriented data.
+
+### Durable Cohort Roster And Identity Resolution
+
+Community Service is authoritative for Cohort membership and role state. A roster combines the Course instructor, Cohort TA assignments, learner Enrollments, per-learner assigned TA, and pending Cohort invitations. Study Server owners and the Course instructor can mutate that roster; enrolled learners can read only the scoped projection needed for the People experience. Removing an Enrollment revokes Cohort access, and removing a TA clears learner assignments that reference that TA.
+
+Enrollment by email does not make Community Service an owner of credentials or account identity. Community calls Auth Service through an internal-only directory contract, authenticated by `X-Chanter-Internal-Service-Token`, to resolve a normalized registered-account email and to batch bounded profile reads. Cohort manager authorization occurs before email resolution so unauthorized callers cannot use response differences to enumerate accounts. Pending invitations persist in Community Service and resolve when the matching authenticated account enrolls or joins. Email ownership verification is still assigned to production auth issue #102. This boundary is temporary until User Service owns profiles and directory lookup; it must not expose email through public member-discovery or learner roster contracts.
 
 ### Durable Office Hours And Live Audio
 

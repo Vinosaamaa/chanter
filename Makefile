@@ -22,6 +22,11 @@ define require-jwt-secret
 	@test $${#CHANTER_JWT_SECRET} -ge 32 || (echo "CHANTER_JWT_SECRET must be at least 32 characters." && exit 1)
 endef
 
+define require-internal-service-token
+	@test -n "$$CHANTER_INTERNAL_SERVICE_TOKEN" || (echo "CHANTER_INTERNAL_SERVICE_TOKEN is required. Add a 32+ character value to .env." && exit 1)
+	@test $${#CHANTER_INTERNAL_SERVICE_TOKEN} -ge 32 || (echo "CHANTER_INTERNAL_SERVICE_TOKEN must be at least 32 characters." && exit 1)
+endef
+
 infra-up:
 	@test -f .env || cp .env.example .env
 	docker compose -f infra/docker-compose.yml --env-file .env up -d postgres redis redpanda minio
@@ -44,10 +49,12 @@ backend-gateway:
 
 backend-auth:
 	$(require-jwt-secret)
+	$(require-internal-service-token)
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl auth-service spring-boot:run
 
 backend-community:
 	$(require-jwt-secret)
+	$(require-internal-service-token)
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl community-service spring-boot:run
 
 backend-message:
