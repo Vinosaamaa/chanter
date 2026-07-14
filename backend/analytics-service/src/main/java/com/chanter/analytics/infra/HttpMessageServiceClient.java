@@ -1,6 +1,7 @@
 package com.chanter.analytics.infra;
 
 import com.chanter.analytics.config.MessageServiceClientProperties;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.util.List;
 import java.util.UUID;
@@ -37,7 +38,12 @@ public class HttpMessageServiceClient {
         try {
             MessageMetricsResponse response = restClient.post()
                     .uri("/api/v1/instructor-dashboard/message-metrics")
-                    .body(request)
+                    .header(AuthHeaders.USER_ID, request.viewerUserId().toString())
+                    .body(new MessageMetricsBody(
+                            request.questionChannelIds(),
+                            request.cohortIds(),
+                            request.courseIds()
+                    ))
                     .retrieve()
                     .body(MessageMetricsResponse.class);
 
@@ -65,6 +71,13 @@ public class HttpMessageServiceClient {
 
     public record MessageMetricsRequest(
             UUID viewerUserId,
+            List<UUID> questionChannelIds,
+            List<UUID> cohortIds,
+            List<UUID> courseIds
+    ) {
+    }
+
+    private record MessageMetricsBody(
             List<UUID> questionChannelIds,
             List<UUID> cohortIds,
             List<UUID> courseIds

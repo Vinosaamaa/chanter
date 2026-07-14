@@ -2,11 +2,12 @@ package com.chanter.analytics.api;
 
 import com.chanter.analytics.application.InstructorDashboardService;
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthHeaders;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -22,7 +23,7 @@ public class InstructorDashboardController {
     @GetMapping("/instructor-dashboard")
     public InstructorDashboardResponse getInstructorDashboard(
             @PathVariable UUID studyServerId,
-            @RequestParam UUID viewerUserId
+            @RequestHeader(AuthHeaders.USER_ID) UUID viewerUserId
     ) {
         return instructorDashboardService.buildDashboard(studyServerId, viewerUserId);
     }

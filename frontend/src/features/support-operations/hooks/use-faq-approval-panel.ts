@@ -82,7 +82,7 @@ export function useFaqApprovalPanel(
       setActionMessage(null)
 
       try {
-        const candidateList = await listFaqCandidates(questionsChannelId, userId)
+        const candidateList = await listFaqCandidates(questionsChannelId)
         if (cancelled) {
           return
         }
@@ -109,7 +109,7 @@ export function useFaqApprovalPanel(
       }
 
       try {
-        const approvedList = await listApprovedFaqs(courseId, userId)
+        const approvedList = await listApprovedFaqs(courseId)
         if (!cancelled) {
           approvedFaqsContextKeyRef.current = approvedFaqsContextKey
           setApprovedFaqs(approvedList.approvedFaqs)
@@ -221,7 +221,6 @@ export function useFaqApprovalPanel(
     try {
       const saved = await upsertApprovedFaq(courseId, {
         channelId: questionsChannelId,
-        approvedByUserId: userId,
         id: editingFaqId ?? undefined,
         question: trimmedQuestion,
         answer: trimmedAnswer,

@@ -4,6 +4,7 @@ import com.chanter.common.ServiceInfo;
 import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.message.application.SupportQuestionService;
 import com.chanter.message.domain.SupportQuestion;
+import com.chanter.message.domain.SupportQuestionReply;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -50,12 +51,12 @@ public class SupportQuestionController {
     }
 
     @GetMapping("/{channelId}/support-questions")
-    public SupportQuestionListResponse listUnansweredSupportQuestions(
+    public SupportQuestionListResponse listSupportQuestions(
             @PathVariable UUID channelId,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         List<SupportQuestionSummaryResponse> supportQuestions = supportQuestionService
-                .listUnansweredSupportQuestions(channelId, viewerUserId)
+                .listSupportQuestions(channelId, viewerUserId)
                 .stream()
                 .map(SupportQuestionSummaryResponse::from)
                 .toList();
@@ -89,5 +90,54 @@ public class SupportQuestionController {
                         request.status()
                 )
         );
+    }
+
+    @PostMapping("/{channelId}/support-questions/{supportQuestionId}/replies")
+    public ResponseEntity<SupportQuestionReplyResponse> postReply(
+            @PathVariable UUID channelId,
+            @PathVariable UUID supportQuestionId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID authorUserId,
+            @Valid @RequestBody CreateSupportQuestionReplyRequest request
+    ) {
+        SupportQuestionReply reply = supportQuestionService.postReply(
+                channelId,
+                supportQuestionId,
+                authorUserId,
+                request.body()
+        );
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{replyId}")
+                .buildAndExpand(reply.id())
+                .toUri();
+        return ResponseEntity.created(location).body(SupportQuestionReplyResponse.from(reply));
+    }
+
+    @GetMapping("/{channelId}/support-questions/{supportQuestionId}/replies")
+    public SupportQuestionReplyListResponse listReplies(
+            @PathVariable UUID channelId,
+            @PathVariable UUID supportQuestionId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
+    ) {
+        List<SupportQuestionReplyResponse> replies = supportQuestionService
+                .listReplies(channelId, supportQuestionId, viewerUserId)
+                .stream()
+                .map(SupportQuestionReplyResponse::from)
+                .toList();
+        return new SupportQuestionReplyListResponse(replies);
+    }
+
+    @PatchMapping("/{channelId}/support-questions/{supportQuestionId}/moderation")
+    public SupportQuestionResponse moderateSupportQuestion(
+            @PathVariable UUID channelId,
+            @PathVariable UUID supportQuestionId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId,
+            @Valid @RequestBody ModerateSupportQuestionRequest request
+    ) {
+        return SupportQuestionResponse.from(supportQuestionService.moderateSupportQuestion(
+                channelId,
+                supportQuestionId,
+                actorUserId,
+                request.status()
+        ));
     }
 }

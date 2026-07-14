@@ -20,6 +20,8 @@ public interface SupportQuestionRepository {
 
     List<SupportQuestion> findByChannelId(UUID channelId);
 
+    List<SupportQuestion> findByChannelIdAndSenderUserId(UUID channelId, UUID senderUserId);
+
     List<SupportQuestion> findByChannelIdAndCreatedAtBetween(
             UUID channelId,
             Instant windowStartInclusive,

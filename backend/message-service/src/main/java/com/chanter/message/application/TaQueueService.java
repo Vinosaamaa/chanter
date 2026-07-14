@@ -20,17 +20,20 @@ public class TaQueueService {
     private final TaQueueRepository taQueueRepository;
     private final SupportQuestionRepository supportQuestionRepository;
     private final CohortTaQueueAccessClient cohortTaQueueAccessClient;
+    private final CourseChannelAccessClient courseChannelAccessClient;
     private final Clock clock;
 
     public TaQueueService(
             TaQueueRepository taQueueRepository,
             SupportQuestionRepository supportQuestionRepository,
             CohortTaQueueAccessClient cohortTaQueueAccessClient,
+            CourseChannelAccessClient courseChannelAccessClient,
             Clock clock
     ) {
         this.taQueueRepository = taQueueRepository;
         this.supportQuestionRepository = supportQuestionRepository;
         this.cohortTaQueueAccessClient = cohortTaQueueAccessClient;
+        this.courseChannelAccessClient = courseChannelAccessClient;
         this.clock = clock;
     }
 
@@ -44,6 +47,13 @@ public class TaQueueService {
         CohortTaQueueAccess access = cohortTaQueueAccessClient.requireAccess(cohortId, learnerUserId);
         if (!access.canAddToTaQueue()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only enrolled learners can add items to the TA Queue");
+        }
+        CourseChannelAccess channelAccess = courseChannelAccessClient.requireAccess(channelId, learnerUserId);
+        if (!channelAccess.courseId().equals(access.courseId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Support Question and TA Queue Cohort must belong to the same Course"
+            );
         }
 
         SupportQuestion supportQuestion = supportQuestionRepository.findByIdAndChannelId(channelId, supportQuestionId)
@@ -109,7 +119,27 @@ public class TaQueueService {
         if (existing.status() != TaQueueItemStatus.PICKED_UP) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "TA Queue item must be picked up before resolve");
         }
-        return applyTransition(existing, cohortId, TaQueueItemStatus.PICKED_UP, TaQueueItemStatus.RESOLVED, taUserId);
+        TaQueueItem resolved = applyTransition(
+                existing,
+                cohortId,
+                TaQueueItemStatus.PICKED_UP,
+                TaQueueItemStatus.RESOLVED,
+                taUserId
+        );
+        SupportQuestion supportQuestion = supportQuestionRepository
+                .findByIdAndChannelId(existing.channelId(), existing.supportQuestionId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Support Question not found"));
+        if (!isClosed(supportQuestion.status())) {
+            boolean questionResolved = supportQuestionRepository.updateStatus(
+                    supportQuestion.id(),
+                    supportQuestion.status(),
+                    SupportQuestionStatus.RESOLVED
+            );
+            if (!questionResolved) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question status has changed");
+            }
+        }
+        return resolved;
     }
 
     @Transactional
@@ -189,5 +219,11 @@ public class TaQueueService {
 
         return taQueueRepository.findByIdAndCohortId(existing.id(), cohortId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA Queue item not found"));
+    }
+
+    private static boolean isClosed(SupportQuestionStatus status) {
+        return status == SupportQuestionStatus.RESOLVED
+                || status == SupportQuestionStatus.CANCELLED
+                || status == SupportQuestionStatus.DUPLICATE;
     }
 }

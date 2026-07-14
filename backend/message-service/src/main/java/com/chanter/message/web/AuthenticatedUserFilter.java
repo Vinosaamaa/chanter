@@ -58,6 +58,10 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
                 || uri.contains("/user-blocks")
                 || uri.endsWith("/messages")
                 || uri.contains("/support-questions")
+                || uri.contains("/instructor-dashboard")
+                || uri.contains("/ta-queue")
+                || uri.contains("/faq-candidates")
+                || uri.contains("/approved-faqs")
                 || uri.endsWith("/channel-summary");
     }
 }

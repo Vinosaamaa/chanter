@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { OfficeHoursSession } from '../../../support-operations/support-operations-types'
 import { CourseOfficeHoursPage } from './CourseOfficeHoursPage'
 
 const mocks = vi.hoisted(() => ({
@@ -37,8 +38,8 @@ const mocks = vi.hoisted(() => ({
       endsAt: '2026-07-14T21:00:00.000Z',
       status: 'LIVE',
       createdAt: '2026-07-13T20:00:00.000Z',
-    },
-    upcomingSessions: [],
+    } as OfficeHoursSession | null,
+    upcomingSessions: [] as OfficeHoursSession[],
     participants: [
       {
         sessionId: 'live-session',
@@ -127,10 +128,16 @@ describe('CourseOfficeHoursPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
     mocks.workspace.courseCapabilities.canScheduleOfficeHours = true
     mocks.officeHours.canSchedule = true
     mocks.officeHours.canJoin = false
     mocks.officeHours.canManage = true
+    mocks.officeHours.liveSession = {
+      ...mocks.officeHours.sessions[0],
+      status: 'LIVE',
+    }
+    mocks.officeHours.upcomingSessions = []
     mocks.officeHours.currentParticipant = mocks.officeHours.participants[0]
     mocks.voice.status = 'connected'
     mocks.voice.canSpeak = true
@@ -205,5 +212,34 @@ describe('CourseOfficeHoursPage', () => {
     await user.click(screen.getByRole('button', { name: 'Leave' }))
     expect(mocks.voice.leaveVoice).toHaveBeenCalledOnce()
     expect(mocks.officeHours.leaveSession).toHaveBeenCalledOnce()
+  })
+
+  it('highlights the exact scheduled session selected by the Teaching deep link', () => {
+    mocks.officeHours.liveSession = null
+    mocks.officeHours.upcomingSessions = [
+      {
+        ...mocks.officeHours.sessions[0],
+        id: 'session-first',
+        status: 'SCHEDULED',
+        startsAt: '2026-07-15T20:00:00.000Z',
+        endsAt: '2026-07-15T21:00:00.000Z',
+      },
+      {
+        ...mocks.officeHours.sessions[0],
+        id: 'session-target',
+        status: 'SCHEDULED',
+        startsAt: '2026-07-16T20:00:00.000Z',
+        endsAt: '2026-07-16T21:00:00.000Z',
+      },
+    ]
+    window.history.replaceState({}, '', '/office-hours?session=session-target')
+
+    render(<CourseOfficeHoursPage />)
+
+    expect(
+      screen.getAllByText(/Thu, Jul 16/)
+        .map((element) => element.closest('article'))
+        .find((article) => article?.classList.contains('highlighted')),
+    ).toHaveClass('highlighted')
   })
 })

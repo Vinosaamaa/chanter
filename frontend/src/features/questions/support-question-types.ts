@@ -1,4 +1,13 @@
-export type SupportQuestionStatus = 'UNANSWERED' | 'AI_ANSWERED' | 'AI_LOW_CONFIDENCE'
+export type SupportQuestionStatus =
+  | 'UNANSWERED'
+  | 'AI_ANSWERED'
+  | 'AI_LOW_CONFIDENCE'
+  | 'HUMAN_ANSWERED'
+  | 'RESOLVED'
+  | 'CANCELLED'
+  | 'DUPLICATE'
+
+export type SupportQuestionModerationStatus = 'RESOLVED' | 'CANCELLED' | 'DUPLICATE'
 
 export type SupportQuestion = {
   id: string
@@ -23,6 +32,18 @@ export type SupportQuestionSummary = {
 
 export type SupportQuestionListResponse = {
   supportQuestions: SupportQuestionSummary[]
+}
+
+export type SupportQuestionReply = {
+  id: string
+  supportQuestionId: string
+  authorUserId: string
+  body: string
+  createdAt: string
+}
+
+export type SupportQuestionReplyListResponse = {
+  replies: SupportQuestionReply[]
 }
 
 export type AssistantAnswerSource = {

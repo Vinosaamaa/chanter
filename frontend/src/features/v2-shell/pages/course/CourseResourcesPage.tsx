@@ -56,6 +56,7 @@ export function CourseResourcesPage() {
   })
   const [uploadOpen, setUploadOpen] = useState(false)
   const canManageResources = courseCapabilities.canUploadResources && resources.canUpload
+  const selectedResourceId = new URLSearchParams(window.location.search).get('resource')
 
   let assistantControl = null
   if (canManageResources) {
@@ -166,6 +167,7 @@ export function CourseResourcesPage() {
                 <LiveResourceRow
                   key={resource.id}
                   resource={resource}
+                  highlighted={resource.id === selectedResourceId}
                   isDownloading={resources.downloadingResourceId === resource.id}
                   onPreview={() => void resources.previewResource(resource)}
                   onDownload={() => void resources.downloadResource(resource)}
@@ -378,18 +380,33 @@ function UploadResourceDialog({
 
 function LiveResourceRow({
   resource,
+  highlighted,
   isDownloading,
   onPreview,
   onDownload,
 }: {
   resource: CourseResource
+  highlighted: boolean
   isDownloading: boolean
   onPreview: () => void
   onDownload: () => void
 }) {
   const kind = resourceFileKind(resource)
+  const rowRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!highlighted || !rowRef.current) return
+    rowRef.current.scrollIntoView?.({ block: 'center' })
+    rowRef.current.focus()
+  }, [highlighted])
+
   return (
-    <article className="resource-row">
+    <article
+      ref={rowRef}
+      className={`resource-row ${highlighted ? 'highlighted' : ''}`}
+      aria-current={highlighted ? 'true' : undefined}
+      tabIndex={highlighted ? -1 : undefined}
+    >
       <span className={`resource-type-icon ${kind}`}>
         <FileText />
       </span>

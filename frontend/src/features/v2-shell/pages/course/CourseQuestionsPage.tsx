@@ -1,86 +1,189 @@
-import { useMemo, useState, type FormEvent } from 'react'
-import { ExternalLink, FileText, Info, Plus, Send, Smile, Sparkles, ThumbsUp } from 'lucide-react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
+import {
+  CheckCircle2,
+  Copy,
+  ExternalLink,
+  FileText,
+  Info,
+  Plus,
+  RefreshCw,
+  Send,
+  Sparkles,
+  ThumbsUp,
+  XCircle,
+} from 'lucide-react'
 
+import { useAuthStore } from '../../../../stores/auth-store'
+import type { PublicUserProfile } from '../../../friends/types'
+import type { SupportQuestionStatus } from '../../../questions/support-question-types'
+import { useFaqApprovalPanel } from '../../../support-operations/hooks/use-faq-approval-panel'
+import { useTaQueuePanel } from '../../../support-operations/hooks/use-ta-queue-panel'
 import { useQuestionsChannel } from '../../../shell/hooks/use-questions-channel'
-import type { QuestionsTimelineEntry } from '../../../shell/hooks/use-questions-channel'
 import { V2Avatar } from '../../components/V2Avatar'
 import { useV2CourseWorkspace } from '../../layouts/v2-course-workspace-context'
 
-const demoQuestions = [
-  { id: 'recursion', author: 'Sam', age: '1h ago', body: 'How do I trace recursion on merge sort?', tone: 'amber' as const, open: true },
-  { id: 'big-o', author: 'Jordan', age: '3h ago', body: 'Big-O for nested loops?', tone: 'purple' as const, open: true },
-  { id: 'office-hours', author: 'Priya', age: 'yesterday', body: 'When is office hours?', tone: 'green' as const, open: false },
-]
+type QuestionFilter = 'open' | 'answered' | 'mine'
 
-const demoAnswer = {
-  body: 'To trace recursion on merge sort, identify the base case and recursive case. The base case is when the subarray has length ≤ 1, which returns immediately. Otherwise, split the array into two halves, recursively sort each half, then merge them back together. Tracing this process as a recursion tree helps visualize the call stack and the combine steps.',
-  sources: [
-    { resourceId: 'lecture-2', resourceTitle: 'Lecture 2 — Recursion Deep Dive', excerpt: 'Covers merge sort recursion, base case, call stack visualization, and merge step.' },
-    { resourceId: 'faq-recursion', resourceTitle: 'Approved FAQ — Tracing Recursion', excerpt: 'Step-by-step guide for tracing recursion with examples and diagrams.' },
-  ],
+const OPEN_STATUSES: SupportQuestionStatus[] = ['UNANSWERED', 'AI_LOW_CONFIDENCE']
+
+function displayName(userId: string, profiles: Record<string, PublicUserProfile>): string {
+  return profiles[userId]?.displayName ?? `Member ${userId.slice(0, 8)}`
+}
+
+function formatTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function statusLabel(status: SupportQuestionStatus): string {
+  switch (status) {
+    case 'UNANSWERED': return 'Open'
+    case 'AI_ANSWERED': return 'AI answered'
+    case 'AI_LOW_CONFIDENCE': return 'Needs human help'
+    case 'HUMAN_ANSWERED': return 'Staff answered'
+    case 'RESOLVED': return 'Resolved'
+    case 'CANCELLED': return 'Cancelled'
+    case 'DUPLICATE': return 'Duplicate'
+  }
+}
+
+function questionsForFilter(
+  supportQuestions: ReturnType<typeof useQuestionsChannel>['supportQuestions'],
+  filter: QuestionFilter,
+  userId: string | null,
+) {
+  const sorted = [...supportQuestions].sort((left, right) =>
+    right.createdAt.localeCompare(left.createdAt),
+  )
+  if (filter === 'mine') return sorted.filter((question) => question.senderUserId === userId)
+  if (filter === 'open') return sorted.filter((question) => OPEN_STATUSES.includes(question.status))
+  return sorted.filter((question) => !OPEN_STATUSES.includes(question.status))
 }
 
 export function CourseQuestionsPage() {
-  const { course, courseCapabilities, selectedCohort } = useV2CourseWorkspace()
+  const { serverId, course, courseCapabilities, selectedCohort } = useV2CourseWorkspace()
+  const userId = useAuthStore((state) => state.user?.id ?? null)
   const manageQuestions = courseCapabilities.canManageQuestions
   const questionChannel = course.channels.find((channel) => channel.name.toLowerCase() === 'questions')
   const questions = useQuestionsChannel({
-    channelId: questionChannel?.id ?? 'questions-demo',
-    cohortId: selectedCohort?.id ?? 'cohort-demo',
+    channelId: questionChannel?.id ?? '',
+    cohortId: selectedCohort?.id ?? '',
   })
-  const [filter, setFilter] = useState<'open' | 'answered' | 'mine'>('open')
-  const [selectedId, setSelectedId] = useState('recursion')
+  const faq = useFaqApprovalPanel(course.id, questionChannel?.id)
+  const queue = useTaQueuePanel(selectedCohort?.id)
+  const [filter, setFilter] = useState<QuestionFilter>('open')
   const [draft, setDraft] = useState('')
-  const [helpful, setHelpful] = useState(false)
-  const [pickedQueueIds, setPickedQueueIds] = useState<string[]>([])
+  const draftVersionRef = useRef(0)
+  const selected = questions.selectedQuestion
 
-  const liveQuestions = useMemo(
-    () => questions.timeline.filter((entry): entry is Extract<QuestionsTimelineEntry, { kind: 'learner-question' }> => entry.kind === 'learner-question'),
-    [questions.timeline],
-  )
-  const selectedLive = selectedId.startsWith('live:')
-    ? liveQuestions.find((entry) => `live:${entry.supportQuestion?.id ?? entry.message.id}` === selectedId)
-    : undefined
-  const selectedDemo = demoQuestions.find((question) => question.id === selectedId) ?? demoQuestions[0]
-  const selectedAnswer = selectedLive ? questions.selectedAnswer : null
-
-  const selectLiveQuestion = (entry: Extract<QuestionsTimelineEntry, { kind: 'learner-question' }>) => {
-    const supportQuestionId = entry.supportQuestion?.id
-    setSelectedId(`live:${supportQuestionId ?? entry.message.id}`)
-    questions.selectSupportQuestion(supportQuestionId ?? null)
+  const updateDraft = (value: string) => {
+    draftVersionRef.current += 1
+    setDraft(value)
   }
 
-  const submitQuestion = (event: FormEvent) => {
+  const clearDraft = () => {
+    draftVersionRef.current += 1
+    setDraft('')
+  }
+
+  const requestedQuestions = useMemo(
+    () => questionsForFilter(questions.supportQuestions, filter, userId),
+    [filter, questions.supportQuestions, userId],
+  )
+  const activeFilter = selected && filter !== 'mine' &&
+      !requestedQuestions.some((question) => question.id === selected.id)
+    ? (OPEN_STATUSES.includes(selected.status) ? 'open' : 'answered')
+    : filter
+  const filteredQuestions = useMemo(
+    () => activeFilter === filter
+      ? requestedQuestions
+      : questionsForFilter(questions.supportQuestions, activeFilter, userId),
+    [activeFilter, filter, questions.supportQuestions, requestedQuestions, userId],
+  )
+
+  const changeFilter = (nextFilter: QuestionFilter) => {
+    clearDraft()
+    setFilter(nextFilter)
+    questions.selectSupportQuestion(
+      questionsForFilter(questions.supportQuestions, nextFilter, userId)[0]?.id ?? null,
+    )
+  }
+
+  const selectedAuthor = selected
+    ? displayName(selected.senderUserId, questions.profilesById)
+    : null
+  const selectedCandidate = faq.candidates[faq.selectedIndex]
+  const canAskAi = Boolean(
+    selected && selected.senderUserId === userId && selected.status === 'UNANSWERED',
+  )
+  const canModerate = Boolean(
+    selected && !['RESOLVED', 'CANCELLED', 'DUPLICATE'].includes(selected.status),
+  )
+
+  const submitComposer = (event: FormEvent) => {
     event.preventDefault()
-    void questions.postQuestion(draft).then((posted) => {
-      if (posted) setDraft('')
+    if (!selected && manageQuestions) return
+    const submittedDraftVersion = draftVersionRef.current
+    const action = manageQuestions && selected
+      ? questions.postReply(selected.id, draft)
+      : questions.postQuestion(draft)
+    void action.then((saved) => {
+      if (saved && draftVersionRef.current === submittedDraftVersion) clearDraft()
     })
+  }
+
+  if (!questionChannel) {
+    return <section className="course-workspace-state" role="status"><p>This course has no #questions channel.</p></section>
   }
 
   return (
     <div className={`questions-layout ${manageQuestions ? 'owner-view' : ''}`}>
       <aside className="questions-list-pane">
-        <h2>QUESTIONS</h2>
+        <div className="question-list-heading">
+          <h2>QUESTIONS</h2>
+          <button type="button" aria-label="Refresh questions" onClick={() => void questions.refresh()}>
+            <RefreshCw />
+          </button>
+        </div>
         <div className="question-filters" role="group" aria-label="Question filters">
           {(['open', 'answered', 'mine'] as const).map((value) => (
-            <button type="button" className={filter === value ? 'active' : undefined} onClick={() => setFilter(value)} key={value}>{value[0].toUpperCase() + value.slice(1)}</button>
+            <button
+              type="button"
+              className={activeFilter === value ? 'active' : undefined}
+              onClick={() => changeFilter(value)}
+              key={value}
+            >
+              {value[0].toUpperCase() + value.slice(1)}
+            </button>
           ))}
         </div>
         <div className="question-thread-list">
-          {demoQuestions.filter((question) => filter !== 'answered' || !question.open).map((question) => (
-            <button type="button" className={selectedId === question.id ? 'active' : undefined} key={question.id} onClick={() => setSelectedId(question.id)}>
-              <V2Avatar name={question.author} tone={question.tone} size="md" />
-              <span><strong>{question.body}</strong><small>{question.author} · {question.age}</small></span>
-              <i className={question.open ? '' : 'answered'} />
-            </button>
-          ))}
-          {liveQuestions.map((entry) => {
-            const id = `live:${entry.supportQuestion?.id ?? entry.message.id}`
+          {questions.isLoadingHistory ? <p className="question-empty-state">Loading questions…</p> : null}
+          {!questions.isLoadingHistory && filteredQuestions.length === 0 ? (
+            <p className="question-empty-state">No {activeFilter} questions.</p>
+          ) : null}
+          {filteredQuestions.map((question) => {
+            const author = displayName(question.senderUserId, questions.profilesById)
             return (
-              <button type="button" className={selectedId === id ? 'active' : undefined} key={id} onClick={() => selectLiveQuestion(entry)}>
-                <V2Avatar name="You" tone="blue" size="md" />
-                <span><strong>{entry.message.body}</strong><small>You · just now</small></span>
-                <i />
+              <button
+                type="button"
+                className={questions.selectedSupportQuestionId === question.id ? 'active' : undefined}
+                key={question.id}
+                onClick={() => {
+                  clearDraft()
+                  questions.selectSupportQuestion(question.id)
+                }}
+              >
+                <V2Avatar name={author} tone="blue" size="md" />
+                <span>
+                  <strong>{question.body}</strong>
+                  <small>{author} · {formatTime(question.createdAt)} · {statusLabel(question.status)}</small>
+                </span>
+                <i className={OPEN_STATUSES.includes(question.status) ? '' : 'answered'} />
               </button>
             )
           })}
@@ -89,51 +192,200 @@ export function CourseQuestionsPage() {
 
       <section className="question-detail-pane">
         {manageQuestions ? <h2 className="question-pane-label">THREAD</h2> : null}
-        <article className="question-message">
-          <V2Avatar name={selectedLive ? 'You' : selectedDemo.author} tone={selectedLive ? 'blue' : selectedDemo.tone} size="lg" />
-          <div><p><strong>{selectedLive ? 'You' : selectedDemo.author}</strong><time>{selectedLive ? 'just now' : selectedDemo.age}</time></p><span>{selectedLive?.message.body ?? selectedDemo.body}</span></div>
-        </article>
-        <div className="question-answer-divider" />
-        <article className="assistant-answer">
-          <span className="assistant-avatar"><Sparkles /></span>
-          <div>
-            <p><strong>AI Study Assistant</strong><b>AI</b><time>1h ago</time></p>
-            <span>{selectedAnswer?.answerBody ?? demoAnswer.body}</span>
-            <small>Sources</small>
-            <div className="answer-sources">
-              {(selectedAnswer?.sources ?? demoAnswer.sources).map((source, index) => (
-                <article key={source.resourceId}>
-                  <span className={index ? 'faq-source-icon' : 'document-source-icon'}>{index ? 'FAQ' : <FileText />}</span>
-                  <div><strong>{source.resourceTitle}</strong><p>{source.excerpt}</p></div>
-                  <button type="button">View <ExternalLink /></button>
-                </article>
-              ))}
-            </div>
+        {!selected ? (
+          <div className="question-detail-empty">
+            <h2>{questions.supportQuestions.length === 0 ? 'No questions yet' : 'Select a question'}</h2>
+            <p>{manageQuestions ? 'Choose a learner question to reply or moderate.' : 'Ask a support question below.'}</p>
           </div>
-        </article>
-        <div className="question-answer-actions">
-          {selectedLive?.supportQuestion && !selectedAnswer ? (
-            <button type="button" onClick={() => void questions.invokeAssistant(selectedLive.supportQuestion!.id)} disabled={questions.invokingQuestionId === selectedLive.supportQuestion.id}><Sparkles />{questions.invokingQuestionId ? 'Asking AI…' : 'Ask AI'}</button>
-          ) : null}
-          <button type="button" onClick={() => {
-            if (selectedLive?.supportQuestion && selectedAnswer?.handoffRecommended) void questions.addToTaQueue(selectedLive.supportQuestion.id)
-          }}><Plus />Add to TA Queue</button>
-          {!manageQuestions ? <button type="button" className={helpful ? 'active' : undefined} onClick={() => setHelpful((value) => !value)}><ThumbsUp />{helpful ? 'Helpful' : 'Mark helpful'}</button> : null}
-        </div>
-        {questions.error && questionChannel ? <p className="inline-error">{questions.error}</p> : null}
+        ) : (
+          <>
+            <article className="question-message">
+              <V2Avatar name={selectedAuthor ?? 'Member'} tone="blue" size="lg" />
+              <div>
+                <p><strong>{selectedAuthor}</strong><time>{formatTime(selected.createdAt)}</time></p>
+                <span>{selected.body}</span>
+                <small className="question-status-label">{statusLabel(selected.status)}</small>
+              </div>
+            </article>
+
+            {questions.selectedAnswer ? (
+              <>
+                <div className="question-answer-divider" />
+                <article className="assistant-answer">
+                  <span className="assistant-avatar"><Sparkles /></span>
+                  <div>
+                    <p><strong>AI Study Assistant</strong><b>AI</b><time>{formatTime(questions.selectedAnswer.createdAt)}</time></p>
+                    <span>{questions.selectedAnswer.answerBody}</span>
+                    <small>Sources</small>
+                    <div className="answer-sources">
+                      {questions.selectedAnswer.sources.map((source) => {
+                        const isFaqSource = source.resourceTitle.startsWith('FAQ: ')
+                        return (
+                          <article key={source.resourceId}>
+                            <span className={isFaqSource ? 'faq-source-icon' : 'document-source-icon'}>
+                              {isFaqSource ? 'FAQ' : <FileText />}
+                            </span>
+                            <div><strong>{source.resourceTitle}</strong><p>{source.excerpt}</p></div>
+                            {!isFaqSource ? (
+                              <a href={`/app/servers/${serverId}/courses/${course.id}/resources?resource=${source.resourceId}`}>
+                                View <ExternalLink />
+                              </a>
+                            ) : null}
+                          </article>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </article>
+              </>
+            ) : null}
+
+            {questions.selectedReplies.map((reply) => {
+              const author = displayName(reply.authorUserId, questions.profilesById)
+              return (
+                <article className="question-message question-staff-reply" key={reply.id}>
+                  <V2Avatar name={author} tone="green" size="lg" />
+                  <div>
+                    <p><strong>{author}</strong><b>STAFF</b><time>{formatTime(reply.createdAt)}</time></p>
+                    <span>{reply.body}</span>
+                  </div>
+                </article>
+              )
+            })}
+
+            <div className="question-answer-actions">
+              {canAskAi ? (
+                <button
+                  type="button"
+                  onClick={() => void questions.invokeAssistant(selected.id)}
+                  disabled={questions.invokingQuestionId === selected.id}
+                >
+                  <Sparkles />{questions.invokingQuestionId ? 'Asking AI…' : 'Ask AI'}
+                </button>
+              ) : null}
+              {!manageQuestions
+                  && selected?.senderUserId === userId
+                  && questions.selectedAnswer?.handoffRecommended ? (
+                <button
+                  type="button"
+                  onClick={() => void questions.addToTaQueue(selected.id)}
+                  disabled={questions.addingToQueueQuestionId === selected.id}
+                >
+                  <Plus />{questions.addingToQueueQuestionId ? 'Adding…' : 'Add to TA Queue'}
+                </button>
+              ) : null}
+              {!manageQuestions && questions.selectedAnswer ? (
+                <button type="button" disabled title="Helpful voting will ship with the streaming AI audit trail in issue #100.">
+                  <ThumbsUp />Mark helpful
+                </button>
+              ) : null}
+              {manageQuestions && canModerate ? (
+                <>
+                  <button type="button" disabled={questions.isModerating} onClick={() => void questions.moderateQuestion(selected.id, 'RESOLVED')}><CheckCircle2 />Resolve</button>
+                  <button type="button" disabled={questions.isModerating} onClick={() => void questions.moderateQuestion(selected.id, 'DUPLICATE')}><Copy />Duplicate</button>
+                  <button type="button" disabled={questions.isModerating} onClick={() => void questions.moderateQuestion(selected.id, 'CANCELLED')}><XCircle />Cancel</button>
+                </>
+              ) : null}
+            </div>
+          </>
+        )}
+
+        {questions.error ? <p className="inline-error">{questions.error}</p> : null}
         {questions.taQueueSuccess ? <p className="inline-success">{questions.taQueueSuccess}</p> : null}
-        <form className="question-composer" onSubmit={submitQuestion}>
-          <button type="button" aria-label="Add attachment"><Plus /></button>
-          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={selectedLive || manageQuestions ? 'Ask a follow-up…' : 'Ask a support question…'} />
-          <button type="button" aria-label="Add emoji"><Smile /></button>
-          <button type="submit" className="send-button" aria-label="Send question" disabled={!draft.trim() || questions.isPosting}><Send /></button>
-        </form>
+        {(!manageQuestions || selected) ? (
+          <form className="question-composer" onSubmit={submitComposer}>
+            <input
+              value={draft}
+              onChange={(event) => updateDraft(event.target.value)}
+              placeholder={manageQuestions ? 'Reply to this question…' : 'Ask a support question…'}
+            />
+            <button
+              type="submit"
+              className="send-button"
+              aria-label={manageQuestions ? 'Send reply' : 'Send question'}
+              disabled={!draft.trim() || questions.isPosting || questions.isPostingReply}
+            >
+              <Send />
+            </button>
+          </form>
+        ) : null}
       </section>
 
       {manageQuestions ? (
         <aside className="question-owner-tools">
-          {courseCapabilities.canApproveFaq ? <section><h2>FAQ CANDIDATES <Info /></h2>{[['12','Tracing Recursion'],['8','Merge Sort Steps'],['7','Recursion Base Case'],['5','Recursion Tree']].map(([count,label]) => <p key={label}><b>{count}</b><span>{label}</span></p>)}<button type="button" className="owner-tool-link">View all</button></section> : null}
-          {courseCapabilities.canManageTaQueue ? <section><h2>TA QUEUE <Info /></h2>{demoQuestions.map((question,index) => <p key={question.id}><b>{3-index}</b><span><strong>{question.body}</strong><small>{question.author} · {question.age}</small></span><button type="button" disabled={pickedQueueIds.includes(question.id)} onClick={() => setPickedQueueIds((items) => [...items,question.id])}>{pickedQueueIds.includes(question.id) ? 'Picked up' : 'Pick up'}</button></p>)}<button type="button" className="owner-tool-link">View queue</button></section> : null}
+          {courseCapabilities.canApproveFaq ? (
+            <section>
+              <div className="owner-tool-heading">
+                <h2>FAQ CANDIDATES <Info /></h2>
+                <button type="button" aria-label="Refresh FAQ candidates" onClick={() => void faq.refresh()} disabled={faq.isSaving}><RefreshCw /></button>
+              </div>
+              {faq.isLoading ? <small>Loading candidates…</small> : null}
+              {!faq.isLoading && faq.candidates.length === 0 ? <small>No repeated-question groups.</small> : null}
+              {faq.candidates.slice(0, 4).map((candidate, index) => (
+                <button
+                  type="button"
+                  className={`owner-tool-candidate ${faq.selectedIndex === index ? 'active' : ''}`}
+                  aria-pressed={faq.selectedIndex === index}
+                  key={`${candidate.representativeQuestion}:${index}`}
+                  onClick={() => faq.selectCandidate(index)}
+                >
+                  <b>{candidate.supportQuestions.length}</b><span>{candidate.representativeQuestion}</span>
+                </button>
+              ))}
+              {selectedCandidate ? (
+                <div className="owner-tool-faq-form">
+                  <textarea aria-label="Approved FAQ answer" value={faq.answerDraft} onChange={(event) => faq.setAnswerDraft(event.target.value)} placeholder="Write the approved answer…" />
+                  <button type="button" disabled={faq.isSaving || !faq.answerDraft.trim()} onClick={() => void faq.approveOrUpdate()}>{faq.isSaving ? 'Saving…' : 'Approve FAQ'}</button>
+                </div>
+              ) : null}
+              {faq.actionMessage ? <small className="inline-success">{faq.actionMessage}</small> : null}
+              {faq.error ? <small className="inline-error">{faq.error}</small> : null}
+            </section>
+          ) : null}
+
+          {courseCapabilities.canManageTaQueue ? (
+            <section>
+              <div className="owner-tool-heading">
+                <h2>TA QUEUE <Info /></h2>
+                <button type="button" aria-label="Refresh TA queue" onClick={() => void queue.refresh()}><RefreshCw /></button>
+              </div>
+              {queue.isLoading ? <small>Loading queue…</small> : null}
+              {!queue.isLoading && queue.items.length === 0 ? <small>No learners waiting.</small> : null}
+              {queue.items.slice(0, 4).map((item, index) => (
+                <p key={item.id}>
+                  <b>{index + 1}</b>
+                  <span>
+                    <strong>{item.body}</strong>
+                    <small>{displayName(item.learnerUserId, queue.profilesById)} · {formatTime(item.createdAt)}</small>
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`${item.status === 'OPEN' ? 'Pick up' : 'Resolve'} TA queue question: ${item.body}`}
+                    disabled={queue.actingItemId === item.id}
+                    onClick={() => {
+                      const linkedQuestion = questions.supportQuestions.find(
+                        (question) => question.id === item.supportQuestionId,
+                      )
+                      if (linkedQuestion) {
+                        setFilter(OPEN_STATUSES.includes(linkedQuestion.status) ? 'open' : 'answered')
+                      }
+                      clearDraft()
+                      questions.selectSupportQuestion(item.supportQuestionId)
+                      if (item.status === 'OPEN') {
+                        void queue.pickupItem(item.id)
+                        return
+                      }
+                      void queue.resolveItem(item.id).then(() => questions.refresh())
+                    }}
+                  >
+                    {item.status === 'OPEN' ? 'Pick up' : 'Resolve'}
+                  </button>
+                </p>
+              ))}
+              {queue.actionMessage ? <small className="inline-success">{queue.actionMessage}</small> : null}
+              {queue.error ? <small className="inline-error">{queue.error}</small> : null}
+            </section>
+          ) : null}
         </aside>
       ) : null}
     </div>

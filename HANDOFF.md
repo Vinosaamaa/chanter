@@ -46,11 +46,11 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5). UI v2 **#116–#128** is merged in PR #130.
 
-**Active slice:** [**#135 — Durable Office Hours scheduling and live controls**](https://github.com/Vinosaamaa/chanter/issues/135) on `feature/135-durable-office-hours`. #109 merged in PR #149. #135 implementation, TDD coverage, full frontend/community-service tests, and a live two-user gateway/LiveKit-token smoke are complete locally. The visible browser/audio pass remains pending because the Mac was locked during automation. Next: commit, PR, CI + CodeAnt loop, autonomous merge, then **#92**.
+**Active slice:** [**#92 — Operational v2 Questions, support, and Teaching**](https://github.com/Vinosaamaa/chanter/issues/92) on `feature/92-operational-questions-teaching`. #135 is merged. #92 implementation, TDD coverage, full Java/frontend verification, responsive browser checks, and a signed-in learner/instructor support loop are complete locally. Next: commit, PR, CI + CodeAnt loop, autonomous merge, then **#136**.
 
 **Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
 
-**Paused:** Public Launch legacy UI polish **#88–#93** until the UI v2 PR merges. AI + launch slices **#94+** are unchanged.
+**Roadmap:** Finish the ordered #131 operational slices through #145, then AI #94–#100, critical-path E2E #103, staging/auth #101–#102, and beta #104.
 
 **Agent read order for UI work:** `DESIGN-DECISIONS.md` → `specs/layout-rules.md` → issue mockup PNG(s) → `visibility-and-social-model.md`. Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
 
@@ -123,7 +123,7 @@ Production Frontend table retained above for history; milestone **complete** (le
 
 Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turns the approved UI into a truthful full-stack product. Work in this order: **#132**, **#133**, **#134**, **#109**, **#135**, **#92**, **#136–#145**, then AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta **#104**.
 
-#132–#134 and #109 are merged. Current #135 operationalizes durable Office Hours scheduling, direct listener joins, hand raising, speaking grants, LiveKit permissions, and instructor lifecycle controls. Next, #92 operationalizes Questions, support, and Teaching.
+#132–#135 and #109 are merged. Current #92 operationalizes durable Questions, grounded/persisted AI answers, human replies, TA Queue/FAQ operations, and real Teaching dashboard identities. Next, #136 operationalizes the Cohort roster, Enrollment, and TA assignment.
 
 **#30** ships in phase 2 with **#49** (project #3).
 
@@ -368,16 +368,16 @@ Use this prompt after reloading Cursor or starting a new chat:
 ```text
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
-Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged on main.
-UI redesign #114 is closed. UI v2 #116–#128 is implemented locally on feature/116-v2-app-shell with issue-scoped commits and change logs; it has not been pushed.
+Backend MVP #11–#24, Production Frontend #47–#59, Workable Product #60–#63, and UI v2 #116–#128 are merged on main.
+UI v2 operationalization #132–#135 and #109 are merged. #92 is locally complete on feature/92-operational-questions-teaching.
 
 Product UI: docs/product-design/DESIGN-DECISIONS.md + mockups/learner-flow/ and owner-flow/
 Breakdown: docs/issues/ui-v2-issue-breakdown.md
-Next: inspect the final diff, ask before pushing, open one PR for #116–#128, complete the CodeAnt review loop, and leave the merge to the owner.
+Next: finish the #92 PR/CI/CodeAnt/merge gate, then start #136 and continue the #131 order.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Epic: https://github.com/Vinosaamaa/chanter/issues/115
-Slices: #116–#128 per docs/issues/ui-v2-issue-breakdown.md
+Epic: https://github.com/Vinosaamaa/chanter/issues/131
+Current slice: https://github.com/Vinosaamaa/chanter/issues/92
 Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
 ```

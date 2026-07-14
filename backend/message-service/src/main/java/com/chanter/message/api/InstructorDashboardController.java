@@ -1,11 +1,14 @@
 package com.chanter.message.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.message.application.InstructorDashboardMetricsService;
 import com.chanter.message.application.InstructorDashboardMessageMetrics;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,9 +24,10 @@ public class InstructorDashboardController {
 
     @PostMapping("/message-metrics")
     public InstructorDashboardMessageMetricsResponse getMessageMetrics(
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId,
             @Valid @RequestBody InstructorDashboardMessageMetricsRequest request
     ) {
-        InstructorDashboardMessageMetrics metrics = instructorDashboardMetricsService.buildMetrics(request);
+        InstructorDashboardMessageMetrics metrics = instructorDashboardMetricsService.buildMetrics(viewerUserId, request);
         return InstructorDashboardMessageMetricsResponse.from(metrics);
     }
 }

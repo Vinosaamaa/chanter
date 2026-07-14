@@ -8,9 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record UpsertApprovedFaqRequest(
-        // TODO(#auth): replace caller-supplied user ids with the authenticated principal.
         @NotNull UUID channelId,
-        @NotNull UUID approvedByUserId,
         UUID id,
         @NotBlank String question,
         @NotBlank String answer,

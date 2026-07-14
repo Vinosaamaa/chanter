@@ -133,6 +133,30 @@ public class JdbcSupportQuestionRepository implements SupportQuestionRepository 
 
     @Override
     @Transactional(readOnly = true)
+    public List<SupportQuestion> findByChannelIdAndSenderUserId(UUID channelId, UUID senderUserId) {
+        return jdbcClient.sql("""
+                        SELECT
+                            id,
+                            channel_message_id,
+                            channel_id,
+                            sender_user_id,
+                            body,
+                            status,
+                            idempotency_key,
+                            created_at
+                        FROM support_questions
+                        WHERE channel_id = :channelId
+                        AND sender_user_id = :senderUserId
+                        ORDER BY created_at ASC
+                        """)
+                .param("channelId", channelId)
+                .param("senderUserId", senderUserId)
+                .query(this::mapSupportQuestion)
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<SupportQuestion> findByChannelIdAndCreatedAtBetween(
             UUID channelId,
             Instant windowStartInclusive,

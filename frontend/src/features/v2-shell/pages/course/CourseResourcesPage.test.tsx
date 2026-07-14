@@ -78,6 +78,7 @@ describe('CourseResourcesPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
     mocks.resources.resources = []
     mocks.resources.filteredResources = []
     mocks.resources.searchQuery = ''
@@ -135,6 +136,17 @@ describe('CourseResourcesPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Download Recursion notes' }))
     expect(mocks.resources.downloadResource).toHaveBeenCalledWith(resource)
+  })
+
+  it('highlights the exact resource selected by a citation deep link', () => {
+    const resource = courseResource()
+    mocks.resources.resources = [resource]
+    mocks.resources.filteredResources = [resource]
+    window.history.replaceState({}, '', '/resources?resource=resource-1')
+
+    renderPage()
+
+    expect(screen.getByText('Recursion notes').closest('article')).toHaveClass('highlighted')
   })
 
   it('uploads the selected file with explicit title and AI approval', async () => {
