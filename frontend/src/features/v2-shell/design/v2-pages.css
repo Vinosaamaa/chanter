@@ -557,17 +557,21 @@
 .v2-app-shell .resource-filters button.active { border-color: #5e76ff; color: #fff; background: rgba(53,73,177,.48); }
 .v2-app-shell .resource-owner-actions { justify-content: flex-end; }
 .v2-app-shell .resource-owner-actions button { min-height: 50px; }
+.v2-app-shell .resource-assistant-status { min-height: 50px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #465a70; border-radius: 8px; padding: 0 14px; color: #b5bec9; white-space: nowrap; }
+.v2-app-shell .resource-assistant-status.active { border-color: #2d7c4c; color: #70da95; background: rgba(22,96,49,.16); }
+.v2-app-shell .resource-assistant-status.error { border-color: #8c4a52; color: #f2a6af; }
+.v2-app-shell .resource-assistant-status svg { width: 18px; height: 18px; }
 .v2-app-shell .resource-week-list { display: grid; gap: 3px; }
 .v2-app-shell .resource-week { border: 1px solid rgba(151,161,177,.34); border-radius: 12px; padding: 14px 19px 18px; background: rgba(7,23,41,.48); }
 .v2-app-shell .resource-week > header { min-height: 38px; display: grid; grid-template-columns: 36px minmax(0,1fr) 25px; align-items: center; }
 .v2-app-shell .resource-week > header h2 { margin: 0; font-size: 19px; font-weight: 500; }
 .v2-app-shell .resource-week > header svg { color: #c8ccd3; }
 .v2-app-shell .resource-rows { margin-top: 5px; overflow: hidden; border: 1px solid rgba(151,161,177,.3); border-radius: 10px; }
-.v2-app-shell .resource-row { min-height: 80px; display: grid; grid-template-columns: 62px minmax(0,1fr) auto 48px; align-items: center; gap: 14px; border-bottom: 1px solid rgba(151,161,177,.2); padding: 9px 15px; }
+.v2-app-shell .resource-row { min-height: 80px; display: grid; grid-template-columns: 62px minmax(0,1fr) auto minmax(48px,auto); align-items: center; gap: 14px; border-bottom: 1px solid rgba(151,161,177,.2); padding: 9px 15px; }
 .v2-app-shell .resource-row:last-child { border-bottom: 0; }
 .v2-app-shell .resource-type-icon { width: 51px; height: 53px; display: grid; place-items: center; border-radius: 8px; color: #fff; background: linear-gradient(145deg,#df483e,#bb262c); }
-.v2-app-shell .resource-type-icon.recording { background: linear-gradient(145deg,#765ce0,#4835a6); }
-.v2-app-shell .resource-type-icon.assignment { color: #ffb72a; background: transparent; }
+.v2-app-shell .resource-type-icon.recordings { background: linear-gradient(145deg,#765ce0,#4835a6); }
+.v2-app-shell .resource-type-icon.assignments { color: #ffb72a; background: transparent; }
 .v2-app-shell .resource-type-icon.slides { background: linear-gradient(145deg,#f48028,#c94d0d); }
 .v2-app-shell .resource-type-icon.link, .v2-app-shell .resource-type-icon.other { background: linear-gradient(145deg,#5374dd,#293c89); }
 .v2-app-shell .resource-type-icon svg { width: 29px; height: 29px; }
@@ -579,21 +583,25 @@
 .v2-app-shell .resource-statuses b svg { width: 19px; }
 .v2-app-shell .resource-statuses b.due { border-color: #b67d00; color: #ffba13; background: rgba(119,77,0,.15); }
 .v2-app-shell .resource-statuses i { color: #6680ff; font-style: normal; white-space: nowrap; }
-.v2-app-shell .resource-row > button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; color: #c7cbd3; background: transparent; cursor: pointer; }
+.v2-app-shell .resource-row-actions { display: flex; align-items: center; justify-content: flex-end; }
+.v2-app-shell .resource-row-actions button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 7px; color: #c7cbd3; background: transparent; cursor: pointer; }
+.v2-app-shell .resource-row-actions button:hover { color: #fff; background: rgba(91,112,235,.2); }
+.v2-app-shell .resource-row-actions button:disabled { cursor: wait; opacity: .6; }
+.v2-app-shell .resource-action-spinner { animation: v2-resource-spin .8s linear infinite; }
+@keyframes v2-resource-spin { to { transform: rotate(360deg); } }
 .v2-app-shell .resource-empty { border: 1px dashed #405269; border-radius: 10px; padding: 35px; color: #9fa8b6; text-align: center; }
 .v2-app-shell .v2-modal-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgba(0,7,17,.66); }
-.v2-app-shell .assistant-install-modal { position: relative; width: min(540px,100%); border: 1px solid #3d4e64; border-radius: 12px; padding: 25px 29px 22px; color: #f6f7f9; background: #0c1f33; box-shadow: 0 24px 70px rgba(0,0,0,.48); }
-.v2-app-shell .assistant-install-modal .modal-close { position: absolute; top: 19px; right: 20px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; color: #c6cbd3; background: transparent; cursor: pointer; }
-.v2-app-shell .assistant-install-modal h2 { margin: 0; font-size: 26px; }
-.v2-app-shell .assistant-install-modal > p { margin: 18px 0 24px; color: #b8bec8; font-size: 16px; line-height: 1.5; }
-.v2-app-shell .assistant-install-modal h3 { margin: 0 0 15px; font-size: 16px; font-weight: 500; }
-.v2-app-shell .assistant-permissions { display: grid; gap: 13px; }
-.v2-app-shell .assistant-permissions label { display: flex; align-items: center; gap: 13px; color: #c3c8d0; }
-.v2-app-shell .assistant-permissions input { width: 20px; height: 20px; accent-color: #5671f2; }
-.v2-app-shell .assistant-install-modal .modal-error { margin: 14px 0 0; color: #fda4af; font-size: 13px; }
-.v2-app-shell .assistant-install-modal footer { display: flex; justify-content: flex-end; gap: 14px; margin-top: 28px; }
-.v2-app-shell .assistant-install-modal footer button { min-width: 145px; min-height: 53px; justify-content: center; }
-
+.v2-app-shell .resource-upload-modal { position: relative; width: min(520px,100%); display: grid; gap: 19px; border: 1px solid #3d4e64; border-radius: 10px; padding: 25px 29px 22px; color: #f6f7f9; background: #0c1f33; box-shadow: 0 24px 70px rgba(0,0,0,.48); }
+.v2-app-shell .resource-upload-modal .modal-close { position: absolute; top: 17px; right: 18px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; color: #c6cbd3; background: transparent; cursor: pointer; }
+.v2-app-shell .resource-upload-modal h2 { margin: 0 40px 0 0; font-size: 24px; }
+.v2-app-shell .resource-upload-modal > label:not(.resource-ai-approval) { display: grid; gap: 8px; color: #d7dce3; font-size: 14px; }
+.v2-app-shell .resource-upload-modal > label input:not([type="checkbox"]) { min-width: 0; min-height: 46px; border: 1px solid #42556b; border-radius: 7px; padding: 9px 11px; color: #f4f6f8; background: #06182a; }
+.v2-app-shell .resource-upload-modal small { color: #9fa9b6; }
+.v2-app-shell .resource-upload-modal .modal-error { margin: -9px 0 0; color: #f2a6af; font-size: 13px; }
+.v2-app-shell .resource-ai-approval { display: flex; align-items: flex-start; gap: 11px; color: #c5cbd3; line-height: 1.45; }
+.v2-app-shell .resource-ai-approval input { width: 19px; height: 19px; margin-top: 1px; accent-color: #5671f2; }
+.v2-app-shell .resource-upload-modal footer { display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid rgba(151,161,177,.2); padding-top: 18px; }
+.v2-app-shell .resource-upload-modal footer button { min-height: 46px; }
 @media (max-width: 1220px) {
   .v2-app-shell .resources-toolbar { grid-template-columns: minmax(250px,1fr) auto; }
   .v2-app-shell .resource-owner-actions { grid-column: 1 / -1; }

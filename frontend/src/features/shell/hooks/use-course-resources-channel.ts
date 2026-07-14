@@ -75,6 +75,9 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       setError(null)
       setAccessDenied(false)
       setUploadSuccess(null)
+      setCanUpload(false)
+      setCanView(false)
+      setResources([])
 
       try {
         const access = await fetchCourseResourceAccess(courseId)
@@ -107,6 +110,9 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
         if (caught instanceof ApiError && caught.status === 403) {
           setAccessDenied(true)
         }
+        setCanUpload(false)
+        setCanView(false)
+        setResources([])
         setError(resourceAccessDeniedMessage(caught))
         setLoadedKey(requestKey)
       }

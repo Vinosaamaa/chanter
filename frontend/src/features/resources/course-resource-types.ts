@@ -20,4 +20,10 @@ export type CourseResourceAccess = {
   canViewCourseResources: boolean
 }
 
-export type CourseResourceFilter = 'all' | 'pdf' | 'slides' | 'assignments' | 'other'
+export type CourseResourceFilter =
+  | 'all'
+  | 'pdf'
+  | 'slides'
+  | 'recordings'
+  | 'assignments'
+  | 'other'
