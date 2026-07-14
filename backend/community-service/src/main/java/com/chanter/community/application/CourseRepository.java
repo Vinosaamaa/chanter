@@ -4,7 +4,10 @@ import com.chanter.community.domain.AccessibleStudyServer;
 import com.chanter.community.domain.CohortEnrollment;
 import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.CohortInvitation;
+import com.chanter.community.domain.CohortJoinDetails;
 import com.chanter.community.domain.Course;
+import com.chanter.community.domain.CourseCatalogCourse;
+import com.chanter.community.domain.CourseCatalogFilter;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CohortTaQueueAccess;
 import com.chanter.community.domain.CohortOfficeHoursAccess;
@@ -21,6 +24,13 @@ import java.util.UUID;
 public interface CourseRepository {
 
     Course save(Course course);
+
+    List<CourseCatalogCourse> findPublishedCourseCatalog(
+            UUID studyServerId,
+            UUID viewerUserId,
+            String searchPattern,
+            CourseCatalogFilter filter
+    );
 
     CourseChannel saveChannel(CourseChannel channel);
 
@@ -56,6 +66,8 @@ public interface CourseRepository {
     CohortEnrollmentList listCohortEnrollments(UUID cohortId, int limit, int offset, String learnerSearch);
 
     Optional<UUID> findCohortInviteCode(UUID cohortId);
+
+    Optional<CohortJoinDetails> findCohortJoinDetails(UUID cohortId);
 
     Optional<UUID> findCohortInviteCodeForInstructor(UUID cohortId, UUID instructorUserId);
 

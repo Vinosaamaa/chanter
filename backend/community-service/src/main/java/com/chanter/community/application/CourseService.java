@@ -10,9 +10,12 @@ import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.CohortInvitation;
 import com.chanter.community.domain.CohortInvitationDetails;
 import com.chanter.community.domain.CohortInvitationStatus;
+import com.chanter.community.domain.CohortJoinDetails;
 import com.chanter.community.domain.CohortRoster;
 import com.chanter.community.domain.CohortRosterMember;
 import com.chanter.community.domain.Course;
+import com.chanter.community.domain.CourseCatalog;
+import com.chanter.community.domain.CourseCatalogFilter;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseChannelMessageAccess;
 import com.chanter.community.domain.CourseResourceAccess;
@@ -93,6 +96,32 @@ public class CourseService {
         );
 
         return courseRepository.save(course);
+    }
+
+    public CourseCatalog findCourseCatalog(
+            UUID studyServerId,
+            UUID viewerUserId,
+            String search,
+            CourseCatalogFilter filter
+    ) {
+        boolean member = courseRepository.listAccessibleStudyServers(viewerUserId).stream()
+                .anyMatch(server -> server.id().equals(studyServerId));
+        if (!member) {
+            if (!courseRepository.studyServerExists(studyServerId)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found");
+            }
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Course discovery requires Study Server membership");
+        }
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        if (normalizedSearch.length() > 160) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course search must be 160 characters or fewer");
+        }
+        return new CourseCatalog(courseRepository.findPublishedCourseCatalog(
+                studyServerId,
+                viewerUserId,
+                "%" + normalizedSearch + "%",
+                filter
+        ));
     }
 
     @Transactional
@@ -503,10 +532,30 @@ public class CourseService {
     }
 
     public void joinCohort(UUID cohortId, UUID learnerUserId, UUID inviteCode) {
-        UUID storedInviteCode = courseRepository.findCohortInviteCode(cohortId)
+        CohortJoinDetails joinDetails = courseRepository.findCohortJoinDetails(cohortId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found"));
-        if (!storedInviteCode.equals(inviteCode)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid cohort invite code");
+        boolean validInvite = inviteCode != null && joinDetails.inviteCode().equals(inviteCode);
+        switch (joinDetails.enrollmentPolicy()) {
+            case OPEN -> {
+                boolean member = courseRepository.listAccessibleStudyServers(learnerUserId).stream()
+                        .anyMatch(server -> server.id().equals(joinDetails.studyServerId()));
+                if (!member) {
+                    throw new ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "Open Cohort enrollment requires Study Server membership"
+                    );
+                }
+            }
+            case INVITE_ONLY -> {
+                if (!validInvite) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid cohort invite code");
+                }
+            }
+            case OPENING_SOON -> throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cohort enrollment is not open yet"
+            );
+            case CLOSED -> throw new ResponseStatusException(HttpStatus.CONFLICT, "Cohort enrollment is closed");
         }
 
         courseRepository.enrollLearner(cohortId, learnerUserId, learnerUserId, clock.instant());

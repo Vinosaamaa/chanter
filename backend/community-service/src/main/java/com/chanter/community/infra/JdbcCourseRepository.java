@@ -7,10 +7,15 @@ import com.chanter.community.domain.CohortEnrollment;
 import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.CohortInvitation;
 import com.chanter.community.domain.CohortInvitationStatus;
+import com.chanter.community.domain.CohortJoinDetails;
 import com.chanter.community.domain.CohortRole;
 import com.chanter.community.domain.Course;
+import com.chanter.community.domain.CourseCatalogCohort;
+import com.chanter.community.domain.CourseCatalogCourse;
+import com.chanter.community.domain.CourseCatalogFilter;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseRole;
+import com.chanter.community.domain.CohortEnrollmentPolicy;
 import com.chanter.community.domain.CohortTaQueueAccess;
 import com.chanter.community.domain.CohortOfficeHoursAccess;
 import com.chanter.community.domain.CourseResourceAccess;
@@ -30,6 +35,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -123,6 +129,92 @@ public class JdbcCourseRepository implements CourseRepository {
         }
 
         return course;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourseCatalogCourse> findPublishedCourseCatalog(
+            UUID studyServerId,
+            UUID viewerUserId,
+            String searchPattern,
+            CourseCatalogFilter filter
+    ) {
+        String filterClause = switch (filter) {
+            case ALL -> "";
+            case ENROLLED -> " AND EXISTS (SELECT 1 FROM cohort_enrollments viewer_enrollment"
+                    + " WHERE viewer_enrollment.cohort_id = c.id"
+                    + " AND viewer_enrollment.learner_user_id = :viewerUserId)";
+            case OPEN -> " AND c.enrollment_policy = 'OPEN'";
+            case OPENING_SOON -> " AND c.enrollment_policy = 'OPENING_SOON'";
+        };
+        List<CourseCatalogRow> rows = jdbcClient.sql("""
+                        SELECT co.id AS course_id,
+                               co.title AS course_title,
+                               co.instructor_user_id,
+                               c.id AS cohort_id,
+                               c.name AS cohort_name,
+                               c.enrollment_policy,
+                               EXISTS (
+                                   SELECT 1
+                                   FROM cohort_enrollments viewer_enrollment
+                                   WHERE viewer_enrollment.cohort_id = c.id
+                                   AND viewer_enrollment.learner_user_id = :viewerUserId
+                               ) AS enrolled,
+                               COUNT(enrollment.learner_user_id) AS learner_count
+                        FROM courses co
+                        JOIN cohorts c ON c.course_id = co.id
+                        LEFT JOIN cohort_enrollments enrollment ON enrollment.cohort_id = c.id
+                        WHERE co.study_server_id = :studyServerId
+                        AND co.published = TRUE
+                        AND LOWER(co.title) LIKE :searchPattern
+                        """ + filterClause + """
+                        GROUP BY co.id,
+                                 co.title,
+                                 co.instructor_user_id,
+                                 co.created_at,
+                                 c.id,
+                                 c.name,
+                                 c.enrollment_policy
+                        ORDER BY co.created_at, co.title, c.name
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("viewerUserId", viewerUserId)
+                .param("searchPattern", searchPattern)
+                .query((rs, rowNum) -> new CourseCatalogRow(
+                        rs.getObject("course_id", UUID.class),
+                        rs.getString("course_title"),
+                        rs.getObject("instructor_user_id", UUID.class),
+                        new CourseCatalogCohort(
+                                rs.getObject("cohort_id", UUID.class),
+                                rs.getString("cohort_name"),
+                                CohortEnrollmentPolicy.valueOf(rs.getString("enrollment_policy")),
+                                rs.getBoolean("enrolled"),
+                                rs.getInt("learner_count")
+                        )
+                ))
+                .list();
+
+        Map<UUID, CourseCatalogCourseBuilder> courses = new LinkedHashMap<>();
+        rows.forEach(row -> courses
+                .computeIfAbsent(
+                        row.courseId(),
+                        ignored -> new CourseCatalogCourseBuilder(
+                                row.courseId(),
+                                row.courseTitle(),
+                                row.instructorUserId(),
+                                new ArrayList<>()
+                        )
+                )
+                .cohorts()
+                .add(row.cohort()));
+        return courses.values().stream()
+                .map(course -> new CourseCatalogCourse(
+                        course.id(),
+                        course.title(),
+                        course.instructorUserId(),
+                        List.copyOf(course.cohorts())
+                ))
+                .toList();
     }
 
     @Override
@@ -435,6 +527,25 @@ public class JdbcCourseRepository implements CourseRepository {
                         """)
                 .param("cohortId", cohortId)
                 .query(UUID.class)
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CohortJoinDetails> findCohortJoinDetails(UUID cohortId) {
+        return jdbcClient.sql("""
+                        SELECT co.study_server_id, c.invite_code, c.enrollment_policy
+                        FROM cohorts c
+                        JOIN courses co ON co.id = c.course_id
+                        WHERE c.id = :cohortId
+                        AND co.published = TRUE
+                        """)
+                .param("cohortId", cohortId)
+                .query((rs, rowNum) -> new CohortJoinDetails(
+                        rs.getObject("study_server_id", UUID.class),
+                        rs.getObject("invite_code", UUID.class),
+                        CohortEnrollmentPolicy.valueOf(rs.getString("enrollment_policy"))
+                ))
                 .optional();
     }
 
@@ -1629,5 +1740,21 @@ public class JdbcCourseRepository implements CourseRepository {
     }
 
     private record CourseRow(UUID id, String title) {
+    }
+
+    private record CourseCatalogRow(
+            UUID courseId,
+            String courseTitle,
+            UUID instructorUserId,
+            CourseCatalogCohort cohort
+    ) {
+    }
+
+    private record CourseCatalogCourseBuilder(
+            UUID id,
+            String title,
+            UUID instructorUserId,
+            List<CourseCatalogCohort> cohorts
+    ) {
     }
 }

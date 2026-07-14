@@ -26,7 +26,7 @@ The education MVP ships as a **web application** (React SPA in the browser). Nat
 | Backend MVP | [Education MVP](https://github.com/Vinosaamaa/chanter/milestone/1) | [#1](https://github.com/users/Vinosaamaa/projects/1) | Done (#11–#24) |
 | Production Frontend (legacy) | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | Done (#47–#59) |
 | Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | Done (#60–#63, #31–#32) |
-| **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | Done (#116–#128); operationalization #131 active at #137 |
+| **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | Done (#116–#128); operationalization #131 paused after #138 |
 | Public Launch | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **#94+ after UI v2** (#88–#93 paused) |
 
 **Mandatory agent workflow:** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
@@ -95,7 +95,7 @@ Friends and direct messages can exist, but they are not the core MVP learning wo
 - Organization workspaces can enforce stricter policies for minors, schools, or compliance-sensitive programs.
 - Abuse reports and blocks should be available before broad DM rollout.
 
-Current implementation through #137 is an explicit transition toward the target User Service boundary: Community Service owns privacy-scoped co-member discovery and Cohort roster projections, Message Service owns Friend Requests, friendships, blocks, and DMs, and Auth Service provides bounded internal identity reads. Public profile responses remain limited to `userId` and `displayName`; registered-account email lookup is internal-only, requires the shared backend service credential, and exists for enrollment/invitation resolution. Profile reads move to User Service when that service is introduced; authentication data does not become part of the public profile contract.
+Current implementation through #138 is an explicit transition toward the target User Service boundary: Community Service owns privacy-scoped co-member discovery, published Course discovery, and Cohort roster/enrollment projections; Message Service owns Friend Requests, friendships, blocks, and DMs; and Auth Service provides bounded internal identity reads. Public profile responses remain limited to `userId` and `displayName`; registered-account email lookup is internal-only, requires the shared backend service credential, and exists for enrollment/invitation resolution. Profile reads move to User Service when that service is introduced; authentication data does not become part of the public profile contract.
 
 The first version should prioritize Study Server channels, office-hours queues, and instructor/TA workflows over a broad social network. Universal self-serve registration is still useful: anyone can create a Study Server, but trustworthy instructor powers come from server ownership, admin assignment, or later organization verification.
 
@@ -226,6 +226,14 @@ Redis is not the durable source of truth. It is used for fast ephemeral or cache
 Community Service is authoritative for Cohort membership and role state. A roster combines the Course instructor, Cohort TA assignments, learner Enrollments, per-learner assigned TA, and pending Cohort invitations. Study Server owners and the Course instructor can mutate that roster; enrolled learners can read only the scoped projection needed for the People experience. Removing an Enrollment revokes Cohort access, and removing a TA clears learner assignments that reference that TA.
 
 Enrollment by email does not make Community Service an owner of credentials or account identity. Community calls Auth Service through an internal-only directory contract, authenticated by `X-Chanter-Internal-Service-Token`, to resolve a normalized registered-account email and to batch bounded profile reads. Cohort manager authorization occurs before email resolution so unauthorized callers cannot use response differences to enumerate accounts. Pending invitations persist in Community Service and resolve when the matching authenticated account enrolls or joins. Email ownership verification is still assigned to production auth issue #102. This boundary is temporary until User Service owns profiles and directory lookup; it must not expose email through public member-discovery or learner roster contracts.
+
+### Published Course Discovery And Enrollment
+
+Community Service owns whether a Course is published and the enrollment policy of each Cohort. The implemented policy state is `OPEN`, `INVITE_ONLY`, `OPENING_SOON`, or `CLOSED`. Existing Cohorts are migrated to `INVITE_ONLY` to preserve the historical invite boundary; newly created Cohorts default to `OPEN`. Publication and policy are authorization state, not frontend labels.
+
+An authenticated Study Server member may query the server-scoped published catalog. Search and filters execute in Community Service, and each result projects the real Course/Cohort IDs, instructor identity, current learner count, viewer enrollment state, and enrollment policy. Unpublished Courses are omitted before data reaches the client. The frontend may select among returned Cohorts, but it does not fabricate listings, counts, enrollment, or request-access workflows.
+
+Joining an `OPEN` Cohort requires canonical Study Server membership or a valid invite used for bootstrap compatibility. `INVITE_ONLY` requires the exact durable invite code. `OPENING_SOON` and `CLOSED` reject joining without creating an Enrollment. A successful join creates the durable Cohort Enrollment first; navigation and catalog projections are then invalidated so UI access derives from the same authoritative state.
 
 ### Cohort-Scoped Course Channels And Voice
 
@@ -436,6 +444,7 @@ Strong consistency is required for:
 - Login and refresh token rotation.
 - Password and account security changes.
 - Membership changes.
+- Course publication, Cohort enrollment-policy changes, and Enrollment creation.
 - Role and permission changes.
 - Organization membership and Study Server role assignment.
 - Friend requests, blocks, and DM consent/preferences.

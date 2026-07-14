@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -29,6 +30,9 @@ class CourseEnrollmentSmokeTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JdbcClient jdbcClient;
 
     @Test
     void learnerAccessesCourseChannelsOnlyThroughCohortEnrollment() throws Exception {
@@ -93,6 +97,7 @@ class CourseEnrollmentSmokeTest {
                 inviteResult.getResponse().getContentAsString(),
                 CohortInviteResponse.class
         );
+        setEnrollmentPolicy(course.cohort().id(), "INVITE_ONLY");
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/join", course.cohort().id())
                         .with(asUser(inviteLearnerUserId))
@@ -240,6 +245,7 @@ class CourseEnrollmentSmokeTest {
                 courseResult.getResponse().getContentAsString(),
                 CourseResponse.class
         );
+        setEnrollmentPolicy(course.cohort().id(), "INVITE_ONLY");
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/join", course.cohort().id())
                         .with(asUser(learnerUserId))
@@ -307,6 +313,13 @@ class CourseEnrollmentSmokeTest {
                 .andReturn();
 
         return objectMapper.readValue(result.getResponse().getContentAsString(), StudyServerResponse.class);
+    }
+
+    private void setEnrollmentPolicy(UUID cohortId, String policy) {
+        jdbcClient.sql("UPDATE cohorts SET enrollment_policy = :policy WHERE id = :cohortId")
+                .param("policy", policy)
+                .param("cohortId", cohortId)
+                .update();
     }
 
     private record StudyServerResponse(UUID id) {

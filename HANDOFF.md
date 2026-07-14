@@ -46,7 +46,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5). UI v2 **#116–#128** is merged in PR #130.
 
-**Active slice:** [**#137 - Course Chat channel management and voice entry**](https://github.com/Vinosaamaa/chanter/issues/137) on `feature/137-course-chat-channel-management-voice`. #136 is merged. #137 implementation, TDD coverage, full Java/frontend verification, and two-user desktop/mobile/LiveKit browser journeys are complete locally. Next: commit, PR, CI + CodeAnt loop, autonomous merge, then **#138**.
+**Current pause point:** [**#138 - Community Course discovery and Enrollment**](https://github.com/Vinosaamaa/chanter/issues/138) is complete in [PR #154](https://github.com/Vinosaamaa/chanter/pull/154), including TDD coverage, Java/frontend verification, PostgreSQL V14 rehearsal/upgrade, and owner/learner desktop/mobile browser journeys. Work is paused before **#139**; it is queued only for a future resume.
 
 **Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
 
@@ -123,7 +123,7 @@ Production Frontend table retained above for history; milestone **complete** (le
 
 Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turns the approved UI into a truthful full-stack product. Work in this order: **#132**, **#133**, **#134**, **#109**, **#135**, **#92**, **#136–#145**, then AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta **#104**.
 
-#132-#136, #109, and #92 are merged. Current #137 operationalizes Cohort-scoped Course Chat history, authorized channel management, and real LiveKit voice entry. Next, #138 operationalizes Community Course discovery and Enrollment.
+#132-#138, #109, and #92 are complete. #138 operationalizes published Community Course discovery plus open/invite Cohort enrollment. Work is paused before #139 per owner direction.
 
 **#30** ships in phase 2 with **#49** (project #3).
 
@@ -369,15 +369,15 @@ Use this prompt after reloading Cursor or starting a new chat:
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP #11–#24, Production Frontend #47–#59, Workable Product #60–#63, and UI v2 #116–#128 are merged on main.
-UI v2 operationalization #132-#136, #109, and #92 are merged. #137 is locally complete on feature/137-course-chat-channel-management-voice.
+UI v2 operationalization #132-#138, #109, and #92 are complete. #138 shipped through PR #154.
 
 Product UI: docs/product-design/DESIGN-DECISIONS.md + mockups/learner-flow/ and owner-flow/
 Breakdown: docs/issues/ui-v2-issue-breakdown.md
-Next: finish the #137 PR/CI/CodeAnt/merge gate, then start #138 and continue the #131 order.
+Work is paused before #139. Resume with #139 only when the owner asks.
 
 Repo: https://github.com/Vinosaamaa/chanter
 Epic: https://github.com/Vinosaamaa/chanter/issues/131
-Current slice: https://github.com/Vinosaamaa/chanter/issues/137
+Current slice: https://github.com/Vinosaimaa/chanter/issues/138
 Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
 ```
