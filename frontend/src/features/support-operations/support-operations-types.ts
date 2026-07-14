@@ -23,6 +23,8 @@ export type TaQueueListResponse = {
   taQueueItems: TaQueueItem[]
 }
 
+export type OfficeHoursSessionStatus = 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED'
+
 export type OfficeHoursSession = {
   id: string
   cohortId: string
@@ -30,12 +32,25 @@ export type OfficeHoursSession = {
   scheduledByUserId: string
   startsAt: string
   endsAt: string
-  status: string
+  status: OfficeHoursSessionStatus
   createdAt: string
 }
 
 export type OfficeHoursSessionListResponse = {
   officeHoursSessions: OfficeHoursSession[]
+}
+
+export type OfficeHoursParticipant = {
+  sessionId: string
+  userId: string
+  canSpeak: boolean
+  handRaised: boolean
+  joinedAt: string
+  updatedAt: string
+}
+
+export type OfficeHoursParticipantListResponse = {
+  participants: OfficeHoursParticipant[]
 }
 
 export type OfficeHoursWaitlistEntry = {

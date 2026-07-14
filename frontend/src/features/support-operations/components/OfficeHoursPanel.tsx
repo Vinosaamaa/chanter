@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+
 import { useOfficeHoursPanel } from '../hooks/use-office-hours-panel'
 import { useOfficeHoursVoice } from '../../voice/hooks/use-office-hours-voice'
 import type { OfficeHoursSession } from '../support-operations-types'
@@ -14,6 +16,14 @@ function formatTimestamp(value: string): string {
 
 export function OfficeHoursPanel({ courseTitle, cohortName, cohortId }: OfficeHoursPanelProps) {
   const officeHours = useOfficeHoursPanel(cohortId)
+  const liveSession = officeHours.liveSession
+
+  const scheduleNextHour = () => {
+    const startsAt = new Date(Date.now() + 60 * 60 * 1000)
+    startsAt.setMinutes(0, 0, 0)
+    const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000)
+    void officeHours.scheduleSession({ startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() })
+  }
 
   return (
     <section className="flex min-w-0 flex-1 flex-col bg-app-bg">
@@ -77,32 +87,44 @@ export function OfficeHoursPanel({ courseTitle, cohortName, cohortId }: OfficeHo
                     <button
                       type="button"
                       disabled={officeHours.isBusy}
-                      onClick={() => void officeHours.scheduleSession()}
+                      onClick={scheduleNextHour}
                       className="rounded-lg bg-app-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
                     >
                       Schedule now
                     </button>
                   )}
-                  {officeHours.canJoin && officeHours.activeSession && (
+                  {officeHours.canManage && officeHours.activeSession?.status === 'SCHEDULED' && (
                     <button
                       type="button"
                       disabled={officeHours.isBusy}
-                      onClick={() => void officeHours.joinWaitlist()}
+                      onClick={() => void officeHours.startSession(officeHours.activeSession!.id)}
                       className="rounded-lg border border-app-border px-3 py-2 text-sm text-app-text hover:bg-app-elevated disabled:opacity-60"
                     >
-                      Join waitlist
+                      Start session
                     </button>
                   )}
-                  {officeHours.canManage && officeHours.activeSession && (
+                  {(officeHours.canJoin || officeHours.canManage) && liveSession && !officeHours.currentParticipant && (
+                    <button
+                      type="button"
+                      disabled={officeHours.isBusy}
+                      onClick={() => void officeHours.joinSession()}
+                      className="rounded-lg border border-app-border px-3 py-2 text-sm text-app-text hover:bg-app-elevated disabled:opacity-60"
+                    >
+                      Join live session
+                    </button>
+                  )}
+                  {officeHours.currentParticipant && liveSession && (
+                    <button
+                      type="button"
+                      disabled={officeHours.isBusy}
+                      onClick={() => void officeHours.leaveSession()}
+                      className="rounded-lg border border-app-border px-3 py-2 text-sm text-app-text hover:bg-app-elevated disabled:opacity-60"
+                    >
+                      Leave session
+                    </button>
+                  )}
+                  {officeHours.canManage && liveSession && (
                     <>
-                      <button
-                        type="button"
-                        disabled={officeHours.isBusy}
-                        onClick={() => void officeHours.admitNext()}
-                        className="rounded-lg bg-app-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
-                      >
-                        Admit next
-                      </button>
                       <button
                         type="button"
                         disabled={officeHours.isBusy}
@@ -117,26 +139,35 @@ export function OfficeHoursPanel({ courseTitle, cohortName, cohortId }: OfficeHo
               </div>
             </div>
 
-            {officeHours.activeSession && (
-              <OfficeHoursVoiceSection key={officeHours.activeSession.id} session={officeHours.activeSession} />
+            {liveSession && officeHours.currentParticipant && (
+              <OfficeHoursVoiceSection key={liveSession.id} session={liveSession} canSpeak={officeHours.currentParticipant.canSpeak} />
             )}
 
-            {officeHours.activeSession && officeHours.canManage && (
+            {liveSession && officeHours.canManage && (
               <div className="rounded-xl border border-app-border bg-app-surface p-4">
-                <h3 className="text-sm font-semibold text-app-text">Waitlist</h3>
-                {officeHours.waitlist.length === 0 ? (
-                  <p className="mt-2 text-sm text-app-muted">No learners waiting.</p>
+                <h3 className="text-sm font-semibold text-app-text">Live participants</h3>
+                {officeHours.participants.length === 0 ? (
+                  <p className="mt-2 text-sm text-app-muted">No one has joined yet.</p>
                 ) : (
                   <ul className="mt-3 flex flex-col gap-2">
-                    {officeHours.waitlist.map((entry) => (
+                    {officeHours.participants.map((participant) => (
                       <li
-                        key={`${entry.sessionId}:${entry.learnerUserId}:${entry.joinedAt}`}
+                        key={participant.userId}
                         className="flex items-center justify-between rounded-lg border border-app-border px-3 py-2 text-sm"
                       >
                         <span className="text-app-text">
-                          Learner {entry.learnerUserId.slice(0, 8)}…
+                          Member {participant.userId.slice(0, 8)}…
                         </span>
-                        <span className="text-xs text-app-muted">{entry.status}</span>
+                        {participant.handRaised ? (
+                          <button
+                            type="button"
+                            disabled={officeHours.isBusy}
+                            onClick={() => void officeHours.grantSpeaking(participant.userId, true)}
+                            className="rounded-lg bg-app-accent px-3 py-2 text-xs font-medium text-white disabled:opacity-60"
+                          >
+                            Grant speaking
+                          </button>
+                        ) : <span className="text-xs text-app-muted">{participant.canSpeak ? 'Speaking' : 'Listening'}</span>}
                       </li>
                     ))}
                   </ul>
@@ -169,9 +200,17 @@ export function OfficeHoursPanel({ courseTitle, cohortName, cohortId }: OfficeHo
   )
 }
 
-function OfficeHoursVoiceSection({ session }: { session: OfficeHoursSession }) {
-  const voice = useOfficeHoursVoice(session.id, session.voiceChannelId)
+function OfficeHoursVoiceSection({ session, canSpeak }: { session: OfficeHoursSession; canSpeak: boolean }) {
+  const voice = useOfficeHoursVoice(session.id)
   const isConnected = voice.status === 'connected'
+  const voiceCanSpeak = voice.canSpeak
+  const refreshVoicePermissions = voice.refreshPermissions
+
+  useEffect(() => {
+    if (isConnected && voiceCanSpeak !== canSpeak) {
+      void refreshVoicePermissions()
+    }
+  }, [canSpeak, isConnected, refreshVoicePermissions, voiceCanSpeak])
 
   return (
     <div className="rounded-xl border border-app-border bg-app-surface p-4">
@@ -211,7 +250,8 @@ function OfficeHoursVoiceSection({ session }: { session: OfficeHoursSession }) {
           <>
             <button
               type="button"
-              disabled={voice.isBusy}
+              disabled={voice.isBusy || !canSpeak}
+              title={canSpeak ? 'Mute or unmute microphone' : 'The host must grant speaking access first'}
               onClick={() => void voice.toggleMute()}
               className="rounded-lg border border-app-border px-3 py-2 text-sm text-app-text hover:bg-app-elevated disabled:opacity-60"
             >

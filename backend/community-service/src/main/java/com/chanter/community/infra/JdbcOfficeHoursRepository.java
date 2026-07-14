@@ -2,12 +2,13 @@ package com.chanter.community.infra;
 
 import com.chanter.community.application.OfficeHoursRepository;
 import com.chanter.community.domain.OfficeHoursSession;
+import com.chanter.community.domain.OfficeHoursParticipant;
 import com.chanter.community.domain.OfficeHoursSessionStatus;
 import com.chanter.community.domain.OfficeHoursWaitlistEntry;
 import com.chanter.community.domain.OfficeHoursWaitlistStatus;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -91,6 +92,26 @@ public class JdbcOfficeHoursRepository implements OfficeHoursRepository {
                         """)
                 .param("sessionId", sessionId)
                 .param("status", status.name())
+                .update();
+
+        if (updated == 0) {
+            throw new IllegalStateException("Office Hours session not found: " + sessionId);
+        }
+
+        return findSessionById(sessionId).orElseThrow();
+    }
+
+    @Override
+    @Transactional
+    public OfficeHoursSession updateSessionSchedule(UUID sessionId, Instant startsAt, Instant endsAt) {
+        int updated = jdbcClient.sql("""
+                        UPDATE office_hours_sessions
+                        SET starts_at = :startsAt, ends_at = :endsAt
+                        WHERE id = :sessionId
+                        """)
+                .param("sessionId", sessionId)
+                .param("startsAt", OffsetDateTime.ofInstant(startsAt, ZoneOffset.UTC))
+                .param("endsAt", OffsetDateTime.ofInstant(endsAt, ZoneOffset.UTC))
                 .update();
 
         if (updated == 0) {
@@ -228,6 +249,165 @@ public class JdbcOfficeHoursRepository implements OfficeHoursRepository {
                 .optional();
     }
 
+    @Override
+    @Transactional
+    public OfficeHoursParticipant saveParticipant(OfficeHoursParticipant participant) {
+        int updated = jdbcClient.sql("""
+                        UPDATE office_hours_participants
+                        SET can_speak = :canSpeak,
+                            hand_raised = :handRaised,
+                            active = TRUE,
+                            joined_at = :joinedAt,
+                            updated_at = :updatedAt
+                        WHERE session_id = :sessionId
+                        AND user_id = :userId
+                        """)
+                .param("sessionId", participant.sessionId())
+                .param("userId", participant.userId())
+                .param("canSpeak", participant.canSpeak())
+                .param("handRaised", participant.handRaised())
+                .param("joinedAt", OffsetDateTime.ofInstant(participant.joinedAt(), ZoneOffset.UTC))
+                .param("updatedAt", OffsetDateTime.ofInstant(participant.updatedAt(), ZoneOffset.UTC))
+                .update();
+        if (updated == 0) {
+            jdbcClient.sql("""
+                            INSERT INTO office_hours_participants (
+                                session_id, user_id, can_speak, hand_raised, active, joined_at, updated_at
+                            )
+                            VALUES (
+                                :sessionId, :userId, :canSpeak, :handRaised, TRUE, :joinedAt, :updatedAt
+                            )
+                            """)
+                    .param("sessionId", participant.sessionId())
+                    .param("userId", participant.userId())
+                    .param("canSpeak", participant.canSpeak())
+                    .param("handRaised", participant.handRaised())
+                    .param("joinedAt", OffsetDateTime.ofInstant(participant.joinedAt(), ZoneOffset.UTC))
+                    .param("updatedAt", OffsetDateTime.ofInstant(participant.updatedAt(), ZoneOffset.UTC))
+                    .update();
+        }
+        return participant;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<OfficeHoursParticipant> findParticipant(UUID sessionId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT session_id, user_id, can_speak, hand_raised, active, joined_at, updated_at
+                        FROM office_hours_participants
+                        WHERE session_id = :sessionId
+                        AND user_id = :userId
+                        """)
+                .param("sessionId", sessionId)
+                .param("userId", userId)
+                .query((rs, rowNum) -> mapParticipant(rs))
+                .optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OfficeHoursParticipant> findActiveParticipants(UUID sessionId) {
+        return jdbcClient.sql("""
+                        SELECT session_id, user_id, can_speak, hand_raised, active, joined_at, updated_at
+                        FROM office_hours_participants
+                        WHERE session_id = :sessionId
+                        AND active = TRUE
+                        ORDER BY can_speak DESC, hand_raised DESC, joined_at, user_id
+                        """)
+                .param("sessionId", sessionId)
+                .query((rs, rowNum) -> mapParticipant(rs))
+                .list();
+    }
+
+    @Override
+    @Transactional
+    public OfficeHoursParticipant updateParticipantHand(
+            UUID sessionId,
+            UUID userId,
+            boolean raised,
+            Instant updatedAt
+    ) {
+        int updated = jdbcClient.sql("""
+                        UPDATE office_hours_participants
+                        SET hand_raised = :raised, updated_at = :updatedAt
+                        WHERE session_id = :sessionId
+                        AND user_id = :userId
+                        AND active = TRUE
+                        """)
+                .param("sessionId", sessionId)
+                .param("userId", userId)
+                .param("raised", raised)
+                .param("updatedAt", OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC))
+                .update();
+        if (updated == 0) {
+            throw new IllegalStateException("Active Office Hours participant not found");
+        }
+        return findParticipant(sessionId, userId).orElseThrow();
+    }
+
+    @Override
+    @Transactional
+    public OfficeHoursParticipant updateParticipantSpeaking(
+            UUID sessionId,
+            UUID userId,
+            boolean canSpeak,
+            Instant updatedAt
+    ) {
+        int updated = jdbcClient.sql("""
+                        UPDATE office_hours_participants
+                        SET can_speak = :canSpeak,
+                            hand_raised = FALSE,
+                            updated_at = :updatedAt
+                        WHERE session_id = :sessionId
+                        AND user_id = :userId
+                        AND active = TRUE
+                        """)
+                .param("sessionId", sessionId)
+                .param("userId", userId)
+                .param("canSpeak", canSpeak)
+                .param("updatedAt", OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC))
+                .update();
+        if (updated == 0) {
+            throw new IllegalStateException("Active Office Hours participant not found");
+        }
+        return findParticipant(sessionId, userId).orElseThrow();
+    }
+
+    @Override
+    @Transactional
+    public void deactivateParticipant(UUID sessionId, UUID userId, Instant updatedAt) {
+        jdbcClient.sql("""
+                        UPDATE office_hours_participants
+                        SET active = FALSE,
+                            can_speak = FALSE,
+                            hand_raised = FALSE,
+                            updated_at = :updatedAt
+                        WHERE session_id = :sessionId
+                        AND user_id = :userId
+                        """)
+                .param("sessionId", sessionId)
+                .param("userId", userId)
+                .param("updatedAt", OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC))
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public void deactivateParticipants(UUID sessionId, Instant updatedAt) {
+        jdbcClient.sql("""
+                        UPDATE office_hours_participants
+                        SET active = FALSE,
+                            can_speak = FALSE,
+                            hand_raised = FALSE,
+                            updated_at = :updatedAt
+                        WHERE session_id = :sessionId
+                        AND active = TRUE
+                        """)
+                .param("sessionId", sessionId)
+                .param("updatedAt", OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC))
+                .update();
+    }
+
     private static OfficeHoursSession mapSession(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new OfficeHoursSession(
                 rs.getObject("id", UUID.class),
@@ -247,6 +427,18 @@ public class JdbcOfficeHoursRepository implements OfficeHoursRepository {
                 rs.getObject("learner_user_id", UUID.class),
                 rs.getObject("joined_at", OffsetDateTime.class).toInstant(),
                 OfficeHoursWaitlistStatus.valueOf(rs.getString("status"))
+        );
+    }
+
+    private static OfficeHoursParticipant mapParticipant(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new OfficeHoursParticipant(
+                rs.getObject("session_id", UUID.class),
+                rs.getObject("user_id", UUID.class),
+                rs.getBoolean("can_speak"),
+                rs.getBoolean("hand_raised"),
+                rs.getBoolean("active"),
+                rs.getObject("joined_at", OffsetDateTime.class).toInstant(),
+                rs.getObject("updated_at", OffsetDateTime.class).toInstant()
         );
     }
 }

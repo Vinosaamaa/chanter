@@ -139,8 +139,8 @@ Serial order only — one issue per branch.
 | 1 | [**#132**](https://github.com/Vinosaamaa/chanter/issues/132) | Explicit Course capabilities and Cohort context — **merged** |
 | 2 | [**#133**](https://github.com/Vinosaamaa/chanter/issues/133) | Operational shell search, account, and join flows — **merged** |
 | 3 | [**#134**](https://github.com/Vinosaamaa/chanter/issues/134) | Truthful Course Resources and AI install controls — **merged** (PR #148) |
-| 4 | [**#109**](https://github.com/Vinosaamaa/chanter/issues/109) | **← ACTIVE** Real v2 Friend Requests and co-member discovery |
-| 5 | [#135](https://github.com/Vinosaamaa/chanter/issues/135) | Durable Office Hours scheduling and live controls |
+| 4 | [**#109**](https://github.com/Vinosaamaa/chanter/issues/109) | Real v2 Friend Requests and co-member discovery — **merged** (PR #149) |
+| 5 | [**#135**](https://github.com/Vinosaamaa/chanter/issues/135) | **← ACTIVE** Durable Office Hours scheduling and live controls |
 | 6 | [#92](https://github.com/Vinosaamaa/chanter/issues/92) | Operational v2 Questions, support, and Teaching |
 | 7 | [#136](https://github.com/Vinosaamaa/chanter/issues/136) | Real Cohort roster, Enrollment, and TA assignment |
 | 8 | [#137](https://github.com/Vinosaamaa/chanter/issues/137) | Course Chat channel management and voice entry |
@@ -194,7 +194,7 @@ After #145: AI **#94–#100**, critical-path E2E/no-dead-controls **#103**, stag
 | 2 | [#86](https://github.com/Vinosaamaa/chanter/issues/86) | Product stack reliability — **merged** (PR #105) |
 | 3 | [#87](https://github.com/Vinosaamaa/chanter/issues/87) | Mockup gap audit — **owner sign-off 2026-07-09** (PR #106) |
 | — | **#115–#128** | **UI v2** — merged in PR #130 |
-| 4 | [#131](https://github.com/Vinosaamaa/chanter/issues/131) | Make UI v2 fully operational — **active at #133** |
+| 4 | [#131](https://github.com/Vinosaamaa/chanter/issues/131) | Make UI v2 fully operational — **active at #135** |
 | 5 | [#94](https://github.com/Vinosaamaa/chanter/issues/94)+ | Real AI + launch readiness after #145 |
 
 ---

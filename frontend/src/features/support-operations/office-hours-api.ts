@@ -1,70 +1,98 @@
 import { apiFetch } from '../../lib/api-client'
 
 import type {
+  OfficeHoursParticipant,
+  OfficeHoursParticipantListResponse,
   OfficeHoursSession,
   OfficeHoursSessionListResponse,
-  OfficeHoursWaitlistEntry,
-  OfficeHoursWaitlistListResponse,
 } from './support-operations-types'
+
+export type OfficeHoursScheduleInput = {
+  startsAt: string
+  endsAt: string
+}
 
 export async function scheduleOfficeHours(
   cohortId: string,
-  instructorUserId: string,
-  startsAt: string,
-  endsAt: string,
+  input: OfficeHoursScheduleInput,
 ): Promise<OfficeHoursSession> {
   return apiFetch<OfficeHoursSession>(`/api/v1/cohorts/${cohortId}/office-hours`, {
     method: 'POST',
-    body: JSON.stringify({ instructorUserId, startsAt, endsAt }),
+    body: JSON.stringify(input),
   })
 }
 
 export async function listOfficeHoursSessions(
   cohortId: string,
-  viewerUserId: string,
 ): Promise<OfficeHoursSessionListResponse> {
-  const params = new URLSearchParams({ viewerUserId })
-  return apiFetch<OfficeHoursSessionListResponse>(
-    `/api/v1/cohorts/${cohortId}/office-hours?${params.toString()}`,
-  )
+  return apiFetch<OfficeHoursSessionListResponse>(`/api/v1/cohorts/${cohortId}/office-hours`)
 }
 
-export async function joinOfficeHoursWaitlist(
+export async function updateOfficeHoursSession(
   sessionId: string,
-  learnerUserId: string,
-): Promise<OfficeHoursWaitlistEntry> {
-  return apiFetch<OfficeHoursWaitlistEntry>(`/api/v1/office-hours/${sessionId}/waitlist`, {
-    method: 'POST',
-    body: JSON.stringify({ learnerUserId }),
-  })
-}
-
-export async function listOfficeHoursWaitlist(
-  sessionId: string,
-  viewerUserId: string,
-): Promise<OfficeHoursWaitlistListResponse> {
-  const params = new URLSearchParams({ viewerUserId })
-  return apiFetch<OfficeHoursWaitlistListResponse>(
-    `/api/v1/office-hours/${sessionId}/waitlist?${params.toString()}`,
-  )
-}
-
-export async function admitNextOfficeHoursLearner(
-  sessionId: string,
-  actorUserId: string,
-): Promise<OfficeHoursWaitlistEntry> {
-  return apiFetch<OfficeHoursWaitlistEntry>(`/api/v1/office-hours/${sessionId}/admit-next`, {
-    method: 'POST',
-    body: JSON.stringify({ actorUserId }),
-  })
-}
-
-export async function endOfficeHoursSession(
-  sessionId: string,
-  actorUserId: string,
+  input: OfficeHoursScheduleInput,
 ): Promise<OfficeHoursSession> {
+  return apiFetch<OfficeHoursSession>(`/api/v1/office-hours/${sessionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function cancelOfficeHoursSession(sessionId: string): Promise<OfficeHoursSession> {
+  return apiFetch<OfficeHoursSession>(`/api/v1/office-hours/${sessionId}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function startOfficeHoursSession(sessionId: string): Promise<OfficeHoursSession> {
+  return apiFetch<OfficeHoursSession>(`/api/v1/office-hours/${sessionId}/start`, {
+    method: 'POST',
+  })
+}
+
+export async function endOfficeHoursSession(sessionId: string): Promise<OfficeHoursSession> {
   return apiFetch<OfficeHoursSession>(`/api/v1/office-hours/${sessionId}/end`, {
     method: 'POST',
-    body: JSON.stringify({ actorUserId }),
+  })
+}
+
+export async function joinOfficeHoursSession(sessionId: string): Promise<OfficeHoursParticipant> {
+  return apiFetch<OfficeHoursParticipant>(`/api/v1/office-hours/${sessionId}/participants`, {
+    method: 'POST',
+  })
+}
+
+export async function listOfficeHoursParticipants(
+  sessionId: string,
+): Promise<OfficeHoursParticipantListResponse> {
+  return apiFetch<OfficeHoursParticipantListResponse>(
+    `/api/v1/office-hours/${sessionId}/participants`,
+  )
+}
+
+export async function updateOfficeHoursHand(
+  sessionId: string,
+  raised: boolean,
+): Promise<OfficeHoursParticipant> {
+  return apiFetch<OfficeHoursParticipant>(
+    `/api/v1/office-hours/${sessionId}/participants/me/hand`,
+    { method: 'PATCH', body: JSON.stringify({ raised }) },
+  )
+}
+
+export async function updateOfficeHoursSpeaking(
+  sessionId: string,
+  userId: string,
+  canSpeak: boolean,
+): Promise<OfficeHoursParticipant> {
+  return apiFetch<OfficeHoursParticipant>(
+    `/api/v1/office-hours/${sessionId}/participants/${userId}/speaking`,
+    { method: 'PATCH', body: JSON.stringify({ canSpeak }) },
+  )
+}
+
+export async function leaveOfficeHoursSession(sessionId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/office-hours/${sessionId}/participants/me`, {
+    method: 'DELETE',
   })
 }

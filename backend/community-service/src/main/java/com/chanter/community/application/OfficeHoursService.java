@@ -2,6 +2,7 @@ package com.chanter.community.application;
 
 import com.chanter.community.domain.CohortOfficeHoursAccess;
 import com.chanter.community.domain.OfficeHoursSession;
+import com.chanter.community.domain.OfficeHoursParticipant;
 import com.chanter.community.domain.OfficeHoursSessionStatus;
 import com.chanter.community.domain.OfficeHoursWaitlistEntry;
 import com.chanter.community.domain.OfficeHoursWaitlistStatus;
@@ -87,6 +88,101 @@ public class OfficeHoursService {
         OfficeHoursSession session = requireSession(sessionId);
         requireOfficeHoursAccess(session.cohortId(), viewerUserId);
         return session;
+    }
+
+    @Transactional
+    public OfficeHoursSession updateSession(
+            UUID sessionId,
+            UUID actorUserId,
+            Instant startsAt,
+            Instant endsAt
+    ) {
+        OfficeHoursSession session = requireSession(sessionId);
+        requireManageAccess(session.cohortId(), actorUserId);
+        if (session.status() != OfficeHoursSessionStatus.SCHEDULED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only scheduled Office Hours can be edited");
+        }
+        if (!endsAt.isAfter(startsAt)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Office Hours end time must be after start time");
+        }
+        return officeHoursRepository.updateSessionSchedule(sessionId, startsAt, endsAt);
+    }
+
+    @Transactional
+    public OfficeHoursParticipant joinSession(UUID sessionId, UUID userId) {
+        OfficeHoursSession session = requireSession(sessionId);
+        CohortOfficeHoursAccess access = requireOfficeHoursAccess(session.cohortId(), userId);
+        if (!access.canJoinOfficeHours() && !access.canManageOfficeHours()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Office Hours join requires Cohort access");
+        }
+        requireLiveSession(session);
+        Instant now = clock.instant();
+        OfficeHoursParticipant participant = new OfficeHoursParticipant(
+                sessionId,
+                userId,
+                access.canManageOfficeHours(),
+                false,
+                true,
+                now,
+                now
+        );
+        return officeHoursRepository.saveParticipant(participant);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OfficeHoursParticipant> listParticipants(UUID sessionId, UUID viewerUserId) {
+        OfficeHoursSession session = requireSession(sessionId);
+        requireOfficeHoursAccess(session.cohortId(), viewerUserId);
+        return officeHoursRepository.findActiveParticipants(sessionId);
+    }
+
+    @Transactional
+    public OfficeHoursParticipant updateHandRaised(UUID sessionId, UUID userId, boolean raised) {
+        OfficeHoursSession session = requireSession(sessionId);
+        requireOfficeHoursAccess(session.cohortId(), userId);
+        requireLiveSession(session);
+        OfficeHoursParticipant participant = officeHoursRepository.findParticipant(sessionId, userId)
+                .filter(OfficeHoursParticipant::active)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Join Office Hours before changing hand state"
+                ));
+        if (participant.handRaised() == raised) {
+            return participant;
+        }
+        return officeHoursRepository.updateParticipantHand(sessionId, userId, raised, clock.instant());
+    }
+
+    @Transactional
+    public OfficeHoursParticipant updateSpeakingAccess(
+            UUID sessionId,
+            UUID participantUserId,
+            UUID actorUserId,
+            boolean canSpeak
+    ) {
+        OfficeHoursSession session = requireSession(sessionId);
+        requireManageAccess(session.cohortId(), actorUserId);
+        requireLiveSession(session);
+        officeHoursRepository.findParticipant(sessionId, participantUserId)
+                .filter(OfficeHoursParticipant::active)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Office Hours participant not found"
+                ));
+        return officeHoursRepository.updateParticipantSpeaking(
+                sessionId,
+                participantUserId,
+                canSpeak,
+                clock.instant()
+        );
+    }
+
+    @Transactional
+    public void leaveSession(UUID sessionId, UUID userId) {
+        OfficeHoursSession session = requireSession(sessionId);
+        requireOfficeHoursAccess(session.cohortId(), userId);
+        officeHoursRepository.deactivateParticipant(sessionId, userId, clock.instant());
+        studyServerRepository.deleteVoicePresence(session.voiceChannelId(), userId);
     }
 
     @Transactional
@@ -180,41 +276,23 @@ public class OfficeHoursService {
     public VoiceMediaToken issueOfficeHoursMediaToken(UUID sessionId, UUID userId) {
         OfficeHoursSession session = requireSession(sessionId);
         CohortOfficeHoursAccess access = requireOfficeHoursAccess(session.cohortId(), userId);
-        requireOpenWindow(session);
-
-        VoicePresence presence;
-        if (access.canManageOfficeHours()) {
-            markSessionLiveIfNeeded(session);
-            presence = studyServerRepository.saveVoicePresence(session.voiceChannelId(), userId);
-        } else {
-            if (!access.canJoinOfficeHours()) {
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "Office Hours media token requires Cohort Enrollment"
-                );
-            }
-
-            OfficeHoursWaitlistEntry entry = officeHoursRepository.findWaitlistEntry(sessionId, userId)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.FORBIDDEN,
-                            "Learner must join the Office Hours waitlist first"
-                    ));
-            if (entry.status() != OfficeHoursWaitlistStatus.ADMITTED) {
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "Learner must be admitted before joining Office Hours voice"
-                );
-            }
-
-            markSessionLiveIfNeeded(session);
-            presence = studyServerRepository.saveVoicePresence(session.voiceChannelId(), userId);
+        requireLiveSession(session);
+        if (!access.canJoinOfficeHours() && !access.canManageOfficeHours()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Office Hours media token requires Cohort access");
         }
+        OfficeHoursParticipant participant = officeHoursRepository.findParticipant(sessionId, userId)
+                .filter(OfficeHoursParticipant::active)
+                .orElseGet(() -> access.canManageOfficeHours() ? joinSession(sessionId, userId) : null);
+        if (participant == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Join Office Hours before requesting audio access");
+        }
+        studyServerRepository.saveVoicePresence(session.voiceChannelId(), userId);
 
         return liveKitTokenIssuer.issueForVoiceChannel(
                 session.voiceChannelId(),
                 userId,
-                presence.canSpeak(),
-                presence.canListen()
+                participant.canSpeak(),
+                true
         );
     }
 
@@ -226,14 +304,51 @@ public class OfficeHoursService {
     }
 
     @Transactional
+    public OfficeHoursSession startSession(UUID sessionId, UUID actorUserId) {
+        OfficeHoursSession session = requireSession(sessionId);
+        requireManageAccess(session.cohortId(), actorUserId);
+        if (session.status() == OfficeHoursSessionStatus.LIVE) {
+            return session;
+        }
+        if (session.status() != OfficeHoursSessionStatus.SCHEDULED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only scheduled Office Hours can be started");
+        }
+        if (!clock.instant().isBefore(session.endsAt())) {
+            throw new ResponseStatusException(HttpStatus.GONE, "Office Hours session has ended");
+        }
+        return officeHoursRepository.updateSessionStatus(sessionId, OfficeHoursSessionStatus.LIVE);
+    }
+
+    @Transactional
+    public OfficeHoursSession cancelSession(UUID sessionId, UUID actorUserId) {
+        OfficeHoursSession session = requireSession(sessionId);
+        requireManageAccess(session.cohortId(), actorUserId);
+        if (session.status() == OfficeHoursSessionStatus.CANCELLED) {
+            return session;
+        }
+        if (session.status() != OfficeHoursSessionStatus.SCHEDULED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only scheduled Office Hours can be cancelled");
+        }
+        return officeHoursRepository.updateSessionStatus(sessionId, OfficeHoursSessionStatus.CANCELLED);
+    }
+
+    @Transactional
     public OfficeHoursSession endSession(UUID sessionId, UUID actorUserId) {
         OfficeHoursSession session = requireSession(sessionId);
         requireManageAccess(session.cohortId(), actorUserId);
 
-        if (session.status() == OfficeHoursSessionStatus.ENDED
-                || session.status() == OfficeHoursSessionStatus.CANCELLED) {
+        if (session.status() == OfficeHoursSessionStatus.ENDED) {
             return session;
         }
+        if (session.status() != OfficeHoursSessionStatus.LIVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only live Office Hours can be ended");
+        }
+
+        List<OfficeHoursParticipant> participants = officeHoursRepository.findActiveParticipants(sessionId);
+        participants.forEach(participant ->
+                studyServerRepository.deleteVoicePresence(session.voiceChannelId(), participant.userId())
+        );
+        officeHoursRepository.deactivateParticipants(sessionId, clock.instant());
 
         return officeHoursRepository.updateSessionStatus(sessionId, OfficeHoursSessionStatus.ENDED);
     }
@@ -274,6 +389,15 @@ public class OfficeHoursService {
         }
         if (!now.isBefore(session.endsAt())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Office Hours window has closed");
+        }
+    }
+
+    private void requireLiveSession(OfficeHoursSession session) {
+        if (session.status() != OfficeHoursSessionStatus.LIVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Office Hours session is not live");
+        }
+        if (!clock.instant().isBefore(session.endsAt())) {
+            throw new ResponseStatusException(HttpStatus.GONE, "Office Hours session has ended");
         }
     }
 
