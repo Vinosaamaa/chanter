@@ -10,11 +10,9 @@ import type {
 
 export async function listFaqCandidates(
   channelId: string,
-  viewerUserId: string,
 ): Promise<FaqCandidateListResponse> {
-  const params = new URLSearchParams({ viewerUserId })
   return apiFetch<FaqCandidateListResponse>(
-    `/api/v1/course-channels/${channelId}/faq-candidates?${params.toString()}`,
+    `/api/v1/course-channels/${channelId}/faq-candidates`,
   )
 }
 
@@ -22,7 +20,6 @@ export async function upsertApprovedFaq(
   courseId: string,
   payload: {
     channelId: string
-    approvedByUserId: string
     id?: string
     question: string
     answer: string
@@ -37,12 +34,10 @@ export async function upsertApprovedFaq(
 
 export async function listApprovedFaqs(
   courseId: string,
-  viewerUserId: string,
   init?: ApiFetchInit,
 ): Promise<ApprovedFaqListResponse> {
-  const params = new URLSearchParams({ viewerUserId })
   return apiFetch<ApprovedFaqListResponse>(
-    `/api/v1/courses/${courseId}/approved-faqs?${params.toString()}`,
+    `/api/v1/courses/${courseId}/approved-faqs`,
     init,
   )
 }

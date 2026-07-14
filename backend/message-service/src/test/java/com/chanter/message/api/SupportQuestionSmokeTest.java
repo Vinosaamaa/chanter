@@ -2,7 +2,9 @@ package com.chanter.message.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.chanter.common.auth.AuthHeaders;
@@ -156,5 +158,131 @@ class SupportQuestionSmokeTest {
                                 "idempotencyKey", UUID.randomUUID().toString()
                         ))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void instructorReplyIsPersistedAndVisibleToTheQuestionAuthor() throws Exception {
+        UUID channelId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+
+        courseChannelAccessClient.grantLearnerPost(channelId, learnerUserId, courseId, "questions");
+        courseChannelAccessClient.grantInstructorView(channelId, instructorUserId, courseId, "questions");
+
+        MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "body", "Why does the recursive call stop?",
+                                "idempotencyKey", UUID.randomUUID().toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        SupportQuestionResponse question = objectMapper.readValue(
+                postResult.getResponse().getContentAsString(),
+                SupportQuestionResponse.class
+        );
+
+        mockMvc.perform(post(
+                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/replies",
+                            channelId,
+                            question.id()
+                        )
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "body", "It stops when the base case returns without another call."
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.authorUserId").value(instructorUserId.toString()))
+                .andExpect(jsonPath("$.body").value(
+                        "It stops when the base case returns without another call."
+                ));
+
+        mockMvc.perform(get(
+                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/replies",
+                            channelId,
+                            question.id()
+                        )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.replies.length()").value(1))
+                .andExpect(jsonPath("$.replies[0].authorUserId").value(instructorUserId.toString()))
+                .andExpect(jsonPath("$.replies[0].body").value(
+                        "It stops when the base case returns without another call."
+                ));
+
+        mockMvc.perform(get(
+                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}",
+                            channelId,
+                            question.id()
+                        )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("HUMAN_ANSWERED"));
+
+        mockMvc.perform(get("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.supportQuestions.length()").value(1))
+                .andExpect(jsonPath("$.supportQuestions[0].id").value(question.id().toString()))
+                .andExpect(jsonPath("$.supportQuestions[0].status").value("HUMAN_ANSWERED"));
+    }
+
+    @Test
+    void onlyTeachingStaffCanMarkSupportQuestionAsDuplicate() throws Exception {
+        UUID channelId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+
+        courseChannelAccessClient.grantLearnerPost(channelId, learnerUserId, courseId, "questions");
+        courseChannelAccessClient.grantInstructorView(channelId, instructorUserId, courseId, "questions");
+
+        MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "body", "Is this the same recursion question?",
+                                "idempotencyKey", UUID.randomUUID().toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        SupportQuestionResponse question = objectMapper.readValue(
+                postResult.getResponse().getContentAsString(),
+                SupportQuestionResponse.class
+        );
+
+        mockMvc.perform(patch(
+                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/moderation",
+                            channelId,
+                            question.id()
+                        )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("status", "DUPLICATE"))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(patch(
+                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/moderation",
+                            channelId,
+                            question.id()
+                        )
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("status", "DUPLICATE"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DUPLICATE"));
+
+        mockMvc.perform(post(
+                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/replies",
+                            channelId,
+                            question.id()
+                        )
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("body", "A late reply"))))
+                .andExpect(status().isConflict());
     }
 }

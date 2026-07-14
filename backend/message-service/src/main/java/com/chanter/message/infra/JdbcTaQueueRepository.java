@@ -137,6 +137,26 @@ public class JdbcTaQueueRepository implements TaQueueRepository {
 
     @Override
     @Transactional
+    public int closeActiveBySupportQuestionId(
+            UUID supportQuestionId,
+            TaQueueItemStatus status,
+            Instant updatedAt
+    ) {
+        return jdbcClient.sql("""
+                        UPDATE ta_queue_items
+                        SET status = :status,
+                            updated_at = :updatedAt
+                        WHERE support_question_id = :supportQuestionId
+                        AND status IN ('OPEN', 'PICKED_UP')
+                        """)
+                .param("supportQuestionId", supportQuestionId)
+                .param("status", status.name())
+                .param("updatedAt", OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC))
+                .update();
+    }
+
+    @Override
+    @Transactional
     public boolean updateStatus(
             UUID itemId,
             UUID cohortId,

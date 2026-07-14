@@ -229,6 +229,14 @@ Each live attendee has one `office_hours_participants` row keyed by `(sessionId,
 
 LiveKit remains the media plane, not the source of authorization. Community Service issues a short-lived media token only for an active participant and derives `canSpeak` from the durable participant row. The client reconnects with a fresh token when speaking permission changes; it polls the durable roster for near-realtime UI state while LiveKit carries realtime audio. This keeps authorization recoverable across refreshes and prevents a client from self-selecting speaker permission.
 
+### Durable Questions And Human Handoff
+
+Message Service owns the Support Question lifecycle, human replies, TA Queue items, and Approved FAQ records. Public requests derive the learner, TA, instructor, or approver from the authenticated principal; caller-supplied actor IDs are not authorization evidence. Learners can read their own durable questions across every status, while Course instructors and Cohort TAs receive the broader support view through Community Service capability checks.
+
+Support Question status transitions are compare-and-set writes. AI outcomes move `UNANSWERED` to `AI_ANSWERED` or `AI_LOW_CONFIDENCE`; a staff reply moves any non-terminal question to `HUMAN_ANSWERED`; moderation closes it as `RESOLVED`, `CANCELLED`, or `DUPLICATE`. Resolving a TA Queue item and closing its underlying Support Question happen in the same Message Service transaction so the queue and question cannot disagree after a successful command.
+
+Agent Service owns persisted assistant answers and citation rows, while Message Service remains authoritative for question status and human replies. An authenticated answer read is available to the question author and Course support staff even after a later reply or terminal transition. Unavailable individual grounding sources degrade to a low-confidence human handoff instead of failing the learner's support path. Analytics Service returns Course, Cohort, and questions-channel identities with scoped support aggregates so the Teaching dashboard can deep-link into the exact operational workspace; these dashboard aggregates remain eventually consistent read data.
+
 ### Control Plane
 
 The control plane manages configuration, secrets, service discovery, CI/CD, observability, and alerting.

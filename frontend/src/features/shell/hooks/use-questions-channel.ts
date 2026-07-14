@@ -2,16 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ApiError } from '../../../lib/api-client'
 import { useAuthStore } from '../../../stores/auth-store'
-import type { ChannelMessage } from '../channel-message-types'
-import { fetchChannelMessages } from '../channel-messages-api'
+import { fetchPublicProfiles } from '../../friends/friends-api'
+import type { PublicUserProfile } from '../../friends/types'
 import {
   addSupportQuestionToTaQueue,
+  fetchAssistantAnswer,
   invokeAssistantAnswer,
-  listUnansweredSupportQuestions,
+  listSupportQuestionReplies,
+  listSupportQuestions,
+  moderateSupportQuestion,
   postSupportQuestion,
+  postSupportQuestionReply,
   quotaExhaustedMessage,
 } from '../../questions/questions-api'
-import type { AssistantAnswer, SupportQuestion } from '../../questions/support-question-types'
+import type {
+  AssistantAnswer,
+  SupportQuestionModerationStatus,
+  SupportQuestionReply,
+  SupportQuestionSummary,
+} from '../../questions/support-question-types'
+import type { ChannelMessage } from '../channel-message-types'
 
 type QuestionsChannelContext = {
   channelId: string
@@ -22,7 +32,7 @@ export type QuestionsTimelineEntry =
   | {
       kind: 'learner-question'
       message: ChannelMessage
-      supportQuestion: SupportQuestion | null
+      supportQuestion: SupportQuestionSummary
     }
   | {
       kind: 'ai-answer'
@@ -31,7 +41,9 @@ export type QuestionsTimelineEntry =
     }
 
 type UseQuestionsChannelResult = {
+  supportQuestions: SupportQuestionSummary[]
   timeline: QuestionsTimelineEntry[]
+  profilesById: Record<string, PublicUserProfile>
   isLoadingHistory: boolean
   error: string | null
   postQuestion: (body: string) => Promise<boolean>
@@ -43,7 +55,17 @@ type UseQuestionsChannelResult = {
   taQueueSuccess: string | null
   selectedSupportQuestionId: string | null
   selectSupportQuestion: (supportQuestionId: string | null) => void
+  selectedQuestion: SupportQuestionSummary | null
   selectedAnswer: AssistantAnswer | null
+  selectedReplies: SupportQuestionReply[]
+  postReply: (supportQuestionId: string, body: string) => Promise<boolean>
+  isPostingReply: boolean
+  moderateQuestion: (
+    supportQuestionId: string,
+    status: SupportQuestionModerationStatus,
+  ) => Promise<void>
+  isModerating: boolean
+  refresh: () => Promise<void>
 }
 
 const MAX_QUESTION_BODY_LENGTH = 4000
@@ -53,248 +75,270 @@ export function useQuestionsChannel({
   cohortId,
 }: QuestionsChannelContext): UseQuestionsChannelResult {
   const userId = useAuthStore((state) => state.user?.id ?? null)
-  const [messages, setMessages] = useState<ChannelMessage[]>([])
-  const [supportQuestionsById, setSupportQuestionsById] = useState<Record<string, SupportQuestion>>({})
+  const [supportQuestions, setSupportQuestions] = useState<SupportQuestionSummary[]>([])
   const [answersByQuestionId, setAnswersByQuestionId] = useState<Record<string, AssistantAnswer>>({})
-  const [loadedHistoryKey, setLoadedHistoryKey] = useState<string | null>(null)
+  const [repliesByQuestionId, setRepliesByQuestionId] = useState<Record<string, SupportQuestionReply[]>>({})
+  const [profilesById, setProfilesById] = useState<Record<string, PublicUserProfile>>({})
+  const [loadedContextKey, setLoadedContextKey] = useState<string | null>(null)
+  const [reloadToken, setReloadToken] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isPosting, setIsPosting] = useState(false)
+  const [isPostingReply, setIsPostingReply] = useState(false)
+  const [isModerating, setIsModerating] = useState(false)
   const [invokingQuestionId, setInvokingQuestionId] = useState<string | null>(null)
   const [addingToQueueQuestionId, setAddingToQueueQuestionId] = useState<string | null>(null)
   const [taQueueSuccess, setTaQueueSuccess] = useState<string | null>(null)
   const [selectedSupportQuestionId, setSelectedSupportQuestionId] = useState<string | null>(null)
   const postAttemptRef = useRef<{ body: string; key: string } | null>(null)
-  const historyRequestKey = channelId && userId ? `${channelId}:${userId}` : null
-  const isLoadingHistory = historyRequestKey !== null && loadedHistoryKey !== historyRequestKey
+  const contextKey = channelId && userId ? `${channelId}:${userId}` : null
+  const requestKey = contextKey ? `${contextKey}:${reloadToken}` : null
+  const hasActiveData = contextKey !== null && loadedContextKey === contextKey
 
   useEffect(() => {
-    if (!historyRequestKey || !channelId || !userId) {
-      return
-    }
+    if (!contextKey || !requestKey) return
 
     let cancelled = false
 
-    void Promise.all([
-      fetchChannelMessages('course', channelId),
-      listUnansweredSupportQuestions(channelId),
-    ])
-      .then(([messageResponse, supportQuestionResponse]) => {
-        if (cancelled) {
-          return
-        }
-
-        setMessages(messageResponse.messages)
-        setSupportQuestionsById((current) => {
-          const next = { ...current }
-          for (const summary of supportQuestionResponse.supportQuestions) {
-            next[summary.id] = {
-              id: summary.id,
-              channelMessageId: summary.channelMessageId,
-              channelId: summary.channelId,
-              senderUserId: summary.senderUserId,
-              body: summary.body,
-              status: summary.status,
-              idempotencyKey: '',
-              createdAt: summary.createdAt,
-            }
+    void listSupportQuestions(channelId)
+      .then((response) => {
+        if (cancelled) return
+        setError(null)
+        setSupportQuestions(response.supportQuestions)
+        setSelectedSupportQuestionId((current) => {
+          if (current && response.supportQuestions.some((question) => question.id === current)) {
+            return current
           }
-          return next
+          return response.supportQuestions.at(-1)?.id ?? null
         })
+        setLoadedContextKey(contextKey)
+      })
+      .catch((caught) => {
+        if (cancelled) return
+        setSupportQuestions([])
+        setError(caught instanceof Error ? caught.message : 'Unable to load Support Questions')
+        setLoadedContextKey(contextKey)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [channelId, contextKey, requestKey])
+
+  const activeQuestions = useMemo(
+    () => hasActiveData ? supportQuestions : [],
+    [hasActiveData, supportQuestions],
+  )
+  const selectedQuestion = useMemo(
+    () => activeQuestions.find((question) => question.id === selectedSupportQuestionId) ?? null,
+    [activeQuestions, selectedSupportQuestionId],
+  )
+
+  useEffect(() => {
+    if (!requestKey || !selectedQuestion) return
+
+    let cancelled = false
+    const answerRequest = fetchAssistantAnswer(channelId, selectedQuestion.id).catch((caught) => {
+      if (caught instanceof ApiError && caught.status === 404) return null
+      throw caught
+    })
+
+    void Promise.all([
+      answerRequest,
+      listSupportQuestionReplies(channelId, selectedQuestion.id),
+    ])
+      .then(([answer, replyList]) => {
+        if (cancelled) return
+        if (answer) {
+          setAnswersByQuestionId((current) => ({ ...current, [selectedQuestion.id]: answer }))
+        }
+        setRepliesByQuestionId((current) => ({
+          ...current,
+          [selectedQuestion.id]: mergeReplies(
+            replyList.replies,
+            current[selectedQuestion.id] ?? [],
+          ),
+        }))
       })
       .catch((caught) => {
         if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : 'Unable to load #questions history')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadedHistoryKey(historyRequestKey)
+          setError(caught instanceof Error ? caught.message : 'Unable to load the question thread')
         }
       })
 
     return () => {
       cancelled = true
     }
-  }, [channelId, historyRequestKey, userId])
+  }, [channelId, requestKey, selectedQuestion])
 
-  const supportQuestionByMessageId = useMemo(() => {
-    const map = new Map<string, SupportQuestion>()
-    for (const question of Object.values(supportQuestionsById)) {
-      if (question.channelMessageId) {
-        map.set(question.channelMessageId, question)
-      }
+  const selectedReplies = useMemo(
+    () => selectedSupportQuestionId
+      ? repliesByQuestionId[selectedSupportQuestionId] ?? []
+      : [],
+    [repliesByQuestionId, selectedSupportQuestionId],
+  )
+  const profileUserIds = useMemo(
+    () => Array.from(new Set([
+      ...activeQuestions.map((question) => question.senderUserId),
+      ...selectedReplies.map((reply) => reply.authorUserId),
+    ])).filter((id) => !profilesById[id]),
+    [activeQuestions, profilesById, selectedReplies],
+  )
+  const profileRequestKey = profileUserIds.slice().sort().join(':')
+
+  useEffect(() => {
+    if (!profileRequestKey) return
+    let cancelled = false
+    void fetchPublicProfiles(profileUserIds).then((response) => {
+      if (cancelled) return
+      setProfilesById((current) => ({
+        ...current,
+        ...Object.fromEntries(response.profiles.map((profile) => [profile.userId, profile])),
+      }))
+    }).catch(() => undefined)
+    return () => {
+      cancelled = true
     }
-    return map
-  }, [supportQuestionsById])
+  }, [profileRequestKey, profileUserIds])
 
-  const timeline = useMemo(() => {
-    const entries: QuestionsTimelineEntry[] = []
-
-    for (const message of messages) {
-      entries.push({
-        kind: 'learner-question',
-        message,
-        supportQuestion: supportQuestionByMessageId.get(message.id) ?? null,
-      })
-    }
-
+  const timeline = useMemo<QuestionsTimelineEntry[]>(() => {
+    const entries: QuestionsTimelineEntry[] = activeQuestions.map((question) => ({
+      kind: 'learner-question',
+      message: {
+        id: question.channelMessageId,
+        channelId: question.channelId,
+        senderUserId: question.senderUserId,
+        body: question.body,
+        createdAt: question.createdAt,
+      },
+      supportQuestion: question,
+    }))
     for (const answer of Object.values(answersByQuestionId)) {
-      entries.push({
-        kind: 'ai-answer',
-        supportQuestionId: answer.supportQuestionId,
-        answer,
-      })
+      if (activeQuestions.some((question) => question.id === answer.supportQuestionId)) {
+        entries.push({ kind: 'ai-answer', supportQuestionId: answer.supportQuestionId, answer })
+      }
+    }
+    return entries.sort((left, right) => entryTimestamp(left).localeCompare(entryTimestamp(right)))
+  }, [activeQuestions, answersByQuestionId])
+
+  const postQuestion = useCallback(async (body: string) => {
+    if (!userId) return false
+    const trimmed = body.trim()
+    if (!trimmed) return false
+    if (trimmed.length > MAX_QUESTION_BODY_LENGTH) {
+      setError(`Question must be ${MAX_QUESTION_BODY_LENGTH} characters or fewer`)
+      return false
     }
 
-    return entries.sort((left, right) => {
-      const leftTime = entryTimestamp(left)
-      const rightTime = entryTimestamp(right)
-      return leftTime.localeCompare(rightTime)
-    })
-  }, [answersByQuestionId, messages, supportQuestionByMessageId])
-
-  const selectedAnswer = useMemo(() => {
-    if (!selectedSupportQuestionId) {
-      const lastAnswer = Object.values(answersByQuestionId).at(-1)
-      return lastAnswer ?? null
+    const previousAttempt = postAttemptRef.current
+    const idempotencyKey = previousAttempt?.body === trimmed ? previousAttempt.key : crypto.randomUUID()
+    postAttemptRef.current = { body: trimmed, key: idempotencyKey }
+    setIsPosting(true)
+    setError(null)
+    setTaQueueSuccess(null)
+    try {
+      const created = await postSupportQuestion(channelId, trimmed, idempotencyKey)
+      postAttemptRef.current = null
+      setSupportQuestions((current) => [...current, created])
+      setSelectedSupportQuestionId(created.id)
+      return true
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to post Support Question')
+      return false
+    } finally {
+      setIsPosting(false)
     }
-    return answersByQuestionId[selectedSupportQuestionId] ?? null
-  }, [answersByQuestionId, selectedSupportQuestionId])
+  }, [channelId, userId])
 
-  const postQuestion = useCallback(
-    async (body: string) => {
-      if (!userId) {
-        return false
+  const invokeAssistant = useCallback(async (supportQuestionId: string) => {
+    setInvokingQuestionId(supportQuestionId)
+    setError(null)
+    setTaQueueSuccess(null)
+    setSelectedSupportQuestionId(supportQuestionId)
+    try {
+      const answer = await invokeAssistantAnswer(channelId, supportQuestionId)
+      setAnswersByQuestionId((current) => ({ ...current, [supportQuestionId]: answer }))
+      setSupportQuestions((current) => current.map((question) =>
+        question.id === supportQuestionId
+          ? { ...question, status: answer.supportQuestionStatus }
+          : question,
+      ))
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 429) {
+        setError(quotaExhaustedMessage(caught.body))
+      } else {
+        setError(caught instanceof Error ? caught.message : 'Unable to invoke AI Study Assistant')
       }
+    } finally {
+      setInvokingQuestionId(null)
+    }
+  }, [channelId])
 
-      const trimmed = body.trim()
-      if (!trimmed) {
-        return false
-      }
-      if (trimmed.length > MAX_QUESTION_BODY_LENGTH) {
-        setError(`Question must be ${MAX_QUESTION_BODY_LENGTH} characters or fewer`)
-        return false
-      }
+  const addToTaQueue = useCallback(async (supportQuestionId: string) => {
+    const answer = answersByQuestionId[supportQuestionId]
+    if (!answer?.handoffRecommended || !cohortId) return
+    setAddingToQueueQuestionId(supportQuestionId)
+    setError(null)
+    setTaQueueSuccess(null)
+    try {
+      await addSupportQuestionToTaQueue(cohortId, supportQuestionId, channelId)
+      setTaQueueSuccess('Added to TA Queue. A teaching assistant will follow up soon.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to add to TA Queue')
+    } finally {
+      setAddingToQueueQuestionId(null)
+    }
+  }, [answersByQuestionId, channelId, cohortId])
 
-      const optimisticMessageId = `optimistic-${crypto.randomUUID()}`
-      const optimisticMessage: ChannelMessage = {
-        id: optimisticMessageId,
-        channelId,
-        senderUserId: userId,
-        body: trimmed,
-        createdAt: new Date().toISOString(),
-      }
+  const postReply = useCallback(async (supportQuestionId: string, body: string) => {
+    const trimmed = body.trim()
+    if (!trimmed) return false
+    setIsPostingReply(true)
+    setError(null)
+    try {
+      const created = await postSupportQuestionReply(channelId, supportQuestionId, trimmed)
+      setRepliesByQuestionId((current) => ({
+        ...current,
+        [supportQuestionId]: [...(current[supportQuestionId] ?? []), created],
+      }))
+      setSupportQuestions((current) => current.map((question) =>
+        question.id === supportQuestionId ? { ...question, status: 'HUMAN_ANSWERED' } : question,
+      ))
+      return true
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to post reply')
+      return false
+    } finally {
+      setIsPostingReply(false)
+    }
+  }, [channelId])
 
-      setIsPosting(true)
-      setError(null)
-      setTaQueueSuccess(null)
-      setMessages((current) => [...current, optimisticMessage])
+  const moderateQuestion = useCallback(async (
+    supportQuestionId: string,
+    status: SupportQuestionModerationStatus,
+  ) => {
+    setIsModerating(true)
+    setError(null)
+    try {
+      const updated = await moderateSupportQuestion(channelId, supportQuestionId, status)
+      setSupportQuestions((current) => current.map((question) =>
+        question.id === supportQuestionId ? updated : question,
+      ))
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to update Support Question')
+    } finally {
+      setIsModerating(false)
+    }
+  }, [channelId])
 
-      const previousAttempt = postAttemptRef.current
-      const idempotencyKey =
-        previousAttempt?.body === trimmed ? previousAttempt.key : crypto.randomUUID()
-      postAttemptRef.current = { body: trimmed, key: idempotencyKey }
-
-      try {
-        const created = await postSupportQuestion(channelId, trimmed, idempotencyKey)
-        postAttemptRef.current = null
-        setSupportQuestionsById((current) => ({ ...current, [created.id]: created }))
-        setSelectedSupportQuestionId(created.id)
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === optimisticMessageId
-              ? {
-                  id: created.channelMessageId,
-                  channelId: created.channelId,
-                  senderUserId: created.senderUserId,
-                  body: created.body,
-                  createdAt: created.createdAt,
-                }
-              : message,
-          ),
-        )
-        return true
-      } catch (caught) {
-        setMessages((current) => current.filter((message) => message.id !== optimisticMessageId))
-        setError(caught instanceof Error ? caught.message : 'Unable to post Support Question')
-        return false
-      } finally {
-        setIsPosting(false)
-      }
-    },
-    [channelId, userId],
-  )
-
-  const invokeAssistant = useCallback(
-    async (supportQuestionId: string) => {
-      if (!userId) {
-        return
-      }
-
-      setInvokingQuestionId(supportQuestionId)
-      setError(null)
-      setTaQueueSuccess(null)
-      setSelectedSupportQuestionId(supportQuestionId)
-
-      try {
-        const answer = await invokeAssistantAnswer(channelId, supportQuestionId, userId)
-        setAnswersByQuestionId((current) => ({ ...current, [supportQuestionId]: answer }))
-        setSupportQuestionsById((current) => {
-          const existing = current[supportQuestionId]
-          if (!existing) {
-            return current
-          }
-          return {
-            ...current,
-            [supportQuestionId]: {
-              ...existing,
-              status: answer.supportQuestionStatus,
-            },
-          }
-        })
-      } catch (caught) {
-        if (caught instanceof ApiError && caught.status === 429) {
-          setError(quotaExhaustedMessage(caught.body))
-        } else {
-          setError(caught instanceof Error ? caught.message : 'Unable to invoke AI Study Assistant')
-        }
-      } finally {
-        setInvokingQuestionId(null)
-      }
-    },
-    [channelId, userId],
-  )
-
-  const addToTaQueue = useCallback(
-    async (supportQuestionId: string) => {
-      if (!userId) {
-        return
-      }
-
-      const answer = answersByQuestionId[supportQuestionId]
-      if (!answer?.handoffRecommended) {
-        return
-      }
-
-      setAddingToQueueQuestionId(supportQuestionId)
-      setError(null)
-      setTaQueueSuccess(null)
-
-      try {
-        await addSupportQuestionToTaQueue(cohortId, userId, supportQuestionId, channelId)
-        setTaQueueSuccess('Added to TA Queue. A teaching assistant will follow up soon.')
-      } catch (caught) {
-        setError(caught instanceof Error ? caught.message : 'Unable to add to TA Queue')
-      } finally {
-        setAddingToQueueQuestionId(null)
-      }
-    },
-    [answersByQuestionId, channelId, cohortId, userId],
-  )
+  const refresh = useCallback(async () => {
+    setReloadToken((current) => current + 1)
+  }, [])
 
   return {
+    supportQuestions: activeQuestions,
     timeline,
-    isLoadingHistory,
+    profilesById: hasActiveData ? profilesById : {},
+    isLoadingHistory: Boolean(contextKey && !hasActiveData),
     error,
     postQuestion,
     isPosting,
@@ -305,13 +349,28 @@ export function useQuestionsChannel({
     taQueueSuccess,
     selectedSupportQuestionId,
     selectSupportQuestion: setSelectedSupportQuestionId,
-    selectedAnswer,
+    selectedQuestion,
+    selectedAnswer: selectedSupportQuestionId
+      ? answersByQuestionId[selectedSupportQuestionId] ?? null
+      : null,
+    selectedReplies,
+    postReply,
+    isPostingReply,
+    moderateQuestion,
+    isModerating,
+    refresh,
   }
 }
 
 function entryTimestamp(entry: QuestionsTimelineEntry): string {
-  if (entry.kind === 'learner-question') {
-    return entry.message.createdAt
-  }
-  return entry.answer.createdAt
+  return entry.kind === 'learner-question' ? entry.message.createdAt : entry.answer.createdAt
+}
+
+function mergeReplies(
+  fetched: SupportQuestionReply[],
+  current: SupportQuestionReply[],
+): SupportQuestionReply[] {
+  const byId = new Map(fetched.map((reply) => [reply.id, reply]))
+  current.forEach((reply) => byId.set(reply.id, reply))
+  return [...byId.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt))
 }

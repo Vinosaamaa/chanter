@@ -110,7 +110,7 @@ export function useInstructorDashboardPage(
 
       try {
         const [dashboardData, serverDetails] = await Promise.all([
-          fetchInstructorDashboard(selectedServerId, userId),
+          fetchInstructorDashboard(selectedServerId),
           fetchStudyServerDetails(selectedServerId),
         ])
 

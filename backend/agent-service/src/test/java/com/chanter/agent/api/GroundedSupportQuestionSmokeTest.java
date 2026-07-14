@@ -1,6 +1,7 @@
 package com.chanter.agent.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,6 +17,7 @@ import com.chanter.agent.infra.TestStudyAssistantGrantCandidatesClient;
 import com.chanter.agent.infra.TestStudyServerSaasPlanClient;
 import com.chanter.agent.infra.TestSupportQuestionChannelAccessClient;
 import com.chanter.agent.infra.TestSupportQuestionClient;
+import com.chanter.common.auth.AuthHeaders;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -121,8 +123,7 @@ class GroundedSupportQuestionSmokeTest {
                         channelId,
                         supportQuestionId
                 )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("learnerUserId", learnerUserId.toString()))))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -137,10 +138,26 @@ class GroundedSupportQuestionSmokeTest {
         assertThat(response.answerBody()).contains("Spring Security Guide");
         assertThat(response.sources()).hasSize(1);
         assertThat(response.sources().getFirst().resourceId()).isEqualTo(courseResourceId);
+
+        MvcResult reloadResult = mockMvc.perform(get(
+                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/assistant-answer",
+                            channelId,
+                            supportQuestionId
+                        )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+        AssistantAnswerResponse reloaded = objectMapper.readValue(
+                reloadResult.getResponse().getContentAsString(),
+                AssistantAnswerResponse.class
+        );
+
+        assertThat(reloaded.id()).isEqualTo(response.id());
+        assertThat(reloaded.sources()).isEqualTo(response.sources());
     }
 
     @Test
-    void lowConfidenceAnswerRecommendsHandoff() throws Exception {
+    void unavailableGrantedResourceFallsBackToLowConfidenceAnswerAndHandoff() throws Exception {
         UUID studyServerId = UUID.randomUUID();
         UUID instructorUserId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
@@ -176,18 +193,14 @@ class GroundedSupportQuestionSmokeTest {
                 true
         ));
         courseResourceCatalogClient.grantViewerAccess(courseId, learnerUserId);
-        courseResourceContentClient.registerContent(
-                courseResourceId,
-                "Spring Security filters and authentication only.".getBytes(StandardCharsets.UTF_8)
-        );
+        courseResourceContentClient.registerUnavailable(courseResourceId);
 
         MvcResult result = mockMvc.perform(post(
                         "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/assistant-answer",
                         channelId,
                         supportQuestionId
                 )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("learnerUserId", learnerUserId.toString()))))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -238,8 +251,7 @@ class GroundedSupportQuestionSmokeTest {
                         deniedChannelId,
                         supportQuestionId
                 )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("learnerUserId", learnerUserId.toString()))))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isForbidden());
     }
 
@@ -275,8 +287,7 @@ class GroundedSupportQuestionSmokeTest {
                         channelId,
                         supportQuestionId
                 )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("learnerUserId", learnerUserId.toString()))))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isNotFound());
     }
 

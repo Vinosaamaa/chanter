@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.chanter.common.auth.AuthHeaders;
@@ -86,9 +87,9 @@ class TaQueueSmokeTest {
                 .andExpect(status().isOk());
 
         MvcResult addResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "learnerUserId", learnerUserId.toString(),
                                 "supportQuestionId", supportQuestion.id().toString(),
                                 "channelId", channelId.toString()
                         ))))
@@ -103,7 +104,7 @@ class TaQueueSmokeTest {
         assertThat(queued.supportQuestionId()).isEqualTo(supportQuestion.id());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
-                        .param("viewerUserId", instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         TaQueueListResponse listed = objectMapper.readValue(
@@ -113,10 +114,7 @@ class TaQueueSmokeTest {
         assertThat(listed.taQueueItems()).extracting(TaQueueItemResponse::id).containsExactly(queued.id());
 
         mockMvc.perform(patch("/api/v1/cohorts/{cohortId}/ta-queue/{itemId}/pickup", cohortId, queued.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "actorUserId", instructorUserId.toString()
-                        ))))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
                 .andExpect(status().isOk());
 
         MvcResult resolveResult = mockMvc.perform(patch(
@@ -124,10 +122,7 @@ class TaQueueSmokeTest {
                         cohortId,
                         queued.id()
                 )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "actorUserId", instructorUserId.toString()
-                        ))))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         TaQueueItemResponse resolved = objectMapper.readValue(
@@ -137,6 +132,154 @@ class TaQueueSmokeTest {
 
         assertThat(resolved.status()).isEqualTo("RESOLVED");
         assertThat(resolved.assignedTaUserId()).isEqualTo(instructorUserId);
+
+        mockMvc.perform(get(
+                            "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}",
+                            channelId,
+                            supportQuestion.id()
+                        )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("RESOLVED"));
+    }
+
+    @Test
+    void learnerCannotQueueQuestionInAnotherCoursesCohort() throws Exception {
+        UUID channelId = UUID.randomUUID();
+        UUID questionCourseId = UUID.randomUUID();
+        UUID otherCourseId = UUID.randomUUID();
+        UUID otherCohortId = UUID.randomUUID();
+        UUID studyServerId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+
+        courseChannelAccessClient.grantLearnerPost(
+                channelId,
+                learnerUserId,
+                questionCourseId,
+                "questions"
+        );
+        cohortTaQueueAccessClient.grantLearnerAdd(
+                otherCohortId,
+                learnerUserId,
+                otherCourseId,
+                studyServerId
+        );
+
+        MvcResult postResult = mockMvc.perform(post(
+                        "/api/v1/course-channels/{channelId}/support-questions",
+                        channelId
+                )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "body", "Can this question cross Course boundaries?",
+                                "idempotencyKey", UUID.randomUUID().toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        SupportQuestionResponse supportQuestion = objectMapper.readValue(
+                postResult.getResponse().getContentAsString(),
+                SupportQuestionResponse.class
+        );
+
+        mockMvc.perform(patch(
+                        "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/status",
+                        channelId,
+                        supportQuestion.id()
+                )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", SupportQuestionStatus.AI_LOW_CONFIDENCE.name()
+                        ))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/cohorts/{cohortId}/ta-queue", otherCohortId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "supportQuestionId", supportQuestion.id().toString(),
+                                "channelId", channelId.toString()
+                        ))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void directQuestionModerationClosesAnActiveTaQueueItem() throws Exception {
+        UUID channelId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID cohortId = UUID.randomUUID();
+        UUID studyServerId = UUID.randomUUID();
+        UUID learnerUserId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+
+        courseChannelAccessClient.grantLearnerPost(channelId, learnerUserId, courseId, "questions");
+        courseChannelAccessClient.grantInstructorView(channelId, instructorUserId, courseId, "questions");
+        cohortTaQueueAccessClient.grantLearnerAdd(cohortId, learnerUserId, courseId, studyServerId);
+        cohortTaQueueAccessClient.grantInstructorManage(cohortId, instructorUserId, courseId, studyServerId);
+
+        MvcResult postResult = mockMvc.perform(post(
+                        "/api/v1/course-channels/{channelId}/support-questions",
+                        channelId
+                )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "body", "Please close this duplicate question",
+                                "idempotencyKey", UUID.randomUUID().toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        SupportQuestionResponse supportQuestion = objectMapper.readValue(
+                postResult.getResponse().getContentAsString(),
+                SupportQuestionResponse.class
+        );
+
+        mockMvc.perform(patch(
+                        "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/status",
+                        channelId,
+                        supportQuestion.id()
+                )
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "status", SupportQuestionStatus.AI_LOW_CONFIDENCE.name()
+                        ))))
+                .andExpect(status().isOk());
+
+        MvcResult addResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "supportQuestionId", supportQuestion.id().toString(),
+                                "channelId", channelId.toString()
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        TaQueueItemResponse queued = objectMapper.readValue(
+                addResult.getResponse().getContentAsString(),
+                TaQueueItemResponse.class
+        );
+
+        mockMvc.perform(patch("/api/v1/cohorts/{cohortId}/ta-queue/{itemId}/pickup", cohortId, queued.id())
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch(
+                        "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/moderation",
+                        channelId,
+                        supportQuestion.id()
+                )
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("status", "DUPLICATE"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DUPLICATE"));
+
+        mockMvc.perform(get("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taQueueItems").isEmpty());
     }
 
     @Test
@@ -149,7 +292,7 @@ class TaQueueSmokeTest {
         cohortTaQueueAccessClient.registerCohort(cohortId, courseId, studyServerId);
 
         mockMvc.perform(get("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
-                        .param("viewerUserId", strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
                 .andExpect(status().isForbidden());
     }
 
@@ -195,9 +338,9 @@ class TaQueueSmokeTest {
                 .andExpect(status().isOk());
 
         MvcResult addResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "learnerUserId", learnerUserId.toString(),
                                 "supportQuestionId", supportQuestion.id().toString(),
                                 "channelId", channelId.toString()
                         ))))
@@ -209,17 +352,11 @@ class TaQueueSmokeTest {
         );
 
         mockMvc.perform(patch("/api/v1/cohorts/{cohortId}/ta-queue/{itemId}/pickup", cohortId, queued.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "actorUserId", strangerUserId.toString()
-                        ))))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(patch("/api/v1/cohorts/{cohortId}/ta-queue/{itemId}/resolve", cohortId, queued.id())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "actorUserId", strangerUserId.toString()
-                        ))))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
                 .andExpect(status().isForbidden());
     }
 }

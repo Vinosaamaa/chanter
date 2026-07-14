@@ -1,6 +1,7 @@
 package com.chanter.message.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.message.application.TaQueueService;
 import com.chanter.message.domain.TaQueueItem;
 import jakarta.validation.Valid;
@@ -13,8 +14,8 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -31,11 +32,12 @@ public class TaQueueController {
     @PostMapping
     public ResponseEntity<TaQueueItemResponse> addToTaQueue(
             @PathVariable UUID cohortId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID learnerUserId,
             @Valid @RequestBody AddToTaQueueRequest request
     ) {
         TaQueueItem item = taQueueService.addToQueue(
                 cohortId,
-                request.learnerUserId(),
+                learnerUserId,
                 request.supportQuestionId(),
                 request.channelId()
         );
@@ -50,7 +52,7 @@ public class TaQueueController {
     @GetMapping
     public TaQueueListResponse listTaQueue(
             @PathVariable UUID cohortId,
-            @RequestParam UUID viewerUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         List<TaQueueItemResponse> items = taQueueService.listQueue(cohortId, viewerUserId)
                 .stream()
@@ -63,26 +65,26 @@ public class TaQueueController {
     public TaQueueItemResponse pickupTaQueueItem(
             @PathVariable UUID cohortId,
             @PathVariable UUID itemId,
-            @Valid @RequestBody TaQueueActorRequest request
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
     ) {
-        return TaQueueItemResponse.from(taQueueService.pickupQueueItem(cohortId, itemId, request.actorUserId()));
+        return TaQueueItemResponse.from(taQueueService.pickupQueueItem(cohortId, itemId, actorUserId));
     }
 
     @PatchMapping("/{itemId}/resolve")
     public TaQueueItemResponse resolveTaQueueItem(
             @PathVariable UUID cohortId,
             @PathVariable UUID itemId,
-            @Valid @RequestBody TaQueueActorRequest request
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
     ) {
-        return TaQueueItemResponse.from(taQueueService.resolveQueueItem(cohortId, itemId, request.actorUserId()));
+        return TaQueueItemResponse.from(taQueueService.resolveQueueItem(cohortId, itemId, actorUserId));
     }
 
     @PatchMapping("/{itemId}/cancel")
     public TaQueueItemResponse cancelTaQueueItem(
             @PathVariable UUID cohortId,
             @PathVariable UUID itemId,
-            @Valid @RequestBody TaQueueActorRequest request
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
     ) {
-        return TaQueueItemResponse.from(taQueueService.cancelQueueItem(cohortId, itemId, request.actorUserId()));
+        return TaQueueItemResponse.from(taQueueService.cancelQueueItem(cohortId, itemId, actorUserId));
     }
 }

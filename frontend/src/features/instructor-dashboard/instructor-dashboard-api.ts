@@ -9,11 +9,9 @@ import type {
 
 export async function fetchInstructorDashboard(
   studyServerId: string,
-  viewerUserId: string,
 ): Promise<InstructorDashboard> {
-  const params = new URLSearchParams({ viewerUserId })
   return apiFetch<InstructorDashboard>(
-    `/api/v1/study-servers/${studyServerId}/instructor-dashboard?${params.toString()}`,
+    `/api/v1/study-servers/${studyServerId}/instructor-dashboard`,
   )
 }
 

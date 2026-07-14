@@ -15,6 +15,7 @@ import com.chanter.agent.infra.TestStudyAssistantGrantCandidatesClient;
 import com.chanter.agent.infra.TestStudyServerSaasPlanClient;
 import com.chanter.agent.infra.TestSupportQuestionChannelAccessClient;
 import com.chanter.agent.infra.TestSupportQuestionClient;
+import com.chanter.common.auth.AuthHeaders;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -109,8 +110,7 @@ class AiQuotaSmokeTest {
                         channelId,
                         firstQuestionId
                 )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("learnerUserId", learnerUserId.toString()))))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post(
@@ -118,8 +118,7 @@ class AiQuotaSmokeTest {
                         channelId,
                         secondQuestionId
                 )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("learnerUserId", learnerUserId.toString()))))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isTooManyRequests());
     }
 

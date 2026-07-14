@@ -37,7 +37,7 @@ export function ApprovedFaqsWidget({
 
     void (async () => {
       try {
-        const response = await listApprovedFaqs(courseId, userId, { signal: controller.signal })
+        const response = await listApprovedFaqs(courseId, { signal: controller.signal })
         if (cancelled) {
           return
         }

@@ -1,5 +1,6 @@
 package com.chanter.analytics.api;
 
+import java.util.List;
 import java.util.UUID;
 
 public record InstructorDashboardResponse(
@@ -16,6 +17,21 @@ public record InstructorDashboardResponse(
         int aiInvocationLimit,
         int remainingAiInvocations,
         boolean quotaExhausted,
-        int lowConfidenceHandoffs
+        int lowConfidenceHandoffs,
+        List<TeachingCourseResponse> courses
 ) {
+    public record TeachingCourseResponse(
+            UUID courseId,
+            String title,
+            UUID questionChannelId,
+            List<TeachingCohortResponse> cohorts,
+            int unansweredSupportQuestions,
+            int repeatedQuestionGroups,
+            int approvedFaqCount,
+            int openTaQueueItems
+    ) {
+    }
+
+    public record TeachingCohortResponse(UUID cohortId, String name, int openTaQueueItems) {
+    }
 }

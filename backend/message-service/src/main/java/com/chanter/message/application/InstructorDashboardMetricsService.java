@@ -30,8 +30,11 @@ public class InstructorDashboardMetricsService {
         this.approvedFaqService = approvedFaqService;
     }
 
-    public InstructorDashboardMessageMetrics buildMetrics(InstructorDashboardMessageMetricsRequest request) {
-        requireInstructorDashboardAccess(request);
+    public InstructorDashboardMessageMetrics buildMetrics(
+            UUID viewerUserId,
+            InstructorDashboardMessageMetricsRequest request
+    ) {
+        requireInstructorDashboardAccess(viewerUserId, request);
 
         int unansweredSupportQuestions = metricsRepository.countUnansweredSupportQuestions(request.questionChannelIds());
         int openTaQueueItems = metricsRepository.countOpenTaQueueItems(request.cohortIds());
@@ -46,9 +49,10 @@ public class InstructorDashboardMetricsService {
         );
     }
 
-    private void requireInstructorDashboardAccess(InstructorDashboardMessageMetricsRequest request) {
-        UUID viewerUserId = request.viewerUserId();
-
+    private void requireInstructorDashboardAccess(
+            UUID viewerUserId,
+            InstructorDashboardMessageMetricsRequest request
+    ) {
         if (!request.questionChannelIds().stream().allMatch(channelId -> hasQuestionChannelAccess(channelId, viewerUserId))
                 || !request.cohortIds().stream().allMatch(cohortId -> hasCohortAccess(cohortId, viewerUserId))
                 || !request.courseIds().stream().allMatch(courseId -> hasCourseAccess(courseId, viewerUserId))) {

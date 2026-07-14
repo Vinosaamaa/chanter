@@ -143,7 +143,8 @@ public class GroundedSupportQuestionService {
                 }
             } catch (ResponseStatusException exception) {
                 if (exception.getStatusCode() == HttpStatus.NOT_FOUND
-                        || exception.getStatusCode() == HttpStatus.FORBIDDEN) {
+                        || exception.getStatusCode() == HttpStatus.FORBIDDEN
+                        || exception.getStatusCode() == HttpStatus.BAD_GATEWAY) {
                     continue;
                 }
                 throw exception;
@@ -213,6 +214,30 @@ public class GroundedSupportQuestionService {
         supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, updatedStatus);
 
         return savedAnswer;
+    }
+
+    public StudyAssistantAnswer findAnswer(
+            UUID channelId,
+            UUID supportQuestionId,
+            UUID viewerUserId
+    ) {
+        SupportQuestionChannelAccess access = channelAccessClient.requireAccess(channelId, viewerUserId);
+        SupportQuestion supportQuestion = supportQuestionClient.getSupportQuestion(
+                channelId,
+                supportQuestionId,
+                viewerUserId
+        );
+        if (!supportQuestion.senderUserId().equals(viewerUserId)
+                && !access.canViewUnansweredSupportQuestions()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support Question answer access denied");
+        }
+
+        StudyAssistantAnswer answer = answerRepository.findBySupportQuestionId(supportQuestionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistant answer not found"));
+        if (!answer.channelId().equals(channelId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistant answer not found");
+        }
+        return answer;
     }
 
     private StudyAssistantAnswer reconcileExistingAnswer(

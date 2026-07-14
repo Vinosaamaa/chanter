@@ -56,6 +56,10 @@ export function CourseOfficeHoursPage() {
   const voice = useOfficeHoursVoice(officeHours.liveSession?.id ?? null)
   const ownerMode = courseCapabilities.canScheduleOfficeHours && officeHours.canManage
   const [editingSession, setEditingSession] = useState<OfficeHoursSession | null | undefined>(undefined)
+  const selectedSessionId = new URLSearchParams(window.location.search).get('session')
+  const selectedUpcomingSession = officeHours.upcomingSessions.find(
+    (session) => session.id === selectedSessionId,
+  )
 
   if (!cohort) {
     return <div className="office-hours-page"><p className="office-empty-state">Select a cohort to view Office Hours.</p></div>
@@ -79,10 +83,11 @@ export function CourseOfficeHoursPage() {
           {officeHours.liveSession ? (
             <OwnerLivePanel officeHours={officeHours} voice={voice} cohortName={cohort.name} />
           ) : (
-            <OwnerNextPanel officeHours={officeHours} />
+            <OwnerNextPanel officeHours={officeHours} next={selectedUpcomingSession} />
           )}
           <UpcomingPanel
             sessions={officeHours.upcomingSessions}
+            highlightedSessionId={selectedSessionId}
             isBusy={officeHours.isBusy}
             onSchedule={() => setEditingSession(null)}
             onEdit={setEditingSession}
@@ -96,7 +101,12 @@ export function CourseOfficeHoursPage() {
         </>
       ) : null}
       {!officeHours.isLoading && !ownerMode ? (
-        <LearnerPanel officeHours={officeHours} voice={voice} cohortName={cohort.name} />
+        <LearnerPanel
+          officeHours={officeHours}
+          voice={voice}
+          cohortName={cohort.name}
+          selectedUpcomingSession={selectedUpcomingSession}
+        />
       ) : null}
       {officeHours.accessDenied ? (
         <p className="inline-error office-hours-error">You do not have access to Office Hours for this cohort.</p>
@@ -291,8 +301,14 @@ function OwnerLivePanel({
   )
 }
 
-function OwnerNextPanel({ officeHours }: { officeHours: OfficeHook }) {
-  const next = officeHours.upcomingSessions[0]
+function OwnerNextPanel({
+  officeHours,
+  next: selectedNext,
+}: {
+  officeHours: OfficeHook
+  next?: OfficeHoursSession
+}) {
+  const next = selectedNext ?? officeHours.upcomingSessions[0]
   return (
     <section className="next-office-summary">
       <h2>Next office hours</h2>
@@ -314,6 +330,7 @@ function OwnerNextPanel({ officeHours }: { officeHours: OfficeHook }) {
 
 function UpcomingPanel({
   sessions,
+  highlightedSessionId,
   isBusy,
   onSchedule,
   onEdit,
@@ -321,6 +338,7 @@ function UpcomingPanel({
   onCancel,
 }: {
   sessions: OfficeHoursSession[]
+  highlightedSessionId: string | null
   isBusy: boolean
   onSchedule: () => void
   onEdit: (session: OfficeHoursSession) => void
@@ -331,7 +349,11 @@ function UpcomingPanel({
     <section className="upcoming-office-panel">
       <header><h2>Upcoming office hours</h2><button type="button" className="v2-outline-button" onClick={onSchedule}><Plus /> Schedule</button></header>
       {sessions.map((session) => (
-        <article key={session.id}>
+        <article
+          key={session.id}
+          className={session.id === highlightedSessionId ? 'highlighted' : undefined}
+          aria-current={session.id === highlightedSessionId ? 'true' : undefined}
+        >
           <span className="office-calendar-icon"><CalendarDays /></span>
           <div><strong>{formatDate(session.startsAt)}</strong><p>{formatTimeRange(session)}</p></div>
           <button type="button" disabled={isBusy} onClick={() => onStart(session.id)}><Play /> Start</button>
@@ -348,10 +370,12 @@ function LearnerPanel({
   officeHours,
   voice,
   cohortName,
+  selectedUpcomingSession,
 }: {
   officeHours: OfficeHook
   voice: VoiceHook
   cohortName: string
+  selectedUpcomingSession?: OfficeHoursSession
 }) {
   const session = officeHours.liveSession
   const joined = officeHours.currentParticipant !== null
@@ -362,6 +386,7 @@ function LearnerPanel({
   const voiceStatus = voice.status
   const voiceCanSpeak = voice.canSpeak
   const refreshVoicePermissions = voice.refreshPermissions
+  const nextUpcomingSession = selectedUpcomingSession ?? officeHours.upcomingSessions[0]
 
   useEffect(() => {
     if (
@@ -379,8 +404,10 @@ function LearnerPanel({
         <div className="office-empty-live">
           <Headphones />
           <h2>No live Office Hours</h2>
-          {officeHours.upcomingSessions[0] ? (
-            <p>Next: {formatDate(officeHours.upcomingSessions[0].startsAt)}, {formatTimeRange(officeHours.upcomingSessions[0])}</p>
+          {nextUpcomingSession ? (
+            <p>
+              Next: {formatDate(nextUpcomingSession.startsAt)}, {formatTimeRange(nextUpcomingSession)}
+            </p>
           ) : <p>No session is scheduled for {cohortName}.</p>}
         </div>
       </section>

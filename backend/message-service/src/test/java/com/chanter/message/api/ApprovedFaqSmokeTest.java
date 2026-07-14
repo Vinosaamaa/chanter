@@ -69,7 +69,7 @@ class ApprovedFaqSmokeTest {
         );
 
         MvcResult candidatesResult = mockMvc.perform(get("/api/v1/course-channels/{channelId}/faq-candidates", channelId)
-                        .param("viewerUserId", instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         FaqCandidateListResponse candidates = objectMapper.readValue(
@@ -81,10 +81,10 @@ class ApprovedFaqSmokeTest {
         assertThat(candidates.faqCandidates().getFirst().supportQuestions()).hasSize(2);
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/courses/{courseId}/approved-faqs", courseId)
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "channelId", channelId.toString(),
-                                "approvedByUserId", instructorUserId.toString(),
                                 "question", "How do I configure Spring Security filters?",
                                 "answer", "Configure HttpSecurity to add authentication and authorization rules.",
                                 "sourceSupportQuestionIds", List.of(
@@ -105,7 +105,7 @@ class ApprovedFaqSmokeTest {
                 .contains("/api/v1/courses/" + courseId + "/approved-faqs/" + created.id());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/courses/{courseId}/approved-faqs", courseId)
-                        .param("viewerUserId", learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         ApprovedFaqListResponse listed = objectMapper.readValue(
@@ -116,7 +116,7 @@ class ApprovedFaqSmokeTest {
         assertThat(listed.approvedFaqs()).containsExactly(created);
 
         MvcResult searchResult = mockMvc.perform(get("/api/v1/courses/{courseId}/approved-faqs/search", courseId)
-                        .param("viewerUserId", learnerUserId.toString())
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
                         .param("query", "authentication"))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -137,7 +137,7 @@ class ApprovedFaqSmokeTest {
         courseChannelAccessClient.grantLearnerPost(channelId, learnerUserId, courseId, "questions");
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}/faq-candidates", channelId)
-                        .param("viewerUserId", learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isForbidden());
     }
 
@@ -149,7 +149,7 @@ class ApprovedFaqSmokeTest {
         courseResourceAccessClient.registerCourse(courseId);
 
         mockMvc.perform(get("/api/v1/courses/{courseId}/approved-faqs", courseId)
-                        .param("viewerUserId", strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
                 .andExpect(status().isForbidden());
     }
 

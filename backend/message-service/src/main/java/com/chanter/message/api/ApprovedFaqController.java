@@ -1,6 +1,7 @@
 package com.chanter.message.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.message.application.ApprovedFaqService;
 import com.chanter.message.application.FaqCandidateGroup;
 import com.chanter.message.domain.ApprovedFaq;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,7 +33,7 @@ public class ApprovedFaqController {
     @GetMapping("/course-channels/{channelId}/faq-candidates")
     public FaqCandidateListResponse listFaqCandidates(
             @PathVariable UUID channelId,
-            @RequestParam UUID viewerUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         List<FaqCandidateGroupResponse> faqCandidates = approvedFaqService
                 .listFaqCandidates(channelId, viewerUserId)
@@ -45,12 +47,13 @@ public class ApprovedFaqController {
     @PostMapping("/courses/{courseId}/approved-faqs")
     public ResponseEntity<ApprovedFaqResponse> createOrUpdateApprovedFaq(
             @PathVariable UUID courseId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID approvedByUserId,
             @Valid @RequestBody UpsertApprovedFaqRequest request
     ) {
         ApprovedFaq approvedFaq = approvedFaqService.createOrUpdateApprovedFaq(
                 courseId,
                 request.channelId(),
-                request.approvedByUserId(),
+                approvedByUserId,
                 request.id(),
                 request.question(),
                 request.answer(),
@@ -68,7 +71,7 @@ public class ApprovedFaqController {
     @GetMapping("/courses/{courseId}/approved-faqs")
     public ApprovedFaqListResponse listApprovedFaqs(
             @PathVariable UUID courseId,
-            @RequestParam UUID viewerUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
         List<ApprovedFaqResponse> approvedFaqs = approvedFaqService
                 .listApprovedFaqs(courseId, viewerUserId)
@@ -82,7 +85,7 @@ public class ApprovedFaqController {
     @GetMapping("/courses/{courseId}/approved-faqs/search")
     public ApprovedFaqListResponse searchApprovedFaqs(
             @PathVariable UUID courseId,
-            @RequestParam UUID viewerUserId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId,
             @RequestParam String query
     ) {
         List<ApprovedFaqResponse> approvedFaqs = approvedFaqService

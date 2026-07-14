@@ -15,6 +15,24 @@ export type InstructorDashboard = {
   remainingAiInvocations: number
   quotaExhausted: boolean
   lowConfidenceHandoffs: number
+  courses: TeachingCourseSummary[]
+}
+
+export type TeachingCourseSummary = {
+  courseId: string
+  title: string
+  questionChannelId: string | null
+  cohorts: TeachingCohortSummary[]
+  unansweredSupportQuestions: number
+  repeatedQuestionGroups: number
+  approvedFaqCount: number
+  openTaQueueItems: number
+}
+
+export type TeachingCohortSummary = {
+  cohortId: string
+  name: string
+  openTaQueueItems: number
 }
 
 export type SaasPlan = {
