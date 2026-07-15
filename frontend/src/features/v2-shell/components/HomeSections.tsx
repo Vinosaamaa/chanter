@@ -9,7 +9,6 @@ import {
 import type { CSSProperties } from 'react'
 
 import type { HomeAttentionItem, HomeCourseCard, HomeUpNextItem } from '../home/build-home-view-model'
-import { v2CoursePath } from '../v2-routes'
 
 function AttentionIcon({ item }: { item: HomeAttentionItem }) {
   switch (item.icon) {
@@ -42,11 +41,7 @@ export function HomeAttentionRow({ items }: { items: HomeAttentionItem[] }) {
               ) : null}
             </p>
             {item.actionLabel && item.href ? (
-              item.actionVariant === 'button' ? (
-                <Link to={item.href}>{item.actionLabel}</Link>
-              ) : (
-                <Link to={item.href}>{item.actionLabel}</Link>
-              )
+              <Link to={item.href}>{item.actionLabel}</Link>
             ) : null}
           </div>
         </article>
@@ -56,18 +51,15 @@ export function HomeAttentionRow({ items }: { items: HomeAttentionItem[] }) {
 }
 
 export function HomeCourseCardView({ course }: { course: HomeCourseCard }) {
+  const hasProgress = typeof course.progress === 'number'
   const style = {
     '--course-color': course.color,
     '--course-end': course.colorEnd,
-    '--course-progress': `${course.progress}%`,
+    ...(hasProgress ? { '--course-progress': `${course.progress}%` } : {}),
   } as CSSProperties
 
   return (
-    <Link
-      to={v2CoursePath(course.serverId, course.id, 'overview')}
-      className="course-card"
-      style={style}
-    >
+    <Link to={course.href} className="course-card" style={style}>
       <div className="course-title-row">
         <span className="course-dot" />
         <div>
@@ -80,13 +72,18 @@ export function HomeCourseCardView({ course }: { course: HomeCourseCard }) {
         </div>
       </div>
 
-      <div className="progress-row">
-        <div className="progress-track" aria-label={`${course.progress}% complete`}>
-          <span />
+      {hasProgress ? (
+        <div className="progress-row">
+          <div className="progress-track" aria-label={`${course.progress}% complete`}>
+            <span />
+          </div>
+          <small>{course.progress}% complete</small>
         </div>
-        <small>{course.progress}% complete</small>
-      </div>
-
+      ) : (
+        <div className="progress-row">
+          <small>Progress unavailable</small>
+        </div>
+      )}
     </Link>
   )
 }
@@ -106,23 +103,35 @@ export function HomeUpNextPanel({ items }: { items: HomeUpNextItem[] }) {
   return (
     <aside className="up-next">
       <h2>Up next</h2>
-      <div className="timeline">
-        {items.map((item) => (
-          <div className="timeline-item" key={item.id}>
-            <span className={`timeline-icon ${item.tone}`}>
-              <UpNextIcon item={item} />
-            </span>
-            <div className="timeline-copy">
-              <p>
-                <strong>{item.title}</strong>
-                {item.suffix ? <span>{item.suffix}</span> : null}
-              </p>
-              <p>{item.detail}</p>
-              {item.actionLabel ? <button type="button">{item.actionLabel}</button> : null}
+      {items.length === 0 ? (
+        <p className="empty-search" style={{ marginTop: '0.75rem' }}>
+          Nothing coming up yet.
+        </p>
+      ) : (
+        <div className="timeline">
+          {items.map((item) => (
+            <div className="timeline-item" key={item.id}>
+              <span className={`timeline-icon ${item.tone}`}>
+                <UpNextIcon item={item} />
+              </span>
+              <div className="timeline-copy">
+                <p>
+                  <strong>{item.title}</strong>
+                  {item.suffix ? <span>{item.suffix}</span> : null}
+                </p>
+                <p>{item.detail}</p>
+                {item.actionLabel && item.href ? (
+                  <Link to={item.href}>{item.actionLabel}</Link>
+                ) : item.actionLabel ? (
+                  <button type="button" disabled>
+                    {item.actionLabel}
+                  </button>
+                ) : null}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </aside>
   )
 }
