@@ -31,6 +31,16 @@ describe('V2TopBar', () => {
     expect(screen.getByTestId('search-state')).toHaveTextContent('open')
   })
 
+  it('uses an editable calendar search field instead of global search', () => {
+    renderTopBar('/app/calendar')
+
+    const search = screen.getByRole('searchbox', { name: /search calendar/i })
+    expect(search).not.toHaveAttribute('readonly')
+    fireEvent.change(search, { target: { value: 'office' } })
+    expect(search).toHaveValue('office')
+    expect(screen.getByTestId('search-state')).toHaveTextContent('closed')
+  })
+
   it('shows the real selected cohort in a course breadcrumb', () => {
     navigation.value = {
       data: {
