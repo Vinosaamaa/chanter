@@ -1,5 +1,10 @@
 # notification-service
 
-Planned microservice boundary for Chanter. See `plan.md` and `System Design.md`.
+Durable user inbox / notification read model for Chanter.
 
-Bootstrap status: not implemented yet. Active work starts after issue #11 (monorepo bootstrap) and follows vertical slices in `docs/issues/education-mvp-issue-breakdown.md`.
+- Port: `8089` (`NOTIFICATION_PORT`)
+- Database: `chanter_notification`
+- Public APIs: `/api/v1/me/notifications/**`
+- Internal create: `POST /api/v1/internal/notifications` (`X-Chanter-Internal-Service-Token`)
+
+Gateway route: `/api/v1/me/notifications/**` → port `8089` (order `-2`, ahead of community `/api/v1/me/**`).

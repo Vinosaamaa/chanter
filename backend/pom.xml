@@ -29,6 +29,7 @@
         <module>agent-service</module>
         <module>analytics-service</module>
         <module>search-service</module>
+        <module>notification-service</module>
     </modules>
 
     <properties>

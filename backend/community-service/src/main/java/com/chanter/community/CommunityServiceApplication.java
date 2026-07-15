@@ -2,12 +2,17 @@ package com.chanter.community;
 
 import com.chanter.community.config.AuthServiceClientProperties;
 import com.chanter.community.config.LiveKitProperties;
+import com.chanter.community.config.NotificationServiceClientProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @SpringBootApplication
-@EnableConfigurationProperties({LiveKitProperties.class, AuthServiceClientProperties.class})
+@EnableConfigurationProperties({
+        LiveKitProperties.class,
+        AuthServiceClientProperties.class,
+        NotificationServiceClientProperties.class
+})
 public class CommunityServiceApplication {
 
     public static void main(String[] args) {

@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -10,6 +11,10 @@ const navigation = vi.hoisted(() => ({ value: {} as Record<string, unknown> }))
 
 vi.mock('../../shell/hooks/use-shell-queries', () => ({
   useStudyServerNavigationQuery: () => navigation.value,
+}))
+
+vi.mock('../../inbox/hooks/use-inbox-queries', () => ({
+  useUnreadNotificationCountQuery: () => ({ data: { unreadCount: 0 }, isLoading: false }),
 }))
 
 describe('V2TopBar', () => {
@@ -50,13 +55,18 @@ describe('V2TopBar', () => {
 })
 
 function renderTopBar(entry: string) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
   render(
-    <MemoryRouter initialEntries={[entry]}>
-      <GlobalSearchProvider>
-        <V2TopBar onOpenMenu={vi.fn()} />
-        <SearchStateProbe />
-      </GlobalSearchProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[entry]}>
+        <GlobalSearchProvider>
+          <V2TopBar onOpenMenu={vi.fn()} />
+          <SearchStateProbe />
+        </GlobalSearchProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 

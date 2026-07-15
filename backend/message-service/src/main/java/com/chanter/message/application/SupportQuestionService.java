@@ -20,6 +20,7 @@ public class SupportQuestionService {
     private final SupportQuestionWriter supportQuestionWriter;
     private final SupportQuestionReplyRepository replyRepository;
     private final TaQueueRepository taQueueRepository;
+    private final NotificationClient notificationClient;
     private final Clock clock;
 
     public SupportQuestionService(
@@ -28,6 +29,7 @@ public class SupportQuestionService {
             SupportQuestionWriter supportQuestionWriter,
             SupportQuestionReplyRepository replyRepository,
             TaQueueRepository taQueueRepository,
+            NotificationClient notificationClient,
             Clock clock
     ) {
         this.repository = repository;
@@ -35,6 +37,7 @@ public class SupportQuestionService {
         this.supportQuestionWriter = supportQuestionWriter;
         this.replyRepository = replyRepository;
         this.taQueueRepository = taQueueRepository;
+        this.notificationClient = notificationClient;
         this.clock = clock;
     }
 
@@ -129,8 +132,19 @@ public class SupportQuestionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
         }
 
-        return repository.findByIdAndChannelId(channelId, supportQuestionId)
+        SupportQuestion updatedQuestion = repository.findByIdAndChannelId(channelId, supportQuestionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Support Question not found"));
+
+        if (status == SupportQuestionStatus.AI_ANSWERED) {
+            notifyAuthorAnswered(
+                    updatedQuestion,
+                    access,
+                    "Your question was answered",
+                    preview(updatedQuestion.body())
+            );
+        }
+
+        return updatedQuestion;
     }
 
     @Transactional
@@ -157,13 +171,24 @@ public class SupportQuestionService {
         }
         lockQuestionForReply(channelId, supportQuestion);
 
-        return replyRepository.save(new SupportQuestionReply(
+        SupportQuestionReply reply = replyRepository.save(new SupportQuestionReply(
                 UUID.randomUUID(),
                 supportQuestionId,
                 authorUserId,
                 normalizedBody,
                 clock.instant()
         ));
+
+        if (!supportQuestion.senderUserId().equals(authorUserId)) {
+            notifyAuthorAnswered(
+                    supportQuestion,
+                    access,
+                    "Your question was answered",
+                    preview(normalizedBody)
+            );
+        }
+
+        return reply;
     }
 
     @Transactional(readOnly = true)
@@ -215,6 +240,31 @@ public class SupportQuestionService {
         );
         return repository.findByIdAndChannelId(channelId, supportQuestionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Support Question not found"));
+    }
+
+    private void notifyAuthorAnswered(
+            SupportQuestion supportQuestion,
+            CourseChannelAccess access,
+            String title,
+            String bodyPreview
+    ) {
+        notificationClient.notifySupportQuestionAnswered(
+                supportQuestion.senderUserId(),
+                supportQuestion.id(),
+                supportQuestion.channelId(),
+                access.courseId(),
+                title,
+                bodyPreview,
+                access.channelName()
+        );
+    }
+
+    private static String preview(String body) {
+        String trimmed = body.trim();
+        if (trimmed.length() <= 240) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 237) + "...";
     }
 
     private void lockQuestionForReply(UUID channelId, SupportQuestion supportQuestion) {

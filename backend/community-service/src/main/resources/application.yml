@@ -26,6 +26,11 @@ chanter:
     connect-timeout-seconds: ${AUTH_SERVICE_CONNECT_TIMEOUT_SECONDS:2}
     read-timeout-seconds: ${AUTH_SERVICE_READ_TIMEOUT_SECONDS:3}
     service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
+  notification-service:
+    base-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8089}
+    connect-timeout-seconds: ${NOTIFICATION_SERVICE_CONNECT_TIMEOUT_SECONDS:2}
+    read-timeout-seconds: ${NOTIFICATION_SERVICE_READ_TIMEOUT_SECONDS:3}
+    service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   livekit:
     url: ${LIVEKIT_URL}
     api-key: ${LIVEKIT_API_KEY}

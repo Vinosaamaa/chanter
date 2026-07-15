@@ -3,11 +3,14 @@ package com.chanter.community.application;
 import com.chanter.community.domain.AuthUserProfile;
 import com.chanter.community.domain.CommunityAnnouncement;
 import com.chanter.community.domain.CommunityAnnouncementStatus;
+import com.chanter.community.domain.StudyServerMember;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,10 +20,13 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CommunityAnnouncementService {
 
+    private static final int MAX_FANOUT = 200;
+
     private final CommunityAnnouncementRepository announcementRepository;
     private final StudyServerRepository studyServerRepository;
     private final CourseRepository courseRepository;
     private final AuthUserDirectoryClient authUserDirectoryClient;
+    private final NotificationClient notificationClient;
     private final Clock clock;
 
     public CommunityAnnouncementService(
@@ -28,12 +34,14 @@ public class CommunityAnnouncementService {
             StudyServerRepository studyServerRepository,
             CourseRepository courseRepository,
             AuthUserDirectoryClient authUserDirectoryClient,
+            NotificationClient notificationClient,
             Clock clock
     ) {
         this.announcementRepository = announcementRepository;
         this.studyServerRepository = studyServerRepository;
         this.courseRepository = courseRepository;
         this.authUserDirectoryClient = authUserDirectoryClient;
+        this.notificationClient = notificationClient;
         this.clock = clock;
     }
 
@@ -83,7 +91,9 @@ public class CommunityAnnouncementService {
                 0,
                 false
         );
-        return announcementRepository.save(announcement);
+        CommunityAnnouncement saved = announcementRepository.save(announcement);
+        notifyMembersOfAnnouncement(saved, actorUserId);
+        return saved;
     }
 
     @Transactional
@@ -164,6 +174,39 @@ public class CommunityAnnouncementService {
         authUserDirectoryClient.findByIds(authorIds)
                 .forEach(profile -> profiles.put(profile.userId(), profile));
         return profiles;
+    }
+
+    private void notifyMembersOfAnnouncement(CommunityAnnouncement announcement, UUID actorUserId) {
+        List<StudyServerMember> members = studyServerRepository.findMembers(announcement.studyServerId());
+        Set<UUID> recipientIds = new LinkedHashSet<>();
+        for (StudyServerMember member : members) {
+            if (!member.userId().equals(actorUserId)) {
+                recipientIds.add(member.userId());
+            }
+            if (recipientIds.size() >= MAX_FANOUT) {
+                break;
+            }
+        }
+        String href = "/app/servers/" + announcement.studyServerId() + "/community/announcements";
+        String preview = announcement.body().length() > 240
+                ? announcement.body().substring(0, 237) + "..."
+                : announcement.body();
+        for (UUID recipientId : recipientIds) {
+            notificationClient.createNotification(
+                    recipientId,
+                    "ANNOUNCEMENT",
+                    announcement.title(),
+                    preview,
+                    null,
+                    href,
+                    "ANNOUNCEMENT",
+                    announcement.id(),
+                    announcement.studyServerId(),
+                    null,
+                    null,
+                    null
+            );
+        }
     }
 
     private CommunityAnnouncement requireAnnouncementOnServer(

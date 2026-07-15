@@ -71,6 +71,11 @@ spring:
           order: -2
           predicates:
             - Path=/api/v1/study-servers/*/search,/api/v1/study-servers/*/search/**
+        - id: notification-service-me-notifications
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8089}
+          order: -2
+          predicates:
+            - Path=/api/v1/me/notifications,/api/v1/me/notifications/**
         - id: message-service-instructor-dashboard
           uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
           order: -1

@@ -37,6 +37,7 @@ media-service
 agent-service
 analytics-service
 search-service
+notification-service
 realtime-service
 gateway-service
 EOF
@@ -162,6 +163,7 @@ product_module_port() {
     analytics-service) echo "${ANALYTICS_PORT:-8086}" ;;
     gateway-service) echo "${GATEWAY_PORT:-8080}" ;;
     search-service) echo "${SEARCH_PORT:-8088}" ;;
+    notification-service) echo "${NOTIFICATION_PORT:-8089}" ;;
     realtime-service) echo "${REALTIME_PORT:-8087}" ;;
     frontend) echo "${FRONTEND_PORT:-5173}" ;;
     *) return 1 ;;

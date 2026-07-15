@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Bell, Home as HomeIcon, Menu, Search } from 'lucide-react'
 
+import { useUnreadNotificationCountQuery } from '../../inbox/hooks/use-inbox-queries'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
 import { useGlobalSearch } from '../../global-search/hooks/use-global-search'
 import { resolveV2PrimaryNav } from '../v2-routes'
@@ -42,6 +43,8 @@ export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
   const courseRoute = resolveCourseRoute(pathname)
   const search = resolveV2SearchConfig(pathname)
   const { openSearch } = useGlobalSearch()
+  const unreadQuery = useUnreadNotificationCountQuery()
+  const unreadCount = unreadQuery.data?.unreadCount ?? 0
 
   return (
     <header className="topbar">
@@ -93,8 +96,13 @@ export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
         <span>⌘F</span>
       </label>
 
-      <Link to="/app/inbox" className="bell-button" aria-label="Open inbox">
+      <Link
+        to="/app/inbox"
+        className="bell-button"
+        aria-label={unreadCount > 0 ? `Open inbox, ${unreadCount} unread` : 'Open inbox'}
+      >
         <Bell size={29} />
+        {unreadCount > 0 ? <b>{unreadCount > 99 ? '99+' : unreadCount}</b> : null}
       </Link>
     </header>
   )

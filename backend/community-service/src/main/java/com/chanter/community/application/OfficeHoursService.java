@@ -1,5 +1,7 @@
 package com.chanter.community.application;
 
+import com.chanter.community.domain.CohortEnrollment;
+import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.CohortOfficeHoursAccess;
 import com.chanter.community.domain.OfficeHoursSession;
 import com.chanter.community.domain.OfficeHoursParticipant;
@@ -10,7 +12,9 @@ import com.chanter.community.domain.VoiceMediaToken;
 import com.chanter.community.domain.VoicePresence;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,10 +24,13 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class OfficeHoursService {
 
+    private static final int MAX_FANOUT = 200;
+
     private final OfficeHoursRepository officeHoursRepository;
     private final CourseRepository courseRepository;
     private final StudyServerRepository studyServerRepository;
     private final LiveKitTokenIssuer liveKitTokenIssuer;
+    private final NotificationClient notificationClient;
     private final Clock clock;
 
     public OfficeHoursService(
@@ -31,12 +38,14 @@ public class OfficeHoursService {
             CourseRepository courseRepository,
             StudyServerRepository studyServerRepository,
             LiveKitTokenIssuer liveKitTokenIssuer,
+            NotificationClient notificationClient,
             Clock clock
     ) {
         this.officeHoursRepository = officeHoursRepository;
         this.courseRepository = courseRepository;
         this.studyServerRepository = studyServerRepository;
         this.liveKitTokenIssuer = liveKitTokenIssuer;
+        this.notificationClient = notificationClient;
         this.clock = clock;
     }
 
@@ -74,7 +83,9 @@ public class OfficeHoursService {
                 clock.instant()
         );
 
-        return officeHoursRepository.saveSession(session);
+        OfficeHoursSession saved = officeHoursRepository.saveSession(session);
+        notifyCohortOfOfficeHours(saved, studyServerId, instructorUserId);
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -351,6 +362,45 @@ public class OfficeHoursService {
         officeHoursRepository.deactivateParticipants(sessionId, clock.instant());
 
         return officeHoursRepository.updateSessionStatus(sessionId, OfficeHoursSessionStatus.ENDED);
+    }
+
+    private void notifyCohortOfOfficeHours(
+            OfficeHoursSession session,
+            UUID studyServerId,
+            UUID instructorUserId
+    ) {
+        CohortEnrollmentList enrollments = courseRepository.listCohortEnrollments(
+                session.cohortId(),
+                MAX_FANOUT,
+                0,
+                null
+        );
+        Set<UUID> recipientIds = new LinkedHashSet<>();
+        for (CohortEnrollment enrollment : enrollments.enrollments()) {
+            if (!enrollment.learnerUserId().equals(instructorUserId)) {
+                recipientIds.add(enrollment.learnerUserId());
+            }
+        }
+        UUID courseId = courseRepository.findCourseIdByCohortId(session.cohortId()).orElse(null);
+        String href = courseId == null
+                ? "/app/inbox"
+                : "/app/servers/" + studyServerId + "/courses/" + courseId + "/office-hours?cohort=" + session.cohortId();
+        for (UUID recipientId : recipientIds) {
+            notificationClient.createNotification(
+                    recipientId,
+                    "OFFICE_HOURS_REMINDER",
+                    "Office hours scheduled",
+                    "A new office hours session is on the calendar.",
+                    null,
+                    href,
+                    "OFFICE_HOURS",
+                    session.id(),
+                    studyServerId,
+                    courseId,
+                    session.cohortId(),
+                    session.voiceChannelId()
+            );
+        }
     }
 
     private OfficeHoursSession requireSession(UUID sessionId) {

@@ -60,6 +60,7 @@ java_modules="$(product_java_modules | tr '\n' ' ')"
 assert_contains "auth module" "auth-service" "$java_modules"
 assert_contains "gateway module" "gateway-service" "$java_modules"
 assert_contains "search module" "search-service" "$java_modules"
+assert_contains "notification module" "notification-service" "$java_modules"
 assert_contains "realtime module" "realtime-service" "$java_modules"
 
 health_checks="$(product_health_checks | tr '\n' ' ')"

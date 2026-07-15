@@ -151,7 +151,8 @@ make backend-media     # terminal 4 — port 8084
 make backend-agent     # terminal 5 — port 8085
 make backend-analytics # terminal 6 — port 8086
 make backend-search    # terminal 7 — port 8088
-make backend-gateway   # terminal 8 — port 8080
+make backend-notification # terminal 8 — port 8089
+make backend-gateway   # terminal 9 — port 8080
 make frontend-dev      # terminal 9 — http://localhost:5173
 ```
 

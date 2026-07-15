@@ -5,10 +5,15 @@ import com.chanter.community.domain.CommunityEventFilter;
 import com.chanter.community.domain.CommunityEventRsvpStatus;
 import com.chanter.community.domain.CommunityEventStatus;
 import com.chanter.community.domain.CommunityEventVisibility;
+import com.chanter.community.domain.CohortEnrollment;
+import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.StudyServer;
+import com.chanter.community.domain.StudyServerMember;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,20 +23,25 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CommunityEventService {
 
+    private static final int MAX_FANOUT = 200;
+
     private final CommunityEventRepository eventRepository;
     private final StudyServerRepository studyServerRepository;
     private final CourseRepository courseRepository;
+    private final NotificationClient notificationClient;
     private final Clock clock;
 
     public CommunityEventService(
             CommunityEventRepository eventRepository,
             StudyServerRepository studyServerRepository,
             CourseRepository courseRepository,
+            NotificationClient notificationClient,
             Clock clock
     ) {
         this.eventRepository = eventRepository;
         this.studyServerRepository = studyServerRepository;
         this.courseRepository = courseRepository;
+        this.notificationClient = notificationClient;
         this.clock = clock;
     }
 
@@ -89,7 +99,9 @@ public class CommunityEventService {
                 0,
                 null
         );
-        return eventRepository.save(event);
+        CommunityEvent saved = eventRepository.save(event);
+        notifyMembersOfEvent(saved, actorUserId);
+        return saved;
     }
 
     @Transactional
@@ -223,6 +235,54 @@ public class CommunityEventService {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cohort does not belong to Course");
                 }
             }
+        }
+    }
+
+    private void notifyMembersOfEvent(CommunityEvent event, UUID actorUserId) {
+        Set<UUID> recipientIds = new LinkedHashSet<>();
+        if (event.visibility() == CommunityEventVisibility.COHORT && event.cohortId() != null) {
+            CohortEnrollmentList enrollments = courseRepository.listCohortEnrollments(
+                    event.cohortId(),
+                    MAX_FANOUT,
+                    0,
+                    null
+            );
+            for (CohortEnrollment enrollment : enrollments.enrollments()) {
+                if (!enrollment.learnerUserId().equals(actorUserId)) {
+                    recipientIds.add(enrollment.learnerUserId());
+                }
+            }
+        } else {
+            for (StudyServerMember member : studyServerRepository.findMembers(event.studyServerId())) {
+                if (!member.userId().equals(actorUserId)) {
+                    recipientIds.add(member.userId());
+                }
+                if (recipientIds.size() >= MAX_FANOUT) {
+                    break;
+                }
+            }
+        }
+
+        String href = "/app/servers/" + event.studyServerId() + "/community/events";
+        String preview = event.description() == null ? event.title() : event.description();
+        if (preview.length() > 240) {
+            preview = preview.substring(0, 237) + "...";
+        }
+        for (UUID recipientId : recipientIds) {
+            notificationClient.createNotification(
+                    recipientId,
+                    "COMMUNITY_EVENT",
+                    event.title(),
+                    preview,
+                    null,
+                    href,
+                    "COMMUNITY_EVENT",
+                    event.id(),
+                    event.studyServerId(),
+                    event.courseId(),
+                    event.cohortId(),
+                    null
+            );
         }
     }
 
