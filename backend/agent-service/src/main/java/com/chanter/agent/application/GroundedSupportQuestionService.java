@@ -11,6 +11,7 @@ import com.chanter.agent.domain.AnswerConfidence;
 import com.chanter.agent.domain.GrantType;
 import com.chanter.agent.domain.InvocationType;
 import com.chanter.agent.domain.StudyAssistantAnswer;
+import com.chanter.agent.domain.StudyAssistantAnswerAudit;
 import com.chanter.agent.domain.StudyAssistantAnswerSource;
 import com.chanter.agent.domain.StudyAssistantGrant;
 import java.nio.charset.StandardCharsets;
@@ -317,6 +318,30 @@ public class GroundedSupportQuestionService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistant answer not found");
         }
         return answer;
+    }
+
+    public AnswerView toAnswerView(StudyAssistantAnswer answer, UUID viewerUserId) {
+        StudyAssistantAnswerAudit audit = answerRepository.findAuditByAnswerId(answer.id()).orElse(null);
+        boolean helpfulMarked = answerRepository.isHelpfulMarked(answer.id(), viewerUserId);
+        int helpfulCount = answerRepository.countHelpful(answer.id());
+        return new AnswerView(answer, audit, helpfulMarked, helpfulCount);
+    }
+
+    public AnswerView markHelpful(UUID channelId, UUID supportQuestionId, UUID viewerUserId) {
+        StudyAssistantAnswer answer = findAnswer(channelId, supportQuestionId, viewerUserId);
+        if (!answer.learnerUserId().equals(viewerUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the question author can mark the answer helpful");
+        }
+        answerRepository.markHelpful(answer.id(), viewerUserId);
+        return toAnswerView(answer, viewerUserId);
+    }
+
+    public record AnswerView(
+            StudyAssistantAnswer answer,
+            StudyAssistantAnswerAudit audit,
+            boolean helpfulMarked,
+            int helpfulCount
+    ) {
     }
 
     private StudyAssistantAnswer reconcileExistingAnswer(

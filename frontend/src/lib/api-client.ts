@@ -38,6 +38,11 @@ export async function apiFetchBlob(path: string, init?: ApiFetchInit): Promise<B
   return response.blob()
 }
 
+/** Auth-aware fetch that returns the raw Response (for SSE / streaming bodies). */
+export async function apiFetchResponse(path: string, init?: ApiFetchInit): Promise<Response> {
+  return fetchWithAuth(path, init, init?.skipAuthRefresh ?? false)
+}
+
 async function fetchWithAuth(
   path: string,
   init: ApiFetchInit | undefined,

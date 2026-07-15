@@ -208,6 +208,20 @@ export function CourseQuestionsPage() {
               </div>
             </article>
 
+            {questions.streamPhase === 'streaming' && questions.streamingText ? (
+              <>
+                <div className="question-answer-divider" />
+                <article className="assistant-answer assistant-answer-streaming">
+                  <span className="assistant-avatar"><Sparkles /></span>
+                  <div>
+                    <p><strong>AI Study Assistant</strong><b>AI</b><time>Streaming…</time></p>
+                    <span className="assistant-stream-body">{questions.streamingText}<i className="stream-cursor" aria-hidden /></span>
+                    <small>Citations appear when the answer completes</small>
+                  </div>
+                </article>
+              </>
+            ) : null}
+
             {questions.selectedAnswer ? (
               <>
                 <div className="question-answer-divider" />
@@ -216,25 +230,57 @@ export function CourseQuestionsPage() {
                   <div>
                     <p><strong>AI Study Assistant</strong><b>AI</b><time>{formatTime(questions.selectedAnswer.createdAt)}</time></p>
                     <span>{questions.selectedAnswer.answerBody}</span>
-                    <small>Sources</small>
-                    <div className="answer-sources">
-                      {questions.selectedAnswer.sources.map((source) => {
-                        const isFaqSource = source.resourceTitle.startsWith('FAQ: ')
-                        return (
-                          <article key={source.resourceId}>
-                            <span className={isFaqSource ? 'faq-source-icon' : 'document-source-icon'}>
-                              {isFaqSource ? 'FAQ' : <FileText />}
-                            </span>
-                            <div><strong>{source.resourceTitle}</strong><p>{source.excerpt}</p></div>
-                            {!isFaqSource ? (
-                              <a href={`/app/servers/${serverId}/courses/${course.id}/resources?resource=${source.resourceId}`}>
-                                View <ExternalLink />
-                              </a>
-                            ) : null}
-                          </article>
-                        )
-                      })}
-                    </div>
+                    {questions.selectedAnswer.sources.length > 0 ? (
+                      <>
+                        <small>Citations</small>
+                        <div className="citation-chips" role="list">
+                          {questions.selectedAnswer.sources.map((source) => {
+                            const isFaqSource = source.resourceTitle.startsWith('FAQ: ')
+                            return (
+                              <button
+                                type="button"
+                                className={`citation-chip ${isFaqSource ? 'faq' : 'document'}`}
+                                key={`${source.resourceId}-${source.resourceTitle}`}
+                                title={source.excerpt}
+                                role="listitem"
+                              >
+                                {isFaqSource ? 'FAQ' : <FileText size={14} />}
+                                <strong>{source.resourceTitle}</strong>
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <div className="answer-sources">
+                          {questions.selectedAnswer.sources.map((source) => {
+                            const isFaqSource = source.resourceTitle.startsWith('FAQ: ')
+                            return (
+                              <article key={source.resourceId}>
+                                <span className={isFaqSource ? 'faq-source-icon' : 'document-source-icon'}>
+                                  {isFaqSource ? 'FAQ' : <FileText />}
+                                </span>
+                                <div><strong>{source.resourceTitle}</strong><p>{source.excerpt}</p></div>
+                                {!isFaqSource ? (
+                                  <a href={`/app/servers/${serverId}/courses/${course.id}/resources?resource=${source.resourceId}`}>
+                                    View <ExternalLink />
+                                  </a>
+                                ) : null}
+                              </article>
+                            )
+                          })}
+                        </div>
+                      </>
+                    ) : null}
+                    {manageQuestions && questions.selectedAnswer.audit ? (
+                      <p className="assistant-audit-snippet">
+                        AI audit · {questions.selectedAnswer.audit.llmUsed
+                          ? `${questions.selectedAnswer.audit.llmProvider ?? 'llm'} / ${questions.selectedAnswer.audit.llmModel ?? 'model'}`
+                          : 'RAG only'}
+                        {' · '}
+                        {questions.selectedAnswer.audit.sourceCount} source{questions.selectedAnswer.audit.sourceCount === 1 ? '' : 's'}
+                        {' · '}
+                        {questions.selectedAnswer.audit.invocationType.replaceAll('_', ' ').toLowerCase()}
+                      </p>
+                    ) : null}
                   </div>
                 </article>
               </>
@@ -258,9 +304,9 @@ export function CourseQuestionsPage() {
                 <button
                   type="button"
                   onClick={() => void questions.invokeAssistant(selected.id)}
-                  disabled={questions.invokingQuestionId === selected.id}
+                  disabled={questions.invokingQuestionId === selected.id || questions.streamPhase === 'streaming'}
                 >
-                  <Sparkles />{questions.invokingQuestionId ? 'Asking AI…' : 'Ask AI'}
+                  <Sparkles />{questions.streamPhase === 'streaming' ? 'Streaming…' : questions.invokingQuestionId ? 'Asking AI…' : 'Ask AI'}
                 </button>
               ) : null}
               {!manageQuestions
@@ -274,9 +320,18 @@ export function CourseQuestionsPage() {
                   <Plus />{questions.addingToQueueQuestionId ? 'Adding…' : 'Add to TA Queue'}
                 </button>
               ) : null}
-              {!manageQuestions && questions.selectedAnswer ? (
-                <button type="button" disabled title="Helpful voting will ship with the streaming AI audit trail in issue #100.">
-                  <ThumbsUp />Mark helpful
+              {!manageQuestions && questions.selectedAnswer && selected?.senderUserId === userId ? (
+                <button
+                  type="button"
+                  className={questions.selectedAnswer.helpfulMarked ? 'active' : undefined}
+                  aria-pressed={Boolean(questions.selectedAnswer.helpfulMarked)}
+                  disabled={Boolean(questions.selectedAnswer.helpfulMarked) || questions.markingHelpfulQuestionId === selected.id}
+                  onClick={() => void questions.markHelpful(selected.id)}
+                >
+                  <ThumbsUp />
+                  {questions.selectedAnswer.helpfulMarked
+                    ? `Helpful${questions.selectedAnswer.helpfulCount ? ` (${questions.selectedAnswer.helpfulCount})` : ''}`
+                    : 'Mark helpful'}
                 </button>
               ) : null}
               {manageQuestions && canModerate ? (

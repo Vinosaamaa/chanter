@@ -55,7 +55,7 @@ spring:
           uri: ${AGENT_SERVICE_URL:http://localhost:8085}
           order: -2
           predicates:
-            - Path=/api/v1/course-channels/*/support-questions/*/assistant-answer
+            - Path=/api/v1/course-channels/*/support-questions/*/assistant-answer,/api/v1/course-channels/*/support-questions/*/assistant-answer/**
         - id: agent-service-study-assistant
           uri: ${AGENT_SERVICE_URL:http://localhost:8085}
           order: -1

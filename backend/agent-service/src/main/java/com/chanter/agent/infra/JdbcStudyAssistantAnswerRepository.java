@@ -4,9 +4,11 @@ import com.chanter.agent.application.StudyAssistantAnswerRepository;
 import com.chanter.agent.domain.AnswerConfidence;
 import com.chanter.agent.domain.InvocationType;
 import com.chanter.agent.domain.StudyAssistantAnswer;
+import com.chanter.agent.domain.StudyAssistantAnswerAudit;
 import com.chanter.agent.domain.StudyAssistantAnswerSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -75,6 +77,86 @@ public class JdbcStudyAssistantAnswerRepository implements StudyAssistantAnswerR
                 sources,
                 answer.createdAt()
         ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<StudyAssistantAnswerAudit> findAuditByAnswerId(UUID answerId) {
+        return jdbcClient.sql("""
+                        SELECT
+                            answer_id,
+                            invocation_type,
+                            source_count,
+                            llm_used,
+                            llm_provider,
+                            llm_model,
+                            created_at
+                        FROM study_assistant_audit_records
+                        WHERE answer_id = :answerId
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """)
+                .param("answerId", answerId)
+                .query((resultSet, rowNum) -> new StudyAssistantAnswerAudit(
+                        resultSet.getObject("answer_id", UUID.class),
+                        resultSet.getString("invocation_type"),
+                        resultSet.getInt("source_count"),
+                        resultSet.getBoolean("llm_used"),
+                        resultSet.getString("llm_provider"),
+                        resultSet.getString("llm_model"),
+                        resultSet.getObject("created_at", OffsetDateTime.class).toInstant()
+                ))
+                .optional();
+    }
+
+    @Override
+    @Transactional
+    public boolean markHelpful(UUID answerId, UUID userId) {
+        if (isHelpfulMarked(answerId, userId)) {
+            return true;
+        }
+        try {
+            jdbcClient.sql("""
+                            INSERT INTO study_assistant_answer_helpful (answer_id, user_id, created_at)
+                            VALUES (:answerId, :userId, :createdAt)
+                            """)
+                    .param("answerId", answerId)
+                    .param("userId", userId)
+                    .param("createdAt", OffsetDateTime.ofInstant(Instant.now(), ZoneOffset.UTC))
+                    .update();
+            return true;
+        } catch (DuplicateKeyException exception) {
+            return true;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isHelpfulMarked(UUID answerId, UUID userId) {
+        Integer count = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM study_assistant_answer_helpful
+                        WHERE answer_id = :answerId AND user_id = :userId
+                        """)
+                .param("answerId", answerId)
+                .param("userId", userId)
+                .query(Integer.class)
+                .single();
+        return count != null && count > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countHelpful(UUID answerId) {
+        Integer count = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM study_assistant_answer_helpful
+                        WHERE answer_id = :answerId
+                        """)
+                .param("answerId", answerId)
+                .query(Integer.class)
+                .single();
+        return count == null ? 0 : count;
     }
 
     @Override

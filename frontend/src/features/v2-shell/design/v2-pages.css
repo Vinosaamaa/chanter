@@ -386,6 +386,51 @@
 .v2-app-shell .assistant-answer p b { border-radius: 5px; padding: 3px 7px; color: #fff; background: #5f6cf0; font-size: 12px; font-weight: 500; }
 .v2-app-shell .assistant-answer > div > span { display: block; color: #eef0f4; font-size: 17px; line-height: 1.55; }
 .v2-app-shell .assistant-answer > div > small { display: block; margin: 17px 0 10px; color: #c4c8d0; font-size: 15px; }
+.v2-app-shell .assistant-stream-body { position: relative; }
+.v2-app-shell .stream-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: #6982ff;
+  animation: assistant-stream-blink 0.9s steps(1) infinite;
+}
+@keyframes assistant-stream-blink {
+  50% { opacity: 0; }
+}
+.v2-app-shell .citation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.v2-app-shell .citation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  border: 1px solid rgba(105, 130, 255, 0.45);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #d7ddff;
+  background: rgba(34, 55, 109, 0.35);
+  cursor: help;
+  font-size: 13px;
+}
+.v2-app-shell .citation-chip strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+.v2-app-shell .citation-chip.faq { border-color: rgba(124, 226, 160, 0.4); color: #c9f0d8; }
+.v2-app-shell .assistant-audit-snippet {
+  margin: 12px 0 0;
+  color: #9da5b3;
+  font-size: 13px;
+}
 .v2-app-shell .answer-sources { display: grid; gap: 8px; }
 .v2-app-shell .answer-sources > article { min-height: 74px; display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 12px; border: 1px solid rgba(151,161,177,.3); border-radius: 9px; padding: 10px 13px; background: rgba(22,40,65,.7); }
 .v2-app-shell .document-source-icon, .v2-app-shell .faq-source-icon { width: 43px; height: 48px; display: grid; place-items: center; border-radius: 5px; color: #fff; background: linear-gradient(145deg,#7854ee,#4e37be); font-size: 12px; font-weight: 700; }

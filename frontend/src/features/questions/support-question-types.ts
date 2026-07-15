@@ -52,6 +52,15 @@ export type AssistantAnswerSource = {
   excerpt: string
 }
 
+export type AssistantAnswerAudit = {
+  invocationType: string
+  sourceCount: number
+  llmUsed: boolean
+  llmProvider?: string | null
+  llmModel?: string | null
+  createdAt: string
+}
+
 export type AssistantAnswer = {
   id: string
   supportQuestionId: string
@@ -65,7 +74,12 @@ export type AssistantAnswer = {
   supportQuestionStatus: SupportQuestionStatus
   sources: AssistantAnswerSource[]
   createdAt: string
+  audit?: AssistantAnswerAudit | null
+  helpfulMarked?: boolean
+  helpfulCount?: number
 }
+
+export type AssistantStreamPhase = 'idle' | 'streaming' | 'complete' | 'error'
 
 export type StudyAssistantGrant = {
   grantType: string
