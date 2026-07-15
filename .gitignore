@@ -52,3 +52,7 @@ logs/
 generated/
 scripts/.workable-demo-ai-resource.txt
 
+
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/

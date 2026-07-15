@@ -45,3 +45,13 @@ jobs:
       - name: Build frontend
         run: npm run build
         working-directory: frontend
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: No-dead-controls gate
+        run: node scripts/check-no-dead-controls.mjs
+      - name: Playwright critical subset
+        run: npm run test:e2e:critical
+        working-directory: frontend
+        env:
+          CI: 'true'
