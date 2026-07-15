@@ -1,0 +1,24 @@
+# Replace staging.chanter.example with the real hostname before reload.
+# Docs: docs/operations/staging-deploy.md (#101)
+
+staging.chanter.example {
+	encode gzip
+
+	# Frontend static build (npm run build → frontend/dist)
+	handle {
+		root * /opt/chanter/frontend/dist
+		try_files {path} /index.html
+		file_server
+	}
+
+	# API + realtime WebSocket (gateway)
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	# Optional LiveKit signaling path proxy
+	handle /livekit/* {
+		uri strip_prefix /livekit
+		reverse_proxy 127.0.0.1:7880
+	}
+}

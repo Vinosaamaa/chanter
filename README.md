@@ -27,6 +27,8 @@ Open **http://localhost:5173** → sign in as `dev-demo-owner@chanter.local` / p
 
 Full two-user demo checklist: [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md).
 
+Staging HTTPS deploy (single VM + Caddy): [`docs/operations/staging-deploy.md`](docs/operations/staging-deploy.md).
+
 ---
 
 The roadmap includes realtime course chat, Study Servers, course/module channels, instructor/TA/learner roles, course resources, question workflows, office-hours queues, learning analytics, and a first-party AI Study Assistant. Later phases expand into voice agents, marketplace agents, broader enterprise learning, and paid agent templates.
