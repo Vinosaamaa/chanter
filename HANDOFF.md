@@ -44,15 +44,11 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5). UI v2 **#116–#128** is merged in PR #130.
+**Active phase:** Public Launch project [#5](https://github.com/users/Vinosaamaa/projects/5). UI v2 shell **#116–#128**, operationalization **#132–#145**, Real AI **#94–#100**, staging/auth **#101–#102**, E2E **#103**, and public beta checklist **#104** are on the launch path. Remaining open items are parent epics (#131, #115, #107, #85, #84, #83, #82) and post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107).
 
-**Current transition point:** [**#138 - Community Course discovery and Enrollment**](https://github.com/Vinosaamaa/chanter/issues/138) is complete in [PR #154](https://github.com/Vinosaamaa/chanter/pull/154), including TDD coverage, Java/frontend verification, PostgreSQL V14 rehearsal/upgrade, and owner/learner desktop/mobile browser journeys. The owner authorized implementation to continue with [**#139 - Truthful Study Server and Course lifecycle**](https://github.com/Vinosaamaa/chanter/issues/139), using Cursor Composer 2.5 as the default implementation agent.
+**Beta launch:** [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md) — staging `https://staging.chanter.example`, known limitation: course storefront commerce is post-MVP.
 
-**Current Cursor handoff:** `/tmp/chanter-handoff-to-cursor-2026-07-14.md`, with a standalone startup prompt at `/tmp/chanter-cursor-prompt-2026-07-14.md`.
-
-**Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
-
-**Roadmap:** Finish the ordered #131 operational slices through #145, then AI #94–#100, critical-path E2E #103, staging/auth #101–#102, and beta #104.
+**Roadmap after beta:** Post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) (storefront commerce, marketing header badges, multi-region HA).
 
 **Agent read order for UI work:** `DESIGN-DECISIONS.md` → `specs/layout-rules.md` → issue mockup PNG(s) → `visibility-and-social-model.md`. Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
 
@@ -121,11 +117,11 @@ Production Frontend table retained above for history; milestone **complete** (le
 | 13 | [#127](https://github.com/Vinosaamaa/chanter/issues/127) | Owner course/cohort + events — **merged** |
 | 14 | [#128](https://github.com/Vinosaamaa/chanter/issues/128) | Landing and marketing v2 — **merged** |
 
-### UI v2 operationalization (active)
+### UI v2 operationalization + launch (complete through #104)
 
-Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turns the approved UI into a truthful full-stack product. Work in this order: **#132**, **#133**, **#134**, **#109**, **#135**, **#92**, **#136–#145**, then AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta **#104**.
+Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turned the approved UI into a truthful full-stack product. Ordered slices **#132–#145**, AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta checklist **#104** are the launch path. Parent epics may remain open for tracking; actionable slice work for public beta is complete when #104 merges.
 
-#132-#138, #109, and #92 are complete. #138 operationalizes published Community Course discovery plus open/invite Cohort enrollment. **#139 is now active** on `feature/139-truthful-study-server-course-lifecycle` and is handed to Cursor Composer 2.5.
+**Next:** post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) (commerce storefront, polish).
 
 **#30** ships in phase 2 with **#49** (project #3).
 
@@ -340,15 +336,16 @@ Pending:
 
 - Branch protection on `main` (optional, after owner enables)
 
-After UI v2 shell (**#116**), resume Public Launch on [project #5](https://github.com/users/Vinosaamaa/projects/5):
+After UI v2 shell (**#116**), Public Launch on [project #5](https://github.com/users/Vinosaamaa/projects/5):
 
 1. **#86** Product stack reliability — **merged** (PR #105).
 2. **#87** mockup gap audit — owner sign-off 2026-07-09.
 3. **#116–#128** UI v2 course-first shell (**merged** in PR #130).
-4. **#94–#100** Real AI / RAG / MCP.
-5. **#101–#104** Launch readiness.
+4. **#132–#145** UI v2 operationalization — **merged**.
+5. **#94–#100** Real AI / RAG / MCP — **merged**.
+6. **#101–#104** Launch readiness (staging, auth, E2E, beta checklist) — **#104** closes the beta docs/landing polish.
 
-See [`agent-workflow.md`](docs/operations/agent-workflow.md) § Phase 4.
+See [`agent-workflow.md`](docs/operations/agent-workflow.md) § Phase 4 and [`public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md).
 
 Target UX mockups: `docs/product-design/DESIGN-DECISIONS.md`. Social architecture: `docs/architecture/social-hub-and-dm-voice.md`.
 
@@ -372,21 +369,18 @@ Use this prompt after reloading Cursor or starting a new chat:
 ```text
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
-Backend MVP #11–#24, Production Frontend #47–#59, Workable Product #60–#63, and UI v2 #116–#128 are merged on main.
-UI v2 operationalization #132-#138, #109, and #92 are complete. #138 shipped through PR #154.
+Backend MVP #11–#24, Production Frontend #47–#59, Workable Product #60–#63, UI v2 #116–#128,
+operationalization #132–#145, AI #94–#100, staging/auth #101–#102, E2E #103, and public beta #104
+are on the launch path (see public-beta-launch-checklist.md).
 
 Product UI: docs/product-design/DESIGN-DECISIONS.md + mockups/learner-flow/ and owner-flow/
 Breakdown: docs/issues/ui-v2-issue-breakdown.md
-Current issue: #139 Truthful Study Server and Course lifecycle.
-Current branch: feature/139-truthful-study-server-course-lifecycle.
-
-Implement #139 end to end with Cursor Composer 2.5. Follow vertical-slice TDD and preserve the approved UI. Complete the full issue loop: local verification, desktop/mobile browser proof, issue-139 change/debug logs, commit, push, PR, CI, up to three CodeAnt remediation rounds, gated merge, sync main, then continue with #140.
+Next work: post-launch backlog #107 (commerce storefront, polish) unless the owner names a new slice.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Epic: https://github.com/Vinosaamaa/chanter/issues/131
-Current slice: https://github.com/Vinosaamaa/chanter/issues/139
 Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
+Beta: docs/operations/public-beta-launch-checklist.md
 ```
 
 ## Notes For Future Agent

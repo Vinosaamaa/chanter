@@ -1,8 +1,8 @@
 import { BarChart3, Check, GraduationCap, Hash, ShieldCheck, Sparkles, UsersRound, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import v2HomeShowcase from '../../../assets/v2-home-showcase.png'
 import { MarketingHeader, MarketingHero } from '../components/MarketingHeader'
+import { MarketingProductPreview } from '../components/MarketingProductPreview'
 import { useStudyServerCta } from '../hooks/use-study-server-cta'
 import { MARKETING_FEATURES, MARKETING_PRICING_TEASER, MARKETING_USE_CASES } from '../marketing-content'
 import { MARKETING_SIGN_IN_PATH } from '../marketing-routes'
@@ -31,18 +31,20 @@ export function LandingPage() {
 
       <main>
         <section className="marketing-v2-hero" aria-labelledby="marketing-title">
-          <img className="marketing-v2-hero-image" src={v2HomeShowcase} alt="" />
-          <div className="marketing-v2-hero-shade" aria-hidden="true" />
-          <div className="marketing-v2-hero-inner">
-            <MarketingHero />
-            <ul className="marketing-v2-trust" aria-label="Product benefits">
-              {TRUST_POINTS.map(({ icon: Icon, label }) => (
-                <li key={label}>
-                  <Icon aria-hidden="true" />
-                  {label}
-                </li>
-              ))}
-            </ul>
+          <div className="marketing-v2-hero-atmosphere" aria-hidden="true" />
+          <div className="marketing-v2-hero-inner marketing-v2-hero-split">
+            <div>
+              <MarketingHero />
+              <ul className="marketing-v2-trust" aria-label="Product benefits">
+                {TRUST_POINTS.map(({ icon: Icon, label }) => (
+                  <li key={label}>
+                    <Icon aria-hidden="true" />
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <MarketingProductPreview />
           </div>
         </section>
 
@@ -122,7 +124,16 @@ export function LandingPage() {
         <div className="marketing-v2-section-inner marketing-v2-footer-inner">
           <span>Chanter</span>
           <p>Learning communities with teaching support built in.</p>
-          <p>{new Date().getFullYear()} Chanter</p>
+          <div className="marketing-v2-footer-meta">
+            <p>
+              <Link to="/terms">Terms</Link>
+              {' · '}
+              <Link to="/privacy">Privacy</Link>
+              {' · '}
+              Beta support: support@chanter.example
+            </p>
+            <p>{new Date().getFullYear()} Chanter</p>
+          </div>
         </div>
       </footer>
     </div>

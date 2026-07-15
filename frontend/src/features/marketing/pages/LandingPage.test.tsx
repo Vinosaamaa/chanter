@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { useAuthStore } from '../../../stores/auth-store'
 import { MARKETING_CREATE_SERVER_PATH } from '../marketing-routes'
@@ -8,6 +8,8 @@ import { MARKETING_CREATE_SERVER_PATH } from '../marketing-routes'
 import { LandingPage } from './LandingPage'
 
 describe('LandingPage', () => {
+  afterEach(cleanup)
+
   beforeEach(() => {
     useAuthStore.getState().clearSession()
   })
@@ -55,5 +57,20 @@ describe('LandingPage', () => {
     expect(document.getElementById('features')).toBeTruthy()
     expect(document.getElementById('use-cases')).toBeTruthy()
     expect(document.getElementById('pricing')).toBeTruthy()
+  })
+
+  it('shows product preview chrome with Join Queue and legal links', () => {
+    render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByLabelText(/product preview/i)).toBeTruthy()
+    expect(screen.getByLabelText(/ta queue preview/i)).toBeTruthy()
+    expect(screen.getByLabelText(/course stats/i)).toBeTruthy()
+    expect(screen.getByRole('link', { name: /join queue/i })).toHaveAttribute('href', '/sign-in')
+    expect(screen.getByRole('link', { name: /^terms$/i })).toHaveAttribute('href', '/terms')
+    expect(screen.getByRole('link', { name: /^privacy$/i })).toHaveAttribute('href', '/privacy')
   })
 })

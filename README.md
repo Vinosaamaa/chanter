@@ -29,6 +29,8 @@ Full two-user demo checklist: [`docs/operations/workable-product-demo.md`](docs/
 
 Staging HTTPS deploy (single VM + Caddy): [`docs/operations/staging-deploy.md`](docs/operations/staging-deploy.md).
 
+**Public beta:** checklist and scope → [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md). Staging hostname placeholder: `https://staging.chanter.example`. Course storefront commerce (`course-storefront.png`) is **post-MVP** / out of beta scope.
+
 ---
 
 The roadmap includes realtime course chat, Study Servers, course/module channels, instructor/TA/learner roles, course resources, question workflows, office-hours queues, learning analytics, and a first-party AI Study Assistant. Later phases expand into voice agents, marketplace agents, broader enterprise learning, and paid agent templates.
@@ -52,7 +54,7 @@ GitHub repository: `https://github.com/Vinosaamaa/chanter`
 | Education MVP (historical) | [projects/1](https://github.com/users/Vinosaamaa/projects/1) | Backend slices #1–#24 |
 | **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59** — **complete** (legacy shell) |
 | [**Workable Product**](https://github.com/users/Vinosaamaa/projects/4) | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **complete** |
-| **Public Launch + UI v2** | [**projects/5**](https://github.com/users/Vinosaamaa/projects/5) | **#115–#128** UI v2 (**active**, start **#116**) · #82–#104 launch — **#88–#93 paused** until #116 |
+| **Public Launch + UI v2** | [**projects/5**](https://github.com/users/Vinosaamaa/projects/5) | UI v2 **#115–#128** + ops **#131–#145** · AI **#94–#100** · launch **#101–#104** (beta checklist) · remaining epics #82–#85, #107 post-launch |
 
 **Agent workflow (order + loop + merge policy):** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) (mandatory for all agents).
 
