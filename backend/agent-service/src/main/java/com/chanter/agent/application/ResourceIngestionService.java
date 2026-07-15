@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,16 +24,17 @@ public class ResourceIngestionService {
 
     private final ResourceChunkRepository repository;
     private final TextResourceChunker chunker;
+    private final EmbeddingPipelineService embeddingPipelineService;
     private final Clock clock;
 
-    @Autowired
-    public ResourceIngestionService(ResourceChunkRepository repository, Clock clock) {
-        this(repository, new TextResourceChunker(), clock);
-    }
-
-    ResourceIngestionService(ResourceChunkRepository repository, TextResourceChunker chunker, Clock clock) {
+    public ResourceIngestionService(
+            ResourceChunkRepository repository,
+            EmbeddingPipelineService embeddingPipelineService,
+            Clock clock
+    ) {
         this.repository = repository;
-        this.chunker = chunker;
+        this.chunker = new TextResourceChunker();
+        this.embeddingPipelineService = embeddingPipelineService;
         this.clock = clock;
     }
 
@@ -58,6 +58,7 @@ public class ResourceIngestionService {
 
         if (text.isEmpty()) {
             repository.replaceAllForResource(resourceId, List.of());
+            embeddingPipelineService.embedResource(resourceId);
             log.info(
                     "Resource ingestion cleared chunks resourceId={} courseId={} fileName={} reason=empty_or_unsupported",
                     resourceId,
@@ -87,6 +88,7 @@ public class ResourceIngestionService {
         }
 
         repository.replaceAllForResource(resourceId, chunks);
+        embeddingPipelineService.embedResource(resourceId);
         log.info(
                 "Resource ingestion stored chunks resourceId={} courseId={} fileName={} chunkCount={} contentSha256={}",
                 resourceId,
