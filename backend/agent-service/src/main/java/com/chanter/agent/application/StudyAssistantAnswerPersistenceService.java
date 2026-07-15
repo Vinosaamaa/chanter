@@ -21,7 +21,18 @@ public class StudyAssistantAnswerPersistenceService {
 
     @Transactional
     public StudyAssistantAnswer saveAnswer(StudyAssistantAnswer answer, InvocationType invocationType) {
+        return saveAnswer(answer, invocationType, null, null, false);
+    }
+
+    @Transactional
+    public StudyAssistantAnswer saveAnswer(
+            StudyAssistantAnswer answer,
+            InvocationType invocationType,
+            String llmProvider,
+            String llmModel,
+            boolean llmUsed
+    ) {
         aiQuotaEnforcementService.requireQuotaAvailableUnderLock(answer.studyServerId(), answer.learnerUserId());
-        return answerRepository.saveAnswer(answer, invocationType);
+        return answerRepository.saveAnswer(answer, invocationType, llmProvider, llmModel, llmUsed);
     }
 }
