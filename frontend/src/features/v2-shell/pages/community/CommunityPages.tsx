@@ -451,7 +451,10 @@ export function CommunityMembersPage() {
     enabled: Boolean(serverId),
   })
 
-  const members = membersQuery.data?.members ?? []
+  const members = useMemo(
+    () => membersQuery.data?.members ?? [],
+    [membersQuery.data?.members],
+  )
   const staff = useMemo(() => members.filter((member) => member.staff), [members])
   const learners = useMemo(() => members.filter((member) => !member.staff), [members])
   const filteredTotal = membersQuery.data?.filteredTotal ?? 0

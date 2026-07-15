@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, Check, ChevronLeft, ChevronRight, UsersRound } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { calendarQueryKey, fetchCalendar } from '../../calendar/calendar-api'
@@ -105,6 +105,7 @@ export function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState(today)
   const [filter, setFilter] = useState<CalendarFilter>('All')
   const [actionError, setActionError] = useState<string | null>(null)
+  const [deepLinkApplied, setDeepLinkApplied] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
   const range = useMemo(() => monthBounds(viewMonth), [viewMonth])
@@ -127,8 +128,23 @@ export function CalendarPage() {
     enabled: Boolean(userId),
   })
 
-  const items = calendarQuery.data?.items ?? []
+  const items = useMemo(
+    () => calendarQuery.data?.items ?? [],
+    [calendarQuery.data?.items],
+  )
   const notes = calendarQuery.data?.notes ?? []
+
+  const deepLinkedMatch = useMemo(() => {
+    if (!deepLinkedEventId) return null
+    return items.find((item) => item.sourceId === deepLinkedEventId && item.type === 'EVENT') ?? null
+  }, [deepLinkedEventId, items])
+
+  if (deepLinkedMatch && deepLinkApplied !== deepLinkedMatch.sourceId) {
+    const start = new Date(deepLinkedMatch.startsAt)
+    setDeepLinkApplied(deepLinkedMatch.sourceId)
+    setSelectedDay(startOfDay(start))
+    setViewMonth(new Date(start.getFullYear(), start.getMonth(), 1))
+  }
 
   const cells = useMemo(() => monthGrid(viewMonth), [viewMonth])
   const selectedDayItems = useMemo(() => itemsOnDay(items, selectedDay), [items, selectedDay])
@@ -141,15 +157,6 @@ export function CalendarPage() {
       })
       .slice(0, 8)
   }, [items, today])
-
-  useEffect(() => {
-    if (!deepLinkedEventId) return
-    const match = items.find((item) => item.sourceId === deepLinkedEventId && item.type === 'EVENT')
-    if (match) {
-      setSelectedDay(startOfDay(new Date(match.startsAt)))
-      setViewMonth(new Date(new Date(match.startsAt).getFullYear(), new Date(match.startsAt).getMonth(), 1))
-    }
-  }, [deepLinkedEventId, items])
 
   const rsvpMutation = useMutation({
     mutationFn: ({

@@ -125,10 +125,12 @@ function CalendarSearchInput({ placeholder }: { placeholder: string }) {
   const navigate = useNavigate()
   const urlQuery = searchParams.get('q') ?? ''
   const [draft, setDraft] = useState(urlQuery)
+  const [syncedUrlQuery, setSyncedUrlQuery] = useState(urlQuery)
 
-  useEffect(() => {
+  if (urlQuery !== syncedUrlQuery) {
+    setSyncedUrlQuery(urlQuery)
     setDraft(urlQuery)
-  }, [urlQuery])
+  }
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
