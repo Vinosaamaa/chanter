@@ -7,6 +7,7 @@ import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
 import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage'
 import { OAuthCallbackPage } from '../features/auth/pages/OAuthCallbackPage'
 import { TermsPage } from '../features/auth/pages/TermsPage'
+import { PrivacyPage } from '../features/auth/pages/PrivacyPage'
 import DevDemoApp from '../features/dev-demo/DevDemoApp'
 import { DevDemoRoutePage } from '../features/dev-demo/DevDemoRoutePage'
 import { LandingPage } from '../features/marketing/pages/LandingPage'
@@ -68,6 +69,10 @@ export function createAppRouter() {
     {
       path: '/terms',
       element: <TermsPage />,
+    },
+    {
+      path: '/privacy',
+      element: <PrivacyPage />,
     },
     {
       path: '/app',
