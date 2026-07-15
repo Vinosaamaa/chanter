@@ -43,12 +43,28 @@ public class HttpApprovedFaqClient implements ApprovedFaqClient {
 
     @Override
     public List<ApprovedFaqSummary> listApprovedFaqs(UUID courseId, UUID viewerUserId) {
+        return fetchFaqs(courseId, viewerUserId, null);
+    }
+
+    @Override
+    public List<ApprovedFaqSummary> searchApprovedFaqs(UUID courseId, UUID viewerUserId, String query) {
+        return fetchFaqs(courseId, viewerUserId, query);
+    }
+
+    private List<ApprovedFaqSummary> fetchFaqs(UUID courseId, UUID viewerUserId, String query) {
         try {
             ApprovedFaqListResponse response = restClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/api/v1/courses/{courseId}/approved-faqs")
-                            .queryParam("viewerUserId", viewerUserId)
-                            .build(courseId))
+                    .uri(uriBuilder -> {
+                        var builder = uriBuilder.path(query == null
+                                ? "/api/v1/courses/{courseId}/approved-faqs"
+                                : "/api/v1/courses/{courseId}/approved-faqs/search");
+                        if (query != null) {
+                            builder.queryParam("query", query);
+                        } else {
+                            builder.queryParam("viewerUserId", viewerUserId);
+                        }
+                        return builder.build(courseId);
+                    })
                     .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(ApprovedFaqListResponse.class);
@@ -68,6 +84,8 @@ public class HttpApprovedFaqClient implements ApprovedFaqClient {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found", exception);
         } catch (HttpClientErrorException.Forbidden exception) {
             return List.of();
+        } catch (HttpClientErrorException.BadRequest exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid approved FAQ request", exception);
         } catch (HttpClientErrorException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,

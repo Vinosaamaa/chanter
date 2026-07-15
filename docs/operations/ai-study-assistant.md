@@ -8,10 +8,10 @@ This doc explains what “AI” means in Chanter **right now**, what is **not** 
 
 | Question | Answer |
 |----------|--------|
-| Do we call OpenAI, Anthropic, or another LLM API? | **No — not in the current codebase.** |
-| Does the Study Assistant “work”? | **Yes** — but answers come from a **local keyword-matching engine** over **your approved course materials**, not from a generative language model. |
+| Do we call OpenAI, Anthropic, or another LLM API? | **Optionally.** Default is LLM **off**. Set `CHANTER_LLM_ENABLED=true` with Ollama or an OpenAI-compatible base URL (#97–#98). |
+| Does the Study Assistant “work”? | **Yes** — RAG over granted chunks/FAQs (#94–#96), optional LLM refinement + SSE (#98), grant-scoped MCP tools (#99). |
 | What does “install” do? | It is **permissions + product plumbing**: which channels and resources the assistant may read. It is not downloading a model. |
-| How do we get “real” generative AI later? | Planned as a separate **Agent Runtime** layer (`plan.md`) with provider adapters (e.g. Ollama locally, hosted APIs in production). That is **not wired in yet**. |
+| MCP tools? | Internal tool registry: `list_granted_resources`, `fetch_resource_chunk`, `search_course_faq` — see agent-service README **LLM orchestration + MCP**. |
 
 ---
 
@@ -27,17 +27,13 @@ This doc explains what “AI” means in Chanter **right now**, what is **not** 
 4. The service loads **grounding sources**:
    - **AI-approved** course resources (`.txt`, `.md` only) that were granted at install time
    - **Approved FAQs** from the course (if any)
-5. `KeywordGroundingEngine` scores the question against those texts:
-   - Tokenizes the question (drops short/stop words)
-   - Finds the resource with the most matching terms
-   - Returns an excerpt as the answer with **citations**
-6. Outcome:
+5. Default **RAG grounding** retrieves grant-scoped chunks (embeddings) and builds a cited answer; keyword engine remains available via `CHANTER_GROUNDING_ENGINE=keyword`.
+6. Optional **LLM refine** (#98) when enabled; otherwise the RAG body is returned (and can still SSE-stream).
+7. Outcome:
    - **HIGH confidence** → answer + sources; question marked `AI_ANSWERED`
    - **LOW confidence** → handoff message; question marked `AI_LOW_CONFIDENCE`; learner can **Add to TA Queue**
 
-Implementation: `backend/agent-service/.../KeywordGroundingEngine.java`
-
-There is **no HTTP call** to OpenAI, Anthropic, Gemini, or similar in `application.yml` or the agent service today.
+Implementation: `RagGroundingEngine`, `AgentRuntimeService`, and MCP tools under `application/tools/`.
 
 ---
 
@@ -103,15 +99,13 @@ The engine needs **at least two matching terms** (3+ letters, not stop words) be
 
 From `plan.md` and architecture docs:
 
-- **Today:** `agent-service` = install, grants, quotas, grounded answers via `KeywordGroundingEngine`
-- **#94:** AI-approved `.txt`/`.md` uploads are chunked with stable offsets into `resource_chunks`
-- **#95:** Chunks are embedded (default hashing embedder; optional Ollama — see `local-embeddings.md`) and stored for grant-scoped top-k retrieval
-- **#96:** Ask AI uses RAG over retrieved chunks by default (`CHANTER_GROUNDING_ENGINE=rag`; set `keyword` to fall back)
-- **Later:** `agent-runtime-service` (planned) = LLM orchestration, provider adapters, streaming, tools
-- **Local dev option (planned):** Ollama
-- **Production option (planned):** hosted LLM APIs with budgets and audit
+- **#94–#96:** Chunk ingest, embeddings, RAG grounding (keyword fallback)
+- **#97–#98:** LLM provider adapters + agent runtime SSE orchestration
+- **#99:** MCP-compatible grant-scoped tool bridge (`list_granted_resources`, `fetch_resource_chunk`, `search_course_faq`)
+- **#100:** Streaming AI answer UX in the product UI
+- **Later:** deeper tool-calling loops, marketplace agents, production budgets
 
-Swapping the engine means implementing `GroundingEngine` (or a successor interface) with an LLM-backed implementation while keeping install, grants, quotas, and citations.
+Local probe scripts: `scripts/check-llm-provider.sh`, `scripts/check-assistant-tools.sh`.
 
 ---
 
@@ -123,6 +117,8 @@ Swapping the engine means implementing `GroundingEngine` (or a successor interfa
 | `POST /api/v1/study-servers/{id}/study-assistant/install` | Confirm install |
 | `GET /api/v1/study-servers/{id}/study-assistant` | Installed + grants |
 | `POST /api/v1/course-channels/{channelId}/support-questions/{id}/assistant-answer` | Generate answer |
+| `POST .../assistant-answer/stream` | SSE streaming answer |
+| `GET/POST /api/v1/internal/assistant-tools*` | MCP-compatible tool list/invoke (service token) |
 
 Service: `backend/agent-service` (port **8085**, started by `make product-up`).
 

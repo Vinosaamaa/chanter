@@ -5,6 +5,7 @@ import com.chanter.agent.domain.ResourceChunk;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -72,6 +73,20 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
         jdbcClient.sql("DELETE FROM resource_chunks WHERE resource_id = :resourceId")
                 .param("resourceId", resourceId)
                 .update();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ResourceChunk> findById(UUID chunkId) {
+        return jdbcClient.sql("""
+                        SELECT id, resource_id, course_id, chunk_index, start_offset, end_offset,
+                               content_text, content_sha256, file_name, created_at
+                        FROM resource_chunks
+                        WHERE id = :chunkId
+                        """)
+                .param("chunkId", chunkId)
+                .query(this::mapRow)
+                .optional();
     }
 
     @Override
