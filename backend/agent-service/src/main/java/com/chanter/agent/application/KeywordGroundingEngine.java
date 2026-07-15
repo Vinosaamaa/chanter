@@ -6,9 +6,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "chanter.grounding.engine", havingValue = "keyword")
 public class KeywordGroundingEngine implements GroundingEngine {
 
     private static final int MIN_TERM_MATCHES = 2;

@@ -14,6 +14,10 @@ spring:
 
 chanter:
   internal-service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
+  grounding:
+    engine: ${CHANTER_GROUNDING_ENGINE:rag}
+    min-retrieval-score: ${CHANTER_GROUNDING_MIN_SCORE:0.12}
+    retrieval-top-k: ${CHANTER_GROUNDING_TOP_K:5}
   embeddings:
     provider: ${CHANTER_EMBEDDINGS_PROVIDER:hashing}
     dimensions: ${CHANTER_EMBEDDINGS_DIMENSIONS:384}
