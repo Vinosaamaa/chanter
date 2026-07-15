@@ -765,3 +765,19 @@
   .v2-app-shell .join-or-create-grid { grid-template-columns: 1fr; }
   .v2-app-shell .join-or-create-grid > form, .v2-app-shell .join-or-create-grid > article { min-height: 0; padding: 22px; }
 }
+.v2-app-shell .course-governance-page { padding: 28px 32px; display: grid; gap: 18px; max-width: 760px; }
+.v2-app-shell .course-governance-header { display: flex; align-items: center; gap: 16px; }
+.v2-app-shell .course-governance-card { border: 1px solid #3d5065; border-radius: 10px; padding: 20px; display: grid; gap: 12px; background: #0c2035; }
+.v2-app-shell .course-governance-card label { display: grid; gap: 6px; color: #c6cbd3; }
+.v2-app-shell .course-governance-card input, .v2-app-shell .course-governance-card textarea { border: 1px solid #485b70; border-radius: 7px; padding: 10px 12px; color: #fff; background: #031426; }
+.v2-app-shell .course-governance-card.danger { border-color: #7a3f49; }
+.v2-app-shell .course-governance-card .confirm-row { display: flex; gap: 10px; }
+.v2-app-shell .create-course-mode { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+.v2-app-shell .create-course-mode legend { margin-bottom: 6px; color: #c6cbd3; }
+.v2-app-shell .home-invites-panel { margin: 18px 0; border: 1px solid #3d5065; border-radius: 10px; padding: 16px 18px; background: #0c2035; }
+.v2-app-shell .home-invites-panel ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.v2-app-shell .home-invites-panel li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+@media (max-width: 650px) {
+  .v2-app-shell .course-governance-page { padding: 18px 14px; }
+  .v2-app-shell .home-invites-panel li { flex-direction: column; align-items: stretch; }
+}

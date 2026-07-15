@@ -7,6 +7,7 @@ import com.chanter.community.application.StudyServerService;
 import com.chanter.community.application.CourseService;
 import com.chanter.community.domain.CourseCatalogFilter;
 import com.chanter.community.domain.StudyServer;
+import com.chanter.community.domain.StudyServerType;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -49,13 +50,22 @@ public class StudyServerController {
             @Valid @RequestBody CreateStudyServerRequest request,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID ownerUserId
     ) {
-        StudyServer studyServer = studyServerService.createStudyServer(request.name(), ownerUserId);
+        StudyServer studyServer = studyServerService.createStudyServer(
+                request.name(),
+                request.description(),
+                StudyServerType.fromApiValue(request.serverType()),
+                request.inviteEmails(),
+                ownerUserId
+        );
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(studyServer.id())
                 .toUri();
 
-        return ResponseEntity.created(location).body(StudyServerResponse.from(studyServer));
+        return ResponseEntity.created(location).body(StudyServerResponse.from(
+                studyServer,
+                studyServerService.findPendingInvitations(studyServer.id())
+        ));
     }
 
     @GetMapping
@@ -69,9 +79,22 @@ public class StudyServerController {
 
     @GetMapping("/{id}")
     public StudyServerResponse getStudyServer(@PathVariable UUID id) {
-        return studyServerService.findStudyServer(id)
-                .map(StudyServerResponse::from)
+        StudyServer studyServer = studyServerService.findStudyServer(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
+        return StudyServerResponse.from(
+                studyServer,
+                studyServerService.findPendingInvitations(id)
+        );
+    }
+
+    @PostMapping("/{id}/invitations/{invitationId}/accept")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void acceptStudyServerInvitation(
+            @PathVariable UUID id,
+            @PathVariable UUID invitationId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID inviteeUserId
+    ) {
+        studyServerService.acceptStudyServerInvitation(id, invitationId, inviteeUserId);
     }
 
     @GetMapping("/{id}/navigation")

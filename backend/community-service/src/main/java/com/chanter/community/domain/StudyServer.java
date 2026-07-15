@@ -7,6 +7,8 @@ import java.util.UUID;
 public record StudyServer(
         UUID id,
         String name,
+        String description,
+        StudyServerType serverType,
         OwnerRole ownerRole,
         SaasPlanTier planTier,
         List<StudyServerChannel> channels,

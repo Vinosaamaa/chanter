@@ -1,7 +1,10 @@
 export type CreatedStudyServer = {
   id: string
   name: string
+  description?: string | null
+  serverType?: string | null
   planTier?: string
+  pendingInvitations?: Array<{ id: string; email: string }>
 }
 
 export type CourseChannel = {
@@ -13,11 +16,14 @@ export type CourseChannel = {
 export type CreatedCourse = {
   id: string
   title: string
-  cohort: {
+  description?: string | null
+  published?: boolean
+  archived?: boolean
+  cohort?: {
     id: string
     name: string
-  }
-  channels: CourseChannel[]
+  } | null
+  channels?: CourseChannel[] | null
 }
 
 export type CohortEnrollmentRecord = {

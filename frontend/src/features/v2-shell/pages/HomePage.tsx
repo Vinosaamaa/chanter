@@ -8,6 +8,7 @@ import {
   HomeCourseCardView,
   HomeUpNextPanel,
 } from '../components/HomeSections'
+import { HomeStudyServerInvites } from '../components/HomeStudyServerInvites'
 
 export function HomePage() {
   const user = useAuthStore((state) => state.user)
@@ -29,6 +30,7 @@ export function HomePage() {
         </div>
 
         <HomeAttentionRow items={model.attention} />
+        <HomeStudyServerInvites />
 
         <div className="lower-grid">
           <section className="learning">

@@ -21,16 +21,42 @@ describe('onboarding-api', () => {
     mockedApiFetch.mockReset()
   })
 
-  it('createStudyServer posts the server name', async () => {
+  it('createStudyServer posts persisted server fields', async () => {
+    mockedApiFetch.mockResolvedValue({
+      id: 'server-1',
+      name: 'Bootcamp Hub',
+      description: 'A cohort hub',
+      serverType: 'PROGRAM',
+    })
+
+    const result = await createStudyServer({
+      name: 'Bootcamp Hub',
+      description: 'A cohort hub',
+      serverType: 'PROGRAM',
+      inviteEmails: ['teammate@example.edu'],
+    })
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/study-servers', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Bootcamp Hub',
+        description: 'A cohort hub',
+        serverType: 'PROGRAM',
+        inviteEmails: ['teammate@example.edu'],
+      }),
+    })
+    expect(result.id).toBe('server-1')
+  })
+
+  it('createStudyServer accepts a legacy name-only call', async () => {
     mockedApiFetch.mockResolvedValue({ id: 'server-1', name: 'Bootcamp Hub' })
 
-    const result = await createStudyServer('Bootcamp Hub')
+    await createStudyServer('Bootcamp Hub')
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/study-servers', {
       method: 'POST',
       body: JSON.stringify({ name: 'Bootcamp Hub' }),
     })
-    expect(result).toEqual({ id: 'server-1', name: 'Bootcamp Hub' })
   })
 
   it('createCourse posts title and cohort name for a study server', async () => {

@@ -3,7 +3,8 @@ package com.chanter.community.api;
 import com.chanter.common.ServiceInfo;
 import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.community.application.CourseService;
-import com.chanter.community.domain.Course;
+import com.chanter.community.domain.Cohort;
+import com.chanter.community.domain.CourseLifecycle;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
@@ -11,13 +12,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -33,24 +35,103 @@ public class CourseController {
     }
 
     @PostMapping("/study-servers/{studyServerId}/courses")
-    public ResponseEntity<CourseResponse> createCourse(
+    public ResponseEntity<CourseLifecycleResponse> createCourse(
             @PathVariable UUID studyServerId,
             @Valid @RequestBody CreateCourseRequest request,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
     ) {
-        Course course = courseService.createCourseWithCohort(
+        CourseLifecycle course = courseService.createCourse(
                 studyServerId,
                 actorUserId,
                 request.title(),
-                actorUserId,
+                request.description(),
                 request.cohortName()
         );
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path(ServiceInfo.API_V1_PREFIX + "/courses/{id}")
                 .buildAndExpand(course.id())
                 .toUri();
 
-        return ResponseEntity.created(location).body(CourseResponse.from(course));
+        return ResponseEntity.created(location).body(CourseLifecycleResponse.from(course));
+    }
+
+    @PostMapping("/courses/{courseId}/cohorts")
+    public ResponseEntity<CourseLifecycleResponse.CohortResponse> addCohortToCourse(
+            @PathVariable UUID courseId,
+            @Valid @RequestBody AddCohortRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        Cohort cohort = courseService.addCohortToCourse(courseId, actorUserId, request.name());
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(cohort.id())
+                .toUri();
+        return ResponseEntity.created(location)
+                .body(new CourseLifecycleResponse.CohortResponse(cohort.id(), cohort.name()));
+    }
+
+    @PatchMapping("/courses/{courseId}/instructor")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void assignCourseInstructor(
+            @PathVariable UUID courseId,
+            @Valid @RequestBody AssignCourseInstructorRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.assignCourseInstructor(
+                courseId,
+                actorUserId,
+                request.instructorUserId(),
+                request.instructorEmail()
+        );
+    }
+
+    @GetMapping("/courses/{courseId}")
+    public CourseLifecycleResponse getCourseLifecycle(
+            @PathVariable UUID courseId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
+    ) {
+        return CourseLifecycleResponse.from(courseService.getCourseLifecycle(courseId, viewerUserId));
+    }
+
+    @PatchMapping("/courses/{courseId}")
+    public CourseLifecycleResponse updateCourseMetadata(
+            @PathVariable UUID courseId,
+            @Valid @RequestBody UpdateCourseRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        return CourseLifecycleResponse.from(courseService.updateCourseMetadata(
+                courseId,
+                actorUserId,
+                request.title(),
+                request.description()
+        ));
+    }
+
+    @PostMapping("/courses/{courseId}/publish")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void publishCourse(
+            @PathVariable UUID courseId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.publishCourse(courseId, actorUserId);
+    }
+
+    @PostMapping("/courses/{courseId}/unpublish")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unpublishCourse(
+            @PathVariable UUID courseId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.unpublishCourse(courseId, actorUserId);
+    }
+
+    @PostMapping("/courses/{courseId}/archive")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void archiveCourse(
+            @PathVariable UUID courseId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        courseService.archiveCourse(courseId, actorUserId);
     }
 
     @PostMapping("/cohorts/{cohortId}/enrollments")

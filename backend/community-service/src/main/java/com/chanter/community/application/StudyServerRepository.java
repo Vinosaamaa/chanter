@@ -3,7 +3,9 @@ package com.chanter.community.application;
 import com.chanter.community.domain.CoMember;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
+import com.chanter.community.domain.StudyServerInvitation;
 import com.chanter.community.domain.VoicePresence;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,4 +33,14 @@ public interface StudyServerRepository {
     Optional<UUID> findDefaultVoiceChannelId(UUID studyServerId);
 
     void deleteById(UUID id);
+
+    StudyServerInvitation saveInvitation(StudyServerInvitation invitation);
+
+    List<StudyServerInvitation> findPendingInvitations(UUID studyServerId);
+
+    List<StudyServerInvitation> findPendingInvitationsForUser(UUID invitedUserId);
+
+    Optional<StudyServerInvitation> findInvitation(UUID studyServerId, UUID invitationId);
+
+    void acceptInvitation(UUID studyServerId, UUID invitationId, UUID acceptedByUserId, Instant resolvedAt);
 }

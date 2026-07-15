@@ -9,7 +9,9 @@ import com.chanter.community.domain.CohortInvitation;
 import com.chanter.community.domain.CohortInvitationStatus;
 import com.chanter.community.domain.CohortJoinDetails;
 import com.chanter.community.domain.CohortRole;
+import com.chanter.community.domain.Cohort;
 import com.chanter.community.domain.Course;
+import com.chanter.community.domain.CourseLifecycle;
 import com.chanter.community.domain.CourseCatalogCohort;
 import com.chanter.community.domain.CourseCatalogCourse;
 import com.chanter.community.domain.CourseCatalogFilter;
@@ -83,14 +85,31 @@ public class JdbcCourseRepository implements CourseRepository {
 
     @Override
     @Transactional
-    public Course save(Course course) {
+    public Course save(Course course, String description) {
         jdbcClient.sql("""
-                        INSERT INTO courses (id, study_server_id, title, instructor_user_id, created_at)
-                        VALUES (:id, :studyServerId, :title, :instructorUserId, :createdAt)
+                        INSERT INTO courses (
+                            id,
+                            study_server_id,
+                            title,
+                            description,
+                            instructor_user_id,
+                            published,
+                            created_at
+                        )
+                        VALUES (
+                            :id,
+                            :studyServerId,
+                            :title,
+                            :description,
+                            :instructorUserId,
+                            TRUE,
+                            :createdAt
+                        )
                         """)
                 .param("id", course.id())
                 .param("studyServerId", course.studyServerId())
                 .param("title", course.title())
+                .param("description", description)
                 .param("instructorUserId", course.instructorRole().userId())
                 .param("createdAt", OffsetDateTime.ofInstant(course.createdAt(), ZoneOffset.UTC))
                 .update();
@@ -166,6 +185,7 @@ public class JdbcCourseRepository implements CourseRepository {
                         LEFT JOIN cohort_enrollments enrollment ON enrollment.cohort_id = c.id
                         WHERE co.study_server_id = :studyServerId
                         AND co.published = TRUE
+                        AND co.archived_at IS NULL
                         AND LOWER(co.title) LIKE :searchPattern
                         """ + filterClause + """
                         GROUP BY co.id,
@@ -1635,6 +1655,13 @@ public class JdbcCourseRepository implements CourseRepository {
                         )
                         OR EXISTS (
                             SELECT 1
+                            FROM study_server_roles ssr
+                            WHERE ssr.study_server_id = ss.id
+                            AND ssr.user_id = :userId
+                            AND ssr.role = :memberRole
+                        )
+                        OR EXISTS (
+                            SELECT 1
                             FROM courses co
                             JOIN course_roles cr ON cr.course_id = co.id
                             WHERE co.study_server_id = ss.id
@@ -1662,6 +1689,7 @@ public class JdbcCourseRepository implements CourseRepository {
                         """)
                 .param("userId", userId)
                 .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
+                .param("memberRole", StudyServerRole.STUDY_SERVER_MEMBER.name())
                 .param("instructorRole", CourseRole.INSTRUCTOR.name())
                 .param("teachingAssistantRole", CohortRole.TA.name())
                 .query((rs, rowNum) -> new AccessibleStudyServerRow(
@@ -1689,6 +1717,280 @@ public class JdbcCourseRepository implements CourseRepository {
                         memberCounts.getOrDefault(row.id(), 0)
                 ))
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public CourseLifecycle saveDraftCourse(
+            UUID studyServerId,
+            String title,
+            String description,
+            UUID instructorUserId,
+            Instant createdAt
+    ) {
+        UUID courseId = UUID.randomUUID();
+        jdbcClient.sql("""
+                        INSERT INTO courses (
+                            id,
+                            study_server_id,
+                            title,
+                            description,
+                            instructor_user_id,
+                            published,
+                            created_at
+                        )
+                        VALUES (
+                            :id,
+                            :studyServerId,
+                            :title,
+                            :description,
+                            :instructorUserId,
+                            FALSE,
+                            :createdAt
+                        )
+                        """)
+                .param("id", courseId)
+                .param("studyServerId", studyServerId)
+                .param("title", title)
+                .param("description", description)
+                .param("instructorUserId", instructorUserId)
+                .param("createdAt", OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC))
+                .update();
+
+        jdbcClient.sql("""
+                        INSERT INTO course_roles (course_id, user_id, role)
+                        VALUES (:courseId, :userId, :role)
+                        """)
+                .param("courseId", courseId)
+                .param("userId", instructorUserId)
+                .param("role", CourseRole.INSTRUCTOR.name())
+                .update();
+
+        return new CourseLifecycle(
+                courseId,
+                studyServerId,
+                title,
+                description,
+                instructorUserId,
+                false,
+                false,
+                Optional.empty(),
+                List.of(),
+                createdAt
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CourseLifecycle> findCourseLifecycle(UUID courseId) {
+        Optional<CourseLifecycleRow> courseRow = jdbcClient.sql("""
+                        SELECT id,
+                               study_server_id,
+                               title,
+                               description,
+                               instructor_user_id,
+                               published,
+                               archived_at,
+                               created_at
+                        FROM courses
+                        WHERE id = :courseId
+                        """)
+                .param("courseId", courseId)
+                .query((rs, rowNum) -> new CourseLifecycleRow(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("study_server_id", UUID.class),
+                        rs.getString("title"),
+                        rs.getString("description"),
+                        rs.getObject("instructor_user_id", UUID.class),
+                        rs.getBoolean("published"),
+                        rs.getObject("archived_at", OffsetDateTime.class),
+                        rs.getObject("created_at", OffsetDateTime.class).toInstant()
+                ))
+                .optional();
+        if (courseRow.isEmpty()) {
+            return Optional.empty();
+        }
+
+        CourseLifecycleRow row = courseRow.get();
+        List<Cohort> cohorts = jdbcClient.sql("""
+                        SELECT id, course_id, name, invite_code
+                        FROM cohorts
+                        WHERE course_id = :courseId
+                        ORDER BY name
+                        """)
+                .param("courseId", courseId)
+                .query((rs, rowNum) -> new Cohort(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("course_id", UUID.class),
+                        rs.getString("name"),
+                        rs.getObject("invite_code", UUID.class)
+                ))
+                .list();
+
+        List<CourseChannel> channels = jdbcClient.sql("""
+                        SELECT id, course_id, cohort_id, name, kind, position
+                        FROM course_channels
+                        WHERE course_id = :courseId
+                        AND archived_at IS NULL
+                        ORDER BY position
+                        """)
+                .param("courseId", courseId)
+                .query((rs, rowNum) -> new CourseChannel(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("course_id", UUID.class),
+                        rs.getObject("cohort_id", UUID.class),
+                        rs.getString("name"),
+                        ChannelKind.valueOf(rs.getString("kind")),
+                        rs.getInt("position")
+                ))
+                .list();
+
+        return Optional.of(new CourseLifecycle(
+                row.id(),
+                row.studyServerId(),
+                row.title(),
+                row.description(),
+                row.instructorUserId(),
+                row.published(),
+                row.archivedAt() != null,
+                cohorts.isEmpty() ? Optional.empty() : Optional.of(cohorts.getFirst()),
+                channels,
+                row.createdAt()
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> findStudyServerIdByCourseId(UUID courseId) {
+        return jdbcClient.sql("""
+                        SELECT study_server_id
+                        FROM courses
+                        WHERE id = :courseId
+                        """)
+                .param("courseId", courseId)
+                .query(UUID.class)
+                .optional();
+    }
+
+    @Override
+    @Transactional
+    public Cohort addCohortToCourse(UUID courseId, Cohort cohort, List<CourseChannel> channels) {
+        jdbcClient.sql("""
+                        INSERT INTO cohorts (id, course_id, name, invite_code)
+                        VALUES (:id, :courseId, :name, :inviteCode)
+                        """)
+                .param("id", cohort.id())
+                .param("courseId", courseId)
+                .param("name", cohort.name())
+                .param("inviteCode", cohort.inviteCode())
+                .update();
+
+        for (CourseChannel channel : channels) {
+            jdbcClient.sql("""
+                            INSERT INTO course_channels (id, course_id, cohort_id, name, kind, position)
+                            VALUES (:id, :courseId, :cohortId, :name, :kind, :position)
+                            """)
+                    .param("id", channel.id())
+                    .param("courseId", channel.courseId())
+                    .param("cohortId", channel.cohortId())
+                    .param("name", channel.name())
+                    .param("kind", channel.kind().name())
+                    .param("position", channel.position())
+                    .update();
+        }
+
+        return cohort;
+    }
+
+    @Override
+    @Transactional
+    public void assignCourseInstructor(UUID courseId, UUID instructorUserId) {
+        jdbcClient.sql("""
+                        UPDATE courses
+                        SET instructor_user_id = :instructorUserId
+                        WHERE id = :courseId
+                        """)
+                .param("instructorUserId", instructorUserId)
+                .param("courseId", courseId)
+                .update();
+
+        jdbcClient.sql("""
+                        DELETE FROM course_roles
+                        WHERE course_id = :courseId
+                        AND role = :role
+                        """)
+                .param("courseId", courseId)
+                .param("role", CourseRole.INSTRUCTOR.name())
+                .update();
+
+        jdbcClient.sql("""
+                        INSERT INTO course_roles (course_id, user_id, role)
+                        VALUES (:courseId, :userId, :role)
+                        """)
+                .param("courseId", courseId)
+                .param("userId", instructorUserId)
+                .param("role", CourseRole.INSTRUCTOR.name())
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public void setCoursePublished(UUID courseId, boolean published) {
+        jdbcClient.sql("""
+                        UPDATE courses
+                        SET published = :published
+                        WHERE id = :courseId
+                        """)
+                .param("published", published)
+                .param("courseId", courseId)
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public void updateCourseMetadata(UUID courseId, String title, String description) {
+        jdbcClient.sql("""
+                        UPDATE courses
+                        SET title = :title,
+                            description = :description
+                        WHERE id = :courseId
+                        AND archived_at IS NULL
+                        """)
+                .param("title", title)
+                .param("description", description)
+                .param("courseId", courseId)
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public void archiveCourse(UUID courseId, Instant archivedAt) {
+        jdbcClient.sql("""
+                        UPDATE courses
+                        SET archived_at = :archivedAt,
+                            published = FALSE
+                        WHERE id = :courseId
+                        """)
+                .param("archivedAt", OffsetDateTime.ofInstant(archivedAt, ZoneOffset.UTC))
+                .param("courseId", courseId)
+                .update();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isCourseInstructor(UUID courseId, UUID userId) {
+        return jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM course_roles
+                        WHERE course_id = :courseId
+                        AND user_id = :userId
+                        AND role = :role
+                        """)
+                .param("courseId", courseId)
+                .param("userId", userId)
+                .param("role", CourseRole.INSTRUCTOR.name())
+                .query(Integer.class)
+                .single() > 0;
     }
 
     private Map<UUID, Integer> memberCountsForStudyServers(List<UUID> studyServerIds) {
@@ -1729,6 +2031,18 @@ public class JdbcCourseRepository implements CourseRepository {
                 })
                 .list();
         return memberCounts;
+    }
+
+    private record CourseLifecycleRow(
+            UUID id,
+            UUID studyServerId,
+            String title,
+            String description,
+            UUID instructorUserId,
+            boolean published,
+            OffsetDateTime archivedAt,
+            Instant createdAt
+    ) {
     }
 
     private record AccessibleStudyServerRow(

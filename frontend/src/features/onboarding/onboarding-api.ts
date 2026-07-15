@@ -6,21 +6,44 @@ function cohortPath(cohortId: string): string {
   return `/api/v1/cohorts/${encodeURIComponent(cohortId)}`
 }
 
-export async function createStudyServer(name: string): Promise<CreatedStudyServer> {
+export type CreateStudyServerInput = {
+  name: string
+  description?: string
+  serverType?: 'SCHOOL' | 'PROGRAM' | 'PERSONAL'
+  inviteEmails?: string[]
+}
+
+export async function createStudyServer(input: CreateStudyServerInput | string): Promise<CreatedStudyServer> {
+  const payload = typeof input === 'string'
+    ? { name: input }
+    : {
+        name: input.name,
+        description: input.description,
+        serverType: input.serverType,
+        inviteEmails: input.inviteEmails,
+      }
+
   return apiFetch<CreatedStudyServer>('/api/v1/study-servers', {
     method: 'POST',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(payload),
   })
+}
+
+export type CreateCourseInput = {
+  title: string
+  description?: string
+  cohortName?: string
 }
 
 export async function createCourse(
   studyServerId: string,
-  input: { title: string; cohortName: string },
+  input: CreateCourseInput,
 ): Promise<CreatedCourse> {
   return apiFetch<CreatedCourse>(`/api/v1/study-servers/${encodeURIComponent(studyServerId)}/courses`, {
     method: 'POST',
     body: JSON.stringify({
       title: input.title,
+      description: input.description,
       cohortName: input.cohortName,
     }),
   })

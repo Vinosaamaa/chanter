@@ -31,7 +31,20 @@ const serverTypes = [
   },
 ]
 
+const serverTypeApiValue: Record<ServerType, 'SCHOOL' | 'PROGRAM' | 'PERSONAL'> = {
+  school: 'SCHOOL',
+  program: 'PROGRAM',
+  personal: 'PERSONAL',
+}
+
 const stepNames = ['Server type', 'Basics', 'Invite team', 'Review']
+
+function parseInviteEmails(raw: string): string[] {
+  return raw
+    .split(/[,;\n]+/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+}
 
 export function CreateStudyServerV2Page() {
   const navigate = useNavigate()
@@ -69,11 +82,15 @@ export function CreateStudyServerV2Page() {
     setIsSubmitting(true)
     setError(null)
     try {
-      const created = await createStudyServer(name.trim())
-      if (description.trim()) {
-        sessionStorage.setItem(`chanter:study-server-description:${created.id}`, description.trim())
-      }
+      const inviteEmails = parseInviteEmails(invitees)
+      const created = await createStudyServer({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        serverType: serverTypeApiValue[serverType],
+        inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
+      })
       await queryClient.invalidateQueries({ queryKey: ['study-servers'] })
+      await queryClient.invalidateQueries({ queryKey: ['study-server-invitations'] })
       navigate(`/app/servers/${created.id}/community/announcements`, { replace: true })
     } catch (caught) {
       if (isUnauthorizedApiError(caught)) {
@@ -157,7 +174,7 @@ export function CreateStudyServerV2Page() {
                   Email addresses
                   <textarea value={invitees} onChange={(event) => setInvitees(event.target.value)} placeholder="alex@school.edu, priya@school.edu" rows={5} />
                 </label>
-                <p className="wizard-note">Invites are prepared after your Study Server is created.</p>
+                <p className="wizard-note">Invites are saved when your Study Server is created.</p>
               </div>
             ) : null}
 
@@ -168,7 +185,7 @@ export function CreateStudyServerV2Page() {
                 <p>{description || 'A new home for your learning community.'}</p>
                 <dl>
                   <div><dt>Type</dt><dd>{serverTypes.find((item) => item.id === serverType)?.title}</dd></div>
-                  <div><dt>Team invites</dt><dd>{invitees.trim() ? invitees.split(',').length : 'None yet'}</dd></div>
+                  <div><dt>Team invites</dt><dd>{invitees.trim() ? parseInviteEmails(invitees).length : 'None yet'}</dd></div>
                   <div><dt>Default spaces</dt><dd>Announcements, lounge, and study room</dd></div>
                 </dl>
               </div>

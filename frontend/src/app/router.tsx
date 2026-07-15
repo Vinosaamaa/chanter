@@ -28,6 +28,7 @@ import { CourseQuestionsPage } from '../features/v2-shell/pages/course/CourseQue
 import { CourseResourcesPage } from '../features/v2-shell/pages/course/CourseResourcesPage'
 import { CourseOfficeHoursPage } from '../features/v2-shell/pages/course/CourseOfficeHoursPage'
 import { CoursePeoplePage } from '../features/v2-shell/pages/course/CoursePeoplePage'
+import { CourseGovernancePage } from '../features/v2-shell/pages/course/CourseGovernancePage'
 import { V2CommunityHubLayout } from '../features/v2-shell/layouts/V2CommunityHubLayout'
 import { CommunityAnnouncementsPage, CommunityDiscoverPage, CommunityEventsPage, CommunityLoungePage, CommunityMembersPage } from '../features/v2-shell/pages/community/CommunityPages'
 import { TeachingPage } from '../features/v2-shell/pages/TeachingPage'
@@ -90,6 +91,10 @@ export function createAppRouter() {
             { path: 'teaching', element: <TeachingPage /> },
             { path: 'settings/billing', element: <BillingSettingsPage /> },
             { path: 'friends', element: <FriendsPage /> },
+            {
+              path: 'servers/:serverId/courses/:courseId/settings',
+              element: <CourseGovernancePage />,
+            },
             {
               path: 'servers/:serverId/courses/:courseId',
               element: <V2CourseWorkspaceLayout />,
