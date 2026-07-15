@@ -1,10 +1,15 @@
 import type { CourseAccentGradient } from '../course-accent'
 import { courseAccentGradient } from '../course-accent'
-import type { V2SidebarCourse } from '../hooks/use-v2-sidebar-data'
+import type {
+  HomeSummaryAttentionItem,
+  HomeSummaryCourse,
+  HomeSummaryResponse,
+  HomeSummaryUpNextItem,
+} from '../../home/home-summary-types'
 
 export type HomeAttentionItem = {
   id: string
-  kind: 'office' | 'answer' | 'announcements'
+  kind: 'office' | 'answer' | 'announcements' | 'event'
   tone: 'purple' | 'green' | 'blue'
   icon: 'calendar' | 'chat' | 'megaphone'
   headline: string
@@ -24,7 +29,8 @@ export type HomeCourseCard = {
   cohortLabel: string
   color: string
   colorEnd: string
-  progress: number
+  progress?: number | null
+  href: string
 }
 
 export type HomeUpNextItem = {
@@ -33,6 +39,7 @@ export type HomeUpNextItem = {
   suffix?: string
   detail: string
   actionLabel?: string
+  href?: string
   tone: 'purple' | 'blue'
   icon: 'calendar' | 'users' | 'clipboard'
 }
@@ -63,15 +70,6 @@ function formatDateLabel(date: Date): string {
   })
 }
 
-function defaultProgress(title: string): number {
-  const values = [65, 42, 28, 55]
-  let hash = 0
-  for (const char of title) {
-    hash = (hash + char.charCodeAt(0)) % values.length
-  }
-  return values[hash] ?? 42
-}
-
 function splitCourseTitle(fullTitle: string): { code: string; title: string } {
   const parts = fullTitle.split('—').map((part) => part.trim())
   if (parts.length >= 2) {
@@ -80,131 +78,113 @@ function splitCourseTitle(fullTitle: string): { code: string; title: string } {
   return { code: fullTitle, title: fullTitle }
 }
 
-function accentForCourse(course: V2SidebarCourse, index: number): CourseAccentGradient {
-  if (course.accentColor.includes('#')) {
-    return { color: course.accentColor, colorEnd: course.accentColor }
-  }
-  return courseAccentGradient(course.id, index)
+function accentForCourse(courseId: string, index: number): CourseAccentGradient {
+  return courseAccentGradient(courseId, index)
 }
 
-export function mapSidebarCourseToHomeCard(
-  course: V2SidebarCourse,
+function mapAttentionKind(kind: string): HomeAttentionItem['kind'] {
+  switch (kind) {
+    case 'OFFICE_HOURS':
+      return 'office'
+    case 'ANNOUNCEMENTS':
+      return 'announcements'
+    case 'EVENT':
+      return 'event'
+    default:
+      return 'announcements'
+  }
+}
+
+function mapAttentionVisual(kind: string): Pick<HomeAttentionItem, 'tone' | 'icon'> {
+  switch (kind) {
+    case 'OFFICE_HOURS':
+      return { tone: 'purple', icon: 'calendar' }
+    case 'ANNOUNCEMENTS':
+      return { tone: 'blue', icon: 'megaphone' }
+    case 'EVENT':
+      return { tone: 'purple', icon: 'calendar' }
+    default:
+      return { tone: 'blue', icon: 'megaphone' }
+  }
+}
+
+function mapUpNextVisual(kind: string): Pick<HomeUpNextItem, 'tone' | 'icon'> {
+  switch (kind) {
+    case 'STUDY_ROOM':
+      return { tone: 'blue', icon: 'users' }
+    case 'OFFICE_HOURS':
+    case 'EVENT':
+    default:
+      return { tone: 'purple', icon: 'calendar' }
+  }
+}
+
+export function mapHomeSummaryCourse(
+  course: HomeSummaryCourse,
   index: number,
 ): HomeCourseCard {
-  const progress = defaultProgress(course.title)
   const { code, title } = splitCourseTitle(course.title)
-  const accent = accentForCourse(course, index)
-
+  const accent = accentForCourse(course.courseId, index)
   return {
-    id: course.id,
-    serverId: course.serverId,
+    id: course.courseId,
+    serverId: course.studyServerId,
     code,
     title,
-    professor: 'Instructor',
-    cohortLabel: course.cohortLabel,
+    professor: course.instructorDisplayName?.trim() || 'Instructor',
+    cohortLabel: course.cohortName?.trim() || 'Cohort',
     color: accent.color,
     colorEnd: accent.colorEnd,
-    progress,
+    progress: course.progress ?? null,
+    href: course.href,
+  }
+}
+
+export function mapHomeSummaryAttention(item: HomeSummaryAttentionItem): HomeAttentionItem {
+  const visual = mapAttentionVisual(item.kind)
+  return {
+    id: item.id,
+    kind: mapAttentionKind(item.kind),
+    tone: visual.tone,
+    icon: visual.icon,
+    headline: item.headline,
+    suffix: item.suffix ?? undefined,
+    suffixOnNewLine: item.suffixOnNewLine,
+    actionLabel: item.actionLabel ?? undefined,
+    actionVariant: item.actionVariant === 'link' ? 'link' : 'button',
+    href: item.href ?? undefined,
+  }
+}
+
+export function mapHomeSummaryUpNext(item: HomeSummaryUpNextItem): HomeUpNextItem {
+  const visual = mapUpNextVisual(item.kind)
+  return {
+    id: item.id,
+    title: item.title,
+    suffix: item.suffix ?? undefined,
+    detail: item.detail,
+    actionLabel: item.actionLabel ?? undefined,
+    href: item.href ?? undefined,
+    tone: visual.tone,
+    icon: visual.icon,
   }
 }
 
 export function buildHomeViewModel(
   displayName: string,
-  courses: V2SidebarCourse[],
+  summary: HomeSummaryResponse | null | undefined,
   now = new Date(),
 ): HomeViewModel {
-  const courseCards = courses.slice(0, 4).map((course, index) => mapSidebarCourseToHomeCard(course, index))
-  const first = courseCards[0]
-  const second = courseCards[1]
-  const third = courseCards[2]
-
-  const attention: HomeAttentionItem[] = []
-  if (first) {
-    attention.push({
-      id: 'office-hours',
-      kind: 'office',
-      tone: 'purple',
-      icon: 'calendar',
-      headline: 'Office hours',
-      suffix: ` · ${first.code} · 2:00 PM`,
-      actionLabel: 'Join',
-      actionVariant: 'button',
-      href: `/app/servers/${first.serverId}/courses/${first.id}/office-hours`,
-    })
-  }
-  if (second) {
-    attention.push({
-      id: 'question-answered',
-      kind: 'answer',
-      tone: 'green',
-      icon: 'chat',
-      headline: 'Your question was answered',
-      suffix: ` · ${second.code}`,
-      suffixOnNewLine: true,
-      actionLabel: 'View answer',
-      actionVariant: 'link',
-      href: `/app/servers/${second.serverId}/courses/${second.id}/questions`,
-    })
-  }
-  if (courseCards.length >= 2) {
-    attention.push({
-      id: 'announcements',
-      kind: 'announcements',
-      tone: 'blue',
-      icon: 'megaphone',
-      headline: 'Announcements',
-      suffix: ` · ${first?.code ?? 'Course'}, ${third?.code ?? second?.code ?? 'Course'}`,
-      suffixOnNewLine: true,
-    })
-  }
-
-  const upNext: HomeUpNextItem[] = [
-    {
-      id: 'up-1',
-      title: '2:00 PM',
-      detail: `Office hours — ${first?.code ?? 'CS 101'}`,
-      tone: 'purple',
-      icon: 'calendar',
-    },
-    {
-      id: 'up-2',
-      title: 'Study room live',
-      suffix: ' · 3 people',
-      detail: second?.code ?? 'MATH 201',
-      actionLabel: 'Join',
-      tone: 'blue',
-      icon: 'users',
-    },
-    {
-      id: 'up-3',
-      title: 'Problem Set 3',
-      suffix: ' due Sunday',
-      detail: first?.code ?? 'CS 101',
-      tone: 'purple',
-      icon: 'clipboard',
-    },
-    {
-      id: 'up-4',
-      title: 'Quiz 2',
-      suffix: ` — ${third?.code ?? 'BIO 150'}`,
-      detail: 'Tuesday',
-      tone: 'purple',
-      icon: 'calendar',
-    },
-    {
-      id: 'up-5',
-      title: 'Guest talk: AI in industry',
-      detail: 'Jul 22',
-      tone: 'purple',
-      icon: 'calendar',
-    },
-  ]
+  const courses = (summary?.courses ?? []).slice(0, 4).map((course, index) =>
+    mapHomeSummaryCourse(course, index),
+  )
+  const attention = (summary?.attention ?? []).map(mapHomeSummaryAttention)
+  const upNext = (summary?.upNext ?? []).map(mapHomeSummaryUpNext)
 
   return {
     greeting: greetingForHour(now.getHours(), displayName),
     dateLabel: formatDateLabel(now),
-    attention: attention.slice(0, 3),
-    courses: courseCards,
+    attention,
+    courses,
     upNext,
   }
 }
