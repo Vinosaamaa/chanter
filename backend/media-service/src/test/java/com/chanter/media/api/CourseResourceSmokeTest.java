@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.media.infra.TestCourseResourceAccessClient;
+import com.chanter.media.infra.TestResourceIngestionClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.temporal.ChronoUnit;
@@ -35,9 +36,13 @@ class CourseResourceSmokeTest {
     @Autowired
     private TestCourseResourceAccessClient courseResourceAccessClient;
 
+    @Autowired
+    private TestResourceIngestionClient resourceIngestionClient;
+
     @BeforeEach
     void setUp() {
         courseResourceAccessClient.clear();
+        resourceIngestionClient.clear();
     }
 
     @Test
@@ -99,6 +104,13 @@ class CourseResourceSmokeTest {
         assertThat(downloadResult.getResponse().getContentAsByteArray()).isEqualTo(fileContent);
         assertThat(downloadResult.getResponse().getHeader("Content-Disposition"))
                 .contains("spring-security-guide.md");
+
+        assertThat(resourceIngestionClient.ingestCalls()).hasSize(1);
+        TestResourceIngestionClient.IngestCall ingestCall = resourceIngestionClient.ingestCalls().getFirst();
+        assertThat(ingestCall.courseId()).isEqualTo(courseId);
+        assertThat(ingestCall.resourceId()).isEqualTo(uploaded.id());
+        assertThat(ingestCall.fileName()).isEqualTo("spring-security-guide.md");
+        assertThat(ingestCall.content()).isEqualTo(fileContent);
     }
 
     @Test
