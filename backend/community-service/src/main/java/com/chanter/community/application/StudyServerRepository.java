@@ -4,6 +4,7 @@ import com.chanter.community.domain.CoMember;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerInvitation;
+import com.chanter.community.domain.StudyServerMember;
 import com.chanter.community.domain.VoicePresence;
 import java.time.Instant;
 import java.util.List;
@@ -23,6 +24,10 @@ public interface StudyServerRepository {
     boolean shareStudyServerMembership(UUID firstUserId, UUID secondUserId);
 
     List<CoMember> findCoMembers(UUID viewerUserId);
+
+    List<StudyServerMember> findMembers(UUID studyServerId);
+
+    int countMembers(UUID studyServerId);
 
     VoicePresence saveVoicePresence(UUID channelId, UUID memberUserId);
 

@@ -17,6 +17,18 @@ vi.mock('../../shell/hooks/use-shell-queries', () => ({
   }),
 }))
 
+vi.mock('../../community-members/community-members-api', async () => {
+  const actual = await vi.importActual('../../community-members/community-members-api')
+  return {
+    ...actual,
+    fetchStudyServerMemberSummary: vi.fn().mockResolvedValue({
+      memberCount: 12,
+      preview: [{ userId: 'u1', displayName: 'Sam' }],
+    }),
+    createStudyServerInvitations: vi.fn(),
+  }
+})
+
 vi.mock('../../course-discovery/course-discovery-api', async () => {
   const actual = await vi.importActual('../../course-discovery/course-discovery-api')
   return { ...actual, fetchCourseCatalog: vi.fn() }
@@ -48,6 +60,7 @@ describe('V2CommunityHubLayout', () => {
     )
 
     expect(await screen.findByText(/2 courses/)).toBeVisible()
+    expect(await screen.findByText(/12 members/)).toBeVisible()
     expect(fetchCourseCatalog).toHaveBeenCalledWith('server-1', { search: '', filter: 'ALL' })
   })
 })

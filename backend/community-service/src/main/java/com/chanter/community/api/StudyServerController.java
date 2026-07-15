@@ -101,6 +101,44 @@ public class StudyServerController {
         studyServerService.acceptStudyServerInvitation(id, invitationId, inviteeUserId);
     }
 
+    @PostMapping("/{id}/invitations")
+    public ResponseEntity<List<StudyServerResponse.PendingInvitationResponse>> createInvitations(
+            @PathVariable UUID id,
+            @Valid @RequestBody CreateStudyServerInvitationsRequest request,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID actorUserId
+    ) {
+        List<StudyServerResponse.PendingInvitationResponse> created = studyServerService
+                .createInvitations(id, actorUserId, request.inviteEmails())
+                .stream()
+                .map(StudyServerResponse.PendingInvitationResponse::from)
+                .toList();
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @GetMapping("/{id}/members")
+    public StudyServerMemberListResponse listMembers(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "ALL") String filter,
+            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
+    ) {
+        return StudyServerMemberListResponse.from(
+                studyServerService.listMembers(id, viewerUserId, search, filter, limit, offset)
+        );
+    }
+
+    @GetMapping("/{id}/member-summary")
+    public StudyServerMemberSummaryResponse memberSummary(
+            @PathVariable UUID id,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
+    ) {
+        return StudyServerMemberSummaryResponse.from(
+                studyServerService.memberSummary(id, viewerUserId)
+        );
+    }
+
     @GetMapping("/{id}/navigation")
     public StudyServerNavigationResponse getStudyServerNavigation(
             @PathVariable UUID id,
