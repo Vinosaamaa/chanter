@@ -80,7 +80,7 @@ Key planning files:
 | [`docs/diagrams/`](docs/diagrams/) | Editable draw.io **architecture** sources + PNG exports for `plan.md` / `System Design.md` |
 | [`docs/operations/getting-started.md`](docs/operations/getting-started.md) | **Run locally** — beginner step-by-step (start here if you are new) |
 | [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md) | Full two-user E2E demo checklist |
-| [`docs/operations/ai-study-assistant.md`](docs/operations/ai-study-assistant.md) | How the Study Assistant works today (no external LLM API yet) |
+| [`docs/operations/ai-study-assistant.md`](docs/operations/ai-study-assistant.md) | Study Assistant: RAG, optional LLM, MCP tools |
 
 **Product vs engineering visuals:** `docs/product-design/mockups/` = **current** course-first UI PNGs (see `DESIGN-DECISIONS.md`). `docs/diagrams/` = **system architecture** and data-flow diagrams. Do not confuse the API demo in `frontend/src/App.tsx` with the mockups.
 

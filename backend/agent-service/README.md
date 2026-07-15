@@ -10,6 +10,45 @@ Local port: `8085`.
 - `POST /api/v1/study-servers/{studyServerId}/study-assistant/install` — confirm install with explicit grants (one assistant per Study Server)
 - `GET /api/v1/study-servers/{studyServerId}/study-assistant?viewerUserId=` — installed flag and grants visible to the viewer
 - `POST /api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/assistant-answer` — grounded answer or low-confidence handoff for an unanswered Support Question
+- `POST /api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/assistant-answer/stream` — SSE token stream then final answer JSON
+
+## LLM orchestration + MCP
+
+Ask AI can refine RAG answers through optional LLM adapters (`CHANTER_LLM_ENABLED`, Ollama / OpenAI-compatible). Tool calling for orchestration uses an **embedded MCP-compatible tool registry** that never bypasses Study Assistant grants.
+
+| Tool | What it does |
+|------|----------------|
+| `list_granted_resources` | Lists AI-approved resources granted to the assistant for a course |
+| `fetch_resource_chunk` | Returns one chunk; rejects out-of-grant resources |
+| `search_course_faq` | Searches approved course FAQs within enrollment scope |
+
+Internal endpoints (service token required):
+
+```bash
+# List schemas
+curl -s http://localhost:8085/api/v1/internal/assistant-tools \
+  -H "X-Chanter-Internal-Service-Token: $CHANTER_INTERNAL_SERVICE_TOKEN"
+
+# Invoke (example)
+curl -s http://localhost:8085/api/v1/internal/assistant-tools/invoke \
+  -H "X-Chanter-Internal-Service-Token: $CHANTER_INTERNAL_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool": "list_granted_resources",
+    "studyServerId": "...",
+    "courseId": "...",
+    "viewerUserId": "...",
+    "arguments": {}
+  }'
+
+# MCP JSON-RPC subset
+curl -s http://localhost:8085/api/v1/internal/assistant-tools/mcp \
+  -H "X-Chanter-Internal-Service-Token: $CHANTER_INTERNAL_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+Local smoke: `./scripts/check-assistant-tools.sh`. See `docs/operations/issue-99-change-log.md`.
 
 ## Dependencies
 
