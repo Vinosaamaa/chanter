@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Check, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -53,33 +53,27 @@ export function InboxPage() {
   const markRead = useMarkNotificationReadMutation()
   const markDone = useMarkNotificationDoneMutation()
 
-  const notifications = notificationsQuery.data?.notifications ?? []
-
-  useEffect(() => {
-    if (notifications.length === 0) {
-      setSelectedId(null)
-      return
-    }
-    if (!selectedId || !notifications.some((item) => item.id === selectedId)) {
-      setSelectedId(notifications[0].id)
-    }
-  }, [notifications, selectedId])
-
-  const selected = useMemo(
-    () => notifications.find((item) => item.id === selectedId) ?? null,
-    [notifications, selectedId],
+  const notifications = useMemo(
+    () => notificationsQuery.data?.notifications ?? [],
+    [notificationsQuery.data?.notifications],
   )
 
-  useEffect(() => {
-    if (!selected?.unread) return
-    markRead.mutate(selected.id)
-  }, [selected?.id, selected?.unread])
+  const selected = useMemo(() => {
+    if (notifications.length === 0) return null
+    return notifications.find((item) => item.id === selectedId) ?? notifications[0] ?? null
+  }, [notifications, selectedId])
+
+  const activeId = selected?.id ?? null
 
   const todayItems = notifications.filter((item) => !isYesterday(item.createdAt))
   const yesterdayItems = notifications.filter((item) => isYesterday(item.createdAt))
 
   const onSelect = (id: string) => {
     setSelectedId(id)
+    const item = notifications.find((notification) => notification.id === id)
+    if (item?.unread) {
+      markRead.mutate(id)
+    }
   }
 
   const onMarkDone = () => {
@@ -101,7 +95,10 @@ export function InboxPage() {
               key={item}
               type="button"
               className={filter === item ? 'active' : undefined}
-              onClick={() => setFilter(item)}
+              onClick={() => {
+                setFilter(item)
+                setSelectedId(null)
+              }}
             >
               {item}
             </button>
@@ -122,7 +119,7 @@ export function InboxPage() {
                 <NotificationRow
                   key={thread.id}
                   thread={thread}
-                  active={selectedId === thread.id}
+                  active={activeId === thread.id}
                   onSelect={onSelect}
                 />
               ))}
@@ -138,7 +135,7 @@ export function InboxPage() {
                 <NotificationRow
                   key={thread.id}
                   thread={thread}
-                  active={selectedId === thread.id}
+                  active={activeId === thread.id}
                   onSelect={onSelect}
                 />
               ))}

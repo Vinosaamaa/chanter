@@ -87,6 +87,8 @@ describe('InboxPage', () => {
       'href',
       '/app/servers/s1/courses/c1/questions',
     )
+
+    await user.click(screen.getByRole('button', { name: /Your question was answered/i }))
     expect(markReadMutate).toHaveBeenCalledWith('n1')
 
     await user.click(screen.getByRole('button', { name: /Mark done/i }))
