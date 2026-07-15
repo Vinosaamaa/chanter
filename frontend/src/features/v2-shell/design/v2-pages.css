@@ -112,11 +112,12 @@
 .v2-app-shell .agenda-icon.amber { background: #aa7800; }
 .v2-app-shell .agenda-card time { color: #d8dbe1; }
 .v2-app-shell .agenda-card p { margin: 8px 0; color: #c7cbd3; line-height: 1.45; }
-.v2-app-shell .agenda-card button { display: inline-flex; align-items: center; gap: 5px; border: 0; padding: 0; color: #5274ff; background: transparent; cursor: pointer; }
+.v2-app-shell .agenda-card button,
+.v2-app-shell .agenda-card a { display: inline-flex; align-items: center; gap: 5px; border: 0; padding: 0; color: #5274ff; background: transparent; cursor: pointer; text-decoration: none; }
 .v2-app-shell .agenda-card button.going { color: #66bd51; }
 .v2-app-shell .upcoming-heading { margin-top: 34px !important; }
 .v2-app-shell .upcoming-list { display: grid; gap: 9px; }
-.v2-app-shell .upcoming-row { min-height: 82px; display: grid; grid-template-columns: 48px 58px minmax(0,1fr) auto; gap: 12px; align-items: center; border: 1px solid rgba(151,161,177,.3); border-radius: 10px; padding: 10px 13px; }
+.v2-app-shell .upcoming-row { min-height: 82px; display: grid; grid-template-columns: 48px 58px minmax(0,1fr) auto; gap: 12px; align-items: center; border: 1px solid rgba(151,161,177,.3); border-radius: 10px; padding: 10px 13px; color: inherit; text-decoration: none; }
 .v2-app-shell .upcoming-row .agenda-icon { width: 43px; height: 43px; }
 .v2-app-shell .upcoming-row time, .v2-app-shell .upcoming-row p { margin: 0; }
 .v2-app-shell .upcoming-row time strong, .v2-app-shell .upcoming-row time small, .v2-app-shell .upcoming-row p strong, .v2-app-shell .upcoming-row p small { display: block; }

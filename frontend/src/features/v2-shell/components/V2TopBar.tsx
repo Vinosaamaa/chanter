@@ -1,5 +1,6 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Bell, Home as HomeIcon, Menu, Search } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 import { useUnreadNotificationCountQuery } from '../../inbox/hooks/use-inbox-queries'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
@@ -39,12 +40,14 @@ function resolveTopBarChrome(pathname: string) {
 
 export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
   const { pathname, search: locationSearch } = useLocation()
+  const primary = resolveV2PrimaryNav(pathname)
   const { pageTitle, showHomeIcon, breadcrumbs } = resolveTopBarChrome(pathname)
   const courseRoute = resolveCourseRoute(pathname)
   const search = resolveV2SearchConfig(pathname)
   const { openSearch } = useGlobalSearch()
   const unreadQuery = useUnreadNotificationCountQuery()
   const unreadCount = unreadQuery.data?.unreadCount ?? 0
+  const calendarSearch = primary === 'calendar'
 
   return (
     <header className="topbar">
@@ -86,13 +89,17 @@ export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
 
       <label className="search-box">
         <Search size={28} />
-        <input
-          aria-label={search.placeholder.replace('…', '')}
-          placeholder={search.placeholder}
-          type="search"
-          readOnly
-          onClick={openSearch}
-        />
+        {calendarSearch ? (
+          <CalendarSearchInput placeholder={search.placeholder} />
+        ) : (
+          <input
+            aria-label={search.placeholder.replace('…', '')}
+            placeholder={search.placeholder}
+            type="search"
+            readOnly
+            onClick={openSearch}
+          />
+        )}
         <span>⌘F</span>
       </label>
 
@@ -111,6 +118,46 @@ export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
 function resolveCourseRoute(pathname: string): { serverId: string; courseId: string } | null {
   const match = pathname.match(/^\/app\/servers\/([^/]+)\/courses\/([^/]+)/)
   return match ? { serverId: match[1], courseId: match[2] } : null
+}
+
+function CalendarSearchInput({ placeholder }: { placeholder: string }) {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const urlQuery = searchParams.get('q') ?? ''
+  const [draft, setDraft] = useState(urlQuery)
+  const [syncedUrlQuery, setSyncedUrlQuery] = useState(urlQuery)
+
+  if (urlQuery !== syncedUrlQuery) {
+    setSyncedUrlQuery(urlQuery)
+    setDraft(urlQuery)
+  }
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const trimmed = draft.trim()
+      const params = new URLSearchParams(window.location.search)
+      const current = params.get('q') ?? ''
+      if (trimmed === current) return
+      if (trimmed) {
+        params.set('q', trimmed)
+      } else {
+        params.delete('q')
+      }
+      const query = params.toString()
+      navigate({ pathname: '/app/calendar', search: query ? `?${query}` : '' }, { replace: true })
+    }, 250)
+    return () => window.clearTimeout(handle)
+  }, [draft, navigate])
+
+  return (
+    <input
+      aria-label={placeholder.replace('…', '')}
+      placeholder={placeholder}
+      type="search"
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+    />
+  )
 }
 
 function CourseBreadcrumbTrail({
