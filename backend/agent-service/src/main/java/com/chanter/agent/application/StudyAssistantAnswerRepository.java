@@ -10,4 +10,12 @@ public interface StudyAssistantAnswerRepository {
     Optional<StudyAssistantAnswer> findBySupportQuestionId(UUID supportQuestionId);
 
     StudyAssistantAnswer saveAnswer(StudyAssistantAnswer answer, InvocationType invocationType);
+
+    StudyAssistantAnswer saveAnswer(
+            StudyAssistantAnswer answer,
+            InvocationType invocationType,
+            String llmProvider,
+            String llmModel,
+            boolean llmUsed
+    );
 }

@@ -42,6 +42,7 @@ public class GroundedSupportQuestionService {
     private final VectorRetrievalService vectorRetrievalService;
     private final ObjectProvider<RagGroundingEngine> ragGroundingEngine;
     private final ObjectProvider<KeywordGroundingEngine> keywordGroundingEngine;
+    private final AgentRuntimeService agentRuntimeService;
     private final AiQuotaEnforcementService aiQuotaEnforcementService;
     private final StudyAssistantAnswerPersistenceService answerPersistenceService;
     private final StudyAssistantAnswerRepository answerRepository;
@@ -59,6 +60,7 @@ public class GroundedSupportQuestionService {
             VectorRetrievalService vectorRetrievalService,
             ObjectProvider<RagGroundingEngine> ragGroundingEngine,
             ObjectProvider<KeywordGroundingEngine> keywordGroundingEngine,
+            AgentRuntimeService agentRuntimeService,
             AiQuotaEnforcementService aiQuotaEnforcementService,
             StudyAssistantAnswerPersistenceService answerPersistenceService,
             StudyAssistantAnswerRepository answerRepository,
@@ -75,6 +77,7 @@ public class GroundedSupportQuestionService {
         this.vectorRetrievalService = vectorRetrievalService;
         this.ragGroundingEngine = ragGroundingEngine;
         this.keywordGroundingEngine = keywordGroundingEngine;
+        this.agentRuntimeService = agentRuntimeService;
         this.aiQuotaEnforcementService = aiQuotaEnforcementService;
         this.answerPersistenceService = answerPersistenceService;
         this.answerRepository = answerRepository;
@@ -181,6 +184,9 @@ public class GroundedSupportQuestionService {
                 downloadedSources,
                 faqSources
         );
+        AgentRuntimeService.OrchestratedAnswer orchestrated =
+                agentRuntimeService.orchestrate(supportQuestion.body(), groundingResult);
+        groundingResult = orchestrated.result();
 
         InvocationType invocationType = groundingResult.handoffRecommended()
                 ? InvocationType.LOW_CONFIDENCE_HANDOFF
@@ -209,7 +215,13 @@ public class GroundedSupportQuestionService {
                 clock.instant()
         );
 
-        StudyAssistantAnswer savedAnswer = answerPersistenceService.saveAnswer(answer, invocationType);
+        StudyAssistantAnswer savedAnswer = answerPersistenceService.saveAnswer(
+                answer,
+                invocationType,
+                orchestrated.providerId(),
+                orchestrated.modelId(),
+                orchestrated.llmUsed()
+        );
 
         String updatedStatus = statusForConfidence(groundingResult.confidence());
         supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, updatedStatus);

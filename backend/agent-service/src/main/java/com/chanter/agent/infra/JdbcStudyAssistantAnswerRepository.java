@@ -80,8 +80,20 @@ public class JdbcStudyAssistantAnswerRepository implements StudyAssistantAnswerR
     @Override
     @Transactional
     public StudyAssistantAnswer saveAnswer(StudyAssistantAnswer answer, InvocationType invocationType) {
+        return saveAnswer(answer, invocationType, null, null, false);
+    }
+
+    @Override
+    @Transactional
+    public StudyAssistantAnswer saveAnswer(
+            StudyAssistantAnswer answer,
+            InvocationType invocationType,
+            String llmProvider,
+            String llmModel,
+            boolean llmUsed
+    ) {
         try {
-            insertAnswer(answer, invocationType);
+            insertAnswer(answer, invocationType, llmProvider, llmModel, llmUsed);
         } catch (DuplicateKeyException exception) {
             return findBySupportQuestionId(answer.supportQuestionId())
                     .orElseThrow(() -> exception);
@@ -102,7 +114,13 @@ public class JdbcStudyAssistantAnswerRepository implements StudyAssistantAnswerR
         );
     }
 
-    private void insertAnswer(StudyAssistantAnswer answer, InvocationType invocationType) {
+    private void insertAnswer(
+            StudyAssistantAnswer answer,
+            InvocationType invocationType,
+            String llmProvider,
+            String llmModel,
+            boolean llmUsed
+    ) {
         jdbcClient.sql("""
                         INSERT INTO study_assistant_answers (
                             id,
@@ -170,7 +188,10 @@ public class JdbcStudyAssistantAnswerRepository implements StudyAssistantAnswerR
                             invocation_type,
                             confidence,
                             source_count,
-                            created_at
+                            created_at,
+                            llm_provider,
+                            llm_model,
+                            llm_used
                         )
                         VALUES (
                             :id,
@@ -181,7 +202,10 @@ public class JdbcStudyAssistantAnswerRepository implements StudyAssistantAnswerR
                             :invocationType,
                             :confidence,
                             :sourceCount,
-                            :createdAt
+                            :createdAt,
+                            :llmProvider,
+                            :llmModel,
+                            :llmUsed
                         )
                         """)
                 .param("id", UUID.randomUUID())
@@ -193,6 +217,9 @@ public class JdbcStudyAssistantAnswerRepository implements StudyAssistantAnswerR
                 .param("confidence", answer.confidence().name())
                 .param("sourceCount", answer.sources().size())
                 .param("createdAt", OffsetDateTime.ofInstant(answer.createdAt(), ZoneOffset.UTC))
+                .param("llmProvider", llmProvider)
+                .param("llmModel", llmModel)
+                .param("llmUsed", llmUsed)
                 .update();
     }
 
