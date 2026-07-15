@@ -50,7 +50,18 @@ Copy `.env.example` → `/etc/chanter/.env` (or `$HOME/chanter/.env`) and set:
 | `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Staging LiveKit credentials |
 | `VITE_API_BASE` | Usually empty when Caddy serves `/api` same-origin |
 
-Email / SSO (#102) vars are documented in `.env.example` and `staging-deploy.md` § Auth once that slice lands.
+Email / SSO (#102) vars are documented in `.env.example` (§ Production auth).
+
+### Auth on staging (#102)
+
+| Setting | Staging recommendation |
+|---------|------------------------|
+| `CHANTER_AUTH_REQUIRE_EMAIL_VERIFICATION` | `true` |
+| `CHANTER_EMAIL_PROVIDER` | `log` (links appear in auth-service logs) or wire an SMTP relay later |
+| `CHANTER_OAUTH_GOOGLE_CLIENT_ID` / `SECRET` | optional; enables Continue with Google |
+| OAuth redirect URI | `${CHANTER_PUBLIC_BASE_URL}/oauth/callback/google` |
+
+Walkthrough: register → copy verify link from auth logs → `/verify-email?token=` → sign in. Forgot password uses the same email log path.
 
 ## Deploy steps
 

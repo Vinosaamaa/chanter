@@ -30,7 +30,9 @@ public class AuthSessionService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
+    private final ProductionAuthService productionAuthService;
     private final Duration refreshTokenTtl;
+    private final boolean requireEmailVerification;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthSessionService(
@@ -38,26 +40,32 @@ public class AuthSessionService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenService jwtTokenService,
-            @Value("${chanter.jwt.refresh-token-ttl:7d}") Duration refreshTokenTtl
+            ProductionAuthService productionAuthService,
+            @Value("${chanter.jwt.refresh-token-ttl:7d}") Duration refreshTokenTtl,
+            @Value("${chanter.auth.require-email-verification:false}") boolean requireEmailVerification
     ) {
         this.authUserRepository = authUserRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
+        this.productionAuthService = productionAuthService;
         this.refreshTokenTtl = refreshTokenTtl;
+        this.requireEmailVerification = requireEmailVerification;
     }
 
     @Transactional
-    public AuthSession register(String email, String password, String displayName) {
+    public RegisterResult registerWithStatus(String email, String password, String displayName) {
         String normalizedEmail = normalizeEmail(email);
         if (authUserRepository.existsByEmail(normalizedEmail)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");
         }
+        boolean verified = !requireEmailVerification;
         AuthUser user = new AuthUser(
                 UUID.randomUUID(),
                 normalizedEmail,
                 passwordEncoder.encode(password),
                 displayName.trim(),
+                verified,
                 Instant.now()
         );
         try {
@@ -69,14 +77,24 @@ public class AuthSessionService {
                     exception
             );
         }
-        return issueSession(user);
+        if (requireEmailVerification) {
+            productionAuthService.sendEmailVerification(user);
+            return new RegisterResult(null, true, "Check your email to verify before signing in.");
+        }
+        return new RegisterResult(issueSession(user), false, null);
     }
 
     public AuthSession login(String email, String password) {
         AuthUser user = authUserRepository.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
-        if (!passwordEncoder.matches(password, user.passwordHash())) {
+        if (user.passwordHash() == null || !passwordEncoder.matches(password, user.passwordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        }
+        if (requireEmailVerification && !user.emailVerified()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Email is not verified. Check your inbox for the verification link."
+            );
         }
         return issueSession(user);
     }
@@ -123,6 +141,10 @@ public class AuthSessionService {
         return authUserRepository.findByEmail(normalizeEmail(email)).map(AuthUserProfile::from);
     }
 
+    public AuthSession issueSessionForUser(AuthUser user) {
+        return issueSession(user);
+    }
+
     private AuthSession issueSession(AuthUser user) {
         String refreshToken = generateRefreshToken();
         refreshTokenRepository.save(
@@ -167,10 +189,13 @@ public class AuthSessionService {
     ) {
     }
 
-    public record AuthUserProfile(UUID id, String email, String displayName) {
+    public record AuthUserProfile(UUID id, String email, String displayName, boolean emailVerified) {
 
         static AuthUserProfile from(AuthUser user) {
-            return new AuthUserProfile(user.id(), user.email(), user.displayName());
+            return new AuthUserProfile(user.id(), user.email(), user.displayName(), user.emailVerified());
         }
+    }
+
+    public record RegisterResult(AuthSession session, boolean verificationRequired, String message) {
     }
 }

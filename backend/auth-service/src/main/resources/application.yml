@@ -13,10 +13,24 @@ spring:
 
 chanter:
   internal-service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
+  public-base-url: ${CHANTER_PUBLIC_BASE_URL:http://localhost:5173}
   jwt:
     secret: ${CHANTER_JWT_SECRET}
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
     refresh-token-ttl: ${CHANTER_JWT_REFRESH_TTL:7d}
+  auth:
+    require-email-verification: ${CHANTER_AUTH_REQUIRE_EMAIL_VERIFICATION:false}
+    email-token-ttl: ${CHANTER_AUTH_EMAIL_TOKEN_TTL:24h}
+    rate-limit:
+      max-requests: ${CHANTER_AUTH_RATE_LIMIT_MAX:30}
+      window: ${CHANTER_AUTH_RATE_LIMIT_WINDOW:1m}
+  email:
+    provider: ${CHANTER_EMAIL_PROVIDER:log}
+    from: ${CHANTER_EMAIL_FROM:noreply@chanter.local}
+  oauth:
+    google:
+      client-id: ${CHANTER_OAUTH_GOOGLE_CLIENT_ID:}
+      client-secret: ${CHANTER_OAUTH_GOOGLE_CLIENT_SECRET:}
 
 management:
   endpoints:

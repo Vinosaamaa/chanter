@@ -1,9 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Eye, EyeOff, FileText, HelpCircle, MessageSquare, CalendarDays } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { CohortInviteRedirect } from '../components/CohortInviteRedirect'
-import { login, register } from '../auth-api'
+import {
+  fetchOauthProviders,
+  isAuthSession,
+  login,
+  register,
+  type OAuthProvider,
+} from '../auth-api'
 import { useAuthStore } from '../../../stores/auth-store'
 import { readCohortInviteParams } from '../../onboarding/cohort-invite'
 import { V2Brand } from '../../v2-shell/components/V2Brand'
@@ -21,11 +27,19 @@ export function SignInPage() {
   const [displayName, setDisplayName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sessionReady, setSessionReady] = useState(false)
+  const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([])
 
   const defaultRedirect = inviteFromUrl ? '/app/welcome' : '/app/home'
   const redirectTo = (location.state as { from?: string } | null)?.from ?? defaultRedirect
+
+  useEffect(() => {
+    void fetchOauthProviders()
+      .then((response) => setOauthProviders(response.providers))
+      .catch(() => setOauthProviders([]))
+  }, [])
 
   if (accessToken || sessionReady) {
     return <CohortInviteRedirect to={redirectTo} search={location.search} />
@@ -35,18 +49,30 @@ export function SignInPage() {
     event.preventDefault()
     setIsSubmitting(true)
     setError(null)
+    setInfo(null)
     try {
-      const session = mode === 'sign-in'
-        ? await login({ email, password })
-        : await register({ email, password, displayName })
-      setSession(session)
-      setSessionReady(true)
+      if (mode === 'sign-in') {
+        const session = await login({ email, password })
+        setSession(session)
+        setSessionReady(true)
+        return
+      }
+      const result = await register({ email, password, displayName })
+      if (isAuthSession(result)) {
+        setSession(result)
+        setSessionReady(true)
+      } else {
+        setInfo(result.message)
+        setMode('sign-in')
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to authenticate')
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  const googleProvider = oauthProviders.find((provider) => provider.id === 'google')
 
   return (
     <main className="v2-auth-page">
@@ -97,13 +123,29 @@ export function SignInPage() {
             ) : null}
             <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required autoComplete="email" /></label>
             <label>Password<span className="password-field"><input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••••••" required minLength={8} autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'} /><button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((current) => !current)}>{showPassword ? <EyeOff /> : <Eye />}</button></span></label>
+            {mode === 'sign-in' ? (
+              <p className="auth-forgot"><Link to="/forgot-password">Forgot password?</Link></p>
+            ) : null}
             {error ? <p role="alert" className="v2-auth-error">{error}</p> : null}
+            {info ? <p role="status" className="v2-auth-info">{info}</p> : null}
             <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Working…' : mode === 'register' ? `Create account${inviteFromUrl ? ' & join CS 101' : ''}` : 'Sign in'}</button>
           </form>
 
           <div className="auth-divider"><span />or<span /></div>
-          <button type="button" className="google-button" disabled aria-describedby="google-sign-in-status"><b aria-hidden="true">G</b> Continue with Google</button>
-          <p id="google-sign-in-status" className="auth-provider-status">Google sign-in is not available yet.</p>
+          {googleProvider ? (
+            <a className="google-button" href={googleProvider.authorizationUrl}>
+              <b aria-hidden="true">G</b> Continue with Google
+            </a>
+          ) : (
+            <>
+              <button type="button" className="google-button" disabled aria-describedby="google-sign-in-status">
+                <b aria-hidden="true">G</b> Continue with Google
+              </button>
+              <p id="google-sign-in-status" className="auth-provider-status">
+                Google sign-in is available when CHANTER_OAUTH_GOOGLE_CLIENT_ID / SECRET are set.
+              </p>
+            </>
+          )}
           <p className="auth-terms">By continuing you agree to the <Link to="/terms">Terms</Link></p>
           <Link className="auth-back" to="/">Back to Chanter</Link>
         </div>

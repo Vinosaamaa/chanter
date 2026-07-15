@@ -8,6 +8,7 @@ public record AuthUser(
         String email,
         String passwordHash,
         String displayName,
+        boolean emailVerified,
         Instant createdAt
 ) {
 }

@@ -3,9 +3,9 @@ package com.chanter.auth.api;
 import com.chanter.auth.application.AuthSessionService;
 import java.util.UUID;
 
-public record AuthUserResponse(UUID id, String email, String displayName) {
+public record AuthUserResponse(UUID id, String email, String displayName, boolean emailVerified) {
 
     static AuthUserResponse from(AuthSessionService.AuthUserProfile user) {
-        return new AuthUserResponse(user.id(), user.email(), user.displayName());
+        return new AuthUserResponse(user.id(), user.email(), user.displayName(), user.emailVerified());
     }
 }
