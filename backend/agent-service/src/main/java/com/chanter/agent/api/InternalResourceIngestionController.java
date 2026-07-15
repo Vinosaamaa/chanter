@@ -1,17 +1,24 @@
 package com.chanter.agent.api;
 
+import com.chanter.agent.application.EmbeddingPipelineService;
+import com.chanter.agent.application.EmbeddingPipelineService.EmbedResult;
 import com.chanter.agent.application.ResourceIngestionService;
 import com.chanter.agent.application.ResourceIngestionService.IngestResult;
+import com.chanter.agent.application.VectorRetrievalService;
+import com.chanter.agent.application.VectorRetrievalService.RankedChunk;
 import com.chanter.agent.domain.ResourceChunk;
 import com.chanter.common.ServiceInfo;
 import com.chanter.common.auth.AuthHeaders;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -31,13 +38,19 @@ import org.springframework.web.server.ResponseStatusException;
 public class InternalResourceIngestionController {
 
     private final ResourceIngestionService resourceIngestionService;
+    private final EmbeddingPipelineService embeddingPipelineService;
+    private final VectorRetrievalService vectorRetrievalService;
     private final byte[] internalServiceToken;
 
     public InternalResourceIngestionController(
             ResourceIngestionService resourceIngestionService,
+            EmbeddingPipelineService embeddingPipelineService,
+            VectorRetrievalService vectorRetrievalService,
             @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.resourceIngestionService = resourceIngestionService;
+        this.embeddingPipelineService = embeddingPipelineService;
+        this.vectorRetrievalService = vectorRetrievalService;
         this.internalServiceToken = internalServiceToken.getBytes(StandardCharsets.UTF_8);
     }
 
@@ -62,6 +75,30 @@ public class InternalResourceIngestionController {
                 content
         );
         return IngestResponse.from(result);
+    }
+
+    @PostMapping("/{resourceId}/embed")
+    public EmbedResponse embed(
+            @RequestHeader(value = AuthHeaders.INTERNAL_SERVICE_TOKEN, required = false) String serviceToken,
+            @PathVariable UUID resourceId
+    ) {
+        requireInternalService(serviceToken);
+        return EmbedResponse.from(embeddingPipelineService.backfillResource(resourceId));
+    }
+
+    @PostMapping("/retrieve")
+    public RetrieveResponse retrieve(
+            @RequestHeader(value = AuthHeaders.INTERNAL_SERVICE_TOKEN, required = false) String serviceToken,
+            @Valid @RequestBody RetrieveRequest request
+    ) {
+        requireInternalService(serviceToken);
+        Set<UUID> granted = new HashSet<>(request.grantedResourceIds());
+        List<RankedChunk> ranked = vectorRetrievalService.retrieve(
+                request.query(),
+                granted,
+                request.topK() == null ? 5 : request.topK()
+        );
+        return new RetrieveResponse(ranked.stream().map(RankedChunkResponse::from).toList());
     }
 
     @DeleteMapping("/{resourceId}")
@@ -115,6 +152,50 @@ public class InternalResourceIngestionController {
                     result.chunkCount(),
                     result.contentSha256(),
                     result.empty()
+            );
+        }
+    }
+
+    public record EmbedResponse(UUID resourceId, int embeddingCount, String modelId) {
+        static EmbedResponse from(EmbedResult result) {
+            return new EmbedResponse(result.resourceId(), result.embeddingCount(), result.modelId());
+        }
+    }
+
+    public record RetrieveRequest(
+            @NotBlank String query,
+            @NotEmpty List<@NotNull UUID> grantedResourceIds,
+            Integer topK
+    ) {
+    }
+
+    public record RetrieveResponse(List<RankedChunkResponse> results) {
+    }
+
+    public record RankedChunkResponse(
+            UUID chunkId,
+            UUID resourceId,
+            UUID courseId,
+            int chunkIndex,
+            int startOffset,
+            int endOffset,
+            String contentText,
+            String fileName,
+            double score,
+            String modelId
+    ) {
+        static RankedChunkResponse from(RankedChunk chunk) {
+            return new RankedChunkResponse(
+                    chunk.chunkId(),
+                    chunk.resourceId(),
+                    chunk.courseId(),
+                    chunk.chunkIndex(),
+                    chunk.startOffset(),
+                    chunk.endOffset(),
+                    chunk.contentText(),
+                    chunk.fileName(),
+                    chunk.score(),
+                    chunk.modelId()
             );
         }
     }
