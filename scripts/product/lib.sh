@@ -340,17 +340,31 @@ EOF
 # Init scripts only run on first Postgres volume create. Re-create any missing
 # service DBs when infra is restarted against an older volume (e.g. after #143).
 product_ensure_databases() {
-  local db postgres_user postgres_db
+  local db postgres_user postgres_db exists
   postgres_user="${POSTGRES_USER:-chanter}"
   postgres_db="${POSTGRES_DB:-chanter}"
 
   echo "Ensuring Postgres service databases exist..."
   while IFS= read -r db; do
     [ -n "$db" ] || continue
-    docker exec chanter-postgres psql -U "$postgres_user" -d "$postgres_db" -v ON_ERROR_STOP=1 \
-      -tc "SELECT 1 FROM pg_database WHERE datname = '$db'" | grep -q 1 \
-      || docker exec chanter-postgres psql -U "$postgres_user" -d "$postgres_db" -v ON_ERROR_STOP=1 \
-        -c "CREATE DATABASE $db;"
+    exists="$(
+      docker exec chanter-postgres psql -U "$postgres_user" -d "$postgres_db" -tAc \
+        "SELECT 1 FROM pg_database WHERE datname = '$db'" 2>/dev/null | tr -d '[:space:]' || true
+    )"
+    if [ "$exists" = "1" ]; then
+      continue
+    fi
+    if ! docker exec chanter-postgres psql -U "$postgres_user" -d "$postgres_db" \
+      -c "CREATE DATABASE $db;" >/dev/null 2>&1; then
+      exists="$(
+        docker exec chanter-postgres psql -U "$postgres_user" -d "$postgres_db" -tAc \
+          "SELECT 1 FROM pg_database WHERE datname = '$db'" 2>/dev/null | tr -d '[:space:]' || true
+      )"
+      if [ "$exists" != "1" ]; then
+        echo "error: failed to ensure database $db" >&2
+        return 1
+      fi
+    fi
   done < <(product_postgres_databases)
 }
 
