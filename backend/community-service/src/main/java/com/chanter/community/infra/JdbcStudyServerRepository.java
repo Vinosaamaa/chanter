@@ -9,6 +9,7 @@ import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerInvitation;
 import com.chanter.community.domain.StudyServerInvitationStatus;
+import com.chanter.community.domain.StudyServerMember;
 import com.chanter.community.domain.StudyServerRole;
 import com.chanter.community.domain.StudyServerType;
 import com.chanter.community.domain.VoicePresence;
@@ -305,6 +306,107 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                 .single();
 
         return sharedServerCount > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudyServerMember> findMembers(UUID studyServerId) {
+        return jdbcClient.sql("""
+                        WITH membership_roles AS (
+                            SELECT ssr.user_id AS user_id,
+                                   CASE
+                                       WHEN ssr.role = 'STUDY_SERVER_OWNER' THEN 'OWNER'
+                                       ELSE 'MEMBER'
+                                   END AS role,
+                                   CASE
+                                       WHEN ssr.role = 'STUDY_SERVER_OWNER' THEN 1
+                                       ELSE 4
+                                   END AS priority
+                            FROM study_server_roles ssr
+                            WHERE ssr.study_server_id = :studyServerId
+                            UNION ALL
+                            SELECT cr.user_id,
+                                   'INSTRUCTOR',
+                                   2
+                            FROM courses co
+                            JOIN course_roles cr ON cr.course_id = co.id
+                            WHERE co.study_server_id = :studyServerId
+                            UNION ALL
+                            SELECT cor.user_id,
+                                   'TA',
+                                   3
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_roles cor ON cor.cohort_id = c.id
+                            WHERE co.study_server_id = :studyServerId
+                            UNION ALL
+                            SELECT ce.learner_user_id,
+                                   'LEARNER',
+                                   5
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            WHERE co.study_server_id = :studyServerId
+                        ),
+                        ranked AS (
+                            SELECT user_id,
+                                   role,
+                                   ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY priority ASC, role ASC) AS rn
+                            FROM membership_roles
+                        )
+                        SELECT user_id, role
+                        FROM ranked
+                        WHERE rn = 1
+                        ORDER BY
+                            CASE role
+                                WHEN 'OWNER' THEN 1
+                                WHEN 'INSTRUCTOR' THEN 2
+                                WHEN 'TA' THEN 3
+                                WHEN 'MEMBER' THEN 4
+                                ELSE 5
+                            END,
+                            user_id
+                        """)
+                .param("studyServerId", studyServerId)
+                .query((rs, rowNum) -> new StudyServerMember(
+                        rs.getObject("user_id", UUID.class),
+                        rs.getString("role")
+                ))
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countMembers(UUID studyServerId) {
+        Integer count = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM (
+                            SELECT ssr.user_id
+                            FROM study_server_roles ssr
+                            WHERE ssr.study_server_id = :studyServerId
+                            UNION
+                            SELECT cr.user_id
+                            FROM courses co
+                            JOIN course_roles cr ON cr.course_id = co.id
+                            WHERE co.study_server_id = :studyServerId
+                            UNION
+                            SELECT ce.learner_user_id
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_enrollments ce ON ce.cohort_id = c.id
+                            WHERE co.study_server_id = :studyServerId
+                            UNION
+                            SELECT cor.user_id
+                            FROM courses co
+                            JOIN cohorts c ON c.course_id = co.id
+                            JOIN cohort_roles cor ON cor.cohort_id = c.id
+                            WHERE co.study_server_id = :studyServerId
+                        ) memberships
+                        """)
+                .param("studyServerId", studyServerId)
+                .query(Integer.class)
+                .single();
+        return count == null ? 0 : count;
     }
 
     @Override
