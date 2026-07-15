@@ -6,6 +6,7 @@ import com.chanter.agent.application.GroundingEngine.GroundingSource;
 import com.chanter.agent.application.StudyAssistantService.Presence;
 import com.chanter.agent.application.SupportQuestionChannelAccessClient.SupportQuestionChannelAccess;
 import com.chanter.agent.application.SupportQuestionClient.SupportQuestion;
+import com.chanter.agent.application.VectorRetrievalService.RankedChunk;
 import com.chanter.agent.domain.AnswerConfidence;
 import com.chanter.agent.domain.GrantType;
 import com.chanter.agent.domain.InvocationType;
@@ -15,12 +16,16 @@ import com.chanter.agent.domain.StudyAssistantGrant;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -34,11 +39,15 @@ public class GroundedSupportQuestionService {
     private final CourseResourceCatalogClient courseResourceCatalogClient;
     private final CourseResourceContentClient courseResourceContentClient;
     private final ApprovedFaqClient approvedFaqClient;
-    private final GroundingEngine groundingEngine;
+    private final VectorRetrievalService vectorRetrievalService;
+    private final ObjectProvider<RagGroundingEngine> ragGroundingEngine;
+    private final ObjectProvider<KeywordGroundingEngine> keywordGroundingEngine;
     private final AiQuotaEnforcementService aiQuotaEnforcementService;
     private final StudyAssistantAnswerPersistenceService answerPersistenceService;
     private final StudyAssistantAnswerRepository answerRepository;
     private final Clock clock;
+    private final String groundingEngineMode;
+    private final int retrievalTopK;
 
     public GroundedSupportQuestionService(
             StudyAssistantService studyAssistantService,
@@ -47,11 +56,15 @@ public class GroundedSupportQuestionService {
             CourseResourceCatalogClient courseResourceCatalogClient,
             CourseResourceContentClient courseResourceContentClient,
             ApprovedFaqClient approvedFaqClient,
-            GroundingEngine groundingEngine,
+            VectorRetrievalService vectorRetrievalService,
+            ObjectProvider<RagGroundingEngine> ragGroundingEngine,
+            ObjectProvider<KeywordGroundingEngine> keywordGroundingEngine,
             AiQuotaEnforcementService aiQuotaEnforcementService,
             StudyAssistantAnswerPersistenceService answerPersistenceService,
             StudyAssistantAnswerRepository answerRepository,
-            Clock clock
+            Clock clock,
+            @Value("${chanter.grounding.engine:rag}") String groundingEngineMode,
+            @Value("${chanter.grounding.retrieval-top-k:5}") int retrievalTopK
     ) {
         this.studyAssistantService = studyAssistantService;
         this.channelAccessClient = channelAccessClient;
@@ -59,11 +72,15 @@ public class GroundedSupportQuestionService {
         this.courseResourceCatalogClient = courseResourceCatalogClient;
         this.courseResourceContentClient = courseResourceContentClient;
         this.approvedFaqClient = approvedFaqClient;
-        this.groundingEngine = groundingEngine;
+        this.vectorRetrievalService = vectorRetrievalService;
+        this.ragGroundingEngine = ragGroundingEngine;
+        this.keywordGroundingEngine = keywordGroundingEngine;
         this.aiQuotaEnforcementService = aiQuotaEnforcementService;
         this.answerPersistenceService = answerPersistenceService;
         this.answerRepository = answerRepository;
         this.clock = clock;
+        this.groundingEngineMode = groundingEngineMode == null ? "rag" : groundingEngineMode;
+        this.retrievalTopK = retrievalTopK < 1 ? 5 : retrievalTopK;
     }
 
     public StudyAssistantAnswer answerSupportQuestion(
@@ -126,7 +143,8 @@ public class GroundedSupportQuestionService {
                 .map(StudyAssistantGrant::grantTargetId)
                 .collect(Collectors.toSet());
 
-        List<GroundingSource> groundingSources = new ArrayList<>();
+        Map<UUID, String> resourceTitles = new HashMap<>();
+        List<GroundingSource> downloadedSources = new ArrayList<>();
         for (CourseResourceSummary resource : courseResourceCatalogClient.listAiApprovedCourseResources(
                 access.courseId(),
                 learnerUserId
@@ -134,12 +152,13 @@ public class GroundedSupportQuestionService {
             if (!grantedResourceIds.contains(resource.id())) {
                 continue;
             }
+            resourceTitles.put(resource.id(), resource.title());
 
             try {
                 byte[] content = courseResourceContentClient.downloadContent(resource.id(), learnerUserId);
                 String textContent = decodeTextContent(content, resource.fileName());
                 if (!textContent.isBlank()) {
-                    groundingSources.add(new GroundingSource(resource.id(), resource.title(), textContent));
+                    downloadedSources.add(new GroundingSource(resource.id(), resource.title(), textContent));
                 }
             } catch (ResponseStatusException exception) {
                 if (exception.getStatusCode() == HttpStatus.NOT_FOUND
@@ -153,34 +172,16 @@ public class GroundedSupportQuestionService {
             }
         }
 
-        try {
-            for (ApprovedFaqClient.ApprovedFaqSummary approvedFaq : approvedFaqClient.listApprovedFaqs(
-                    access.courseId(),
-                    learnerUserId
-            )) {
-                if (approvedFaq.question() == null || approvedFaq.answer() == null) {
-                    continue;
-                }
-                String textContent = approvedFaq.question() + "\n\n" + approvedFaq.answer();
-                if (!textContent.isBlank()) {
-                    groundingSources.add(new GroundingSource(
-                            approvedFaq.id(),
-                            "FAQ: " + approvedFaq.question(),
-                            textContent
-                    ));
-                }
-            }
-        } catch (ResponseStatusException exception) {
-            if (exception.getStatusCode() != HttpStatus.NOT_FOUND
-                    && exception.getStatusCode() != HttpStatus.FORBIDDEN
-                    && exception.getStatusCode() != HttpStatus.BAD_GATEWAY) {
-                throw exception;
-            }
-        } catch (RuntimeException exception) {
-            // FAQ grounding is supplemental; continue without FAQ sources when message-service is unavailable.
-        }
+        List<GroundingSource> faqSources = loadFaqSources(access.courseId(), learnerUserId);
 
-        GroundingResult groundingResult = groundingEngine.answer(supportQuestion.body(), groundingSources);
+        GroundingResult groundingResult = ground(
+                supportQuestion.body(),
+                grantedResourceIds,
+                resourceTitles,
+                downloadedSources,
+                faqSources
+        );
+
         InvocationType invocationType = groundingResult.handoffRecommended()
                 ? InvocationType.LOW_CONFIDENCE_HANDOFF
                 : InvocationType.GROUNDED_ANSWER;
@@ -214,6 +215,72 @@ public class GroundedSupportQuestionService {
         supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, updatedStatus);
 
         return savedAnswer;
+    }
+
+    private GroundingResult ground(
+            String question,
+            Set<UUID> grantedResourceIds,
+            Map<UUID, String> resourceTitles,
+            List<GroundingSource> downloadedSources,
+            List<GroundingSource> faqSources
+    ) {
+        if ("keyword".equalsIgnoreCase(groundingEngineMode)) {
+            KeywordGroundingEngine keyword = keywordGroundingEngine.getIfAvailable();
+            if (keyword == null) {
+                keyword = new KeywordGroundingEngine();
+            }
+            List<GroundingSource> all = new ArrayList<>(downloadedSources);
+            all.addAll(faqSources);
+            return keyword.answer(question, all);
+        }
+
+        RagGroundingEngine rag = ragGroundingEngine.getIfAvailable();
+        if (rag == null) {
+            rag = new RagGroundingEngine(0.12);
+        }
+
+        List<RankedChunk> ranked = vectorRetrievalService.retrieve(question, grantedResourceIds, retrievalTopK);
+        if (!ranked.isEmpty()) {
+            return rag.answer(question, ranked, faqSources, resourceTitles);
+        }
+
+        List<GroundingSource> fallbackSources = new ArrayList<>(downloadedSources);
+        fallbackSources.addAll(faqSources);
+        if (!fallbackSources.isEmpty()) {
+            return rag.answerWithKeywordFallback(question, fallbackSources);
+        }
+        return rag.answer(question, List.of(), faqSources, resourceTitles);
+    }
+
+    private List<GroundingSource> loadFaqSources(UUID courseId, UUID learnerUserId) {
+        List<GroundingSource> faqSources = new ArrayList<>();
+        try {
+            for (ApprovedFaqClient.ApprovedFaqSummary approvedFaq : approvedFaqClient.listApprovedFaqs(
+                    courseId,
+                    learnerUserId
+            )) {
+                if (approvedFaq.question() == null || approvedFaq.answer() == null) {
+                    continue;
+                }
+                String textContent = approvedFaq.question() + "\n\n" + approvedFaq.answer();
+                if (!textContent.isBlank()) {
+                    faqSources.add(new GroundingSource(
+                            approvedFaq.id(),
+                            "FAQ: " + approvedFaq.question(),
+                            textContent
+                    ));
+                }
+            }
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode() != HttpStatus.NOT_FOUND
+                    && exception.getStatusCode() != HttpStatus.FORBIDDEN
+                    && exception.getStatusCode() != HttpStatus.BAD_GATEWAY) {
+                throw exception;
+            }
+        } catch (RuntimeException exception) {
+            // FAQ grounding is supplemental
+        }
+        return faqSources;
     }
 
     public StudyAssistantAnswer findAnswer(

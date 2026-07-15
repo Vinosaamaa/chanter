@@ -106,7 +106,7 @@ From `plan.md` and architecture docs:
 - **Today:** `agent-service` = install, grants, quotas, grounded answers via `KeywordGroundingEngine`
 - **#94:** AI-approved `.txt`/`.md` uploads are chunked with stable offsets into `resource_chunks`
 - **#95:** Chunks are embedded (default hashing embedder; optional Ollama — see `local-embeddings.md`) and stored for grant-scoped top-k retrieval
-- **#96:** Replace keyword grounding with RAG over those vectors
+- **#96:** Ask AI uses RAG over retrieved chunks by default (`CHANTER_GROUNDING_ENGINE=rag`; set `keyword` to fall back)
 - **Later:** `agent-runtime-service` (planned) = LLM orchestration, provider adapters, streaming, tools
 - **Local dev option (planned):** Ollama
 - **Production option (planned):** hosted LLM APIs with budgets and audit

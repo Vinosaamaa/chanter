@@ -11,6 +11,7 @@ import com.chanter.agent.application.StudyAssistantGrantCandidatesClient.CohortC
 import com.chanter.agent.application.StudyAssistantGrantCandidatesClient.CourseCandidate;
 import com.chanter.agent.application.StudyAssistantGrantCandidatesClient.GrantCandidates;
 import com.chanter.agent.domain.GrantType;
+import com.chanter.agent.application.ResourceIngestionService;
 import com.chanter.agent.infra.TestCourseResourceCatalogClient;
 import com.chanter.agent.infra.TestCourseResourceContentClient;
 import com.chanter.agent.infra.TestStudyAssistantGrantCandidatesClient;
@@ -63,6 +64,9 @@ class GroundedSupportQuestionSmokeTest {
     @Autowired
     private TestStudyServerSaasPlanClient saasPlanClient;
 
+    @Autowired
+    private ResourceIngestionService resourceIngestionService;
+
     @BeforeEach
     void setUp() {
         grantCandidatesClient.clear();
@@ -110,13 +114,12 @@ class GroundedSupportQuestionSmokeTest {
                 true
         ));
         courseResourceCatalogClient.grantViewerAccess(courseId, learnerUserId);
-        courseResourceContentClient.registerContent(
-                courseResourceId,
-                """
+        byte[] guideBytes = """
                 Spring Security uses a filter chain. Configure HttpSecurity to add authentication \
                 and authorization rules for your endpoints.
-                """.getBytes(StandardCharsets.UTF_8)
-        );
+                """.getBytes(StandardCharsets.UTF_8);
+        courseResourceContentClient.registerContent(courseResourceId, guideBytes);
+        resourceIngestionService.ingest(courseId, courseResourceId, "spring-security-guide.md", guideBytes);
 
         MvcResult result = mockMvc.perform(post(
                         "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/assistant-answer",
@@ -136,8 +139,10 @@ class GroundedSupportQuestionSmokeTest {
         assertThat(response.handoffRecommended()).isFalse();
         assertThat(response.supportQuestionStatus()).isEqualTo("AI_ANSWERED");
         assertThat(response.answerBody()).contains("Spring Security Guide");
+        assertThat(response.answerBody()).contains("chars ");
         assertThat(response.sources()).hasSize(1);
         assertThat(response.sources().getFirst().resourceId()).isEqualTo(courseResourceId);
+        assertThat(response.sources().getFirst().excerpt()).contains("offsets");
 
         MvcResult reloadResult = mockMvc.perform(get(
                             "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/assistant-answer",
