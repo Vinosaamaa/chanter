@@ -7,16 +7,18 @@ import type { PublicUserProfile } from '../../friends/types'
 import {
   addSupportQuestionToTaQueue,
   fetchAssistantAnswer,
-  invokeAssistantAnswer,
   listSupportQuestionReplies,
   listSupportQuestions,
+  markAssistantAnswerHelpful,
   moderateSupportQuestion,
   postSupportQuestion,
   postSupportQuestionReply,
   quotaExhaustedMessage,
+  streamAssistantAnswer,
 } from '../../questions/questions-api'
 import type {
   AssistantAnswer,
+  AssistantStreamPhase,
   SupportQuestionModerationStatus,
   SupportQuestionReply,
   SupportQuestionSummary,
@@ -50,6 +52,10 @@ type UseQuestionsChannelResult = {
   isPosting: boolean
   invokeAssistant: (supportQuestionId: string) => Promise<void>
   invokingQuestionId: string | null
+  streamingText: string
+  streamPhase: AssistantStreamPhase
+  markHelpful: (supportQuestionId: string) => Promise<void>
+  markingHelpfulQuestionId: string | null
   addToTaQueue: (supportQuestionId: string) => Promise<void>
   addingToQueueQuestionId: string | null
   taQueueSuccess: string | null
@@ -86,6 +92,10 @@ export function useQuestionsChannel({
   const [isPostingReply, setIsPostingReply] = useState(false)
   const [isModerating, setIsModerating] = useState(false)
   const [invokingQuestionId, setInvokingQuestionId] = useState<string | null>(null)
+  const [streamingText, setStreamingText] = useState('')
+  const [streamPhase, setStreamPhase] = useState<AssistantStreamPhase>('idle')
+  const [markingHelpfulQuestionId, setMarkingHelpfulQuestionId] = useState<string | null>(null)
+  const streamAbortRef = useRef<AbortController | null>(null)
   const [addingToQueueQuestionId, setAddingToQueueQuestionId] = useState<string | null>(null)
   const [taQueueSuccess, setTaQueueSuccess] = useState<string | null>(null)
   const [selectedSupportQuestionId, setSelectedSupportQuestionId] = useState<string | null>(null)
@@ -250,28 +260,82 @@ export function useQuestionsChannel({
   }, [channelId, userId])
 
   const invokeAssistant = useCallback(async (supportQuestionId: string) => {
+    streamAbortRef.current?.abort()
+    const abortController = new AbortController()
+    streamAbortRef.current = abortController
+
     setInvokingQuestionId(supportQuestionId)
+    setStreamingText('')
+    setStreamPhase('streaming')
     setError(null)
     setTaQueueSuccess(null)
     setSelectedSupportQuestionId(supportQuestionId)
     try {
-      const answer = await invokeAssistantAnswer(channelId, supportQuestionId)
-      setAnswersByQuestionId((current) => ({ ...current, [supportQuestionId]: answer }))
-      setSupportQuestions((current) => current.map((question) =>
-        question.id === supportQuestionId
-          ? { ...question, status: answer.supportQuestionStatus }
-          : question,
-      ))
+      await streamAssistantAnswer(channelId, supportQuestionId, {
+        signal: abortController.signal,
+        onToken: (token) => {
+          setStreamingText((current) => current + token)
+        },
+        onComplete: (answer) => {
+          setAnswersByQuestionId((current) => ({ ...current, [supportQuestionId]: answer }))
+          setSupportQuestions((current) => current.map((question) =>
+            question.id === supportQuestionId
+              ? { ...question, status: answer.supportQuestionStatus }
+              : question,
+          ))
+          setStreamingText('')
+          setStreamPhase('complete')
+        },
+      })
     } catch (caught) {
+      if (abortController.signal.aborted) {
+        setStreamPhase('idle')
+        return
+      }
+      setStreamPhase('error')
       if (caught instanceof ApiError && caught.status === 429) {
         setError(quotaExhaustedMessage(caught.body))
       } else {
         setError(caught instanceof Error ? caught.message : 'Unable to invoke AI Study Assistant')
       }
     } finally {
+      if (streamAbortRef.current === abortController) {
+        streamAbortRef.current = null
+      }
       setInvokingQuestionId(null)
+      if (!abortController.signal.aborted) {
+        setStreamingText((current) => {
+          if (current.length > 0) {
+            return ''
+          }
+          return current
+        })
+      }
     }
   }, [channelId])
+
+  const markHelpful = useCallback(async (supportQuestionId: string) => {
+    setMarkingHelpfulQuestionId(supportQuestionId)
+    setError(null)
+    try {
+      const updated = await markAssistantAnswerHelpful(channelId, supportQuestionId)
+      setAnswersByQuestionId((current) => ({ ...current, [supportQuestionId]: updated }))
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to mark answer helpful')
+    } finally {
+      setMarkingHelpfulQuestionId(null)
+    }
+  }, [channelId])
+
+  const selectSupportQuestion = useCallback((supportQuestionId: string | null) => {
+    if (supportQuestionId !== selectedSupportQuestionId) {
+      streamAbortRef.current?.abort()
+      streamAbortRef.current = null
+      setStreamingText('')
+      setStreamPhase('idle')
+    }
+    setSelectedSupportQuestionId(supportQuestionId)
+  }, [selectedSupportQuestionId])
 
   const addToTaQueue = useCallback(async (supportQuestionId: string) => {
     const answer = answersByQuestionId[supportQuestionId]
@@ -344,11 +408,15 @@ export function useQuestionsChannel({
     isPosting,
     invokeAssistant,
     invokingQuestionId,
+    streamingText,
+    streamPhase,
+    markHelpful,
+    markingHelpfulQuestionId,
     addToTaQueue,
     addingToQueueQuestionId,
     taQueueSuccess,
     selectedSupportQuestionId,
-    selectSupportQuestion: setSelectedSupportQuestionId,
+    selectSupportQuestion,
     selectedQuestion,
     selectedAnswer: selectedSupportQuestionId
       ? answersByQuestionId[selectedSupportQuestionId] ?? null

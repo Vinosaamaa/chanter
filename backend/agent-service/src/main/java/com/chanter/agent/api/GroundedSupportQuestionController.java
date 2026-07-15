@@ -1,6 +1,7 @@
 package com.chanter.agent.api;
 
 import com.chanter.agent.application.GroundedSupportQuestionService;
+import com.chanter.agent.application.GroundedSupportQuestionService.AnswerView;
 import com.chanter.agent.domain.AnswerConfidence;
 import com.chanter.agent.domain.StudyAssistantAnswer;
 import com.chanter.common.ServiceInfo;
@@ -38,15 +39,11 @@ public class GroundedSupportQuestionController {
                 supportQuestionId,
                 learnerUserId
         );
-        String supportQuestionStatus = answer.confidence() == AnswerConfidence.HIGH
-                ? "AI_ANSWERED"
-                : "AI_LOW_CONFIDENCE";
-
-        return ResponseEntity.ok(AssistantAnswerResponse.from(answer, supportQuestionStatus));
+        return ResponseEntity.ok(toResponse(answer, learnerUserId));
     }
 
     /**
-     * SSE streaming path (#98). Computes the full answer (RAG + optional LLM), then emits
+     * SSE streaming path (#98/#100). Computes the full answer (RAG + optional LLM), then emits
      * {@code token} events followed by a final {@code complete} event with the persisted payload.
      */
     @PostMapping(value = "/assistant-answer/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -61,10 +58,7 @@ public class GroundedSupportQuestionController {
                 supportQuestionId,
                 learnerUserId
         );
-        String supportQuestionStatus = answer.confidence() == AnswerConfidence.HIGH
-                ? "AI_ANSWERED"
-                : "AI_LOW_CONFIDENCE";
-        AssistantAnswerResponse response = AssistantAnswerResponse.from(answer, supportQuestionStatus);
+        AssistantAnswerResponse response = toResponse(answer, learnerUserId);
 
         Thread.startVirtualThread(() -> {
             try {
@@ -94,9 +88,33 @@ public class GroundedSupportQuestionController {
                 supportQuestionId,
                 viewerUserId
         );
-        String supportQuestionStatus = answer.confidence() == AnswerConfidence.HIGH
+        return toResponse(answer, viewerUserId);
+    }
+
+    @PostMapping("/assistant-answer/helpful")
+    public AssistantAnswerResponse markHelpful(
+            @PathVariable UUID channelId,
+            @PathVariable UUID supportQuestionId,
+            @RequestHeader(AuthHeaders.USER_ID) UUID viewerUserId
+    ) {
+        AnswerView view = groundedSupportQuestionService.markHelpful(channelId, supportQuestionId, viewerUserId);
+        return toResponse(view);
+    }
+
+    private AssistantAnswerResponse toResponse(StudyAssistantAnswer answer, UUID viewerUserId) {
+        return toResponse(groundedSupportQuestionService.toAnswerView(answer, viewerUserId));
+    }
+
+    private static AssistantAnswerResponse toResponse(AnswerView view) {
+        String supportQuestionStatus = view.answer().confidence() == AnswerConfidence.HIGH
                 ? "AI_ANSWERED"
                 : "AI_LOW_CONFIDENCE";
-        return AssistantAnswerResponse.from(answer, supportQuestionStatus);
+        return AssistantAnswerResponse.from(
+                view.answer(),
+                supportQuestionStatus,
+                view.audit(),
+                view.helpfulMarked(),
+                view.helpfulCount()
+        );
     }
 }
