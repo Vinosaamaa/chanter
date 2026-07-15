@@ -14,13 +14,14 @@ public class LoggingEmailSender implements EmailSender {
 
     @Override
     public void send(String toEmail, String subject, String bodyText) {
-        // Do not log message bodies — they contain one-time auth tokens (#102 / SAST).
+        // Intentionally omit recipient, subject details, and body — auth mails contain secrets (#102).
+        if (toEmail == null || toEmail.isBlank()) {
+            throw new IllegalArgumentException("toEmail is required");
+        }
+        if (subject == null || subject.isBlank()) {
+            throw new IllegalArgumentException("subject is required");
+        }
         int bodyLength = bodyText == null ? 0 : bodyText.length();
-        log.info(
-                "Auth email queued via log provider to={} subject={} bodyChars={}",
-                toEmail,
-                subject,
-                bodyLength
-        );
+        log.info("Auth transactional email queued via log provider bodyChars={}", bodyLength);
     }
 }
