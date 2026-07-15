@@ -162,7 +162,7 @@ Serial order only — one issue per branch.
 | 15 | [#144](https://github.com/Vinosaamaa/chanter/issues/144) | Real cross-Course Calendar and join actions |
 | 16 | [#145](https://github.com/Vinosaamaa/chanter/issues/145) | Truthful owner billing and usage settings |
 
-After #145: AI **#94–#100**, critical-path E2E/no-dead-controls **#103**, staging/auth **#101–#102**, and public beta **#104**.
+After #145: AI **#94–#100** (start with [#94](https://github.com/Vinosaamaa/chanter/issues/94)), critical-path E2E/no-dead-controls **#103**, staging/auth **#101–#102**, and public beta **#104**. Epic #131 operational slices **#132–#145** are complete.
 
 ### Phase 3: Workable Product (project #4)
 

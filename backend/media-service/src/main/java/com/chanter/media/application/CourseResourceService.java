@@ -20,17 +20,20 @@ public class CourseResourceService {
     private final CourseResourceRepository repository;
     private final CourseResourceAccessClient accessClient;
     private final LocalCourseResourceStorage storage;
+    private final ResourceIngestionClient resourceIngestionClient;
     private final Clock clock;
 
     public CourseResourceService(
             CourseResourceRepository repository,
             CourseResourceAccessClient accessClient,
             LocalCourseResourceStorage storage,
+            ResourceIngestionClient resourceIngestionClient,
             Clock clock
     ) {
         this.repository = repository;
         this.accessClient = accessClient;
         this.storage = storage;
+        this.resourceIngestionClient = resourceIngestionClient;
         this.clock = clock;
     }
 
@@ -96,6 +99,10 @@ public class CourseResourceService {
             storage.store(resourceId, content);
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store Course Resource");
+        }
+
+        if (aiApproved) {
+            resourceIngestionClient.ingestAiApprovedResource(courseId, resourceId, fileName, content);
         }
 
         return courseResource;

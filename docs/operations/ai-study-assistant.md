@@ -104,6 +104,8 @@ The engine needs **at least two matching terms** (3+ letters, not stop words) be
 From `plan.md` and architecture docs:
 
 - **Today:** `agent-service` = install, grants, quotas, grounded answers via `KeywordGroundingEngine`
+- **#94 (now):** AI-approved `.txt`/`.md` uploads are chunked with stable offsets into `resource_chunks` (retrieval store for later RAG; Ask AI still uses keyword over full text until #96)
+- **#95–#96:** embeddings + vector retrieval, then replace keyword grounding
 - **Later:** `agent-runtime-service` (planned) = LLM orchestration, provider adapters, streaming, tools
 - **Local dev option (planned):** Ollama
 - **Production option (planned):** hosted LLM APIs with budgets and audit

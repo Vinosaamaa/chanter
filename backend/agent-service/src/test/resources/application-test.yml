@@ -5,3 +5,6 @@ spring:
     password:
   flyway:
     enabled: true
+
+chanter:
+  internal-service-token: test-internal-service-token-for-agent
