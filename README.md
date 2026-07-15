@@ -29,7 +29,9 @@ Full two-user demo checklist: [`docs/operations/workable-product-demo.md`](docs/
 
 Staging HTTPS deploy (single VM + Caddy): [`docs/operations/staging-deploy.md`](docs/operations/staging-deploy.md).
 
-**Public beta:** checklist and scope → [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md). Staging hostname placeholder: `https://staging.chanter.example`. Course storefront commerce (`course-storefront.png`) is **post-MVP** / out of beta scope.
+Public beta: checklist and scope → [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md). Staging hostname placeholder: `https://staging.chanter.example`. Course storefront commerce (`course-storefront.png`) is **post-MVP** / out of beta scope.
+
+**New Cursor chat:** `@` [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
 
 ---
 

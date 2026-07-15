@@ -1,5 +1,7 @@
 # Chanter Project Handoff
 
+> **Starting a new Cursor chat?** Prefer the short handoff: [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md) — `@` that file, then paste the prompt inside it. Keep this file for deep project history.
+
 ## Project Summary
 
 Chanter is planned as an enterprise-grade, education-first Discord-like learning community platform with:
@@ -44,11 +46,13 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
 
-**Active phase:** Public Launch project [#5](https://github.com/users/Vinosaamaa/projects/5). UI v2 shell **#116–#128**, operationalization **#132–#145**, Real AI **#94–#100**, staging/auth **#101–#102**, E2E **#103**, and public beta checklist **#104** are on the launch path. Remaining open items are parent epics (#131, #115, #107, #85, #84, #83, #82) and post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107).
+**Active phase:** Public Launch project [#5](https://github.com/users/Vinosaamaa/projects/5). **Actionable public-beta slices through #104 are merged on `main`** (UI v2 #116–#128, ops #132–#145, AI #94–#100, staging/auth #101–#102, E2E #103, beta checklist #104). Remaining open GitHub items are **parent epics only** (#131, #115, #107, #85, #84, #83, #82).
 
-**Beta launch:** [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md) — staging `https://staging.chanter.example`, known limitation: course storefront commerce is post-MVP.
+**Beta launch:** [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md) — staging `https://staging.chanter.example`, known limitation: course storefront commerce is post-MVP. Full product browser QA passed 2026-07-15 (owner + learner).
 
-**Roadmap after beta:** Post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) (storefront commerce, marketing header badges, multi-region HA).
+**New-chat handoff:** [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md)
+
+**Roadmap after beta:** Post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) + [`post-launch-ui-backlog.md`](docs/operations/post-launch-ui-backlog.md) (storefront commerce, marketing badges, search/billing polish, etc.).
 
 **Agent read order for UI work:** `DESIGN-DECISIONS.md` → `specs/layout-rules.md` → issue mockup PNG(s) → `visibility-and-social-model.md`. Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
 
@@ -119,11 +123,9 @@ Production Frontend table retained above for history; milestone **complete** (le
 
 ### UI v2 operationalization + launch (complete through #104)
 
-Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turned the approved UI into a truthful full-stack product. Ordered slices **#132–#145**, AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta checklist **#104** are the launch path. Parent epics may remain open for tracking; actionable slice work for public beta is complete when #104 merges.
+Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turned the approved UI into a truthful full-stack product. Ordered slices **#132–#145**, AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta checklist **#104** are **merged**. Parent epics may remain open for tracking.
 
-**Next:** post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) (commerce storefront, polish).
-
-**#30** ships in phase 2 with **#49** (project #3).
+**Next:** post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) — break PL items into child stories when the owner asks. Short agent start: [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
 
 Full tables: [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
@@ -364,18 +366,15 @@ Recent operations documentation artifacts:
 
 ## New Chat Startup Prompt
 
-Use this prompt after reloading Cursor or starting a new chat:
+**Prefer:** open a new chat and `@docs/operations/new-chat-handoff.md` (copy the paste block from that file).
+
+Fallback prompt:
 
 ```text
-Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
+Read docs/operations/new-chat-handoff.md, HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
-Backend MVP #11–#24, Production Frontend #47–#59, Workable Product #60–#63, UI v2 #116–#128,
-operationalization #132–#145, AI #94–#100, staging/auth #101–#102, E2E #103, and public beta #104
-are on the launch path (see public-beta-launch-checklist.md).
-
-Product UI: docs/product-design/DESIGN-DECISIONS.md + mockups/learner-flow/ and owner-flow/
-Breakdown: docs/issues/ui-v2-issue-breakdown.md
-Next work: post-launch backlog #107 (commerce storefront, polish) unless the owner names a new slice.
+Public-beta slices through #104 are merged on main. Next work is post-launch #107
+(docs/operations/post-launch-ui-backlog.md) unless the owner names a different task.
 
 Repo: https://github.com/Vinosaamaa/chanter
 Project: https://github.com/users/Vinosaamaa/projects/5
