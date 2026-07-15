@@ -18,6 +18,17 @@ chanter:
     engine: ${CHANTER_GROUNDING_ENGINE:rag}
     min-retrieval-score: ${CHANTER_GROUNDING_MIN_SCORE:0.12}
     retrieval-top-k: ${CHANTER_GROUNDING_TOP_K:5}
+  llm:
+    enabled: ${CHANTER_LLM_ENABLED:false}
+    provider: ${CHANTER_LLM_PROVIDER:ollama}
+    model: ${CHANTER_LLM_MODEL:llama3.2}
+    connect-timeout-seconds: 5
+    read-timeout-seconds: 120
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    openai:
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      api-key: ${OPENAI_API_KEY:}
   embeddings:
     provider: ${CHANTER_EMBEDDINGS_PROVIDER:hashing}
     dimensions: ${CHANTER_EMBEDDINGS_DIMENSIONS:384}
