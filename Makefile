@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search backend-notification frontend-install frontend-dev frontend-build verify setup-git-hooks product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search backend-notification frontend-install frontend-dev frontend-build verify setup-git-hooks product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers product-e2e product-e2e-critical
 
 ifeq ($(shell uname -s),Darwin)
 JAVA_HOME_21 := $(shell /usr/libexec/java_home -v 21 2>/dev/null)
@@ -111,6 +111,14 @@ product-demo-seed: product-health
 
 product-cleanup-demo-servers: product-health
 	DEMO_PASSWORD="$${DEMO_PASSWORD:-chanter-dev-demo}" ./scripts/cleanup-duplicate-demo-servers.sh
+
+product-e2e-critical:
+	chmod +x ./scripts/product/e2e.sh
+	./scripts/product/e2e.sh critical
+
+product-e2e:
+	chmod +x ./scripts/product/e2e.sh
+	./scripts/product/e2e.sh product
 
 setup-git-hooks:
 	./scripts/setup-git-hooks.sh
