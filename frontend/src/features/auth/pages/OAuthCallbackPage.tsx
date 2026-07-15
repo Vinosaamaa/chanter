@@ -9,23 +9,30 @@ export function OAuthCallbackPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const setSession = useAuthStore((state) => state.setSession)
+  const code = params.get('code')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const code = params.get('code')
     if (!code) {
-      setError('OAuth code missing.')
       return
     }
+    let cancelled = false
     void completeGoogleOauth(code)
       .then((session) => {
+        if (cancelled) return
         setSession(session)
         navigate('/app/home', { replace: true })
       })
       .catch((caught: unknown) => {
+        if (cancelled) return
         setError(caught instanceof Error ? caught.message : 'OAuth sign-in failed')
       })
-  }, [navigate, params, setSession])
+    return () => {
+      cancelled = true
+    }
+  }, [code, navigate, setSession])
+
+  const displayError = code ? error : 'OAuth code missing.'
 
   return (
     <main className="v2-auth-page compact-auth">
@@ -33,9 +40,9 @@ export function OAuthCallbackPage() {
         <div className="v2-auth-card">
           <V2Brand to="/" className="v2-auth-brand" />
           <h1>Signing in…</h1>
-          {error ? (
+          {displayError ? (
             <>
-              <p role="alert" className="v2-auth-error">{error}</p>
+              <p role="alert" className="v2-auth-error">{displayError}</p>
               <Link className="auth-back" to="/sign-in">Back to sign in</Link>
             </>
           ) : (

@@ -14,6 +14,13 @@ public class LoggingEmailSender implements EmailSender {
 
     @Override
     public void send(String toEmail, String subject, String bodyText) {
-        log.info("Auth email (log provider) to={} subject={} body={}", toEmail, subject, bodyText);
+        // Do not log message bodies — they contain one-time auth tokens (#102 / SAST).
+        int bodyLength = bodyText == null ? 0 : bodyText.length();
+        log.info(
+                "Auth email queued via log provider to={} subject={} bodyChars={}",
+                toEmail,
+                subject,
+                bodyLength
+        );
     }
 }

@@ -12,15 +12,24 @@ export function VerifyEmailPage() {
 
   useEffect(() => {
     if (!token) {
-      setError('Verification token missing.')
       return
     }
+    let cancelled = false
     void verifyEmail(token)
-      .then((result) => setMessage(result.message))
-      .catch((caught: unknown) => {
-        setError(caught instanceof Error ? caught.message : 'Unable to verify email')
+      .then((result) => {
+        if (!cancelled) setMessage(result.message)
       })
+      .catch((caught: unknown) => {
+        if (!cancelled) {
+          setError(caught instanceof Error ? caught.message : 'Unable to verify email')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
   }, [token])
+
+  const displayError = token ? error : 'Verification token missing.'
 
   return (
     <main className="v2-auth-page compact-auth">
@@ -28,9 +37,9 @@ export function VerifyEmailPage() {
         <div className="v2-auth-card">
           <V2Brand to="/" className="v2-auth-brand" />
           <h1>Verify email</h1>
-          {error ? <p role="alert" className="v2-auth-error">{error}</p> : null}
+          {displayError ? <p role="alert" className="v2-auth-error">{displayError}</p> : null}
           {message ? <p role="status" className="v2-auth-info">{message}</p> : null}
-          {!error && !message ? <p>Verifying…</p> : null}
+          {!displayError && !message ? <p>Verifying…</p> : null}
           <Link className="auth-back" to="/sign-in">Continue to sign in</Link>
         </div>
       </section>

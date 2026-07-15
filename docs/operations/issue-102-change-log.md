@@ -16,9 +16,10 @@ Email verification (env-gated), password reset, forgot-password UI on `/sign-in`
 
 ### Staging walkthrough
 1. Set `CHANTER_PUBLIC_BASE_URL` + `CHANTER_AUTH_REQUIRE_EMAIL_VERIFICATION=true`
-2. Register → check auth-service logs for verify link → open `/verify-email?token=…` → sign in
-3. Forgot password → log link → `/reset-password?token=…` → sign in
-4. Optional: set Google OAuth client id/secret and register redirect URI
+2. Register → open verify link from email (or insert a token via `auth_email_tokens` for log-provider staging) → `/verify-email?token=` → sign in
+3. Forgot password → reset link → `/reset-password?token=` → sign in
+
+Note: the `log` email provider does **not** print raw tokens (SAST). For local/staging without SMTP, generate/use tokens via the smoke test pattern or an ops SQL insert of a hashed token.
 
 ### Tests
 `ProductionAuthSmokeTest`, SignInPage forgot-password link assertion.
