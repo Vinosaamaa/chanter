@@ -145,6 +145,8 @@ public interface CourseRepository {
 
     Optional<UUID> findStudyServerIdByCourseId(UUID courseId);
 
+    void lockCourseForMutation(UUID courseId);
+
     Cohort addCohortToCourse(UUID courseId, Cohort cohort, List<CourseChannel> channels);
 
     void assignCourseInstructor(UUID courseId, UUID instructorUserId);

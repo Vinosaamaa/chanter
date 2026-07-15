@@ -78,12 +78,16 @@ public class StudyServerController {
     }
 
     @GetMapping("/{id}")
-    public StudyServerResponse getStudyServer(@PathVariable UUID id) {
+    public StudyServerResponse getStudyServer(
+            @PathVariable UUID id,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID requesterUserId
+    ) {
         StudyServer studyServer = studyServerService.findStudyServer(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
+        boolean owner = studyServer.ownerRole().userId().equals(requesterUserId);
         return StudyServerResponse.from(
                 studyServer,
-                studyServerService.findPendingInvitations(id)
+                owner ? studyServerService.findPendingInvitations(id) : List.of()
         );
     }
 

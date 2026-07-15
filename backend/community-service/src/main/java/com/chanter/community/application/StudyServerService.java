@@ -15,12 +15,14 @@ import com.chanter.community.domain.TextChannelMessageAccess;
 import com.chanter.community.domain.VoiceMediaToken;
 import com.chanter.community.domain.VoicePresence;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -43,6 +45,7 @@ public class StudyServerService {
         this.clock = clock;
     }
 
+    @Transactional
     public StudyServer createStudyServer(
             String name,
             String description,
@@ -50,6 +53,8 @@ public class StudyServerService {
             List<String> inviteEmails,
             UUID ownerUserId
     ) {
+        List<ResolvedInvite> resolvedInvites = resolveInvitees(inviteEmails);
+
         UUID studyServerId = UUID.randomUUID();
         StudyServer studyServer = new StudyServer(
                 studyServerId,
@@ -68,16 +73,12 @@ public class StudyServerService {
 
         repository.save(studyServer);
 
-        List<String> normalizedInviteEmails = inviteEmails == null ? List.of() : inviteEmails;
-        for (String email : normalizedInviteEmails) {
-            String normalizedEmail = normalizeEmail(email);
-            AuthUserProfile invitedProfile = authUserDirectoryClient.findByEmail(normalizedEmail)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User email not found"));
+        for (ResolvedInvite invite : resolvedInvites) {
             repository.saveInvitation(new StudyServerInvitation(
                     UUID.randomUUID(),
                     studyServerId,
-                    invitedProfile.userId(),
-                    normalizedEmail,
+                    invite.userId(),
+                    invite.email(),
                     ownerUserId,
                     StudyServerInvitationStatus.PENDING,
                     clock.instant(),
@@ -86,6 +87,27 @@ public class StudyServerService {
         }
 
         return studyServer;
+    }
+
+    private List<ResolvedInvite> resolveInvitees(List<String> inviteEmails) {
+        if (inviteEmails == null || inviteEmails.isEmpty()) {
+            return List.of();
+        }
+
+        List<ResolvedInvite> resolved = new ArrayList<>(inviteEmails.size());
+        for (String email : inviteEmails) {
+            if (email == null || email.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invite email must not be blank");
+            }
+            String normalizedEmail = normalizeEmail(email);
+            AuthUserProfile invitedProfile = authUserDirectoryClient.findByEmail(normalizedEmail)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User email not found"));
+            resolved.add(new ResolvedInvite(invitedProfile.userId(), normalizedEmail));
+        }
+        return resolved;
+    }
+
+    private record ResolvedInvite(UUID userId, String email) {
     }
 
     public List<StudyServerInvitation> findPendingInvitations(UUID studyServerId) {

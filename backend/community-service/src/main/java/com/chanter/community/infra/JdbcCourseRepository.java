@@ -1874,6 +1874,16 @@ public class JdbcCourseRepository implements CourseRepository {
 
     @Override
     @Transactional
+    public void lockCourseForMutation(UUID courseId) {
+        jdbcClient.sql("SELECT id FROM courses WHERE id = :courseId FOR UPDATE")
+                .param("courseId", courseId)
+                .query(UUID.class)
+                .optional()
+                .orElseThrow(() -> new IllegalStateException("Course not found for lock: " + courseId));
+    }
+
+    @Override
+    @Transactional
     public Cohort addCohortToCourse(UUID courseId, Cohort cohort, List<CourseChannel> channels) {
         jdbcClient.sql("""
                         INSERT INTO cohorts (id, course_id, name, invite_code)

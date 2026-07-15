@@ -125,8 +125,12 @@ public class CourseService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
         requireStudyServerOwner(studyServerId, ownerUserId);
 
+        courseRepository.lockCourseForMutation(courseId);
         CourseLifecycle lifecycle = courseRepository.findCourseLifecycle(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        if (lifecycle.archived()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Archived courses cannot gain a cohort");
+        }
         if (lifecycle.cohort().isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Course already has a cohort");
         }
@@ -171,6 +175,14 @@ public class CourseService {
 
     public void publishCourse(UUID courseId, UUID ownerUserId) {
         requireCourseOwner(courseId, ownerUserId);
+        CourseLifecycle lifecycle = courseRepository.findCourseLifecycle(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        if (lifecycle.archived()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Archived courses cannot be published");
+        }
+        if (lifecycle.cohort().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Course needs a cohort before publishing");
+        }
         courseRepository.setCoursePublished(courseId, true);
     }
 

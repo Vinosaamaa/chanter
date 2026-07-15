@@ -116,6 +116,75 @@ class StudyServerLifecycleSmokeTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    @Test
+    void unknownInviteEmailDoesNotLeavePartialStudyServer() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        userDirectory.register(ownerUserId, "owner@spring.example", "Study Owner");
+
+        mockMvc.perform(post("/api/v1/study-servers")
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "Should Roll Back",
+                                "inviteEmails", List.of("missing@spring.example")
+                        ))))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/study-servers").with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.name=='Should Roll Back')]").doesNotExist());
+    }
+
+    @Test
+    void nullInviteEmailElementsAreRejected() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        userDirectory.register(ownerUserId, "owner@spring.example", "Study Owner");
+
+        mockMvc.perform(post("/api/v1/study-servers")
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Null Invite Hub",
+                                  "inviteEmails": [null]
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void nonOwnerCannotReadPendingInvitationEmails() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID inviteeUserId = UUID.randomUUID();
+        UUID outsiderUserId = UUID.randomUUID();
+        userDirectory.register(ownerUserId, "owner@spring.example", "Study Owner");
+        userDirectory.register(inviteeUserId, "teammate@spring.example", "Teammate");
+
+        MvcResult createdResult = mockMvc.perform(post("/api/v1/study-servers")
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "Private Invites Hub",
+                                "inviteEmails", List.of("teammate@spring.example")
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        StudyServerLifecycleResponse created = objectMapper.readValue(
+                createdResult.getResponse().getContentAsString(),
+                StudyServerLifecycleResponse.class
+        );
+
+        mockMvc.perform(get("/api/v1/study-servers/{id}", created.id()).with(asUser(outsiderUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pendingInvitations.length()").value(0));
+
+        mockMvc.perform(get("/api/v1/study-servers/{id}", created.id()).with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pendingInvitations.length()").value(1))
+                .andExpect(jsonPath("$.pendingInvitations[0].email").value("teammate@spring.example"));
+    }
+
     private record StudyServerLifecycleResponse(
             UUID id,
             List<PendingInvitationResponse> pendingInvitations

@@ -130,6 +130,74 @@ class CourseLifecycleSmokeTest {
                         .with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.archived").value(true));
+
+        mockMvc.perform(post("/api/v1/courses/{courseId}/publish", draftCourse.id())
+                        .with(asUser(ownerUserId)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void ownerCannotPublishDraftCourseWithoutCohort() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+
+        MvcResult draftResult = mockMvc.perform(post(
+                        "/api/v1/study-servers/{studyServerId}/courses",
+                        studyServer.id()
+                )
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "Draft without cohort"
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        CourseLifecycleResponse draftCourse = objectMapper.readValue(
+                draftResult.getResponse().getContentAsString(),
+                CourseLifecycleResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/courses/{courseId}/publish", draftCourse.id())
+                        .with(asUser(ownerUserId)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void ownerCannotAddSecondCohortToCourse() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        StudyServerResponse studyServer = createStudyServer(ownerUserId);
+
+        MvcResult draftResult = mockMvc.perform(post(
+                        "/api/v1/study-servers/{studyServerId}/courses",
+                        studyServer.id()
+                )
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "Single cohort course"
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        CourseLifecycleResponse draftCourse = objectMapper.readValue(
+                draftResult.getResponse().getContentAsString(),
+                CourseLifecycleResponse.class
+        );
+
+        mockMvc.perform(post("/api/v1/courses/{courseId}/cohorts", draftCourse.id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "First cohort"
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/courses/{courseId}/cohorts", draftCourse.id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "Second cohort"
+                        ))))
+                .andExpect(status().isConflict());
     }
 
     @Test
