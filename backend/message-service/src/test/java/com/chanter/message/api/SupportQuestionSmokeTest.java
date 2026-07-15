@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.message.infra.TestCourseChannelAccessClient;
+import com.chanter.message.infra.TestNotificationClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.UUID;
@@ -36,9 +37,13 @@ class SupportQuestionSmokeTest {
     @Autowired
     private TestCourseChannelAccessClient courseChannelAccessClient;
 
+    @Autowired
+    private TestNotificationClient notificationClient;
+
     @BeforeEach
     void setUp() {
         courseChannelAccessClient.clear();
+        notificationClient.clear();
     }
 
     @Test
@@ -228,6 +233,14 @@ class SupportQuestionSmokeTest {
                 .andExpect(jsonPath("$.supportQuestions.length()").value(1))
                 .andExpect(jsonPath("$.supportQuestions[0].id").value(question.id().toString()))
                 .andExpect(jsonPath("$.supportQuestions[0].status").value("HUMAN_ANSWERED"));
+
+        assertThat(notificationClient.calls()).hasSize(1);
+        assertThat(notificationClient.calls().getFirst().recipientUserId()).isEqualTo(learnerUserId);
+        assertThat(notificationClient.calls().getFirst().supportQuestionId()).isEqualTo(question.id());
+        assertThat(notificationClient.calls().getFirst().channelId()).isEqualTo(channelId);
+        assertThat(notificationClient.calls().getFirst().courseId()).isEqualTo(courseId);
+        assertThat(notificationClient.calls().getFirst().bodyPreview())
+                .isEqualTo("It stops when the base case returns without another call.");
     }
 
     @Test

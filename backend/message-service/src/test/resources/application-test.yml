@@ -6,3 +6,10 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration,classpath:db/migration-h2
+
+chanter:
+  notification-service:
+    base-url: http://localhost:8089
+    connect-timeout-seconds: 1
+    read-timeout-seconds: 1
+    service-token: test-internal-service-token-for-message

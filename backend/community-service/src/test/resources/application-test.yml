@@ -12,6 +12,11 @@ chanter:
     connect-timeout-seconds: 1
     read-timeout-seconds: 1
     service-token: test-internal-service-token-for-community
+  notification-service:
+    base-url: http://localhost:8089
+    connect-timeout-seconds: 1
+    read-timeout-seconds: 1
+    service-token: test-internal-service-token-for-community
   livekit:
     url: ws://localhost:7880
     api-key: devkey

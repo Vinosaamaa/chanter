@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -9,6 +10,18 @@ import { V2Sidebar } from './V2Sidebar'
 
 const authApi = vi.hoisted(() => ({ logout: vi.fn() }))
 vi.mock('../../auth/auth-api', () => authApi)
+
+const inboxApi = vi.hoisted(() => ({
+  fetchUnreadNotificationCount: vi.fn(),
+}))
+vi.mock('../../inbox/inbox-api', () => ({
+  fetchUnreadNotificationCount: inboxApi.fetchUnreadNotificationCount,
+  unreadNotificationCountQueryKey: () => ['notifications', 'unread-count'],
+  notificationsQueryKey: (filter: string, status: string) => ['notifications', filter, status],
+  fetchNotifications: vi.fn(),
+  markNotificationRead: vi.fn(),
+  markNotificationDone: vi.fn(),
+}))
 
 const sidebarData: V2SidebarData = {
   isLoading: false,
@@ -35,12 +48,25 @@ const sidebarData: V2SidebarData = {
   allCourses: [],
 }
 
+function renderSidebar() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/app/home']}>
+        <V2Sidebar data={sidebarData} menuOpen={false} onCloseMenu={vi.fn()} />
+        <LocationProbe />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
 describe('V2Sidebar account menu', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
     vi.clearAllMocks()
     authApi.logout.mockResolvedValue(undefined)
+    inboxApi.fetchUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
     useAuthStore.setState({
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
@@ -48,27 +74,27 @@ describe('V2Sidebar account menu', () => {
     })
   })
 
-  it('does not show a synthetic Inbox unread badge', () => {
-    render(
-      <MemoryRouter initialEntries={['/app/home']}>
-        <V2Sidebar data={sidebarData} menuOpen={false} onCloseMenu={vi.fn()} />
-      </MemoryRouter>,
-    )
+  it('does not show an Inbox unread badge when count is zero', async () => {
+    renderSidebar()
 
     expect(screen.getByRole('link', { name: 'Inbox' })).toBeInTheDocument()
+    await waitFor(() => expect(inboxApi.fetchUnreadNotificationCount).toHaveBeenCalled())
     expect(screen.queryByText('4')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'CS 101' })).toBeInTheDocument()
     expect(screen.queryByText('3')).not.toBeInTheDocument()
   })
 
+  it('shows the real Inbox unread badge when count is positive', async () => {
+    inboxApi.fetchUnreadNotificationCount.mockResolvedValue({ unreadCount: 2 })
+    renderSidebar()
+
+    expect(await screen.findByText('2')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Inbox/ })).toBeInTheDocument()
+  })
+
   it('signs out from the profile menu and clears the local session', async () => {
     const user = userEvent.setup()
-    render(
-      <MemoryRouter initialEntries={['/app/home']}>
-        <V2Sidebar data={sidebarData} menuOpen={false} onCloseMenu={vi.fn()} />
-        <LocationProbe />
-      </MemoryRouter>,
-    )
+    renderSidebar()
 
     await user.click(screen.getByRole('button', { name: 'Open account menu' }))
     expect(screen.getByRole('menu', { name: 'Account' })).toBeInTheDocument()

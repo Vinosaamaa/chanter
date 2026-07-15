@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:chanter_notification;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  flyway:
+    enabled: true
+
+chanter:
+  internal-service-token: test-internal-service-token-for-notification

@@ -35,7 +35,7 @@
 .v2-app-shell .v2-chip-row button.active { border-color: #5770ff; color: #fff; background: linear-gradient(120deg,#3553d5,#5363e7); }
 .v2-app-shell .v2-section-label { margin: 30px 0 14px; color: #9da5b3; font-size: 14px; }
 .v2-app-shell .v2-section-label.yesterday { margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(151,161,177,.24); }
-.v2-app-shell .v2-outline-button, .v2-app-shell .v2-success-button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid rgba(151,161,177,.36); border-radius: 9px; padding: 0 16px; color: #f2f3f6; background: rgba(5,17,31,.35); cursor: pointer; }
+.v2-app-shell .v2-outline-button, .v2-app-shell .v2-success-button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid rgba(151,161,177,.36); border-radius: 9px; padding: 0 16px; color: #f2f3f6; background: rgba(5,17,31,.35); cursor: pointer; text-decoration: none; }
 .v2-app-shell .v2-success-button { border-color: #248a5a; color: #73dd9f; background: rgba(21,93,60,.17); }
 
 .v2-app-shell .inbox-page { display: grid; grid-template-columns: minmax(320px, 405px) minmax(0,1fr); overflow: hidden; }

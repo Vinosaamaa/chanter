@@ -15,6 +15,11 @@ spring:
 chanter:
   community-service:
     base-url: ${COMMUNITY_SERVICE_URL:http://localhost:8082}
+  notification-service:
+    base-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8089}
+    connect-timeout-seconds: ${NOTIFICATION_SERVICE_CONNECT_TIMEOUT_SECONDS:2}
+    read-timeout-seconds: ${NOTIFICATION_SERVICE_READ_TIMEOUT_SECONDS:3}
+    service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
 
 management:
   endpoints:

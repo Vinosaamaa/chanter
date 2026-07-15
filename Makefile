@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search frontend-install frontend-dev frontend-build verify setup-git-hooks product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search backend-notification frontend-install frontend-dev frontend-build verify setup-git-hooks product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers
 
 ifeq ($(shell uname -s),Darwin)
 JAVA_HOME_21 := $(shell /usr/libexec/java_home -v 21 2>/dev/null)
@@ -75,6 +75,10 @@ backend-analytics:
 
 backend-search:
 	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl search-service spring-boot:run
+
+backend-notification:
+	$(require-internal-service-token)
+	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl notification-service spring-boot:run
 
 frontend-install:
 	cd frontend && npm install

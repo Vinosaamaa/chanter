@@ -25,6 +25,7 @@ import {
   v2CommunityPath,
 } from '../v2-routes'
 import type { V2SidebarData, V2SidebarServerGroup } from '../hooks/use-v2-sidebar-data'
+import { useUnreadNotificationCountQuery } from '../../inbox/hooks/use-inbox-queries'
 import { useAuthStore } from '../../../stores/auth-store'
 import { logout as logoutApi } from '../../auth/auth-api'
 
@@ -98,6 +99,8 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
   const displayName = user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'You'
   const [accountOpen, setAccountOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const unreadQuery = useUnreadNotificationCountQuery()
+  const unreadCount = unreadQuery.data?.unreadCount ?? 0
 
   const initialCollapsed = useMemo(() => {
     const ids = new Set<string>()
@@ -173,6 +176,7 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
           <NavLink to={v2InboxPath()} className={navClass} onClick={onCloseMenu}>
             <Inbox />
             <span>Inbox</span>
+            {unreadCount > 0 ? <b>{unreadCount > 99 ? '99+' : unreadCount}</b> : null}
           </NavLink>
           <NavLink to={v2CalendarPath()} className={navClass} onClick={onCloseMenu}>
             <CalendarDays />
