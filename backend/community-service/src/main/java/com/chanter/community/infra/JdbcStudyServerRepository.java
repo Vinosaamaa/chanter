@@ -7,8 +7,12 @@ import com.chanter.community.domain.OwnerRole;
 import com.chanter.community.domain.SaasPlanTier;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerChannel;
+import com.chanter.community.domain.StudyServerInvitation;
+import com.chanter.community.domain.StudyServerInvitationStatus;
 import com.chanter.community.domain.StudyServerRole;
+import com.chanter.community.domain.StudyServerType;
 import com.chanter.community.domain.VoicePresence;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -17,6 +21,7 @@ import java.util.UUID;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,11 +61,29 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     @Transactional
     public StudyServer save(StudyServer studyServer) {
         jdbcClient.sql("""
-                        INSERT INTO study_servers (id, name, owner_user_id, plan_tier, created_at)
-                        VALUES (:id, :name, :ownerUserId, :planTier, :createdAt)
+                        INSERT INTO study_servers (
+                            id,
+                            name,
+                            description,
+                            server_type,
+                            owner_user_id,
+                            plan_tier,
+                            created_at
+                        )
+                        VALUES (
+                            :id,
+                            :name,
+                            :description,
+                            :serverType,
+                            :ownerUserId,
+                            :planTier,
+                            :createdAt
+                        )
                         """)
                 .param("id", studyServer.id())
                 .param("name", studyServer.name())
+                .param("description", studyServer.description())
+                .param("serverType", studyServer.serverType() == null ? null : studyServer.serverType().name())
                 .param("ownerUserId", studyServer.ownerRole().userId())
                 .param("planTier", studyServer.planTier().name())
                 .param("createdAt", OffsetDateTime.ofInstant(studyServer.createdAt(), ZoneOffset.UTC))
@@ -95,7 +118,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     @Transactional(readOnly = true)
     public Optional<StudyServer> findById(UUID id) {
         return jdbcClient.sql("""
-                        SELECT id, name, owner_user_id, plan_tier, created_at
+                        SELECT id, name, description, server_type, owner_user_id, plan_tier, created_at
                         FROM study_servers
                         WHERE id = :id
                         """)
@@ -103,12 +126,21 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                 .query((rs, rowNum) -> new StudyServer(
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
+                        rs.getString("description"),
+                        mapServerType(rs.getString("server_type")),
                         ownerRoleFor(id),
                         SaasPlanTier.valueOf(rs.getString("plan_tier")),
                         channelsFor(id),
                         rs.getObject("created_at", OffsetDateTime.class).toInstant()
                 ))
                 .optional();
+    }
+
+    private static StudyServerType mapServerType(String serverType) {
+        if (serverType == null) {
+            return null;
+        }
+        return StudyServerType.valueOf(serverType);
     }
 
     private OwnerRole ownerRoleFor(UUID studyServerId) {
@@ -387,6 +419,162 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
                         """)
                 .param("id", id)
                 .update();
+    }
+
+    @Override
+    @Transactional
+    public StudyServerInvitation saveInvitation(StudyServerInvitation invitation) {
+        jdbcClient.sql("""
+                        INSERT INTO study_server_invitations (
+                            id,
+                            study_server_id,
+                            invited_user_id,
+                            email,
+                            invited_by_user_id,
+                            status,
+                            created_at
+                        )
+                        VALUES (
+                            :id,
+                            :studyServerId,
+                            :invitedUserId,
+                            :email,
+                            :invitedByUserId,
+                            :status,
+                            :createdAt
+                        )
+                        """)
+                .param("id", invitation.id())
+                .param("studyServerId", invitation.studyServerId())
+                .param("invitedUserId", invitation.invitedUserId())
+                .param("email", invitation.email())
+                .param("invitedByUserId", invitation.invitedByUserId())
+                .param("status", invitation.status().name())
+                .param("createdAt", OffsetDateTime.ofInstant(invitation.createdAt(), ZoneOffset.UTC))
+                .update();
+        return invitation;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudyServerInvitation> findPendingInvitations(UUID studyServerId) {
+        return jdbcClient.sql("""
+                        SELECT id,
+                               study_server_id,
+                               invited_user_id,
+                               email,
+                               invited_by_user_id,
+                               status,
+                               created_at,
+                               resolved_at
+                        FROM study_server_invitations
+                        WHERE study_server_id = :studyServerId
+                        AND status = :status
+                        ORDER BY created_at ASC, id ASC
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("status", StudyServerInvitationStatus.PENDING.name())
+                .query(this::mapStudyServerInvitation)
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudyServerInvitation> findPendingInvitationsForUser(UUID invitedUserId) {
+        return jdbcClient.sql("""
+                        SELECT id,
+                               study_server_id,
+                               invited_user_id,
+                               email,
+                               invited_by_user_id,
+                               status,
+                               created_at,
+                               resolved_at
+                        FROM study_server_invitations
+                        WHERE invited_user_id = :invitedUserId
+                        AND status = :status
+                        ORDER BY created_at ASC, id ASC
+                        """)
+                .param("invitedUserId", invitedUserId)
+                .param("status", StudyServerInvitationStatus.PENDING.name())
+                .query(this::mapStudyServerInvitation)
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<StudyServerInvitation> findInvitation(UUID studyServerId, UUID invitationId) {
+        return jdbcClient.sql("""
+                        SELECT id,
+                               study_server_id,
+                               invited_user_id,
+                               email,
+                               invited_by_user_id,
+                               status,
+                               created_at,
+                               resolved_at
+                        FROM study_server_invitations
+                        WHERE study_server_id = :studyServerId
+                        AND id = :invitationId
+                        """)
+                .param("studyServerId", studyServerId)
+                .param("invitationId", invitationId)
+                .query(this::mapStudyServerInvitation)
+                .optional();
+    }
+
+    @Override
+    @Transactional
+    public void acceptInvitation(
+            UUID studyServerId,
+            UUID invitationId,
+            UUID acceptedByUserId,
+            Instant resolvedAt
+    ) {
+        jdbcClient.sql("""
+                        UPDATE study_server_invitations
+                        SET status = :status,
+                            resolved_at = :resolvedAt
+                        WHERE study_server_id = :studyServerId
+                        AND id = :invitationId
+                        AND invited_user_id = :acceptedByUserId
+                        AND status = :pendingStatus
+                        """)
+                .param("status", StudyServerInvitationStatus.ACCEPTED.name())
+                .param("resolvedAt", OffsetDateTime.ofInstant(resolvedAt, ZoneOffset.UTC))
+                .param("studyServerId", studyServerId)
+                .param("invitationId", invitationId)
+                .param("acceptedByUserId", acceptedByUserId)
+                .param("pendingStatus", StudyServerInvitationStatus.PENDING.name())
+                .update();
+
+        try {
+            jdbcClient.sql("""
+                            INSERT INTO study_server_roles (study_server_id, user_id, role)
+                            VALUES (:studyServerId, :userId, :role)
+                            """)
+                    .param("studyServerId", studyServerId)
+                    .param("userId", acceptedByUserId)
+                    .param("role", StudyServerRole.STUDY_SERVER_MEMBER.name())
+                    .update();
+        } catch (DuplicateKeyException ignored) {
+            // Accepting again after membership already exists is idempotent.
+        }
+    }
+
+    private StudyServerInvitation mapStudyServerInvitation(java.sql.ResultSet rs, int rowNum)
+            throws java.sql.SQLException {
+        OffsetDateTime resolvedAt = rs.getObject("resolved_at", OffsetDateTime.class);
+        return new StudyServerInvitation(
+                rs.getObject("id", UUID.class),
+                rs.getObject("study_server_id", UUID.class),
+                rs.getObject("invited_user_id", UUID.class),
+                rs.getString("email"),
+                rs.getObject("invited_by_user_id", UUID.class),
+                StudyServerInvitationStatus.valueOf(rs.getString("status")),
+                rs.getObject("created_at", OffsetDateTime.class).toInstant(),
+                resolvedAt == null ? null : resolvedAt.toInstant()
+        );
     }
 
     private StudyServerChannel mapStudyServerChannel(

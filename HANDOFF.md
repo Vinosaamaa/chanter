@@ -46,7 +46,9 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Active phase:** [**#131 — Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131), on [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5). UI v2 **#116–#128** is merged in PR #130.
 
-**Current pause point:** [**#138 - Community Course discovery and Enrollment**](https://github.com/Vinosaamaa/chanter/issues/138) is complete in [PR #154](https://github.com/Vinosaamaa/chanter/pull/154), including TDD coverage, Java/frontend verification, PostgreSQL V14 rehearsal/upgrade, and owner/learner desktop/mobile browser journeys. Work is paused before **#139**; it is queued only for a future resume.
+**Current transition point:** [**#138 - Community Course discovery and Enrollment**](https://github.com/Vinosaamaa/chanter/issues/138) is complete in [PR #154](https://github.com/Vinosaamaa/chanter/pull/154), including TDD coverage, Java/frontend verification, PostgreSQL V14 rehearsal/upgrade, and owner/learner desktop/mobile browser journeys. The owner authorized implementation to continue with [**#139 - Truthful Study Server and Course lifecycle**](https://github.com/Vinosaamaa/chanter/issues/139), using Cursor Composer 2.5 as the default implementation agent.
+
+**Current Cursor handoff:** `/tmp/chanter-handoff-to-cursor-2026-07-14.md`, with a standalone startup prompt at `/tmp/chanter-cursor-prompt-2026-07-14.md`.
 
 **Historical handoff:** `/tmp/chanter-handoff-ui-v2-codex.md` (2026-07-13) explains the rejected Cursor bulk build. Codex reimplemented #117–#128 with mockup and responsive browser verification.
 
@@ -123,7 +125,7 @@ Production Frontend table retained above for history; milestone **complete** (le
 
 Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turns the approved UI into a truthful full-stack product. Work in this order: **#132**, **#133**, **#134**, **#109**, **#135**, **#92**, **#136–#145**, then AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta **#104**.
 
-#132-#138, #109, and #92 are complete. #138 operationalizes published Community Course discovery plus open/invite Cohort enrollment. Work is paused before #139 per owner direction.
+#132-#138, #109, and #92 are complete. #138 operationalizes published Community Course discovery plus open/invite Cohort enrollment. **#139 is now active** on `feature/139-truthful-study-server-course-lifecycle` and is handed to Cursor Composer 2.5.
 
 **#30** ships in phase 2 with **#49** (project #3).
 
@@ -200,6 +202,8 @@ Scale direction:
 ## Engineering Workflow
 
 Use installed Cursor workflow skills directly rather than the deleted local `chanter-engineering-workflow` skill.
+
+**Execution model:** use Cursor Composer 2.5 for scoped implementation work. A frontier model may be used selectively for security, authorization, migration, architecture, or difficult review questions. Model choice never relaxes TDD, verification, browser, CI, or CodeAnt gates.
 
 **Git workflow (required):** one issue per branch and PR → CI → initial CodeAnt review → up to three remediation rounds → agent merge → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. Never push directly to `main`; do not stop after opening a PR.
 
@@ -373,11 +377,14 @@ UI v2 operationalization #132-#138, #109, and #92 are complete. #138 shipped thr
 
 Product UI: docs/product-design/DESIGN-DECISIONS.md + mockups/learner-flow/ and owner-flow/
 Breakdown: docs/issues/ui-v2-issue-breakdown.md
-Work is paused before #139. Resume with #139 only when the owner asks.
+Current issue: #139 Truthful Study Server and Course lifecycle.
+Current branch: feature/139-truthful-study-server-course-lifecycle.
+
+Implement #139 end to end with Cursor Composer 2.5. Follow vertical-slice TDD and preserve the approved UI. Complete the full issue loop: local verification, desktop/mobile browser proof, issue-139 change/debug logs, commit, push, PR, CI, up to three CodeAnt remediation rounds, gated merge, sync main, then continue with #140.
 
 Repo: https://github.com/Vinosaamaa/chanter
 Epic: https://github.com/Vinosaamaa/chanter/issues/131
-Current slice: https://github.com/Vinosaimaa/chanter/issues/138
+Current slice: https://github.com/Vinosaamaa/chanter/issues/139
 Project: https://github.com/users/Vinosaamaa/projects/5
 Demo: docs/operations/workable-product-demo.md
 ```
@@ -387,13 +394,12 @@ Demo: docs/operations/workable-product-demo.md
 - **Agent workflow:** read [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) before picking work; follow the active project board order. Agents may merge after CI and CodeAnt gates; never push directly to `main`.
 - **Product showcase:** `docs/product-design/` has target UI mockups, user-journey diagram, `vision.md`, and **`visibility-and-social-model.md`** (global friends vs enrollment-scoped course sidebar). **Implement against v2:** `DESIGN-DECISIONS.md`. Use it when implementing frontend routes or explaining scope to stakeholders. `frontend/src/App.tsx` is an API demo, not the final shell.
 - **Engineering diagrams:** `docs/diagrams/` is for service architecture — do not put product mockups there.
-- **One GitHub issue → one branch → one PR → merge only after user approval.** Never push directly to `main` for any change, including docs. Use `make setup-git-hooks` to block accidental local pushes.
-- Do not push after edits or commits unless the user explicitly approves the push as a separate action at push time.
+- **One GitHub issue → one branch → one PR.** Agents may push feature branches and merge after the CI and CodeAnt gates in `agent-workflow.md`; never push directly to `main`, including for docs. Use `make setup-git-hooks` to block accidental local pushes.
 - **TDD:** backend #12–#24 used TDD for domain behavior; production frontend **#47–#55** test-last; **#56+** vertical-slice TDD per `agent-workflow.md`.
 - For every non-trivial slice, create or update an issue-scoped change log in `docs/operations/` before final handoff.
 - For every meaningful debugging incident, create or update an issue-scoped debug log in `docs/operations/` before final handoff.
 - For every **CodeAnt** suggestion that is fixed or explicitly deferred, create or update `docs/operations/issue-<number>-codeant-fix.md` (see `docs/operations/agent-workflow.md`). Historical cubic logs remain under `issue-*-cubic-fix.md`. Historical CodeRabbit logs remain under `issue-*-coderabbit-fix.md`.
 - Keep explanations beginner-friendly but production-oriented.
 - Preserve and update the docs when architecture or process decisions change.
-- Ask before creating remote repositories, pushing code, creating tickets, or installing third-party integrations.
+- Ask before creating a new remote repository or installing a third-party integration. Existing Chanter issue/branch/PR operations follow the authorized autonomous workflow.
 - Treat `plan.md` and `System Design.md` as living design documents.

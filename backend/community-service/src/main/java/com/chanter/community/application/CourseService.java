@@ -18,6 +18,7 @@ import com.chanter.community.domain.CourseCatalog;
 import com.chanter.community.domain.CourseCatalogFilter;
 import com.chanter.community.domain.CourseChannel;
 import com.chanter.community.domain.CourseChannelMessageAccess;
+import com.chanter.community.domain.CourseLifecycle;
 import com.chanter.community.domain.CourseResourceAccess;
 import com.chanter.community.domain.CourseRole;
 import com.chanter.community.domain.InstructorRole;
@@ -45,24 +46,63 @@ public class CourseService {
     public static final int MAX_COHORT_ENROLLMENT_OFFSET = 10_000;
     private static final Duration COURSE_VOICE_PRESENCE_TTL = Duration.ofSeconds(30);
 
-    private final StudyServerRepository studyServerRepository;
     private final CourseRepository courseRepository;
     private final AuthUserDirectoryClient authUserDirectoryClient;
     private final LiveKitTokenIssuer liveKitTokenIssuer;
     private final Clock clock;
 
     public CourseService(
-            StudyServerRepository studyServerRepository,
             CourseRepository courseRepository,
             AuthUserDirectoryClient authUserDirectoryClient,
             LiveKitTokenIssuer liveKitTokenIssuer,
             Clock clock
     ) {
-        this.studyServerRepository = studyServerRepository;
         this.courseRepository = courseRepository;
         this.authUserDirectoryClient = authUserDirectoryClient;
         this.liveKitTokenIssuer = liveKitTokenIssuer;
         this.clock = clock;
+    }
+
+    public CourseLifecycle createCourse(
+            UUID studyServerId,
+            UUID ownerUserId,
+            String title,
+            String description,
+            String cohortName
+    ) {
+        requireStudyServerOwner(studyServerId, ownerUserId);
+
+        String normalizedTitle = title.trim();
+        String normalizedDescription = description == null || description.isBlank() ? null : description.trim();
+
+        if (cohortName == null || cohortName.isBlank()) {
+            return courseRepository.saveDraftCourse(
+                    studyServerId,
+                    normalizedTitle,
+                    normalizedDescription,
+                    ownerUserId,
+                    clock.instant()
+            );
+        }
+
+        UUID courseId = UUID.randomUUID();
+        Cohort cohort = new Cohort(UUID.randomUUID(), courseId, cohortName.trim(), UUID.randomUUID());
+        Course course = new Course(
+                courseId,
+                studyServerId,
+                normalizedTitle,
+                new InstructorRole(ownerUserId, CourseRole.INSTRUCTOR),
+                cohort,
+                defaultChannelsForCohort(courseId, cohort.id()),
+                clock.instant()
+        );
+
+        courseRepository.save(course, normalizedDescription);
+        return courseRepository.findCourseLifecycle(courseId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Course was created but could not be loaded"
+                ));
     }
 
     public Course createCourseWithCohort(
@@ -72,30 +112,143 @@ public class CourseService {
             UUID instructorUserId,
             String cohortName
     ) {
-        var studyServer = studyServerRepository.findById(studyServerId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
-        if (!studyServer.ownerRole().userId().equals(ownerUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Study Server Owner can create Courses");
+        CourseLifecycle lifecycle = createCourse(studyServerId, ownerUserId, title, null, cohortName);
+        if (!instructorUserId.equals(ownerUserId)) {
+            assignCourseInstructor(lifecycle.id(), ownerUserId, instructorUserId, null);
+        }
+        return toLegacyCourse(lifecycle);
+    }
+
+    @Transactional
+    public Cohort addCohortToCourse(UUID courseId, UUID ownerUserId, String name) {
+        UUID studyServerId = courseRepository.findStudyServerIdByCourseId(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        requireStudyServerOwner(studyServerId, ownerUserId);
+
+        courseRepository.lockCourseForMutation(courseId);
+        CourseLifecycle lifecycle = courseRepository.findCourseLifecycle(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        if (lifecycle.archived()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Archived courses cannot gain a cohort");
+        }
+        if (lifecycle.cohort().isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Course already has a cohort");
         }
 
-        UUID courseId = UUID.randomUUID();
-        Cohort cohort = new Cohort(UUID.randomUUID(), courseId, cohortName.trim(), UUID.randomUUID());
-        Course course = new Course(
+        String normalizedName = name.trim();
+        UUID cohortId = UUID.randomUUID();
+        Cohort cohort = new Cohort(cohortId, courseId, normalizedName, UUID.randomUUID());
+        return courseRepository.addCohortToCourse(
                 courseId,
-                studyServerId,
-                title.trim(),
-                new InstructorRole(instructorUserId, CourseRole.INSTRUCTOR),
                 cohort,
-                List.of(
-                        new CourseChannel(UUID.randomUUID(), courseId, cohort.id(), "announcements", ChannelKind.TEXT, 0),
-                        new CourseChannel(UUID.randomUUID(), courseId, cohort.id(), "questions", ChannelKind.TEXT, 1),
-                        new CourseChannel(UUID.randomUUID(), courseId, cohort.id(), "resources", ChannelKind.TEXT, 2),
-                        new CourseChannel(UUID.randomUUID(), courseId, cohort.id(), "study-room", ChannelKind.VOICE, 3)
-                ),
-                clock.instant()
+                defaultChannelsForCohort(courseId, cohortId)
         );
+    }
 
-        return courseRepository.save(course);
+    @Transactional
+    public void assignCourseInstructor(
+            UUID courseId,
+            UUID ownerUserId,
+            UUID instructorUserId,
+            String instructorEmail
+    ) {
+        UUID studyServerId = courseRepository.findStudyServerIdByCourseId(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        requireStudyServerOwner(studyServerId, ownerUserId);
+        UUID resolvedInstructorUserId = resolveInstructorUserId(instructorUserId, instructorEmail);
+        courseRepository.assignCourseInstructor(courseId, resolvedInstructorUserId);
+    }
+
+    public CourseLifecycle updateCourseMetadata(
+            UUID courseId,
+            UUID ownerUserId,
+            String title,
+            String description
+    ) {
+        requireCourseOwner(courseId, ownerUserId);
+        String normalizedTitle = title.trim();
+        String normalizedDescription = description == null || description.isBlank() ? null : description.trim();
+        courseRepository.updateCourseMetadata(courseId, normalizedTitle, normalizedDescription);
+        return courseRepository.findCourseLifecycle(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+    }
+
+    public void publishCourse(UUID courseId, UUID ownerUserId) {
+        requireCourseOwner(courseId, ownerUserId);
+        CourseLifecycle lifecycle = courseRepository.findCourseLifecycle(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        if (lifecycle.archived()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Archived courses cannot be published");
+        }
+        if (lifecycle.cohort().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Course needs a cohort before publishing");
+        }
+        courseRepository.setCoursePublished(courseId, true);
+    }
+
+    public void unpublishCourse(UUID courseId, UUID ownerUserId) {
+        requireCourseOwner(courseId, ownerUserId);
+        courseRepository.setCoursePublished(courseId, false);
+    }
+
+    public void archiveCourse(UUID courseId, UUID ownerUserId) {
+        requireCourseOwner(courseId, ownerUserId);
+        courseRepository.archiveCourse(courseId, clock.instant());
+    }
+
+    public CourseLifecycle getCourseLifecycle(UUID courseId, UUID viewerUserId) {
+        CourseLifecycle lifecycle = courseRepository.findCourseLifecycle(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        boolean owner = courseRepository.isStudyServerOwner(lifecycle.studyServerId(), viewerUserId);
+        boolean instructor = courseRepository.isCourseInstructor(courseId, viewerUserId);
+        if (!owner && !instructor) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the Study Server owner or Course Instructor can view course lifecycle"
+            );
+        }
+        return lifecycle;
+    }
+
+    private void requireStudyServerOwner(UUID studyServerId, UUID userId) {
+        if (!courseRepository.isStudyServerOwner(studyServerId, userId)) {
+            if (!courseRepository.studyServerExists(studyServerId)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found");
+            }
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Study Server Owner can create Courses");
+        }
+    }
+
+    private void requireCourseOwner(UUID courseId, UUID ownerUserId) {
+        UUID studyServerId = courseRepository.findStudyServerIdByCourseId(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        requireStudyServerOwner(studyServerId, ownerUserId);
+    }
+
+    private static List<CourseChannel> defaultChannelsForCohort(UUID courseId, UUID cohortId) {
+        return List.of(
+                new CourseChannel(UUID.randomUUID(), courseId, cohortId, "announcements", ChannelKind.TEXT, 0),
+                new CourseChannel(UUID.randomUUID(), courseId, cohortId, "questions", ChannelKind.TEXT, 1),
+                new CourseChannel(UUID.randomUUID(), courseId, cohortId, "resources", ChannelKind.TEXT, 2),
+                new CourseChannel(UUID.randomUUID(), courseId, cohortId, "study-room", ChannelKind.VOICE, 3)
+        );
+    }
+
+    private static Course toLegacyCourse(CourseLifecycle lifecycle) {
+        Cohort cohort = lifecycle.cohort()
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Coupled course create requires a cohort"
+                ));
+        return new Course(
+                lifecycle.id(),
+                lifecycle.studyServerId(),
+                lifecycle.title(),
+                new InstructorRole(lifecycle.instructorUserId(), CourseRole.INSTRUCTOR),
+                cohort,
+                lifecycle.channels(),
+                lifecycle.createdAt()
+        );
     }
 
     public CourseCatalog findCourseCatalog(
@@ -513,6 +666,24 @@ public class CourseService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Channel is not a Voice Channel");
         }
         return channel;
+    }
+
+    private UUID resolveInstructorUserId(UUID instructorUserId, String instructorEmail) {
+        if (instructorUserId != null) {
+            if (authUserDirectoryClient.findByIds(List.of(instructorUserId)).isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            }
+            return instructorUserId;
+        }
+        if (instructorEmail == null || instructorEmail.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Instructor user id or email is required"
+            );
+        }
+        return authUserDirectoryClient.findByEmail(normalizeEmail(instructorEmail))
+                .map(AuthUserProfile::userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User email not found"));
     }
 
     private static String normalizeEmail(String email) {

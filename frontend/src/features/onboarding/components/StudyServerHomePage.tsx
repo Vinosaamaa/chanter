@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -12,14 +12,6 @@ import { courseChannelPath } from '../../shell/shell-routes'
 import { StudyServerIcon } from '../../shell/components/StudyServerIcon'
 
 import { createCourse } from '../onboarding-api'
-
-function readStoredDescription(serverId: string): string | null {
-  try {
-    return sessionStorage.getItem(`chanter:study-server-description:${serverId}`)
-  } catch {
-    return null
-  }
-}
 
 function courseAccent(title: string): string {
   const palette = ['#7c6cff', '#3ecf8e', '#4da3ff', '#f5a623', '#ff6b8a']
@@ -41,11 +33,6 @@ export function StudyServerHomePage() {
   const [isCreatingCourse, setIsCreatingCourse] = useState(false)
   const [courseError, setCourseError] = useState<string | null>(null)
   const [courseMessage, setCourseMessage] = useState<string | null>(null)
-
-  const storedDescription = useMemo(
-    () => (serverId ? readStoredDescription(serverId) : null),
-    [serverId],
-  )
 
   if (!serverId) {
     return null
@@ -101,10 +88,9 @@ export function StudyServerHomePage() {
               {navigation?.studyServerName ?? 'Study Server'}
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-app-muted">
-              {storedDescription ??
-                (canManage
-                  ? 'Create courses and open enrollment for your cohorts.'
-                  : 'Your enrolled courses on this Study Server.')}
+              {canManage
+                ? 'Create courses and open enrollment for your cohorts.'
+                : 'Your enrolled courses on this Study Server.'}
             </p>
           </div>
         </div>

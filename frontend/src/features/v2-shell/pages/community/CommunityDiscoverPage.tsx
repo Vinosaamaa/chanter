@@ -321,11 +321,14 @@ function CreateCourseModal({
 }: {
   serverId: string
   onClose: () => void
-  onCreated: () => Promise<void>
+  onCreated: (courseId: string, published: boolean) => Promise<void>
 }) {
+  const navigate = useNavigate()
   const [code, setCode] = useState('PHYS 101')
   const [name, setName] = useState('Physics I')
+  const [description, setDescription] = useState('')
   const [cohort, setCohort] = useState('Fall 2026')
+  const [createMode, setCreateMode] = useState<'draft' | 'publish-ready'>('publish-ready')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const dialogRef = useModalFocus(onClose, busy)
@@ -334,8 +337,16 @@ function CreateCourseModal({
     setBusy(true)
     setError(null)
     try {
-      await createCourse(serverId, { title: `${code} - ${name}`, cohortName: cohort })
-      await onCreated()
+      const title = `${code.trim()} - ${name.trim()}`
+      const created = await createCourse(serverId, {
+        title,
+        description: description.trim() || undefined,
+        cohortName: createMode === 'publish-ready' ? cohort : undefined,
+      })
+      await onCreated(created.id, created.published ?? Boolean(created.cohort))
+      if (!created.cohort) {
+        navigate(`/app/servers/${serverId}/courses/${created.id}/settings`)
+      }
     } catch (caught) {
       setError(formatUserFacingApiError(caught, 'Unable to create Course.'))
     } finally {
@@ -357,12 +368,39 @@ function CreateCourseModal({
         <label>Course code<input data-initial-focus value={code} onChange={(event) => setCode(event.target.value)} required /></label>
         <label>Course name<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
         <label>
-          First Cohort
-          <select value={cohort} onChange={(event) => setCohort(event.target.value)}>
-            <option>Fall 2026</option>
-            <option>Spring 2027</option>
-          </select>
+          Description
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} />
         </label>
+        <fieldset className="create-course-mode">
+          <legend>Creation mode</legend>
+          <label>
+            <input
+              type="radio"
+              name="create-mode"
+              checked={createMode === 'publish-ready'}
+              onChange={() => setCreateMode('publish-ready')}
+            />
+            Create with first Cohort (published)
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="create-mode"
+              checked={createMode === 'draft'}
+              onChange={() => setCreateMode('draft')}
+            />
+            Save as draft (add Cohort later)
+          </label>
+        </fieldset>
+        {createMode === 'publish-ready' ? (
+          <label>
+            First Cohort
+            <select value={cohort} onChange={(event) => setCohort(event.target.value)}>
+              <option>Fall 2026</option>
+              <option>Spring 2027</option>
+            </select>
+          </label>
+        ) : null}
         {error ? <p className="modal-error" role="alert">{error}</p> : null}
         <footer>
           <button type="button" className="v2-outline-button" disabled={busy} onClick={onClose}>Cancel</button>

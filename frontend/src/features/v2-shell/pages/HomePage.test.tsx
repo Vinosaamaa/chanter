@@ -28,6 +28,10 @@ vi.mock('../hooks/use-v2-sidebar-data', () => ({
   }),
 }))
 
+vi.mock('../components/HomeStudyServerInvites', () => ({
+  HomeStudyServerInvites: () => null,
+}))
+
 describe('HomePage', () => {
   it('renders greeting and continue learning section', () => {
     render(

@@ -5,7 +5,9 @@ import com.chanter.community.domain.CohortEnrollment;
 import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.CohortInvitation;
 import com.chanter.community.domain.CohortJoinDetails;
+import com.chanter.community.domain.Cohort;
 import com.chanter.community.domain.Course;
+import com.chanter.community.domain.CourseLifecycle;
 import com.chanter.community.domain.CourseCatalogCourse;
 import com.chanter.community.domain.CourseCatalogFilter;
 import com.chanter.community.domain.CourseChannel;
@@ -23,7 +25,7 @@ import java.util.UUID;
 
 public interface CourseRepository {
 
-    Course save(Course course);
+    Course save(Course course, String description);
 
     List<CourseCatalogCourse> findPublishedCourseCatalog(
             UUID studyServerId,
@@ -130,4 +132,30 @@ public interface CourseRepository {
     Optional<StudyAssistantViewerScope> findViewerScope(UUID studyServerId, UUID userId);
 
     List<AccessibleStudyServer> listAccessibleStudyServers(UUID userId);
+
+    CourseLifecycle saveDraftCourse(
+            UUID studyServerId,
+            String title,
+            String description,
+            UUID instructorUserId,
+            Instant createdAt
+    );
+
+    Optional<CourseLifecycle> findCourseLifecycle(UUID courseId);
+
+    Optional<UUID> findStudyServerIdByCourseId(UUID courseId);
+
+    void lockCourseForMutation(UUID courseId);
+
+    Cohort addCohortToCourse(UUID courseId, Cohort cohort, List<CourseChannel> channels);
+
+    void assignCourseInstructor(UUID courseId, UUID instructorUserId);
+
+    void setCoursePublished(UUID courseId, boolean published);
+
+    void updateCourseMetadata(UUID courseId, String title, String description);
+
+    void archiveCourse(UUID courseId, Instant archivedAt);
+
+    boolean isCourseInstructor(UUID courseId, UUID userId);
 }

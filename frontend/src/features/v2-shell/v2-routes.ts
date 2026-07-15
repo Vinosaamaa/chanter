@@ -43,6 +43,10 @@ export function v2CoursePath(
   return `/app/servers/${serverId}/courses/${courseId}/${tab}`
 }
 
+export function v2CourseSettingsPath(serverId: string, courseId: string): string {
+  return `/app/servers/${serverId}/courses/${courseId}/settings`
+}
+
 export function v2CommunityPath(
   serverId: string,
   tab: V2CommunityTab = 'announcements',
