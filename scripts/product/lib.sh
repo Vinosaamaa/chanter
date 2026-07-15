@@ -324,6 +324,36 @@ os._exit(0)
 PY
 }
 
+product_postgres_databases() {
+  cat <<'EOF'
+chanter_auth
+chanter_community
+chanter_message
+chanter_media
+chanter_agent
+chanter_search
+chanter_notification
+chanter_user
+EOF
+}
+
+# Init scripts only run on first Postgres volume create. Re-create any missing
+# service DBs when infra is restarted against an older volume (e.g. after #143).
+product_ensure_databases() {
+  local db postgres_user postgres_db
+  postgres_user="${POSTGRES_USER:-chanter}"
+  postgres_db="${POSTGRES_DB:-chanter}"
+
+  echo "Ensuring Postgres service databases exist..."
+  while IFS= read -r db; do
+    [ -n "$db" ] || continue
+    docker exec chanter-postgres psql -U "$postgres_user" -d "$postgres_db" -v ON_ERROR_STOP=1 \
+      -tc "SELECT 1 FROM pg_database WHERE datname = '$db'" | grep -q 1 \
+      || docker exec chanter-postgres psql -U "$postgres_user" -d "$postgres_db" -v ON_ERROR_STOP=1 \
+        -c "CREATE DATABASE $db;"
+  done < <(product_postgres_databases)
+}
+
 product_prepare_infrastructure() {
   local root compose_file
   root="$(product_repo_root)"
@@ -333,6 +363,7 @@ product_prepare_infrastructure() {
   docker compose -f "$compose_file" --env-file "$root/.env" --profile product stop realtime-service >/dev/null 2>&1 || true
   docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --wait --wait-timeout 180 \
     postgres redis redpanda minio livekit
+  product_ensure_databases
   echo "Infrastructure is healthy."
 }
 

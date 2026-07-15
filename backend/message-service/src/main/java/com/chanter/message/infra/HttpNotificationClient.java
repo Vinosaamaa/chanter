@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ public class HttpNotificationClient implements NotificationClient {
     private final RestClient restClient;
     private final String serviceToken;
 
+    @Autowired
     public HttpNotificationClient(NotificationServiceClientProperties properties) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(properties.connectTimeout()).build()
