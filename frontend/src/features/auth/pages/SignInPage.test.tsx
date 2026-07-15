@@ -10,7 +10,7 @@ describe('SignInPage public destinations', () => {
     useAuthStore.setState({ accessToken: null, refreshToken: null, user: null })
   })
 
-  it('exposes Terms and marks unavailable Google sign-in as disabled', () => {
+  it('exposes Terms, forgot password, and marks unavailable Google sign-in as disabled', () => {
     render(
       <MemoryRouter initialEntries={['/sign-in']}>
         <SignInPage />
@@ -18,6 +18,7 @@ describe('SignInPage public destinations', () => {
     )
 
     expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms')
+    expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password')
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDisabled()
     expect(screen.queryByText('3 new')).not.toBeInTheDocument()
   })

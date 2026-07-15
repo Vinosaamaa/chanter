@@ -19,7 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(properties = "chanter.internal-service-token=test-internal-service-token-for-auth")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class AuthSessionSmokeTest {

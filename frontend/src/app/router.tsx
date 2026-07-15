@@ -2,6 +2,10 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute'
 import { SignInPage } from '../features/auth/pages/SignInPage'
+import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
+import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage'
+import { OAuthCallbackPage } from '../features/auth/pages/OAuthCallbackPage'
 import { TermsPage } from '../features/auth/pages/TermsPage'
 import DevDemoApp from '../features/dev-demo/DevDemoApp'
 import { DevDemoRoutePage } from '../features/dev-demo/DevDemoRoutePage'
@@ -44,6 +48,22 @@ export function createAppRouter() {
     {
       path: '/sign-in',
       element: <SignInPage />,
+    },
+    {
+      path: '/forgot-password',
+      element: <ForgotPasswordPage />,
+    },
+    {
+      path: '/reset-password',
+      element: <ResetPasswordPage />,
+    },
+    {
+      path: '/verify-email',
+      element: <VerifyEmailPage />,
+    },
+    {
+      path: '/oauth/callback/google',
+      element: <OAuthCallbackPage />,
     },
     {
       path: '/terms',

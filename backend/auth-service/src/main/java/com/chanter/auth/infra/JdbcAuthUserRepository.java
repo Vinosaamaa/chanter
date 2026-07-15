@@ -5,7 +5,6 @@ import com.chanter.auth.domain.AuthUser;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,14 +28,32 @@ public class JdbcAuthUserRepository implements AuthUserRepository {
     public AuthUser save(AuthUser user) {
         jdbcTemplate.update(
                 """
-                INSERT INTO auth_users (id, email, password_hash, display_name, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO auth_users (id, email, password_hash, display_name, email_verified, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 user.id(),
                 user.email(),
                 user.passwordHash(),
                 user.displayName(),
+                user.emailVerified(),
                 Timestamp.from(user.createdAt())
+        );
+        return user;
+    }
+
+    @Override
+    public AuthUser update(AuthUser user) {
+        jdbcTemplate.update(
+                """
+                UPDATE auth_users
+                SET email = ?, password_hash = ?, display_name = ?, email_verified = ?
+                WHERE id = ?
+                """,
+                user.email(),
+                user.passwordHash(),
+                user.displayName(),
+                user.emailVerified(),
+                user.id()
         );
         return user;
     }
@@ -45,7 +62,7 @@ public class JdbcAuthUserRepository implements AuthUserRepository {
     public Optional<AuthUser> findByEmail(String email) {
         return jdbcTemplate.query(
                         """
-                        SELECT id, email, password_hash, display_name, created_at
+                        SELECT id, email, password_hash, display_name, email_verified, created_at
                         FROM auth_users
                         WHERE email = ?
                         """,
@@ -60,7 +77,7 @@ public class JdbcAuthUserRepository implements AuthUserRepository {
     public Optional<AuthUser> findById(UUID id) {
         return jdbcTemplate.query(
                         """
-                        SELECT id, email, password_hash, display_name, created_at
+                        SELECT id, email, password_hash, display_name, email_verified, created_at
                         FROM auth_users
                         WHERE id = ?
                         """,
@@ -80,7 +97,7 @@ public class JdbcAuthUserRepository implements AuthUserRepository {
         String placeholders = ids.stream().map(ignored -> "?").collect(Collectors.joining(", "));
         return jdbcTemplate.query(
                 """
-                SELECT id, email, password_hash, display_name, created_at
+                SELECT id, email, password_hash, display_name, email_verified, created_at
                 FROM auth_users
                 WHERE id IN (%s)
                 """.formatted(placeholders),
@@ -99,12 +116,23 @@ public class JdbcAuthUserRepository implements AuthUserRepository {
         return Boolean.TRUE.equals(exists);
     }
 
+    @Override
+    public void markEmailVerified(UUID userId) {
+        jdbcTemplate.update("UPDATE auth_users SET email_verified = TRUE WHERE id = ?", userId);
+    }
+
+    @Override
+    public void updatePasswordHash(UUID userId, String passwordHash) {
+        jdbcTemplate.update("UPDATE auth_users SET password_hash = ? WHERE id = ?", passwordHash, userId);
+    }
+
     private static AuthUser mapRow(ResultSet resultSet) throws SQLException {
         return new AuthUser(
                 resultSet.getObject("id", UUID.class),
                 resultSet.getString("email"),
                 resultSet.getString("password_hash"),
                 resultSet.getString("display_name"),
+                resultSet.getBoolean("email_verified"),
                 resultSet.getTimestamp("created_at").toInstant()
         );
     }
