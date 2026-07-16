@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create or refresh local .env with unique JWT / internal-service secrets (SEC-04).
+# Create or refresh local .env with unique secrets (SEC-04, SEC-12).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,6 +32,20 @@ print(base64.b64encode(secrets.token_bytes(48)).decode("ascii"))
 PY
 }
 
+random_alphanumeric() {
+  local length="${1:-32}"
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c "$length"
+    return 0
+  fi
+  python3 - "$length" <<'PY'
+import secrets, string, sys
+length = int(sys.argv[1])
+alphabet = string.ascii_letters + string.digits
+print(''.join(secrets.choice(alphabet) for _ in range(length)))
+PY
+}
+
 upsert_secret() {
   local key="$1"
   local value="$2"
@@ -58,6 +72,16 @@ upsert_secret() {
 
 needs_replace() {
   local key="$1"
+  local current
+  current="$(grep -E "^${key}=" "$env_file" | head -1 | cut -d= -f2- || true)"
+  if [ -z "$current" ]; then
+    return 0
+  fi
+  return 1
+}
+
+needs_replace_secret() {
+  local key="$1"
   local forbidden="$2"
   local current
   current="$(grep -E "^${key}=" "$env_file" | head -1 | cut -d= -f2- || true)"
@@ -68,14 +92,47 @@ needs_replace() {
 }
 
 changed=0
-if needs_replace "CHANTER_JWT_SECRET" "$CHANTER_FORBIDDEN_JWT_SECRET_DEFAULT"; then
+
+# JWT and internal service token (SEC-04)
+if needs_replace_secret "CHANTER_JWT_SECRET" "$CHANTER_FORBIDDEN_JWT_SECRET_DEFAULT"; then
   upsert_secret "CHANTER_JWT_SECRET" "$(random_secret)" "$env_file"
   echo "Set CHANTER_JWT_SECRET to a new random value"
   changed=1
 fi
-if needs_replace "CHANTER_INTERNAL_SERVICE_TOKEN" "$CHANTER_FORBIDDEN_INTERNAL_SERVICE_TOKEN_DEFAULT"; then
+if needs_replace_secret "CHANTER_INTERNAL_SERVICE_TOKEN" "$CHANTER_FORBIDDEN_INTERNAL_SERVICE_TOKEN_DEFAULT"; then
   upsert_secret "CHANTER_INTERNAL_SERVICE_TOKEN" "$(random_secret)" "$env_file"
   echo "Set CHANTER_INTERNAL_SERVICE_TOKEN to a new random value"
+  changed=1
+fi
+
+# Redis password (SEC-12) — empty in .env.example; generate a random value here.
+if needs_replace "REDIS_PASSWORD"; then
+  upsert_secret "REDIS_PASSWORD" "$(random_alphanumeric 32)" "$env_file"
+  echo "Set REDIS_PASSWORD to a new random value"
+  changed=1
+fi
+
+# MinIO credentials (SEC-12) — empty in .env.example; set local defaults here.
+if needs_replace "MINIO_ROOT_USER"; then
+  upsert_secret "MINIO_ROOT_USER" "chanter-local" "$env_file"
+  echo "Set MINIO_ROOT_USER to chanter-local"
+  changed=1
+fi
+if needs_replace "MINIO_ROOT_PASSWORD"; then
+  upsert_secret "MINIO_ROOT_PASSWORD" "$(random_alphanumeric 32)" "$env_file"
+  echo "Set MINIO_ROOT_PASSWORD to a new random value"
+  changed=1
+fi
+
+# LiveKit API key/secret (SEC-12) — empty in .env.example; generate here.
+if needs_replace "LIVEKIT_API_KEY"; then
+  upsert_secret "LIVEKIT_API_KEY" "chanterlocal" "$env_file"
+  echo "Set LIVEKIT_API_KEY to chanterlocal"
+  changed=1
+fi
+if needs_replace "LIVEKIT_API_SECRET"; then
+  upsert_secret "LIVEKIT_API_SECRET" "$(random_alphanumeric 48)" "$env_file"
+  echo "Set LIVEKIT_API_SECRET to a new random value"
   changed=1
 fi
 
@@ -86,7 +143,7 @@ if ! grep -q '^DEMO_PASSWORD=' "$env_file" 2>/dev/null; then
 fi
 
 if [ "$changed" -eq 0 ]; then
-  echo "$env_file already has unique runtime secrets (≥32 chars, not known defaults)."
+  echo "$env_file already has unique runtime secrets (no empty placeholders, not known defaults)."
 else
   echo "Ready. Next: make product-up   # or make product-supervise"
 fi

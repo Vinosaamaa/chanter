@@ -35,32 +35,59 @@ assert_eq "frontend url" "http://localhost:5173" "$(product_frontend_url)"
 assert_eq "gateway url" "http://localhost:8080" "$(product_gateway_url)"
 assert_eq "livekit url" "ws://localhost:7880" "$(product_livekit_url)"
 
-stale_env="$(mktemp)"
-trap 'rm -f "$stale_env"' EXIT
+full_env="$(mktemp)"
+trap 'rm -f "$full_env"' EXIT
 printf '%s\n' \
   'CHANTER_JWT_SECRET=issue137-test-jwt-secret-at-least-32-chars' \
   'CHANTER_INTERNAL_SERVICE_TOKEN=issue137-test-service-token-at-least-32' \
-  > "$stale_env"
+  'REDIS_PASSWORD=test-redis-password-32chars-xxxxxx' \
+  'MINIO_ROOT_USER=chanter-local' \
+  'MINIO_ROOT_PASSWORD=test-minio-password-32chars-xxxxx' \
+  'LIVEKIT_API_KEY=chanterlocal' \
+  'LIVEKIT_API_SECRET=test-livekit-secret-48chars-xxxxxxxxxxxxxxxxxxx' \
+  > "$full_env"
 livekit_defaults="$({
-  unset LIVEKIT_URL LIVEKIT_HTTP_URL LIVEKIT_API_KEY LIVEKIT_API_SECRET
-  export CHANTER_PRODUCT_ENV_FILE="$stale_env"
+  unset LIVEKIT_URL LIVEKIT_HTTP_URL
+  export CHANTER_PRODUCT_ENV_FILE="$full_env"
   product_load_env
-  printf '%s|%s|%s|%s|%s' \
+  printf '%s|%s|%s' \
     "$LIVEKIT_URL" \
     "$LIVEKIT_HTTP_URL" \
-    "$LIVEKIT_API_KEY" \
-    "$LIVEKIT_API_SECRET" \
     "$CHANTER_JWT_SECRET"
 })"
-assert_eq "stale env receives LiveKit defaults" \
-  "ws://localhost:7880|http://localhost:7880|devkey|secret|issue137-test-jwt-secret-at-least-32-chars" \
+assert_eq "full env livekit url defaults" \
+  "ws://localhost:7880|http://localhost:7880|issue137-test-jwt-secret-at-least-32-chars" \
   "$livekit_defaults"
+
+# SEC-12: reject env missing REDIS_PASSWORD
+missing_redis_env="$(mktemp)"
+printf '%s\n' \
+  'CHANTER_JWT_SECRET=issue137-test-jwt-secret-at-least-32-chars' \
+  'CHANTER_INTERNAL_SERVICE_TOKEN=issue137-test-service-token-at-least-32' \
+  'MINIO_ROOT_USER=chanter-local' \
+  'MINIO_ROOT_PASSWORD=test-minio-password-32chars-xxxxx' \
+  'LIVEKIT_API_KEY=chanterlocal' \
+  'LIVEKIT_API_SECRET=test-livekit-secret-48chars-xxxxxxxxxxxxxxxxxxx' \
+  > "$missing_redis_env"
+missing_redis_rc=0
+missing_redis_err="$(
+  export CHANTER_PRODUCT_ENV_FILE="$missing_redis_env"
+  product_load_env 2>&1
+)" || missing_redis_rc=$?
+assert_eq "rejects missing REDIS_PASSWORD (exit)" "1" "$missing_redis_rc"
+assert_contains "rejects missing REDIS_PASSWORD (message)" "REDIS_PASSWORD" "$missing_redis_err"
+rm -f "$missing_redis_env"
 
 # --- SEC-04: reject known default secrets (not just length) ---
 default_jwt_env="$(mktemp)"
 printf '%s\n' \
   'CHANTER_JWT_SECRET=chanter-local-dev-jwt-secret-32bytes!!' \
   'CHANTER_INTERNAL_SERVICE_TOKEN=issue137-test-service-token-at-least-32' \
+  'REDIS_PASSWORD=test-redis-password-32chars-xxxxxx' \
+  'MINIO_ROOT_USER=chanter-local' \
+  'MINIO_ROOT_PASSWORD=test-minio-password-32chars-xxxxx' \
+  'LIVEKIT_API_KEY=chanterlocal' \
+  'LIVEKIT_API_SECRET=test-livekit-secret-48chars-xxxxxxxxxxxxxxxxxxx' \
   > "$default_jwt_env"
 default_jwt_rc=0
 default_jwt_err="$(
@@ -75,6 +102,11 @@ default_token_env="$(mktemp)"
 printf '%s\n' \
   'CHANTER_JWT_SECRET=issue137-test-jwt-secret-at-least-32-chars' \
   'CHANTER_INTERNAL_SERVICE_TOKEN=chanter-local-dev-internal-service-token-32bytes!!' \
+  'REDIS_PASSWORD=test-redis-password-32chars-xxxxxx' \
+  'MINIO_ROOT_USER=chanter-local' \
+  'MINIO_ROOT_PASSWORD=test-minio-password-32chars-xxxxx' \
+  'LIVEKIT_API_KEY=chanterlocal' \
+  'LIVEKIT_API_SECRET=test-livekit-secret-48chars-xxxxxxxxxxxxxxxxxxx' \
   > "$default_token_env"
 default_token_rc=0
 default_token_err="$(

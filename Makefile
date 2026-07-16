@@ -29,9 +29,18 @@ define require-internal-service-token
 	@test "$$CHANTER_INTERNAL_SERVICE_TOKEN" != "chanter-local-dev-internal-service-token-32bytes!!" || (echo "CHANTER_INTERNAL_SERVICE_TOKEN rejects known default value (SEC-04). Run: make product-env" && exit 1)
 endef
 
+define require-infra-secrets
+	@test -n "$$REDIS_PASSWORD" || (echo "REDIS_PASSWORD is required (SEC-12). Run: make product-env" && exit 1)
+	@test -n "$$MINIO_ROOT_USER" || (echo "MINIO_ROOT_USER is required (SEC-12). Run: make product-env" && exit 1)
+	@test -n "$$MINIO_ROOT_PASSWORD" || (echo "MINIO_ROOT_PASSWORD is required (SEC-12). Run: make product-env" && exit 1)
+	@test -n "$$LIVEKIT_API_KEY" || (echo "LIVEKIT_API_KEY is required (SEC-12). Run: make product-env" && exit 1)
+	@test -n "$$LIVEKIT_API_SECRET" || (echo "LIVEKIT_API_SECRET is required (SEC-12). Run: make product-env" && exit 1)
+endef
+
 infra-up:
 	@test -f .env || (echo "Missing .env — run: make product-env" && exit 1)
 	@$(require-jwt-secret)
+	@$(require-infra-secrets)
 	docker compose -f infra/docker-compose.yml --env-file .env up -d postgres redis redpanda minio
 
 infra-down:
