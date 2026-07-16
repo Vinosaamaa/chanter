@@ -5,5 +5,10 @@ import reactor.core.publisher.Mono;
 
 public interface DmCallMediaTokenClient {
 
-    Mono<DmCallMediaToken> issueForCall(UUID callId, UUID participantUserId);
+    Mono<DmCallMediaToken> issueForCall(
+            UUID callId,
+            UUID participantUserId,
+            UUID callerUserId,
+            UUID calleeUserId
+    );
 }

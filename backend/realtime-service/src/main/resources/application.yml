@@ -15,6 +15,7 @@ chanter:
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
   community-service:
     base-url: ${COMMUNITY_SERVICE_URL:http://localhost:8082}
+    service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   message-service:
     base-url: ${MESSAGE_SERVICE_URL:http://localhost:8083}
 

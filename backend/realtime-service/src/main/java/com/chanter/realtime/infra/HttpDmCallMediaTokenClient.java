@@ -19,20 +19,31 @@ import reactor.core.publisher.Mono;
 public class HttpDmCallMediaTokenClient implements DmCallMediaTokenClient {
 
     private final WebClient webClient;
+    private final String serviceToken;
 
     public HttpDmCallMediaTokenClient(
-            @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl
+            @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
+            @Value("${chanter.community-service.service-token}") String serviceToken
     ) {
         this.webClient = WebClient.builder()
                 .baseUrl(communityServiceBaseUrl)
                 .build();
+        this.serviceToken = serviceToken;
     }
 
     @Override
-    public Mono<DmCallMediaToken> issueForCall(UUID callId, UUID participantUserId) {
+    public Mono<DmCallMediaToken> issueForCall(
+            UUID callId,
+            UUID participantUserId,
+            UUID callerUserId,
+            UUID calleeUserId
+    ) {
         return webClient.post()
                 .uri("/internal/v1/dm-calls/{callId}/media-token", callId)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, serviceToken)
                 .header(AuthHeaders.USER_ID, participantUserId.toString())
+                .header("X-Dm-Call-Caller-Id", callerUserId.toString())
+                .header("X-Dm-Call-Callee-Id", calleeUserId.toString())
                 .retrieve()
                 .bodyToMono(TokenResponse.class)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(

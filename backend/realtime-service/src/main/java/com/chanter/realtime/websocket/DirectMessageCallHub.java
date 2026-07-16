@@ -149,7 +149,12 @@ public class DirectMessageCallHub {
                     return call;
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(call -> mediaTokenClient.issueForCall(callId, userId));
+                .flatMap(call -> mediaTokenClient.issueForCall(
+                        callId,
+                        userId,
+                        call.callerUserId(),
+                        call.calleeUserId()
+                ));
     }
 
     private Mono<Void> endCall(UUID userId, UUID callId, String reason) {

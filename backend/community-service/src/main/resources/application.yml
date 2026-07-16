@@ -21,6 +21,7 @@ management:
       show-details: when_authorized
 
 chanter:
+  internal-service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   auth-service:
     base-url: ${AUTH_SERVICE_URL:http://localhost:8081}
     connect-timeout-seconds: ${AUTH_SERVICE_CONNECT_TIMEOUT_SECONDS:2}
