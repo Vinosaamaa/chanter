@@ -39,9 +39,21 @@ cd chanter
 make product-env
 ```
 
-This copies `.env.example` → `.env` (if needed) and fills **unique** `CHANTER_JWT_SECRET` / `CHANTER_INTERNAL_SERVICE_TOKEN` values. Do not paste the old in-repo example secrets — they are rejected on purpose (SEC-04).
+This copies `.env.example` → `.env` (if needed) and fills unique random values for every required secret. Do not paste the old in-repo example secrets — they are rejected on purpose (SEC-04, SEC-12).
+
+Secrets generated or set by `make product-env`:
+
+| Variable | Purpose |
+|---|---|
+| `CHANTER_JWT_SECRET` | JWT signing key (≥ 32 chars) |
+| `CHANTER_INTERNAL_SERVICE_TOKEN` | Backend service-to-service auth |
+| `REDIS_PASSWORD` | Redis `requirepass` — all services must use this |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | MinIO object storage credentials |
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | LiveKit media server keys |
 
 `make product-env` also adds `DEMO_PASSWORD=chanter-dev-demo` when missing (required for `make product-demo-seed`). You can change that password; both demo accounts use the same local value.
+
+> **Shared / staging note (SEC-12):** Never copy local `.env` to a shared or staging host. Rotate `REDIS_PASSWORD`, `MINIO_ROOT_PASSWORD`, `LIVEKIT_API_SECRET`, and JWT secrets with unique random values on each environment. All infra ports are bound to `127.0.0.1` by default — do not expose them directly on a public interface without a firewall rule or reverse proxy.
 
 ### Step 3 — Start everything
 

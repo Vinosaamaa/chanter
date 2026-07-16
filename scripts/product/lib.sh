@@ -109,6 +109,22 @@ product_validate_runtime_secrets() {
     echo "Replace it with a unique secret: make product-env" >&2
     return 1
   fi
+  # SEC-12: Redis, MinIO, and LiveKit credentials must be non-empty.
+  if [ -z "${REDIS_PASSWORD:-}" ]; then
+    echo "REDIS_PASSWORD must be set in $env_file (SEC-12)" >&2
+    echo "Generate one with: make product-env" >&2
+    return 1
+  fi
+  if [ -z "${MINIO_ROOT_USER:-}" ] || [ -z "${MINIO_ROOT_PASSWORD:-}" ]; then
+    echo "MINIO_ROOT_USER and MINIO_ROOT_PASSWORD must be set in $env_file (SEC-12)" >&2
+    echo "Generate them with: make product-env" >&2
+    return 1
+  fi
+  if [ -z "${LIVEKIT_API_KEY:-}" ] || [ -z "${LIVEKIT_API_SECRET:-}" ]; then
+    echo "LIVEKIT_API_KEY and LIVEKIT_API_SECRET must be set in $env_file (SEC-12)" >&2
+    echo "Generate them with: make product-env" >&2
+    return 1
+  fi
 }
 
 product_load_env() {
@@ -137,8 +153,6 @@ product_load_env() {
   set +a
   export LIVEKIT_URL="${LIVEKIT_URL:-ws://localhost:7880}"
   export LIVEKIT_HTTP_URL="${LIVEKIT_HTTP_URL:-http://localhost:7880}"
-  export LIVEKIT_API_KEY="${LIVEKIT_API_KEY:-devkey}"
-  export LIVEKIT_API_SECRET="${LIVEKIT_API_SECRET:-secret}"
   product_validate_runtime_secrets "$env_file"
 }
 
