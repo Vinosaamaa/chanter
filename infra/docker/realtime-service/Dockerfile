@@ -14,7 +14,7 @@ COPY backend/analytics-service/pom.xml backend/analytics-service/pom.xml
 COPY backend/search-service/pom.xml backend/search-service/pom.xml
 RUN cd backend && mvn -B -q -pl realtime-service -am package -DskipTests
 
-FROM eclipse-temurin:21.0.11_10-jre
+FROM eclipse-temurin:24.0.2_12-jre
 WORKDIR /app
 RUN groupadd --system chanter && useradd --system --gid chanter --home-dir /app chanter
 COPY --from=build /workspace/backend/realtime-service/target/realtime-service-*.jar /app/app.jar
