@@ -26,10 +26,12 @@ Allow microphone access in the browser when joining voice.
 ```bash
 git clone https://github.com/Vinosaamaa/chanter.git
 cd chanter
-cp .env.example .env
+make product-env
 make product-up
 make product-health
 ```
+
+`make product-env` creates `.env` with unique JWT / internal-service secrets (required; known in-repo defaults are rejected — SEC-04).
 
 `make product-up` starts infrastructure, builds and runs all backend services, starts the Vite frontend, and brings up **realtime-service** (Docker) and **LiveKit** for WebRTC.
 

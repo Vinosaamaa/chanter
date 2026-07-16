@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search backend-notification frontend-install frontend-dev frontend-build verify setup-git-hooks product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers product-e2e product-e2e-critical
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search backend-notification frontend-install frontend-dev frontend-build verify setup-git-hooks product-env product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers product-e2e product-e2e-critical
 
 ifeq ($(shell uname -s),Darwin)
 JAVA_HOME_21 := $(shell /usr/libexec/java_home -v 21 2>/dev/null)
@@ -18,17 +18,20 @@ export
 endif
 
 define require-jwt-secret
-	@test -n "$$CHANTER_JWT_SECRET" || (echo "CHANTER_JWT_SECRET is required. Copy .env.example to .env and set a 32+ character secret." && exit 1)
+	@test -n "$$CHANTER_JWT_SECRET" || (echo "CHANTER_JWT_SECRET is required. Run: make product-env" && exit 1)
 	@test $${#CHANTER_JWT_SECRET} -ge 32 || (echo "CHANTER_JWT_SECRET must be at least 32 characters." && exit 1)
+	@test "$$CHANTER_JWT_SECRET" != "chanter-local-dev-jwt-secret-32bytes!!" || (echo "CHANTER_JWT_SECRET rejects known default value (SEC-04). Run: make product-env" && exit 1)
 endef
 
 define require-internal-service-token
-	@test -n "$$CHANTER_INTERNAL_SERVICE_TOKEN" || (echo "CHANTER_INTERNAL_SERVICE_TOKEN is required. Add a 32+ character value to .env." && exit 1)
+	@test -n "$$CHANTER_INTERNAL_SERVICE_TOKEN" || (echo "CHANTER_INTERNAL_SERVICE_TOKEN is required. Run: make product-env" && exit 1)
 	@test $${#CHANTER_INTERNAL_SERVICE_TOKEN} -ge 32 || (echo "CHANTER_INTERNAL_SERVICE_TOKEN must be at least 32 characters." && exit 1)
+	@test "$$CHANTER_INTERNAL_SERVICE_TOKEN" != "chanter-local-dev-internal-service-token-32bytes!!" || (echo "CHANTER_INTERNAL_SERVICE_TOKEN rejects known default value (SEC-04). Run: make product-env" && exit 1)
 endef
 
 infra-up:
-	@test -f .env || cp .env.example .env
+	@test -f .env || (echo "Missing .env — run: make product-env" && exit 1)
+	@$(require-jwt-secret)
 	docker compose -f infra/docker-compose.yml --env-file .env up -d postgres redis redpanda minio
 
 infra-down:
@@ -90,6 +93,10 @@ frontend-build:
 	cd frontend && npm run build
 
 verify: backend-test frontend-build product-test
+
+product-env:
+	chmod +x ./scripts/product/init-env.sh
+	./scripts/product/init-env.sh
 
 product-up:
 	./scripts/product/up.sh

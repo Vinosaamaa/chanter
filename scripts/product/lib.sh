@@ -77,6 +77,40 @@ product_configure_java_home() {
   fi
 }
 
+# Public in-git values that must never be used as live secrets (SEC-04).
+CHANTER_FORBIDDEN_JWT_SECRET_DEFAULT='chanter-local-dev-jwt-secret-32bytes!!'
+CHANTER_FORBIDDEN_INTERNAL_SERVICE_TOKEN_DEFAULT='chanter-local-dev-internal-service-token-32bytes!!'
+
+product_is_forbidden_secret() {
+  local value="$1"
+  local forbidden="$2"
+  [ -n "$value" ] && [ "$value" = "$forbidden" ]
+}
+
+product_validate_runtime_secrets() {
+  local env_file="${1:-.env}"
+  if [ -z "${CHANTER_JWT_SECRET:-}" ] || [ "${#CHANTER_JWT_SECRET}" -lt 32 ]; then
+    echo "CHANTER_JWT_SECRET must be set to at least 32 characters in $env_file" >&2
+    echo "Generate one with: make product-env" >&2
+    return 1
+  fi
+  if product_is_forbidden_secret "$CHANTER_JWT_SECRET" "$CHANTER_FORBIDDEN_JWT_SECRET_DEFAULT"; then
+    echo "CHANTER_JWT_SECRET rejects known default value from .env.example (SEC-04)." >&2
+    echo "Replace it with a unique secret: make product-env" >&2
+    return 1
+  fi
+  if [ -z "${CHANTER_INTERNAL_SERVICE_TOKEN:-}" ] || [ "${#CHANTER_INTERNAL_SERVICE_TOKEN}" -lt 32 ]; then
+    echo "CHANTER_INTERNAL_SERVICE_TOKEN must be set to at least 32 characters in $env_file" >&2
+    echo "Generate one with: make product-env" >&2
+    return 1
+  fi
+  if product_is_forbidden_secret "$CHANTER_INTERNAL_SERVICE_TOKEN" "$CHANTER_FORBIDDEN_INTERNAL_SERVICE_TOKEN_DEFAULT"; then
+    echo "CHANTER_INTERNAL_SERVICE_TOKEN rejects known default value from .env.example (SEC-04)." >&2
+    echo "Replace it with a unique secret: make product-env" >&2
+    return 1
+  fi
+}
+
 product_load_env() {
   local root env_file
   root="$(product_repo_root)"
@@ -84,9 +118,18 @@ product_load_env() {
   if [ ! -f "$env_file" ]; then
     if [ -n "${CHANTER_PRODUCT_ENV_FILE:-}" ]; then
       echo "Product environment file not found: $env_file" >&2
+      echo "Create it (or run make product-env for the repo .env)." >&2
       return 1
     fi
-    cp "$root/.env.example" "$env_file"
+    if [ "${CHANTER_ALLOW_ENV_EXAMPLE_COPY:-}" = "1" ]; then
+      cp "$root/.env.example" "$env_file"
+    else
+      echo "Missing $env_file — refusing to auto-copy .env.example (SEC-04)." >&2
+      echo "Run: make product-env" >&2
+      echo "Or: cp .env.example .env  # then set CHANTER_JWT_SECRET and CHANTER_INTERNAL_SERVICE_TOKEN" >&2
+      echo "Opt-in auto-copy only: CHANTER_ALLOW_ENV_EXAMPLE_COPY=1 (still rejects empty/default secrets)." >&2
+      return 1
+    fi
   fi
   set -a
   # shellcheck disable=SC1091
@@ -96,14 +139,7 @@ product_load_env() {
   export LIVEKIT_HTTP_URL="${LIVEKIT_HTTP_URL:-http://localhost:7880}"
   export LIVEKIT_API_KEY="${LIVEKIT_API_KEY:-devkey}"
   export LIVEKIT_API_SECRET="${LIVEKIT_API_SECRET:-secret}"
-  if [ -z "${CHANTER_JWT_SECRET:-}" ] || [ "${#CHANTER_JWT_SECRET}" -lt 32 ]; then
-    echo "CHANTER_JWT_SECRET must be set to at least 32 characters in $env_file" >&2
-    return 1
-  fi
-  if [ -z "${CHANTER_INTERNAL_SERVICE_TOKEN:-}" ] || [ "${#CHANTER_INTERNAL_SERVICE_TOKEN}" -lt 32 ]; then
-    echo "CHANTER_INTERNAL_SERVICE_TOKEN must be set to at least 32 characters in $env_file" >&2
-    return 1
-  fi
+  product_validate_runtime_secrets "$env_file"
 }
 
 product_ensure_state_dirs() {

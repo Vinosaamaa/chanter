@@ -89,7 +89,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       REALTIME_PORT: 8087
-      CHANTER_JWT_SECRET: ${CHANTER_JWT_SECRET:-chanter-local-dev-jwt-secret-32bytes!!}
+      CHANTER_JWT_SECRET: ${CHANTER_JWT_SECRET}
       COMMUNITY_SERVICE_URL: ${COMMUNITY_SERVICE_URL:-http://host.docker.internal:8082}
       MESSAGE_SERVICE_URL: ${MESSAGE_SERVICE_URL:-http://host.docker.internal:8083}
       REDIS_HOST: redis

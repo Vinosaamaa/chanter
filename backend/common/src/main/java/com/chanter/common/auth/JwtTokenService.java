@@ -25,6 +25,11 @@ public final class JwtTokenService {
         if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalArgumentException("JWT secret must be at least 256 bits");
         }
+        // Reject the historical in-git example value (SEC-04). Length-only checks are not enough.
+        if ("chanter-local-dev-jwt-secret-32bytes!!".equals(secret)) {
+            throw new IllegalArgumentException(
+                    "JWT secret rejects known default value; set CHANTER_JWT_SECRET via make product-env");
+        }
         if (accessTokenTtlSeconds <= 0) {
             throw new IllegalArgumentException("JWT access token TTL must be positive");
         }
