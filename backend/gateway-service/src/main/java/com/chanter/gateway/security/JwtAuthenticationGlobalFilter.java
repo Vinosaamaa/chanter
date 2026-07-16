@@ -23,12 +23,16 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
 
     private static final String ACTUATOR_PREFIX = "/actuator/";
     private static final String REALTIME_API_PREFIX = "/api/v1/realtime/";
+    private static final String OAUTH_AUTH_PREFIX = "/api/v1/auth/oauth/";
     private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
             "/api/v1/auth/health",
             "/api/v1/auth/register",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
-            "/api/v1/auth/logout"
+            "/api/v1/auth/logout",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/verify-email"
     );
 
     private final JwtTokenService jwtTokenService;
@@ -79,11 +83,15 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         return Ordered.HIGHEST_PRECEDENCE;
     }
 
-    private static boolean isPublicPath(String path) {
+    static boolean isPublicPath(String path) {
         if (path.startsWith(ACTUATOR_PREFIX)) {
             return true;
         }
-        return PUBLIC_AUTH_PATHS.contains(path);
+        if (PUBLIC_AUTH_PATHS.contains(path)) {
+            return true;
+        }
+        // /oauth/providers, /oauth/{provider}/start, /oauth/google/callback, …
+        return path.startsWith(OAUTH_AUTH_PREFIX);
     }
 
     private static Mono<Void> continueWithoutSpoofedUserId(ServerWebExchange exchange, GatewayFilterChain chain) {
