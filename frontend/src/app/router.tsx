@@ -8,8 +8,6 @@ import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage'
 import { OAuthCallbackPage } from '../features/auth/pages/OAuthCallbackPage'
 import { TermsPage } from '../features/auth/pages/TermsPage'
 import { PrivacyPage } from '../features/auth/pages/PrivacyPage'
-import DevDemoApp from '../features/dev-demo/DevDemoApp'
-import { DevDemoRoutePage } from '../features/dev-demo/DevDemoRoutePage'
 import { LandingPage } from '../features/marketing/pages/LandingPage'
 import { StudyServerPickerPage } from '../features/shell/components/StudyServerPickerPage'
 import { AppChannelLayout, AppShellLayout } from '../features/shell/layouts/AppShellLayout'
@@ -186,15 +184,18 @@ export function createAppRouter() {
         },
       ],
     },
-    {
-      path: '/dev/demo',
-      element: (
-        <>
-          <DevDemoRoutePage />
-          <DevDemoApp />
-        </>
-      ),
-    },
+    // DEV-only: Vite drops this branch (and the lazy import) from production builds (SEC-10).
+    ...(import.meta.env.DEV
+      ? [
+          {
+            path: '/dev/demo',
+            lazy: async () => {
+              const { DevDemoLazyRoute } = await import('../features/dev-demo/DevDemoLazyRoute')
+              return { Component: DevDemoLazyRoute }
+            },
+          },
+        ]
+      : []),
     {
       path: '*',
       element: <Navigate to="/" replace />,

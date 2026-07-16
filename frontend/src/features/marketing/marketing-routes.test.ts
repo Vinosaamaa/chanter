@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   createStudyServerCta,
+  isMarketingDemoEnabled,
   MARKETING_CREATE_SERVER_PATH,
   MARKETING_DEMO_PATH,
   MARKETING_SIGN_IN_PATH,
@@ -12,6 +13,11 @@ describe('marketing-routes', () => {
     expect(MARKETING_SIGN_IN_PATH).toBe('/sign-in')
     expect(MARKETING_CREATE_SERVER_PATH).toBe('/app/onboarding/create-study-server')
     expect(MARKETING_DEMO_PATH).toBe('/dev/demo')
+  })
+
+  it('enables the marketing demo link only under Vite DEV (SEC-10)', () => {
+    // Vitest runs with Vite's DEV mode; production builds replace import.meta.env.DEV with false.
+    expect(isMarketingDemoEnabled()).toBe(true)
   })
 
   it('routes authenticated users directly to create-study-server', () => {

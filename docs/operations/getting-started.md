@@ -158,7 +158,7 @@ To get **low confidence** (TA handoff), ask something unrelated to the uploaded 
 3. Type a message → Send
 4. The other user opens **Friends**, selects you — messages appear live
 
-**Note:** There is no friend-request button in the production UI yet. The seed script creates the friendship for you. To test from scratch without the seed, use the legacy API demo at `/dev/demo` for friend-request APIs.
+**Note:** Friend requests are available in the production Friends UI. The seed script still creates a demo friendship for convenience. The legacy API playground at `/dev/demo` is **Vite DEV only** (not in production builds).
 
 ### Voice channel (hear and speak)
 
@@ -246,7 +246,7 @@ That doc is the official “workable local product” definition.
 |-----|------------|
 | http://localhost:5173 | Main website (use this) |
 | http://localhost:8080/actuator/health | Backend gateway health |
-| http://localhost:5173/dev/demo | Legacy developer API playground (not the main product UI) |
+| http://localhost:5173/dev/demo | Legacy developer API playground (**`npm run dev` only** — omitted from production builds) |
 
 ---
 

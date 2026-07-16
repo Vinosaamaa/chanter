@@ -39,12 +39,14 @@ export function AppShellPlaceholderPage() {
           </Link>
         </div>
       </Card>
-      <p className="text-sm text-app-muted">
-        Need the legacy vertical-slice harness?{' '}
-        <Link className="text-app-accent hover:text-app-accent-hover" to="/dev/demo">
-          Open /dev/demo
-        </Link>
-      </p>
+      {import.meta.env.DEV ? (
+        <p className="text-sm text-app-muted">
+          Need the legacy vertical-slice harness?{' '}
+          <Link className="text-app-accent hover:text-app-accent-hover" to="/dev/demo">
+            Open /dev/demo
+          </Link>
+        </p>
+      ) : null}
     </div>
   )
 }
