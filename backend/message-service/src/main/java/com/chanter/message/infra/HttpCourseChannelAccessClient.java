@@ -17,13 +17,16 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpCourseChannelAccessClient implements CourseChannelAccessClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpCourseChannelAccessClient(
-            @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl
+            @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.restClient = RestClient.builder()
                 .baseUrl(communityServiceBaseUrl)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -32,6 +35,7 @@ public class HttpCourseChannelAccessClient implements CourseChannelAccessClient 
             AccessResponse response = restClient.get()
                     .uri("/api/v1/course-channels/{channelId}/support-question-access", channelId)
                     .header(AuthHeaders.USER_ID, userId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(AccessResponse.class);
 

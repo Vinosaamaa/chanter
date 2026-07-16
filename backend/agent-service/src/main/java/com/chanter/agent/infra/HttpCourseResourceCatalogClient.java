@@ -22,11 +22,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpCourseResourceCatalogClient implements CourseResourceCatalogClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpCourseResourceCatalogClient(
             @Value("${chanter.media-service.base-url:http://localhost:8084}") String mediaServiceBaseUrl,
             @Value("${chanter.media-service.connect-timeout-seconds:5}") int connectTimeoutSeconds,
-            @Value("${chanter.media-service.read-timeout-seconds:10}") int readTimeoutSeconds
+            @Value("${chanter.media-service.read-timeout-seconds:10}") int readTimeoutSeconds,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -39,6 +41,7 @@ public class HttpCourseResourceCatalogClient implements CourseResourceCatalogCli
                 .baseUrl(mediaServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -47,6 +50,7 @@ public class HttpCourseResourceCatalogClient implements CourseResourceCatalogCli
             CourseResourceListResponse response = restClient.get()
                     .uri("/api/v1/courses/{courseId}/course-resources", courseId)
                     .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(CourseResourceListResponse.class);
 

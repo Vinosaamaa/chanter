@@ -69,7 +69,8 @@ class ApprovedFaqSmokeTest {
         );
 
         MvcResult candidatesResult = mockMvc.perform(get("/api/v1/course-channels/{channelId}/faq-candidates", channelId)
-                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andReturn();
         FaqCandidateListResponse candidates = objectMapper.readValue(
@@ -82,6 +83,7 @@ class ApprovedFaqSmokeTest {
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/courses/{courseId}/approved-faqs", courseId)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "channelId", channelId.toString(),
@@ -105,7 +107,8 @@ class ApprovedFaqSmokeTest {
                 .contains("/api/v1/courses/" + courseId + "/approved-faqs/" + created.id());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/courses/{courseId}/approved-faqs", courseId)
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andReturn();
         ApprovedFaqListResponse listed = objectMapper.readValue(
@@ -117,6 +120,7 @@ class ApprovedFaqSmokeTest {
 
         MvcResult searchResult = mockMvc.perform(get("/api/v1/courses/{courseId}/approved-faqs/search", courseId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .param("query", "authentication"))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -137,7 +141,8 @@ class ApprovedFaqSmokeTest {
         courseChannelAccessClient.grantLearnerPost(channelId, learnerUserId, courseId, "questions");
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}/faq-candidates", channelId)
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isForbidden());
     }
 
@@ -149,7 +154,8 @@ class ApprovedFaqSmokeTest {
         courseResourceAccessClient.registerCourse(courseId);
 
         mockMvc.perform(get("/api/v1/courses/{courseId}/approved-faqs", courseId)
-                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isForbidden());
     }
 
@@ -157,6 +163,7 @@ class ApprovedFaqSmokeTest {
             throws Exception {
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
                         .header(AuthHeaders.USER_ID, senderUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", body,

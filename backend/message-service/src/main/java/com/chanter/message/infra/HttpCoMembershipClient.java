@@ -19,11 +19,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpCoMembershipClient implements CoMembershipClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpCoMembershipClient(
             @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
             @Value("${chanter.community-service.connect-timeout-seconds:5}") int connectTimeoutSeconds,
-            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds
+            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -35,6 +37,7 @@ public class HttpCoMembershipClient implements CoMembershipClient {
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -43,6 +46,7 @@ public class HttpCoMembershipClient implements CoMembershipClient {
             CoMembershipResponse response = restClient.get()
                     .uri("/api/v1/users/{peerUserId}/co-membership", secondUserId)
                     .header(AuthHeaders.USER_ID, firstUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(CoMembershipResponse.class);
 

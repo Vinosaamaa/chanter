@@ -10,22 +10,32 @@ import com.chanter.analytics.application.InstructorDashboardService;
 import com.chanter.analytics.api.InstructorDashboardResponse.TeachingCohortResponse;
 import com.chanter.analytics.api.InstructorDashboardResponse.TeachingCourseResponse;
 import com.chanter.common.auth.AuthHeaders;
+import com.chanter.common.auth.JwtTokenService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(InstructorDashboardController.class)
+@TestPropertySource(properties = {
+        "chanter.internal-service-token=test-internal-service-token-for-analytics"
+})
 class InstructorDashboardControllerTest {
+
+    private static final String INTERNAL_TOKEN = "test-internal-service-token-for-analytics";
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
     private InstructorDashboardService instructorDashboardService;
+
+    @MockBean
+    private JwtTokenService jwtTokenService;
 
     @Test
     void instructorCanLoadDashboardAggregates() throws Exception {
@@ -64,7 +74,8 @@ class InstructorDashboardControllerTest {
                 ));
 
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/instructor-dashboard", studyServerId)
-                        .header(AuthHeaders.USER_ID, viewerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.studyServerId").value(studyServerId.toString()))
                 .andExpect(jsonPath("$.unansweredSupportQuestions").value(4))

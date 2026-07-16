@@ -18,13 +18,16 @@ import reactor.core.publisher.Mono;
 public class HttpSocialFriendsClient implements SocialFriendsClient {
 
     private final WebClient webClient;
+    private final String internalServiceToken;
 
     public HttpSocialFriendsClient(
-            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl
+            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.webClient = WebClient.builder()
                 .baseUrl(messageServiceBaseUrl)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -32,6 +35,7 @@ public class HttpSocialFriendsClient implements SocialFriendsClient {
         return webClient.get()
                 .uri("/api/v1/friendships")
                 .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                 .retrieve()
                 .bodyToMono(FriendsListResponse.class)
                 .map(response -> {

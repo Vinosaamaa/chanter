@@ -126,7 +126,7 @@ class GroundedSupportQuestionSmokeTest {
                         channelId,
                         supportQuestionId
                 )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -149,7 +149,7 @@ class GroundedSupportQuestionSmokeTest {
                             channelId,
                             supportQuestionId
                         )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
                 .andReturn();
         AssistantAnswerResponse reloaded = objectMapper.readValue(
@@ -205,7 +205,7 @@ class GroundedSupportQuestionSmokeTest {
                         channelId,
                         supportQuestionId
                 )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -256,7 +256,7 @@ class GroundedSupportQuestionSmokeTest {
                         deniedChannelId,
                         supportQuestionId
                 )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isForbidden());
     }
 
@@ -292,7 +292,7 @@ class GroundedSupportQuestionSmokeTest {
                         channelId,
                         supportQuestionId
                 )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isNotFound());
     }
 
@@ -348,6 +348,7 @@ class GroundedSupportQuestionSmokeTest {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "grants", List.of(
                                         Map.of(

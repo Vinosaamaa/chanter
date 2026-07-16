@@ -1,4 +1,4 @@
-package com.chanter.agent.web;
+package com.chanter.analytics.web;
 
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.AuthRequestAttributes;
@@ -21,10 +21,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/**
- * Enforces service-level identity on public agent APIs (SEC-01).
- * Internal routes under {@code /api/v1/internal/} are left to their own security.
- */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AuthenticatedUserFilter extends OncePerRequestFilter {

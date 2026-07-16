@@ -19,13 +19,18 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpMediaCatalogClient implements MediaCatalogClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
-    public HttpMediaCatalogClient(MediaServiceClientProperties properties) {
+    public HttpMediaCatalogClient(
+            MediaServiceClientProperties properties,
+            @org.springframework.beans.factory.annotation.Value("${chanter.internal-service-token}") String internalServiceToken
+    ) {
         this.restClient = DownstreamRestClientFactory.create(
                 properties.baseUrl(),
                 properties.connectTimeout(),
                 properties.readTimeout()
         );
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -34,6 +39,7 @@ public class HttpMediaCatalogClient implements MediaCatalogClient {
             CourseResourceListResponse response = restClient.get()
                     .uri("/api/v1/courses/{courseId}/course-resources", courseId)
                     .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(CourseResourceListResponse.class);
 

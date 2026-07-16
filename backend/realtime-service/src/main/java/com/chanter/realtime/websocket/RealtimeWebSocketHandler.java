@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.CloseStatus;
@@ -238,11 +239,22 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
     }
 
     private UUID authenticate(WebSocketSession session) {
-        String userIdHeader = session.getHandshakeInfo().getHeaders().getFirst(AuthHeaders.USER_ID);
-        if (userIdHeader != null && !userIdHeader.isBlank()) {
+        String authorizationHeader = session.getHandshakeInfo().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authorizationHeader != null && !authorizationHeader.isBlank()) {
             try {
-                return UUID.fromString(userIdHeader);
-            } catch (IllegalArgumentException exception) {
+                UUID userId = jwtTokenService.parseUserId(authorizationHeader);
+                String userIdHeader = session.getHandshakeInfo().getHeaders().getFirst(AuthHeaders.USER_ID);
+                if (userIdHeader != null && !userIdHeader.isBlank()) {
+                    try {
+                        if (!userId.equals(UUID.fromString(userIdHeader.trim()))) {
+                            return null;
+                        }
+                    } catch (IllegalArgumentException exception) {
+                        return null;
+                    }
+                }
+                return userId;
+            } catch (InvalidJwtException exception) {
                 return null;
             }
         }

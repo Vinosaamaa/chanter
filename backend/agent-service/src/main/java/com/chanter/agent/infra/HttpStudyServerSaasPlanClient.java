@@ -21,11 +21,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpStudyServerSaasPlanClient implements StudyServerSaasPlanClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpStudyServerSaasPlanClient(
             @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
             @Value("${chanter.community-service.connect-timeout-seconds:5}") int connectTimeoutSeconds,
-            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds
+            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -38,6 +40,7 @@ public class HttpStudyServerSaasPlanClient implements StudyServerSaasPlanClient 
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -46,6 +49,7 @@ public class HttpStudyServerSaasPlanClient implements StudyServerSaasPlanClient 
             SaasPlanResponse response = restClient.get()
                     .uri("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
                     .header(AuthHeaders.USER_ID, actingUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(SaasPlanResponse.class);
 

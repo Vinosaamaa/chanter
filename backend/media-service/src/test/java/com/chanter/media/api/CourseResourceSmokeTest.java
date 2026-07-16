@@ -27,6 +27,8 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 class CourseResourceSmokeTest {
 
+    private static final String INTERNAL_TOKEN = "test-internal-service-token-for-media";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -63,6 +65,7 @@ class CourseResourceSmokeTest {
                                 fileContent
                         ))
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("title", "Spring Security Guide")
                         .param("aiApproved", "true"))
                 .andExpect(status().isCreated())
@@ -79,7 +82,8 @@ class CourseResourceSmokeTest {
         assertThat(uploaded.uploadedByUserId()).isEqualTo(instructorUserId);
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/courses/{courseId}/course-resources", courseId)
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andReturn();
         CourseResourceListResponse listed = objectMapper.readValue(
@@ -97,7 +101,8 @@ class CourseResourceSmokeTest {
         assertThat(listedResource.createdAt()).isEqualTo(uploaded.createdAt().truncatedTo(ChronoUnit.MICROS));
 
         MvcResult downloadResult = mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", uploaded.id())
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -129,11 +134,13 @@ class CourseResourceSmokeTest {
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("aiApproved", "true"))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/v1/courses/{courseId}/course-resources", courseId)
-                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isForbidden());
     }
 
@@ -152,6 +159,7 @@ class CourseResourceSmokeTest {
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("aiApproved", "false"))
                 .andExpect(status().isForbidden());
     }
@@ -171,6 +179,7 @@ class CourseResourceSmokeTest {
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("aiApproved", "true"))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -199,6 +208,7 @@ class CourseResourceSmokeTest {
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("aiApproved", "true"))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -208,14 +218,16 @@ class CourseResourceSmokeTest {
         );
 
         mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", uploaded.id())
-                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void downloadingUnknownCourseResourceReturnsNotFound() throws Exception {
         mockMvc.perform(get("/api/v1/course-resources/{resourceId}/content", UUID.randomUUID())
-                        .header(AuthHeaders.USER_ID, UUID.randomUUID().toString()))
+                        .header(AuthHeaders.USER_ID, UUID.randomUUID().toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isNotFound());
     }
 
@@ -229,6 +241,7 @@ class CourseResourceSmokeTest {
                                 "notes".getBytes(StandardCharsets.UTF_8)
                         ))
                         .header(AuthHeaders.USER_ID, UUID.randomUUID().toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("aiApproved", "true"))
                 .andExpect(status().isNotFound());
     }

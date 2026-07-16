@@ -299,6 +299,7 @@ class InternalAssistantToolsSmokeTest {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "grants", List.of(
                                         Map.of(

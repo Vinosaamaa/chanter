@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 class GlobalSearchSmokeTest {
 
+    private static final String INTERNAL_TOKEN = "test-internal-service-token-for-search";
     private static final UUID STUDY_SERVER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID COURSE_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID INSTRUCTOR_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -118,13 +119,15 @@ class GlobalSearchSmokeTest {
     @Test
     void enrolledLearnerCanSearchIndexedResourceAndFaq() throws Exception {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/search/reindex", STUDY_SERVER_ID)
-                        .header(AuthHeaders.USER_ID, INSTRUCTOR_ID))
+                        .header(AuthHeaders.USER_ID, INSTRUCTOR_ID)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.indexedDocuments").value(3));
 
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/search", STUDY_SERVER_ID)
                         .param("q", "homework")
-                        .header(AuthHeaders.USER_ID, LEARNER_ID))
+                        .header(AuthHeaders.USER_ID, LEARNER_ID)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.results.length()").value(1))
                 .andExpect(jsonPath("$.results[0].documentType").value("FAQ"))
@@ -132,7 +135,8 @@ class GlobalSearchSmokeTest {
 
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/search", STUDY_SERVER_ID)
                         .param("q", "slides")
-                        .header(AuthHeaders.USER_ID, LEARNER_ID))
+                        .header(AuthHeaders.USER_ID, LEARNER_ID)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.results.length()").value(1))
                 .andExpect(jsonPath("$.results[0].documentType").value("RESOURCE"))
@@ -142,19 +146,22 @@ class GlobalSearchSmokeTest {
     @Test
     void learnerCannotReindexStudyServer() throws Exception {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/search/reindex", STUDY_SERVER_ID)
-                        .header(AuthHeaders.USER_ID, LEARNER_ID))
+                        .header(AuthHeaders.USER_ID, LEARNER_ID)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void unauthorizedCourseContentDoesNotAppearForOtherLearner() throws Exception {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/search/reindex", STUDY_SERVER_ID)
-                        .header(AuthHeaders.USER_ID, INSTRUCTOR_ID))
+                        .header(AuthHeaders.USER_ID, INSTRUCTOR_ID)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/search", STUDY_SERVER_ID)
                         .param("q", "homework")
-                        .header(AuthHeaders.USER_ID, OTHER_LEARNER_ID))
+                        .header(AuthHeaders.USER_ID, OTHER_LEARNER_ID)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.results.length()").value(0));
     }
@@ -162,12 +169,14 @@ class GlobalSearchSmokeTest {
     @Test
     void instructorOnlyIndexedResourceDoesNotLeakToLearner() throws Exception {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/search/reindex", STUDY_SERVER_ID)
-                        .header(AuthHeaders.USER_ID, INSTRUCTOR_ID))
+                        .header(AuthHeaders.USER_ID, INSTRUCTOR_ID)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/search", STUDY_SERVER_ID)
                         .param("q", "instructor")
-                        .header(AuthHeaders.USER_ID, LEARNER_ID))
+                        .header(AuthHeaders.USER_ID, LEARNER_ID)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.results.length()").value(0));
     }

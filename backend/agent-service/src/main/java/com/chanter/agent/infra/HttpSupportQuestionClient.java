@@ -24,11 +24,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpSupportQuestionClient implements SupportQuestionClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpSupportQuestionClient(
             @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl,
             @Value("${chanter.message-service.connect-timeout-seconds:5}") int connectTimeoutSeconds,
-            @Value("${chanter.message-service.read-timeout-seconds:10}") int readTimeoutSeconds
+            @Value("${chanter.message-service.read-timeout-seconds:10}") int readTimeoutSeconds,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -41,6 +43,7 @@ public class HttpSupportQuestionClient implements SupportQuestionClient {
                 .baseUrl(messageServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -53,6 +56,7 @@ public class HttpSupportQuestionClient implements SupportQuestionClient {
                             supportQuestionId
                     )
                     .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(SupportQuestionResponse.class);
 
@@ -90,6 +94,7 @@ public class HttpSupportQuestionClient implements SupportQuestionClient {
                     .uri("/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/status",
                             channelId, supportQuestionId)
                     .header(AuthHeaders.USER_ID, actorUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
                             "status", status

@@ -7,4 +7,7 @@ spring:
     enabled: true
 
 chanter:
+  jwt:
+    secret: chanter-test-jwt-secret-32bytes-min!!
+    access-token-ttl: 15m
   internal-service-token: test-internal-service-token-for-notification

@@ -8,6 +8,10 @@ spring:
     locations: classpath:db/migration,classpath:db/migration-h2
 
 chanter:
+  jwt:
+    secret: chanter-test-jwt-secret-32bytes-min!!
+    access-token-ttl: 15m
+  internal-service-token: test-internal-service-token-for-message
   notification-service:
     base-url: http://localhost:8089
     connect-timeout-seconds: 1

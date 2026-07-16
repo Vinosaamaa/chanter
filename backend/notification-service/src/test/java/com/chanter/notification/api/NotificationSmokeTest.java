@@ -85,42 +85,49 @@ class NotificationSmokeTest {
                 .andExpect(jsonPath("$.title").value("Your question was answered (updated)"));
 
         mockMvc.perform(get("/api/v1/me/notifications/unread-count")
-                        .header(AuthHeaders.USER_ID, userId))
+                        .header(AuthHeaders.USER_ID, userId)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unreadCount").value(1));
 
         mockMvc.perform(get("/api/v1/me/notifications")
                         .param("filter", "MENTIONS")
                         .param("status", "OPEN")
-                        .header(AuthHeaders.USER_ID, userId))
+                        .header(AuthHeaders.USER_ID, userId)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications.length()").value(1))
                 .andExpect(jsonPath("$.notifications[0].id").value(created.id().toString()));
 
         mockMvc.perform(post("/api/v1/me/notifications/{id}/read", created.id())
-                        .header(AuthHeaders.USER_ID, userId))
+                        .header(AuthHeaders.USER_ID, userId)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unread").value(false));
 
         mockMvc.perform(get("/api/v1/me/notifications/unread-count")
-                        .header(AuthHeaders.USER_ID, userId))
+                        .header(AuthHeaders.USER_ID, userId)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unreadCount").value(0));
 
         mockMvc.perform(post("/api/v1/me/notifications/{id}/done", created.id())
-                        .header(AuthHeaders.USER_ID, userId))
+                        .header(AuthHeaders.USER_ID, userId)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.doneAt").isNotEmpty());
 
         mockMvc.perform(get("/api/v1/me/notifications")
                         .param("status", "OPEN")
-                        .header(AuthHeaders.USER_ID, userId))
+                        .header(AuthHeaders.USER_ID, userId)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications.length()").value(0));
 
         mockMvc.perform(get("/api/v1/me/notifications")
                         .param("status", "DONE")
-                        .header(AuthHeaders.USER_ID, userId))
+                        .header(AuthHeaders.USER_ID, userId)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications.length()").value(1));
     }

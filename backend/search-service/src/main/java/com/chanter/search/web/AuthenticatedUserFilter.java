@@ -2,14 +2,21 @@ package com.chanter.search.web;
 
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.AuthRequestAttributes;
+import com.chanter.common.auth.InvalidJwtException;
+import com.chanter.common.auth.JwtTokenService;
+import com.chanter.common.auth.RequestIdentity;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -17,6 +24,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AuthenticatedUserFilter extends OncePerRequestFilter {
+
+    private final JwtTokenService jwtTokenService;
+    private final byte[] internalServiceToken;
+
+    public AuthenticatedUserFilter(
+            JwtTokenService jwtTokenService,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
+    ) {
+        this.jwtTokenService = jwtTokenService;
+        this.internalServiceToken = internalServiceToken.getBytes(StandardCharsets.UTF_8);
+    }
 
     @Override
     protected void doFilterInternal(
@@ -29,19 +47,36 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
             return;
         }
 
-        String userIdHeader = request.getHeader(AuthHeaders.USER_ID);
-        if (userIdHeader == null || userIdHeader.isBlank()) {
-            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Authentication required");
-            return;
-        }
-
         try {
-            request.setAttribute(AuthRequestAttributes.USER_ID, UUID.fromString(userIdHeader));
-        } catch (IllegalArgumentException exception) {
-            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Invalid authenticated user id");
-            return;
+            UUID userId = RequestIdentity.requireUserId(
+                    request.getHeader(HttpHeaders.AUTHORIZATION),
+                    request.getHeader(AuthHeaders.USER_ID),
+                    request.getHeader(AuthHeaders.INTERNAL_SERVICE_TOKEN),
+                    internalServiceToken,
+                    jwtTokenService
+            );
+            request.setAttribute(AuthRequestAttributes.USER_ID, userId);
+            filterChain.doFilter(new UserIdInjectingWrapper(request, userId), response);
+        } catch (InvalidJwtException | IllegalArgumentException exception) {
+            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Authentication required");
+        }
+    }
+
+    private static final class UserIdInjectingWrapper extends HttpServletRequestWrapper {
+
+        private final String userId;
+
+        UserIdInjectingWrapper(HttpServletRequest request, UUID userId) {
+            super(request);
+            this.userId = userId.toString();
         }
 
-        filterChain.doFilter(request, response);
+        @Override
+        public String getHeader(String name) {
+            if (AuthHeaders.USER_ID.equalsIgnoreCase(name)) {
+                return userId;
+            }
+            return super.getHeader(name);
+        }
     }
 }

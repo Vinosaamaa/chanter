@@ -19,13 +19,16 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpDirectMessageClient implements DirectMessageClient {
 
     private final WebClient webClient;
+    private final String internalServiceToken;
 
     public HttpDirectMessageClient(
-            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl
+            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.webClient = WebClient.builder()
                 .baseUrl(messageServiceBaseUrl)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -34,6 +37,7 @@ public class HttpDirectMessageClient implements DirectMessageClient {
             DirectMessageResponse response = webClient.post()
                     .uri("/api/v1/direct-messages")
                     .header(AuthHeaders.USER_ID, senderUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .bodyValue(Map.of(
                             "recipientUserId", recipientUserId.toString(),
                             "body", body

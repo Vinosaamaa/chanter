@@ -21,6 +21,9 @@ management:
       show-details: when_authorized
 
 chanter:
+  jwt:
+    secret: ${CHANTER_JWT_SECRET}
+    access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
   internal-service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   auth-service:
     base-url: ${AUTH_SERVICE_URL:http://localhost:8081}
