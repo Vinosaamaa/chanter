@@ -1,9 +1,13 @@
 package com.chanter.auth.application;
 
 import com.chanter.auth.domain.AuthUser;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
@@ -29,6 +33,7 @@ public class OAuthAuthService {
     private final AuthSessionService authSessionService;
     private final PasswordEncoder passwordEncoder;
     private final OAuthAccountRepository oauthAccountRepository;
+    private final OAuthPendingStore pendingStore;
     private final String publicBaseUrl;
     private final String googleClientId;
     private final String googleClientSecret;
@@ -40,6 +45,7 @@ public class OAuthAuthService {
             AuthSessionService authSessionService,
             PasswordEncoder passwordEncoder,
             OAuthAccountRepository oauthAccountRepository,
+            OAuthPendingStore pendingStore,
             @Value("${chanter.public-base-url:http://localhost:5173}") String publicBaseUrl,
             @Value("${chanter.oauth.google.client-id:}") String googleClientId,
             @Value("${chanter.oauth.google.client-secret:}") String googleClientSecret
@@ -48,6 +54,7 @@ public class OAuthAuthService {
         this.authSessionService = authSessionService;
         this.passwordEncoder = passwordEncoder;
         this.oauthAccountRepository = oauthAccountRepository;
+        this.pendingStore = pendingStore;
         this.publicBaseUrl = publicBaseUrl.endsWith("/")
                 ? publicBaseUrl.substring(0, publicBaseUrl.length() - 1)
                 : publicBaseUrl;
@@ -63,11 +70,22 @@ public class OAuthAuthService {
         return providers;
     }
 
+    /**
+     * Builds the OAuth authorization URL for the given provider.
+     *
+     * <p>Each call creates a new pending entry (state + PKCE code_verifier) in
+     * {@link OAuthPendingStore}. The {@code state} and {@code code_challenge} are added
+     * as query parameters so Google echoes state back and the PKCE exchange is enforced.
+     */
     public String authorizationUrl(String provider) {
         if (!"google".equalsIgnoreCase(provider) || googleClientId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "OAuth provider is not configured");
         }
         String redirectUri = publicBaseUrl + "/oauth/callback/google";
+
+        OAuthPendingStore.PendingEntry pending = pendingStore.create(provider);
+        String codeChallenge = computeS256Challenge(pending.codeVerifier());
+
         return UriComponentsBuilder
                 .fromUriString("https://accounts.google.com/o/oauth2/v2/auth")
                 .queryParam("client_id", googleClientId)
@@ -76,17 +94,40 @@ public class OAuthAuthService {
                 .queryParam("scope", "openid email profile")
                 .queryParam("access_type", "online")
                 .queryParam("prompt", "select_account")
-                .build(true)
+                .queryParam("state", pending.state())
+                .queryParam("code_challenge", codeChallenge)
+                .queryParam("code_challenge_method", "S256")
+                .build()
+                .encode()
                 .toUriString();
     }
 
+    /**
+     * Completes the Google OAuth login flow.
+     *
+     * <p>Validates {@code state} against the {@link OAuthPendingStore} (single-use, 10-min TTL),
+     * then performs the token exchange with PKCE {@code code_verifier}.
+     *
+     * @param code  the authorization code returned by Google
+     * @param state the {@code state} parameter returned by Google in the redirect
+     * @throws ResponseStatusException 400 if code or state is blank
+     * @throws ResponseStatusException 403 if state is unknown or expired (SEC-09)
+     */
     @Transactional
-    public AuthSessionService.AuthSession completeGoogleLogin(String code) {
+    public AuthSessionService.AuthSession completeGoogleLogin(String code, String state) {
         if (googleClientId.isBlank() || googleClientSecret.isBlank()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Google OAuth is not configured");
         }
         if (code == null || code.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Authorization code is required");
+        }
+        if (state == null || state.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OAuth state is required");
+        }
+
+        OAuthPendingStore.PendingEntry pending = pendingStore.consume(state);
+        if (pending == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid or expired OAuth state");
         }
 
         String redirectUri = publicBaseUrl + "/oauth/callback/google";
@@ -96,6 +137,7 @@ public class OAuthAuthService {
         form.add("client_secret", googleClientSecret);
         form.add("redirect_uri", redirectUri);
         form.add("grant_type", "authorization_code");
+        form.add("code_verifier", pending.codeVerifier());
 
         Map<?, ?> tokenResponse = restClient.post()
                 .uri("https://oauth2.googleapis.com/token")
@@ -191,6 +233,20 @@ public class OAuthAuthService {
             // already linked
         }
         return authSessionService.issueSessionForUser(user);
+    }
+
+    /**
+     * Computes the PKCE {@code code_challenge} for the given {@code code_verifier} using S256.
+     * {@code BASE64URL(SHA256(ASCII(code_verifier)))} per RFC 7636 §4.2.
+     */
+    private static String computeS256Challenge(String codeVerifier) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 
     public record ProviderInfo(String id, String label, String authorizationUrl) {

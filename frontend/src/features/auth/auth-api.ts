@@ -93,10 +93,10 @@ export async function fetchOauthProviders(): Promise<{ providers: OAuthProvider[
   })
 }
 
-export async function completeGoogleOauth(code: string): Promise<AuthSession> {
+export async function completeGoogleOauth(code: string, state: string): Promise<AuthSession> {
   return apiFetch<AuthSession>('/api/v1/auth/oauth/google/callback', {
     method: 'POST',
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, state }),
     skipAuthRefresh: true,
   })
 }

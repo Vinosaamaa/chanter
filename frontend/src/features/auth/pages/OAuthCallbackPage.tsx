@@ -10,14 +10,15 @@ export function OAuthCallbackPage() {
   const navigate = useNavigate()
   const setSession = useAuthStore((state) => state.setSession)
   const code = params.get('code')
+  const state = params.get('state')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!code) {
+    if (!code || !state) {
       return
     }
     let cancelled = false
-    void completeGoogleOauth(code)
+    void completeGoogleOauth(code, state)
       .then((session) => {
         if (cancelled) return
         setSession(session)
@@ -30,9 +31,9 @@ export function OAuthCallbackPage() {
     return () => {
       cancelled = true
     }
-  }, [code, navigate, setSession])
+  }, [code, state, navigate, setSession])
 
-  const displayError = code ? error : 'OAuth code missing.'
+  const displayError = code && state ? error : 'OAuth code or state missing.'
 
   return (
     <main className="v2-auth-page compact-auth">
