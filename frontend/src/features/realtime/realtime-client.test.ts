@@ -1,42 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { MockWebSocket } from '../../test/mock-websocket'
 import { RealtimeClient } from './realtime-client'
-
-type SocketListener = ((event?: { data?: string; code?: number }) => void) | null
-
-class MockWebSocket {
-  static OPEN = 1
-  static instances: MockWebSocket[] = []
-
-  readyState = 0
-  protocols: string | string[]
-  onopen: SocketListener = null
-  onmessage: SocketListener = null
-  onerror: SocketListener = null
-  onclose: SocketListener = null
-  send = vi.fn()
-  close = vi.fn(() => {
-    this.readyState = 3
-    this.onclose?.({ code: 1000 })
-  })
-
-  constructor(
-    public url: string,
-    protocols?: string | string[],
-  ) {
-    this.protocols = protocols ?? []
-    MockWebSocket.instances.push(this)
-  }
-
-  open(): void {
-    this.readyState = MockWebSocket.OPEN
-    this.onopen?.()
-  }
-}
 
 describe('RealtimeClient reconnect refresh', () => {
   beforeEach(() => {
-    MockWebSocket.instances = []
+    MockWebSocket.reset()
     vi.stubGlobal('WebSocket', MockWebSocket)
     vi.useFakeTimers()
   })
@@ -52,7 +21,6 @@ describe('RealtimeClient reconnect refresh', () => {
       token = 'fresh-token'
       return true
     })
-    const onStatusChange = vi.fn()
 
     const client = new RealtimeClient({
       getAccessToken: () => token,
@@ -60,7 +28,7 @@ describe('RealtimeClient reconnect refresh', () => {
       channelId: 'channel-1',
       channelScope: 'course',
       onMessage: vi.fn(),
-      onStatusChange,
+      onStatusChange: vi.fn(),
       onError: vi.fn(),
     })
 
@@ -69,7 +37,6 @@ describe('RealtimeClient reconnect refresh', () => {
     expect(MockWebSocket.instances[0]?.protocols).toEqual(['chanter-jwt', 'stale-token'])
     MockWebSocket.instances[0]?.open()
 
-    // Simulate server closing the idle socket (expired auth path).
     MockWebSocket.instances[0]?.onclose?.({ code: 1006 })
 
     await vi.advanceTimersByTimeAsync(500)

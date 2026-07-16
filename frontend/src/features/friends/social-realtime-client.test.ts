@@ -1,42 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { MockWebSocket } from '../../test/mock-websocket'
 import { SocialRealtimeClient } from './social-realtime-client'
-
-type SocketListener = ((event?: { data?: string; code?: number }) => void) | null
-
-class MockWebSocket {
-  static OPEN = 1
-  static instances: MockWebSocket[] = []
-
-  readyState = 0
-  protocols: string | string[]
-  onopen: SocketListener = null
-  onmessage: SocketListener = null
-  onerror: SocketListener = null
-  onclose: SocketListener = null
-  send = vi.fn()
-  close = vi.fn(() => {
-    this.readyState = 3
-    this.onclose?.({ code: 1000 })
-  })
-
-  constructor(
-    public url: string,
-    protocols?: string | string[],
-  ) {
-    this.protocols = protocols ?? []
-    MockWebSocket.instances.push(this)
-  }
-
-  open(): void {
-    this.readyState = MockWebSocket.OPEN
-    this.onopen?.()
-  }
-}
 
 describe('SocialRealtimeClient reconnect refresh', () => {
   beforeEach(() => {
-    MockWebSocket.instances = []
+    MockWebSocket.reset()
     vi.stubGlobal('WebSocket', MockWebSocket)
     vi.useFakeTimers()
   })
