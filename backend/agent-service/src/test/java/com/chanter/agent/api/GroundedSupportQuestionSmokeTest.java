@@ -347,8 +347,8 @@ class GroundedSupportQuestionSmokeTest {
 
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
                                 "grants", List.of(
                                         Map.of(
                                                 "grantType", GrantType.COURSE_CHANNEL.name(),

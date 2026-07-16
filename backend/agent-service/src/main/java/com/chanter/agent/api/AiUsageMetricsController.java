@@ -3,11 +3,12 @@ package com.chanter.agent.api;
 import com.chanter.agent.application.AiUsageMetricsService;
 import com.chanter.agent.domain.AiUsageMetrics;
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.AuthHeaders;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -23,7 +24,7 @@ public class AiUsageMetricsController {
     @GetMapping("/ai-usage-metrics")
     public AiUsageMetricsResponse getAiUsageMetrics(
             @PathVariable UUID studyServerId,
-            @RequestParam UUID viewerUserId
+            @RequestHeader(AuthHeaders.USER_ID) UUID viewerUserId
     ) {
         AiUsageMetrics metrics = aiUsageMetricsService.findMetrics(studyServerId, viewerUserId);
         return AiUsageMetricsResponse.from(metrics);

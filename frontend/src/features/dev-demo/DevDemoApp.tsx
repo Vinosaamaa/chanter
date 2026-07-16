@@ -463,12 +463,19 @@ function App() {
       .catch(() => setHealth((current) => ({ ...current, media: 'unreachable' })))
 
     fetch(
-      `/api/v1/study-servers/00000000-0000-0000-0000-000000000000/study-assistant?viewerUserId=${ownerUserId}`,
+      `/api/v1/study-servers/00000000-0000-0000-0000-000000000000/study-assistant`,
     )
       .then((response) => {
         setHealth((current) => ({
           ...current,
-          agent: response.status === 404 || response.status === 403 ? 'ok' : response.ok ? 'ok' : 'unknown',
+          agent:
+            response.status === 404 ||
+            response.status === 403 ||
+            response.status === 401
+              ? 'ok'
+              : response.ok
+                ? 'ok'
+                : 'unknown',
         }))
       })
       .catch(() => setHealth((current) => ({ ...current, agent: 'unreachable' })))
@@ -1157,7 +1164,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `/api/v1/study-servers/${studyServer.id}/study-assistant/install-preview?instructorUserId=${courseInstructorUserId}`,
+        `/api/v1/study-servers/${studyServer.id}/study-assistant/install-preview`,
       )
 
       if (!response.ok) {
@@ -1221,7 +1228,6 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instructorUserId: courseInstructorUserId,
           grants,
         }),
       })
@@ -1256,7 +1262,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `/api/v1/study-servers/${studyServer.id}/study-assistant?viewerUserId=${viewerUserId}`,
+        `/api/v1/study-servers/${studyServer.id}/study-assistant`,
       )
 
       if (!response.ok) {

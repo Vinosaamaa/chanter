@@ -51,7 +51,7 @@ export function CourseResourcesPage() {
   })
   const assistantQuery = useQuery({
     queryKey: studyAssistantPresenceQueryKey(serverId, userId),
-    queryFn: () => fetchStudyAssistantPresence(serverId, userId!),
+    queryFn: () => fetchStudyAssistantPresence(serverId),
     enabled: Boolean(serverId && userId && courseCapabilities.canUploadResources),
   })
   const [uploadOpen, setUploadOpen] = useState(false)

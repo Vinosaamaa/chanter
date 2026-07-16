@@ -121,7 +121,7 @@ function QuestionsContextPanel({
 
   const assistantQuery = useQuery({
     queryKey: studyAssistantPresenceQueryKey(resolvedServerId, userId),
-    queryFn: () => fetchStudyAssistantPresence(resolvedServerId!, userId!),
+    queryFn: () => fetchStudyAssistantPresence(resolvedServerId!),
     enabled: Boolean(resolvedServerId && userId),
   })
 

@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.UUID;
 
 public record InstallStudyAssistantRequest(
-        @NotNull UUID instructorUserId,
         @NotEmpty List<@Valid ConfirmedGrantRequest> grants
 ) {
 

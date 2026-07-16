@@ -18,7 +18,7 @@ describe('study-assistant-api', () => {
     mockedApiFetch.mockReset()
   })
 
-  it('loads install preview for an instructor', async () => {
+  it('loads install preview using gateway identity (no instructorUserId query)', async () => {
     mockedApiFetch.mockResolvedValue({
       studyServerId: 'server-1',
       alreadyInstalled: false,
@@ -26,22 +26,22 @@ describe('study-assistant-api', () => {
       courseResources: [],
     })
 
-    const preview = await fetchStudyAssistantInstallPreview('server-1', 'instructor-1')
+    const preview = await fetchStudyAssistantInstallPreview('server-1')
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/api/v1/study-servers/server-1/study-assistant/install-preview?instructorUserId=instructor-1',
+      '/api/v1/study-servers/server-1/study-assistant/install-preview',
     )
     expect(preview.alreadyInstalled).toBe(false)
   })
 
-  it('confirms install with selected grants', async () => {
+  it('confirms install with selected grants and no instructorUserId body field', async () => {
     mockedApiFetch.mockResolvedValue({
       studyServerId: 'server-1',
       installed: true,
       grants: [{ grantType: 'COURSE_CHANNEL', grantTargetId: 'channel-1' }],
     })
 
-    const presence = await installStudyAssistant('server-1', 'instructor-1', [
+    const presence = await installStudyAssistant('server-1', [
       { grantType: 'COURSE_CHANNEL', grantTargetId: 'channel-1' },
     ])
 
@@ -50,7 +50,6 @@ describe('study-assistant-api', () => {
       {
         method: 'POST',
         body: JSON.stringify({
-          instructorUserId: 'instructor-1',
           grants: [{ grantType: 'COURSE_CHANNEL', grantTargetId: 'channel-1' }],
         }),
       },
