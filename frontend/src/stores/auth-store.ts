@@ -11,6 +11,15 @@ type AuthStore = {
   clearSession: () => void
 }
 
+type PersistedAuthState = {
+  accessToken: string | null
+  user: AuthUser | null
+}
+
+/**
+ * Persist only short-lived access + user profile for reload within access TTL.
+ * Refresh stays in memory so XSS cannot read a renewable token from storage (SEC-06).
+ */
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
@@ -32,11 +41,23 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'chanter-auth',
-      partialize: (state) => ({
+      version: 1,
+      partialize: (state): PersistedAuthState => ({
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         user: state.user,
       }),
+      migrate: (persistedState): PersistedAuthState => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return { accessToken: null, user: null }
+        }
+        const legacy = persistedState as Partial<PersistedAuthState> & {
+          refreshToken?: string | null
+        }
+        return {
+          accessToken: legacy.accessToken ?? null,
+          user: legacy.user ?? null,
+        }
+      },
     },
   ),
 )
