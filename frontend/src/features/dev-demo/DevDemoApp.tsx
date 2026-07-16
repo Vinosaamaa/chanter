@@ -1251,7 +1251,7 @@ function App() {
     }
   }
 
-  const loadStudyAssistantPresence = async (viewerUserId: string, label: string) => {
+  const loadStudyAssistantPresence = async (label: string) => {
     if (!studyServer) {
       return
     }
@@ -2411,14 +2411,14 @@ function App() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => loadStudyAssistantPresence(courseInstructorUserId, 'Instructor')}
+                            onClick={() => loadStudyAssistantPresence('Instructor')}
                             disabled={isLoadingStudyAssistantPresence}
                           >
                             {isLoadingStudyAssistantPresence ? 'Loading...' : 'Presence (Instructor)'}
                           </button>
                           <button
                             type="button"
-                            onClick={() => loadStudyAssistantPresence(learnerUserId, 'Learner')}
+                            onClick={() => loadStudyAssistantPresence('Learner')}
                             disabled={isLoadingStudyAssistantPresence}
                           >
                             {isLoadingStudyAssistantPresence ? 'Loading...' : 'Presence (Learner)'}

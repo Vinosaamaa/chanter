@@ -25,3 +25,8 @@ Study Assistant install/preview/presence and AI usage metrics no longer accept c
 cd backend && mvn -B -pl agent-service,analytics-service -am test
 cd frontend && npm test -- --run src/features/study-assistant/study-assistant-api.test.ts
 ```
+
+## Follow-up (build break)
+
+CI frontend failed after merge: unused `viewerUserId` in `DevDemoApp.loadStudyAssistantPresence`.
+Fixed by dropping the unused parameter (identity is header-only now).
