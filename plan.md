@@ -476,12 +476,14 @@ Architecture: `docs/architecture/social-hub-and-dm-voice.md`, `docs/issues/worka
 
 Legacy GitHub milestone **Social Hub & Realtime** (milestone 2) and **project #2** are superseded by Workable Product tracking.
 
-Milestone 9: Hardening
+Milestone 10: Codebase Hardening (post–public beta)
 
-- Add observability stack or lightweight metrics dashboard.
-- Run load and failure tests locally.
-- Review security posture.
-- Document runbooks and deployment commands.
+Tracked as epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) and [project board #7](https://github.com/users/Vinosaamaa/projects/7). Full-repo security review: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md) (PR [#179](https://github.com/Vinosaamaa/chanter/pull/179)). Issue order: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md) — **start at [#181](https://github.com/Vinosaamaa/chanter/issues/181)** (SEC-04).
+
+- Remediate 6 High, 8 Medium, and Low/Info findings before broader post-launch product work ([#107](https://github.com/Vinosaamaa/chanter/issues/107)).
+- One finding → one branch → one PR with regression tests where practical.
+
+Legacy “Milestone 9: Hardening” bullet list (observability, load tests) remains valid as follow-on ops work after security slices land.
 
 ## Main Risks
 
@@ -500,9 +502,9 @@ Milestone 9: Hardening
 
 ## Next Build Step
 
-Backend MVP **#11–#24**, Production Frontend **#47–#59**, Workable Product **#60–#63**, and UI v2 **#116–#128** are merged on `main`.
+Backend MVP **#11–#24**, Production Frontend **#47–#59**, Workable Product **#60–#63**, UI v2 **#116–#128**, operationalization **#132–#145**, Real AI **#94–#100**, and Public Launch **#101–#104** are merged on `main`.
 
-Progress: [**#131 - Make UI v2 fully operational**](https://github.com/Vinosaamaa/chanter/issues/131) is complete through **#138**, including **#109** and **#92**. **#138** shipped through PR #154: published server-scoped catalog, open/invite Cohort enrollment, truthful search/filter states, exact navigation, PostgreSQL V14 preservation, and responsive owner/learner browser verification. **#139 is active** on `feature/139-truthful-study-server-course-lifecycle` and has been handed to Cursor Composer 2.5 for implementation. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md); canonical UI intent remains [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md).
+**Active:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) epic [#180](https://github.com/Vinosaamaa/chanter/issues/180). Merge findings PR [#179](https://github.com/Vinosaamaa/chanter/pull/179), then start at [#181](https://github.com/Vinosaamaa/chanter/issues/181). Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md). Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 

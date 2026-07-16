@@ -183,3 +183,13 @@ Functional consequence of **SEC-07**; see that entry for the fix.
 6. Remaining Medium/Low items as normal backlog, batched by area (infra SEC-12/14, CI SEC-13, auth SEC-08/09/15/16).
 
 Each fix should be its **own issue → branch → PR** per `docs/operations/agent-workflow.md`, with a regression test where practical (§5.5).
+
+---
+
+## 7. GitHub tracking (2026-07-16)
+
+- **Epic:** [#180](https://github.com/Vinosaamaa/chanter/issues/180) — Codebase hardening (2026-07-16 review)
+- **Project board:** [Codebase Hardening #7](https://github.com/users/Vinosaamaa/projects/7)
+- **Issue breakdown:** [`docs/issues/codebase-hardening-issue-breakdown.md`](../issues/codebase-hardening-issue-breakdown.md)
+- **Findings PR:** [#179](https://github.com/Vinosaamaa/chanter/pull/179) (docs-only; open)
+- **Child slices:** #181–#205 (one issue per finding in §1; SEC-07 and BUG-02 share #187)
