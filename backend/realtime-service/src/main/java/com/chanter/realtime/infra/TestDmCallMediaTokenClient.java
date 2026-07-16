@@ -7,12 +7,17 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-@Component
 @Profile("test")
+@Component
 public class TestDmCallMediaTokenClient implements DmCallMediaTokenClient {
 
     @Override
-    public Mono<DmCallMediaToken> issueForCall(UUID callId, UUID participantUserId) {
+    public Mono<DmCallMediaToken> issueForCall(
+            UUID callId,
+            UUID participantUserId,
+            UUID callerUserId,
+            UUID calleeUserId
+    ) {
         return Mono.just(new DmCallMediaToken(
                 "dm-call-" + callId,
                 "ws://localhost:7880",
