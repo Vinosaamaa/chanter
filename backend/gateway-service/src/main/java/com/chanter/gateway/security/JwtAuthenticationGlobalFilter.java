@@ -3,7 +3,7 @@ package com.chanter.gateway.security;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.InvalidJwtException;
 import com.chanter.common.auth.JwtTokenService;
-import java.net.URI;
+import com.chanter.common.auth.WebSocketJwtProtocols;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -15,7 +15,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -59,22 +58,16 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         String authorizationHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         try {
             ResolvedIdentity identity = resolveIdentity(path, exchange.getRequest(), authorizationHeader);
-            ServerHttpRequest.Builder requestBuilder = exchange.getRequest().mutate()
+            ServerHttpRequest mutated = exchange.getRequest().mutate()
                     .headers(headers -> {
                         headers.remove(AuthHeaders.USER_ID);
                         headers.set(AuthHeaders.USER_ID, identity.userId().toString());
                         if (identity.bearerToken() != null) {
                             headers.set(HttpHeaders.AUTHORIZATION, AuthHeaders.BEARER_PREFIX + identity.bearerToken());
                         }
-                    });
-            if (exchange.getRequest().getQueryParams().containsKey("access_token")) {
-                URI sanitizedUri = UriComponentsBuilder.fromUri(exchange.getRequest().getURI())
-                        .replaceQueryParam("access_token")
-                        .build(true)
-                        .toUri();
-                requestBuilder.uri(sanitizedUri);
-            }
-            return chain.filter(exchange.mutate().request(requestBuilder.build()).build());
+                    })
+                    .build();
+            return chain.filter(exchange.mutate().request(mutated).build());
         } catch (InvalidJwtException exception) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
@@ -110,11 +103,10 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         }
 
         if (path.startsWith(REALTIME_API_PREFIX)) {
-            String accessToken = request.getQueryParams().getFirst("access_token");
-            if (accessToken != null && !accessToken.isBlank()) {
-                String trimmed = accessToken.trim();
-                UUID userId = jwtTokenService.parseUserId(AuthHeaders.BEARER_PREFIX + trimmed);
-                return new ResolvedIdentity(userId, trimmed);
+            String token = WebSocketJwtProtocols.extractToken(request.getHeaders().get("Sec-WebSocket-Protocol"));
+            if (token != null) {
+                UUID userId = jwtTokenService.parseUserId(AuthHeaders.BEARER_PREFIX + token);
+                return new ResolvedIdentity(userId, token);
             }
         }
 

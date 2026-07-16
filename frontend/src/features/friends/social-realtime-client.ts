@@ -162,9 +162,9 @@ export class SocialRealtimeClient {
     const protocol = baseUrl.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = baseUrl.host
     const path = '/api/v1/realtime/ws'
-    const url = `${protocol}//${host}${path}?access_token=${encodeURIComponent(this.options.accessToken)}`
+    const url = `${protocol}//${host}${path}`
 
-    const socket = new WebSocket(url)
+    const socket = new WebSocket(url, ['chanter-jwt', this.options.accessToken])
     this.socket = socket
 
     socket.onopen = () => {
