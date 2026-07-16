@@ -1,5 +1,6 @@
 package com.chanter.realtime.infra;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.realtime.application.ChannelSubscriptionAuthorizer;
 import com.chanter.realtime.domain.RealtimeChannelScope;
 import java.util.UUID;
@@ -16,13 +17,16 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpChannelSubscriptionAuthorizer implements ChannelSubscriptionAuthorizer {
 
     private final WebClient webClient;
+    private final String internalServiceToken;
 
     public HttpChannelSubscriptionAuthorizer(
-            @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl
+            @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.webClient = WebClient.builder()
                 .baseUrl(communityServiceBaseUrl)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -34,7 +38,8 @@ public class HttpChannelSubscriptionAuthorizer implements ChannelSubscriptionAut
 
             AccessResponse response = webClient.get()
                     .uri(path, channelId)
-                    .header("X-User-Id", userId.toString())
+                    .header(AuthHeaders.USER_ID, userId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .bodyToMono(AccessResponse.class)
                     .block();
