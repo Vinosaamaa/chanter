@@ -1,6 +1,6 @@
 # Chanter Agent Workflow
 
-**Last updated:** 2026-07-14
+**Last updated:** 2026-07-16
 **This is the single canonical doc for agents.** It covers issue order, the per-issue completion loop, merge policy, and **CodeAnt AI** PR review. Enforced in `.cursor/rules/git-workflow.mdc`.
 
 ---
@@ -80,11 +80,12 @@ If CodeAnt is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in
 | Production Frontend (legacy) | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Done** (#47–#59) |
 | Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | **Done** (#60–#63, #31–#32) |
 | **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Done** (#116–#128, PR #130) |
-| **UI v2 operationalization** | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Active: #139 next** under epic #131 |
+| **UI v2 operationalization + Public Launch** | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Done** (#132–#145, #94–#100, #101–#104) |
+| **Codebase Hardening** | — | [**#7**](https://github.com/users/Vinosaamaa/projects/7) | **Active: [#181](https://github.com/Vinosaamaa/chanter/issues/181) next** under epic #180 |
 
 Legacy **Social Hub project #2** is **closed**. #31–#32 are on **project #4** only. **#30** is on **project #3** only (pairs with #49).
 
-Repository **Projects** tab: [github.com/Vinosaamaa/chanter/projects](https://github.com/Vinosaamaa/chanter/projects) (user projects #1, #3–#5 linked to this repo).
+Repository **Projects** tab: [github.com/Vinosaamaa/chanter/projects](https://github.com/Vinosaamaa/chanter/projects) (user projects #1, #3–#7 linked to this repo).
 
 ### Phase 2: Production Frontend (project #3)
 
@@ -204,7 +205,29 @@ After #145: AI **#94–#100** (start with [#94](https://github.com/Vinosaamaa/ch
 | 3 | [#87](https://github.com/Vinosaamaa/chanter/issues/87) | Mockup gap audit — **owner sign-off 2026-07-09** (PR #106) |
 | — | **#115–#128** | **UI v2** — merged in PR #130 |
 | 4 | [#131](https://github.com/Vinosaamaa/chanter/issues/131) | Make UI v2 fully operational - **active at #139** |
-| 5 | [#94](https://github.com/Vinosaamaa/chanter/issues/94)+ | Real AI + launch readiness after #145 |
+| 5 | [#94](https://github.com/Vinosaamaa/chanter/issues/94)+ | Real AI + launch readiness — **merged** (#94–#100, #101–#104) |
+
+### Phase 5: Codebase Hardening (project #7)
+
+**Goal:** Remediate security, correctness, and ops findings from the 2026-07-16 full-repo review before post-launch product work.  
+**Epic:** [#180](https://github.com/Vinosaamaa/chanter/issues/180)  
+**Findings:** [`codebase-review-2026-07-16.md`](codebase-review-2026-07-16.md) (merge PR [#179](https://github.com/Vinosaamaa/chanter/pull/179) first)  
+**Breakdown:** [`codebase-hardening-issue-breakdown.md`](../issues/codebase-hardening-issue-breakdown.md)
+
+| Order | Issue | Title |
+|------:|-------|-------|
+| 0 | [#179](https://github.com/Vinosaamaa/chanter/pull/179) | Merge findings report (docs-only) |
+| 1 | [**#181**](https://github.com/Vinosaamaa/chanter/issues/181) | **← START HERE** Reject default JWT and internal-service secrets (SEC-04) |
+| 2 | [#182](https://github.com/Vinosaamaa/chanter/issues/182) | agent-service gateway identity headers (SEC-02) |
+| 3 | [#183](https://github.com/Vinosaamaa/chanter/issues/183) | Authenticate internal DM-call LiveKit token minting (SEC-03) |
+| 4 | [#184](https://github.com/Vinosaamaa/chanter/issues/184) | Stop persisting refresh token in localStorage (SEC-06) |
+| 5 | [#185](https://github.com/Vinosaamaa/chanter/issues/185) | Gate `/dev/demo` out of production builds (SEC-10) |
+| 6 | [#186](https://github.com/Vinosaamaa/chanter/issues/186) | Require Google OAuth `email_verified` (SEC-05) |
+| 7 | [#187](https://github.com/Vinosaamaa/chanter/issues/187) | Allow public auth paths through gateway (SEC-07 / BUG-02) |
+| 8 | [#188](https://github.com/Vinosaamaa/chanter/issues/188) | Enforce service-level identity beyond `X-User-Id` (SEC-01) |
+| 9+ | [#189](https://github.com/Vinosaamaa/chanter/issues/189)–[#205](https://github.com/Vinosaamaa/chanter/issues/205) | Remaining Medium / Low backlog |
+
+After High and blocking Medium items: post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107).
 
 ---
 

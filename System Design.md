@@ -437,6 +437,16 @@ Key scaling decisions:
 - Queue non-urgent AI work such as long summaries, embeddings, meeting notes, and marketplace safety evaluations.
 - Track AI cost and latency per server, channel, user, agent, model, and marketplace listing.
 
+## Security And Hardening (2026-07-16)
+
+A full-repo read-only review after public-beta completion is documented in [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md). Remediation is tracked as epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) on [project board #7](https://github.com/users/Vinosaamaa/projects/7).
+
+**Trust model (summary).** The gateway validates JWTs and strips client-supplied `X-User-Id` before re-injecting the authenticated identity. Requests through the gateway cannot forge identity. Downstream services should still add a second layer (internal service token or mTLS) because local compose publishes service ports on `0.0.0.0` and several endpoints accept caller-supplied identity when reached directly.
+
+**Priority fixes:** default secrets in compose/env (SEC-04), agent-service impersonation (SEC-02), unauthenticated DM-call token minting (SEC-03), refresh token in `localStorage` (SEC-06), `/dev/demo` in production bundles (SEC-10), OAuth `email_verified` (SEC-05), gateway public auth allow-list (SEC-07), cross-service identity enforcement (SEC-01).
+
+Issue order: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
+
 ## Consistency Model
 
 Strong consistency is required for:

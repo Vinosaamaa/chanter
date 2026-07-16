@@ -43,9 +43,15 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 **Production Frontend (milestone 3)** — issues **#47–#59** merged (legacy Discord-style shell — features work, layout superseded).
 
-**UI v2 — Course-first shell (milestone 7)** — **active**. Design **#114** closed; implementation epic **#115**, start at **[#116](https://github.com/Vinosaamaa/chanter/issues/116)**. Mockups + criteria: [`docs/product-design/DESIGN-DECISIONS.md`](docs/product-design/DESIGN-DECISIONS.md). Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
+**UI v2 — Course-first shell (milestone 7)** — **#115–#128** merged.
 
-**Workable Product (milestone 4)** — **#60–#63**, #31–#32 merged. Run the full local product with `make product-up` — see [Getting started](docs/operations/getting-started.md).
+**Workable Product (milestone 4)** — **#60–#63**, #31–#32 merged.
+
+**Public Launch (milestone 5)** — UI v2 operationalization **#132–#145**, Real AI **#94–#100**, launch **#101–#104** merged. Public-beta slice work is **complete on `main`**.
+
+**Active phase: Codebase Hardening** — epic [#180](https://github.com/Vinosaamaa/chanter/issues/180), [project #7](https://github.com/users/Vinosaamaa/projects/7). Findings report: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md) (PR [#179](https://github.com/Vinosaamaa/chanter/pull/179)). **Start remediation at [#181](https://github.com/Vinosaamaa/chanter/issues/181)**. Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
+
+**After hardening:** post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107).
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`
 
@@ -56,7 +62,9 @@ GitHub repository: `https://github.com/Vinosaamaa/chanter`
 | Education MVP (historical) | [projects/1](https://github.com/users/Vinosaamaa/projects/1) | Backend slices #1–#24 |
 | **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59** — **complete** (legacy shell) |
 | [**Workable Product**](https://github.com/users/Vinosaamaa/projects/4) | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **complete** |
-| **Public Launch + UI v2** | [**projects/5**](https://github.com/users/Vinosaamaa/projects/5) | UI v2 **#115–#128** + ops **#131–#145** · AI **#94–#100** · launch **#101–#104** (beta checklist) · remaining epics #82–#85, #107 post-launch |
+| **Public Launch + UI v2** | [**projects/5**](https://github.com/users/Vinosaamaa/projects/5) | UI v2 **#115–#128** + ops **#131–#145** · AI **#94–#100** · launch **#101–#104** — **complete** |
+| **Codebase Hardening** | [**projects/7**](https://github.com/users/Vinosaamaa/projects/7) | **#180–#205** — **active** (2026-07-16 review; start [#181](https://github.com/Vinosaamaa/chanter/issues/181)) |
+| Post-Launch | [projects/6](https://github.com/users/Vinosaamaa/projects/6) | #107 — after hardening High/Medium slices |
 
 **Agent workflow (order + loop + merge policy):** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) (mandatory for all agents).
 
@@ -77,7 +85,7 @@ Key planning files:
 | [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Education MVP PRD — problem, user stories, out of scope |
 | [`docs/issues/education-mvp-issue-breakdown.md`](docs/issues/education-mvp-issue-breakdown.md) | Backend epics and slices (#11–#24) — **done** |
 | [`docs/issues/production-frontend-issue-breakdown.md`](docs/issues/production-frontend-issue-breakdown.md) | Legacy Production UI slices (#47–#59) — **superseded for layout** |
-| [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md) | **UI v2** course-first shell (#115–#128) — **active** |
+| [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md) | **Active** — security/correctness hardening (#180–#205) |
 | [`docs/issues/workable-product-issue-breakdown.md`](docs/issues/workable-product-issue-breakdown.md) | Workable full-stack app (#60–#63, #31–#32) |
 | [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) | **Mandatory agent workflow** — issue order, completion loop, autonomous gated merge |
 | [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) | Redirect → `agent-workflow.md` |
@@ -172,8 +180,10 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-**Current pause point:** [Public Launch](https://github.com/users/Vinosaamaa/projects/5) on [project board #5](https://github.com/users/Vinosaamaa/projects/5) ([repo Projects tab](https://github.com/Vinosaamaa/chanter/projects)). UI v2 operationalization is complete through [#138](https://github.com/Vinosaamaa/chanter/issues/138) in PR #154. Work is paused before [#139](https://github.com/Vinosaamaa/chanter/issues/139), which remains next when resumed.
+**Active:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) — epic [#180](https://github.com/Vinosaamaa/chanter/issues/180). Merge findings PR [#179](https://github.com/Vinosaamaa/chanter/pull/179), then start remediation at [#181](https://github.com/Vinosaamaa/chanter/issues/181) (SEC-04). Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
+
+**After hardening:** post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107).
 
 **Definition of workable local product:** [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md)
 
-See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for the full ordered list through Public Launch (project #5).
+See [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) for the full ordered list.

@@ -32,7 +32,8 @@ Important files:
 - `docs/issues/production-frontend-issue-breakdown.md`: Legacy Production UI phase (**#47–#59**, project #3) — **superseded for layout**.
 - `docs/issues/ui-v2-issue-breakdown.md`: **UI v2 implementation** — course-first shell (**#115–#128**, milestone 7).
 - `docs/issues/workable-product-issue-breakdown.md`: Workable full-stack local app (**#60–#63**, #31–#32, project #4).
-- `docs/issues/public-launch-issue-breakdown.md`: Public Launch (**#82–#104**, project #5).
+- `docs/issues/public-launch-issue-breakdown.md`: Public Launch (**#82–#104**, project #5) — **done**.
+- `docs/issues/codebase-hardening-issue-breakdown.md`: **Active** — security/correctness hardening (**#180–#205**, project #7).
 - `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, autonomous gated merge policy, **CodeAnt AI** PR review (cubic retired).
 - `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
 - `System Design.md`: detailed backend/system architecture explanation and diagrams.
@@ -44,15 +45,15 @@ Important files:
 - `.github/ISSUE_TEMPLATE/`: GitHub issue forms for epics, stories, and bugs.
 - `.gitignore`: initial ignore rules for Java, Node/Vite, Docker/runtime data, caches, and local secrets.
 
-Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, and study shell **#50** are **merged**.
+Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, study shell **#50**, UI v2 **#116–#128**, operationalization **#132–#145**, Real AI **#94–#100**, and Public Launch **#101–#104** are **merged**.
 
-**Active phase:** Public Launch project [#5](https://github.com/users/Vinosaamaa/projects/5). **Actionable public-beta slices through #104 are merged on `main`** (UI v2 #116–#128, ops #132–#145, AI #94–#100, staging/auth #101–#102, E2E #103, beta checklist #104). Remaining open GitHub items are **parent epics only** (#131, #115, #107, #85, #84, #83, #82).
+**Active phase:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) — epic [#180](https://github.com/Vinosaamaa/chanter/issues/180). Findings: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md) (PR [#179](https://github.com/Vinosaamaa/chanter/pull/179)). **Start remediation at [#181](https://github.com/Vinosaamaa/chanter/issues/181)**. Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
 
 **Beta launch:** [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md) — staging `https://staging.chanter.example`, known limitation: course storefront commerce is post-MVP. Full product browser QA passed 2026-07-15 (owner + learner).
 
 **New-chat handoff:** [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md)
 
-**Roadmap after beta:** Post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) + [`post-launch-ui-backlog.md`](docs/operations/post-launch-ui-backlog.md) (storefront commerce, marketing badges, search/billing polish, etc.).
+**Roadmap after hardening:** Post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) + [`post-launch-ui-backlog.md`](docs/operations/post-launch-ui-backlog.md).
 
 **Agent read order for UI work:** `DESIGN-DECISIONS.md` → `specs/layout-rules.md` → issue mockup PNG(s) → `visibility-and-social-model.md`. Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
 
@@ -123,9 +124,13 @@ Production Frontend table retained above for history; milestone **complete** (le
 
 ### UI v2 operationalization + launch (complete through #104)
 
-Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turned the approved UI into a truthful full-stack product. Ordered slices **#132–#145**, AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta checklist **#104** are **merged**. Parent epics may remain open for tracking.
+Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turned the approved UI into a truthful full-stack product. Ordered slices **#132–#145**, AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta checklist **#104** are **merged**.
 
-**Next:** post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) — break PL items into child stories when the owner asks. Short agent start: [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
+### Codebase Hardening (**active** — [project #7](https://github.com/users/Vinosaamaa/projects/7))
+
+Epic [#180](https://github.com/Vinosaamaa/chanter/issues/180). Full-repo review: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md) (PR [#179](https://github.com/Vinosaamaa/chanter/pull/179)). **Start at [#181](https://github.com/Vinosaamaa/chanter/issues/181)** (SEC-04). Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
+
+**After High/Medium slices:** post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107). Short agent start: [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
 
 Full tables: [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
@@ -314,7 +319,7 @@ GitHub issues published (2026-06-17):
 - Project board: https://github.com/users/Vinosaamaa/projects/1 (Education MVP backend #1–#24)
 - **Production Frontend project:** https://github.com/users/Vinosaamaa/projects/3 (#30, #47–#59, milestone 3)
 - **Public Launch project:** https://github.com/users/Vinosaamaa/projects/5 (#82–#104, milestone 5) — linked on [repo Projects tab](https://github.com/Vinosaamaa/chanter/projects)
-- **Workable Product project:** https://github.com/users/Vinosaamaa/projects/4 (#30–#32, #60–#63, milestone 4) — **complete**
+- **Codebase Hardening project:** https://github.com/users/Vinosaamaa/projects/7 (#180–#205, milestone hardening)
 - ~~Social Hub project #2~~ — closed; #31–#32 live on project #4 only
 - **#11 Monorepo bootstrap — CLOSED** (merged PR #25)
 - **#12 Create A Study Server — CLOSED** (merged PR #26)
@@ -371,15 +376,16 @@ Recent operations documentation artifacts:
 Fallback prompt:
 
 ```text
-Read docs/operations/new-chat-handoff.md, HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
+@docs/operations/new-chat-handoff.md
 
-Public-beta slices through #104 are merged on main. Next work is post-launch #107
-(docs/operations/post-launch-ui-backlog.md) unless the owner names a different task.
+Follow the paste prompt in that file. Short version:
+
+Public-beta through #104 is on main. Active: Codebase Hardening epic #180 (project #7).
+1) Merge PR #179 if still open (CI + CodeAnt). 2) Implement #181 (SEC-04 default secrets).
+Then continue #182+ per docs/issues/codebase-hardening-issue-breakdown.md. Never push main.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Project: https://github.com/users/Vinosaamaa/projects/5
-Demo: docs/operations/workable-product-demo.md
-Beta: docs/operations/public-beta-launch-checklist.md
+Project: https://github.com/users/Vinosaamaa/projects/7
 ```
 
 ## Notes For Future Agent
