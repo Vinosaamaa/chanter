@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -24,7 +25,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
+import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.web.reactive.socket.client.WebSocketClient;
 import reactor.core.publisher.Flux;
@@ -74,8 +77,8 @@ class DirectMessageCallSignalingSmokeTest {
         Thread calleeThread = new Thread(() -> {
             try {
                 client.execute(
-                        websocketUri(tokenB),
-                        session -> {
+                        websocketUri(),
+                        withJwtSubprotocol(tokenB, session -> {
                             Flux<String> inbound = session.receive()
                                     .map(WebSocketMessage::getPayloadAsText)
                                     .replay()
@@ -108,7 +111,7 @@ class DirectMessageCallSignalingSmokeTest {
                                     .then();
 
                             return ready.then(acceptCall).then(waitAccepted);
-                        }
+                        })
                 ).block(Duration.ofSeconds(15));
             } catch (Throwable throwable) {
                 calleeFailure.set(throwable);
@@ -123,8 +126,8 @@ class DirectMessageCallSignalingSmokeTest {
 
         AtomicReference<JsonNode> callerAccepted = new AtomicReference<>();
         client.execute(
-                websocketUri(tokenA),
-                session -> {
+                websocketUri(),
+                withJwtSubprotocol(tokenA, session -> {
                     Flux<String> inbound = session.receive()
                             .map(WebSocketMessage::getPayloadAsText)
                             .replay()
@@ -147,7 +150,7 @@ class DirectMessageCallSignalingSmokeTest {
                             .then();
 
                     return invite.then(waitAccepted);
-                }
+                })
         ).block(Duration.ofSeconds(15));
 
         calleeThread.join(15_000);
@@ -173,11 +176,11 @@ class DirectMessageCallSignalingSmokeTest {
         assertThat(tokenResponse.get("roomName").asText()).isEqualTo("dm-call-" + callId);
 
         client.execute(
-                websocketUri(tokenA),
-                session -> session.send(Mono.just(session.textMessage(toJson(Map.of(
+                websocketUri(),
+                withJwtSubprotocol(tokenA, session -> session.send(Mono.just(session.textMessage(toJson(Map.of(
                         "type", "call_end",
                         "callId", callId
-                )))))
+                ))))))
         ).block(Duration.ofSeconds(5));
     }
 
@@ -195,8 +198,8 @@ class DirectMessageCallSignalingSmokeTest {
         AtomicReference<JsonNode> errorFrame = new AtomicReference<>();
 
         client.execute(
-                websocketUri(tokenA),
-                session -> {
+                websocketUri(),
+                withJwtSubprotocol(tokenA, session -> {
                     Flux<String> inbound = session.receive()
                             .map(WebSocketMessage::getPayloadAsText)
                             .replay()
@@ -219,15 +222,29 @@ class DirectMessageCallSignalingSmokeTest {
                             .then();
 
                     return invite.then(waitError);
-                }
+                })
         ).block(Duration.ofSeconds(10));
 
         assertThat(errorFrame.get()).isNotNull();
         assertThat(errorFrame.get().get("code").asText()).isEqualTo("forbidden");
     }
 
-    private URI websocketUri(String accessToken) {
-        return URI.create("ws://localhost:" + port + "/api/v1/realtime/ws?access_token=" + accessToken);
+    private URI websocketUri() {
+        return URI.create("ws://localhost:" + port + "/api/v1/realtime/ws");
+    }
+
+    private static WebSocketHandler withJwtSubprotocol(String token, WebSocketHandler delegate) {
+        return new WebSocketHandler() {
+            @Override
+            public List<String> getSubProtocols() {
+                return List.of("chanter-jwt", token);
+            }
+
+            @Override
+            public Mono<Void> handle(WebSocketSession session) {
+                return delegate.handle(session);
+            }
+        };
     }
 
     private void captureFrame(String payload, AtomicReference<JsonNode> target) {

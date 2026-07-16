@@ -11,9 +11,7 @@ import com.chanter.realtime.application.SocialFriendsClient;
 import com.chanter.realtime.domain.RealtimeChannelScope;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -65,6 +63,11 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         this.socialFriendsClient = socialFriendsClient;
         this.presenceStore = presenceStore;
         this.objectMapper = objectMapper;
+    }
+
+    @Override
+    public List<String> getSubProtocols() {
+        return List.of("chanter-jwt");
     }
 
     @Override
@@ -239,6 +242,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
     }
 
     private UUID authenticate(WebSocketSession session) {
+        // 1. Prefer Authorization header (gateway may inject after resolving subprotocol token)
         String authorizationHeader = session.getHandshakeInfo().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authorizationHeader != null && !authorizationHeader.isBlank()) {
             try {
@@ -259,16 +263,46 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
             }
         }
 
-        String accessToken = queryParam(session.getHandshakeInfo().getUri(), "access_token");
-        if (accessToken == null || accessToken.isBlank()) {
-            return null;
+        // 2. Accept token from Sec-WebSocket-Protocol: chanter-jwt, <token>
+        String token = extractTokenFromSubprotocols(session.getHandshakeInfo().getHeaders());
+        if (token != null) {
+            try {
+                return jwtTokenService.parseUserId(AuthHeaders.BEARER_PREFIX + token);
+            } catch (InvalidJwtException exception) {
+                return null;
+            }
         }
 
-        try {
-            return jwtTokenService.parseUserId(AuthHeaders.BEARER_PREFIX + accessToken);
-        } catch (InvalidJwtException exception) {
+        return null;
+    }
+
+    static String extractTokenFromSubprotocols(HttpHeaders headers) {
+        List<String> protocols = headers.get("Sec-WebSocket-Protocol");
+        if (protocols == null || protocols.isEmpty()) {
             return null;
         }
+        // Header may arrive as a single comma-joined value or multiple values
+        for (String header : protocols) {
+            for (String part : header.split(",")) {
+                String trimmed = part.trim();
+                if (trimmed.startsWith("chanter-jwt.")) {
+                    return trimmed.substring("chanter-jwt.".length()).trim();
+                }
+            }
+        }
+        // Two-value form: ["chanter-jwt", "<token>"]
+        for (String header : protocols) {
+            String[] parts = header.split(",");
+            for (int i = 0; i < parts.length - 1; i++) {
+                if ("chanter-jwt".equals(parts[i].trim())) {
+                    String candidate = parts[i + 1].trim();
+                    if (!candidate.isBlank()) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private Mono<Void> sendError(WebSocketSession session, String code, String message) {
@@ -313,19 +347,4 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         };
     }
 
-    private static String queryParam(URI uri, String name) {
-        String query = uri.getQuery();
-        if (query == null || query.isBlank()) {
-            return null;
-        }
-
-        for (String part : query.split("&")) {
-            String[] keyValue = part.split("=", 2);
-            if (keyValue.length == 2 && name.equals(keyValue[0])) {
-                return URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
-            }
-        }
-
-        return null;
-    }
 }

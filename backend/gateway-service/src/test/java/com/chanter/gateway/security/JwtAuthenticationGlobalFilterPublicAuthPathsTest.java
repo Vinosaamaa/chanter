@@ -2,7 +2,9 @@ package com.chanter.gateway.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.JwtTokenService;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -89,5 +92,77 @@ class JwtAuthenticationGlobalFilterPublicAuthPathsTest {
 
         assertThat(continued).isFalse();
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void realtimePathWithSubprotocolTokenIsAccepted() {
+        JwtTokenService tokenService = new JwtTokenService(JWT_SECRET, 900);
+        UUID userId = UUID.randomUUID();
+        String token = tokenService.createAccessToken(userId);
+
+        AtomicBoolean continued = new AtomicBoolean(false);
+        GatewayFilterChain chain = exchange -> {
+            continued.set(true);
+            return Mono.empty();
+        };
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/realtime/ws")
+                        .header("Sec-WebSocket-Protocol", "chanter-jwt, " + token)
+                        .build()
+        );
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(continued).isTrue();
+        assertThat(exchange.getResponse().getStatusCode()).isNotEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void realtimePathWithoutTokenIsRejected() {
+        AtomicBoolean continued = new AtomicBoolean(false);
+        GatewayFilterChain chain = exchange -> {
+            continued.set(true);
+            return Mono.empty();
+        };
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/realtime/ws").build()
+        );
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(continued).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void extractTokenFromSubprotocolsTwoValueForm() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Sec-WebSocket-Protocol", "chanter-jwt, mytoken123");
+
+        String token = JwtAuthenticationGlobalFilter.extractTokenFromSubprotocols(headers);
+
+        assertThat(token).isEqualTo("mytoken123");
+    }
+
+    @Test
+    void extractTokenFromSubprotocolsDotForm() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Sec-WebSocket-Protocol", "chanter-jwt.mytoken123");
+
+        String token = JwtAuthenticationGlobalFilter.extractTokenFromSubprotocols(headers);
+
+        assertThat(token).isEqualTo("mytoken123");
+    }
+
+    @Test
+    void extractTokenFromSubprotocolsReturnsNullWhenAbsent() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Sec-WebSocket-Protocol", "other-protocol");
+
+        String token = JwtAuthenticationGlobalFilter.extractTokenFromSubprotocols(headers);
+
+        assertThat(token).isNull();
     }
 }

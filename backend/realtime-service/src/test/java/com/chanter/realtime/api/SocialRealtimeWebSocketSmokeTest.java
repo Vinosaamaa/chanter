@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -21,7 +22,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
+import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import org.springframework.web.reactive.socket.client.WebSocketClient;
 import reactor.core.publisher.Flux;
@@ -70,8 +73,8 @@ class SocialRealtimeWebSocketSmokeTest {
         Thread listenerThread = new Thread(() -> {
             try {
                 client.execute(
-                        websocketUri(tokenB),
-                        session -> {
+                        websocketUri(),
+                        withJwtSubprotocol(tokenB, session -> {
                             Flux<String> inbound = session.receive()
                                     .map(WebSocketMessage::getPayloadAsText)
                                     .replay()
@@ -97,7 +100,7 @@ class SocialRealtimeWebSocketSmokeTest {
                                     .then();
 
                             return Mono.when(ready, waitForPresence, waitForDm).then();
-                        }
+                        })
                 ).block(Duration.ofSeconds(30));
             } catch (Throwable throwable) {
                 listenerFailure.set(throwable);
@@ -111,8 +114,8 @@ class SocialRealtimeWebSocketSmokeTest {
         }
 
         client.execute(
-                websocketUri(tokenA),
-                session -> {
+                websocketUri(),
+                withJwtSubprotocol(tokenA, session -> {
                     Flux<String> inbound = session.receive()
                             .map(WebSocketMessage::getPayloadAsText)
                             .replay()
@@ -130,7 +133,7 @@ class SocialRealtimeWebSocketSmokeTest {
                     )))));
 
                     return waitForSubscribed.then(sendDm);
-                }
+                })
         ).block(Duration.ofSeconds(20));
 
         listenerThread.join(35_000);
@@ -156,8 +159,8 @@ class SocialRealtimeWebSocketSmokeTest {
         AtomicReference<JsonNode> errorFrame = new AtomicReference<>();
 
         client.execute(
-                websocketUri(tokenA),
-                session -> {
+                websocketUri(),
+                withJwtSubprotocol(tokenA, session -> {
                     Flux<String> inbound = session.receive()
                             .map(WebSocketMessage::getPayloadAsText)
                             .replay()
@@ -181,15 +184,29 @@ class SocialRealtimeWebSocketSmokeTest {
                             .then();
 
                     return waitForSubscribed.then(sendDm).then(waitForError);
-                }
+                })
         ).block(Duration.ofSeconds(10));
 
         assertThat(errorFrame.get()).isNotNull();
         assertThat(errorFrame.get().get("code").asText()).isEqualTo("forbidden");
     }
 
-    private URI websocketUri(String accessToken) {
-        return URI.create("ws://localhost:" + port + "/api/v1/realtime/ws?access_token=" + accessToken);
+    private URI websocketUri() {
+        return URI.create("ws://localhost:" + port + "/api/v1/realtime/ws");
+    }
+
+    private static WebSocketHandler withJwtSubprotocol(String token, WebSocketHandler delegate) {
+        return new WebSocketHandler() {
+            @Override
+            public List<String> getSubProtocols() {
+                return List.of("chanter-jwt", token);
+            }
+
+            @Override
+            public Mono<Void> handle(WebSocketSession session) {
+                return delegate.handle(session);
+            }
+        };
     }
 
     private void captureFrame(String payload, AtomicReference<JsonNode> target) {
