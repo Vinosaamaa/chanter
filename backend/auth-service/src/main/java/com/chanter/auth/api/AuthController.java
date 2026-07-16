@@ -82,7 +82,7 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest servletRequest
     ) {
-        authRateLimiter.check(rateKey(servletRequest, "login"));
+        authRateLimiter.check(rateKey(servletRequest, "login", request.email()));
         return AuthSessionResponse.from(authSessionService.login(request.email(), request.password()));
     }
 
@@ -178,8 +178,12 @@ public class AuthController {
     }
 
     private static String rateKey(HttpServletRequest request, String action) {
-        String ip = request.getRemoteAddr() == null ? "unknown" : request.getRemoteAddr();
-        return action + ":" + ip;
+        return action + ":" + ClientIpResolver.resolve(request);
+    }
+
+    private static String rateKey(HttpServletRequest request, String action, String email) {
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase(java.util.Locale.ROOT);
+        return action + ":" + normalizedEmail + ":" + ClientIpResolver.resolve(request);
     }
 
     public record ForgotPasswordRequest(@NotBlank @Email String email) {
