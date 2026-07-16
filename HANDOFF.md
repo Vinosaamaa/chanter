@@ -376,16 +376,16 @@ Recent operations documentation artifacts:
 Fallback prompt:
 
 ```text
-Read docs/operations/new-chat-handoff.md, HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
+@docs/operations/new-chat-handoff.md
 
-Public-beta slices through #104 are merged on main.
-Active phase: Codebase Hardening epic #180 (project #7). Findings: docs/operations/codebase-review-2026-07-16.md (PR #179).
-Start remediation at #181 unless I name a different issue.
+Follow the paste prompt in that file. Short version:
+
+Public-beta through #104 is on main. Active: Codebase Hardening epic #180 (project #7).
+1) Merge PR #179 if still open (CI + CodeAnt). 2) Implement #181 (SEC-04 default secrets).
+Then continue #182+ per docs/issues/codebase-hardening-issue-breakdown.md. Never push main.
 
 Repo: https://github.com/Vinosaamaa/chanter
 Project: https://github.com/users/Vinosaamaa/projects/7
-Demo: docs/operations/workable-product-demo.md
-Beta: docs/operations/public-beta-launch-checklist.md
 ```
 
 ## Notes For Future Agent

@@ -1,6 +1,6 @@
 # New-chat handoff (2026-07-16)
 
-**@ this file in a fresh Cursor chat** to continue Chanter without loading the long historical thread.
+**@ this file in a fresh Cursor chat**, then paste the prompt block below.
 
 Canonical long-form context: [`HANDOFF.md`](../../HANDOFF.md) · workflow: [`agent-workflow.md`](agent-workflow.md) · glossary: [`CONTEXT.md`](../../CONTEXT.md)
 
@@ -8,28 +8,38 @@ Canonical long-form context: [`HANDOFF.md`](../../HANDOFF.md) · workflow: [`age
 
 ## Status (one paragraph)
 
-Public beta **slice work is complete on `main`** (#11–#104 merged). A full-repo security review is documented in [`codebase-review-2026-07-16.md`](codebase-review-2026-07-16.md) (PR [#179](https://github.com/Vinosaamaa/chanter/pull/179) — **open**, not draft). **Active work:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) — remediation slices **#181–#205**. **Start implementation at [#181](https://github.com/Vinosaamaa/chanter/issues/181)** (SEC-04) after merging #179. Post-launch product backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) resumes after High/Medium hardening items.
+Public beta **slice work is complete on `main`** (#11–#104 merged). A full-repo security review lives in [`codebase-review-2026-07-16.md`](codebase-review-2026-07-16.md). **Active phase:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) — slices **#181–#205**. Findings PR [#179](https://github.com/Vinosaamaa/chanter/pull/179) is **open** (docs + tracking). **Next code work:** [#181](https://github.com/Vinosaamaa/chanter/issues/181) (SEC-04 — reject default JWT/internal secrets). Post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107) waits until High/Medium hardening lands.
 
 ---
 
 ## Paste this into the new chat
 
 ```text
-Read docs/operations/new-chat-handoff.md, HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
+@docs/operations/new-chat-handoff.md
 
-Chanter public-beta slices through #104 are merged on main.
-Active phase: Codebase Hardening epic #180 (project #7). Findings: docs/operations/codebase-review-2026-07-16.md (PR #179).
-Start remediation at #181 unless I name a different issue. Breakdown: docs/issues/codebase-hardening-issue-breakdown.md.
+Read that handoff, then HANDOFF.md, CONTEXT.md, docs/operations/agent-workflow.md § Phase 5, and docs/issues/codebase-hardening-issue-breakdown.md.
 
-Rules:
-- Never push to main. Branch feature/<N>-<slug> or cursor/<name> → PR → CI + CodeAnt → merge.
-- One issue → one branch → one PR. Vertical-slice TDD from #56 onward.
-- Product UI: docs/product-design/DESIGN-DECISIONS.md + mockups.
-- Local stack: make product-supervise → make product-health → make product-demo-seed
-  Demo: dev-demo-owner@chanter.local / chanter-dev-demo (learner: dev-demo-learner@chanter.local)
-  Frontend http://localhost:5173 · Gateway :8080
+You are continuing Chanter after public-beta completion. Active phase is Codebase Hardening (epic #180, GitHub project #7).
 
-Wait for my next instruction before starting implementation.
+Do this next, in order:
+
+1. Check PR #179 (cursor/codebase-review-9c80). If still open: wait for CI + CodeAnt, finish any fix loop, then merge it into main. Pull latest main after merge.
+2. Implement issue #181 — Slice: Reject default JWT and internal-service secrets (SEC-04).
+   - Finding detail: docs/operations/codebase-review-2026-07-16.md § SEC-04
+   - Branch from latest main: feature/181-reject-default-secrets
+   - Empty placeholders in .env.example; remove compose secret defaults; reject known default values (not just length); keep local make product-up documented.
+   - TDD / regression check where practical. Write docs/operations/issue-181-change-log.md.
+   - One issue → one branch → one PR with Closes #181 → CI green → CodeAnt (≤3 rounds) → merge. Never push main.
+3. After #181 merges, continue the board order: #182 → #183 → … unless I say otherwise.
+
+Do not start post-launch #107 yet. Do not reopen closed beta slices #94–#104 unless fixing a regression.
+
+Local stack (if needed): make product-supervise → make product-health → make product-demo-seed
+Demo: dev-demo-owner@chanter.local / chanter-dev-demo · Frontend http://localhost:5173 · Gateway :8080
+
+Repo: https://github.com/Vinosaamaa/chanter
+Active project: https://github.com/users/Vinosaamaa/projects/7
+Start now with step 1 (PR #179), then #181.
 ```
 
 ---
@@ -71,13 +81,13 @@ Change logs: `docs/operations/issue-*-change-log.md` / `issue-*-codeant-fix.md`
 - Staging hostname placeholder: `https://staging.chanter.example`
 - Flaky CI: `SocialRealtimeWebSocketSmokeTest` — empty-commit re-push often clears it
 - Agent service lives under `backend/agent-service` (not `services/`)
-- **Security:** see [`codebase-review-2026-07-16.md`](codebase-review-2026-07-16.md) — High findings tracked in #181–#188; remediation in progress
+- **Security:** see [`codebase-review-2026-07-16.md`](codebase-review-2026-07-16.md) — High findings #181–#188; remediation starts at #181
 
 ---
 
 ## Next work order
 
-1. Merge PR [#179](https://github.com/Vinosaamaa/chanter/pull/179) (findings report)
+1. Merge PR [#179](https://github.com/Vinosaamaa/chanter/pull/179) (findings report + tracking docs)
 2. [#181](https://github.com/Vinosaamaa/chanter/issues/181) → #182 → … per [`codebase-hardening-issue-breakdown.md`](../issues/codebase-hardening-issue-breakdown.md)
 3. After High/Medium hardening: post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107) ([`post-launch-ui-backlog.md`](post-launch-ui-backlog.md))
 
@@ -85,7 +95,7 @@ Change logs: `docs/operations/issue-*-change-log.md` / `issue-*-codeant-fix.md`
 
 ## Git / agent rules (short)
 
-- Preferred base: `main`. Branch `feature/<N>-<slug>` or `cursor/` per task.
+- Preferred base: `main`. Branch `feature/<N>-<slug>` (or `cursor/` if required).
 - Merge only after CI green + CodeAnt (≤3 remediation rounds). Never push `main`.
 - Full policy: [`agent-workflow.md`](agent-workflow.md) · `.cursor/rules/git-workflow.mdc`
 
