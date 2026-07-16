@@ -44,6 +44,9 @@ services:
       - --node-id
       - "0"
       - --check=false
+      # epoll reactor backend keeps Redpanda/Seastar working in restricted
+      # container/VM environments where the default linux-aio backend fails.
+      - --reactor-backend=epoll
       - --kafka-addr
       - internal://0.0.0.0:9092,external://0.0.0.0:19092
       - --advertise-kafka-addr
