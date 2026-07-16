@@ -1,4 +1,4 @@
-FROM maven:3.9.16-eclipse-temurin-21 AS build
+FROM maven:3-eclipse-temurin-26 AS build
 WORKDIR /workspace
 # Parent POM lists every backend module; copy module POMs for reactor resolution plus sources we build.
 COPY backend/pom.xml backend/pom.xml
