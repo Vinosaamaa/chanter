@@ -149,7 +149,7 @@ public class AuthController {
             HttpServletRequest servletRequest
     ) {
         authRateLimiter.check(rateKey(servletRequest, "oauth-google"));
-        return AuthSessionResponse.from(oauthAuthService.completeGoogleLogin(request.code()));
+        return AuthSessionResponse.from(oauthAuthService.completeGoogleLogin(request.code(), request.state()));
     }
 
     @GetMapping("/me")
@@ -198,7 +198,7 @@ public class AuthController {
     public record VerifyEmailRequest(@NotBlank String token) {
     }
 
-    public record OAuthCodeRequest(@NotBlank String code) {
+    public record OAuthCodeRequest(@NotBlank String code, @NotBlank String state) {
     }
 
     public record OAuthProvidersResponse(List<OAuthProviderResponse> providers) {
