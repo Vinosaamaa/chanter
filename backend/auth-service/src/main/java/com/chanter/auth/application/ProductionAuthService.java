@@ -64,6 +64,21 @@ public class ProductionAuthService {
         );
     }
 
+    /**
+     * Out-of-band notice when someone tries to register an email that already exists (SEC-15).
+     * The HTTP register response stays neutral; this email tells the owner without revealing
+     * existence to the caller.
+     */
+    public void notifyExistingAccountRegisterAttempt(AuthUser user) {
+        emailSender.send(
+                user.email(),
+                "Chanter account signup attempt",
+                "Someone tried to create a Chanter account using this email.\n\n"
+                        + "If this was you, sign in instead of registering again.\n"
+                        + "If it was not you, you can ignore this message — no new account was created."
+        );
+    }
+
     @Transactional
     public void verifyEmail(String rawToken) {
         TokenUser tokenUser = requireToken(rawToken, PURPOSE_EMAIL_VERIFY);

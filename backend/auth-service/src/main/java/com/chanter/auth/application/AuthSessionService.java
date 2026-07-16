@@ -26,6 +26,9 @@ import com.chanter.common.auth.JwtTokenService;
 @Service
 public class AuthSessionService {
 
+    static final String NEUTRAL_REGISTER_MESSAGE =
+            "If this email can be used, check your inbox for next steps.";
+
     private final AuthUserRepository authUserRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -57,7 +60,9 @@ public class AuthSessionService {
     public RegisterResult registerWithStatus(String email, String password, String displayName) {
         String normalizedEmail = normalizeEmail(email);
         if (authUserRepository.existsByEmail(normalizedEmail)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");
+            // Neutral response (SEC-15): never reveal that the email is taken.
+            authUserRepository.findByEmail(normalizedEmail).ifPresent(productionAuthService::notifyExistingAccountRegisterAttempt);
+            return new RegisterResult(null, true, NEUTRAL_REGISTER_MESSAGE);
         }
         boolean verified = !requireEmailVerification;
         AuthUser user = new AuthUser(
@@ -71,15 +76,12 @@ public class AuthSessionService {
         try {
             authUserRepository.save(user);
         } catch (DataIntegrityViolationException exception) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Email is already registered",
-                    exception
-            );
+            authUserRepository.findByEmail(normalizedEmail).ifPresent(productionAuthService::notifyExistingAccountRegisterAttempt);
+            return new RegisterResult(null, true, NEUTRAL_REGISTER_MESSAGE);
         }
         if (requireEmailVerification) {
             productionAuthService.sendEmailVerification(user);
-            return new RegisterResult(null, true, "Check your email to verify before signing in.");
+            return new RegisterResult(null, true, NEUTRAL_REGISTER_MESSAGE);
         }
         return new RegisterResult(issueSession(user), false, null);
     }
