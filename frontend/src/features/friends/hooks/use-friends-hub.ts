@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { getApiAccessToken, refreshApiSession } from '../../../lib/api-client'
 import { useAuthStore } from '../../../stores/auth-store'
 import { useLiveKitRoom } from '../../voice/hooks/use-livekit-room'
 
@@ -248,7 +249,8 @@ export function useFriendsHub(preferredFriendId: string | null = null): UseFrien
     }
 
     const client = new SocialRealtimeClient({
-      accessToken,
+      getAccessToken: getApiAccessToken,
+      refreshSession: refreshApiSession,
       onDirectMessage: (message) => {
         const friendId = selectedFriendIdRef.current
         if (

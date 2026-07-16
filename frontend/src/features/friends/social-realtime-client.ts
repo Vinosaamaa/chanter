@@ -3,7 +3,8 @@ import { getApiBase } from '../../lib/api-base'
 import type { DirectMessage, FriendPresenceStatus, SocialCallMessage, SocialRealtimeMessage } from './types'
 
 type SocialRealtimeClientOptions = {
-  accessToken: string
+  getAccessToken: () => string | null
+  refreshSession: () => Promise<boolean>
   onDirectMessage: (message: DirectMessage) => void
   onPresenceChange: (userId: string, status: FriendPresenceStatus) => void
   onCallEvent: (event: SocialCallMessage) => void
@@ -62,6 +63,7 @@ export class SocialRealtimeClient {
   private reconnectAttempts = 0
   private reconnectTimerId: number | null = null
   private stopped = false
+  private opening = false
   private pendingDirectMessage: PendingDirectMessage | null = null
   private readonly options: SocialRealtimeClientOptions
 
@@ -72,7 +74,7 @@ export class SocialRealtimeClient {
   connect(): void {
     this.stopped = false
     this.clearReconnectTimer()
-    this.openSocket()
+    void this.openSocket()
   }
 
   disconnect(): void {
@@ -150,75 +152,98 @@ export class SocialRealtimeClient {
     this.sendFrame({ type: 'call_end', callId })
   }
 
-  private openSocket(): void {
-    const status: SocialRealtimeConnectionStatus =
-      this.reconnectAttempts === 0 ? 'connecting' : 'reconnecting'
-    this.options.onStatusChange(status)
-
-    const apiBase = getApiBase()
-    const baseUrl = apiBase
-      ? new URL(apiBase)
-      : new URL(`${window.location.protocol}//${window.location.host}`)
-    const protocol = baseUrl.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = baseUrl.host
-    const path = '/api/v1/realtime/ws'
-    const url = `${protocol}//${host}${path}`
-
-    const socket = new WebSocket(url, ['chanter-jwt', this.options.accessToken])
-    this.socket = socket
-
-    socket.onopen = () => {
-      this.reconnectAttempts = 0
-      this.options.onStatusChange('connected')
+  private async openSocket(): Promise<void> {
+    if (this.stopped || this.opening) {
+      return
     }
+    this.opening = true
 
-    socket.onmessage = (event) => {
-      try {
-        const frame = JSON.parse(String(event.data)) as SocialRealtimeMessage | SocialCallMessage
-        if (frame.type === 'dm_message') {
-          this.resolvePendingDirectMessage(frame.payload)
-          this.options.onDirectMessage(frame.payload)
+    try {
+      const status: SocialRealtimeConnectionStatus =
+        this.reconnectAttempts === 0 ? 'connecting' : 'reconnecting'
+      this.options.onStatusChange(status)
+
+      if (this.reconnectAttempts > 0) {
+        await this.options.refreshSession()
+        if (this.stopped) {
           return
         }
-        if (frame.type === 'presence_changed') {
-          this.options.onPresenceChange(frame.userId, frame.status)
-          return
-        }
-        if (
-          frame.type === 'call_ringing' ||
-          frame.type === 'call_accepted' ||
-          frame.type === 'call_busy' ||
-          frame.type === 'call_ended'
-        ) {
-          this.options.onCallEvent(frame)
-          return
-        }
-        if (frame.type === 'error') {
-          if (this.pendingDirectMessage) {
-            this.rejectPendingDirectMessage(new Error(frame.message))
-          }
-          this.options.onError(frame.message)
-        }
-      } catch {
-        this.options.onError('Received an invalid social realtime event')
       }
-    }
 
-    socket.onclose = () => {
-      this.socket = null
-      this.rejectPendingDirectMessage(new Error('Social realtime connection closed'))
-      if (this.stopped) {
-        this.options.onStatusChange('disconnected')
+      const accessToken = this.options.getAccessToken()
+      if (!accessToken) {
+        this.options.onError('Social realtime authentication expired')
+        this.scheduleReconnect()
         return
       }
-      this.scheduleReconnect()
-    }
 
-    socket.onerror = () => {
-      if (!this.stopped) {
-        this.rejectPendingDirectMessage(new Error('Social realtime connection failed'))
-        this.options.onError('Social realtime connection failed')
+      const apiBase = getApiBase()
+      const baseUrl = apiBase
+        ? new URL(apiBase)
+        : new URL(`${window.location.protocol}//${window.location.host}`)
+      const protocol = baseUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+      const host = baseUrl.host
+      const path = '/api/v1/realtime/ws'
+      const url = `${protocol}//${host}${path}`
+
+      const socket = new WebSocket(url, ['chanter-jwt', accessToken])
+      this.socket = socket
+
+      socket.onopen = () => {
+        this.reconnectAttempts = 0
+        this.options.onStatusChange('connected')
       }
+
+      socket.onmessage = (event) => {
+        try {
+          const frame = JSON.parse(String(event.data)) as SocialRealtimeMessage | SocialCallMessage
+          if (frame.type === 'dm_message') {
+            this.resolvePendingDirectMessage(frame.payload)
+            this.options.onDirectMessage(frame.payload)
+            return
+          }
+          if (frame.type === 'presence_changed') {
+            this.options.onPresenceChange(frame.userId, frame.status)
+            return
+          }
+          if (
+            frame.type === 'call_ringing' ||
+            frame.type === 'call_accepted' ||
+            frame.type === 'call_busy' ||
+            frame.type === 'call_ended'
+          ) {
+            this.options.onCallEvent(frame)
+            return
+          }
+          if (frame.type === 'error') {
+            if (this.pendingDirectMessage) {
+              this.rejectPendingDirectMessage(new Error(frame.message))
+            }
+            this.options.onError(frame.message)
+          }
+        } catch {
+          this.options.onError('Received an invalid social realtime event')
+        }
+      }
+
+      socket.onclose = () => {
+        this.socket = null
+        this.rejectPendingDirectMessage(new Error('Social realtime connection closed'))
+        if (this.stopped) {
+          this.options.onStatusChange('disconnected')
+          return
+        }
+        this.scheduleReconnect()
+      }
+
+      socket.onerror = () => {
+        if (!this.stopped) {
+          this.rejectPendingDirectMessage(new Error('Social realtime connection failed'))
+          this.options.onError('Social realtime connection failed')
+        }
+      }
+    } finally {
+      this.opening = false
     }
   }
 
@@ -233,7 +258,7 @@ export class SocialRealtimeClient {
     this.reconnectTimerId = window.setTimeout(() => {
       this.reconnectTimerId = null
       if (!this.stopped) {
-        this.openSocket()
+        void this.openSocket()
       }
     }, delay)
   }
