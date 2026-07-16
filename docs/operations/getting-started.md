@@ -36,16 +36,12 @@ cd chanter
 ### Step 2 — Create your local config
 
 ```bash
-cp .env.example .env
+make product-env
 ```
 
-Add a demo password to `.env` (required for `make product-demo-seed`):
+This copies `.env.example` → `.env` (if needed) and fills **unique** `CHANTER_JWT_SECRET` / `CHANTER_INTERNAL_SERVICE_TOKEN` values. Do not paste the old in-repo example secrets — they are rejected on purpose (SEC-04).
 
-```bash
-echo 'DEMO_PASSWORD=chanter-dev-demo' >> .env
-```
-
-You can pick any password; both demo accounts use the same value locally.
+`make product-env` also adds `DEMO_PASSWORD=chanter-dev-demo` when missing (required for `make product-demo-seed`). You can change that password; both demo accounts use the same local value.
 
 ### Step 3 — Start everything
 

@@ -8,7 +8,7 @@ Canonical long-form context: [`HANDOFF.md`](../../HANDOFF.md) · workflow: [`age
 
 ## Status (one paragraph)
 
-Public beta **slice work is complete on `main`** (#11–#104 merged). A full-repo security review lives in [`codebase-review-2026-07-16.md`](codebase-review-2026-07-16.md). **Active phase:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) — slices **#181–#205**. Findings PR [#179](https://github.com/Vinosaamaa/chanter/pull/179) is **open** (docs + tracking). **Next code work:** [#181](https://github.com/Vinosaamaa/chanter/issues/181) (SEC-04 — reject default JWT/internal secrets). Post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107) waits until High/Medium hardening lands.
+Public beta **slice work is complete on `main`** (#11–#104 merged). A full-repo security review lives in [`codebase-review-2026-07-16.md`](codebase-review-2026-07-16.md) (**merged** via PR [#179](https://github.com/Vinosaamaa/chanter/pull/179)). **Active phase:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) — slices **#181–#205**. **Current:** [#181](https://github.com/Vinosaamaa/chanter/issues/181) (SEC-04 — reject default JWT/internal secrets). Post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107) waits until High/Medium hardening lands.
 
 ---
 
