@@ -44,13 +44,12 @@ export function useStudyAssistantInstallFlow({
 
   const installMutation = useMutation({
     mutationFn: async () => {
-      if (!studyServerId || !instructorUserId || !preview) {
+      if (!studyServerId || !preview) {
         throw new Error('Install preview is not ready.')
       }
 
       return installStudyAssistant(
         studyServerId,
-        instructorUserId,
         grantsFromSelectedKeys(preview, selectedKeys),
       )
     },
@@ -103,7 +102,7 @@ export function useStudyAssistantInstallFlow({
     setInstallError(null)
 
     try {
-      const nextPreview = await fetchStudyAssistantInstallPreview(studyServerId, instructorUserId)
+      const nextPreview = await fetchStudyAssistantInstallPreview(studyServerId)
       if (requestId !== openRequestIdRef.current || requestContextKey !== contextKey) {
         return
       }

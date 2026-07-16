@@ -197,14 +197,14 @@ EOF
 fi
 
 echo "==> Install AI Study Assistant (idempotent)"
-ASSISTANT_INSTALLED=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant?viewerUserId=$OWNER_ID" \
+ASSISTANT_INSTALLED=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant" \
   -H "Authorization: Bearer $OWNER_TOKEN" \
   | python3 -c "import sys,json; print(json.load(sys.stdin).get('installed', False))")
 if [[ "$ASSISTANT_INSTALLED" == "True" ]]; then
   echo "   already installed (re-run on a fresh stack to pick up new resource grants)"
 else
   PREVIEW=$(curl_json "study-assistant install-preview" \
-    "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install-preview?instructorUserId=$OWNER_ID" \
+    "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install-preview" \
     -H "Authorization: Bearer $OWNER_TOKEN")
   INSTALL_BODY=$(echo "$PREVIEW" | python3 -c "
 import sys, json
@@ -222,7 +222,7 @@ for course in preview['candidates']['courses']:
         grants.append({'grantType': 'COURSE_CHANNEL', 'grantTargetId': ch['id']})
 for res in preview.get('courseResources', []):
     grants.append({'grantType': 'COURSE_RESOURCE', 'grantTargetId': res['id']})
-print(json.dumps({'instructorUserId': '$OWNER_ID', 'grants': grants}))
+print(json.dumps({'grants': grants}))
 ")
   if [[ -n "$INSTALL_BODY" ]]; then
     curl -sf -X POST "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant/install" \

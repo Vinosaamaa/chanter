@@ -6,9 +6,10 @@ Local port: `8085`.
 
 ## APIs
 
-- `GET /api/v1/study-servers/{studyServerId}/study-assistant/install-preview?instructorUserId=` — HITL preview of grant candidates and AI-approved Course Resources
-- `POST /api/v1/study-servers/{studyServerId}/study-assistant/install` — confirm install with explicit grants (one assistant per Study Server)
-- `GET /api/v1/study-servers/{studyServerId}/study-assistant?viewerUserId=` — installed flag and grants visible to the viewer
+- `GET /api/v1/study-servers/{studyServerId}/study-assistant/install-preview` — HITL preview of grant candidates and AI-approved Course Resources (actor from `X-User-Id`)
+- `POST /api/v1/study-servers/{studyServerId}/study-assistant/install` — confirm install with explicit grants (one assistant per Study Server; actor from `X-User-Id`)
+- `GET /api/v1/study-servers/{studyServerId}/study-assistant` — installed flag and grants visible to the viewer (actor from `X-User-Id`)
+- `GET /api/v1/study-servers/{studyServerId}/ai-usage-metrics` — SaaS AI usage for instructor dashboard (actor from `X-User-Id`)
 - `POST /api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/assistant-answer` — grounded answer or low-confidence handoff for an unanswered Support Question
 - `POST /api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/assistant-answer/stream` — SSE token stream then final answer JSON
 

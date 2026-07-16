@@ -168,11 +168,9 @@ export async function moderateSupportQuestion(
 
 export async function fetchStudyAssistantPresence(
   studyServerId: string,
-  viewerUserId: string,
 ): Promise<StudyAssistantPresence> {
-  const params = new URLSearchParams({ viewerUserId })
   return apiFetch<StudyAssistantPresence>(
-    `/api/v1/study-servers/${studyServerId}/study-assistant?${params.toString()}`,
+    `/api/v1/study-servers/${studyServerId}/study-assistant`,
   )
 }
 

@@ -1,6 +1,7 @@
 package com.chanter.analytics.infra;
 
 import com.chanter.analytics.config.AgentServiceClientProperties;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -35,8 +36,8 @@ public class HttpAgentServiceClient {
     public AiUsageMetricsResponse fetchAiUsageMetrics(UUID studyServerId, UUID viewerUserId) {
         try {
             AiUsageMetricsResponse response = restClient.get()
-                    .uri("/api/v1/study-servers/{studyServerId}/ai-usage-metrics?viewerUserId={viewerUserId}",
-                            studyServerId, viewerUserId)
+                    .uri("/api/v1/study-servers/{studyServerId}/ai-usage-metrics", studyServerId)
+                    .header(AuthHeaders.USER_ID, viewerUserId.toString())
                     .retrieve()
                     .body(AiUsageMetricsResponse.class);
 

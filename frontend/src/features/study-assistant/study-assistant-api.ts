@@ -8,24 +8,21 @@ import type {
 
 export async function fetchStudyAssistantInstallPreview(
   studyServerId: string,
-  instructorUserId: string,
 ): Promise<StudyAssistantInstallPreview> {
-  const params = new URLSearchParams({ instructorUserId })
   return apiFetch<StudyAssistantInstallPreview>(
-    `/api/v1/study-servers/${studyServerId}/study-assistant/install-preview?${params.toString()}`,
+    `/api/v1/study-servers/${studyServerId}/study-assistant/install-preview`,
   )
 }
 
 export async function installStudyAssistant(
   studyServerId: string,
-  instructorUserId: string,
   grants: StudyAssistantGrantSelection[],
 ): Promise<StudyAssistantPresence> {
   return apiFetch<StudyAssistantPresence>(
     `/api/v1/study-servers/${studyServerId}/study-assistant/install`,
     {
       method: 'POST',
-      body: JSON.stringify({ instructorUserId, grants }),
+      body: JSON.stringify({ grants }),
     },
   )
 }

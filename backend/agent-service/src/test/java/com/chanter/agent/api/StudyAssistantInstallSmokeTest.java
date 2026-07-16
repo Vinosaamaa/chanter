@@ -11,6 +11,7 @@ import com.chanter.agent.application.StudyAssistantGrantCandidatesClient.CourseC
 import com.chanter.agent.application.StudyAssistantGrantCandidatesClient.GrantCandidates;
 import com.chanter.agent.application.CourseResourceCatalogClient.CourseResourceSummary;
 import com.chanter.agent.domain.GrantType;
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.agent.infra.TestCourseResourceCatalogClient;
 import com.chanter.agent.infra.TestStudyAssistantGrantCandidatesClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -103,7 +104,7 @@ class StudyAssistantInstallSmokeTest {
         MvcResult previewResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant/install-preview",
                         studyServerId
-                ).param("instructorUserId", instructorUserId.toString()))
+                ).header(AuthHeaders.USER_ID, instructorUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -119,8 +120,8 @@ class StudyAssistantInstallSmokeTest {
 
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
                                 "grants", List.of(
                                         Map.of(
                                                 "grantType", GrantType.STUDY_SERVER_CHANNEL.name(),
@@ -148,7 +149,7 @@ class StudyAssistantInstallSmokeTest {
 
         MvcResult instructorPresenceResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId
-                ).param("viewerUserId", instructorUserId.toString()))
+                ).header(AuthHeaders.USER_ID, instructorUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyAssistantPresenceResponse instructorPresence = objectMapper.readValue(
@@ -161,7 +162,7 @@ class StudyAssistantInstallSmokeTest {
 
         MvcResult learnerPresenceResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId
-                ).param("viewerUserId", learnerUserId.toString()))
+                ).header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyAssistantPresenceResponse learnerPresence = objectMapper.readValue(
@@ -200,8 +201,8 @@ class StudyAssistantInstallSmokeTest {
 
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
                                 "grants", List.of(Map.of(
                                         "grantType", GrantType.STUDY_SERVER_CHANNEL.name(),
                                         "grantTargetId", unknownChannelId.toString()
@@ -232,7 +233,6 @@ class StudyAssistantInstallSmokeTest {
         );
 
         String installBody = objectMapper.writeValueAsString(Map.of(
-                "instructorUserId", instructorUserId.toString(),
                 "grants", List.of(Map.of(
                         "grantType", GrantType.STUDY_SERVER_CHANNEL.name(),
                         "grantTargetId", channelId.toString()
@@ -241,11 +241,13 @@ class StudyAssistantInstallSmokeTest {
 
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .content(installBody))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .content(installBody))
                 .andExpect(status().isConflict());
     }
@@ -295,8 +297,8 @@ class StudyAssistantInstallSmokeTest {
 
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "instructorUserId", instructorUserId.toString(),
                                 "grants", List.of(
                                         Map.of(
                                                 "grantType", GrantType.STUDY_SERVER_CHANNEL.name(),
@@ -316,7 +318,7 @@ class StudyAssistantInstallSmokeTest {
 
         MvcResult learnerPresenceResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId
-                ).param("viewerUserId", learnerUserId.toString()))
+                ).header(AuthHeaders.USER_ID, learnerUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyAssistantPresenceResponse learnerPresence = objectMapper.readValue(
@@ -339,7 +341,7 @@ class StudyAssistantInstallSmokeTest {
         UUID strangerUserId = UUID.randomUUID();
 
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId)
-                        .param("viewerUserId", strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
                 .andExpect(status().isForbidden());
     }
 
@@ -356,7 +358,7 @@ class StudyAssistantInstallSmokeTest {
 
         MvcResult presenceResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId
-                ).param("viewerUserId", instructorUserId.toString()))
+                ).header(AuthHeaders.USER_ID, instructorUserId.toString()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -368,4 +370,52 @@ class StudyAssistantInstallSmokeTest {
         assertThat(presence.installed()).isFalse();
         assertThat(presence.grants()).isEmpty();
     }
+    @Test
+    void missingIdentityHeaderReturnsUnauthorized() throws Exception {
+        UUID studyServerId = UUID.randomUUID();
+        mockMvc.perform(get(
+                        "/api/v1/study-servers/{studyServerId}/study-assistant",
+                        studyServerId
+                ))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get(
+                        "/api/v1/study-servers/{studyServerId}/study-assistant/install-preview",
+                        studyServerId
+                ))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get(
+                        "/api/v1/study-servers/{studyServerId}/ai-usage-metrics",
+                        studyServerId
+                ))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void spoofedQueryIdentityIsIgnoredInFavorOfHeader() throws Exception {
+        UUID studyServerId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+        UUID attackerUserId = UUID.randomUUID();
+
+        grantCandidatesClient.registerGrantCandidates(
+                studyServerId,
+                instructorUserId,
+                new GrantCandidates(studyServerId, List.of(), List.of())
+        );
+        grantCandidatesClient.registerViewerScope(
+                studyServerId,
+                instructorUserId,
+                TestStudyAssistantGrantCandidatesClient.instructorScope(studyServerId)
+        );
+
+        // Query param claiming another user must not authorize; header is the actor.
+        mockMvc.perform(get(
+                        "/api/v1/study-servers/{studyServerId}/study-assistant/install-preview",
+                        studyServerId
+                )
+                        .param("instructorUserId", attackerUserId.toString())
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                .andExpect(status().isOk());
+    }
+
+
 }
