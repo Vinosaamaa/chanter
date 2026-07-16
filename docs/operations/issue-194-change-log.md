@@ -11,6 +11,7 @@ Compose and the realtime Dockerfile used floating tags (`postgres:16-alpine`, `r
 - Left Redpanda / MinIO / LiveKit pins unchanged (already immutable).
 - Added `.github/dependabot.yml` weekly Docker updates for `/infra` and `/infra/docker/realtime-service`.
 - Documented upgrade process in `docs/operations/docker-image-upgrades.md`.
+- Stabilized flaky `SocialRealtimeWebSocketSmokeTest.friendPresenceAndDirectMessagesFanOutOverWebSocket` (single inbound consumer + hold sender socket until fan-out observed) so CI can land this pin change reliably.
 
 ## Acceptance
 
