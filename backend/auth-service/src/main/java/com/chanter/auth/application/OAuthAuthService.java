@@ -1,9 +1,6 @@
 package com.chanter.auth.application;
 
 import com.chanter.auth.domain.AuthUser;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -116,6 +113,15 @@ public class OAuthAuthService {
                 .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
                 .body(Map.class);
+        return sessionFromGoogleUserInfo(profile);
+    }
+
+    /**
+     * Resolves or provisions a Chanter session from a Google userinfo payload.
+     * Requires {@code email_verified == true} before any email-based link/provision (SEC-05).
+     * Already-linked Google subjects may sign in without re-checking email verification.
+     */
+    AuthSessionService.AuthSession sessionFromGoogleUserInfo(Map<?, ?> profile) {
         if (profile == null || profile.get("sub") == null || profile.get("email") == null) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Google profile lookup failed");
         }
@@ -126,10 +132,27 @@ public class OAuthAuthService {
                 ? email
                 : String.valueOf(profile.get("name")).trim();
 
-        return oauthAccountRepository.findUserId("google", subject)
-                .flatMap(authUserRepository::findById)
-                .map(authSessionService::issueSessionForUser)
-                .orElseGet(() -> provisionGoogleUser(subject, email, displayName));
+        var linked = oauthAccountRepository.findUserId("google", subject)
+                .flatMap(authUserRepository::findById);
+        if (linked.isPresent()) {
+            return authSessionService.issueSessionForUser(linked.get());
+        }
+
+        requireGoogleEmailVerified(profile);
+        return provisionGoogleUser(subject, email, displayName);
+    }
+
+    private static void requireGoogleEmailVerified(Map<?, ?> profile) {
+        Object verifiedClaim = profile.get("email_verified");
+        boolean verified = verifiedClaim instanceof Boolean booleanValue
+                ? booleanValue
+                : "true".equalsIgnoreCase(String.valueOf(verifiedClaim));
+        if (!verified) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Google email must be verified before signing in with OAuth"
+            );
+        }
     }
 
     private AuthSessionService.AuthSession provisionGoogleUser(String subject, String email, String displayName) {
@@ -157,6 +180,7 @@ public class OAuthAuthService {
                         ));
             }
         } else if (!user.emailVerified()) {
+            // Safe: caller required Google email_verified before provision.
             authUserRepository.markEmailVerified(user.id());
             user = authUserRepository.findById(user.id()).orElse(user);
         }
