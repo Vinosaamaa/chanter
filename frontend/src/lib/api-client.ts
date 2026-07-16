@@ -28,6 +28,23 @@ export function configureApiAuth(config: ApiAuthConfig): void {
   apiAuthConfig = config
 }
 
+/** Current bearer access token from the configured auth store. */
+export function getApiAccessToken(): string | null {
+  return apiAuthConfig?.getAccessToken() ?? null
+}
+
+/** Single-flight refresh used by HTTP and WebSocket reconnect paths. */
+export async function refreshApiSession(): Promise<boolean> {
+  if (!apiAuthConfig) {
+    return false
+  }
+
+  refreshInFlight ??= apiAuthConfig.refreshSession().finally(() => {
+    refreshInFlight = null
+  })
+  return refreshInFlight
+}
+
 export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T> {
   const response = await fetchWithAuth(path, init, init?.skipAuthRefresh ?? false)
   return parseJsonResponse<T>(response)
@@ -64,10 +81,7 @@ async function fetchWithAuth(
   })
 
   if (response.status === 401 && !skipAuthRefresh && apiAuthConfig) {
-    refreshInFlight ??= apiAuthConfig.refreshSession().finally(() => {
-      refreshInFlight = null
-    })
-    const refreshed = await refreshInFlight
+    const refreshed = await refreshApiSession()
     if (refreshed) {
       return fetchWithAuth(path, init, true)
     }

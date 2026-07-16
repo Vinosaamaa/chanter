@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { getApiAccessToken, refreshApiSession } from '../../../lib/api-client'
 import { useAuthStore } from '../../../stores/auth-store'
 import { RealtimeClient, type RealtimeConnectionStatus } from '../../realtime/realtime-client'
 import type { ChannelMessage, ChannelScope } from '../channel-message-types'
@@ -144,7 +145,8 @@ export function useChannelConversation(
       })
 
     const client = new RealtimeClient({
-      accessToken,
+      getAccessToken: getApiAccessToken,
+      refreshSession: refreshApiSession,
       channelId,
       channelScope,
       onMessage: (message) => {
