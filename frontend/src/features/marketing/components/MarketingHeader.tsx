@@ -89,10 +89,12 @@ export function MarketingHero() {
           Create Study Server
           <ArrowRight aria-hidden="true" />
         </Link>
-        <Link className="marketing-v2-secondary" to={MARKETING_DEMO_PATH}>
-          <Play aria-hidden="true" />
-          View demo
-        </Link>
+        {import.meta.env.DEV ? (
+          <Link className="marketing-v2-secondary" to={MARKETING_DEMO_PATH}>
+            <Play aria-hidden="true" />
+            View demo
+          </Link>
+        ) : null}
       </div>
     </div>
   )
