@@ -1,6 +1,10 @@
 package com.chanter.analytics.config;
 
+import com.chanter.common.auth.JwtTokenService;
+import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
@@ -10,4 +14,12 @@ import org.springframework.context.annotation.Configuration;
         AgentServiceClientProperties.class
 })
 public class AnalyticsServiceConfig {
+
+    @Bean
+    JwtTokenService jwtTokenService(
+            @Value("${chanter.jwt.secret}") String secret,
+            @Value("${chanter.jwt.access-token-ttl:15m}") Duration accessTokenTtl
+    ) {
+        return new JwtTokenService(secret, accessTokenTtl.toSeconds());
+    }
 }

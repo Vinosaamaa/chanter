@@ -1,5 +1,6 @@
 package com.chanter.realtime.infra;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.realtime.application.ChannelMessageClient;
 import com.chanter.realtime.application.PersistedChannelMessage;
 import com.chanter.realtime.domain.RealtimeChannelScope;
@@ -19,13 +20,16 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpChannelMessageClient implements ChannelMessageClient {
 
     private final WebClient webClient;
+    private final String internalServiceToken;
 
     public HttpChannelMessageClient(
-            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl
+            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.webClient = WebClient.builder()
                 .baseUrl(messageServiceBaseUrl)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -42,7 +46,8 @@ public class HttpChannelMessageClient implements ChannelMessageClient {
 
             MessageResponse response = webClient.post()
                     .uri(path, channelId)
-                    .header("X-User-Id", senderUserId.toString())
+                    .header(AuthHeaders.USER_ID, senderUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .bodyValue(Map.of("body", body))
                     .retrieve()
                     .bodyToMono(MessageResponse.class)

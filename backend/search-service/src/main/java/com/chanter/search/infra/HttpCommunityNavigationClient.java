@@ -5,6 +5,7 @@ import com.chanter.search.application.CommunityNavigationClient;
 import com.chanter.search.config.CommunityServiceClientProperties;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -20,13 +21,18 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpCommunityNavigationClient implements CommunityNavigationClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
-    public HttpCommunityNavigationClient(CommunityServiceClientProperties properties) {
+    public HttpCommunityNavigationClient(
+            CommunityServiceClientProperties properties,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
+    ) {
         this.restClient = DownstreamRestClientFactory.create(
                 properties.baseUrl(),
                 properties.connectTimeout(),
                 properties.readTimeout()
         );
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -35,6 +41,7 @@ public class HttpCommunityNavigationClient implements CommunityNavigationClient 
             NavigationResponse response = restClient.get()
                     .uri("/api/v1/study-servers/{studyServerId}/navigation", studyServerId)
                     .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(NavigationResponse.class);
 

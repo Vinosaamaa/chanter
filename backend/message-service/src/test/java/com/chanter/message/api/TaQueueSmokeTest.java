@@ -62,6 +62,7 @@ class TaQueueSmokeTest {
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "How do I configure Spring Security?",
@@ -80,6 +81,7 @@ class TaQueueSmokeTest {
                         supportQuestion.id()
                 )
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "status", SupportQuestionStatus.AI_LOW_CONFIDENCE.name()
@@ -88,6 +90,7 @@ class TaQueueSmokeTest {
 
         MvcResult addResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "supportQuestionId", supportQuestion.id().toString(),
@@ -104,7 +107,8 @@ class TaQueueSmokeTest {
         assertThat(queued.supportQuestionId()).isEqualTo(supportQuestion.id());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
-                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andReturn();
         TaQueueListResponse listed = objectMapper.readValue(
@@ -114,7 +118,8 @@ class TaQueueSmokeTest {
         assertThat(listed.taQueueItems()).extracting(TaQueueItemResponse::id).containsExactly(queued.id());
 
         mockMvc.perform(patch("/api/v1/cohorts/{cohortId}/ta-queue/{itemId}/pickup", cohortId, queued.id())
-                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk());
 
         MvcResult resolveResult = mockMvc.perform(patch(
@@ -122,7 +127,8 @@ class TaQueueSmokeTest {
                         cohortId,
                         queued.id()
                 )
-                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andReturn();
         TaQueueItemResponse resolved = objectMapper.readValue(
@@ -138,7 +144,8 @@ class TaQueueSmokeTest {
                             channelId,
                             supportQuestion.id()
                         )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RESOLVED"));
     }
@@ -170,6 +177,7 @@ class TaQueueSmokeTest {
                         channelId
                 )
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "Can this question cross Course boundaries?",
@@ -188,6 +196,7 @@ class TaQueueSmokeTest {
                         supportQuestion.id()
                 )
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "status", SupportQuestionStatus.AI_LOW_CONFIDENCE.name()
@@ -196,6 +205,7 @@ class TaQueueSmokeTest {
 
         mockMvc.perform(post("/api/v1/cohorts/{cohortId}/ta-queue", otherCohortId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "supportQuestionId", supportQuestion.id().toString(),
@@ -223,6 +233,7 @@ class TaQueueSmokeTest {
                         channelId
                 )
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "Please close this duplicate question",
@@ -241,6 +252,7 @@ class TaQueueSmokeTest {
                         supportQuestion.id()
                 )
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "status", SupportQuestionStatus.AI_LOW_CONFIDENCE.name()
@@ -249,6 +261,7 @@ class TaQueueSmokeTest {
 
         MvcResult addResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "supportQuestionId", supportQuestion.id().toString(),
@@ -262,7 +275,8 @@ class TaQueueSmokeTest {
         );
 
         mockMvc.perform(patch("/api/v1/cohorts/{cohortId}/ta-queue/{itemId}/pickup", cohortId, queued.id())
-                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(patch(
@@ -271,13 +285,15 @@ class TaQueueSmokeTest {
                         supportQuestion.id()
                 )
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("status", "DUPLICATE"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DUPLICATE"));
 
         mockMvc.perform(get("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
-                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.taQueueItems").isEmpty());
     }
@@ -292,7 +308,8 @@ class TaQueueSmokeTest {
         cohortTaQueueAccessClient.registerCohort(cohortId, courseId, studyServerId);
 
         mockMvc.perform(get("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
-                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isForbidden());
     }
 
@@ -313,6 +330,7 @@ class TaQueueSmokeTest {
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "Need help with Spring Security",
@@ -331,6 +349,7 @@ class TaQueueSmokeTest {
                         supportQuestion.id()
                 )
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "status", SupportQuestionStatus.AI_LOW_CONFIDENCE.name()
@@ -339,6 +358,7 @@ class TaQueueSmokeTest {
 
         MvcResult addResult = mockMvc.perform(post("/api/v1/cohorts/{cohortId}/ta-queue", cohortId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "supportQuestionId", supportQuestion.id().toString(),
@@ -352,11 +372,13 @@ class TaQueueSmokeTest {
         );
 
         mockMvc.perform(patch("/api/v1/cohorts/{cohortId}/ta-queue/{itemId}/pickup", cohortId, queued.id())
-                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(patch("/api/v1/cohorts/{cohortId}/ta-queue/{itemId}/resolve", cohortId, queued.id())
-                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isForbidden());
     }
 }

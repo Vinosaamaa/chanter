@@ -23,11 +23,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpStudyAssistantGrantCandidatesClient implements StudyAssistantGrantCandidatesClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpStudyAssistantGrantCandidatesClient(
             @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
             @Value("${chanter.community-service.connect-timeout-seconds:5}") int connectTimeoutSeconds,
-            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds
+            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -40,6 +42,7 @@ public class HttpStudyAssistantGrantCandidatesClient implements StudyAssistantGr
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -48,6 +51,7 @@ public class HttpStudyAssistantGrantCandidatesClient implements StudyAssistantGr
             GrantCandidatesResponse response = restClient.get()
                     .uri("/api/v1/study-servers/{studyServerId}/study-assistant-grant-candidates", studyServerId)
                     .header(AuthHeaders.USER_ID, userId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(GrantCandidatesResponse.class);
 
@@ -83,6 +87,7 @@ public class HttpStudyAssistantGrantCandidatesClient implements StudyAssistantGr
             ViewerScopeResponse response = restClient.get()
                     .uri("/api/v1/study-servers/{studyServerId}/study-assistant-viewer-scope", studyServerId)
                     .header(AuthHeaders.USER_ID, userId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(ViewerScopeResponse.class);
 

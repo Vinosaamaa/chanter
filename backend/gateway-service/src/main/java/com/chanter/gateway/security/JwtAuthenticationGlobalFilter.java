@@ -58,11 +58,14 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
 
         String authorizationHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         try {
-            UUID userId = resolveUserId(path, exchange.getRequest(), authorizationHeader);
+            ResolvedIdentity identity = resolveIdentity(path, exchange.getRequest(), authorizationHeader);
             ServerHttpRequest.Builder requestBuilder = exchange.getRequest().mutate()
                     .headers(headers -> {
                         headers.remove(AuthHeaders.USER_ID);
-                        headers.set(AuthHeaders.USER_ID, userId.toString());
+                        headers.set(AuthHeaders.USER_ID, identity.userId().toString());
+                        if (identity.bearerToken() != null) {
+                            headers.set(HttpHeaders.AUTHORIZATION, AuthHeaders.BEARER_PREFIX + identity.bearerToken());
+                        }
                     });
             if (exchange.getRequest().getQueryParams().containsKey("access_token")) {
                 URI sanitizedUri = UriComponentsBuilder.fromUri(exchange.getRequest().getURI())
@@ -101,18 +104,23 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         return chain.filter(exchange.mutate().request(request).build());
     }
 
-    private UUID resolveUserId(String path, ServerHttpRequest request, String authorizationHeader) {
+    private ResolvedIdentity resolveIdentity(String path, ServerHttpRequest request, String authorizationHeader) {
         if (authorizationHeader != null && !authorizationHeader.isBlank()) {
-            return jwtTokenService.parseUserId(authorizationHeader);
+            return new ResolvedIdentity(jwtTokenService.parseUserId(authorizationHeader), null);
         }
 
         if (path.startsWith(REALTIME_API_PREFIX)) {
             String accessToken = request.getQueryParams().getFirst("access_token");
             if (accessToken != null && !accessToken.isBlank()) {
-                return jwtTokenService.parseUserId(AuthHeaders.BEARER_PREFIX + accessToken.trim());
+                String trimmed = accessToken.trim();
+                UUID userId = jwtTokenService.parseUserId(AuthHeaders.BEARER_PREFIX + trimmed);
+                return new ResolvedIdentity(userId, trimmed);
             }
         }
 
         throw new InvalidJwtException("Missing or invalid Authorization header");
+    }
+
+    private record ResolvedIdentity(UUID userId, String bearerToken) {
     }
 }

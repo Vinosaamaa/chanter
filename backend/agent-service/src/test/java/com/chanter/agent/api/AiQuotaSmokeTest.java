@@ -110,7 +110,7 @@ class AiQuotaSmokeTest {
                         channelId,
                         firstQuestionId
                 )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post(
@@ -118,7 +118,7 @@ class AiQuotaSmokeTest {
                         channelId,
                         secondQuestionId
                 )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isTooManyRequests());
     }
 
@@ -172,6 +172,7 @@ class AiQuotaSmokeTest {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "grants", List.of(
                                         Map.of(

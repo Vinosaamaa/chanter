@@ -65,6 +65,7 @@ class InstructorDashboardMetricsSmokeTest {
 
         mockMvc.perform(post("/api/v1/instructor-dashboard/message-metrics")
                         .header(AuthHeaders.USER_ID, attackerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "viewerUserId", instructorUserId.toString(),

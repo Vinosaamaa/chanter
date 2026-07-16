@@ -13,6 +13,9 @@ spring:
     locations: classpath:db/migration
 
 chanter:
+  jwt:
+    secret: ${CHANTER_JWT_SECRET}
+    access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
   internal-service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   grounding:
     engine: ${CHANTER_GROUNDING_ENGINE:rag}

@@ -57,6 +57,7 @@ class ChannelSummarySmokeTest {
                         "/api/v1/course-channels/{channelId}/channel-summary",
                         channelId)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("windowDays", 7))))
                 .andExpect(status().isOk())
@@ -98,6 +99,7 @@ class ChannelSummarySmokeTest {
 
         mockMvc.perform(post("/api/v1/course-channels/{channelId}/channel-summary", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("windowDays", 7))))
                 .andExpect(status().isForbidden());
@@ -108,6 +110,7 @@ class ChannelSummarySmokeTest {
                         "/api/v1/course-channels/{channelId}/support-questions",
                         channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", body,

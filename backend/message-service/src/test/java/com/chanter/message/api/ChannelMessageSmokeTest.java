@@ -55,6 +55,7 @@ class ChannelMessageSmokeTest {
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("body", "Hello from #questions"))))
                 .andExpect(status().isCreated())
@@ -70,7 +71,8 @@ class ChannelMessageSmokeTest {
         assertThat(created.body()).isEqualTo("Hello from #questions");
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/course-channels/{channelId}/messages", channelId)
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -89,6 +91,7 @@ class ChannelMessageSmokeTest {
 
         mockMvc.perform(post("/api/v1/course-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("body", "blocked"))))
                 .andExpect(status().isForbidden());
@@ -102,6 +105,7 @@ class ChannelMessageSmokeTest {
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/study-server-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, ownerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("body", "Hello #general"))))
                 .andExpect(status().isCreated())
@@ -117,7 +121,8 @@ class ChannelMessageSmokeTest {
         assertThat(created.body()).isEqualTo("Hello #general");
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/study-server-channels/{channelId}/messages", channelId)
-                        .header(AuthHeaders.USER_ID, ownerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, ownerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -136,6 +141,7 @@ class ChannelMessageSmokeTest {
 
         mockMvc.perform(post("/api/v1/study-server-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, ownerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("body", "blocked"))))
                 .andExpect(status().isForbidden());
@@ -165,6 +171,7 @@ class ChannelMessageSmokeTest {
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/course-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .param("since", first.createdAt().toString())
                         .param("afterMessageId", first.id().toString()))
                 .andExpect(status().isOk())
@@ -181,6 +188,7 @@ class ChannelMessageSmokeTest {
     private ChannelMessageResponse postCourseMessage(UUID channelId, UUID userId, String body) throws Exception {
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, userId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("body", body))))
                 .andExpect(status().isCreated())

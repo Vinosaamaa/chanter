@@ -1,4 +1,4 @@
-package com.chanter.message.api;
+package com.chanter.agent.api;
 
 import com.chanter.common.auth.AuthHeaders;
 import java.util.UUID;
@@ -6,7 +6,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 public final class AuthenticatedTestSupport {
 
-    static final String TEST_INTERNAL_SERVICE_TOKEN = "test-internal-service-token-for-message";
+    static final String TEST_INTERNAL_SERVICE_TOKEN = "test-internal-service-token-for-agent";
 
     private AuthenticatedTestSupport() {
     }

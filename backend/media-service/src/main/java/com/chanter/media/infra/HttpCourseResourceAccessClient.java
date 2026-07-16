@@ -22,11 +22,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpCourseResourceAccessClient implements CourseResourceAccessClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpCourseResourceAccessClient(
             @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
             @Value("${chanter.community-service.connect-timeout-seconds:5}") int connectTimeoutSeconds,
-            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds
+            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -39,6 +41,7 @@ public class HttpCourseResourceAccessClient implements CourseResourceAccessClien
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -47,6 +50,7 @@ public class HttpCourseResourceAccessClient implements CourseResourceAccessClien
             AccessResponse response = restClient.get()
                     .uri("/api/v1/courses/{courseId}/resource-access", courseId)
                     .header(AuthHeaders.USER_ID, userId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(AccessResponse.class);
 

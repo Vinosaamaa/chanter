@@ -104,7 +104,7 @@ class StudyAssistantInstallSmokeTest {
         MvcResult previewResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant/install-preview",
                         studyServerId
-                ).header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                ).header(AuthHeaders.USER_ID, instructorUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -121,6 +121,7 @@ class StudyAssistantInstallSmokeTest {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "grants", List.of(
                                         Map.of(
@@ -149,7 +150,7 @@ class StudyAssistantInstallSmokeTest {
 
         MvcResult instructorPresenceResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId
-                ).header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                ).header(AuthHeaders.USER_ID, instructorUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyAssistantPresenceResponse instructorPresence = objectMapper.readValue(
@@ -162,7 +163,7 @@ class StudyAssistantInstallSmokeTest {
 
         MvcResult learnerPresenceResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId
-                ).header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                ).header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyAssistantPresenceResponse learnerPresence = objectMapper.readValue(
@@ -202,6 +203,7 @@ class StudyAssistantInstallSmokeTest {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "grants", List.of(Map.of(
                                         "grantType", GrantType.STUDY_SERVER_CHANNEL.name(),
@@ -242,12 +244,14 @@ class StudyAssistantInstallSmokeTest {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent")
                         .content(installBody))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent")
                         .content(installBody))
                 .andExpect(status().isConflict());
     }
@@ -298,6 +302,7 @@ class StudyAssistantInstallSmokeTest {
         mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/study-assistant/install", studyServerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "grants", List.of(
                                         Map.of(
@@ -318,7 +323,7 @@ class StudyAssistantInstallSmokeTest {
 
         MvcResult learnerPresenceResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId
-                ).header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                ).header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
                 .andReturn();
         StudyAssistantPresenceResponse learnerPresence = objectMapper.readValue(
@@ -341,7 +346,7 @@ class StudyAssistantInstallSmokeTest {
         UUID strangerUserId = UUID.randomUUID();
 
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId)
-                        .header(AuthHeaders.USER_ID, strangerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, strangerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isForbidden());
     }
 
@@ -358,7 +363,7 @@ class StudyAssistantInstallSmokeTest {
 
         MvcResult presenceResult = mockMvc.perform(get(
                         "/api/v1/study-servers/{studyServerId}/study-assistant", studyServerId
-                ).header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                ).header(AuthHeaders.USER_ID, instructorUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -413,7 +418,7 @@ class StudyAssistantInstallSmokeTest {
                         studyServerId
                 )
                         .param("instructorUserId", attackerUserId.toString())
-                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk());
     }
 

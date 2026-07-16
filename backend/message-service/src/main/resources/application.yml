@@ -13,6 +13,10 @@ spring:
     locations: classpath:db/migration,classpath:db/migration-postgresql
 
 chanter:
+  jwt:
+    secret: ${CHANTER_JWT_SECRET}
+    access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
+  internal-service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   community-service:
     base-url: ${COMMUNITY_SERVICE_URL:http://localhost:8082}
   notification-service:

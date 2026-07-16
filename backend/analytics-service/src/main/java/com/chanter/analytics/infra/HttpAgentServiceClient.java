@@ -4,6 +4,7 @@ import com.chanter.analytics.config.AgentServiceClientProperties;
 import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -18,8 +19,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpAgentServiceClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
-    public HttpAgentServiceClient(AgentServiceClientProperties properties) {
+    public HttpAgentServiceClient(
+            AgentServiceClientProperties properties,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
+    ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
                         .connectTimeout(properties.connectTimeout())
@@ -31,6 +36,7 @@ public class HttpAgentServiceClient {
                 .baseUrl(properties.baseUrl())
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     public AiUsageMetricsResponse fetchAiUsageMetrics(UUID studyServerId, UUID viewerUserId) {
@@ -38,6 +44,7 @@ public class HttpAgentServiceClient {
             AiUsageMetricsResponse response = restClient.get()
                     .uri("/api/v1/study-servers/{studyServerId}/ai-usage-metrics", studyServerId)
                     .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(AiUsageMetricsResponse.class);
 

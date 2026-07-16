@@ -21,11 +21,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpSupportQuestionChannelAccessClient implements SupportQuestionChannelAccessClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpSupportQuestionChannelAccessClient(
             @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
             @Value("${chanter.community-service.connect-timeout-seconds:5}") int connectTimeoutSeconds,
-            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds
+            @Value("${chanter.community-service.read-timeout-seconds:10}") int readTimeoutSeconds,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -38,6 +40,7 @@ public class HttpSupportQuestionChannelAccessClient implements SupportQuestionCh
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -46,6 +49,7 @@ public class HttpSupportQuestionChannelAccessClient implements SupportQuestionCh
             AccessResponse response = restClient.get()
                     .uri("/api/v1/course-channels/{channelId}/support-question-access", channelId)
                     .header(AuthHeaders.USER_ID, userId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(AccessResponse.class);
 

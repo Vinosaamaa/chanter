@@ -5,6 +5,7 @@ import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -19,8 +20,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpMessageServiceClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
-    public HttpMessageServiceClient(MessageServiceClientProperties properties) {
+    public HttpMessageServiceClient(
+            MessageServiceClientProperties properties,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
+    ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
                         .connectTimeout(properties.connectTimeout())
@@ -32,6 +37,7 @@ public class HttpMessageServiceClient {
                 .baseUrl(properties.baseUrl())
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     public MessageMetricsResponse fetchMessageMetrics(MessageMetricsRequest request) {
@@ -39,6 +45,7 @@ public class HttpMessageServiceClient {
             MessageMetricsResponse response = restClient.post()
                     .uri("/api/v1/instructor-dashboard/message-metrics")
                     .header(AuthHeaders.USER_ID, request.viewerUserId().toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .body(new MessageMetricsBody(
                             request.questionChannelIds(),
                             request.cohortIds(),

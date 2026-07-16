@@ -22,11 +22,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class HttpApprovedFaqClient implements ApprovedFaqClient {
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpApprovedFaqClient(
             @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl,
             @Value("${chanter.message-service.connect-timeout-seconds:5}") int connectTimeoutSeconds,
-            @Value("${chanter.message-service.read-timeout-seconds:10}") int readTimeoutSeconds
+            @Value("${chanter.message-service.read-timeout-seconds:10}") int readTimeoutSeconds,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -39,6 +41,7 @@ public class HttpApprovedFaqClient implements ApprovedFaqClient {
                 .baseUrl(messageServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -66,6 +69,7 @@ public class HttpApprovedFaqClient implements ApprovedFaqClient {
                         return builder.build(courseId);
                     })
                     .header(AuthHeaders.USER_ID, viewerUserId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(ApprovedFaqListResponse.class);
 

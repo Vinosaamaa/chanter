@@ -59,6 +59,7 @@ class SupportQuestionSmokeTest {
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "How do I configure Spring Security?",
@@ -79,6 +80,7 @@ class SupportQuestionSmokeTest {
 
         MvcResult retryResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "How do I configure Spring Security?",
@@ -94,7 +96,8 @@ class SupportQuestionSmokeTest {
         assertThat(retried.id()).isEqualTo(created.id());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/course-channels/{channelId}/support-questions", channelId)
-                        .header(AuthHeaders.USER_ID, instructorUserId.toString()))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andReturn();
         SupportQuestionListResponse listed = objectMapper.readValue(
@@ -126,6 +129,7 @@ class SupportQuestionSmokeTest {
 
         mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
                         .header(AuthHeaders.USER_ID, strangerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "Can I post here?",
@@ -139,6 +143,7 @@ class SupportQuestionSmokeTest {
         UUID senderUserId = UUID.randomUUID();
         mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", UUID.randomUUID())
                         .header(AuthHeaders.USER_ID, senderUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "Hello?",
@@ -157,6 +162,7 @@ class SupportQuestionSmokeTest {
 
         mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "Instructor question",
@@ -177,6 +183,7 @@ class SupportQuestionSmokeTest {
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "Why does the recursive call stop?",
@@ -195,6 +202,7 @@ class SupportQuestionSmokeTest {
                             question.id()
                         )
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "It stops when the base case returns without another call."
@@ -210,7 +218,8 @@ class SupportQuestionSmokeTest {
                             channelId,
                             question.id()
                         )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.replies.length()").value(1))
                 .andExpect(jsonPath("$.replies[0].authorUserId").value(instructorUserId.toString()))
@@ -223,12 +232,14 @@ class SupportQuestionSmokeTest {
                             channelId,
                             question.id()
                         )
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("HUMAN_ANSWERED"));
 
         mockMvc.perform(get("/api/v1/course-channels/{channelId}/support-questions", channelId)
-                        .header(AuthHeaders.USER_ID, learnerUserId.toString()))
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.supportQuestions.length()").value(1))
                 .andExpect(jsonPath("$.supportQuestions[0].id").value(question.id().toString()))
@@ -255,6 +266,7 @@ class SupportQuestionSmokeTest {
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "body", "Is this the same recursion question?",
@@ -273,6 +285,7 @@ class SupportQuestionSmokeTest {
                             question.id()
                         )
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("status", "DUPLICATE"))))
                 .andExpect(status().isForbidden());
@@ -283,6 +296,7 @@ class SupportQuestionSmokeTest {
                             question.id()
                         )
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("status", "DUPLICATE"))))
                 .andExpect(status().isOk())
@@ -294,6 +308,7 @@ class SupportQuestionSmokeTest {
                             question.id()
                         )
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-message")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("body", "A late reply"))))
                 .andExpect(status().isConflict());

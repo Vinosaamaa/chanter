@@ -1,5 +1,6 @@
 package com.chanter.message.infra;
 
+import com.chanter.common.auth.AuthHeaders;
 import com.chanter.message.application.ChannelMessageAccess;
 import com.chanter.message.application.ChannelMessageAccessClient;
 import com.chanter.message.domain.ChannelScope;
@@ -24,9 +25,11 @@ public class HttpChannelMessageAccessClient implements ChannelMessageAccessClien
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
     public HttpChannelMessageAccessClient(
-            @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl
+            @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
+            @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(CONNECT_TIMEOUT);
@@ -36,6 +39,7 @@ public class HttpChannelMessageAccessClient implements ChannelMessageAccessClien
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -44,7 +48,8 @@ public class HttpChannelMessageAccessClient implements ChannelMessageAccessClien
             if (channelScope == ChannelScope.STUDY_SERVER) {
                 StudyServerAccessResponse response = restClient.get()
                         .uri("/api/v1/study-server-channels/{channelId}/channel-message-access", channelId)
-                        .header("X-User-Id", userId.toString())
+                        .header(AuthHeaders.USER_ID, userId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                         .retrieve()
                         .body(StudyServerAccessResponse.class);
                 return toAccess(channelId, channelScope, response);
@@ -52,7 +57,8 @@ public class HttpChannelMessageAccessClient implements ChannelMessageAccessClien
 
             CourseAccessResponse response = restClient.get()
                     .uri("/api/v1/course-channels/{channelId}/channel-message-access", channelId)
-                    .header("X-User-Id", userId.toString())
+                    .header(AuthHeaders.USER_ID, userId.toString())
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken)
                     .retrieve()
                     .body(CourseAccessResponse.class);
             return toAccess(channelId, channelScope, response);
