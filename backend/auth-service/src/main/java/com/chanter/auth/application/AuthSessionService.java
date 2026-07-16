@@ -29,6 +29,13 @@ public class AuthSessionService {
     static final String NEUTRAL_REGISTER_MESSAGE =
             "If this email can be used, check your inbox for next steps.";
 
+    /**
+     * Precomputed BCrypt hash used when the account is missing or has no password hash,
+     * so {@code matches} always runs (SEC-16 login timing side-channel).
+     */
+    static final String DUMMY_PASSWORD_HASH =
+            "$2b$10$UmakdiX3qQt/PTm0vHM/iOIRL3j8/Yy1jq0dyjHg79Og4QqH/tWkK";
+
     private final AuthUserRepository authUserRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -87,9 +94,12 @@ public class AuthSessionService {
     }
 
     public AuthSession login(String email, String password) {
-        AuthUser user = authUserRepository.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
-        if (user.passwordHash() == null || !passwordEncoder.matches(password, user.passwordHash())) {
+        AuthUser user = authUserRepository.findByEmail(normalizeEmail(email)).orElse(null);
+        String passwordHash = user != null && user.passwordHash() != null
+                ? user.passwordHash()
+                : DUMMY_PASSWORD_HASH;
+        boolean passwordMatches = passwordEncoder.matches(password, passwordHash);
+        if (user == null || user.passwordHash() == null || !passwordMatches) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
         if (requireEmailVerification && !user.emailVerified()) {
