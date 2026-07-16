@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.JwtTokenService;
+import com.chanter.common.auth.WebSocketJwtProtocols;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
@@ -12,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -138,31 +139,19 @@ class JwtAuthenticationGlobalFilterPublicAuthPathsTest {
 
     @Test
     void extractTokenFromSubprotocolsTwoValueForm() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Sec-WebSocket-Protocol", "chanter-jwt, mytoken123");
-
-        String token = JwtAuthenticationGlobalFilter.extractTokenFromSubprotocols(headers);
-
+        String token = WebSocketJwtProtocols.extractToken(List.of("chanter-jwt, mytoken123"));
         assertThat(token).isEqualTo("mytoken123");
     }
 
     @Test
     void extractTokenFromSubprotocolsDotForm() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Sec-WebSocket-Protocol", "chanter-jwt.mytoken123");
-
-        String token = JwtAuthenticationGlobalFilter.extractTokenFromSubprotocols(headers);
-
+        String token = WebSocketJwtProtocols.extractToken(List.of("chanter-jwt.mytoken123"));
         assertThat(token).isEqualTo("mytoken123");
     }
 
     @Test
     void extractTokenFromSubprotocolsReturnsNullWhenAbsent() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Sec-WebSocket-Protocol", "other-protocol");
-
-        String token = JwtAuthenticationGlobalFilter.extractTokenFromSubprotocols(headers);
-
+        String token = WebSocketJwtProtocols.extractToken(List.of("other-protocol"));
         assertThat(token).isNull();
     }
 }

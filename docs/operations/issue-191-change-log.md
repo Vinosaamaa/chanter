@@ -28,7 +28,8 @@ Replace query-param token transport with the `Sec-WebSocket-Protocol` mechanism:
 ### Backend — Gateway Service
 | File | Change |
 |------|--------|
-| `backend/gateway-service/src/main/java/com/chanter/gateway/security/JwtAuthenticationGlobalFilter.java` | `resolveIdentity()` now accepts `Sec-WebSocket-Protocol` (`chanter-jwt, <token>`) for `/api/v1/realtime/**` instead of `access_token` query param. Removed URI sanitisation for `access_token`. Added `extractTokenFromSubprotocols()` static helper. |
+| `backend/gateway-service/src/main/java/com/chanter/gateway/security/JwtAuthenticationGlobalFilter.java` | `resolveIdentity()` now accepts `Sec-WebSocket-Protocol` (`chanter-jwt, <token>`) for `/api/v1/realtime/**` instead of `access_token` query param. Removed URI sanitisation for `access_token`. Uses shared `WebSocketJwtProtocols`. |
+| `backend/common/.../WebSocketJwtProtocols.java` | Shared SEC-11 subprotocol token parser (deduped after CodeAnt SCR). |
 
 ### Tests
 | File | Change |

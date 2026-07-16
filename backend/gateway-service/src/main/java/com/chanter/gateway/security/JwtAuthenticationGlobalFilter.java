@@ -3,7 +3,7 @@ package com.chanter.gateway.security;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.InvalidJwtException;
 import com.chanter.common.auth.JwtTokenService;
-import java.util.List;
+import com.chanter.common.auth.WebSocketJwtProtocols;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -103,7 +103,7 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         }
 
         if (path.startsWith(REALTIME_API_PREFIX)) {
-            String token = extractTokenFromSubprotocols(request.getHeaders());
+            String token = WebSocketJwtProtocols.extractToken(request.getHeaders().get("Sec-WebSocket-Protocol"));
             if (token != null) {
                 UUID userId = jwtTokenService.parseUserId(AuthHeaders.BEARER_PREFIX + token);
                 return new ResolvedIdentity(userId, token);
@@ -111,33 +111,6 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         }
 
         throw new InvalidJwtException("Missing or invalid Authorization header");
-    }
-
-    static String extractTokenFromSubprotocols(HttpHeaders headers) {
-        List<String> protocols = headers.get("Sec-WebSocket-Protocol");
-        if (protocols == null || protocols.isEmpty()) {
-            return null;
-        }
-        for (String header : protocols) {
-            for (String part : header.split(",")) {
-                String trimmed = part.trim();
-                if (trimmed.startsWith("chanter-jwt.")) {
-                    return trimmed.substring("chanter-jwt.".length()).trim();
-                }
-            }
-        }
-        for (String header : protocols) {
-            String[] parts = header.split(",");
-            for (int i = 0; i < parts.length - 1; i++) {
-                if ("chanter-jwt".equals(parts[i].trim())) {
-                    String candidate = parts[i + 1].trim();
-                    if (!candidate.isBlank()) {
-                        return candidate;
-                    }
-                }
-            }
-        }
-        return null;
     }
 
     private record ResolvedIdentity(UUID userId, String bearerToken) {

@@ -3,6 +3,7 @@ package com.chanter.realtime.websocket;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.InvalidJwtException;
 import com.chanter.common.auth.JwtTokenService;
+import com.chanter.common.auth.WebSocketJwtProtocols;
 import com.chanter.realtime.application.ChannelMessageClient;
 import com.chanter.realtime.application.ChannelSubscriptionAuthorizer;
 import com.chanter.realtime.application.PersistedChannelMessage;
@@ -67,7 +68,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
 
     @Override
     public List<String> getSubProtocols() {
-        return List.of("chanter-jwt");
+        return List.of(WebSocketJwtProtocols.PROTOCOL_NAME);
     }
 
     @Override
@@ -264,7 +265,9 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         }
 
         // 2. Accept token from Sec-WebSocket-Protocol: chanter-jwt, <token>
-        String token = extractTokenFromSubprotocols(session.getHandshakeInfo().getHeaders());
+        String token = WebSocketJwtProtocols.extractToken(
+                session.getHandshakeInfo().getHeaders().get("Sec-WebSocket-Protocol")
+        );
         if (token != null) {
             try {
                 return jwtTokenService.parseUserId(AuthHeaders.BEARER_PREFIX + token);
@@ -273,35 +276,6 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
             }
         }
 
-        return null;
-    }
-
-    static String extractTokenFromSubprotocols(HttpHeaders headers) {
-        List<String> protocols = headers.get("Sec-WebSocket-Protocol");
-        if (protocols == null || protocols.isEmpty()) {
-            return null;
-        }
-        // Header may arrive as a single comma-joined value or multiple values
-        for (String header : protocols) {
-            for (String part : header.split(",")) {
-                String trimmed = part.trim();
-                if (trimmed.startsWith("chanter-jwt.")) {
-                    return trimmed.substring("chanter-jwt.".length()).trim();
-                }
-            }
-        }
-        // Two-value form: ["chanter-jwt", "<token>"]
-        for (String header : protocols) {
-            String[] parts = header.split(",");
-            for (int i = 0; i < parts.length - 1; i++) {
-                if ("chanter-jwt".equals(parts[i].trim())) {
-                    String candidate = parts[i + 1].trim();
-                    if (!candidate.isBlank()) {
-                        return candidate;
-                    }
-                }
-            }
-        }
         return null;
     }
 
