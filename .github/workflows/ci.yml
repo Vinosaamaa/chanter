@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Least-privilege GITHUB_TOKEN (SEC-13 / #193).
+# Jobs only need to read repository contents (checkout, build, test).
+permissions:
+  contents: read
+
 jobs:
   backend:
     runs-on: ubuntu-latest
