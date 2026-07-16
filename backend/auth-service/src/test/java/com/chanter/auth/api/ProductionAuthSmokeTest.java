@@ -60,6 +60,9 @@ class ProductionAuthSmokeTest {
                 .andReturn();
         JsonNode registerBody = objectMapper.readTree(registerResult.getResponse().getContentAsString());
         assertThat(registerBody.get("verificationRequired").asBoolean()).isTrue();
+        assertThat(registerBody.get("message").asText()).isEqualTo(
+                "If this email can be used, check your inbox for next steps."
+        );
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -121,6 +124,37 @@ class ProductionAuthSmokeTest {
                                 "password", "newpassword123"
                         ))))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void duplicateRegisterReturnsNeutralAcceptedResponse() throws Exception {
+        String email = "dup-" + UUID.randomUUID() + "@study.local";
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", email,
+                                "password", "password123",
+                                "displayName", "First"
+                        ))))
+                .andExpect(status().isAccepted());
+
+        MvcResult duplicate = mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", email,
+                                "password", "otherpassword123",
+                                "displayName", "Second"
+                        ))))
+                .andExpect(status().isAccepted())
+                .andReturn();
+
+        JsonNode body = objectMapper.readTree(duplicate.getResponse().getContentAsString());
+        assertThat(body.get("verificationRequired").asBoolean()).isTrue();
+        assertThat(body.get("message").asText()).isEqualTo(
+                "If this email can be used, check your inbox for next steps."
+        );
+        assertThat(body.has("accessToken")).isFalse();
     }
 
     @Test

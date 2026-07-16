@@ -33,6 +33,32 @@ class AuthSessionSmokeTest {
     private ObjectMapper objectMapper;
 
     @Test
+    void duplicateRegisterDoesNotRevealExistingAccount() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", "dup-owner@study.local",
+                                "password", "password123",
+                                "displayName", "Dup Owner"
+                        ))))
+                .andExpect(status().isCreated());
+
+        MvcResult duplicate = mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", "dup-owner@study.local",
+                                "password", "otherpassword123",
+                                "displayName", "Dup Owner 2"
+                        ))))
+                .andExpect(status().isAccepted())
+                .andReturn();
+
+        var body = objectMapper.readTree(duplicate.getResponse().getContentAsString());
+        assertThat(body.get("verificationRequired").asBoolean()).isTrue();
+        assertThat(body.has("accessToken")).isFalse();
+    }
+
+    @Test
     void registerLoginRefreshAndMeWork() throws Exception {
         MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
