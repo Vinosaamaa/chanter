@@ -68,40 +68,36 @@ class SocialRealtimeWebSocketSmokeTest {
         AtomicReference<JsonNode> presenceFrame = new AtomicReference<>();
         AtomicReference<JsonNode> dmFrame = new AtomicReference<>();
         CountDownLatch listenerReady = new CountDownLatch(1);
+        CountDownLatch presenceSeen = new CountDownLatch(1);
+        CountDownLatch dmSeen = new CountDownLatch(1);
         AtomicReference<Throwable> listenerFailure = new AtomicReference<>();
 
         Thread listenerThread = new Thread(() -> {
             try {
                 client.execute(
                         websocketUri(),
-                        withJwtSubprotocol(tokenB, session -> {
-                            Flux<String> inbound = session.receive()
-                                    .map(WebSocketMessage::getPayloadAsText)
-                                    .replay()
-                                    .autoConnect(1);
-
-                            Mono<Void> ready = inbound
-                                    .filter(payload -> payload.contains("\"type\":\"social_subscribed\""))
-                                    .next()
-                                    .doOnSuccess(ignored -> listenerReady.countDown())
-                                    .then();
-
-                            Mono<Void> waitForPresence = inbound
-                                    .filter(payload -> payload.contains("\"type\":\"presence_changed\"")
-                                            && payload.contains(userA.toString()))
-                                    .next()
-                                    .doOnNext(payload -> captureFrame(payload, presenceFrame))
-                                    .then();
-
-                            Mono<Void> waitForDm = inbound
-                                    .filter(payload -> payload.contains("\"type\":\"dm_message\""))
-                                    .next()
-                                    .doOnNext(payload -> captureFrame(payload, dmFrame))
-                                    .then();
-
-                            return Mono.when(ready, waitForPresence, waitForDm).then();
-                        })
-                ).block(Duration.ofSeconds(30));
+                        withJwtSubprotocol(tokenB, session -> session.receive()
+                                .map(WebSocketMessage::getPayloadAsText)
+                                .doOnNext(payload -> {
+                                    if (payload.contains("\"type\":\"social_subscribed\"")) {
+                                        listenerReady.countDown();
+                                    }
+                                    if (payload.contains("\"type\":\"presence_changed\"")
+                                            && payload.contains(userA.toString())
+                                            && presenceFrame.get() == null) {
+                                        captureFrame(payload, presenceFrame);
+                                        presenceSeen.countDown();
+                                    }
+                                    if (payload.contains("\"type\":\"dm_message\"")
+                                            && dmFrame.get() == null) {
+                                        captureFrame(payload, dmFrame);
+                                        dmSeen.countDown();
+                                    }
+                                })
+                                // Keep the socket open until both fan-out frames arrive (or timeout).
+                                .takeUntil(ignored -> presenceFrame.get() != null && dmFrame.get() != null)
+                                .then())
+                ).block(Duration.ofSeconds(45));
             } catch (Throwable throwable) {
                 listenerFailure.set(throwable);
             }
@@ -119,7 +115,7 @@ class SocialRealtimeWebSocketSmokeTest {
                     Flux<String> inbound = session.receive()
                             .map(WebSocketMessage::getPayloadAsText)
                             .replay()
-                            .autoConnect(1);
+                            .autoConnect(0);
 
                     Mono<Void> waitForSubscribed = inbound
                             .filter(payload -> payload.contains("\"type\":\"social_subscribed\""))
@@ -132,11 +128,27 @@ class SocialRealtimeWebSocketSmokeTest {
                             "body", "Want to study together?"
                     )))));
 
-                    return waitForSubscribed.then(sendDm);
+                    // Hold A's session open until B observes presence + DM, so disconnect
+                    // offline fan-out cannot race ahead of the assertions.
+                    return waitForSubscribed
+                            .then(sendDm)
+                            .then(Mono.fromRunnable(() -> {
+                                try {
+                                    if (!presenceSeen.await(15, TimeUnit.SECONDS)
+                                            || !dmSeen.await(15, TimeUnit.SECONDS)) {
+                                        throw new IllegalStateException(
+                                                "Timed out waiting for presence/DM fan-out on listener"
+                                        );
+                                    }
+                                } catch (InterruptedException exception) {
+                                    Thread.currentThread().interrupt();
+                                    throw new IllegalStateException(exception);
+                                }
+                            }));
                 })
-        ).block(Duration.ofSeconds(20));
+        ).block(Duration.ofSeconds(40));
 
-        listenerThread.join(35_000);
+        listenerThread.join(10_000);
         if (listenerFailure.get() != null) {
             throw new AssertionError(listenerFailure.get());
         }
