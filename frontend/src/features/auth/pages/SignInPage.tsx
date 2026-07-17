@@ -10,6 +10,7 @@ import {
   register,
   type OAuthProvider,
 } from '../auth-api'
+import { isHttpOrHttpsUrl } from '../is-http-or-https-url'
 import { useAuthStore } from '../../../stores/auth-store'
 import { readCohortInviteParams } from '../../onboarding/cohort-invite'
 import { V2Brand } from '../../v2-shell/components/V2Brand'
@@ -73,6 +74,10 @@ export function SignInPage() {
   }
 
   const googleProvider = oauthProviders.find((provider) => provider.id === 'google')
+  const googleAuthorizationUrl =
+    googleProvider && isHttpOrHttpsUrl(googleProvider.authorizationUrl)
+      ? googleProvider.authorizationUrl
+      : null
 
   return (
     <main className="v2-auth-page">
@@ -132,8 +137,8 @@ export function SignInPage() {
           </form>
 
           <div className="auth-divider"><span />or<span /></div>
-          {googleProvider ? (
-            <a className="google-button" href={googleProvider.authorizationUrl}>
+          {googleAuthorizationUrl ? (
+            <a className="google-button" href={googleAuthorizationUrl}>
               <b aria-hidden="true">G</b> Continue with Google
             </a>
           ) : (
