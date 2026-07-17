@@ -300,6 +300,20 @@ class CourseEnrollmentSmokeTest {
                 .extracting(CohortEnrollmentResponse::learnerUserId)
                 .containsExactly(learnerUserId);
         assertThat(searchMatches.totalCount()).isEqualTo(1);
+
+        MvcResult wildcardResult = mockMvc.perform(get(
+                        "/api/v1/cohorts/{cohortId}/enrollments?search={search}",
+                        course.cohort().id(),
+                        "%"
+                ).with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+        CohortEnrollmentListResponse wildcardMatches = objectMapper.readValue(
+                wildcardResult.getResponse().getContentAsString(),
+                CohortEnrollmentListResponse.class
+        );
+        assertThat(wildcardMatches.enrollments()).isEmpty();
+        assertThat(wildcardMatches.totalCount()).isZero();
     }
 
     private StudyServerResponse createStudyServer(UUID ownerUserId) throws Exception {
