@@ -42,3 +42,16 @@ export function messagesPath(scope: ChannelScope, channelId: string): string {
     ? `/api/v1/study-server-channels/${channelId}/messages`
     : `/api/v1/course-channels/${channelId}/messages`
 }
+
+export function channelMessageAccessPath(scope: ChannelScope, channelId: string): string {
+  return scope === 'study'
+    ? `/api/v1/study-server-channels/${channelId}/channel-message-access`
+    : `/api/v1/course-channels/${channelId}/channel-message-access`
+}
+
+export type ChannelMessageAccess = {
+  channelId: string
+  channelName: string
+  canReadMessages: boolean
+  canPostMessages: boolean
+}

@@ -25,6 +25,7 @@ import {
 import { fetchPublicProfiles } from '../../../friends/friends-api'
 import type { PublicUserProfile } from '../../../friends/types'
 import { useChannelConversation } from '../../../shell/hooks/use-channel-conversation'
+import { fetchChannelMessageAccess } from '../../../shell/channel-messages-api'
 import {
   studyServerNavigationQueryKey,
 } from '../../../shell/hooks/use-shell-queries'
@@ -74,6 +75,12 @@ export function CourseChatPage() {
     ?? voiceChannels[0]
   const selectedTextChannel = selectedChannel?.kind === 'TEXT' ? selectedChannel : undefined
   const conversation = useChannelConversation('course', selectedTextChannel?.id)
+  const messageAccess = useQuery({
+    queryKey: ['course-channel-message-access', selectedTextChannel?.id],
+    queryFn: () => fetchChannelMessageAccess('course', selectedTextChannel!.id),
+    enabled: Boolean(selectedTextChannel?.id),
+  })
+  const canPostMessages = messageAccess.data?.canPostMessages === true
 
   useEffect(() => {
     if (selectedChannel?.id === requestedChannelId) return
@@ -119,6 +126,7 @@ export function CourseChatPage() {
 
   const submitMessage = (event: FormEvent) => {
     event.preventDefault()
+    if (!canPostMessages) return
     void conversation.sendMessage(draft).then((sent) => sent && setDraft(''))
   }
 
@@ -227,6 +235,7 @@ export function CourseChatPage() {
             draft={draft}
             setDraft={setDraft}
             onSubmit={submitMessage}
+            canPostMessages={canPostMessages}
           />
         )}
       </section>
@@ -375,6 +384,7 @@ function TextChannelWorkspace({
   draft,
   setDraft,
   onSubmit,
+  canPostMessages,
 }: {
   channel: ShellChannel | undefined
   conversation: ReturnType<typeof useChannelConversation>
@@ -383,8 +393,15 @@ function TextChannelWorkspace({
   draft: string
   setDraft: (value: string) => void
   onSubmit: (event: FormEvent) => void
+  canPostMessages: boolean
 }) {
   const unavailableExplanation = 'This capability is not available yet.'
+  const composerDisabled = !channel || !canPostMessages
+  const composerPlaceholder = !channel
+    ? 'Select a text channel to message'
+    : canPostMessages
+      ? `Message #${channel.name}`
+      : `#${channel.name} is read-only for your role`
   return (
     <>
       <div className="chat-message-list">
@@ -427,9 +444,9 @@ function TextChannelWorkspace({
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={channel ? `Message #${channel.name}` : 'Select a text channel to message'}
+          placeholder={composerPlaceholder}
           aria-label={channel ? `Message ${channel.name}` : 'No text channel selected'}
-          disabled={!channel}
+          disabled={composerDisabled}
           maxLength={4000}
         />
         <button
@@ -448,7 +465,7 @@ function TextChannelWorkspace({
           type="submit"
           className="send-button"
           aria-label="Send message"
-          disabled={!channel || !draft.trim() || conversation.isSending}
+          disabled={composerDisabled || !draft.trim() || conversation.isSending}
         >
           <Send />
         </button>
