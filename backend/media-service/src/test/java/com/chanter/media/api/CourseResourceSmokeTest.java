@@ -119,6 +119,76 @@ class CourseResourceSmokeTest {
     }
 
     @Test
+    void uploadRejectsDisallowedAndBlankContentTypes() throws Exception {
+        UUID courseId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+        courseResourceAccessClient.grantInstructorUpload(courseId, instructorUserId);
+
+        mockMvc.perform(multipart("/api/v1/courses/{courseId}/course-resources", courseId)
+                        .file(new MockMultipartFile(
+                                "file",
+                                "payload.html",
+                                "text/html",
+                                "<script>alert(1)</script>".getBytes(StandardCharsets.UTF_8)
+                        ))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                        .param("aiApproved", "false"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(multipart("/api/v1/courses/{courseId}/course-resources", courseId)
+                        .file(new MockMultipartFile(
+                                "file",
+                                "notes.txt",
+                                "",
+                                "notes".getBytes(StandardCharsets.UTF_8)
+                        ))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                        .param("aiApproved", "false"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void uploadAcceptsPdfContentType() throws Exception {
+        UUID courseId = UUID.randomUUID();
+        UUID instructorUserId = UUID.randomUUID();
+        courseResourceAccessClient.grantInstructorUpload(courseId, instructorUserId);
+        byte[] pdfBytes = "%PDF-1.4 demo".getBytes(StandardCharsets.UTF_8);
+
+        MvcResult uploadResult = mockMvc.perform(multipart("/api/v1/courses/{courseId}/course-resources", courseId)
+                        .file(new MockMultipartFile(
+                                "file",
+                                "syllabus.pdf",
+                                "application/pdf",
+                                pdfBytes
+                        ))
+                        .header(AuthHeaders.USER_ID, instructorUserId.toString())
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                        .param("title", "Syllabus")
+                        .param("aiApproved", "false"))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        CourseResourceResponse uploaded = objectMapper.readValue(
+                uploadResult.getResponse().getContentAsString(),
+                CourseResourceResponse.class
+        );
+        assertThat(uploaded.contentType()).isEqualTo("application/pdf");
+        assertThat(uploaded.fileName()).isEqualTo("syllabus.pdf");
+    }
+
+    @Test
+    void safeContentTypeFallsBackForInvalidStoredValues() {
+        assertThat(CourseResourceController.safeContentType(null))
+                .isEqualTo(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
+        assertThat(CourseResourceController.safeContentType("not a media type"))
+                .isEqualTo(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
+        assertThat(CourseResourceController.safeContentType("text/plain; charset=UTF-8").getType())
+                .isEqualTo("text");
+    }
+
+    @Test
     void unauthorizedUserCannotListCourseResources() throws Exception {
         UUID courseId = UUID.randomUUID();
         UUID instructorUserId = UUID.randomUUID();
