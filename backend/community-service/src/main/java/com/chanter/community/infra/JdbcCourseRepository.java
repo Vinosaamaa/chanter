@@ -496,9 +496,9 @@ public class JdbcCourseRepository implements CourseRepository {
             String learnerSearch
     ) {
         boolean hasLearnerSearch = learnerSearch != null;
-        String searchPattern = hasLearnerSearch ? "%" + learnerSearch + "%" : null;
+        String searchPattern = hasLearnerSearch ? "%" + escapeLikePattern(learnerSearch) + "%" : null;
         String searchFilter = hasLearnerSearch
-                ? " AND LOWER(CAST(learner_user_id AS TEXT)) LIKE :searchPattern\n"
+                ? " AND LOWER(CAST(learner_user_id AS TEXT)) LIKE :searchPattern ESCAPE '\\'\n"
                 : "";
         String enrollmentOrderAndPage = """
                         ORDER BY enrolled_at DESC, learner_user_id ASC
@@ -2041,6 +2041,13 @@ public class JdbcCourseRepository implements CourseRepository {
                 })
                 .list();
         return memberCounts;
+    }
+
+    private static String escapeLikePattern(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     private record CourseLifecycleRow(
