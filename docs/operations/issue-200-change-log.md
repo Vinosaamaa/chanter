@@ -20,7 +20,7 @@ Gateway CORS `allowedOrigins` were hardcoded localhost Vite ports in
 - [x] Local defaults preserve `localhost` / `127.0.0.1` `:5173` / `:5174`
 - [x] Gateway tests: `CorsOriginsSmokeTest` + existing JWT filter tests
 - [ ] CI + CodeAnt
-- [ ] Browser: sign-in from `:5173` still works after gateway restart
+- [x] Browser / curl: CORS preflight + login with Origin `http://localhost:5173`
 
 ## Verification
 
