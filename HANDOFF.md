@@ -264,6 +264,9 @@ Recommended next setup phase:
 ## Suggested Next Step
 
 **Codebase Hardening (#180) is complete.** Next product work is post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) when the owner asks — see [`docs/operations/post-launch-ui-backlog.md`](docs/operations/post-launch-ui-backlog.md) and [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
+
+## Historical project notes
+
 - Added Milestone -1 to `plan.md`.
 - Removed the local `.cursor/skills/chanter-engineering-workflow/SKILL.md` in favor of installed workflow skills.
 - Replaced Mermaid diagrams in `plan.md` and `System Design.md` with draw.io PNG embeds and created editable sources/exports under `docs/diagrams/`.
