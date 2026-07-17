@@ -1,6 +1,7 @@
 package com.chanter.media.infra;
 
 import com.chanter.common.auth.AuthHeaders;
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.media.application.ResourceIngestionClient;
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -31,7 +32,7 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
             @Value("${chanter.agent-service.base-url:http://localhost:8085}") String agentServiceBaseUrl,
             @Value("${chanter.agent-service.connect-timeout-seconds:5}") int connectTimeoutSeconds,
             @Value("${chanter.agent-service.read-timeout-seconds:15}") int readTimeoutSeconds,
-            @Value("${chanter.agent-service.service-token:${CHANTER_INTERNAL_SERVICE_TOKEN:}}") String serviceToken
+            @Value("${chanter.agent-service.service-token:${chanter.internal-service-token}}") String serviceToken
     ) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -43,7 +44,7 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
                 .baseUrl(agentServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
-        this.serviceToken = serviceToken == null ? "" : serviceToken;
+        this.serviceToken = InternalServiceTokens.require(serviceToken);
     }
 
     @Override

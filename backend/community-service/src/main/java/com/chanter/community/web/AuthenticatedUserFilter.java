@@ -1,5 +1,6 @@
 package com.chanter.community.web;
 
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.common.auth.InvalidJwtException;
@@ -11,7 +12,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
@@ -33,7 +33,7 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
             @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.jwtTokenService = jwtTokenService;
-        this.internalServiceToken = internalServiceToken.getBytes(StandardCharsets.UTF_8);
+        this.internalServiceToken = InternalServiceTokens.requireBytes(internalServiceToken);
     }
 
     @Override

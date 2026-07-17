@@ -1,6 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.SupportQuestionClient;
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -43,7 +44,7 @@ public class HttpSupportQuestionClient implements SupportQuestionClient {
                 .baseUrl(messageServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

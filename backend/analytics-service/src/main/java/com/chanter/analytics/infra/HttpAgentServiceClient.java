@@ -1,6 +1,7 @@
 package com.chanter.analytics.infra;
 
 import com.chanter.analytics.config.AgentServiceClientProperties;
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.util.UUID;
@@ -36,7 +37,7 @@ public class HttpAgentServiceClient {
                 .baseUrl(properties.baseUrl())
                 .requestFactory(requestFactory)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     public AiUsageMetricsResponse fetchAiUsageMetrics(UUID studyServerId, UUID viewerUserId) {

@@ -1,5 +1,6 @@
 package com.chanter.realtime.infra;
 
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.realtime.application.ChannelMessageClient;
 import com.chanter.realtime.application.PersistedChannelMessage;
@@ -29,7 +30,7 @@ public class HttpChannelMessageClient implements ChannelMessageClient {
         this.webClient = WebClient.builder()
                 .baseUrl(messageServiceBaseUrl)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.chanter.media.infra;
 
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.media.application.CourseResourceAccess;
 import com.chanter.media.application.CourseResourceAccessClient;
@@ -41,7 +42,7 @@ public class HttpCourseResourceAccessClient implements CourseResourceAccessClien
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

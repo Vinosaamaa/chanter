@@ -3,6 +3,7 @@ package com.chanter.agent.api;
 import com.chanter.agent.application.tools.AssistantToolRegistry;
 import com.chanter.agent.application.tools.AssistantToolRegistry.ToolDescriptor;
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -39,7 +40,7 @@ public class InternalAssistantToolsController {
             @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.assistantToolRegistry = assistantToolRegistry;
-        this.internalServiceToken = internalServiceToken.getBytes(StandardCharsets.UTF_8);
+        this.internalServiceToken = InternalServiceTokens.requireBytes(internalServiceToken);
     }
 
     @GetMapping

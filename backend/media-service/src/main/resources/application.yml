@@ -27,7 +27,7 @@ chanter:
     base-url: ${AGENT_SERVICE_URL:http://localhost:8085}
     connect-timeout-seconds: 5
     read-timeout-seconds: 15
-    service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN:}
+    service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   media:
     storage-dir: ${COURSE_RESOURCE_STORAGE_DIR:./data/course-resources}
 

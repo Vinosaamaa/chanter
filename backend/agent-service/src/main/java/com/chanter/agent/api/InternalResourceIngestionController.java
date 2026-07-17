@@ -8,6 +8,7 @@ import com.chanter.agent.application.VectorRetrievalService;
 import com.chanter.agent.application.VectorRetrievalService.RankedChunk;
 import com.chanter.agent.domain.ResourceChunk;
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -51,7 +52,7 @@ public class InternalResourceIngestionController {
         this.resourceIngestionService = resourceIngestionService;
         this.embeddingPipelineService = embeddingPipelineService;
         this.vectorRetrievalService = vectorRetrievalService;
-        this.internalServiceToken = internalServiceToken.getBytes(StandardCharsets.UTF_8);
+        this.internalServiceToken = InternalServiceTokens.requireBytes(internalServiceToken);
     }
 
     @PostMapping("/ingest")

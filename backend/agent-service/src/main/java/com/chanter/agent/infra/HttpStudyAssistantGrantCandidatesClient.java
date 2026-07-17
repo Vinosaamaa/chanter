@@ -1,6 +1,7 @@
 package com.chanter.agent.infra;
 
 import com.chanter.agent.application.StudyAssistantGrantCandidatesClient;
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -42,7 +43,7 @@ public class HttpStudyAssistantGrantCandidatesClient implements StudyAssistantGr
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

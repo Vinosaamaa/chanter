@@ -1,5 +1,6 @@
 package com.chanter.realtime.infra;
 
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.realtime.application.SocialFriendsClient;
 import java.util.List;
@@ -27,7 +28,7 @@ public class HttpSocialFriendsClient implements SocialFriendsClient {
         this.webClient = WebClient.builder()
                 .baseUrl(messageServiceBaseUrl)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

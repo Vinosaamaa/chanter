@@ -2,6 +2,7 @@ package com.chanter.message.infra;
 
 import com.chanter.message.application.CourseChannelAccess;
 import com.chanter.message.application.CourseChannelAccessClient;
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +27,7 @@ public class HttpCourseChannelAccessClient implements CourseChannelAccessClient 
         this.restClient = RestClient.builder()
                 .baseUrl(communityServiceBaseUrl)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

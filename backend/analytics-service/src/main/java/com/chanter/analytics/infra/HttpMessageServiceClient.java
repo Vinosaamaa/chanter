@@ -1,6 +1,7 @@
 package com.chanter.analytics.infra;
 
 import com.chanter.analytics.config.MessageServiceClientProperties;
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import java.net.http.HttpClient;
 import java.util.List;
@@ -37,7 +38,7 @@ public class HttpMessageServiceClient {
                 .baseUrl(properties.baseUrl())
                 .requestFactory(requestFactory)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     public MessageMetricsResponse fetchMessageMetrics(MessageMetricsRequest request) {
