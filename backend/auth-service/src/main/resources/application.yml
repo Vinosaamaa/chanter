@@ -25,6 +25,7 @@ chanter:
     rate-limit:
       max-requests: ${CHANTER_AUTH_RATE_LIMIT_MAX:30}
       window: ${CHANTER_AUTH_RATE_LIMIT_WINDOW:1m}
+      max-entries: ${CHANTER_AUTH_RATE_LIMIT_MAX_ENTRIES:10000}
   email:
     provider: ${CHANTER_EMAIL_PROVIDER:log}
     from: ${CHANTER_EMAIL_FROM:noreply@chanter.local}
