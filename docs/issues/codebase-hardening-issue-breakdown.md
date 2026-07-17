@@ -34,7 +34,7 @@ Public-beta feature slices through **#104** are merged on `main`. This phase rem
 | SEC-16 | Low | [#197](https://github.com/Vinosaamaa/chanter/issues/197) Login timing side-channel | Todo |
 | SEC-17 | Low | [#198](https://github.com/Vinosaamaa/chanter/issues/198) Media content-type allowlist | Todo |
 | SEC-18 | Low | [#199](https://github.com/Vinosaamaa/chanter/issues/199) Restrict actuator info | Todo |
-| SEC-19 | Low | [#200](https://github.com/Vinosaamaa/chanter/issues/200) Env-driven CORS | Todo |
+| SEC-19 | Low | [#200](https://github.com/Vinosaamaa/chanter/issues/200) Env-driven CORS | In progress |
 | SEC-20 | Low | [#201](https://github.com/Vinosaamaa/chanter/issues/201) Rate limiter memory bounds | Todo |
 | SEC-21 | Low | [#202](https://github.com/Vinosaamaa/chanter/issues/202) Blank internal token rejection | Todo |
 | SEC-22 | Low | [#203](https://github.com/Vinosaamaa/chanter/issues/203) OAuth URL scheme validation | Todo |

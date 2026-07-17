@@ -42,6 +42,7 @@ Copy `.env.example` → `/etc/chanter/.env` (or `$HOME/chanter/.env`) and set:
 | Variable | Purpose |
 |----------|---------|
 | `CHANTER_PUBLIC_BASE_URL` | `https://staging.chanter.example` (no trailing slash) |
+| `CHANTER_CORS_ORIGINS` | Comma-separated browser origins allowed by the gateway (e.g. `https://staging.chanter.example`). Defaults to local Vite ports when unset. |
 | `CHANTER_JWT_SECRET` | New random ≥32 chars (not the local example) |
 | `CHANTER_INTERNAL_SERVICE_TOKEN` | New random ≥32 chars |
 | `POSTGRES_PASSWORD` / `MINIO_ROOT_PASSWORD` | Strong staging values |
