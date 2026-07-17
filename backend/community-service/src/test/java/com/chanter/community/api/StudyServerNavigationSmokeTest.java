@@ -349,6 +349,26 @@ class StudyServerNavigationSmokeTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.canReadMessages").value(true))
                 .andExpect(jsonPath("$.canPostMessages").value(true));
+
+        UUID announcementsChannelId = learnerNavigation.studyServerChannels().stream()
+                .filter(channel -> channel.name().equals("announcements"))
+                .map(StudyAssistantGrantCandidatesResponse.ChannelResponse::id)
+                .findFirst()
+                .orElseThrow();
+        mockMvc.perform(get(
+                        "/api/v1/study-server-channels/{channelId}/channel-message-access",
+                        announcementsChannelId
+                ).with(asUser(learnerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canReadMessages").value(true))
+                .andExpect(jsonPath("$.canPostMessages").value(false));
+        mockMvc.perform(get(
+                        "/api/v1/study-server-channels/{channelId}/channel-message-access",
+                        announcementsChannelId
+                ).with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canReadMessages").value(true))
+                .andExpect(jsonPath("$.canPostMessages").value(true));
         assertThat(learnerNavigation.courses()).hasSize(1);
         assertThat(learnerNavigation.courses().getFirst().id()).isEqualTo(course.id());
         assertThat(learnerNavigation.courses().getFirst().channels())

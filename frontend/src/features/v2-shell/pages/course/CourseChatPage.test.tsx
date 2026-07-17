@@ -103,6 +103,15 @@ vi.mock('../../../voice/voice-api', () => ({
   fetchVoicePresences: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('../../../shell/channel-messages-api', () => ({
+  fetchChannelMessageAccess: vi.fn().mockResolvedValue({
+    channelId: 'announcements-1',
+    channelName: 'announcements',
+    canReadMessages: true,
+    canPostMessages: true,
+  }),
+}))
+
 vi.mock('../../../../stores/auth-store', () => ({
   useAuthStore: (selector: (state: { user: { id: string }; accessToken: string }) => unknown) =>
     selector({ user: { id: 'learner-1' }, accessToken: 'token' }),

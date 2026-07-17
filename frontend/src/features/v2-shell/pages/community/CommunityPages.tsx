@@ -36,6 +36,7 @@ import type { StudyServerMember, StudyServerMemberFilter } from '../../../commun
 import { formatUserFacingApiError } from '../../../../lib/format-api-error'
 import { useAcceptedFriendIds } from '../../../people/use-accepted-friend-ids'
 import { useChannelConversation } from '../../../shell/hooks/use-channel-conversation'
+import { fetchChannelMessageAccess } from '../../../shell/channel-messages-api'
 import { useAuthStore } from '../../../../stores/auth-store'
 import { V2Avatar } from '../../components/V2Avatar'
 import { useV2Community } from '../../layouts/v2-community-context'
@@ -313,9 +314,16 @@ export function CommunityLoungePage() {
   const [selectedId, setSelectedId] = useState(textChannels[0]?.id ?? 'lounge-demo')
   const selected = textChannels.find((channel) => channel.id === selectedId) ?? textChannels[0]
   const conversation = useChannelConversation('study', selected?.id)
+  const messageAccess = useQuery({
+    queryKey: ['study-channel-message-access', selected?.id],
+    queryFn: () => fetchChannelMessageAccess('study', selected!.id),
+    enabled: Boolean(selected?.id) && !selected?.id.endsWith('-demo'),
+  })
+  const canPostMessages = messageAccess.data?.canPostMessages === true || Boolean(selected?.id.endsWith('-demo'))
   const [draft, setDraft] = useState('')
   const submit = (event: FormEvent) => {
     event.preventDefault()
+    if (!canPostMessages) return
     void conversation.sendMessage(draft).then((sent) => sent && setDraft(''))
   }
   const demo = [
@@ -381,12 +389,17 @@ export function CommunityLoungePage() {
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder={`Message #${selected?.name ?? 'lounge'}`}
+            placeholder={
+              canPostMessages
+                ? `Message #${selected?.name ?? 'lounge'}`
+                : `#${selected?.name ?? 'lounge'} is read-only for your role`
+            }
+            disabled={!canPostMessages}
           />
           <button type="button">
             <Smile />
           </button>
-          <button type="submit" className="send">
+          <button type="submit" className="send" disabled={!canPostMessages || !draft.trim()}>
             <Send />
           </button>
         </form>

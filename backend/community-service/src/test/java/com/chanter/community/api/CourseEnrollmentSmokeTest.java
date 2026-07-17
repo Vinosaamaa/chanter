@@ -4,6 +4,7 @@ import static com.chanter.community.api.AuthenticatedTestSupport.asUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -168,6 +169,27 @@ class CourseEnrollmentSmokeTest {
                 .findFirst()
                 .orElseThrow()
                 .id();
+
+        mockMvc.perform(get(
+                        "/api/v1/course-channels/{channelId}/channel-message-access",
+                        announcementsChannelId
+                ).with(asUser(learnerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canReadMessages").value(true))
+                .andExpect(jsonPath("$.canPostMessages").value(false));
+        mockMvc.perform(get(
+                        "/api/v1/course-channels/{channelId}/channel-message-access",
+                        announcementsChannelId
+                ).with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canReadMessages").value(true))
+                .andExpect(jsonPath("$.canPostMessages").value(true));
+        mockMvc.perform(get(
+                        "/api/v1/course-channels/{channelId}/channel-message-access",
+                        questionsChannelId
+                ).with(asUser(learnerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canPostMessages").value(true));
 
         mockMvc.perform(get(
                         "/api/v1/course-channels/{channelId}/support-question-access", announcementsChannelId
