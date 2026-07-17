@@ -3,9 +3,11 @@
 **Epic:** [#180](https://github.com/Vinosaamaa/chanter/issues/180)  
 **Project board:** [Codebase Hardening #7](https://github.com/users/Vinosaamaa/projects/7)  
 **Findings report:** [`docs/operations/codebase-review-2026-07-16.md`](../operations/codebase-review-2026-07-16.md)  
-**Findings PR:** [#179](https://github.com/Vinosaamaa/chanter/pull/179) (docs-only; **open**)
+**Findings PR:** [#179](https://github.com/Vinosaamaa/chanter/pull/179) (docs-only; **merged**)
 
 Public-beta feature slices through **#104** are merged on `main`. This phase remediates security, correctness, and ops findings from the 2026-07-16 full-repo review **before** broader post-launch product work ([#107](https://github.com/Vinosaamaa/chanter/issues/107)).
+
+**Status:** Epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) **complete** — all mapped findings below are Done (#181–#205 + hotfix #220).
 
 **Workflow:** one finding (or tightly related pair) → one branch → one PR per [`agent-workflow.md`](../operations/agent-workflow.md). Add regression tests where practical (see report §5.5).
 
@@ -15,25 +17,25 @@ Public-beta feature slices through **#104** are merged on `main`. This phase rem
 
 | Finding | Severity | Issue | Status |
 |---------|----------|-------|--------|
-| SEC-04 | High | [#181](https://github.com/Vinosaamaa/chanter/issues/181) Reject default JWT/internal secrets | Todo |
-| SEC-02 | High | [#182](https://github.com/Vinosaamaa/chanter/issues/182) agent-service gateway identity | Todo |
-| SEC-03 | High | [#183](https://github.com/Vinosaamaa/chanter/issues/183) DM-call LiveKit token auth | Todo |
-| SEC-06 | High | [#184](https://github.com/Vinosaamaa/chanter/issues/184) Refresh token out of localStorage | Todo |
-| SEC-10 | High | [#185](https://github.com/Vinosaamaa/chanter/issues/185) Gate `/dev/demo` from prod | Todo |
-| SEC-05 | High | [#186](https://github.com/Vinosaamaa/chanter/issues/186) OAuth `email_verified` | Todo |
-| SEC-07 / BUG-02 | Medium | [#187](https://github.com/Vinosaamaa/chanter/issues/187) Gateway public auth paths | Todo |
-| SEC-01 | High | [#188](https://github.com/Vinosaamaa/chanter/issues/188) Service-level identity enforcement | Todo |
-| SEC-08 | Medium | [#189](https://github.com/Vinosaamaa/chanter/issues/189) Auth rate limiter client IP | Todo |
-| SEC-09 | Medium | [#190](https://github.com/Vinosaamaa/chanter/issues/190) OAuth state + PKCE | Todo |
-| SEC-11 | Medium | [#191](https://github.com/Vinosaamaa/chanter/issues/191) WS auth without URL token | Todo |
-| SEC-12 | Medium | [#192](https://github.com/Vinosaamaa/chanter/issues/192) Infra binds + default creds | Todo |
-| SEC-13 | Medium | [#193](https://github.com/Vinosaamaa/chanter/issues/193) CI least-privilege permissions | Todo |
-| SEC-14 | Medium | [#194](https://github.com/Vinosaamaa/chanter/issues/194) Pin Docker image tags | Todo |
-| BUG-01 | Medium | [#195](https://github.com/Vinosaamaa/chanter/issues/195) WS reconnect token refresh | Todo |
-| SEC-15 | Low | [#196](https://github.com/Vinosaamaa/chanter/issues/196) Register enumeration | Todo |
-| SEC-16 | Low | [#197](https://github.com/Vinosaamaa/chanter/issues/197) Login timing side-channel | Todo |
-| SEC-17 | Low | [#198](https://github.com/Vinosaamaa/chanter/issues/198) Media content-type allowlist | Todo |
-| SEC-18 | Low | [#199](https://github.com/Vinosaamaa/chanter/issues/199) Restrict actuator info | Todo |
+| SEC-04 | High | [#181](https://github.com/Vinosaamaa/chanter/issues/181) Reject default JWT/internal secrets | Done |
+| SEC-02 | High | [#182](https://github.com/Vinosaamaa/chanter/issues/182) agent-service gateway identity | Done |
+| SEC-03 | High | [#183](https://github.com/Vinosaamaa/chanter/issues/183) DM-call LiveKit token auth | Done |
+| SEC-06 | High | [#184](https://github.com/Vinosaamaa/chanter/issues/184) Refresh token out of localStorage | Done |
+| SEC-10 | High | [#185](https://github.com/Vinosaamaa/chanter/issues/185) Gate `/dev/demo` from prod | Done |
+| SEC-05 | High | [#186](https://github.com/Vinosaamaa/chanter/issues/186) OAuth `email_verified` | Done |
+| SEC-07 / BUG-02 | Medium | [#187](https://github.com/Vinosaamaa/chanter/issues/187) Gateway public auth paths | Done |
+| SEC-01 | High | [#188](https://github.com/Vinosaamaa/chanter/issues/188) Service-level identity enforcement | Done |
+| SEC-08 | Medium | [#189](https://github.com/Vinosaamaa/chanter/issues/189) Auth rate limiter client IP | Done |
+| SEC-09 | Medium | [#190](https://github.com/Vinosaamaa/chanter/issues/190) OAuth state + PKCE | Done |
+| SEC-11 | Medium | [#191](https://github.com/Vinosaamaa/chanter/issues/191) WS auth without URL token | Done |
+| SEC-12 | Medium | [#192](https://github.com/Vinosaamaa/chanter/issues/192) Infra binds + default creds | Done |
+| SEC-13 | Medium | [#193](https://github.com/Vinosaamaa/chanter/issues/193) CI least-privilege permissions | Done |
+| SEC-14 | Medium | [#194](https://github.com/Vinosaamaa/chanter/issues/194) Pin Docker image tags | Done |
+| BUG-01 | Medium | [#195](https://github.com/Vinosaamaa/chanter/issues/195) WS reconnect token refresh | Done |
+| SEC-15 | Low | [#196](https://github.com/Vinosaamaa/chanter/issues/196) Register enumeration | Done |
+| SEC-16 | Low | [#197](https://github.com/Vinosaamaa/chanter/issues/197) Login timing side-channel | Done |
+| SEC-17 | Low | [#198](https://github.com/Vinosaamaa/chanter/issues/198) Media content-type allowlist | Done |
+| SEC-18 | Low | [#199](https://github.com/Vinosaamaa/chanter/issues/199) Restrict actuator info | Done |
 | SEC-19 | Low | [#200](https://github.com/Vinosaamaa/chanter/issues/200) Env-driven CORS | Done |
 | SEC-20 | Low | [#201](https://github.com/Vinosaamaa/chanter/issues/201) Rate limiter memory bounds | Done |
 | SEC-21 | Low | [#202](https://github.com/Vinosaamaa/chanter/issues/202) Blank internal token rejection | Done |
