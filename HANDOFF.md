@@ -33,7 +33,7 @@ Important files:
 - `docs/issues/ui-v2-issue-breakdown.md`: **UI v2 implementation** — course-first shell (**#115–#128**, milestone 7).
 - `docs/issues/workable-product-issue-breakdown.md`: Workable full-stack local app (**#60–#63**, #31–#32, project #4).
 - `docs/issues/public-launch-issue-breakdown.md`: Public Launch (**#82–#104**, project #5) — **done**.
-- `docs/issues/codebase-hardening-issue-breakdown.md`: **Active** — security/correctness hardening (**#180–#205**, project #7).
+- `docs/issues/codebase-hardening-issue-breakdown.md`: **Done** — security/correctness hardening (**#180–#205**, project #7).
 - `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, autonomous gated merge policy, **CodeAnt AI** PR review (cubic retired).
 - `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
 - `System Design.md`: detailed backend/system architecture explanation and diagrams.
@@ -47,13 +47,13 @@ Important files:
 
 Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`. Production frontend **#48**, auth **#49** + backend principal **#30**, study shell **#50**, UI v2 **#116–#128**, operationalization **#132–#145**, Real AI **#94–#100**, and Public Launch **#101–#104** are **merged**.
 
-**Active phase:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) — epic [#180](https://github.com/Vinosaamaa/chanter/issues/180). Findings: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md) (PR [#179](https://github.com/Vinosaamaa/chanter/pull/179)). **Start remediation at [#181](https://github.com/Vinosaamaa/chanter/issues/181)**. Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
+**Hardening complete:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) — all slices **#181–#205** (+ hotfix **#220**) merged. Findings: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md). Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
 
 **Beta launch:** [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md) — staging `https://staging.chanter.example`, known limitation: course storefront commerce is post-MVP. Full product browser QA passed 2026-07-15 (owner + learner).
 
 **New-chat handoff:** [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md)
 
-**Roadmap after hardening:** Post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) + [`post-launch-ui-backlog.md`](docs/operations/post-launch-ui-backlog.md).
+**Next phase:** Post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) + [`post-launch-ui-backlog.md`](docs/operations/post-launch-ui-backlog.md) (start only when the owner asks).
 
 **Agent read order for UI work:** `DESIGN-DECISIONS.md` → `specs/layout-rules.md` → issue mockup PNG(s) → `visibility-and-social-model.md`. Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
 
@@ -263,25 +263,10 @@ Recommended next setup phase:
 
 ## Suggested Next Step
 
-Before writing application code, add a new operations milestone:
+**Codebase Hardening (#180) is complete.** Next product work is post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) when the owner asks — see [`docs/operations/post-launch-ui-backlog.md`](docs/operations/post-launch-ui-backlog.md) and [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
 
-Milestone -1: Project Operations Bootstrap
+## Historical project notes
 
-- Initialize git.
-- Create/connect GitHub repository.
-- Add repo metadata: `README.md`, `.gitignore`, `LICENSE` if desired, PR template, CODEOWNERS later.
-- Use GitHub Projects for the first project tracker.
-- Convert `docs/issues/education-mvp-issue-breakdown.md` into GitHub epics/stories.
-- Decide branch naming, commit style, and PR requirements.
-
-Current Milestone -1 local progress:
-
-- Initialized local git on `main`.
-- Added `README.md`.
-- Added `.gitignore`.
-- Added `.github/PULL_REQUEST_TEMPLATE.md`.
-- Added GitHub issue forms for epics, stories, and bugs.
-- Added `docs/operations/project-operations-bootstrap.md`.
 - Added Milestone -1 to `plan.md`.
 - Removed the local `.cursor/skills/chanter-engineering-workflow/SKILL.md` in favor of installed workflow skills.
 - Replaced Mermaid diagrams in `plan.md` and `System Design.md` with draw.io PNG embeds and created editable sources/exports under `docs/diagrams/`.
