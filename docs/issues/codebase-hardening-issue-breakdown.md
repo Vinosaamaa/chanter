@@ -36,8 +36,8 @@ Public-beta feature slices through **#104** are merged on `main`. This phase rem
 | SEC-18 | Low | [#199](https://github.com/Vinosaamaa/chanter/issues/199) Restrict actuator info | Todo |
 | SEC-19 | Low | [#200](https://github.com/Vinosaamaa/chanter/issues/200) Env-driven CORS | Done |
 | SEC-20 | Low | [#201](https://github.com/Vinosaamaa/chanter/issues/201) Rate limiter memory bounds | Done |
-| SEC-21 | Low | [#202](https://github.com/Vinosaamaa/chanter/issues/202) Blank internal token rejection | In progress |
-| SEC-22 | Low | [#203](https://github.com/Vinosaamaa/chanter/issues/203) OAuth URL scheme validation | Todo |
+| SEC-21 | Low | [#202](https://github.com/Vinosaamaa/chanter/issues/202) Blank internal token rejection | Done |
+| SEC-22 | Low | [#203](https://github.com/Vinosaamaa/chanter/issues/203) OAuth URL scheme validation | In progress |
 | BUG-03 | Low | [#204](https://github.com/Vinosaamaa/chanter/issues/204) LIKE wildcard escape | Todo |
 | BUG-04 | Low/Info | [#205](https://github.com/Vinosaamaa/chanter/issues/205) Announcements write role | Todo |
 
