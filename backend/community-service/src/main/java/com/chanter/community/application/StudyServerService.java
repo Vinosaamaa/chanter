@@ -378,13 +378,26 @@ public class StudyServerService {
         StudyServerChannel channel = requireTextChannel(channelId);
         requireStudyServerMember(channel.studyServerId(), userId);
 
+        boolean canPost = !isAnnouncementsChannel(channel.name())
+                || isStudyServerOwner(channel.studyServerId(), userId);
+
         return new TextChannelMessageAccess(
                 channel.id(),
                 channel.studyServerId(),
                 channel.name(),
                 true,
-                true
+                canPost
         );
+    }
+
+    private boolean isStudyServerOwner(UUID studyServerId, UUID userId) {
+        return repository.findById(studyServerId)
+                .map(server -> server.ownerRole().userId().equals(userId))
+                .orElse(false);
+    }
+
+    private static boolean isAnnouncementsChannel(String channelName) {
+        return "announcements".equalsIgnoreCase(channelName);
     }
 
     private StudyServerChannel requireTextChannel(UUID channelId) {

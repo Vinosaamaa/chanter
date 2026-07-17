@@ -38,8 +38,8 @@ Public-beta feature slices through **#104** are merged on `main`. This phase rem
 | SEC-20 | Low | [#201](https://github.com/Vinosaamaa/chanter/issues/201) Rate limiter memory bounds | Done |
 | SEC-21 | Low | [#202](https://github.com/Vinosaamaa/chanter/issues/202) Blank internal token rejection | Done |
 | SEC-22 | Low | [#203](https://github.com/Vinosaamaa/chanter/issues/203) OAuth URL scheme validation | Done |
-| BUG-03 | Low | [#204](https://github.com/Vinosaamaa/chanter/issues/204) LIKE wildcard escape | In progress |
-| BUG-04 | Low/Info | [#205](https://github.com/Vinosaamaa/chanter/issues/205) Announcements write role | Todo |
+| BUG-03 | Low | [#204](https://github.com/Vinosaamaa/chanter/issues/204) LIKE wildcard escape | Done |
+| BUG-04 | Low/Info | [#205](https://github.com/Vinosaamaa/chanter/issues/205) Announcements write role | In progress |
 
 ---
 

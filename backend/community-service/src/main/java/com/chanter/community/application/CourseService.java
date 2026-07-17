@@ -828,8 +828,24 @@ public class CourseService {
                 channel.courseId(),
                 channel.name(),
                 true,
-                true
+                canPostCourseChannelMessages(channel, userId)
         );
+    }
+
+    private boolean canPostCourseChannelMessages(CourseChannel channel, UUID userId) {
+        if (!isAnnouncementsChannel(channel.name())) {
+            return true;
+        }
+        if (courseRepository.isCourseInstructor(channel.courseId(), userId)) {
+            return true;
+        }
+        return courseRepository.findStudyServerIdByCourseId(channel.courseId())
+                .map(studyServerId -> courseRepository.isStudyServerOwner(studyServerId, userId))
+                .orElse(false);
+    }
+
+    private static boolean isAnnouncementsChannel(String channelName) {
+        return "announcements".equalsIgnoreCase(channelName);
     }
 
     public CourseResourceAccess findCourseResourceAccess(UUID courseId, UUID userId) {
