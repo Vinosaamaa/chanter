@@ -86,7 +86,19 @@ public class CourseResourceController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .contentType(MediaType.parseMediaType(stored.courseResource().contentType()))
+                .contentType(safeContentType(stored.courseResource().contentType()))
                 .body(stored.content());
+    }
+
+    /** Parse stored content type for download; fall back if missing/invalid (SEC-17). */
+    static MediaType safeContentType(String rawContentType) {
+        if (rawContentType == null || rawContentType.isBlank()) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+        try {
+            return MediaType.parseMediaType(rawContentType);
+        } catch (Exception exception) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 }

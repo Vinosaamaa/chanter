@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,23 @@ import org.springframework.web.server.ResponseStatusException;
 public class CourseResourceService {
 
     private static final long MAX_FILE_BYTES = 10L * 1024L * 1024L;
+
+    /** Allowed upload MIME types (SEC-17). Parameters (e.g. charset) are stripped before compare. */
+    static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+            "text/plain",
+            "text/markdown",
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-powerpoint",
+            "audio/mpeg",
+            "audio/mp4",
+            "audio/wav",
+            "audio/ogg",
+            "audio/webm",
+            "video/mp4",
+            "video/webm",
+            "video/quicktime"
+    );
 
     private final CourseResourceRepository repository;
     private final CourseResourceAccessClient accessClient;
@@ -68,10 +87,7 @@ public class CourseResourceService {
         }
 
         UUID resourceId = UUID.randomUUID();
-        String contentType = file.getContentType();
-        if (contentType == null || contentType.isBlank()) {
-            contentType = "application/octet-stream";
-        }
+        String contentType = requireAllowedContentType(file.getContentType());
 
         byte[] content;
         try {
@@ -124,6 +140,29 @@ public class CourseResourceService {
         }
 
         return normalized;
+    }
+
+    static String requireAllowedContentType(String rawContentType) {
+        String normalized = normalizeContentType(rawContentType);
+        if (normalized == null || !ALLOWED_CONTENT_TYPES.contains(normalized)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Course Resource content type is not allowed"
+            );
+        }
+        return normalized;
+    }
+
+    /** Strip parameters and lowercase type/subtype; null/blank → null. */
+    static String normalizeContentType(String rawContentType) {
+        if (rawContentType == null || rawContentType.isBlank()) {
+            return null;
+        }
+        String withoutParams = rawContentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
+        if (withoutParams.isEmpty() || withoutParams.indexOf('/') < 1) {
+            return null;
+        }
+        return withoutParams;
     }
 
     @Transactional(readOnly = true)
