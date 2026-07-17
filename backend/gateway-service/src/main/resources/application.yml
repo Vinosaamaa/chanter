@@ -91,27 +91,15 @@ spring:
           uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
           predicates:
             - Path=/api/v1/friend-requests/**,/api/v1/friendships/**,/api/v1/direct-messages/**,/api/v1/direct-message-calls/**,/api/v1/user-blocks/**
-      globalcors:
-        corsConfigurations:
-          '[/**]':
-            allowedOrigins:
-              - "http://localhost:5173"
-              - "http://127.0.0.1:5173"
-              - "http://localhost:5174"
-              - "http://127.0.0.1:5174"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - PATCH
-              - DELETE
-              - OPTIONS
-            allowedHeaders: "*"
+      # CORS is configured in CorsConfig from chanter.cors.allowed-origins (CHANTER_CORS_ORIGINS).
 
 chanter:
   jwt:
     secret: ${CHANTER_JWT_SECRET}
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
+  cors:
+    # Comma-separated browser origins for staging/prod. Local Vite defaults when unset.
+    allowed-origins: ${CHANTER_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
 
 management:
   endpoints:
