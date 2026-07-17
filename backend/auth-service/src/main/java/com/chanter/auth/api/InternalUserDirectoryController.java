@@ -2,6 +2,7 @@ package com.chanter.auth.api;
 
 import com.chanter.auth.application.AuthSessionService;
 import com.chanter.common.auth.AuthHeaders;
+import com.chanter.common.auth.InternalServiceTokens;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -28,7 +29,7 @@ public class InternalUserDirectoryController {
             @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.authSessionService = authSessionService;
-        this.internalServiceToken = internalServiceToken.getBytes(StandardCharsets.UTF_8);
+        this.internalServiceToken = InternalServiceTokens.requireBytes(internalServiceToken);
     }
 
     @GetMapping("/by-email")

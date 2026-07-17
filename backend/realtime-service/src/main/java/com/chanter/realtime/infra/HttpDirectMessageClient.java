@@ -1,5 +1,6 @@
 package com.chanter.realtime.infra;
 
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.realtime.application.DirectMessageClient;
 import com.chanter.realtime.application.PersistedDirectMessage;
@@ -28,7 +29,7 @@ public class HttpDirectMessageClient implements DirectMessageClient {
         this.webClient = WebClient.builder()
                 .baseUrl(messageServiceBaseUrl)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.chanter.message.infra;
 
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.message.application.ChannelMessageAccess;
 import com.chanter.message.application.ChannelMessageAccessClient;
@@ -39,7 +40,7 @@ public class HttpChannelMessageAccessClient implements ChannelMessageAccessClien
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

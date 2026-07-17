@@ -1,6 +1,7 @@
 package com.chanter.notification.api;
 
 import com.chanter.common.ServiceInfo;
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.notification.application.NotificationRepository;
 import com.chanter.notification.application.NotificationService;
@@ -29,7 +30,7 @@ public class InternalNotificationController {
             @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.notificationService = notificationService;
-        this.internalServiceToken = internalServiceToken.getBytes(StandardCharsets.UTF_8);
+        this.internalServiceToken = InternalServiceTokens.requireBytes(internalServiceToken);
     }
 
     @PostMapping

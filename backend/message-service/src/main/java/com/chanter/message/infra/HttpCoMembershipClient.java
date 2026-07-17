@@ -1,5 +1,6 @@
 package com.chanter.message.infra;
 
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.message.application.CoMembershipClient;
 import java.net.http.HttpClient;
@@ -37,7 +38,7 @@ public class HttpCoMembershipClient implements CoMembershipClient {
                 .baseUrl(communityServiceBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

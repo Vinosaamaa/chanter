@@ -1,5 +1,6 @@
 package com.chanter.search.infra;
 
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.search.application.CommunityNavigationClient;
 import com.chanter.search.config.CommunityServiceClientProperties;
@@ -32,7 +33,7 @@ public class HttpCommunityNavigationClient implements CommunityNavigationClient 
                 properties.connectTimeout(),
                 properties.readTimeout()
         );
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.chanter.realtime.infra;
 
+import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.realtime.application.ChannelSubscriptionAuthorizer;
 import com.chanter.realtime.domain.RealtimeChannelScope;
@@ -26,7 +27,7 @@ public class HttpChannelSubscriptionAuthorizer implements ChannelSubscriptionAut
         this.webClient = WebClient.builder()
                 .baseUrl(communityServiceBaseUrl)
                 .build();
-        this.internalServiceToken = internalServiceToken;
+        this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override
