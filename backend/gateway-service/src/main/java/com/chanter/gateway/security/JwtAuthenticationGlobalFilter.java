@@ -40,6 +40,22 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         this.jwtTokenService = jwtTokenService;
     }
 
+    static boolean isPublicPath(String path) {
+        if (isPublicActuatorPath(path)) {
+            return true;
+        }
+        if (PUBLIC_AUTH_PATHS.contains(path)) {
+            return true;
+        }
+        // /oauth/providers, /oauth/{provider}/start, /oauth/google/callback, …
+        return path.startsWith(OAUTH_AUTH_PREFIX);
+    }
+
+    /** Health probes only — never expose /actuator/info (SEC-18). */
+    static boolean isPublicActuatorPath(String path) {
+        return "/actuator/health".equals(path) || path.startsWith("/actuator/health/");
+    }
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         if (HttpMethod.OPTIONS.equals(exchange.getRequest().getMethod())) {
@@ -47,6 +63,10 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
         }
 
         String path = exchange.getRequest().getPath().pathWithinApplication().value();
+        if (path.startsWith(ACTUATOR_PREFIX) && !isPublicActuatorPath(path)) {
+            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+            return exchange.getResponse().setComplete();
+        }
         if (isPublicPath(path)) {
             return continueWithoutSpoofedUserId(exchange, chain);
         }
@@ -77,17 +97,6 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
     @Override
     public int getOrder() {
         return Ordered.HIGHEST_PRECEDENCE;
-    }
-
-    static boolean isPublicPath(String path) {
-        if (path.startsWith(ACTUATOR_PREFIX)) {
-            return true;
-        }
-        if (PUBLIC_AUTH_PATHS.contains(path)) {
-            return true;
-        }
-        // /oauth/providers, /oauth/{provider}/start, /oauth/google/callback, …
-        return path.startsWith(OAUTH_AUTH_PREFIX);
     }
 
     private static Mono<Void> continueWithoutSpoofedUserId(ServerWebExchange exchange, GatewayFilterChain chain) {

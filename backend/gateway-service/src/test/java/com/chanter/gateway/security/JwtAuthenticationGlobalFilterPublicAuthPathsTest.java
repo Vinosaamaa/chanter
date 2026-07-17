@@ -78,6 +78,50 @@ class JwtAuthenticationGlobalFilterPublicAuthPathsTest {
     }
 
     @Test
+    void actuatorHealthIsPublicButInfoIsNot() {
+        assertThat(JwtAuthenticationGlobalFilter.isPublicPath("/actuator/health")).isTrue();
+        assertThat(JwtAuthenticationGlobalFilter.isPublicActuatorPath("/actuator/health")).isTrue();
+        assertThat(JwtAuthenticationGlobalFilter.isPublicPath("/actuator/info")).isFalse();
+        assertThat(JwtAuthenticationGlobalFilter.isPublicActuatorPath("/actuator/info")).isFalse();
+    }
+
+    @Test
+    void unauthenticatedActuatorInfoReturnsUnauthorized() {
+        AtomicBoolean continued = new AtomicBoolean(false);
+        GatewayFilterChain chain = exchange -> {
+            continued.set(true);
+            return Mono.empty();
+        };
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/actuator/info").build()
+        );
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(continued).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void unauthenticatedActuatorHealthContinues() {
+        AtomicBoolean continued = new AtomicBoolean(false);
+        GatewayFilterChain chain = exchange -> {
+            continued.set(true);
+            return Mono.empty();
+        };
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/actuator/health").build()
+        );
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(continued).isTrue();
+        assertThat(exchange.getResponse().getStatusCode()).isNotEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
     void unauthenticatedMeReturnsUnauthorized() {
         AtomicBoolean continued = new AtomicBoolean(false);
         GatewayFilterChain chain = exchange -> {
