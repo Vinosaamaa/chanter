@@ -72,7 +72,8 @@
 .v2-auth-tabs button { border: 0; border-radius: 8px; background: transparent; color: #f1f2f5; font-size: 18px; cursor: pointer; }
 .v2-auth-tabs button.active { background: linear-gradient(120deg,#4054dc,#5a5bea); box-shadow: inset 0 0 0 1px #5369ff; }
 .v2-auth-form { display: grid; gap: 19px; }
-.v2-auth-form label { display: grid; gap: 9px; color: #f2f3f6; font-size: 18px; }
+.v2-auth-form label, .v2-auth-field { display: grid; gap: 9px; color: #f2f3f6; font-size: 18px; }
+.v2-auth-field > label { display: block; }
 .v2-auth-form input, .v2-auth-form textarea { width: 100%; height: 57px; border: 1px solid var(--auth-line); border-radius: 10px; padding: 0 18px; outline: 0; color: #f7f7fa; background: rgba(5,13,24,.62); font-size: 18px; }
 .v2-auth-form input:focus { border-color: #6578ff; box-shadow: 0 0 0 3px rgba(82,102,239,.16); }
 .v2-auth-form input::placeholder { color: #7f899a; }

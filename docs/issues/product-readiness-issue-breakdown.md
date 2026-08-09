@@ -4,7 +4,7 @@
 > **Parent epic:** [#107 - Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107)
 > **Audit:** [#238](https://github.com/Vinosaamaa/chanter/issues/238) and [`product-readiness-audit-2026-08-09.md`](../operations/product-readiness-audit-2026-08-09.md)
 > **Rule:** Board/dependency order is implementation order. One issue, branch, PR, review loop, and merge at a time unless isolated worktrees have no dependency.
-> **Progress:** #238 and #239 are complete. #240 is the next unmerged issue.
+> **Progress:** #238–#240 are complete. #241 is the next unmerged issue.
 
 ## Scope
 

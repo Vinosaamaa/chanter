@@ -50,7 +50,7 @@ const sidebarData: V2SidebarData = {
 
 function renderSidebar() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/app/home']}>
         <V2Sidebar data={sidebarData} menuOpen={false} onCloseMenu={vi.fn()} />
@@ -58,6 +58,7 @@ function renderSidebar() {
       </MemoryRouter>
     </QueryClientProvider>,
   )
+  return { ...result, queryClient }
 }
 
 describe('V2Sidebar account menu', () => {
@@ -106,6 +107,47 @@ describe('V2Sidebar account menu', () => {
     expect(useAuthStore.getState().accessToken).toBeNull()
     expect(useAuthStore.getState().refreshToken).toBeNull()
     expect(useAuthStore.getState().user).toBeNull()
+  })
+
+  it('cancels requests and clears the previous account cache before ending the session', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderSidebar()
+    const ownerQueryKey = ['study-server-navigation', 'user-1', 'server-1']
+    const pendingQueryKey = ['home-summary', 'user-1']
+    let requestCancelled = false
+    let cacheAtSessionClear: unknown = 'session-not-cleared'
+    let requestCancelledAtSessionClear = false
+
+    queryClient.setQueryData(ownerQueryKey, { studyServerId: 'server-1' })
+    void queryClient.fetchQuery({
+      queryKey: pendingQueryKey,
+      queryFn: ({ signal }) => new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => {
+          requestCancelled = true
+          reject(signal.reason)
+        })
+      }),
+    }).catch(() => undefined)
+    await waitFor(() => {
+      expect(queryClient.getQueryState(pendingQueryKey)?.fetchStatus).toBe('fetching')
+    })
+
+    const unsubscribe = useAuthStore.subscribe((state, previousState) => {
+      if (previousState.user && !state.user) {
+        cacheAtSessionClear = queryClient.getQueryData(ownerQueryKey)
+        requestCancelledAtSessionClear = requestCancelled
+      }
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Open account menu' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Sign out' }))
+
+    await waitFor(() => expect(useAuthStore.getState().user).toBeNull())
+    unsubscribe()
+    expect(cacheAtSessionClear).toBeUndefined()
+    expect(requestCancelledAtSessionClear).toBe(true)
+    expect(queryClient.getQueryCache().find({ queryKey: ownerQueryKey })).toBeUndefined()
+    expect(queryClient.getQueryCache().find({ queryKey: pendingQueryKey })).toBeUndefined()
   })
 })
 

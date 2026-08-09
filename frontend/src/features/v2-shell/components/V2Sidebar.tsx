@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, NavLink, useLocation, useParams } from 'react-router-dom'
 import {
   CalendarDays,
   ChevronDown,
@@ -27,7 +27,7 @@ import {
 import type { V2SidebarData, V2SidebarServerGroup } from '../hooks/use-v2-sidebar-data'
 import { useUnreadNotificationCountQuery } from '../../inbox/hooks/use-inbox-queries'
 import { useAuthStore } from '../../../stores/auth-store'
-import { logout as logoutApi } from '../../auth/auth-api'
+import { useSignOut } from '../../auth/hooks/use-sign-out'
 
 type V2SidebarProps = {
   data: V2SidebarData
@@ -93,9 +93,8 @@ function ServerGroupSection({
 export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
   const { serverId, courseId } = useParams()
   const { pathname } = useLocation()
-  const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
-  const clearSession = useAuthStore((state) => state.clearSession)
+  const endSession = useSignOut()
   const displayName = user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'You'
   const [accountOpen, setAccountOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -130,17 +129,8 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
 
   const signOut = async () => {
     setSigningOut(true)
-    const refreshToken = useAuthStore.getState().refreshToken
-    if (refreshToken) {
-      try {
-        await logoutApi(refreshToken)
-      } catch {
-        // A local sign-out must still complete if token revocation is unavailable.
-      }
-    }
-    clearSession()
+    await endSession()
     onCloseMenu()
-    navigate('/sign-in', { replace: true })
   }
 
   return (

@@ -370,8 +370,8 @@ Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
 Backend MVP, Production Frontend, Workable Product, UI v2, launch-preparation code, and Codebase Hardening are merged.
 Active epic: **#107 Product Readiness and Public Production Launch**.
-Issues **#238 audit/docs** and **#239 membership/navigation/Home authorization** are complete.
-Current expected issue: **#240 browser session isolation and auth accessibility**.
+Issues **#238 audit/docs** through **#240 browser session isolation** are complete.
+Current expected issue: **#241 hermetic release gates**.
 Read docs/issues/product-readiness-issue-breakdown.md and take the first unmerged, unblocked issue.
 Complete the full TDD, browser, CI, CodeAnt, and gated merge loop before continuing.
 

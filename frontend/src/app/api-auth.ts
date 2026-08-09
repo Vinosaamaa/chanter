@@ -19,6 +19,9 @@ configureApiAuth({
 
       try {
         const session = await refreshSession(currentRefreshToken)
+        if (useAuthStore.getState().refreshToken !== currentRefreshToken) {
+          return false
+        }
         useAuthStore.getState().setSession(session)
         return true
       } catch {
