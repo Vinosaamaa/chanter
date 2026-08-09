@@ -55,7 +55,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **New-chat handoff:** [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md)
 
-**Active phase:** [#107 Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107). Issues [#238](https://github.com/Vinosaamaa/chanter/issues/238) through [#240](https://github.com/Vinosaamaa/chanter/issues/240) are complete. Start [#241](https://github.com/Vinosaamaa/chanter/issues/241), then continue through [#255](https://github.com/Vinosaamaa/chanter/issues/255) in [`product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) dependency order.
+**Active phase:** [#107 Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107). Issues [#238](https://github.com/Vinosaamaa/chanter/issues/238) through [#241](https://github.com/Vinosaamaa/chanter/issues/241) are complete. Start [#242](https://github.com/Vinosaamaa/chanter/issues/242), then continue through [#255](https://github.com/Vinosaamaa/chanter/issues/255) in [`product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) dependency order.
 
 **Agent read order for UI work:** `DESIGN-DECISIONS.md` → `specs/layout-rules.md` → issue mockup PNG(s) → `visibility-and-social-model.md`. Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
 
@@ -134,7 +134,7 @@ Epic [#180](https://github.com/Vinosaamaa/chanter/issues/180), issues #181–#20
 
 ### Product Readiness and Public Production Launch (**active**)
 
-Epic [#107](https://github.com/Vinosaamaa/chanter/issues/107), with #238 through #240 complete and #241 next. Audit: [`docs/operations/product-readiness-audit-2026-08-09.md`](docs/operations/product-readiness-audit-2026-08-09.md). Order: [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md). Short agent start: [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
+Epic [#107](https://github.com/Vinosaamaa/chanter/issues/107), with #238 through #241 complete and #242 next. Audit: [`docs/operations/product-readiness-audit-2026-08-09.md`](docs/operations/product-readiness-audit-2026-08-09.md). Order: [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md). Short agent start: [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
 
 Full tables: [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
@@ -267,7 +267,7 @@ Recommended next setup phase:
 
 ## Suggested Next Step
 
-Start hermetic release gates [#241](https://github.com/Vinosaamaa/chanter/issues/241), then continue #242–#255 in [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) dependency order. Do not claim a public beta until #255 verifies the real deployment.
+Start transactional email and durable secure browser sessions [#242](https://github.com/Vinosaamaa/chanter/issues/242), then continue #243–#255 in [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) dependency order. Do not claim a public beta until #255 verifies the real deployment.
 
 ## Historical project notes
 
@@ -370,7 +370,7 @@ Fallback prompt:
 Follow the paste prompt in that file. Short version:
 
 UI v2, launch-preparation code through #104, and Codebase Hardening #180 are on main.
-Active: Product Readiness epic #107. Issues #238 through #240 are complete. Implement #241 next, then continue through #255 per docs/issues/product-readiness-issue-breakdown.md. Never push main.
+Active: Product Readiness epic #107. Issues #238 through #241 are complete. Implement #242 next, then continue through #255 per docs/issues/product-readiness-issue-breakdown.md. Never push main.
 
 Repo: https://github.com/Vinosaamaa/chanter
 Project: https://github.com/users/Vinosaamaa/projects/6

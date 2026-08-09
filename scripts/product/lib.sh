@@ -65,16 +65,11 @@ EOF
 }
 
 product_configure_java_home() {
-  if [ "$(uname -s)" = Darwin ]; then
-    if /usr/libexec/java_home -v 21 >/dev/null 2>&1; then
-      export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
-    elif /usr/libexec/java_home -v 23 >/dev/null 2>&1; then
-      export JAVA_HOME="$(/usr/libexec/java_home -v 23)"
-    else
-      echo "Java 21 or 23 is required on macOS." >&2
-      return 1
-    fi
-  fi
+  local root java_home
+  root="$(product_repo_root)"
+  java_home="$("$root/scripts/java21.sh" bash -c 'printf "%s" "$JAVA_HOME"')" || return 1
+  export JAVA_HOME="$java_home"
+  export PATH="$JAVA_HOME/bin:$PATH"
 }
 
 # Public in-git values that must never be used as live secrets (SEC-04).

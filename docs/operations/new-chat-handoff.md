@@ -6,7 +6,7 @@ Canonical long-form context: [`HANDOFF.md`](../../HANDOFF.md) · workflow: [`age
 
 ## Status
 
-UI v2, local operationalization, launch-preparation code through #104, Codebase Hardening #180, and product-readiness slices #238–#240 are merged on `main`. Chanter is a **strong local beta, not publicly launched**: release gates and production providers/operations remain incomplete, and `chanter.app` was parked at the 2026-08-09 audit. Active program: [#107](https://github.com/Vinosaamaa/chanter/issues/107), with #241 next and #242–#255 following in dependency order.
+UI v2, local operationalization, launch-preparation code through #104, Codebase Hardening #180, and product-readiness slices #238–#241 are merged on `main`. Chanter is a **strong local beta, not publicly launched**: production providers/operations remain incomplete, and `chanter.app` was parked at the 2026-08-09 audit. Active program: [#107](https://github.com/Vinosaamaa/chanter/issues/107), with #242 next and #243–#255 following in dependency order.
 
 ## Paste this into the new chat
 
@@ -25,13 +25,13 @@ Use one issue -> one branch -> one PR, TDD, local/browser gates, CI, CodeAnt
 (maximum three remediation rounds), gated agent merge, then pull main and continue.
 Never push directly to main.
 
-Current expected start: #241 hermetic tests, signed-in product E2E, dependency, and bundle gates.
+Current expected start: #242 transactional email and durable secure browser sessions.
 
 Local browser stack when needed:
 make product-supervise -> make product-health -> make product-demo-seed
 Teardown after browser testing: make product-down
 
-Demo: dev-demo-owner@chanter.local and dev-demo-learner@chanter.local
+Demo: dev-demo-owner@chanter.local, dev-demo-member@chanter.local, and dev-demo-learner@chanter.local
 Password: DEMO_PASSWORD (local default chanter-dev-demo)
 Frontend: http://localhost:5173
 
@@ -45,5 +45,5 @@ Epic: https://github.com/Vinosaamaa/chanter/issues/107
 - Issue order: [`product-readiness-issue-breakdown.md`](../issues/product-readiness-issue-breakdown.md)
 - `chanter.app`: parked at audit time; no verified public Chanter environment.
 - Cloudflare: no repository/public zone usage verified; account-level usage requires authenticated account access.
-- Completed launch slices: #238 audit/program, #239 membership authorization, and #240 session isolation.
-- Next launch slice: #241 release gates.
+- Completed launch slices: #238 audit/program, #239 membership authorization, #240 session isolation, and #241 trustworthy release gates.
+- Next launch slice: #242 transactional email and durable secure browser sessions.

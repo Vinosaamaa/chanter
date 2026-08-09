@@ -8,9 +8,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/check-dev-demo-prod-bundle.mjs",
+    "build": "tsc -b && vite build && node scripts/check-dev-demo-prod-bundle.mjs && node scripts/check-bundle-budget.mjs",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:release": "node --test scripts/check-bundle-budget.node-test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:critical": "playwright test --grep @critical",
     "preview": "vite preview"
