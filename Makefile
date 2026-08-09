@@ -1,16 +1,8 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search backend-notification frontend-install frontend-dev frontend-build verify setup-git-hooks product-env product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers product-e2e product-e2e-critical
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-verify backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search backend-notification frontend-install frontend-dev frontend-build verify setup-git-hooks product-env product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers product-e2e product-e2e-critical
 
-ifeq ($(shell uname -s),Darwin)
-JAVA_HOME_21 := $(shell /usr/libexec/java_home -v 21 2>/dev/null)
-JAVA_HOME_23 := $(shell /usr/libexec/java_home -v 23 2>/dev/null)
-ifneq ($(JAVA_HOME_21),)
-export JAVA_HOME := $(JAVA_HOME_21)
-else ifneq ($(JAVA_HOME_23),)
-export JAVA_HOME := $(JAVA_HOME_23)
-else
-$(error Java 21 or 23 is required on macOS. Install one and rerun this target)
-endif
-endif
+JAVA21 := ./scripts/java21.sh
+HERMETIC_TEST := ./scripts/testing/run-hermetic.sh
+MAVEN_BACKEND := mvn -s backend/.mvn/settings.xml -f backend/pom.xml
 
 ifneq (,$(wildcard .env))
 include .env
@@ -50,47 +42,60 @@ infra-logs:
 	docker compose -f infra/docker-compose.yml logs -f
 
 backend-build:
-	cd backend && mvn -B -q package -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q package -DskipTests
 
 backend-test:
-	cd backend && mvn -B -q test
+	$(HERMETIC_TEST) $(JAVA21) $(MAVEN_BACKEND) -B -q test
+
+backend-verify:
+	$(HERMETIC_TEST) $(JAVA21) $(MAVEN_BACKEND) -B -q verify
 
 backend-gateway:
 	$(require-jwt-secret)
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl gateway-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl gateway-service spring-boot:run
 
 backend-auth:
 	$(require-jwt-secret)
 	$(require-internal-service-token)
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl auth-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl auth-service spring-boot:run
 
 backend-community:
 	$(require-jwt-secret)
 	$(require-internal-service-token)
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl community-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl community-service spring-boot:run
 
 backend-message:
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl message-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl message-service spring-boot:run
 
 backend-realtime:
 	$(require-jwt-secret)
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl realtime-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl realtime-service spring-boot:run
 
 backend-media:
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl media-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl media-service spring-boot:run
 
 backend-agent:
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl agent-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl agent-service spring-boot:run
 
 backend-analytics:
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl analytics-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl analytics-service spring-boot:run
 
 backend-search:
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl search-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl search-service spring-boot:run
 
 backend-notification:
 	$(require-internal-service-token)
-	cd backend && mvn -B -q install -DskipTests && mvn -B -q -pl notification-service spring-boot:run
+	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
+	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl notification-service spring-boot:run
 
 frontend-install:
 	cd frontend && npm install
@@ -101,26 +106,28 @@ frontend-dev:
 frontend-build:
 	cd frontend && npm run build
 
-verify: backend-test frontend-build product-test
+verify: backend-verify frontend-build product-test
 
 product-env:
 	chmod +x ./scripts/product/init-env.sh
 	./scripts/product/init-env.sh
 
 product-up:
-	./scripts/product/up.sh
+	$(JAVA21) ./scripts/product/up.sh
 
 product-down:
 	./scripts/product/down.sh
 
 product-supervise:
-	./scripts/product/supervise.sh
+	$(JAVA21) ./scripts/product/supervise.sh
 
 product-health:
 	./scripts/product/health.sh
 
 product-test:
-	./scripts/product/lib.test.sh
+	$(HERMETIC_TEST) ./scripts/product/lib.test.sh
+	$(HERMETIC_TEST) ./scripts/testing/run-hermetic.test.sh
+	./scripts/java21.test.sh
 
 product-demo-seed: product-health
 	DEMO_PASSWORD="$${DEMO_PASSWORD:-chanter-dev-demo}" ./scripts/seed-workable-product-demo.sh

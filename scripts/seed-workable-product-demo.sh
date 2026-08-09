@@ -17,6 +17,7 @@ if [[ -z "${DEMO_PASSWORD:-}" ]]; then
   exit 1
 fi
 OWNER_EMAIL="dev-demo-owner@chanter.local"
+MEMBER_EMAIL="dev-demo-member@chanter.local"
 LEARNER_EMAIL="dev-demo-learner@chanter.local"
 DEMO_SERVER_NAME="Workable Product Demo"
 
@@ -76,8 +77,10 @@ json_field() {
 
 echo "==> Logging in demo personas (password from DEMO_PASSWORD)"
 OWNER_JSON=$(login "$OWNER_EMAIL" "Demo Owner")
+MEMBER_JSON=$(login "$MEMBER_EMAIL" "Demo Member")
 LEARNER_JSON=$(login "$LEARNER_EMAIL" "Demo Learner")
 OWNER_TOKEN=$(echo "$OWNER_JSON" | json_field "['accessToken']")
+MEMBER_TOKEN=$(echo "$MEMBER_JSON" | json_field "['accessToken']")
 LEARNER_TOKEN=$(echo "$LEARNER_JSON" | json_field "['accessToken']")
 OWNER_ID=$(echo "$OWNER_JSON" | json_field "['user']['id']")
 LEARNER_ID=$(echo "$LEARNER_JSON" | json_field "['user']['id']")
@@ -98,6 +101,41 @@ if [[ -z "$SERVER_ID" ]]; then
     -H 'Content-Type: application/json' \
     -d "{\"name\":\"$DEMO_SERVER_NAME\"}")
   SERVER_ID=$(echo "$CREATED" | json_field "['id']")
+fi
+
+echo "==> Ensure membership-only persona (idempotent)"
+MEMBER_SERVERS=$(curl -sf "$GATEWAY/api/v1/study-servers" -H "Authorization: Bearer $MEMBER_TOKEN")
+MEMBER_HAS_SERVER=$(echo "$MEMBER_SERVERS" | python3 -c "
+import sys, json
+servers = json.load(sys.stdin)
+print('yes' if any(server.get('id') == '$SERVER_ID' for server in servers) else 'no')
+")
+if [[ "$MEMBER_HAS_SERVER" == "yes" ]]; then
+  echo "   membership already accepted"
+else
+  MEMBER_INVITATIONS=$(curl -sf "$GATEWAY/api/v1/study-server-invitations" \
+    -H "Authorization: Bearer $MEMBER_TOKEN")
+  MEMBER_INVITATION_ID=$(echo "$MEMBER_INVITATIONS" | python3 -c "
+import sys, json
+invitations = json.load(sys.stdin)
+for invitation in invitations:
+  if invitation.get('studyServerId') == '$SERVER_ID':
+    print(invitation['id']); raise SystemExit
+print('')
+")
+  if [[ -z "$MEMBER_INVITATION_ID" ]]; then
+    CREATED_INVITATIONS=$(curl_json "invite membership-only persona" \
+      -X POST "$GATEWAY/api/v1/study-servers/$SERVER_ID/invitations" \
+      -H "Authorization: Bearer $OWNER_TOKEN" \
+      -H 'Content-Type: application/json' \
+      -d "{\"inviteEmails\":[\"$MEMBER_EMAIL\"]}")
+    MEMBER_INVITATION_ID=$(echo "$CREATED_INVITATIONS" | python3 -c \
+      "import sys,json; invitations=json.load(sys.stdin); print(invitations[0]['id'])")
+  fi
+  curl_json "accept membership-only invitation" \
+    -X POST "$GATEWAY/api/v1/study-servers/$SERVER_ID/invitations/$MEMBER_INVITATION_ID/accept" \
+    -H "Authorization: Bearer $MEMBER_TOKEN" >/dev/null
+  echo "   membership accepted without Cohort enrollment"
 fi
 
 NAV=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/navigation" -H "Authorization: Bearer $OWNER_TOKEN")
@@ -238,6 +276,7 @@ echo "OK: workable product demo data is ready"
 echo ""
 echo "Demo personas (password: $DEMO_PASSWORD)"
 echo "  Owner:   $OWNER_EMAIL"
+echo "  Member:  $MEMBER_EMAIL"
 echo "  Learner: $LEARNER_EMAIL"
 echo ""
 echo "Open in two browser profiles:"

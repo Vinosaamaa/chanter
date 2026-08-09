@@ -1,4 +1,14 @@
-import { expect, test } from '@playwright/test'
+import { expect, expectNoHorizontalOverflow, test } from './release-test'
+
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/auth/oauth/providers', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ providers: [] }),
+    })
+  })
+})
 
 /**
  * CI-stable critical subset (@critical). Does not require the Java product stack.
@@ -7,14 +17,16 @@ import { expect, test } from '@playwright/test'
 test.describe('Critical public surfaces @critical', () => {
   test('landing loads and CTA routes to sign-in', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Chanter').first()).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByText('Free for educators', { exact: true })).toBeVisible()
     await page.getByRole('link', { name: 'Sign in' }).first().click()
     await expect(page).toHaveURL(/sign-in/)
   })
 
   test('sign-in exposes forgot password and terms', async ({ page }) => {
     await page.goto('/sign-in')
-    await expect(page.locator('form.v2-auth-form button[type="submit"]')).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Where your courses come together/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password')
     await expect(page.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms')
   })
@@ -29,10 +41,11 @@ test.describe('Critical public surfaces @critical', () => {
 test.describe('Responsive smoke @critical @viewport', () => {
   test('sign-in first viewport stays usable', async ({ page }) => {
     await page.goto('/sign-in')
-    const signIn = page.locator('form.v2-auth-form button[type="submit"]')
+    const signIn = page.getByRole('button', { name: 'Sign in', exact: true })
     await expect(signIn).toBeVisible()
     const box = await signIn.boundingBox()
     expect(box).not.toBeNull()
     expect((box?.width ?? 0)).toBeGreaterThan(40)
+    await expectNoHorizontalOverflow(page)
   })
 })

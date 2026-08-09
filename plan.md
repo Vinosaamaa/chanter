@@ -374,7 +374,7 @@ Current implementation status as of 2026-08-09:
 - **UI v2 operationalization, AI foundations, and launch-preparation code:** #131–#145 and #94–#104 merged.
 - **Codebase Hardening:** #180–#205 plus #220 merged.
 - **Public truth:** Chanter is a strong local beta, not publicly launched; `chanter.app` was parked at the 2026-08-09 audit.
-- **Active:** [#107 Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107). Issues #238–#240 are complete; #241 is next, followed by #242–#255. See [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md).
+- **Active:** [#107 Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107). Issues #238–#241 are complete; #242 is next, followed by #243–#255. See [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md).
 
 Milestone -1: Project operations bootstrap
 
@@ -517,7 +517,7 @@ Milestone 11: Product Readiness and Public Production Launch
 
 Backend MVP **#11–#24**, Production Frontend **#47–#59**, Workable Product **#60–#63**, UI v2 **#116–#128**, operationalization **#132–#145**, Real AI **#94–#100**, and Public Launch **#101–#104** are merged on `main`.
 
-**Active:** [#107 Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107). Issues [#238](https://github.com/Vinosaamaa/chanter/issues/238) through [#240](https://github.com/Vinosaamaa/chanter/issues/240) are complete. Start [#241](https://github.com/Vinosaamaa/chanter/issues/241), then continue in [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) dependency order. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
+**Active:** [#107 Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107). Issues [#238](https://github.com/Vinosaamaa/chanter/issues/238) through [#241](https://github.com/Vinosaamaa/chanter/issues/241) are complete. Start [#242](https://github.com/Vinosaamaa/chanter/issues/242), then continue in [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) dependency order. Follow [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
 ## Large-Scale Architecture For 100M DAU And 500M MAU
 
