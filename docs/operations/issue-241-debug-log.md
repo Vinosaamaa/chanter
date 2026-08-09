@@ -78,3 +78,31 @@ This was host-network sandbox isolation, not an application failure. The same he
 ## 7. Current npm High advisories
 
 The initial production audit found two High React Router advisories. The full graph found eight High advisories across React Router, Playwright, PostCSS, Nano ID, brace expansion, and Undici. `npm audit fix` updated nine locked packages within declared compatible ranges; both production and full audits then reported zero vulnerabilities.
+
+## 8. GitHub dependency review could not read a dependency graph
+
+### Symptom
+
+The new dependency-review job failed immediately with `Dependency review is not supported on this repository`.
+
+### Root cause
+
+The public repository's dependency graph was disabled at the GitHub repository level. Workflow configuration alone cannot make dependency review available.
+
+### Fix
+
+Enabled repository vulnerability alerts, which enabled the dependency graph, and confirmed GitHub can export the repository SBOM. The failed job is rerun after that repository setting is active.
+
+## 9. Frontend-only browser CI contacted the absent backend
+
+### Symptom
+
+The public Playwright suite passed against the locally running product but failed in frontend CI with `502 GET /api/v1/auth/oauth/providers`.
+
+### Root cause
+
+That job deliberately serves only Vite. The sign-in page performs an optional OAuth-provider discovery request, so the stricter browser-health fixture correctly reported the missing backend.
+
+### Fix
+
+The frontend-only public suite returns an empty provider catalog for that single optional request. The signed-in full-stack suite still calls the real gateway and rejects request, response, console, and page failures.

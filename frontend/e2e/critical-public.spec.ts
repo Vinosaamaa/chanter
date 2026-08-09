@@ -1,5 +1,15 @@
 import { expect, expectNoHorizontalOverflow, test } from './release-test'
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/auth/oauth/providers', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ providers: [] }),
+    })
+  })
+})
+
 /**
  * CI-stable critical subset (@critical). Does not require the Java product stack.
  * Full product paths live in product-critical.spec.ts (@product).

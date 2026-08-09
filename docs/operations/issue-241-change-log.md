@@ -42,6 +42,8 @@ The new generic-member test initially remained on `/sign-in` because the product
 - Replaced route-presence checks with settled page content, role authorization, and horizontal-overflow assertions at 720p, 1080p, mobile, and 4K.
 - Added npm, Maven, and GitHub Actions coverage to Dependabot alongside existing Docker coverage.
 - Added pull-request dependency review, production/full npm audits, deterministic `npm ci`, signed-in product E2E, and retained diagnostics to CI.
+- Enabled the repository dependency graph so GitHub can execute dependency review and publish its SBOM.
+- Isolated the optional OAuth-provider lookup in the frontend-only public suite; the full-stack suite continues to exercise the real endpoint.
 
 ## Local verification
 
