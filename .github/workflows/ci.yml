@@ -38,7 +38,7 @@ jobs:
         run: docker compose -f infra/docker-compose.yml --profile product config --quiet
       - name: Retain backend test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-reports
           path: backend/**/target/surefire-reports/
@@ -87,7 +87,7 @@ jobs:
           CI: 'true'
       - name: Retain public browser artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: public-browser-test-artifacts
           path: |
@@ -127,7 +127,7 @@ jobs:
           CI: 'true'
       - name: Retain signed-in browser and service artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signed-in-product-test-artifacts
           path: |
