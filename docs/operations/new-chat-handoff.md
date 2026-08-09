@@ -6,7 +6,7 @@ Canonical long-form context: [`HANDOFF.md`](../../HANDOFF.md) · workflow: [`age
 
 ## Status
 
-UI v2, local operationalization, launch-preparation code through #104, and Codebase Hardening #180 are merged on `main`. A verified 2026-08-09 audit found that Chanter is a **strong local beta, not publicly launched**: normal membership/session browser paths fail, production providers/operations are incomplete, and `chanter.app` is parked. Active program: [#107](https://github.com/Vinosaamaa/chanter/issues/107), audit/docs [#238](https://github.com/Vinosaamaa/chanter/issues/238), then #239–#255.
+UI v2, local operationalization, launch-preparation code through #104, Codebase Hardening #180, product-readiness audit #238, and membership consistency #239 are merged on `main`. Chanter is a **strong local beta, not publicly launched**: session isolation and production providers/operations remain incomplete, and `chanter.app` was parked at the 2026-08-09 audit. Active program: [#107](https://github.com/Vinosaamaa/chanter/issues/107), with #240 next and #241–#255 following in dependency order.
 
 ## Paste this into the new chat
 
@@ -25,7 +25,7 @@ Use one issue -> one branch -> one PR, TDD, local/browser gates, CI, CodeAnt
 (maximum three remediation rounds), gated agent merge, then pull main and continue.
 Never push directly to main.
 
-Current expected start: finish #238 audit/docs, then #239 membership/navigation/Home authorization.
+Current expected start: #240 browser session isolation and auth accessibility.
 
 Local browser stack when needed:
 make product-supervise -> make product-health -> make product-demo-seed
@@ -45,4 +45,5 @@ Epic: https://github.com/Vinosaamaa/chanter/issues/107
 - Issue order: [`product-readiness-issue-breakdown.md`](../issues/product-readiness-issue-breakdown.md)
 - `chanter.app`: parked at audit time; no verified public Chanter environment.
 - Cloudflare: no repository/public zone usage verified; account-level usage requires authenticated account access.
-- First implementation defects: #239 membership contract, #240 session isolation, #241 release gates.
+- Completed launch slices: #238 audit/program and #239 membership/navigation/Home authorization.
+- Next launch slices: #240 session isolation and #241 release gates.

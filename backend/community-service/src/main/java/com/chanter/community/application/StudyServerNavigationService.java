@@ -24,16 +24,13 @@ public class StudyServerNavigationService {
 
     private final CourseRepository courseRepository;
     private final StudyServerRepository studyServerRepository;
-    private final StudyAssistantGrantService studyAssistantGrantService;
 
     public StudyServerNavigationService(
             CourseRepository courseRepository,
-            StudyServerRepository studyServerRepository,
-            StudyAssistantGrantService studyAssistantGrantService
+            StudyServerRepository studyServerRepository
     ) {
         this.courseRepository = courseRepository;
         this.studyServerRepository = studyServerRepository;
-        this.studyAssistantGrantService = studyAssistantGrantService;
     }
 
     public List<AccessibleStudyServer> listAccessibleStudyServers(UUID userId) {
@@ -41,10 +38,24 @@ public class StudyServerNavigationService {
     }
 
     public StudyServerNavigation findNavigation(UUID studyServerId, UUID userId) {
-        StudyAssistantViewerScope viewerScope = studyAssistantGrantService.findViewerScope(studyServerId, userId);
-        StudyAssistantGrantCandidates candidates = courseRepository.findGrantCandidates(studyServerId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
         StudyServer studyServer = studyServerRepository.findById(studyServerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
+        if (!studyServerRepository.isStudyServerMember(studyServerId, userId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Study Server navigation requires membership"
+            );
+        }
+
+        StudyAssistantViewerScope viewerScope = courseRepository.findViewerScope(studyServerId, userId)
+                .orElseGet(() -> new StudyAssistantViewerScope(
+                        studyServerId,
+                        false,
+                        List.of(),
+                        List.of(),
+                        List.of()
+                ));
+        StudyAssistantGrantCandidates candidates = courseRepository.findGrantCandidates(studyServerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
 
         boolean owner = courseRepository.isStudyServerOwner(studyServerId, userId);
