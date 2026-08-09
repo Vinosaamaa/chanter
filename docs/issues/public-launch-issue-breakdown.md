@@ -1,5 +1,7 @@
 # Chanter Public Launch Issue Breakdown
 
+> **Historical milestone correction (2026-08-09):** the code slices in this document are merged, but no real public environment or launch sign-off was verified. Active product readiness is [#107](https://github.com/Vinosaamaa/chanter/issues/107), [#238–#255](product-readiness-issue-breakdown.md), with evidence in the [2026-08-09 audit](../operations/product-readiness-audit-2026-08-09.md).
+
 > **⚠️ UI v2 precedence (2026-07):** Course-first shell implementation **#115–#128** is **active** and **pauses** legacy Phase 1 UI polish **#88–#93** until **#116** merges. See [`ui-v2-issue-breakdown.md`](ui-v2-issue-breakdown.md).
 >
 > **Goal:** Move from **Workable Product** (local full-stack demo) to a **publicly launchable** education product: mockup-faithful UI, real LLM/RAG AI (resume-grade orchestration), and staging/production readiness.

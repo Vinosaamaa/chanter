@@ -34,6 +34,8 @@ Important files:
 - `docs/issues/workable-product-issue-breakdown.md`: Workable full-stack local app (**#60–#63**, #31–#32, project #4).
 - `docs/issues/public-launch-issue-breakdown.md`: Public Launch (**#82–#104**, project #5) — **done**.
 - `docs/issues/codebase-hardening-issue-breakdown.md`: **Done** — security/correctness hardening (**#180–#205**, project #7).
+- `docs/operations/product-readiness-audit-2026-08-09.md`: verified release audit, Cloudflare boundary, and launch-blocking gap register.
+- `docs/issues/product-readiness-issue-breakdown.md`: **Active** production-readiness order (**#238–#255**, epic #107).
 - `docs/operations/agent-workflow.md`: **Mandatory agent workflow** — issue order, autonomous gated merge policy, **CodeAnt AI** PR review (cubic retired).
 - `plan.md`: main product, architecture, implementation, testing, scale, and AI-agent roadmap.
 - `System Design.md`: detailed backend/system architecture explanation and diagrams.
@@ -49,11 +51,11 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **Hardening complete:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) — all slices **#181–#205** (+ hotfix **#220**) merged. Findings: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md). Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
 
-**Beta launch:** [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md) — staging `https://staging.chanter.example`, known limitation: course storefront commerce is post-MVP. Full product browser QA passed 2026-07-15 (owner + learner).
+**Public status:** Chanter is a **strong local beta, not publicly launched**. The earlier #104 checklist remains unsigned, `staging.chanter.example` is a placeholder, and `chanter.app` is parked. Verified findings: [`docs/operations/product-readiness-audit-2026-08-09.md`](docs/operations/product-readiness-audit-2026-08-09.md).
 
 **New-chat handoff:** [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md)
 
-**Next phase:** Post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) + [`post-launch-ui-backlog.md`](docs/operations/post-launch-ui-backlog.md) (start only when the owner asks).
+**Active phase:** [#107 Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107). Complete [#238](https://github.com/Vinosaamaa/chanter/issues/238), then [#239](https://github.com/Vinosaamaa/chanter/issues/239) through [#255](https://github.com/Vinosaamaa/chanter/issues/255) in [`product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) dependency order.
 
 **Agent read order for UI work:** `DESIGN-DECISIONS.md` → `specs/layout-rules.md` → issue mockup PNG(s) → `visibility-and-social-model.md`. Breakdown: [`docs/issues/ui-v2-issue-breakdown.md`](docs/issues/ui-v2-issue-breakdown.md).
 
@@ -122,15 +124,17 @@ Production Frontend table retained above for history; milestone **complete** (le
 | 13 | [#127](https://github.com/Vinosaamaa/chanter/issues/127) | Owner course/cohort + events — **merged** |
 | 14 | [#128](https://github.com/Vinosaamaa/chanter/issues/128) | Landing and marketing v2 — **merged** |
 
-### UI v2 operationalization + launch (complete through #104)
+### UI v2 operationalization + launch-preparation code (complete through #104)
 
-Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) turned the approved UI into a truthful full-stack product. Ordered slices **#132–#145**, AI **#94–#100**, E2E **#103**, staging/auth **#101–#102**, and beta checklist **#104** are **merged**.
+Epic [#131](https://github.com/Vinosaamaa/chanter/issues/131) connected the approved UI to the local full stack. Ordered slices **#132–#145**, AI foundations **#94–#100**, E2E **#103**, staging/auth preparation **#101–#102**, and beta checklist **#104** are merged. Those merges did not provision or sign off a public environment.
 
-### Codebase Hardening (**active** — [project #7](https://github.com/users/Vinosaamaa/projects/7))
+### Codebase Hardening (**complete** — [project #7](https://github.com/users/Vinosaamaa/projects/7))
 
-Epic [#180](https://github.com/Vinosaamaa/chanter/issues/180). Full-repo review: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md) (PR [#179](https://github.com/Vinosaamaa/chanter/pull/179)). **Start at [#181](https://github.com/Vinosaamaa/chanter/issues/181)** (SEC-04). Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
+Epic [#180](https://github.com/Vinosaamaa/chanter/issues/180), issues #181–#205 plus #220, is complete. Full-repo review: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md). Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
 
-**After High/Medium slices:** post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107). Short agent start: [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
+### Product Readiness and Public Production Launch (**active**)
+
+Epic [#107](https://github.com/Vinosaamaa/chanter/issues/107), audit [#238](https://github.com/Vinosaamaa/chanter/issues/238), then implementation #239–#255. Audit: [`docs/operations/product-readiness-audit-2026-08-09.md`](docs/operations/product-readiness-audit-2026-08-09.md). Order: [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md). Short agent start: [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
 
 Full tables: [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md).
 
@@ -263,7 +267,7 @@ Recommended next setup phase:
 
 ## Suggested Next Step
 
-**Codebase Hardening (#180) is complete.** Next product work is post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107) when the owner asks — see [`docs/operations/post-launch-ui-backlog.md`](docs/operations/post-launch-ui-backlog.md) and [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
+Complete product-readiness audit/docs [#238](https://github.com/Vinosaamaa/chanter/issues/238), then start authorization fix [#239](https://github.com/Vinosaamaa/chanter/issues/239) and continue #240–#255 in [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) dependency order. Do not claim a public beta until #255 verifies the real deployment.
 
 ## Historical project notes
 
@@ -365,12 +369,11 @@ Fallback prompt:
 
 Follow the paste prompt in that file. Short version:
 
-Public-beta through #104 is on main. Active: Codebase Hardening epic #180 (project #7).
-1) Merge PR #179 if still open (CI + CodeAnt). 2) Implement #181 (SEC-04 default secrets).
-Then continue #182+ per docs/issues/codebase-hardening-issue-breakdown.md. Never push main.
+UI v2, launch-preparation code through #104, and Codebase Hardening #180 are on main.
+Active: Product Readiness epic #107. Complete #238, then implement #239 and continue through #255 per docs/issues/product-readiness-issue-breakdown.md. Never push main.
 
 Repo: https://github.com/Vinosaamaa/chanter
-Project: https://github.com/users/Vinosaamaa/projects/7
+Project: https://github.com/users/Vinosaamaa/projects/6
 ```
 
 ## Notes For Future Agent

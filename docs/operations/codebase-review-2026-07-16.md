@@ -1,7 +1,7 @@
 # Chanter Codebase Review — 2026-07-16
 
 **Reviewer:** Cursor cloud agent (thorough read-only review)
-**Commit base:** `main` (public beta, slices through #104 merged)
+**Commit base:** `main` (historical public-beta code milestone, slices through #104 merged; no public deployment implied)
 **Scope:** Full repository — backend (`backend/**`, ~42k LOC Java), frontend (`frontend/src/**`, ~34k LOC TS/TSX), infrastructure (`infra/**`), CI (`.github/workflows/**`), root `Makefile`, and `scripts/**`.
 
 This document records **security findings, correctness bugs, and improvement recommendations** found during a codebase-wide review. It changes **no application code** — it is a report only. Every High/Critical item below was manually verified against the cited source. Line numbers reflect the state of `main` at review time and may drift as code changes.

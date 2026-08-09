@@ -1,5 +1,7 @@
 # Post-Launch UI & product backlog
 
+> **Superseded as the active plan (2026-08-09).** The historical PL-01–PL-16 inventory remains useful, but epic #107 now owns the verified Product Readiness program [#238–#255](../issues/product-readiness-issue-breakdown.md). Optional storefront/folder/pixel-polish items remain deferred here; launch blockers moved to the new program.
+
 > **Purpose:** Items from the [#87 gap audit](public-launch-ui-gap-audit.md) that are **out of Public Launch scope** (#86–#104) or **stretch** work easy to forget after beta ships.  
 > **GitHub:** [Epic #107](https://github.com/Vinosaamaa/chanter/issues/107) · [Project #6](https://github.com/users/Vinosaamaa/projects/6) · [Milestone: Post-Launch](https://github.com/Vinosaamaa/chanter/milestone/6)  
 > **Do not start** until [Public Launch project #5](https://github.com/users/Vinosaamaa/projects/5) is winding down.
@@ -9,7 +11,7 @@
 | Milestone state | Action |
 |-----------------|--------|
 | Still working #88–#104 | Read only — do not start here |
-| Public Launch #5 mostly **Done** | Revise [epic #107](https://github.com/Vinosaamaa/chanter/issues/107); break PL items into stories on [project #6](https://github.com/users/Vinosaamaa/projects/6) |
+| Public Launch code milestone done | Follow revised [epic #107](https://github.com/Vinosaamaa/chanter/issues/107) and [#238–#255](../issues/product-readiness-issue-breakdown.md) on project #6 |
 | Planning commerce / growth | Pull items from §1 (PL-08 storefront) |
 
 ---

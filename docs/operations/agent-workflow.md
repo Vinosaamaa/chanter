@@ -1,6 +1,6 @@
 # Chanter Agent Workflow
 
-**Last updated:** 2026-07-16
+**Last updated:** 2026-08-09
 **This is the single canonical doc for agents.** It covers issue order, the per-issue completion loop, merge policy, and **CodeAnt AI** PR review. Enforced in `.cursor/rules/git-workflow.mdc`.
 
 ---
@@ -80,8 +80,9 @@ If CodeAnt is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in
 | Production Frontend (legacy) | [Production Frontend](https://github.com/Vinosaamaa/chanter/milestone/3) | [#3](https://github.com/users/Vinosaamaa/projects/3) | **Done** (#47–#59) |
 | Workable Product | [Workable Product](https://github.com/Vinosaamaa/chanter/milestone/4) | [#4](https://github.com/users/Vinosaamaa/projects/4) | **Done** (#60–#63, #31–#32) |
 | **UI v2** | [**UI v2 — Course-first shell**](https://github.com/Vinosaamaa/chanter/milestone/7) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Done** (#116–#128, PR #130) |
-| **UI v2 operationalization + Public Launch** | [Public Launch](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Done** (#132–#145, #94–#100, #101–#104) |
+| **UI v2 operationalization + launch-preparation code** | [Public Launch (historical name)](https://github.com/Vinosaamaa/chanter/milestone/5) | [#5](https://github.com/users/Vinosaamaa/projects/5) | **Done** (#132–#145, #94–#100, #101–#104); no deployment implied |
 | **Codebase Hardening** | — | [**#7**](https://github.com/users/Vinosaamaa/projects/7) | **Done** — epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) (#181–#205 + #220) |
+| **Product Readiness + Public Production Launch** | — | [**#6**](https://github.com/users/Vinosaamaa/projects/6) | **Active** — epic [#107](https://github.com/Vinosaamaa/chanter/issues/107), #238–#255 |
 
 Legacy **Social Hub project #2** is **closed**. #31–#32 are on **project #4** only. **#30** is on **project #3** only (pairs with #49).
 
@@ -155,13 +156,13 @@ Serial order only — one issue per branch.
 | 7 | [**#136**](https://github.com/Vinosaamaa/chanter/issues/136) | Real Cohort roster, Enrollment, and TA assignment - **merged** |
 | 8 | [**#137**](https://github.com/Vinosaamaa/chanter/issues/137) | Course Chat channel management and voice entry - **merged** (PR #153) |
 | 9 | [**#138**](https://github.com/Vinosaamaa/chanter/issues/138) | Community Course discovery and Enrollment - **complete** (PR #154) |
-| 10 | [**#139**](https://github.com/Vinosaamaa/chanter/issues/139) | **NEXT** Truthful Study Server and Course lifecycle |
-| 11 | [#140](https://github.com/Vinosaamaa/chanter/issues/140) | Durable Community events and RSVP |
-| 12 | [#141](https://github.com/Vinosaamaa/chanter/issues/141) | Operational announcements, members, and invitations |
-| 13 | [#142](https://github.com/Vinosaamaa/chanter/issues/142) | Truthful Home and Course Overview aggregates |
-| 14 | [#143](https://github.com/Vinosaamaa/chanter/issues/143) | Durable Inbox, notifications, and unread counts |
-| 15 | [#144](https://github.com/Vinosaamaa/chanter/issues/144) | Real cross-Course Calendar and join actions |
-| 16 | [#145](https://github.com/Vinosaamaa/chanter/issues/145) | Truthful owner billing and usage settings |
+| 10 | [**#139**](https://github.com/Vinosaamaa/chanter/issues/139) | Truthful Study Server and Course lifecycle — **merged** |
+| 11 | [#140](https://github.com/Vinosaamaa/chanter/issues/140) | Durable Community events and RSVP — **merged** |
+| 12 | [#141](https://github.com/Vinosaamaa/chanter/issues/141) | Operational announcements, members, and invitations — **merged** |
+| 13 | [#142](https://github.com/Vinosaamaa/chanter/issues/142) | Truthful Home and Course Overview aggregates — **merged** |
+| 14 | [#143](https://github.com/Vinosaamaa/chanter/issues/143) | Durable Inbox, notifications, and unread counts — **merged** |
+| 15 | [#144](https://github.com/Vinosaamaa/chanter/issues/144) | Real cross-Course Calendar and join actions — **merged** |
+| 16 | [#145](https://github.com/Vinosaamaa/chanter/issues/145) | Truthful owner billing and usage settings — **merged** |
 
 After #145: AI **#94–#100** (start with [#94](https://github.com/Vinosaamaa/chanter/issues/94)), critical-path E2E/no-dead-controls **#103**, staging/auth **#101–#102**, and public beta **#104**. Epic #131 operational slices **#132–#145** are complete.
 
@@ -195,7 +196,7 @@ After #145: AI **#94–#100** (start with [#94](https://github.com/Vinosaamaa/ch
 
 ### Phase 4: Public Launch (project #5)
 
-**Goal:** Real LLM/RAG AI, staging + public beta readiness after UI v2 operationalization.
+**Goal (historical milestone):** AI and launch-preparation code after UI v2 operationalization. A real deployment/sign-off is now owned by Phase 6.
 **Breakdown:** [`public-launch-issue-breakdown.md`](../issues/public-launch-issue-breakdown.md)
 
 | Order | Issue | Title |
@@ -204,7 +205,7 @@ After #145: AI **#94–#100** (start with [#94](https://github.com/Vinosaamaa/ch
 | 2 | [#86](https://github.com/Vinosaamaa/chanter/issues/86) | Product stack reliability — **merged** (PR #105) |
 | 3 | [#87](https://github.com/Vinosaamaa/chanter/issues/87) | Mockup gap audit — **owner sign-off 2026-07-09** (PR #106) |
 | — | **#115–#128** | **UI v2** — merged in PR #130 |
-| 4 | [#131](https://github.com/Vinosaamaa/chanter/issues/131) | Make UI v2 fully operational - **active at #139** |
+| 4 | [#131](https://github.com/Vinosaamaa/chanter/issues/131) | Make UI v2 fully operational — **complete through #145** |
 | 5 | [#94](https://github.com/Vinosaamaa/chanter/issues/94)+ | Real AI + launch readiness — **merged** (#94–#100, #101–#104) |
 
 ### Phase 5: Codebase Hardening (project #7) — **Done**
@@ -214,7 +215,37 @@ After #145: AI **#94–#100** (start with [#94](https://github.com/Vinosaamaa/ch
 **Findings:** [`codebase-review-2026-07-16.md`](codebase-review-2026-07-16.md)  
 **Breakdown:** [`codebase-hardening-issue-breakdown.md`](../issues/codebase-hardening-issue-breakdown.md)
 
-All High / Medium / Low slices from the review are merged. Post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107) is next when the owner asks.
+All High / Medium / Low slices from the review are merged.
+
+### Phase 6: Product Readiness and Public Production Launch (project #6) — **Active**
+
+**Goal:** Move from a strong local beta to a publicly operated product at `chanter.app`. Do not treat the historical "Public Launch" milestone name or merged #101–#104 preparation as evidence of a deployment.
+**Epic:** [#107](https://github.com/Vinosaamaa/chanter/issues/107)
+**Audit:** [#238](https://github.com/Vinosaamaa/chanter/issues/238) / [`product-readiness-audit-2026-08-09.md`](product-readiness-audit-2026-08-09.md)
+**Breakdown:** [`product-readiness-issue-breakdown.md`](../issues/product-readiness-issue-breakdown.md)
+
+| Order | Issue | Outcome |
+|---:|---|---|
+| 1 | [#238](https://github.com/Vinosaamaa/chanter/issues/238) | Audit, truthful docs, launch program |
+| 2 | [#239](https://github.com/Vinosaamaa/chanter/issues/239) | Membership/navigation/Home authorization consistency |
+| 3 | [#240](https://github.com/Vinosaamaa/chanter/issues/240) | Browser session isolation and auth accessibility |
+| 4 | [#241](https://github.com/Vinosaamaa/chanter/issues/241) | Hermetic CI, signed-in product E2E, dependency gates |
+| 5 | [#242](https://github.com/Vinosaamaa/chanter/issues/242) | Transactional email and secure durable sessions |
+| 6 | [#243](https://github.com/Vinosaamaa/chanter/issues/243) | Reproducible staging/production infrastructure |
+| 7 | [#244](https://github.com/Vinosaamaa/chanter/issues/244) | Durable Course Resources and upload quarantine |
+| 8 | [#245](https://github.com/Vinosaamaa/chanter/issues/245) | Durable events, notifications, automatic search indexing |
+| 9 | [#246](https://github.com/Vinosaamaa/chanter/issues/246) | Truthful AI resource ingestion |
+| 10 | [#247](https://github.com/Vinosaamaa/chanter/issues/247) | Scoped production vector retrieval |
+| 11 | [#248](https://github.com/Vinosaamaa/chanter/issues/248) | AI runtime safety, metering, and evaluations |
+| 12 | [#249](https://github.com/Vinosaamaa/chanter/issues/249) | Platform administration and moderation |
+| 13 | [#250](https://github.com/Vinosaamaa/chanter/issues/250) | Truthful beta/provider-backed billing |
+| 14 | [#251](https://github.com/Vinosaamaa/chanter/issues/251) | Export, coordinated deletion, retention, legal truth |
+| 15 | [#252](https://github.com/Vinosaamaa/chanter/issues/252) | Observability, alerts, backups, restore drills |
+| 16 | [#253](https://github.com/Vinosaamaa/chanter/issues/253) | Edge/origin and distributed abuse protection |
+| 17 | [#254](https://github.com/Vinosaamaa/chanter/issues/254) | No dead controls, accessibility, responsive/performance gates |
+| 18 | [#255](https://github.com/Vinosaamaa/chanter/issues/255) | Production validation and public cutover |
+
+Follow dependency order in the breakdown, not merely numeric order when branches converge. Provider credentials are explicit checkpoints; complete repository work before requesting them. #255 is the only issue allowed to mark the public launch complete.
 
 ---
 
@@ -337,11 +368,11 @@ Do **not** treat a separate “deferred” section as skippable work on the **ow
 ```text
 Read HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
 
-Backend MVP #11–#24, Production Frontend #47–#59, and Workable Product #60–#63 are merged.
-Public Launch project #5 - epic **#131** is complete through **#138** (PR #154).
-Current issue: **#139 Truthful Study Server and Course lifecycle**.
-Current branch: `feature/139-truthful-study-server-course-lifecycle`.
-Use Cursor Composer 2.5 for implementation and complete the full TDD, browser, CI, CodeAnt, and gated merge loop before #140.
+Backend MVP, Production Frontend, Workable Product, UI v2, launch-preparation code, and Codebase Hardening are merged.
+Active epic: **#107 Product Readiness and Public Production Launch**.
+Current expected issue: **#238 audit/docs**, then **#239 membership/navigation/Home authorization**.
+Read docs/issues/product-readiness-issue-breakdown.md and take the first unmerged, unblocked issue.
+Complete the full TDD, browser, CI, CodeAnt, and gated merge loop before continuing.
 
 Product UI: docs/product-design/README.md
 PR review: CodeAnt AI (cubic trial expired) — docs/operations/agent-workflow.md § CodeAnt review

@@ -1,5 +1,7 @@
 # Staging deployment with HTTPS (#101)
 
+> **Reference only (2026-08-09): no deployment is verified.** The hostname below is a placeholder and this single-VM path was never signed off as public staging. Production infrastructure is owned by [#243](https://github.com/Vinosaamaa/chanter/issues/243), with release validation in [#255](https://github.com/Vinosaamaa/chanter/issues/255). See the [product-readiness audit](product-readiness-audit-2026-08-09.md).
+
 This runbook deploys Chanter on a **single VM** (or similar PaaS host) behind **Caddy** for automatic TLS. It is the supported path for public/staging demos before a multi-node production topology.
 
 ## Public staging URL
@@ -58,11 +60,11 @@ Email / SSO (#102) vars are documented in `.env.example` (§ Production auth).
 | Setting | Staging recommendation |
 |---------|------------------------|
 | `CHANTER_AUTH_REQUIRE_EMAIL_VERIFICATION` | `true` |
-| `CHANTER_EMAIL_PROVIDER` | `log` (links appear in auth-service logs) or wire an SMTP relay later |
+| `CHANTER_EMAIL_PROVIDER` | `log` is local-only and does not currently provide a usable verification link; real staging requires #242 transactional email |
 | `CHANTER_OAUTH_GOOGLE_CLIENT_ID` / `SECRET` | optional; enables Continue with Google |
 | OAuth redirect URI | `${CHANTER_PUBLIC_BASE_URL}/oauth/callback/google` |
 
-Walkthrough: register → copy verify link from auth logs → `/verify-email?token=` → sign in. Forgot password uses the same email log path.
+The former walkthrough expected verification/reset links in logs, but the current `LoggingEmailSender` does not log message content. Use a local test email sink during #242; real staging must send transactional email and exercise delivery end to end.
 
 ## Deploy steps
 
