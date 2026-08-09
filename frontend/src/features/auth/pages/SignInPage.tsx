@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Eye, EyeOff, FileText, HelpCircle, MessageSquare, CalendarDays } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
@@ -32,6 +32,10 @@ export function SignInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sessionReady, setSessionReady] = useState(false)
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([])
+  const authTabRefs = useRef<Record<AuthMode, HTMLButtonElement | null>>({
+    'sign-in': null,
+    register: null,
+  })
 
   const defaultRedirect = inviteFromUrl ? '/app/welcome' : '/app/home'
   const redirectTo = (location.state as { from?: string } | null)?.from ?? defaultRedirect
@@ -79,6 +83,22 @@ export function SignInPage() {
       ? googleProvider.authorizationUrl
       : null
 
+  const handleAuthTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    let nextMode: AuthMode | null = null
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      nextMode = mode === 'sign-in' ? 'register' : 'sign-in'
+    } else if (event.key === 'Home') {
+      nextMode = 'sign-in'
+    } else if (event.key === 'End') {
+      nextMode = 'register'
+    }
+    if (!nextMode) return
+
+    event.preventDefault()
+    setMode(nextMode)
+    authTabRefs.current[nextMode]?.focus()
+  }
+
   return (
     <main className="v2-auth-page">
       <section className="v2-auth-hero">
@@ -118,16 +138,73 @@ export function SignInPage() {
           )}
 
           <div className="v2-auth-tabs" role="tablist" aria-label="Authentication mode">
-            <button type="button" className={mode === 'sign-in' ? 'active' : undefined} onClick={() => setMode('sign-in')}>Sign in</button>
-            <button type="button" className={mode === 'register' ? 'active' : undefined} onClick={() => setMode('register')}>Create account</button>
+            <button
+              ref={(element) => {
+                authTabRefs.current['sign-in'] = element
+              }}
+              id="auth-tab-sign-in"
+              type="button"
+              role="tab"
+              aria-controls="auth-mode-panel"
+              aria-selected={mode === 'sign-in'}
+              tabIndex={mode === 'sign-in' ? 0 : -1}
+              className={mode === 'sign-in' ? 'active' : undefined}
+              onClick={() => setMode('sign-in')}
+              onKeyDown={handleAuthTabKeyDown}
+            >
+              Sign in
+            </button>
+            <button
+              ref={(element) => {
+                authTabRefs.current.register = element
+              }}
+              id="auth-tab-register"
+              type="button"
+              role="tab"
+              aria-controls="auth-mode-panel"
+              aria-selected={mode === 'register'}
+              tabIndex={mode === 'register' ? 0 : -1}
+              className={mode === 'register' ? 'active' : undefined}
+              onClick={() => setMode('register')}
+              onKeyDown={handleAuthTabKeyDown}
+            >
+              Create account
+            </button>
           </div>
 
-          <form className="v2-auth-form" onSubmit={handleSubmit}>
+          <form
+            id="auth-mode-panel"
+            className="v2-auth-form"
+            role="tabpanel"
+            aria-labelledby={`auth-tab-${mode}`}
+            onSubmit={handleSubmit}
+          >
             {mode === 'register' ? (
               <label>Full name<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Sam Lee" required autoComplete="name" /></label>
             ) : null}
             <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required autoComplete="email" /></label>
-            <label>Password<span className="password-field"><input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••••••" required minLength={8} autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'} /><button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((current) => !current)}>{showPassword ? <EyeOff /> : <Eye />}</button></span></label>
+            <div className="v2-auth-field">
+              <label htmlFor="auth-password">Password</label>
+              <span className="password-field">
+                <input
+                  id="auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="••••••••••••••••"
+                  required
+                  minLength={8}
+                  autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((current) => !current)}
+                >
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </button>
+              </span>
+            </div>
             {mode === 'sign-in' ? (
               <p className="auth-forgot"><Link to="/forgot-password">Forgot password?</Link></p>
             ) : null}

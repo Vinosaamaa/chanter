@@ -1,6 +1,6 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
-import { logout as logoutApi } from '../../auth/auth-api'
+import { useSignOut } from '../../auth/hooks/use-sign-out'
 import { useGlobalSearch } from '../../global-search/hooks/use-global-search'
 import { usePendingFriendRequestCount } from '../../friends/hooks/use-friend-requests-queries'
 import { HeaderIconButton } from '../../../components/ui/header-icon-button'
@@ -20,27 +20,13 @@ const topNavItems = [
 ] as const
 
 export function AppTopBar() {
-  const navigate = useNavigate()
   const location = useLocation()
   const { openSearch } = useGlobalSearch()
   const { incomingCount } = usePendingFriendRequestCount()
   const user = useAuthStore((state) => state.user)
-  const clearSession = useAuthStore((state) => state.clearSession)
+  const signOut = useSignOut()
   const theme = useThemeStore((state) => state.theme)
   const toggleTheme = useThemeStore((state) => state.toggleTheme)
-
-  const handleSignOut = async () => {
-    const tokenToRevoke = useAuthStore.getState().refreshToken
-    if (tokenToRevoke) {
-      try {
-        await logoutApi(tokenToRevoke)
-      } catch {
-        // Local session clear still runs if the network call fails.
-      }
-    }
-    clearSession()
-    navigate('/sign-in', { replace: true })
-  }
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-app-border bg-app-elevated px-4">
@@ -103,7 +89,7 @@ export function AppTopBar() {
         <button
           type="button"
           className="rounded-md px-2 py-1 text-xs text-app-accent hover:text-app-accent-hover"
-          onClick={handleSignOut}
+          onClick={() => void signOut()}
         >
           Sign out
         </button>
