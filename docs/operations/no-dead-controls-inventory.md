@@ -1,5 +1,7 @@
 # No-dead-controls inventory (#103)
 
+> **Historical inventory.** The 2026-08-09 browser audit found additional visible unavailable controls in Billing, Friends/DM, Course chat/questions, and Community views. [#254](https://github.com/Vinosaamaa/chanter/issues/254) replaces this heuristic list with a route-by-route production gate.
+
 Primary controls that are intentionally disabled must be listed here with an owning issue.
 Enabled primary controls are exercised by Playwright (`@critical` / `@product`) or Vitest page tests.
 

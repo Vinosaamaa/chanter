@@ -1,6 +1,8 @@
 # Public beta launch checklist (#104)
 
-Sign-off checklist before inviting external beta users. Staging hostname placeholder: `https://staging.chanter.example` (see [`staging-deploy.md`](staging-deploy.md)).
+> **Status correction (2026-08-09): NOT SIGNED OFF / NOT DEPLOYED.** This is the historical #104 preparation artifact. Every sign-off remains empty, `staging.chanter.example` is a placeholder, and `chanter.app` is parked. Active release gates are [#107](https://github.com/Vinosaamaa/chanter/issues/107), [#238–#255](../issues/product-readiness-issue-breakdown.md), and the [2026-08-09 product-readiness audit](product-readiness-audit-2026-08-09.md). Do not use this file to claim a public beta exists.
+
+Historical sign-off checklist drafted before inviting external beta users. Staging hostname placeholder: `https://staging.chanter.example` (see [`staging-deploy.md`](staging-deploy.md)).
 
 ## Scope (beta)
 

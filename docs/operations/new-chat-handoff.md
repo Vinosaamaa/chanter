@@ -1,38 +1,48 @@
-# New-chat handoff (2026-07-17)
+# New-chat handoff (2026-08-09)
 
-**@ this file in a fresh Cursor chat**, then paste the prompt block below.
+**@ this file in a fresh agent chat**, then paste the prompt below.
 
 Canonical long-form context: [`HANDOFF.md`](../../HANDOFF.md) · workflow: [`agent-workflow.md`](agent-workflow.md) · glossary: [`CONTEXT.md`](../../CONTEXT.md)
 
----
+## Status
 
-## Status (one paragraph)
-
-Public beta **slice work is complete on `main`** (#11–#104 merged). Codebase Hardening epic [#180](https://github.com/Vinosaamaa/chanter/issues/180) is **complete** — all slices **#181–#205** (+ hotfix **#220**) merged. Review report: [`codebase-review-2026-07-16.md`](codebase-review-2026-07-16.md). **Next (only when the owner asks):** post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107).
-
----
+UI v2, local operationalization, launch-preparation code through #104, and Codebase Hardening #180 are merged on `main`. A verified 2026-08-09 audit found that Chanter is a **strong local beta, not publicly launched**: normal membership/session browser paths fail, production providers/operations are incomplete, and `chanter.app` is parked. Active program: [#107](https://github.com/Vinosaamaa/chanter/issues/107), audit/docs [#238](https://github.com/Vinosaamaa/chanter/issues/238), then #239–#255.
 
 ## Paste this into the new chat
 
 ```text
 @docs/operations/new-chat-handoff.md
 
-Read that handoff, then HANDOFF.md, CONTEXT.md, and docs/operations/agent-workflow.md.
+Read that handoff, then HANDOFF.md, CONTEXT.md, docs/operations/agent-workflow.md,
+docs/operations/product-readiness-audit-2026-08-09.md, and
+docs/issues/product-readiness-issue-breakdown.md.
 
-You are continuing Chanter after Codebase Hardening (#180) completed.
+You are continuing Chanter's Product Readiness and Public Production Launch epic #107.
+Do not call the product publicly launched until #255 verifies the real deployment.
 
-Do not start post-launch #107 unless I explicitly ask. Do not reopen closed beta or hardening slices unless fixing a regression.
+Work the first unmerged, unblocked issue in #238-#255 dependency order.
+Use one issue -> one branch -> one PR, TDD, local/browser gates, CI, CodeAnt
+(maximum three remediation rounds), gated agent merge, then pull main and continue.
+Never push directly to main.
 
-If I ask for the next product work, start from #107 / docs/operations/post-launch-ui-backlog.md.
+Current expected start: finish #238 audit/docs, then #239 membership/navigation/Home authorization.
 
-Local stack (if needed): make product-supervise → make product-health → make product-demo-seed
-Demo: dev-demo-owner@chanter.local / chanter-dev-demo · Frontend http://localhost:5173 · Gateway :8080
+Local browser stack when needed:
+make product-supervise -> make product-health -> make product-demo-seed
+Teardown after browser testing: make product-down
+
+Demo: dev-demo-owner@chanter.local and dev-demo-learner@chanter.local
+Password: DEMO_PASSWORD (local default chanter-dev-demo)
+Frontend: http://localhost:5173
 
 Repo: https://github.com/Vinosaamaa/chanter
+Epic: https://github.com/Vinosaamaa/chanter/issues/107
 ```
 
----
+## Verified launch baseline
 
-## Hardening closed
-
-Epic #180 children #181–#205 and hotfix #220 are closed. Change logs: `docs/operations/issue-*-change-log.md` / `issue-*-codeant-fix.md`.
+- Audit: [`product-readiness-audit-2026-08-09.md`](product-readiness-audit-2026-08-09.md)
+- Issue order: [`product-readiness-issue-breakdown.md`](../issues/product-readiness-issue-breakdown.md)
+- `chanter.app`: parked at audit time; no verified public Chanter environment.
+- Cloudflare: no repository/public zone usage verified; account-level usage requires authenticated account access.
+- First implementation defects: #239 membership contract, #240 session isolation, #241 release gates.

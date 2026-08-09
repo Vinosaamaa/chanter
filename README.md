@@ -27,9 +27,9 @@ Open **http://localhost:5173** → sign in as `dev-demo-owner@chanter.local` / p
 
 Full two-user demo checklist: [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md).
 
-Staging HTTPS deploy (single VM + Caddy): [`docs/operations/staging-deploy.md`](docs/operations/staging-deploy.md).
+Historical staging reference (single VM + Caddy): [`docs/operations/staging-deploy.md`](docs/operations/staging-deploy.md). It is not a deployed environment.
 
-Public beta: checklist and scope → [`docs/operations/public-beta-launch-checklist.md`](docs/operations/public-beta-launch-checklist.md). Staging hostname placeholder: `https://staging.chanter.example`. Course storefront commerce (`course-storefront.png`) is **post-MVP** / out of beta scope.
+**Product-readiness status:** strong local beta, not publicly launched. Read the [2026-08-09 audit](docs/operations/product-readiness-audit-2026-08-09.md) and [#238-#255 breakdown](docs/issues/product-readiness-issue-breakdown.md). `staging.chanter.example` is only a placeholder and `chanter.app` is not yet serving Chanter.
 
 **New Cursor chat:** `@` [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md).
 
@@ -47,11 +47,11 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 **Workable Product (milestone 4)** — **#60–#63**, #31–#32 merged.
 
-**Public Launch (milestone 5)** — UI v2 operationalization **#132–#145**, Real AI **#94–#100**, launch **#101–#104** merged. Public-beta slice work is **complete on `main`**.
+**Public Launch code milestone (milestone 5)** — UI v2 operationalization **#132–#145**, AI foundations **#94–#100**, and launch-preparation slices **#101–#104** are merged. The milestone name is historical; no public environment or launch sign-off is verified.
 
-**Active phase: Codebase Hardening** — epic [#180](https://github.com/Vinosaamaa/chanter/issues/180), [project #7](https://github.com/users/Vinosaamaa/projects/7). Findings report: [`docs/operations/codebase-review-2026-07-16.md`](docs/operations/codebase-review-2026-07-16.md) (PR [#179](https://github.com/Vinosaamaa/chanter/pull/179)). **Start remediation at [#181](https://github.com/Vinosaamaa/chanter/issues/181)**. Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
+**Codebase Hardening** — epic [#180](https://github.com/Vinosaamaa/chanter/issues/180), [project #7](https://github.com/users/Vinosaamaa/projects/7), is complete through #205 plus #220.
 
-**After hardening:** post-launch backlog [#107](https://github.com/Vinosaamaa/chanter/issues/107).
+**Active phase: Product Readiness and Public Production Launch** — epic [#107](https://github.com/Vinosaamaa/chanter/issues/107). Start at [#238](https://github.com/Vinosaamaa/chanter/issues/238), then follow [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) in dependency order.
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`
 
@@ -63,8 +63,8 @@ GitHub repository: `https://github.com/Vinosaamaa/chanter`
 | **Production Frontend** | [**projects/3**](https://github.com/users/Vinosaamaa/projects/3) | **#47–#59** — **complete** (legacy shell) |
 | [**Workable Product**](https://github.com/users/Vinosaamaa/projects/4) | [**projects/4**](https://github.com/users/Vinosaamaa/projects/4) | **#60–#63**, #31–#32 — **complete** |
 | **Public Launch + UI v2** | [**projects/5**](https://github.com/users/Vinosaamaa/projects/5) | UI v2 **#115–#128** + ops **#131–#145** · AI **#94–#100** · launch **#101–#104** — **complete** |
-| **Codebase Hardening** | [**projects/7**](https://github.com/users/Vinosaamaa/projects/7) | **#180–#205** — **active** (2026-07-16 review; start [#181](https://github.com/Vinosaamaa/chanter/issues/181)) |
-| Post-Launch | [projects/6](https://github.com/users/Vinosaamaa/projects/6) | #107 — after hardening High/Medium slices |
+| **Codebase Hardening** | [**projects/7**](https://github.com/users/Vinosaamaa/projects/7) | **#180–#205** + #220 — **complete** |
+| **Product Readiness** | [projects/6](https://github.com/users/Vinosaamaa/projects/6) | **#107, #238–#255 — active** |
 
 **Agent workflow (order + loop + merge policy):** [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) (mandatory for all agents).
 
@@ -85,7 +85,9 @@ Key planning files:
 | [`docs/product/education-mvp-prd.md`](docs/product/education-mvp-prd.md) | Education MVP PRD — problem, user stories, out of scope |
 | [`docs/issues/education-mvp-issue-breakdown.md`](docs/issues/education-mvp-issue-breakdown.md) | Backend epics and slices (#11–#24) — **done** |
 | [`docs/issues/production-frontend-issue-breakdown.md`](docs/issues/production-frontend-issue-breakdown.md) | Legacy Production UI slices (#47–#59) — **superseded for layout** |
-| [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md) | **Active** — security/correctness hardening (#180–#205) |
+| [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md) | **Done** — security/correctness hardening (#180–#205 + #220) |
+| [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) | **Active** — verified production-readiness program (#238–#255) |
+| [`docs/operations/product-readiness-audit-2026-08-09.md`](docs/operations/product-readiness-audit-2026-08-09.md) | Evidence, launch gaps, Cloudflare boundary, and release gates |
 | [`docs/issues/workable-product-issue-breakdown.md`](docs/issues/workable-product-issue-breakdown.md) | Workable full-stack app (#60–#63, #31–#32) |
 | [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) | **Mandatory agent workflow** — issue order, completion loop, autonomous gated merge |
 | [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) | Redirect → `agent-workflow.md` |
@@ -180,9 +182,7 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-**Active:** [Codebase Hardening](https://github.com/users/Vinosaamaa/projects/7) — epic [#180](https://github.com/Vinosaamaa/chanter/issues/180). Merge findings PR [#179](https://github.com/Vinosaamaa/chanter/pull/179), then start remediation at [#181](https://github.com/Vinosaamaa/chanter/issues/181) (SEC-04). Breakdown: [`docs/issues/codebase-hardening-issue-breakdown.md`](docs/issues/codebase-hardening-issue-breakdown.md).
-
-**After hardening:** post-launch [#107](https://github.com/Vinosaamaa/chanter/issues/107).
+**Active:** [Product Readiness and Public Production Launch #107](https://github.com/Vinosaamaa/chanter/issues/107). Complete audit/docs [#238](https://github.com/Vinosaamaa/chanter/issues/238), then fix [#239](https://github.com/Vinosaamaa/chanter/issues/239) and continue in [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) order.
 
 **Definition of workable local product:** [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md)
 
