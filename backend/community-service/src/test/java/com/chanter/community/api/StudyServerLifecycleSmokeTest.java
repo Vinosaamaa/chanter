@@ -73,7 +73,7 @@ class StudyServerLifecycleSmokeTest {
     }
 
     @Test
-    void invitedMemberCanAcceptStudyServerInvitation() throws Exception {
+    void invitedMemberCanAcceptInvitationAndLoadMemberSurfacesWithoutCourseAccess() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
         UUID inviteeUserId = UUID.randomUUID();
         userDirectory.register(ownerUserId, "owner@spring.example", "Study Owner");
@@ -95,6 +95,15 @@ class StudyServerLifecycleSmokeTest {
         );
         UUID invitationId = created.pendingInvitations().getFirst().id();
 
+        mockMvc.perform(post("/api/v1/study-servers/{studyServerId}/courses", created.id())
+                        .with(asUser(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "title", "Members Cannot See This Course",
+                                "cohortName", "Fall 2026"
+                        ))))
+                .andExpect(status().isCreated());
+
         mockMvc.perform(get("/api/v1/study-server-invitations").with(asUser(inviteeUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].studyServerId").value(created.id().toString()))
@@ -110,6 +119,37 @@ class StudyServerLifecycleSmokeTest {
         mockMvc.perform(get("/api/v1/study-servers").with(asUser(inviteeUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.id=='" + created.id() + "')]").exists());
+
+        MvcResult navigationResult = mockMvc.perform(get(
+                        "/api/v1/study-servers/{studyServerId}/navigation",
+                        created.id()
+                ).with(asUser(inviteeUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.studyServerChannels[?(@.name=='general')]").exists())
+                .andExpect(jsonPath("$.courses.length()").value(0))
+                .andReturn();
+        StudyServerNavigationResponse navigation = objectMapper.readValue(
+                navigationResult.getResponse().getContentAsString(),
+                StudyServerNavigationResponse.class
+        );
+        UUID generalChannelId = navigation.studyServerChannels().stream()
+                .filter(channel -> channel.name().equals("general"))
+                .map(StudyAssistantGrantCandidatesResponse.ChannelResponse::id)
+                .findFirst()
+                .orElseThrow();
+
+        mockMvc.perform(get(
+                        "/api/v1/study-server-channels/{channelId}/channel-message-access",
+                        generalChannelId
+                ).with(asUser(inviteeUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canReadMessages").value(true))
+                .andExpect(jsonPath("$.canPostMessages").value(true));
+
+        mockMvc.perform(get("/api/v1/me/home-summary").with(asUser(inviteeUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.courses.length()").value(0))
+                .andExpect(jsonPath("$.partialFailures.length()").value(0));
 
         mockMvc.perform(get("/api/v1/study-server-invitations").with(asUser(inviteeUserId)))
                 .andExpect(status().isOk())

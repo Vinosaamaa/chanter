@@ -22,14 +22,31 @@ test.describe('Product critical paths @product', () => {
     await expect(page).toHaveURL(/\/app\/home/, { timeout: 30_000 })
   })
 
-  test('learner can sign in and open a course workspace area', async ({ page }) => {
+  test('learner home and sidebar load without unexpected API errors', async ({ page }) => {
+    const unexpectedApiResponses: string[] = []
+    page.on('response', (response) => {
+      const url = new URL(response.url())
+      if (url.pathname.startsWith('/api/') && response.status() >= 400) {
+        unexpectedApiResponses.push(`${response.status()} ${response.request().method()} ${url.pathname}`)
+      }
+    })
+
     await page.goto('/sign-in')
-    await page.getByLabel('Email').fill(learnerEmail)
-    await page.getByLabel('Password').fill(demoPassword)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL(/\/app\//, { timeout: 30_000 })
-    await page.goto('/app/home')
-    await expect(page.getByRole('heading', { name: /home|welcome|courses/i }).first()).toBeVisible({ timeout: 15_000 })
+    await page.locator('input[autocomplete="email"]').fill(learnerEmail)
+    await page.locator('input[autocomplete="current-password"]').fill(demoPassword)
+    const homeSummaryResponse = page.waitForResponse((response) =>
+      new URL(response.url()).pathname === '/api/v1/me/home-summary',
+    )
+    await page.locator('form.v2-auth-form button[type="submit"]').click()
+    await expect(page).toHaveURL(/\/app\/home/, { timeout: 30_000 })
+    expect((await homeSummaryResponse).status()).toBe(200)
+    await expect(page.getByText('Loading courses…')).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.getByText('Loading your home…')).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.getByRole('heading', {
+      level: 1,
+      name: /^Good (morning|afternoon|evening),/,
+    })).toBeVisible({ timeout: 15_000 })
+    expect(unexpectedApiResponses).toEqual([])
   })
 
   test('inbox and calendar routes load when signed in', async ({ page }) => {

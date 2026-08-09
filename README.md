@@ -51,7 +51,7 @@ The roadmap includes realtime course chat, Study Servers, course/module channels
 
 **Codebase Hardening** — epic [#180](https://github.com/Vinosaamaa/chanter/issues/180), [project #7](https://github.com/users/Vinosaamaa/projects/7), is complete through #205 plus #220.
 
-**Active phase: Product Readiness and Public Production Launch** — epic [#107](https://github.com/Vinosaamaa/chanter/issues/107). Start at [#238](https://github.com/Vinosaamaa/chanter/issues/238), then follow [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) in dependency order.
+**Active phase: Product Readiness and Public Production Launch** — epic [#107](https://github.com/Vinosaamaa/chanter/issues/107). Issues [#238](https://github.com/Vinosaamaa/chanter/issues/238) and [#239](https://github.com/Vinosaamaa/chanter/issues/239) are complete; start [#240](https://github.com/Vinosaamaa/chanter/issues/240), then follow [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) in dependency order.
 
 GitHub repository: `https://github.com/Vinosaamaa/chanter`
 
@@ -182,7 +182,7 @@ The frontend proxies `/api` and `/actuator` to the gateway. Bootstrap health end
 
 ## Next Milestone
 
-**Active:** [Product Readiness and Public Production Launch #107](https://github.com/Vinosaamaa/chanter/issues/107). Complete audit/docs [#238](https://github.com/Vinosaamaa/chanter/issues/238), then fix [#239](https://github.com/Vinosaamaa/chanter/issues/239) and continue in [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) order.
+**Active:** [Product Readiness and Public Production Launch #107](https://github.com/Vinosaamaa/chanter/issues/107). Issues [#238](https://github.com/Vinosaamaa/chanter/issues/238) and [#239](https://github.com/Vinosaamaa/chanter/issues/239) are complete; implement [#240](https://github.com/Vinosaamaa/chanter/issues/240) next and continue in [`docs/issues/product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) order.
 
 **Definition of workable local product:** [`docs/operations/workable-product-demo.md`](docs/operations/workable-product-demo.md)
 
