@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "repository": "chanter",
+  "pullRequest": 289,
+  "privacyAuthorizationUrl": "https://github.com/Vinosaamaa/chanter/issues/282#issuecomment-5287240712",
+  "receiptPaths": [
+    "docs/engineering/changes/pr-25.md",
+    "docs/engineering/changes/pr-33.md",
+    "docs/engineering/changes/pr-34.md",
+    "docs/engineering/changes/pr-65.md",
+    "docs/engineering/changes/pr-68.md",
+    "docs/engineering/changes/pr-130.md",
+    "docs/engineering/changes/pr-164.md",
+    "docs/engineering/changes/pr-172.md"
+  ],
+  "recordRefs": [
+    "feature-retrospective-chanter-ai-study-assistant-runtime@1",
+    "feature-retrospective-chanter-education-mvp-foundation@1",
+    "feature-retrospective-chanter-grounded-support@1",
+    "feature-retrospective-chanter-production-product-shell@1",
+    "feature-retrospective-chanter-public-beta-readiness@1",
+    "feature-retrospective-chanter-realtime-social-voice@1",
+    "feature-retrospective-chanter-social-collaboration-mvp@1",
+    "feature-retrospective-chanter-ui-v2@1"
+  ],
+  "addedRecordRefs": [
+    "feature-retrospective-chanter-ai-study-assistant-runtime@1",
+    "feature-retrospective-chanter-education-mvp-foundation@1",
+    "feature-retrospective-chanter-grounded-support@1",
+    "feature-retrospective-chanter-production-product-shell@1",
+    "feature-retrospective-chanter-public-beta-readiness@1",
+    "feature-retrospective-chanter-realtime-social-voice@1",
+    "feature-retrospective-chanter-social-collaboration-mvp@1",
+    "feature-retrospective-chanter-ui-v2@1"
+  ]
+}
