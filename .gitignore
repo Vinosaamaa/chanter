@@ -50,6 +50,7 @@ logs/
 
 # Generated artifacts
 generated/
+.engineering-journal/
 scripts/.workable-demo-ai-resource.txt
 
 
