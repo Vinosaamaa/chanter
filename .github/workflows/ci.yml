@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, edited]
 
 # Least-privilege GITHUB_TOKEN (SEC-13 / #193).
 # Jobs only need to read repository contents (checkout, build, test).
@@ -13,7 +14,7 @@ permissions:
 
 jobs:
   dependency-review:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +23,7 @@ jobs:
           fail-on-severity: high
 
   backend:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +48,7 @@ jobs:
           retention-days: 14
 
   frontend:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,6 +100,7 @@ jobs:
           retention-days: 14
 
   product-e2e:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -142,3 +146,41 @@ jobs:
         run: |
           make product-down || true
           docker compose -f infra/docker-compose.yml --env-file .env --profile product down --volumes || true
+
+  engineering-policy:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Load exact pull-request revisions
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REPOSITORY_URL: ${{ github.event.pull_request.head.repo.clone_url }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          if [ "$HEAD_REPOSITORY" = "$GITHUB_REPOSITORY" ]; then
+            git fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          else
+            case "$HEAD_REPOSITORY_URL" in
+              https://github.com/*.git) ;;
+              *) echo "Untrusted pull-request head repository URL" >&2; exit 1 ;;
+            esac
+            git fetch --no-tags --depth=1 "$HEAD_REPOSITORY_URL" "$HEAD_SHA"
+          fi
+      - name: Test Engineering authoring and policy contracts
+        run: node --test scripts/tests/engineering-*.test.mjs
+      - name: Validate exact Engineering pull-request evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/validate-engineering-impact.mjs "$GITHUB_EVENT_PATH"
+      - name: Verify deterministic Chanter Engineering projections
+        run: node scripts/build-engineering-journal.mjs --check

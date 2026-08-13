@@ -90,6 +90,7 @@ Key planning files:
 | [`docs/operations/product-readiness-audit-2026-08-09.md`](docs/operations/product-readiness-audit-2026-08-09.md) | Evidence, launch gaps, Cloudflare boundary, and release gates |
 | [`docs/issues/workable-product-issue-breakdown.md`](docs/issues/workable-product-issue-breakdown.md) | Workable full-stack app (#60–#63, #31–#32) |
 | [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) | **Mandatory agent workflow** — issue order, completion loop, autonomous gated merge |
+| [`docs/engineering/pull-request-history.md`](docs/engineering/pull-request-history.md) | Canonical Engineering receipt, rich-record, historical-batch, and portable-projection protocol |
 | [`docs/issues/agent-roadmap.md`](docs/issues/agent-roadmap.md) | Redirect → `agent-workflow.md` |
 | [`plan.md`](plan.md) | Roadmap, milestones, frontend/backend direction, scale and AI-agent phases |
 | [`System Design.md`](System Design.md) | Backend architecture, service boundaries, event flows (engineering diagrams in `docs/diagrams/`) |
@@ -119,6 +120,7 @@ Use `HANDOFF.md` as the first resume point for new agent sessions. For **what th
 - `prototype` for uncertain UI or system interaction flows.
 - `setup-pre-commit` after runnable code and checks exist.
 - **CodeAnt AI** for PR review loops — see [`docs/operations/agent-workflow.md`](docs/operations/agent-workflow.md) § CodeAnt review. cubic Dev AI, CodeRabbit, and Greptile/`greploop` retired (trials expired).
+- **Engineering evidence:** every PR owns `docs/engineering/changes/pr-<number>.md`; run `node scripts/new-engineering-receipt.mjs --help` after opening the draft PR. Material changes also add or reuse an exact rich record.
 
 ## Architecture Direction
 

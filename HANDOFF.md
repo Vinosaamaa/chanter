@@ -214,6 +214,8 @@ Use installed Cursor workflow skills directly rather than the deleted local `cha
 
 **Git workflow (required):** one issue per branch and PR → CI → initial CodeAnt review → up to three remediation rounds → agent merge → next issue. Master doc: `docs/operations/agent-workflow.md`. Also enforced in `.cursor/rules/git-workflow.mdc`. Never push directly to `main`; do not stop after opening a PR.
 
+**Engineering evidence (required):** after the draft PR number exists, run `node scripts/new-engineering-receipt.mjs --help`, commit its exact numbered receipt, and select one matching `Engineering impact` checkbox. Material changes add or reuse an exact rich record. Canonical protocol: `docs/engineering/pull-request-history.md`.
+
 **Testing workflow:** backend bootstrap (#11) may use smoke tests; **backend domain features #12–#24 use TDD**. Production frontend **#47–#55** were test-last; **from #56 onward** use vertical-slice TDD per `agent-workflow.md`.
 
 The expected workflow includes:

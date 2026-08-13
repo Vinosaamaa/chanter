@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-verify backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search backend-notification frontend-install frontend-dev frontend-build verify setup-git-hooks product-env product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers product-e2e product-e2e-critical
+.PHONY: infra-up infra-down infra-logs backend-build backend-test backend-verify backend-gateway backend-auth backend-community backend-message backend-realtime backend-media backend-agent backend-analytics backend-search backend-notification frontend-install frontend-dev frontend-build verify setup-git-hooks product-env product-up product-supervise product-down product-health product-test product-demo-seed product-cleanup-demo-servers product-e2e product-e2e-critical engineering-check engineering-build
 
 JAVA21 := ./scripts/java21.sh
 HERMETIC_TEST := ./scripts/testing/run-hermetic.sh
@@ -107,6 +107,13 @@ frontend-build:
 	cd frontend && npm run build
 
 verify: backend-verify frontend-build product-test
+
+engineering-check:
+	node --test scripts/tests/engineering-*.test.mjs
+	node scripts/build-engineering-journal.mjs --check
+
+engineering-build:
+	node scripts/build-engineering-journal.mjs
 
 product-env:
 	chmod +x ./scripts/product/init-env.sh

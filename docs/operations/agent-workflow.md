@@ -41,10 +41,11 @@ An issue is **not done** when code is pushed or a PR is opened. An issue is **do
 1. **Read context** — `HANDOFF.md`, `CONTEXT.md`, this file (issue order below), the GitHub issue. For **UI v2** slices (#116+): read `docs/product-design/DESIGN-DECISIONS.md`, `docs/product-design/specs/layout-rules.md`, then the issue-linked PNG(s) in `docs/product-design/mockups/learner-flow/` or `mockups/owner-flow/`.
 2. **Branch** — `feature/<N>-<slug>` from latest `main`. Never commit feature work on `main`.
 3. **Implement** — scope limited to the issue acceptance criteria. **From issue #56 onward, use TDD** (see [Test-driven development](#test-driven-development-tdd) below).
+   Decide the pull request's Engineering impact while implementation context is available. Material work authors or reuses an exact rich record before the numbered receipt is created.
 4. **Verify locally** — `mvn verify` (affected services), `npm run lint && npm run build`; browser demo when the slice has UI (see [Agent browser testing](#agent-browser-testing) below).
 5. **Docs** — `docs/operations/issue-<N>-change-log.md`; update `HANDOFF.md` / `README.md` when the issue closes.
 6. **Commit + push** the feature branch only. Owner pre-approval is no longer required.
-7. **Open PR** targeting `main` with `Closes #N` in the body.
+7. **Open draft PR** targeting `main` with `Closes #N` in the body. Use its repository-local number to run `node scripts/new-engineering-receipt.mjs --help`, commit `docs/engineering/changes/pr-<number>.md`, select exactly one matching `Engineering impact` checkbox, then mark the PR ready.
 8. **Wait for CI green** (`backend`, `frontend`).
 9. **Wait for CodeAnt** — GitHub **CodeAnt AI** check complete (not `pending`, not `in progress`).
 10. **CodeAnt fix loop** — read all inline comments; fix actionable items; log in `docs/operations/issue-<N>-codeant-fix.md`; commit; push; **go back to step 8**. Stop after at most three remediation rounds; document remaining non-blocking deferrals.
@@ -65,6 +66,12 @@ An issue is **not done** when code is pushed or a PR is opened. An issue is **do
 ### Polling
 
 If CodeAnt is `pending`, **keep polling** (`gh pr checks <N>` every 30–60s) in the same session until it completes, then run the fix loop. Do not hand off with “waiting for CodeAnt.”
+
+### Engineering evidence authorship
+
+Every pull request owns one compact canonical receipt, including small and documentation-only changes. Material changes also add or reuse an evidence-backed rich record. The implementation agent authors these documents; CI does not infer prose, decisions, incidents, or diagrams from a diff. The full contract, external-agent flow, historical batch limits, correction semantics, and repository-local projection are in [`docs/engineering/pull-request-history.md`](../engineering/pull-request-history.md).
+
+This rule applies to every coordinator or coding client. An external agent that reads this file and the PR template has the complete authoring command. If it omits or mismatches evidence, the `engineering-policy` CI job blocks merge with a concrete error.
 
 ---
 
