@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "repository": "chanter",
+  "pullRequest": 290,
+  "privacyAuthorizationUrl": "https://github.com/Vinosaamaa/chanter/issues/283#issuecomment-5287240829",
+  "receiptPaths": [
+    "docs/engineering/changes/pr-214.md",
+    "docs/engineering/changes/pr-259.md"
+  ],
+  "recordRefs": [
+    "feature-retrospective-chanter-codebase-security-hardening@1",
+    "feature-retrospective-chanter-product-readiness@1"
+  ],
+  "addedRecordRefs": [
+    "feature-retrospective-chanter-codebase-security-hardening@1",
+    "feature-retrospective-chanter-product-readiness@1"
+  ]
+}
