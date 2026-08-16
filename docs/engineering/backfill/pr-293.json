@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "repository": "chanter",
+  "pullRequest": 293,
+  "privacyAuthorizationUrl": "https://github.com/Vinosaamaa/chanter/issues/286#issuecomment-5287241463",
+  "receiptPaths": [
+    "docs/engineering/changes/pr-147.md",
+    "docs/engineering/changes/pr-148.md",
+    "docs/engineering/changes/pr-149.md",
+    "docs/engineering/changes/pr-150.md",
+    "docs/engineering/changes/pr-151.md",
+    "docs/engineering/changes/pr-152.md",
+    "docs/engineering/changes/pr-153.md",
+    "docs/engineering/changes/pr-154.md",
+    "docs/engineering/changes/pr-155.md",
+    "docs/engineering/changes/pr-157.md",
+    "docs/engineering/changes/pr-158.md",
+    "docs/engineering/changes/pr-159.md",
+    "docs/engineering/changes/pr-160.md",
+    "docs/engineering/changes/pr-161.md",
+    "docs/engineering/changes/pr-162.md",
+    "docs/engineering/changes/pr-163.md",
+    "docs/engineering/changes/pr-165.md",
+    "docs/engineering/changes/pr-166.md",
+    "docs/engineering/changes/pr-167.md",
+    "docs/engineering/changes/pr-168.md"
+  ],
+  "recordRefs": [
+    "feature-retrospective-chanter-ai-study-assistant-runtime@1",
+    "feature-retrospective-chanter-ui-v2@1"
+  ],
+  "addedRecordRefs": []
+}
