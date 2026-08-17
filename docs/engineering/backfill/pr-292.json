@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "repository": "chanter",
+  "pullRequest": 292,
+  "privacyAuthorizationUrl": "https://github.com/Vinosaamaa/chanter/issues/285#issuecomment-5287240997",
+  "receiptPaths": [
+    "docs/engineering/changes/pr-105.md",
+    "docs/engineering/changes/pr-106.md",
+    "docs/engineering/changes/pr-108.md",
+    "docs/engineering/changes/pr-110.md",
+    "docs/engineering/changes/pr-111.md",
+    "docs/engineering/changes/pr-112.md",
+    "docs/engineering/changes/pr-113.md",
+    "docs/engineering/changes/pr-129.md",
+    "docs/engineering/changes/pr-146.md",
+    "docs/engineering/changes/pr-71.md",
+    "docs/engineering/changes/pr-72.md",
+    "docs/engineering/changes/pr-73.md",
+    "docs/engineering/changes/pr-74.md",
+    "docs/engineering/changes/pr-75.md",
+    "docs/engineering/changes/pr-76.md",
+    "docs/engineering/changes/pr-77.md",
+    "docs/engineering/changes/pr-78.md",
+    "docs/engineering/changes/pr-79.md",
+    "docs/engineering/changes/pr-80.md",
+    "docs/engineering/changes/pr-81.md"
+  ],
+  "recordRefs": [
+    "feature-retrospective-chanter-production-product-shell@1",
+    "feature-retrospective-chanter-realtime-social-voice@1",
+    "feature-retrospective-chanter-ui-v2@1"
+  ],
+  "addedRecordRefs": []
+}
