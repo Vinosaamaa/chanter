@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "repository": "chanter",
+  "pullRequest": 295,
+  "privacyAuthorizationUrl": "https://github.com/Vinosaamaa/chanter/issues/288#issuecomment-5287240998",
+  "receiptPaths": [
+    "docs/engineering/changes/pr-219.md",
+    "docs/engineering/changes/pr-221.md",
+    "docs/engineering/changes/pr-222.md",
+    "docs/engineering/changes/pr-225.md",
+    "docs/engineering/changes/pr-226.md",
+    "docs/engineering/changes/pr-227.md",
+    "docs/engineering/changes/pr-228.md",
+    "docs/engineering/changes/pr-229.md",
+    "docs/engineering/changes/pr-230.md",
+    "docs/engineering/changes/pr-231.md",
+    "docs/engineering/changes/pr-232.md",
+    "docs/engineering/changes/pr-233.md",
+    "docs/engineering/changes/pr-234.md",
+    "docs/engineering/changes/pr-235.md",
+    "docs/engineering/changes/pr-236.md",
+    "docs/engineering/changes/pr-256.md",
+    "docs/engineering/changes/pr-257.md",
+    "docs/engineering/changes/pr-258.md"
+  ],
+  "recordRefs": [
+    "feature-retrospective-chanter-codebase-security-hardening@1",
+    "feature-retrospective-chanter-product-readiness@1"
+  ],
+  "addedRecordRefs": []
+}
