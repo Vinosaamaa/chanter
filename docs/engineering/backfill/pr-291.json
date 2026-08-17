@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "repository": "chanter",
+  "pullRequest": 291,
+  "privacyAuthorizationUrl": "https://github.com/Vinosaamaa/chanter/issues/284#issuecomment-5287240853",
+  "receiptPaths": [
+    "docs/engineering/changes/pr-26.md",
+    "docs/engineering/changes/pr-27.md",
+    "docs/engineering/changes/pr-28.md",
+    "docs/engineering/changes/pr-29.md",
+    "docs/engineering/changes/pr-35.md",
+    "docs/engineering/changes/pr-36.md",
+    "docs/engineering/changes/pr-37.md",
+    "docs/engineering/changes/pr-38.md",
+    "docs/engineering/changes/pr-40.md",
+    "docs/engineering/changes/pr-41.md",
+    "docs/engineering/changes/pr-42.md",
+    "docs/engineering/changes/pr-43.md",
+    "docs/engineering/changes/pr-44.md",
+    "docs/engineering/changes/pr-45.md",
+    "docs/engineering/changes/pr-46.md",
+    "docs/engineering/changes/pr-64.md",
+    "docs/engineering/changes/pr-66.md",
+    "docs/engineering/changes/pr-67.md",
+    "docs/engineering/changes/pr-69.md",
+    "docs/engineering/changes/pr-70.md"
+  ],
+  "recordRefs": [
+    "feature-retrospective-chanter-education-mvp-foundation@1",
+    "feature-retrospective-chanter-grounded-support@1",
+    "feature-retrospective-chanter-production-product-shell@1",
+    "feature-retrospective-chanter-social-collaboration-mvp@1"
+  ],
+  "addedRecordRefs": []
+}
