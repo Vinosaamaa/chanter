@@ -35,3 +35,10 @@ Pending implementation. No screenshot, mocked API or component test is recorded 
 - Removed unconfigured Google controls/setup-variable text, fabricated welcome enrollment details, unavailable Study room action, and outdated unused design constants. Community breadcrumbs use the current Study Server (observed red/green).
 - Local verification: 24 component files / 97 tests pass; lint and production build pass. New import-graph budget tests observed red/green. Asset budgets now measure route delivery as described in the design document.
 - Added axe WCAG checks for primary routes, tablet screenshots, Inbox completion/back behavior, question list/back behavior, and a reduced-motion/200%-equivalent reflow check. Hosted outcomes remain pending.
+
+
+## Broad review follow-up
+
+Hosted run 34675226126 passed 81/83 checks. It established the repaired phone question reading flow, shared author layout, visible chat composers in both orientations, Inbox completion, and zoom-equivalent reflow. Calendar ARIA row semantics failed; a new keyboard regression reproduced that failure before the implementation added named dates, one tab entry, arrow/week/month movement and proper rows. The reconnect test had a malformed ellipsis and now matches the actual status.
+
+A further route audit found production Community Lounge rendering sample messages on empty history. Those samples, fake timestamps and unsupported controls were removed. Real profile lookup, honest empty/error/reconnect states and the shared conversation layout now replace them. Teaching priorities and Billing forms were compacted after screenshot review. Course and Community tab overflow now has visible controls. The next hosted review expands route images to all six widths and adds Firefox/WebKit interaction smoke checks; these remain synthetic layout evidence.

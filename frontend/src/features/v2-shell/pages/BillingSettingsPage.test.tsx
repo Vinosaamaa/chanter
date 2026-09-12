@@ -136,7 +136,7 @@ describe('BillingSettingsPage', () => {
     expect(screen.queryByText(/45 GB of 50 GB/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/\$29/)).not.toBeInTheDocument()
     expect(screen.getByText(/does not charge a card/i)).toBeVisible()
-    expect(screen.getByText(/Storage metering and invoices are not available/i)).toBeVisible()
+    expect(screen.getByText(/Paid subscriptions, invoices and storage usage are not available yet/i)).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: /Save plan change/i }))
     await waitFor(() => expect(savePlan).toHaveBeenCalled())

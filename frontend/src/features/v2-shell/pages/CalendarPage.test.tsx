@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
@@ -121,6 +121,27 @@ describe('CalendarPage', () => {
         expect.objectContaining({ types: 'OFFICE_HOURS' }),
       )
     })
+  })
+
+  it('exposes calendar rows and moves one keyboard focus point between named dates', async () => {
+    const user = userEvent.setup()
+    renderCalendar()
+    await screen.findAllByText('Hackathon kickoff')
+    const grid = screen.getByRole('grid')
+    expect(within(grid).getAllByRole('row')).toHaveLength(6)
+    const days = within(grid).getAllByRole('button')
+    expect(days.filter(day => day.tabIndex === 0)).toHaveLength(1)
+    const today = days.find(day => day.getAttribute('aria-current') === 'date')!
+    expect(today).toHaveAccessibleName(/\w+, \w+ \d+, \d{4}, 2 scheduled items/)
+    today.focus()
+    await user.keyboard('{ArrowRight}')
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const next = within(grid).getByRole('button', { name: new RegExp(tomorrow.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })) })
+    await waitFor(() => expect(next).toHaveFocus())
+    await user.keyboard('{Enter}')
+    expect(next.closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
+    expect(within(grid).getAllByRole('button').filter(day => day.tabIndex === 0)).toHaveLength(1)
   })
 
   it('passes route search query to the API', async () => {

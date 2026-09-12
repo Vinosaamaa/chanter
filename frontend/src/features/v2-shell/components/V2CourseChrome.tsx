@@ -5,6 +5,7 @@ import { useCohortRosterQuery } from '../../people/use-cohort-roster'
 import type { ShellCohort } from '../../shell/types'
 import type { V2CourseTab } from '../v2-routes'
 import { v2CoursePath } from '../v2-routes'
+import { WorkspaceTabStrip } from './WorkspaceTabStrip'
 
 type CourseChromeContext = {
   serverId: string
@@ -65,7 +66,7 @@ export function V2CourseChrome({ context }: { context: CourseChromeContext }) {
           </NavLink>
         </div> : null}
       </div>
-      <nav className="workspace-tabs" aria-label="Course workspace tabs">
+      <WorkspaceTabStrip className="workspace-tabs" label="Course workspace tabs">
         {tabs.map((tab) => (
           <NavLink
             key={tab.id}
@@ -75,7 +76,7 @@ export function V2CourseChrome({ context }: { context: CourseChromeContext }) {
             {tab.label}
           </NavLink>
         ))}
-      </nav>
+      </WorkspaceTabStrip>
     </header>
   )
 }

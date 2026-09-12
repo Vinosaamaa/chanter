@@ -23,6 +23,8 @@ const routes = [
   ['course-people', `${course}/people`],
   ['office-hours', `${course}/office-hours`],
   ['community', `${community}/announcements`],
+  ['community-lounge', `${community}/lounge`],
+  ['discover-courses', `${community}/discover`],
   ['community-events', `${community}/events`],
   ['community-members', `${community}/members`],
   ['friends', '/app/friends?friend=visual-peer'],
@@ -40,7 +42,7 @@ const routes = [
   ['welcome', '/app/welcome'],
 ] as const
 
-for (const width of [390, 768, 1280]) {
+for (const width of [360, 390, 768, 1280, 1920, 3840]) {
   for (const [name, route] of routes) {
     test(`fixture UI ${name} at ${width}`, async ({ page }, testInfo) => {
       const apiFailures: string[] = []
@@ -53,14 +55,14 @@ for (const width of [390, 768, 1280]) {
       await page.goto(route)
       await page.waitForLoadState('networkidle')
       await page.evaluate(() => document.fonts.ready)
-      if (name === 'course-questions' && width === 390) await page.locator('.question-thread-list > button').first().click()
-      if (name === 'inbox' && width === 390) await page.locator('.inbox-thread-list button').first().click()
-      if (name === 'course-chat') await expect(page.locator('.chat-composer')).toBeInViewport()
+      if (name === 'course-questions' && width <= 390) await page.locator('.question-thread-list > button').first().click()
+      if (name === 'inbox' && width <= 390) await page.locator('.inbox-thread-list button').first().click()
+      if (name === 'course-chat' || name === 'community-lounge') await expect(page.locator('.chat-composer')).toBeInViewport()
       await page.screenshot({ path: testInfo.outputPath(`fixture-ui-${name}-${width}.png`) })
       expect(pageErrors).toEqual([])
       expect(apiFailures, 'Each route must load its intended fixture instead of an accidental error state').toEqual([])
       expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), 'No document overflow').toBe(false)
-      if (width === 1280 && ['sign-in','course-overview','course-questions','community','friends','calendar','settings','terms'].includes(name)) {
+      if (width === 1280) {
         const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()
         expect(violations.map(({ id, nodes }) => ({ id, targets: nodes.map(node => node.target) }))).toEqual([])
       }
@@ -74,6 +76,16 @@ test('fixture UI phone landscape composer and keyboard drawer', async ({ page },
   await page.waitForLoadState('networkidle')
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-chat-landscape-844.png') })
   await expect(page.locator('.chat-composer')).toBeInViewport()
+})
+
+test('fixture UI exposes clipped course tabs on a phone', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${course}/overview`)
+  await page.getByRole('button', { name: 'More course workspace tabs' }).click()
+  await expect(page.getByRole('link', { name: 'People', exact: true })).toBeInViewport()
+  await page.getByRole('link', { name: 'People', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'People', exact: true })).toHaveAttribute('aria-current', 'page')
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-course-phone-tabs.png') })
 })
 
 
@@ -106,7 +118,7 @@ test('fixture UI keeps a reconnecting chat readable', async ({ page }, testInfo)
   await page.routeWebSocket('**/api/v1/realtime/ws', socket => socket.close({ code: 1013, reason: 'Synthetic reconnect state' }))
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto(`${course}/chat`)
-  await expect(page.getByText('Reconnecting to live messages…')).toBeVisible()
+  await expect(page.getByText(/Reconnecting to live messages/)).toBeVisible()
   await expect(page.locator('.chat-composer')).toBeInViewport()
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-chat-reconnecting-390.png') })
 })

@@ -13,7 +13,7 @@ export const productionBundleBudget = Object.freeze({
   routes: [
     { name: 'public landing', entries: ['src/features/marketing/pages/LandingPage.tsx'], gzipBytes: 140_000 },
     { name: 'sign in', entries: ['src/features/auth/pages/SignInPage.tsx'], gzipBytes: 140_000 },
-    { name: 'signed-in Home', entries: ['src/features/v2-shell/layouts/V2AppShellLayout.tsx', 'src/features/v2-shell/pages/HomePage.tsx'], gzipBytes: 180_000 },
+    { name: 'signed-in Home', entries: ['src/features/v2-shell/layouts/V2AppShellLayout.tsx', 'src/features/v2-shell/pages/HomePage.tsx'], gzipBytes: 150_000 },
   ],
 })
 

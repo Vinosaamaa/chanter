@@ -144,9 +144,9 @@
 .v2-app-shell .month-switcher h1 { font-size: 25px; letter-spacing: -.5px; }
 .v2-app-shell .calendar-filters { margin: 24px 0; }
 .v2-app-shell .calendar-weekdays, .v2-app-shell .calendar-month-grid { min-width: 0; }
-.v2-app-shell .calendar-month-grid > button { min-height: 80px; padding: 12px; font-size: 14px; }
-.v2-app-shell .calendar-month-grid > button.today { background: var(--blue-soft); color: var(--blue); }
-.v2-app-shell .calendar-month-grid > button.selected { border: 2px solid var(--blue); }
+.v2-app-shell .calendar-month-grid button { min-height: 80px; padding: 12px; font-size: 14px; }
+.v2-app-shell .calendar-month-grid button.today { background: var(--blue-soft); color: var(--blue); }
+.v2-app-shell .calendar-month-grid button.selected { border: 2px solid var(--blue); }
 .v2-app-shell .calendar-agenda { padding: 32px 24px; background: #f8fafd; }
 .v2-app-shell .calendar-agenda h2 { font-size: 18px; }
 .v2-app-shell .agenda-card { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 18px 0; background: transparent; min-height: 0; }
@@ -205,7 +205,7 @@
   .v2-app-shell .calendar-page { grid-template-columns: minmax(0,1fr) 270px; }
   .v2-app-shell .calendar-main { padding: 24px; }
   .v2-app-shell .calendar-agenda { padding: 24px 18px; }
-  .v2-app-shell .calendar-month-grid > button { min-height: 64px; }
+  .v2-app-shell .calendar-month-grid button { min-height: 64px; }
 }
 @media (max-width: 1023px) {
   .v2-app-shell .course-heading-copy h1 { font-size: 25px; }
@@ -216,7 +216,7 @@
   .v2-app-shell .calendar-page { grid-template-columns: 1fr; overflow: auto; }
   .v2-app-shell .calendar-main { overflow: visible; min-height: 0; border-right: 0; }
   .v2-app-shell .calendar-month-grid { flex: none; }
-  .v2-app-shell .calendar-month-grid > button { min-height: 52px; }
+  .v2-app-shell .calendar-month-grid button { min-height: 52px; }
   .v2-app-shell .calendar-agenda { overflow: visible; border-top: 1px solid var(--line); }
   .v2-app-shell .office-hours-page.owner { grid-template-columns: 1fr; }
   .v2-app-shell .community-hub-chrome { padding: 28px 28px 0; }
@@ -265,7 +265,7 @@
   .v2-app-shell .month-switcher h1 { font-size: 21px; }
   .v2-app-shell .calendar-main { padding: 24px 16px; overflow: visible; }
   .v2-app-shell .calendar-filters { gap: 4px; margin: 16px 0; }
-  .v2-app-shell .calendar-month-grid > button { min-height: 44px; padding: 6px; font-size: 13px; }
+  .v2-app-shell .calendar-month-grid button { min-height: 44px; padding: 6px; font-size: 13px; }
   .v2-app-shell .calendar-weekdays { font-size: 11px; }
   .v2-app-shell .calendar-agenda { padding: 24px 20px; }
   .v2-app-shell .community-hub-chrome { padding: 24px 20px 0; }
@@ -315,7 +315,7 @@
 .v2-app-shell .community-hub-title > span svg { width: 28px; height: 28px; }
 .v2-app-shell .community-tabs a { min-width: 0; justify-content: start; }
 .v2-app-shell .announcements-layout { padding: 32px 40px; grid-template-columns: minmax(0,1fr) 280px; gap: 40px; }
-.v2-app-shell .announcements-layout > main { min-width: 0; }
+.v2-app-shell .announcements-layout > .announcements-feed { min-width: 0; }
 .v2-app-shell .announcement-card { padding: 28px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; grid-template-columns: 36px minmax(0,1fr); gap: 16px; margin: 0; }
 .v2-app-shell .announcement-card > .v2-avatar { width: 36px; height: 36px; font-size: 12px; }
 .v2-app-shell .announcement-card h2 { font-size: 23px; line-height: 1.35; letter-spacing: -.5px; margin: 12px 0; }
@@ -376,3 +376,90 @@
 .v2-app-shell .this-week-panel .overview-item-detail { grid-column: 2; }
 .v2-app-shell .workspace-tabs { position: relative; padding-right: 24px; }
 @media (max-width: 1023px) { .v2-app-shell .workspace-tabs { scrollbar-width: auto; } .v2-app-shell .workspace-tabs::-webkit-scrollbar { height: 4px; } .v2-app-shell .workspace-tabs::-webkit-scrollbar-thumb { background: #bac8da; border-radius: 4px; } }
+
+/* Calendar keeps one keyboard entry point and real row/cell semantics. */
+.v2-app-shell .calendar-month-grid { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(6, minmax(0, 1fr)); }
+.v2-app-shell .calendar-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.v2-app-shell .calendar-week > div { min-width: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.v2-app-shell .calendar-week > div:last-child { border-right: 0; }
+.v2-app-shell .calendar-week:last-child > div { border-bottom: 0; }
+.v2-app-shell .calendar-month-grid button { width: 100%; height: 100%; border: 0; cursor: pointer; }
+.v2-app-shell .calendar-month-grid button.selected { box-shadow: inset 0 0 0 2px var(--blue); }
+.v2-app-shell .calendar-month-grid button[aria-current='date'] > span { color: var(--blue); background: var(--blue-soft); }
+.v2-app-shell .calendar-month-grid button > i { background: var(--blue); }
+.v2-app-shell .calendar-month-grid button > i.office { background: var(--blue); }
+.v2-app-shell .calendar-month-grid button > i.deadline { background: var(--warning); }
+.v2-app-shell .calendar-month-grid button > i.going { background: var(--success); }
+
+/* Overflow keeps its own controls, rather than clipping the last tab without a cue. */
+.v2-app-shell .workspace-tab-strip { display: flex; align-items: stretch; gap: 8px; margin-top: 20px; min-width: 0; }
+.v2-app-shell .workspace-tab-strip > nav { flex: 1; min-width: 0; overflow-x: auto; margin: 0; scrollbar-width: none; }
+.v2-app-shell .workspace-tab-strip > nav::-webkit-scrollbar { display: none; }
+.v2-app-shell .tab-scroll-control { width: 44px; min-height: 48px; flex: 0 0 44px; display: grid; place-items: center; color: var(--blue); border: 0; background: transparent; cursor: pointer; }
+.v2-app-shell .tab-scroll-control:disabled { color: var(--muted); opacity: .35; cursor: default; }
+/* Teaching starts with a compact list of things that need attention. */
+.v2-app-shell .teaching-metrics { gap: 0; border-block: 1px solid var(--line); }
+.v2-app-shell .teaching-metrics > article { display: grid; grid-template-columns: 32px minmax(0,1fr) auto; align-items: center; gap: 14px; min-height: 130px; padding: 22px; border: 0; border-right: 1px solid var(--line); border-radius: 0; }
+.v2-app-shell .teaching-metrics > article:last-child { border-right: 0; }
+.v2-app-shell .teaching-metrics > article > span { width: 32px; height: 32px; padding: 0; }
+.v2-app-shell .teaching-metrics svg { width: 24px; height: 24px; }
+.v2-app-shell .teaching-metrics strong { font-size: 25px; line-height: 1.3; }
+.v2-app-shell .teaching-metrics p { font-size: 13px; line-height: 1.5; margin: 4px 0; }
+.v2-app-shell .teaching-metrics small { font-size: 12px; line-height: 1.5; }
+.v2-app-shell .teaching-metrics button { grid-column: auto; align-self: center; margin: 0; min-height: 44px; padding: 8px; font-size: 13px; }
+.v2-app-shell .teaching-grid { gap: 32px; }
+.v2-app-shell .teaching-grid > article { border: 0; border-radius: 0; padding: 12px 0; }
+.v2-app-shell .teaching-grid h2 { margin-bottom: 18px; }
+.v2-app-shell .teaching-grid button { min-height: 60px; }
+.v2-app-shell .teaching-grid strong { font-size: 14px; line-height: 1.6; }
+.v2-app-shell .teaching-grid strong b { display: block; margin: 4px 0 0; color: var(--muted); font-size: 12px; font-weight: 400; }
+.v2-app-shell .teaching-grid article > p { display: grid; grid-template-columns: 8px minmax(0,1fr) auto; column-gap: 12px; }
+.v2-app-shell .teaching-grid article > p > small { grid-column: 2 / -1; }
+.v2-app-shell .teaching-grid i { width: 7px; height: 7px; }
+.v2-app-shell .teaching-ai-usage { padding: 20px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; grid-template-columns: 28px minmax(0,1fr) minmax(80px,160px) 44px; }
+.v2-app-shell .teaching-ai-usage h2 { font-size: 17px; }
+.v2-app-shell .teaching-usage-bar { height: 6px; background: var(--line); border-radius: 3px; }
+.v2-app-shell .teaching-usage-bar i { display: block; height: 100%; border-radius: inherit; background: var(--blue); }
+/* Owner settings use real form fields and sourced quota values. */
+.v2-app-shell .billing-summary { align-items: start; grid-template-columns: minmax(260px, .8fr) minmax(0,1.2fr); gap: 24px; }
+.v2-app-shell .current-plan > div { grid-template-columns: 32px minmax(0,1fr); gap: 8px 12px; padding: 24px 0 12px; }
+.v2-app-shell .current-plan > div > span { padding: 0; width: 32px; }
+.v2-app-shell .current-plan > div > strong { font-size: 25px; }
+.v2-app-shell .current-plan > div > small { grid-column: 2; }
+.v2-app-shell .current-plan > p { margin: 8px 0; }
+.v2-app-shell .current-plan > p b { font-size: 18px; }
+.v2-app-shell .current-plan > label { display: grid; gap: 8px; font-size: 13px; font-weight: 600; margin: 24px 0 12px; }
+.v2-app-shell .current-plan select { min-height: 44px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); font-size: 16px; font-weight: 400; }
+.v2-app-shell .billing-usage h2 { display: grid; gap: 6px; padding-bottom: 18px; }
+.v2-app-shell .billing-usage h2 small { font-size: 12px; }
+.v2-app-shell .billing-usage-row > p { display: grid; gap: 8px; margin: 20px 0 12px; }
+.v2-app-shell .billing-usage-row > div { height: 6px; background: var(--line); border-radius: 3px; }
+.v2-app-shell .billing-usage-row > div > i { display: block; height: 100%; border-radius: inherit; background: var(--blue); }
+.v2-app-shell .billing-usage-row > small { display: block; margin-top: 8px; color: var(--muted); }
+.v2-app-shell .billing-usage-note { font-size: 13px; line-height: 1.7; margin-top: 24px; }
+@media (max-width: 1200px) {
+ .v2-app-shell .teaching-metrics > article { padding: 18px 12px; grid-template-columns: 28px minmax(0,1fr); }
+ .v2-app-shell .teaching-metrics > article > button { grid-column: 2; justify-self: start; padding-left: 0; }
+ .v2-app-shell .billing-summary { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 600px) {
+ .v2-app-shell .teaching-metrics { grid-template-columns: minmax(0,1fr); }
+ .v2-app-shell .teaching-metrics > article { min-height: 108px; padding: 16px 0; grid-template-columns: 28px minmax(0,1fr) auto; border-right: 0; border-bottom: 1px solid var(--line); }
+ .v2-app-shell .teaching-metrics > article:last-child { border-bottom: 0; }
+ .v2-app-shell .teaching-metrics > article > button { grid-column: 3; padding: 8px; }
+ .v2-app-shell .teaching-ai-usage { grid-template-columns: 24px minmax(0,1fr) 44px; }
+ .v2-app-shell .teaching-ai-usage .teaching-usage-bar { grid-column: 2; }
+ .v2-app-shell .teaching-ai-usage > strong { grid-column: 3; grid-row: 2; }
+ .v2-app-shell .workspace-tab-strip { gap: 0; }
+}
+
+.v2-app-shell .community-hub-page:has(.community-lounge-layout) { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.v2-app-shell .community-hub-page:has(.community-lounge-layout) .community-tab-panel { min-height: 0; flex: 1; overflow: hidden; }
+.v2-app-shell .community-lounge-layout .channel-panel h2 { margin: 0 8px 14px; font-size: 13px; }
+.v2-app-shell .community-lounge-layout .channel-row { width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px; border: 0; border-radius: 6px; background: transparent; }
+.v2-app-shell .community-lounge-layout .channel-row.active { background: var(--blue-soft); }
+.v2-app-shell .lounge-channel-select { display: none; }
+@media (max-width: 600px) {
+ .v2-app-shell .lounge-channel-select { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--desk); }
+ .v2-app-shell .lounge-channel-select select { width: 100%; min-height: 44px; color: var(--ink); background: transparent; border: 0; font-size: 16px; }
+}

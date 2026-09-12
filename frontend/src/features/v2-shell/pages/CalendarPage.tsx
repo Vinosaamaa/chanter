@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, Check, ChevronLeft, ChevronRight, UsersRound } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { calendarQueryKey, fetchCalendar } from '../../calendar/calendar-api'
@@ -103,6 +103,8 @@ export function CalendarPage() {
   const today = useMemo(() => startOfDay(new Date()), [])
   const [viewMonth, setViewMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
   const [selectedDay, setSelectedDay] = useState(today)
+  const [focusedDay, setFocusedDay] = useState(today)
+  const dayButtons = useRef(new Map<string, HTMLButtonElement>())
   const [filter, setFilter] = useState<CalendarFilter>('All')
   const [actionError, setActionError] = useState<string | null>(null)
   const [deepLinkApplied, setDeepLinkApplied] = useState<string | null>(null)
@@ -143,6 +145,7 @@ export function CalendarPage() {
     const start = new Date(deepLinkedMatch.startsAt)
     setDeepLinkApplied(deepLinkedMatch.sourceId)
     setSelectedDay(startOfDay(start))
+    setFocusedDay(startOfDay(start))
     setViewMonth(new Date(start.getFullYear(), start.getMonth(), 1))
   }
 
@@ -178,10 +181,33 @@ export function CalendarPage() {
   const goToday = () => {
     setViewMonth(new Date(today.getFullYear(), today.getMonth(), 1))
     setSelectedDay(today)
+    setFocusedDay(today)
   }
 
   const shiftMonth = (delta: number) => {
-    setViewMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1))
+    const next = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1)
+    setViewMonth(next)
+    setFocusedDay(next)
+  }
+
+  const moveDayFocus = (event: KeyboardEvent<HTMLButtonElement>, date: Date) => {
+    const offsets: Record<string, number> = {
+      ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7,
+      Home: -date.getDay(), End: 6 - date.getDay(),
+    }
+    let next: Date
+    if (event.key in offsets) next = addDays(date, offsets[event.key])
+    else if (event.key === 'PageUp' || event.key === 'PageDown') {
+      const month = date.getMonth() + (event.key === 'PageUp' ? -1 : 1)
+      const lastDay = new Date(date.getFullYear(), month + 1, 0).getDate()
+      next = new Date(date.getFullYear(), month, Math.min(date.getDate(), lastDay))
+    } else return
+    event.preventDefault()
+    setFocusedDay(next)
+    if (next.getMonth() !== viewMonth.getMonth() || next.getFullYear() !== viewMonth.getFullYear()) {
+      setViewMonth(new Date(next.getFullYear(), next.getMonth(), 1))
+    }
+    requestAnimationFrame(() => dayButtons.current.get(next.toISOString())?.focus())
   }
 
   const monthLabel = formatMonthLabel(viewMonth)
@@ -204,12 +230,13 @@ export function CalendarPage() {
           </button>
         </header>
 
-        <div className="v2-chip-row calendar-filters" aria-label="Calendar filters">
+        <div className="v2-chip-row calendar-filters" role="group" aria-label="Calendar filters">
           {(['All', 'Office hours', 'Events', 'Deadlines', 'Going'] as CalendarFilter[]).map((item) => (
             <button
               type="button"
               key={item}
               className={filter === item ? 'active' : undefined}
+              aria-pressed={filter === item}
               onClick={() => setFilter(item)}
             >
               <i className={`filter-dot ${item.toLowerCase().replace(' ', '-')}`} />
@@ -248,29 +275,38 @@ export function CalendarPage() {
           </p>
         ) : null}
 
-        <div className="calendar-month-grid" role="grid" aria-label={monthLabel}>
-          {cells.map(({ date, inMonth }) => {
+        <p id="calendar-keyboard-help" className="sr-only">Use arrow keys to move by day or week, Home and End for the week, and Page Up or Page Down for the month. Press Enter to show the selected day's schedule.</p>
+        <div className="calendar-month-grid" role="grid" aria-label={monthLabel} aria-describedby="calendar-keyboard-help">
+          {Array.from({ length: 6 }, (_, week) => <div role="row" className="calendar-week" key={week}>
+          {cells.slice(week * 7, week * 7 + 7).map(({ date, inMonth }) => {
             const dayItems = itemsOnDay(items, date)
             const dot = calendarQuery.isLoading ? undefined : dotClassForItems(dayItems)
             const selected = sameDay(date, selectedDay)
             return (
+              <div role="gridcell" aria-selected={selected} key={date.toISOString()}>
               <button
                 type="button"
-                role="gridcell"
-                key={date.toISOString()}
+                ref={element => { if (element) dayButtons.current.set(date.toISOString(), element); else dayButtons.current.delete(date.toISOString()) }}
+                aria-label={`${date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}, ${dayItems.length} scheduled ${dayItems.length === 1 ? 'item' : 'items'}`}
+                aria-current={sameDay(date, today) ? 'date' : undefined}
+                tabIndex={sameDay(date, focusedDay) ? 0 : -1}
+                onKeyDown={event => moveDayFocus(event, date)}
                 className={`${inMonth ? '' : 'muted'} ${selected && inMonth ? 'selected' : ''}`.trim()}
                 onClick={() => {
                   if (!inMonth) {
                     setViewMonth(new Date(date.getFullYear(), date.getMonth(), 1))
                   }
                   setSelectedDay(startOfDay(date))
+                  setFocusedDay(startOfDay(date))
                 }}
               >
                 <span>{date.getDate()}</span>
                 {dot ? <i className={dot} /> : null}
               </button>
+              </div>
             )
           })}
+          </div>)}
         </div>
       </div>
 

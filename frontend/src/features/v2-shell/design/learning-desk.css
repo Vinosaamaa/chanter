@@ -180,7 +180,7 @@ html:has(.v2-app-shell), html:has(.v2-app-shell) body, html:has(.v2-app-shell) #
   .v2-app-shell .topbar { gap: 12px; min-height: 64px; flex-basis: 64px; padding: 0 24px; }
   .v2-app-shell .dashboard { padding: 32px; }
   .v2-app-shell .mobile-navigation { display: flex; align-items: center; flex: 0 0 72px; width: 72px; position: absolute; inset: 64px auto 0 0; flex-direction: column; gap: 10px; padding: 20px 4px; border-right: 1px solid var(--line); background: #f7f9fc; }
-  .v2-app-shell .content-shell main { margin-left: 72px; }
+  .v2-app-shell .content-shell > main { margin-left: 72px; }
   .v2-app-shell .mobile-navigation :is(a,button) { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 56px; width: 100%; font-size: 11px; font-weight: 550; color: var(--muted); background: transparent; border: 0; border-radius: 6px; }
   .v2-app-shell .mobile-navigation svg { width: 21px; height: 21px; }
   .v2-app-shell .mobile-navigation a.active { color: var(--blue); background: var(--blue-soft); }
@@ -196,7 +196,7 @@ html:has(.v2-app-shell), html:has(.v2-app-shell) body, html:has(.v2-app-shell) #
   .v2-app-shell .search-box:not(.calendar-search) { display: none; }
   .v2-app-shell .mobile-search-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 0; background: transparent; color: var(--muted); padding: 8px 4px 8px 12px; font-size: 14px; margin-left: auto; }
   .v2-app-shell .search-box > span, .v2-app-shell .bell-button { display: none; }
-  .v2-app-shell .content-shell main { margin-left: 0; }
+  .v2-app-shell .content-shell > main { margin-left: 0; }
   .v2-app-shell .mobile-navigation { position: static; flex-direction: row; width: 100%; flex: 0 0 auto; height: calc(64px + env(safe-area-inset-bottom)); padding: 4px 12px calc(4px + env(safe-area-inset-bottom)); border-right: 0; border-top: 1px solid var(--line); gap: 6px; background: white; }
   .v2-app-shell .mobile-navigation :is(a,button) { min-height: 52px; }
   .v2-app-shell .dashboard { padding: 28px 20px 36px; }
@@ -222,7 +222,7 @@ html:has(.v2-app-shell), html:has(.v2-app-shell) body, html:has(.v2-app-shell) #
 }
 @media (max-height: 480px) and (max-width: 1023px) {
   .v2-app-shell .mobile-navigation { position: absolute; inset: 60px auto 0 0; flex-direction: column; width: 64px; height: auto; padding: 8px 4px; border-right: 1px solid var(--line); }
-  .v2-app-shell .content-shell main { margin-left: 64px; }
+  .v2-app-shell .content-shell > main { margin-left: 64px; }
   .v2-app-shell .dashboard { padding-top: 20px; }
   .v2-app-shell .greeting { margin-bottom: 20px; }
 }

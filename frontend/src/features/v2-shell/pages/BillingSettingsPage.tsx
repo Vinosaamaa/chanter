@@ -139,17 +139,12 @@ function OwnerBillingSettingsPage({ initialServerId }: { initialServerId: string
                     <Sparkles />
                   </span>
                   <strong>{planLabel}</strong>
-                  <small>Local SaaS plan for this Study Server (no payment provider).</small>
+                  <small>Applies to this Study Server.</small>
                 </div>
                 <p>
                   <b>{PLAN_LIMIT_COPY[planTier]}</b>
                 </p>
-                <small>Changing plan updates local quotas only — it does not charge a card.</small>
-                <ul>
-                  <li>{PLAN_LIMIT_COPY[planTier]}</li>
-                  <li>Owner-managed Study Server quotas</li>
-                  <li>Teaching dashboard metrics</li>
-                </ul>
+                <small>Changing this quota does not charge a card.</small>
                 <label>
                   Change plan
                   <select
@@ -180,7 +175,7 @@ function OwnerBillingSettingsPage({ initialServerId }: { initialServerId: string
               <article className="billing-usage">
                 <h2>
                   Usage
-                  <small>AI invocations for the current plan period</small>
+                  <small>Queries used in the current plan period</small>
                 </h2>
                 <UsageBar
                   label="AI Queries"
@@ -192,7 +187,7 @@ function OwnerBillingSettingsPage({ initialServerId }: { initialServerId: string
                   percent={aiPercent}
                 />
                 <p className="billing-usage-note">
-                  Storage metering and invoices are not available in this local SaaS model.
+                  Paid subscriptions, invoices and storage usage are not available yet.
                 </p>
               </article>
             </div>
