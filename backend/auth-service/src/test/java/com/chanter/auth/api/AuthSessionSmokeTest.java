@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.chanter.common.auth.AuthHeaders;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
@@ -34,7 +35,7 @@ class AuthSessionSmokeTest {
 
     @Test
     void duplicateRegisterDoesNotRevealExistingAccount() throws Exception {
-        mockMvc.perform(post("/api/v1/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", "dup-owner@study.local",
@@ -43,7 +44,7 @@ class AuthSessionSmokeTest {
                         ))))
                 .andExpect(status().isCreated());
 
-        MvcResult duplicate = mockMvc.perform(post("/api/v1/auth/register")
+        MvcResult duplicate = mockMvc.perform(post("/api/v1/auth/register").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", "dup-owner@study.local",
@@ -60,7 +61,7 @@ class AuthSessionSmokeTest {
 
     @Test
     void registerLoginRefreshAndMeWork() throws Exception {
-        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
+        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", "owner@study.local",
@@ -75,7 +76,7 @@ class AuthSessionSmokeTest {
                 AuthSessionResponse.class
         );
         assertThat(registered.accessToken()).isNotBlank();
-        assertThat(registered.refreshToken()).isNotBlank();
+        assertThat(registerResult.getResponse().getCookie("chanter_refresh")).isNotNull();
         assertThat(registered.user().email()).isEqualTo("owner@study.local");
 
         mockMvc.perform(get("/api/v1/auth/me"))
@@ -85,7 +86,7 @@ class AuthSessionSmokeTest {
                         .header(AuthHeaders.AUTHORIZATION, AuthHeaders.BEARER_PREFIX + registered.accessToken()))
                 .andExpect(status().isOk());
 
-        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", "owner@study.local",
@@ -97,12 +98,10 @@ class AuthSessionSmokeTest {
                 loginResult.getResponse().getContentAsString(),
                 AuthSessionResponse.class
         );
+        Cookie loginCookie = loginResult.getResponse().getCookie("chanter_refresh");
 
-        MvcResult refreshResult = mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "refreshToken", loggedIn.refreshToken()
-                        ))))
+        MvcResult refreshResult = mockMvc.perform(post("/api/v1/auth/refresh").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
+                        .cookie(loginCookie))
                 .andExpect(status().isOk())
                 .andReturn();
         AuthSessionResponse refreshed = objectMapper.readValue(
@@ -110,27 +109,19 @@ class AuthSessionSmokeTest {
                 AuthSessionResponse.class
         );
         assertThat(refreshed.accessToken()).isNotBlank();
-        assertThat(refreshed.refreshToken()).isNotEqualTo(loggedIn.refreshToken());
+        Cookie refreshedCookie = refreshResult.getResponse().getCookie("chanter_refresh");
+        assertThat(refreshedCookie.getValue()).isNotEqualTo(loginCookie.getValue());
 
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "refreshToken", loggedIn.refreshToken()
-                        ))))
+        mockMvc.perform(post("/api/v1/auth/refresh").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
+                        .cookie(loginCookie))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "refreshToken", refreshed.refreshToken()
-                        ))))
+        mockMvc.perform(post("/api/v1/auth/logout").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
+                        .cookie(refreshedCookie))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "refreshToken", refreshed.refreshToken()
-                        ))))
+        mockMvc.perform(post("/api/v1/auth/refresh").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
+                        .cookie(refreshedCookie))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -149,12 +140,12 @@ class AuthSessionSmokeTest {
                 "userIds", List.of(peer.user().id(), missingUserId)
         ));
 
-        mockMvc.perform(post("/api/v1/auth/profiles/query")
+        mockMvc.perform(post("/api/v1/auth/profiles/query").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isUnauthorized());
 
-        MvcResult lookupResult = mockMvc.perform(post("/api/v1/auth/profiles/query")
+        MvcResult lookupResult = mockMvc.perform(post("/api/v1/auth/profiles/query").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .header(
                                 AuthHeaders.AUTHORIZATION,
                                 AuthHeaders.BEARER_PREFIX + viewer.accessToken()
@@ -234,7 +225,7 @@ class AuthSessionSmokeTest {
     }
 
     private AuthSessionResponse register(String email, String displayName) throws Exception {
-        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
+        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", email,

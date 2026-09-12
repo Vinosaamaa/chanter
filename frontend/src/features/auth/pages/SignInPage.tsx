@@ -11,6 +11,7 @@ import {
   type OAuthProvider,
 } from '../auth-api'
 import { isHttpOrHttpsUrl } from '../is-http-or-https-url'
+import { authenticateBrowserSession, signOutBrowserSession } from '../browser-session'
 import { useAuthStore } from '../../../stores/auth-store'
 import { readCohortInviteParams } from '../../onboarding/cohort-invite'
 import { V2Brand } from '../../v2-shell/components/V2Brand'
@@ -20,7 +21,6 @@ type AuthMode = 'sign-in' | 'register'
 export function SignInPage() {
   const location = useLocation()
   const accessToken = useAuthStore((state) => state.accessToken)
-  const setSession = useAuthStore((state) => state.setSession)
   const inviteFromUrl = readCohortInviteParams(location.search)
   const [mode, setMode] = useState<AuthMode>(inviteFromUrl ? 'register' : 'sign-in')
   const [email, setEmail] = useState('')
@@ -30,7 +30,8 @@ export function SignInPage() {
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [sessionReady, setSessionReady] = useState(false)
+  const [logoutRetried, setLogoutRetried] = useState(false)
+  const logoutFailed = !logoutRetried && Boolean((location.state as { logoutFailed?: boolean } | null)?.logoutFailed)
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([])
   const authTabRefs = useRef<Record<AuthMode, HTMLButtonElement | null>>({
     'sign-in': null,
@@ -46,7 +47,7 @@ export function SignInPage() {
       .catch(() => setOauthProviders([]))
   }, [])
 
-  if (accessToken || sessionReady) {
+  if (accessToken) {
     return <CohortInviteRedirect to={redirectTo} search={location.search} />
   }
 
@@ -57,16 +58,11 @@ export function SignInPage() {
     setInfo(null)
     try {
       if (mode === 'sign-in') {
-        const session = await login({ email, password })
-        setSession(session)
-        setSessionReady(true)
+        await authenticateBrowserSession(() => login({ email, password }))
         return
       }
-      const result = await register({ email, password, displayName })
-      if (isAuthSession(result)) {
-        setSession(result)
-        setSessionReady(true)
-      } else {
+      const result = await authenticateBrowserSession(() => register({ email, password, displayName }))
+      if (!isAuthSession(result)) {
         setInfo(result.message)
         setMode('sign-in')
       }
@@ -125,6 +121,14 @@ export function SignInPage() {
 
       <section className="v2-auth-panel">
         <div className="v2-auth-card">
+          {logoutFailed ? (
+            <div className="v2-auth-error" role="alert">
+              <p>You are signed out here, but we could not revoke the browser session. Reconnect and retry sign-out.</p>
+              <button type="button" onClick={() => {
+                void signOutBrowserSession().then(() => setLogoutRetried(true)).catch(() => setLogoutRetried(false))
+              }}>Retry sign-out</button>
+            </div>
+          ) : null}
           {inviteFromUrl ? (
             <div className="v2-auth-invite">
               <span className="invite-course-icon">CS</span>

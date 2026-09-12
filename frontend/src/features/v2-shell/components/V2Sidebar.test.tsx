@@ -66,11 +66,14 @@ describe('V2Sidebar account menu', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
+    Object.defineProperty(navigator, 'locks', { configurable: true, value: {
+      request: vi.fn((_name, callback) => Promise.resolve().then(callback)),
+    } })
     authApi.logout.mockResolvedValue(undefined)
     inboxApi.fetchUnreadNotificationCount.mockResolvedValue({ unreadCount: 0 })
     useAuthStore.setState({
       accessToken: 'access-token',
-      refreshToken: 'refresh-token',
       user: { id: 'user-1', email: 'sam@example.com', displayName: 'Sam Lee' },
     })
   })
@@ -103,9 +106,8 @@ describe('V2Sidebar account menu', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Sign out' }))
 
     await waitFor(() => expect(screen.getByTestId('sidebar-location')).toHaveTextContent('/sign-in'))
-    expect(authApi.logout).toHaveBeenCalledWith('refresh-token')
+    expect(authApi.logout).toHaveBeenCalledWith()
     expect(useAuthStore.getState().accessToken).toBeNull()
-    expect(useAuthStore.getState().refreshToken).toBeNull()
     expect(useAuthStore.getState().user).toBeNull()
   })
 

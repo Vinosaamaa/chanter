@@ -17,6 +17,7 @@ login() {
   local login_payload
   login_payload=$(python3 -c 'import json, os, sys; print(json.dumps({"email": sys.argv[1], "password": os.environ["DEMO_PASSWORD"]}))' "$OWNER_EMAIL")
   curl -sf -X POST "$GATEWAY/api/v1/auth/login" \
+    -H "Origin: ${CHANTER_PUBLIC_BASE_URL:-http://localhost:5173}" -H 'X-Chanter-CSRF: 1' \
     -H 'Content-Type: application/json' \
     -d "$login_payload"
 }

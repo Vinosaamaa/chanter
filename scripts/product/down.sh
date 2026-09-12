@@ -18,9 +18,9 @@ done < <(product_java_modules)
 
 product_stop_module frontend
 
-echo "Stopping product Docker services (realtime, LiveKit)..."
+echo "Stopping product Docker services (realtime, LiveKit, local email)..."
 docker compose -f "$ROOT/infra/docker-compose.yml" --env-file "$ROOT/.env" --profile product \
-  stop realtime-service livekit >/dev/null 2>&1 || true
+  stop realtime-service livekit mailpit >/dev/null 2>&1 || true
 
 echo "Product app processes stopped. Core infra (Postgres, Redis, broker, MinIO) is still running."
 echo "Run 'make infra-down' to stop infrastructure."

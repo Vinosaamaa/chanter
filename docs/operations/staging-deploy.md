@@ -60,11 +60,16 @@ Email / SSO (#102) vars are documented in `.env.example` (§ Production auth).
 | Setting | Staging recommendation |
 |---------|------------------------|
 | `CHANTER_AUTH_REQUIRE_EMAIL_VERIFICATION` | `true` |
-| `CHANTER_EMAIL_PROVIDER` | `log` is local-only and does not currently provide a usable verification link; real staging requires #242 transactional email |
-| `CHANTER_OAUTH_GOOGLE_CLIENT_ID` / `SECRET` | optional; enables Continue with Google |
+| `CHANTER_EMAIL_PROVIDER` | `smtp`; configure the provider's authenticated SMTP server |
+| `CHANTER_EMAIL_LOCAL_SINK` | `false`; Mailpit is only for loopback development and tests |
+| `CHANTER_EMAIL_FROM` | Verified sender address for the configured provider |
+| `CHANTER_SMTP_HOST` / `CHANTER_SMTP_PORT` | Provider host and TLS port, usually 587 |
+| `CHANTER_SMTP_USERNAME` / `CHANTER_SMTP_PASSWORD` | Provider credentials from the environment secret store |
+| `CHANTER_SMTP_TLS_MODE` | `starttls` or `implicit`, according to the provider |
+| `CHANTER_OAUTH_GOOGLE_CLIENT_ID` / `CHANTER_OAUTH_GOOGLE_CLIENT_SECRET` | optional; enables Continue with Google |
 | OAuth redirect URI | `${CHANTER_PUBLIC_BASE_URL}/oauth/callback/google` |
 
-The former walkthrough expected verification/reset links in logs, but the current `LoggingEmailSender` does not log message content. Use a local test email sink during #242; real staging must send transactional email and exercise delivery end to end.
+Verification and reset links never belong in application logs. Local development receives them in Mailpit at `http://localhost:8025`. Real staging must use a verified SMTP sender, set `CHANTER_PUBLIC_BASE_URL` and `CHANTER_CORS_ORIGINS` to its exact HTTPS origin, and exercise delivery in a real recipient inbox. See [the session and email design](../architecture/secure-browser-sessions-and-email.md) and [the implementation record](issue-242-change-log.md).
 
 ## Deploy steps
 

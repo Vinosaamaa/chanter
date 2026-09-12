@@ -33,7 +33,6 @@ describe('useQuestionsChannel', () => {
     vi.clearAllMocks()
     useAuthStore.setState({
       accessToken: 'token',
-      refreshToken: 'refresh',
       user: {
         id: 'learner-1',
         email: 'learner@example.com',

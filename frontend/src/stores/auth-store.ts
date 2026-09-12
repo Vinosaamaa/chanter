@@ -1,66 +1,42 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 import type { AuthSession, AuthUser } from '../features/auth/types'
 
 type AuthStore = {
   accessToken: string | null
-  refreshToken: string | null
   user: AuthUser | null
+  status: 'restoring' | 'ready' | 'unavailable'
+  generation: number
   setSession: (session: AuthSession) => void
   clearSession: () => void
 }
 
-type PersistedAuthState = {
-  accessToken: string | null
-  user: AuthUser | null
+// Remove pre-cookie credentials without ever hydrating them into the new session.
+try {
+  localStorage.removeItem('chanter-auth')
+  sessionStorage.removeItem('chanter-auth')
+} catch {
+  // Storage may be disabled. Authentication itself remains in memory.
 }
 
-/**
- * Persist only short-lived access + user profile for reload within access TTL.
- * Refresh stays in memory so XSS cannot read a renewable token from storage (SEC-06).
- */
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
-      accessToken: null,
-      refreshToken: null,
-      user: null,
-      setSession: (session) =>
-        set({
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken,
-          user: session.user,
-        }),
-      clearSession: () =>
-        set({
-          accessToken: null,
-          refreshToken: null,
-          user: null,
-        }),
-    }),
-    {
-      name: 'chanter-auth',
-      version: 1,
-      partialize: (state): PersistedAuthState => ({
-        accessToken: state.accessToken,
-        user: state.user,
-      }),
-      migrate: (persistedState): PersistedAuthState => {
-        if (!persistedState || typeof persistedState !== 'object') {
-          return { accessToken: null, user: null }
-        }
-        const legacy = persistedState as Partial<PersistedAuthState> & {
-          refreshToken?: string | null
-        }
-        return {
-          accessToken: legacy.accessToken ?? null,
-          user: legacy.user ?? null,
-        }
-      },
-    },
-  ),
-)
+export const useAuthStore = create<AuthStore>((set) => ({
+  accessToken: null,
+  user: null,
+  status: 'restoring',
+  generation: 0,
+  setSession: (session) => set((state) => ({
+    accessToken: session.accessToken,
+    user: session.user,
+    status: 'ready',
+    generation: state.generation + (state.user?.id === session.user.id ? 0 : 1),
+  })),
+  clearSession: () => set((state) => ({
+    accessToken: null,
+    user: null,
+    status: 'ready',
+    generation: state.generation + 1,
+  })),
+}))
 
 export function isAuthenticated(): boolean {
   return useAuthStore.getState().accessToken !== null

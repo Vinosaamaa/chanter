@@ -5,15 +5,11 @@ import {
   type Request,
   type TestInfo,
 } from '@playwright/test'
+import { isExpectedRequestAbort } from './browser-health.mjs'
 
 type BrowserFailure = {
   kind: 'console' | 'page' | 'request' | 'response'
   detail: string
-}
-
-function ignoredNavigationAbort(request: Request) {
-  const error = request.failure()?.errorText ?? ''
-  return request.isNavigationRequest() && /ERR_ABORTED|NS_BINDING_ABORTED/.test(error)
 }
 
 async function attachFailures(testInfo: TestInfo, failures: BrowserFailure[]) {
@@ -27,6 +23,7 @@ async function attachFailures(testInfo: TestInfo, failures: BrowserFailure[]) {
 export const test = base.extend<{ browserHealth: void }>({
   browserHealth: [async ({ page }, use, testInfo) => {
     const failures: BrowserFailure[] = []
+    const responseStatuses = new WeakMap<Request, number>()
 
     page.on('console', (message) => {
       if (message.type() === 'error') {
@@ -37,14 +34,17 @@ export const test = base.extend<{ browserHealth: void }>({
       failures.push({ kind: 'page', detail: error.stack ?? error.message })
     })
     page.on('requestfailed', (request) => {
-      if (!ignoredNavigationAbort(request)) {
+      if (!isExpectedRequestAbort(request.isNavigationRequest(), request.failure()?.errorText ?? '', responseStatuses.get(request))) {
         failures.push({
           kind: 'request',
-          detail: `${request.method()} ${request.url()} (${request.failure()?.errorText ?? 'unknown failure'})`,
+          detail: `${request.method()} ${new URL(request.url()).pathname} (${request.failure()?.errorText ?? 'unknown failure'})`,
         })
       }
     })
     page.on('response', (response) => {
+      // Chromium can report ERR_ABORTED after a successfully received bodyless
+      // 204. Require that exact observed status; real network failures still fail.
+      responseStatuses.set(response.request(), response.status())
       const responseUrl = new URL(response.url())
       const configuredBaseUrl = new URL(
         process.env.PLAYWRIGHT_BASE_URL

@@ -10,7 +10,7 @@ describe('SignInPage public destinations', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
-    useAuthStore.setState({ accessToken: null, refreshToken: null, user: null })
+    useAuthStore.setState({ accessToken: null, user: null })
   })
 
   it('exposes Terms, forgot password, and marks unavailable Google sign-in as disabled', () => {

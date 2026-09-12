@@ -8,16 +8,20 @@ import com.chanter.auth.application.ProductionAuthService;
 import com.chanter.common.ServiceInfo;
 import com.chanter.common.auth.AuthHeaders;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @RestController
 @RequestMapping(ServiceInfo.API_V1_PREFIX + "/auth")
@@ -34,17 +39,20 @@ public class AuthController {
     private final ProductionAuthService productionAuthService;
     private final OAuthAuthService oauthAuthService;
     private final AuthRateLimiter authRateLimiter;
+    private final BrowserSessionCookies cookies;
 
     public AuthController(
             AuthSessionService authSessionService,
             ProductionAuthService productionAuthService,
             OAuthAuthService oauthAuthService,
-            AuthRateLimiter authRateLimiter
+            AuthRateLimiter authRateLimiter,
+            BrowserSessionCookies cookies
     ) {
         this.authSessionService = authSessionService;
         this.productionAuthService = productionAuthService;
         this.oauthAuthService = oauthAuthService;
         this.authRateLimiter = authRateLimiter;
+        this.cookies = cookies;
     }
 
     @GetMapping("/health")
@@ -58,13 +66,15 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(
             @Valid @RequestBody RegisterRequest request,
-            HttpServletRequest servletRequest
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse
     ) {
         authRateLimiter.check(rateKey(servletRequest, "register"));
         RegisterResult result = authSessionService.registerWithStatus(
                 request.email(),
                 request.password(),
-                request.displayName()
+                request.displayName(),
+                servletRequest.getHeader("User-Agent")
         );
         if (result.verificationRequired()) {
             return ResponseEntity.status(HttpStatus.ACCEPTED)
@@ -73,6 +83,7 @@ public class AuthController {
                             "message", result.message()
                     ));
         }
+        cookies.setRefresh(servletResponse, result.session().refreshToken(), result.session().refreshExpiresAt());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(AuthSessionResponse.from(result.session()));
     }
@@ -80,20 +91,34 @@ public class AuthController {
     @PostMapping("/login")
     public AuthSessionResponse login(
             @Valid @RequestBody LoginRequest request,
-            HttpServletRequest servletRequest
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse
     ) {
         authRateLimiter.check(rateKey(servletRequest, "login", request.email()));
-        return AuthSessionResponse.from(authSessionService.login(request.email(), request.password()));
+        var session = authSessionService.login(request.email(), request.password(), servletRequest.getHeader("User-Agent"));
+        cookies.setRefresh(servletResponse, session.refreshToken(), session.refreshExpiresAt());
+        return AuthSessionResponse.from(session);
     }
 
     @PostMapping("/refresh")
-    public AuthSessionResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        return AuthSessionResponse.from(authSessionService.refresh(request.refreshToken()));
+    public ResponseEntity<AuthSessionResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
+        String token = cookies.read(request, BrowserSessionCookies.REFRESH_COOKIE);
+        if (token == null) return ResponseEntity.noContent().build();
+        try {
+            var session = authSessionService.refresh(token);
+            cookies.setRefresh(response, session.refreshToken(), session.refreshExpiresAt());
+            return ResponseEntity.ok(AuthSessionResponse.from(session));
+        } catch (ResponseStatusException exception) {
+            cookies.clearRefresh(response);
+            throw exception;
+        }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
-        authSessionService.logout(request.refreshToken());
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        String token = cookies.read(request, BrowserSessionCookies.REFRESH_COOKIE);
+        if (token != null) authSessionService.logout(token);
+        cookies.clearRefresh(response);
         return ResponseEntity.noContent().build();
     }
 
@@ -138,18 +163,33 @@ public class AuthController {
     }
 
     @GetMapping("/oauth/{provider}/start")
-    public ResponseEntity<Void> startOauth(@PathVariable String provider) {
+    public ResponseEntity<Void> startOauth(@PathVariable String provider, HttpServletResponse response) {
         String url = oauthAuthService.authorizationUrl(provider);
+        bindOauthState(response, url);
         return ResponseEntity.status(HttpStatus.FOUND).header("Location", url).build();
     }
 
     @PostMapping("/oauth/google/callback")
     public AuthSessionResponse googleCallback(
             @Valid @RequestBody OAuthCodeRequest request,
-            HttpServletRequest servletRequest
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse
     ) {
         authRateLimiter.check(rateKey(servletRequest, "oauth-google"));
-        return AuthSessionResponse.from(oauthAuthService.completeGoogleLogin(request.code(), request.state()));
+        String browserState = cookies.read(servletRequest, BrowserSessionCookies.OAUTH_COOKIE);
+        cookies.clearOauthState(servletResponse);
+        if (browserState == null || !MessageDigest.isEqual(browserState.getBytes(StandardCharsets.UTF_8),
+                request.state().getBytes(StandardCharsets.UTF_8))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "OAuth must finish in the browser that started it");
+        }
+        var session = oauthAuthService.completeGoogleLogin(request.code(), request.state(), servletRequest.getHeader("User-Agent"));
+        cookies.setRefresh(servletResponse, session.refreshToken(), session.refreshExpiresAt());
+        return AuthSessionResponse.from(session);
+    }
+
+    private void bindOauthState(HttpServletResponse response, String authorizationUrl) {
+        String state = UriComponentsBuilder.fromUriString(authorizationUrl).build().getQueryParams().getFirst("state");
+        cookies.setOauthState(response, state);
     }
 
     @GetMapping("/me")
@@ -161,6 +201,29 @@ public class AuthController {
         }
         UUID userId = authSessionService.requireUserIdFromAccessToken(authorizationHeader);
         return AuthUserResponse.from(authSessionService.requireUser(userId));
+    }
+
+    @GetMapping("/sessions")
+    public Map<String, List<AuthSessionService.BrowserSession>> sessions(
+            @RequestHeader(value = AuthHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            HttpServletRequest request
+    ) {
+        UUID userId = authSessionService.requireUserIdFromAccessToken(authorizationHeader);
+        return Map.of("sessions", authSessionService.listSessions(userId, cookies.read(request, BrowserSessionCookies.REFRESH_COOKIE)));
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Void> revokeSession(
+            @PathVariable UUID sessionId,
+            @RequestHeader(value = AuthHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        UUID userId = authSessionService.requireUserIdFromAccessToken(authorizationHeader);
+        if (authSessionService.revokeSession(userId, sessionId, cookies.read(request, BrowserSessionCookies.REFRESH_COOKIE))) {
+            cookies.clearRefresh(response);
+        }
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/profiles/query")

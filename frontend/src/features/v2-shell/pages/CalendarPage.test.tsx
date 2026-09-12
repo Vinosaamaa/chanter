@@ -82,7 +82,6 @@ describe('CalendarPage', () => {
     vi.clearAllMocks()
     useAuthStore.setState({
       accessToken: 'access-token',
-      refreshToken: 'refresh-token',
       user: { id: 'user-1', email: 'sam@example.com', displayName: 'Sam Lee' },
     })
     fetchCalendar.mockResolvedValue({ items: sampleItems, notes: ['Deadlines are omitted'] })

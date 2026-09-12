@@ -27,14 +27,18 @@ class CorsOriginsSmokeTest {
     void preflightAllowsConfiguredOrigin() {
         webTestClient
                 .options()
-                .uri("/actuator/health")
+                .uri("/api/v1/auth/refresh")
                 .header(HttpHeaders.ORIGIN, "https://staging.chanter.example")
-                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Content-Type,X-Chanter-CSRF")
                 .exchange()
                 .expectStatus()
                 .isEqualTo(HttpStatus.OK)
                 .expectHeader()
-                .valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "https://staging.chanter.example");
+                .valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "https://staging.chanter.example")
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
+                .expectHeader().value(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+                        value -> org.assertj.core.api.Assertions.assertThat(value).containsIgnoringCase("X-Chanter-CSRF"));
     }
 
     @Test

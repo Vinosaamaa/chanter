@@ -7,14 +7,13 @@ export type DemoPersona = {
   key: DemoPersonaKey
   userId: string
   accessToken: string
-  refreshToken: string
   email: string
   displayName: string
 }
 
 export type DemoPersonas = Record<DemoPersonaKey, DemoPersona>
 
-const DEMO_PASSWORD = 'chanter-dev-demo'
+export const DEMO_PASSWORD = 'chanter-dev-demo'
 
 const PERSONA_LABELS: Record<DemoPersonaKey, string> = {
   owner: 'Demo Owner',
@@ -35,7 +34,8 @@ async function login(email: string): Promise<Response> {
   const apiBase = getApiBase()
   return fetch(`${apiBase}/api/v1/auth/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Chanter-CSRF': '1' },
+    credentials: 'omit',
     body: JSON.stringify({ email, password: DEMO_PASSWORD }),
   })
 }
@@ -44,7 +44,8 @@ async function register(email: string, displayName: string): Promise<Response> {
   const apiBase = getApiBase()
   return fetch(`${apiBase}/api/v1/auth/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Chanter-CSRF': '1' },
+    credentials: 'omit',
     body: JSON.stringify({ email, password: DEMO_PASSWORD, displayName }),
   })
 }
@@ -84,6 +85,9 @@ async function loginOrRegister(email: string, displayName: string): Promise<Auth
   }
 
   const registerResponse = await register(email, displayName)
+  if (registerResponse.status === 202) {
+    throw new Error('Verify the local demo accounts before opening the demo, or use a local auth profile without email verification.')
+  }
   if (registerResponse.ok) {
     return registerResponse.json() as Promise<AuthSession>
   }
@@ -114,7 +118,6 @@ export async function bootstrapDemoPersonas(): Promise<DemoPersonas> {
       key,
       userId: session.user.id,
       accessToken: session.accessToken,
-      refreshToken: session.refreshToken,
       email,
       displayName: session.user.displayName,
     }

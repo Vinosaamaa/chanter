@@ -65,10 +65,16 @@ public class AuthSessionService {
 
     @Transactional
     public RegisterResult registerWithStatus(String email, String password, String displayName) {
+        return registerWithStatus(email, password, displayName, "");
+    }
+
+    @Transactional
+    public RegisterResult registerWithStatus(String email, String password, String displayName, String userAgent) {
         String normalizedEmail = normalizeEmail(email);
-        if (authUserRepository.existsByEmail(normalizedEmail)) {
+        var existing = authUserRepository.findByEmail(normalizedEmail);
+        if (existing.isPresent()) {
             // Neutral response (SEC-15): never reveal that the email is taken.
-            authUserRepository.findByEmail(normalizedEmail).ifPresent(productionAuthService::notifyExistingAccountRegisterAttempt);
+            sendExistingAccountNextSteps(existing.get());
             return new RegisterResult(null, true, NEUTRAL_REGISTER_MESSAGE);
         }
         boolean verified = !requireEmailVerification;
@@ -83,17 +89,31 @@ public class AuthSessionService {
         try {
             authUserRepository.save(user);
         } catch (DataIntegrityViolationException exception) {
-            authUserRepository.findByEmail(normalizedEmail).ifPresent(productionAuthService::notifyExistingAccountRegisterAttempt);
+            sendExistingAccountNextSteps(authUserRepository.findByEmail(normalizedEmail).orElseThrow(() -> exception));
             return new RegisterResult(null, true, NEUTRAL_REGISTER_MESSAGE);
         }
         if (requireEmailVerification) {
             productionAuthService.sendEmailVerification(user);
             return new RegisterResult(null, true, NEUTRAL_REGISTER_MESSAGE);
         }
-        return new RegisterResult(issueSession(user), false, null);
+        return new RegisterResult(issueSession(user, userAgent), false, null);
     }
 
+    private void sendExistingAccountNextSteps(AuthUser user) {
+        if (user.emailVerified()) {
+            productionAuthService.notifyExistingAccountRegisterAttempt(user);
+        } else {
+            productionAuthService.sendEmailVerification(user);
+        }
+    }
+
+    @Transactional
     public AuthSession login(String email, String password) {
+        return login(email, password, "");
+    }
+
+    @Transactional
+    public AuthSession login(String email, String password, String userAgent) {
         AuthUser user = authUserRepository.findByEmail(normalizeEmail(email)).orElse(null);
         String passwordHash = user != null && user.passwordHash() != null
                 ? user.passwordHash()
@@ -102,27 +122,50 @@ public class AuthSessionService {
         if (user == null || user.passwordHash() == null || !passwordMatches) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
+        refreshTokenRepository.lockUser(user.id());
+        // BCrypt is expensive. Lock only after verification, then reject a password changed by a concurrent reset.
+        user = authUserRepository.findById(user.id()).orElse(null);
+        if (user == null || !passwordHash.equals(user.passwordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        }
         if (requireEmailVerification && !user.emailVerified()) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Email is not verified. Check your inbox for the verification link."
             );
         }
-        return issueSession(user);
+        return issueSession(user, userAgent);
     }
 
-    @Transactional
     public AuthSession refresh(String refreshToken) {
-        String tokenHash = hashToken(refreshToken);
-        UUID userId = refreshTokenRepository.consumeActiveUserIdByTokenHash(tokenHash, Instant.now())
+        String replacement = generateRefreshToken();
+        var session = refreshTokenRepository.rotate(hashToken(refreshToken), UUID.randomUUID(), hashToken(replacement), Instant.now())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
-        AuthUser user = authUserRepository.findById(userId)
+        AuthUser user = authUserRepository.findById(session.userId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
-        return issueSession(user);
+        return new AuthSession(jwtTokenService.createAccessToken(user.id()), replacement,
+                jwtTokenService.accessTokenTtlSeconds(), AuthUserProfile.from(user), session.expiresAt());
     }
 
     public void logout(String refreshToken) {
         refreshTokenRepository.revokeByTokenHash(hashToken(refreshToken), Instant.now());
+    }
+
+    public List<BrowserSession> listSessions(UUID userId, String refreshToken) {
+        UUID currentId = refreshToken == null ? null : refreshTokenRepository
+                .findSessionIdByTokenHash(hashToken(refreshToken)).orElse(null);
+        return refreshTokenRepository.findActiveSessions(userId, Instant.now()).stream()
+                .map(session -> new BrowserSession(session.id(), session.createdAt(), session.lastUsedAt(),
+                        session.expiresAt(), session.userAgent(), session.id().equals(currentId)))
+                .toList();
+    }
+
+    public boolean revokeSession(UUID userId, UUID sessionId, String refreshToken) {
+        if (!refreshTokenRepository.revokeSession(userId, sessionId, Instant.now())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found");
+        }
+        return refreshToken != null && refreshTokenRepository.findSessionIdByTokenHash(hashToken(refreshToken))
+                .map(sessionId::equals).orElse(false);
     }
 
     public AuthUserProfile requireUser(UUID userId) {
@@ -154,22 +197,30 @@ public class AuthSessionService {
     }
 
     public AuthSession issueSessionForUser(AuthUser user) {
-        return issueSession(user);
+        return issueSession(user, "");
     }
 
-    private AuthSession issueSession(AuthUser user) {
+    public AuthSession issueSessionForUser(AuthUser user, String userAgent) {
+        return issueSession(user, userAgent);
+    }
+
+    private AuthSession issueSession(AuthUser user, String userAgent) {
         String refreshToken = generateRefreshToken();
-        refreshTokenRepository.save(
+        Instant now = Instant.now();
+        Instant expiresAt = now.plus(refreshTokenTtl);
+        String agent = userAgent == null ? "" : userAgent.substring(0, Math.min(userAgent.length(), 255));
+        refreshTokenRepository.createSession(
                 UUID.randomUUID(),
                 user.id(),
+                UUID.randomUUID(),
                 hashToken(refreshToken),
-                Instant.now().plus(refreshTokenTtl)
+                now, expiresAt, agent
         );
         return new AuthSession(
                 jwtTokenService.createAccessToken(user.id()),
                 refreshToken,
                 jwtTokenService.accessTokenTtlSeconds(),
-                AuthUserProfile.from(user)
+                AuthUserProfile.from(user), expiresAt
         );
     }
 
@@ -197,7 +248,8 @@ public class AuthSessionService {
             String accessToken,
             String refreshToken,
             long expiresInSeconds,
-            AuthUserProfile user
+            AuthUserProfile user,
+            Instant refreshExpiresAt
     ) {
     }
 
@@ -210,4 +262,7 @@ public class AuthSessionService {
 
     public record RegisterResult(AuthSession session, boolean verificationRequired, String message) {
     }
+
+    public record BrowserSession(UUID id, Instant createdAt, Instant lastUsedAt, Instant expiresAt,
+                                 String userAgent, boolean current) {}
 }

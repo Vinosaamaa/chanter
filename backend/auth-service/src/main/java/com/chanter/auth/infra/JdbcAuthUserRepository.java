@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class JdbcAuthUserRepository implements AuthUserRepository {
@@ -25,7 +27,10 @@ public class JdbcAuthUserRepository implements AuthUserRepository {
     }
 
     @Override
+    @Transactional(propagation = Propagation.NESTED)
     public AuthUser save(AuthUser user) {
+        // A concurrent signup may win the unique email. Roll back only this insert so its caller
+        // can read that account and enqueue the neutral response email in the outer transaction.
         jdbcTemplate.update(
                 """
                 INSERT INTO auth_users (id, email, password_hash, display_name, email_verified, created_at)

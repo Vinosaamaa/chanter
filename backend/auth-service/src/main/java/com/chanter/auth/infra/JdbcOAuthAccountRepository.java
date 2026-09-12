@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class JdbcOAuthAccountRepository implements OAuthAccountRepository {
@@ -34,6 +36,7 @@ public class JdbcOAuthAccountRepository implements OAuthAccountRepository {
     }
 
     @Override
+    @Transactional(propagation = Propagation.NESTED)
     public void link(UUID id, UUID userId, String provider, String providerSubject) {
         jdbcTemplate.update(
                 """

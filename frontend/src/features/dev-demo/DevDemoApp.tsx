@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './DevDemoApp.css'
-import { bootstrapDemoPersonas, type DemoPersonaKey, type DemoPersonas } from './demo-auth'
+import { bootstrapDemoPersonas, DEMO_PASSWORD, type DemoPersonaKey, type DemoPersonas } from './demo-auth'
 import { installAuthenticatedDemoFetch, setDemoPersonas, demoFetch } from './demo-fetch'
-import { useAuthStore } from '../../stores/auth-store'
+import { login } from '../auth/auth-api'
+import { authenticateBrowserSession } from '../auth/browser-session'
 
 type HealthResponse = {
   status: string
@@ -213,7 +214,6 @@ function App() {
   const [personas, setPersonas] = useState<DemoPersonas | null>(null)
   const [authBootstrapError, setAuthBootstrapError] = useState<string | null>(null)
   const navigate = useNavigate()
-  const setSession = useAuthStore((state) => state.setSession)
   const ownerUserId = personas?.owner.userId ?? ''
   const instructorUserId = personas?.instructor.userId ?? ''
   // Courses are created under the owner JWT, so the owner is the course instructor in this harness.
@@ -1776,23 +1776,18 @@ function App() {
   const canSendDirectMessage = friendshipStatus === 'ACCEPTED'
   const questionsChannel = course?.channels.find((channel) => channel.name === 'questions') ?? null
 
-  const openProductionAppShell = (personaKey: DemoPersonaKey) => {
+  const openProductionAppShell = async (personaKey: DemoPersonaKey) => {
     if (!personas) {
       return
     }
 
     const persona = personas[personaKey]
-    setSession({
-      accessToken: persona.accessToken,
-      refreshToken: persona.refreshToken,
-      expiresInSeconds: 900,
-      user: {
-        id: persona.userId,
-        email: persona.email,
-        displayName: persona.displayName,
-      },
-    })
-    navigate('/app')
+    try {
+      await authenticateBrowserSession(() => login({ email: persona.email, password: DEMO_PASSWORD }))
+      navigate('/app')
+    } catch (error) {
+      setAuthBootstrapError(error instanceof Error ? error.message : 'Unable to sign in to the app')
+    }
   }
 
   if (authBootstrapError) {

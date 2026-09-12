@@ -45,7 +45,6 @@ describe('useOfficeHoursPanel', () => {
     vi.clearAllMocks()
     useAuthStore.setState({
       accessToken: 'access-token',
-      refreshToken: 'refresh-token',
       user: { id: 'owner-1', email: 'owner@example.com', displayName: 'Owner' },
     })
     mockedFetchProfiles.mockResolvedValue({ profiles: [] })

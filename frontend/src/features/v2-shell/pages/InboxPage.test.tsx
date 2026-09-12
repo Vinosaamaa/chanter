@@ -59,7 +59,6 @@ describe('InboxPage', () => {
     vi.clearAllMocks()
     useAuthStore.setState({
       accessToken: 'access-token',
-      refreshToken: 'refresh-token',
       user: { id: 'user-1', email: 'sam@example.com', displayName: 'Sam Lee' },
     })
     hooks.useNotificationsQuery.mockReturnValue({

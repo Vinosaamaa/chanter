@@ -140,6 +140,25 @@ assert_contains "gateway health" "http://localhost:8080/actuator/health" "$healt
 assert_contains "auth health via gateway" "http://localhost:8080/api/v1/auth/health" "$health_checks"
 assert_contains "realtime health" "http://localhost:8087/actuator/health" "$health_checks"
 
+# Exercise the selected service list without requiring Docker. Mailpit is local-only;
+# the unused object-store image must not block account recovery or product startup.
+prepare_services() (
+  export CHANTER_EMAIL_LOCAL_SINK="$1"
+  docker() { printf '%s\n' "$*"; }
+  product_ensure_databases() { :; }
+  product_prepare_infrastructure
+)
+local_start="$(prepare_services true)"
+production_start="$(prepare_services false)"
+assert_contains "local SMTP inbox starts with product services" \
+  "postgres redis redpanda livekit mailpit" "$local_start"
+assert_contains "external SMTP starts only runtime dependencies" \
+  "postgres redis redpanda livekit" "$production_start"
+assert_eq "external SMTP does not start a test inbox" "false" \
+  "$(if [[ "$production_start" == *mailpit* ]]; then echo true; else echo false; fi)"
+assert_eq "unused object store does not block startup" "false" \
+  "$(if [[ "$local_start" == *minio* ]]; then echo true; else echo false; fi)"
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures test(s) failed" >&2
   exit 1

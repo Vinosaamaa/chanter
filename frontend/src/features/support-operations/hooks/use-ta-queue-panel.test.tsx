@@ -29,7 +29,6 @@ describe('useTaQueuePanel', () => {
     vi.clearAllMocks()
     useAuthStore.setState({
       accessToken: 'token',
-      refreshToken: 'refresh',
       user: {
         id: 'instructor-1',
         email: 'instructor@example.com',

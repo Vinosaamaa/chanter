@@ -43,6 +43,7 @@ public class JdbcAuthEmailTokenRepository implements AuthEmailTokenRepository {
                           AND purpose = ?
                           AND used_at IS NULL
                           AND expires_at > ?
+                        FOR UPDATE
                         """,
                         (rs, rowNum) -> new TokenRecord(
                                 rs.getObject("id", UUID.class),
