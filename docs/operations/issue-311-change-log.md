@@ -23,7 +23,7 @@ Expanded the public-safety cases to explicit POSIX user homes, Linux homes, Wind
 - `node --test scripts/tests/engineering-*.test.mjs`: passed on Windows, 22 tests.
 - `node scripts/build-engineering-journal.mjs --check`: passed locally.
 - Released contract hashes: unchanged; schema files have no Git diff.
-- Hosted Windows and Ubuntu checks: pending on the pull request.
+- Hosted Windows and Ubuntu Engineering checks passed at `30a6840` in [CI run 34672721325](https://github.com/Vinosaamaa/chanter/actions/runs/34672721325). Broader CI was blocked by the baseline MinIO image pull and frontend dependency audit; the final head must pass those gates before merge.
 
 For an existing Windows checkout, Git may retain an unchanged file's old CRLF working copy until it rewrites that file. Refresh only clean contract files from Git, or use a fresh issue worktree. Do not alter the schema text or expected hashes to compensate for checkout line endings.
 

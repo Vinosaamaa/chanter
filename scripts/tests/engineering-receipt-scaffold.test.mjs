@@ -56,6 +56,7 @@ for (const [shape, unsafe] of [
     ]);
 
     assert.equal(result.status, 1);
+    assert.match(result.stderr, /Receipt text is not public-safe\./);
     assert.equal(result.stderr.includes(unsafe), false);
     assert.equal(result.stdout.includes(unsafe), false);
     assert.throws(() => readFileSync(join(root, "docs", "engineering", "changes", "pr-282.md")), /ENOENT/);
