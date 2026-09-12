@@ -110,6 +110,7 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
     if (!menuOpen) return
     const focusFrame = requestAnimationFrame(() => sidebarRef.current?.querySelector<HTMLButtonElement>('.sidebar-close')?.focus())
     const handleKey = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLElement && event.target.closest('dialog[open]')) return
       if (event.key === 'Escape') {
         event.preventDefault()
         onCloseMenu()

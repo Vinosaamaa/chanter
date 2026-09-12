@@ -88,6 +88,25 @@ test('fixture UI exposes clipped course tabs on a phone', async ({ page }, testI
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-course-phone-tabs.png') })
 })
 
+for (const size of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1280, height: 900 }]) {
+  test(`fixture UI device sessions at ${size.width}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size)
+    await page.goto('/app/home')
+    if (size.width <= 900) await page.getByRole('button', { name: 'Open navigation' }).click()
+    await page.getByRole('button', { name: 'Open account menu' }).click()
+    await page.getByRole('menuitem', { name: 'Sessions and devices' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Sessions and devices' })
+    await expect(dialog.getByText('Chrome on Windows')).toBeVisible()
+    await expect(dialog.getByText(/up to 15 minutes/)).toBeVisible()
+    const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()
+    expect(violations.map(({ id }) => id)).toEqual([])
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-device-sessions-${size.width}.png`) })
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Open account menu' })).toBeFocused()
+  })
+}
+
 
 test('fixture UI phone Inbox marks a notification done and returns to the list', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
