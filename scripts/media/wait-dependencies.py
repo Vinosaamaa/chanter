@@ -22,7 +22,9 @@ while time.monotonic() < deadline:
             with urllib.request.urlopen("http://127.0.0.1:9090/private-media-test", timeout=3) as response:
                 assert response.status == 200
         phase = "scanner connection"
-        with socket.create_connection((os.getenv("CHANTER_CLAMAV_HOST", "127.0.0.1"), int(os.getenv("CHANTER_CLAMAV_PORT", "3310"))), timeout=3) as connection:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.settimeout(3)
+            connection.connect(os.getenv("CHANTER_CLAMAV_SOCKET_PATH", "/run/clamav/clamd.sock"))
             connection.sendall(b"zVERSION\0")
             data = bytearray()
             while not data.endswith(b"\0") and len(data) < 4096:

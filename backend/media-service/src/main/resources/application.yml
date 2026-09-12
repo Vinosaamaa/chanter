@@ -49,7 +49,9 @@ chanter:
       access-key: ${CHANTER_S3_ACCESS_KEY:}
       secret-key: ${CHANTER_S3_SECRET_KEY:}
     scanner:
-      host: ${CHANTER_CLAMAV_HOST:localhost}
+      socket-path: ${CHANTER_CLAMAV_SOCKET_PATH:/run/clamav/clamd.sock}
+      tcp-development: ${CHANTER_CLAMAV_TCP_DEVELOPMENT:false}
+      host: ${CHANTER_CLAMAV_HOST:127.0.0.1}
       port: ${CHANTER_CLAMAV_PORT:3310}
       timeout: 20s
       maximum-definition-age: 72h

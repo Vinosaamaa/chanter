@@ -26,20 +26,20 @@ services:
     mem_limit: 512m
   clamav:
     image: clamav/clamav-debian:1.5.4@sha256:4c975c439fcb7ab9cbdd72162c2802f5efcb4a11dcf5b0b37da1d746474ef20e
-    # The upstream entrypoint prepares volume ownership before executing this command.
-    # Refresh before starting clamd: an update during engine loading can miss its reload notification.
-    command: ['sh', '-ec', 'unset CLAMAV_NO_CLAMD; freshclam --foreground --stdout; exec /init']
+    command: ['sh', '/etc/clamav/start-scanner.sh']
     environment:
       TZ: UTC
       CLAMD_STARTUP_TIMEOUT: '600'
       FRESHCLAM_CHECKS: '12'
-    ports: ['127.0.0.1:3310:3310']
+      CHANTER_SCANNER_CLIENT_GID: ${CHANTER_SCANNER_CLIENT_GID:-10001}
     volumes:
       - clamav-signatures:/var/lib/clamav
       - ./clamd.conf:/etc/clamav/clamd.conf:ro
+      - ./start-scanner.sh:/etc/clamav/start-scanner.sh:ro
+      - ../../.cache/media-socket:/run/clamav
     mem_limit: 4g
     healthcheck:
-      test: ['CMD', 'clamdcheck.sh']
+      test: ['CMD-SHELL', "printf 'zPING\\000' | nc -U /run/clamav/clamd.sock | tr -d '\\000' | grep -qx PONG"]
       interval: 10s
       timeout: 5s
       retries: 60
