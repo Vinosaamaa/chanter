@@ -1,6 +1,6 @@
 # Issue 319: supported backend dependencies
 
-Tracking: [issue 319](https://github.com/Vinosaamaa/chanter/issues/319). This is the independent security prerequisite found by the first native release-package scan for issue 243. It does not close public launch issue 255.
+Tracking: [issue 319](https://github.com/Vinosaamaa/chanter/issues/319), [PR 320](https://github.com/Vinosaamaa/chanter/pull/320). This is the independent security prerequisite found by the first native release-package scan for issue 243. It does not close public launch issue 255.
 
 ## Implementation
 
@@ -20,6 +20,8 @@ Design and system review: `docs/architecture/supported-backend-and-security-scan
 5. A real Trivy filesystem scan proved that source metadata alone can omit packaged Java dependencies. Rootfs scanning then identified all 95 gateway libraries and all packaged libraries in the other nine services. The remaining three Tomcat advisories in each MVC service justified the explicit 11.0.25 security override.
 6. Final `mvn -B -q -s backend/.mvn/settings.xml -f backend/pom.xml verify` passed after the Tomcat and password fixes: 313 tests, zero failures and zero errors.
 7. Final `node scripts/security/backend-artifacts.mjs <verified-trivy-executable>` passed for all ten application packages: 749 packaged libraries across the services, complete coverage, zero high/critical vulnerabilities and zero secret findings. Per-service library counts are gateway 95, auth 75, community 91, message 68, realtime 92, media 68, agent 68, analytics 56, search 68 and notification 68. These are per-package counts, not a claim of 749 unique dependencies.
+8. Independent review measured a substantial legacy BCrypt versus missing-account PBKDF2 timing difference. Two new regressions first failed: failed logins must run both work factors for all account formats, and overlong legacy guesses must still perform bounded BCrypt work without authenticating a truncated input. The correction uses both work factors in fixed order and retains the complete PBKDF2 input. The affected auth suite and refreshed package scan are rerun before the receipt head is published.
+9. All 34 Engineering policy, authoring and projection tests passed after refreshing the unchanged released schema files to the canonical LF bytes supplied by merged PR 313. No schema content change is part of this repair.
 
 ## Required hosted and release evidence
 

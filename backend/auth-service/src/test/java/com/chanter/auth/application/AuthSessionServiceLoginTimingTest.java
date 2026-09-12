@@ -1,12 +1,15 @@
 package com.chanter.auth.application;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.times;
 
 import com.chanter.common.auth.JwtTokenService;
 import com.chanter.auth.domain.AuthUser;
@@ -14,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -65,6 +69,38 @@ class AuthSessionServiceLoginTimingTest {
                 .hasMessageContaining("Invalid email or password");
 
         verify(passwordEncoder).matches(eq("password123"), eq(AuthSessionService.DUMMY_PASSWORD_HASH));
+    }
+
+    @Test
+    void failedLoginRunsBothPasswordWorkFactorsForMissingPasswordlessLegacyAndCurrentAccounts() {
+        for (String storedHash : java.util.Arrays.asList(null, "", "$2a$10$legacy-fixture", "{pbkdf2-sha256-v1}current-fixture")) {
+            clearInvocations(passwordEncoder);
+            var user = storedHash == null ? null : new AuthUser(UUID.randomUUID(), "timing@study.local",
+                    storedHash.isEmpty() ? null : storedHash, "Learner", true, Instant.now());
+            when(authUserRepository.findByEmail("timing@study.local")).thenReturn(Optional.ofNullable(user));
+
+            assertThatThrownBy(() -> authSessionService.login("timing@study.local", "wrong-password"))
+                    .hasMessageContaining("Invalid email or password");
+
+            var hashes = ArgumentCaptor.forClass(String.class);
+            verify(passwordEncoder, times(2)).matches(anyString(), hashes.capture());
+            assertThat(hashes.getAllValues().get(0)).startsWith("$2");
+            assertThat(hashes.getAllValues().get(1)).startsWith("{pbkdf2-sha256-v1}");
+        }
+    }
+
+    @Test
+    void overlongLegacyGuessStillRunsBcryptWorkWithoutAcceptingATruncatedPassword() {
+        var user = new AuthUser(UUID.randomUUID(), "legacy@study.local", "$2a$10$legacy-fixture", "Learner", true, Instant.now());
+        when(authUserRepository.findByEmail(user.email())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+        String guess = "界".repeat(80);
+        assertThatThrownBy(() -> authSessionService.login(user.email(), guess)).hasMessageContaining("Invalid email or password");
+        verify(refreshTokenRepository, never()).lockUser(user.id());
+        var passwords = ArgumentCaptor.forClass(String.class);
+        verify(passwordEncoder, times(2)).matches(passwords.capture(), anyString());
+        assertThat(passwords.getAllValues().get(0).getBytes(java.nio.charset.StandardCharsets.UTF_8).length).isLessThanOrEqualTo(72);
+        assertThat(passwords.getAllValues().get(1)).isEqualTo(guess);
     }
 
     @Test
