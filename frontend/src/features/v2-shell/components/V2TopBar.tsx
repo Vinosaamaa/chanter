@@ -87,7 +87,7 @@ export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
         )}
       </div>
 
-      <label className="search-box">
+      <label className={`search-box${calendarSearch ? ' calendar-search' : ''}`}>
         <Search size={28} />
         {calendarSearch ? (
           <CalendarSearchInput placeholder={search.placeholder} />
@@ -102,6 +102,7 @@ export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
         )}
         <span>⌘F</span>
       </label>
+      {!calendarSearch ? <button type="button" className="mobile-search-trigger" onClick={openSearch}><Search size={18} aria-hidden="true" />Search</button> : null}
 
       <Link
         to="/app/inbox"

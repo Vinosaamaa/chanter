@@ -53,7 +53,7 @@
 .v2-app-shell .community-icon.blue { color: #4257a5; background: #e6eafb; }
 .v2-app-shell .community-icon svg { width: 15px; height: 15px; fill: none; }
 .v2-app-shell .community-list { display: grid; gap: 2px; margin: 2px 0 0 20px; padding-left: 8px; border-left: 1px solid var(--line); }
-.v2-app-shell .community-list a { display: flex; align-items: center; gap: 9px; padding: 8px; min-height: 40px; border-radius: 6px; color: var(--muted); font-size: 13px; }
+.v2-app-shell .community-list a { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 8px; min-height: 40px; border-radius: 6px; color: var(--muted); font-size: 13px; }
 .v2-app-shell .community-list a i { flex-shrink: 0; width: 6px; height: 6px; border-radius: 2px; }
 .v2-app-shell .community-list a span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v2-app-shell .community-list a:hover, .v2-app-shell .community-list a.active { color: var(--blue); background: var(--blue-soft); }
@@ -85,6 +85,7 @@
 .v2-app-shell .search-box input::placeholder { color: var(--muted); }
 .v2-app-shell .search-box > span { white-space: nowrap; color: var(--muted); font-size: 11px; border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; }
 .v2-app-shell .search-box:focus-within { outline: 3px solid var(--blue); outline-offset: 2px; }
+.v2-app-shell .mobile-search-trigger { display: none; }
 .v2-app-shell .bell-button { flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 6px; position: relative; color: var(--muted); }
 .v2-app-shell .bell-button:hover { background: var(--desk); }
 .v2-app-shell .bell-button svg { width: 21px; height: 21px; }
@@ -188,6 +189,8 @@ html:has(.v2-app-shell), html:has(.v2-app-shell) body, html:has(.v2-app-shell) #
   .v2-app-shell .page-label .menu-button { margin-left: -10px; }
   .v2-app-shell .search-box { flex-basis: 180px; margin-left: auto; height: 40px; padding: 0 10px; gap: 8px; }
   .v2-app-shell .search-box input { font-size: 16px; }
+  .v2-app-shell .search-box:not(.calendar-search) { display: none; }
+  .v2-app-shell .mobile-search-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 0; background: transparent; color: var(--muted); padding: 8px 4px 8px 12px; font-size: 14px; margin-left: auto; }
   .v2-app-shell .search-box > span, .v2-app-shell .bell-button { display: none; }
   .v2-app-shell .content-shell main { margin-left: 0; }
   .v2-app-shell .mobile-navigation { position: static; flex-direction: row; width: 100%; flex: 0 0 auto; height: calc(64px + env(safe-area-inset-bottom)); padding: 4px 12px calc(4px + env(safe-area-inset-bottom)); border-right: 0; border-top: 1px solid var(--line); gap: 6px; background: white; }

@@ -16,6 +16,7 @@ for (const width of [360, 390, 768, 1280, 1920, 3840]) {
       if (width === 390 && state === 'populated') {
         await page.getByRole('button', { name: 'Browse', exact: true }).click()
         await expect(page.getByRole('dialog', { name: 'Browse Chanter' })).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Close navigation', exact: true })).toBeFocused()
         await page.screenshot({ path: testInfo.outputPath('fixture-ui-navigation-390.png') })
         await page.keyboard.press('Escape')
         await expect(page.getByRole('button', { name: 'Browse', exact: true })).toBeFocused()

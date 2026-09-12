@@ -69,7 +69,7 @@ describe('V2AppShellLayout mobile navigation', () => {
     const browse = within(mobileNav).getByRole('button', { name: 'Browse' })
     await user.click(browse)
     expect(screen.getByRole('dialog', { name: 'Browse Chanter' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Close navigation' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close navigation' })).toHaveFocus())
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog', { name: 'Browse Chanter' })).not.toBeInTheDocument()
     await waitFor(() => expect(browse).toHaveFocus())

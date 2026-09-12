@@ -108,7 +108,7 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
 
   useEffect(() => {
     if (!menuOpen) return
-    sidebarRef.current?.querySelector<HTMLButtonElement>('.sidebar-close')?.focus()
+    const focusFrame = requestAnimationFrame(() => sidebarRef.current?.querySelector<HTMLButtonElement>('.sidebar-close')?.focus())
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
@@ -118,17 +118,16 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
       const controls = [...(sidebarRef.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), [tabindex="0"]') ?? [])]
       const first = controls[0]
       const last = controls.at(-1)
-      if (event.shiftKey && document.activeElement === first) {
+      if (event.shiftKey && (document.activeElement === first || !sidebarRef.current?.contains(document.activeElement))) {
         event.preventDefault()
         last?.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && (document.activeElement === last || !sidebarRef.current?.contains(document.activeElement))) {
         event.preventDefault()
         first?.focus()
       }
     }
-    const sidebar = sidebarRef.current
-    sidebar?.addEventListener('keydown', handleKey)
-    return () => sidebar?.removeEventListener('keydown', handleKey)
+    document.addEventListener('keydown', handleKey)
+    return () => { cancelAnimationFrame(focusFrame); document.removeEventListener('keydown', handleKey) }
   }, [menuOpen, onCloseMenu])
 
   const initialCollapsed = useMemo(() => {

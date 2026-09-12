@@ -3,6 +3,7 @@ name: UI fixture review
 on:
   push:
     branches: [codex/254-ui-reconstruction]
+    paths: ['frontend/**', '.github/workflows/visual-review.yml']
   pull_request:
     branches: [main]
     paths: ['frontend/**', '.github/workflows/visual-review.yml']

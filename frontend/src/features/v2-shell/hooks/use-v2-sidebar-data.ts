@@ -76,7 +76,7 @@ export function useV2SidebarData(activeServerId?: string): V2SidebarData {
 
       return {
         id: server.id,
-        name: server.name.toUpperCase(),
+        name: server.name,
         courses,
         expanded: activeServerId ? server.id === activeServerId : index === 0,
       }
