@@ -35,7 +35,7 @@ async function login(email: string): Promise<Response> {
   return fetch(`${apiBase}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Chanter-CSRF': '1' },
-    credentials: 'include',
+    credentials: 'omit',
     body: JSON.stringify({ email, password: DEMO_PASSWORD }),
   })
 }
@@ -45,7 +45,7 @@ async function register(email: string, displayName: string): Promise<Response> {
   return fetch(`${apiBase}/api/v1/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Chanter-CSRF': '1' },
-    credentials: 'include',
+    credentials: 'omit',
     body: JSON.stringify({ email, password: DEMO_PASSWORD, displayName }),
   })
 }
@@ -85,6 +85,9 @@ async function loginOrRegister(email: string, displayName: string): Promise<Auth
   }
 
   const registerResponse = await register(email, displayName)
+  if (registerResponse.status === 202) {
+    throw new Error('Verify the local demo accounts before opening the demo, or use a local auth profile without email verification.')
+  }
   if (registerResponse.ok) {
     return registerResponse.json() as Promise<AuthSession>
   }

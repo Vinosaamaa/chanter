@@ -21,7 +21,11 @@ function isSignedOut(): boolean {
 
 function publishChange(action: 'active' | 'signed-out'): string {
   const change = `${action}:${crypto.randomUUID()}`
-  localStorage.setItem(CHANGE_KEY, change)
+  try {
+    localStorage.setItem(CHANGE_KEY, change)
+  } catch (cause) {
+    throw new Error('Allow site storage in your browser to securely manage your Chanter session, then try again.', { cause })
+  }
   return change
 }
 

@@ -17,3 +17,16 @@ Initial review head: `3d0ecb5f55d5a8708f790cde83ef9d15207ee1d4`.
 Local commands: `npm exec -- vitest run src/lib/api-client.test.ts src/app/AuthenticatedQueryCacheBoundary.test.tsx --maxWorkers=2`, `npm run lint`, `npm run build`, and Java 21 `mvn -pl auth-service,gateway-service -am verify` with repository Maven settings.
 
 The initial integrated head passed [full hosted CI](https://github.com/Vinosaamaa/chanter/actions/runs/34673531551), including the signed-in SMTP/browser journeys. The remediation head still requires its own hosted checks and completed CodeAnt re-review before merge. Production SMTP and HTTPS acceptance remain open in #242/#243/#255.
+
+## Remediation round 2
+
+Round 1 head `c43b8373a8c01648357640468b4d10057b7c9725` passed [all hosted CI jobs](https://github.com/Vinosaamaa/chanter/actions/runs/34674011689), including 240 frontend tests, seven anonymous browser checks and 13 signed-in journeys. CodeAnt completed re-review at that head.
+
+| Finding | Resolution | Verification |
+|---|---|---|
+| Development persona bootstrap replaced the customer's refresh cookie | Demo login and registration explicitly omit browser credentials; only their returned bearer tokens enter the isolated demo harness. HTTP 202 gives a clear verification prerequisite instead of being parsed as a session. The harness remains excluded from production builds. | Cookie-mode regression failed first; existing-login and missing-persona tests pass. |
+| Neutral registration response was mistaken for a verification instruction | Retry login after HTTP 202. Success continues immediately; only login's verification-required HTTP 403 uses the local inbox. Invalid passwords fail without waiting for absent verification mail. | Shell regression failed first; verified, unverified and wrong-password paths pass. The extracted existing auth functions are tested directly and included in `make product-test`. |
+| Blocked site storage raised an unexplained browser exception | Explain that site storage must be allowed. Preserve the fail-closed cross-tab/session design: no credential-changing request starts when the durable sign-out marker cannot be written. Supporting browsers that prohibit this storage would require a separately validated coordination contract; silently swallowing the error is unsafe. | Blocked-storage test failed first and passes with zero auth operations. |
+| Password hashing held the user's row lock | Verify the expensive password hash before acquiring the lock. Re-read the password hash under the same lock used by reset and reject any concurrent change before creating a session. Invalid attempts never lock the row. | Regression verifies the lock is absent during hashing and rejects a password reset racing the request. |
+
+Affected Java 21 verification, frontend focused tests/lint/build and the three shell scenarios are rerun for this round. The resulting head requires hosted checks and completed re-review before merge.

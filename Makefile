@@ -133,6 +133,7 @@ product-health:
 
 product-test:
 	$(HERMETIC_TEST) ./scripts/product/lib.test.sh
+	$(HERMETIC_TEST) bash ./scripts/product/demo-auth.test.sh
 	$(HERMETIC_TEST) ./scripts/testing/run-hermetic.test.sh
 	./scripts/java21.test.sh
 

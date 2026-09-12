@@ -114,16 +114,17 @@ public class AuthSessionService {
     @Transactional
     public AuthSession login(String email, String password, String userAgent) {
         AuthUser user = authUserRepository.findByEmail(normalizeEmail(email)).orElse(null);
-        if (user != null) {
-            refreshTokenRepository.lockUser(user.id());
-            // Check the password after the same user lock taken by reset, so a stale password cannot race reset.
-            user = authUserRepository.findById(user.id()).orElse(null);
-        }
         String passwordHash = user != null && user.passwordHash() != null
                 ? user.passwordHash()
                 : DUMMY_PASSWORD_HASH;
         boolean passwordMatches = passwordEncoder.matches(password, passwordHash);
         if (user == null || user.passwordHash() == null || !passwordMatches) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        }
+        refreshTokenRepository.lockUser(user.id());
+        // BCrypt is expensive. Lock only after verification, then reject a password changed by a concurrent reset.
+        user = authUserRepository.findById(user.id()).orElse(null);
+        if (user == null || !passwordHash.equals(user.passwordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
         if (requireEmailVerification && !user.emailVerified()) {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,15 +24,17 @@ class AuthSessionServiceLoginTimingTest {
     private PasswordEncoder passwordEncoder;
     private AuthSessionService authSessionService;
     private ProductionAuthService productionAuthService;
+    private RefreshTokenRepository refreshTokenRepository;
 
     @BeforeEach
     void setUp() {
         authUserRepository = mock(AuthUserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         productionAuthService = mock(ProductionAuthService.class);
+        refreshTokenRepository = mock(RefreshTokenRepository.class);
         authSessionService = new AuthSessionService(
                 authUserRepository,
-                mock(RefreshTokenRepository.class),
+                refreshTokenRepository,
                 passwordEncoder,
                 new JwtTokenService(
                         "test-jwt-secret-for-login-timing-at-least-32-chars",
@@ -63,5 +66,21 @@ class AuthSessionServiceLoginTimingTest {
                 .hasMessageContaining("Invalid email or password");
 
         verify(passwordEncoder).matches(eq("password123"), eq(AuthSessionService.DUMMY_PASSWORD_HASH));
+    }
+
+    @Test
+    void passwordVerificationDoesNotLockTheAccountAndAConcurrentResetRejectsTheOldPassword() {
+        var original = new AuthUser(UUID.randomUUID(), "learner@study.local", "old-hash", "Learner", true, Instant.now());
+        var reset = new AuthUser(original.id(), original.email(), "new-hash", original.displayName(), true, original.createdAt());
+        when(authUserRepository.findByEmail(original.email())).thenReturn(Optional.of(original));
+        when(authUserRepository.findById(original.id())).thenReturn(Optional.of(reset));
+        when(passwordEncoder.matches("old-password", "old-hash")).thenAnswer(invocation -> {
+            verify(refreshTokenRepository, never()).lockUser(original.id());
+            return true;
+        });
+        assertThatThrownBy(() -> authSessionService.login(original.email(), "old-password"))
+                .hasMessageContaining("Invalid email or password");
+        verify(passwordEncoder).matches("old-password", "old-hash");
+        verify(refreshTokenRepository).lockUser(original.id());
     }
 }

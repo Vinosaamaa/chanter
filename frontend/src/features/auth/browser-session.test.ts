@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAuthStore } from '../../stores/auth-store'
 import { authenticateBrowserSession, restoreBrowserSession, revokeBrowserSession, signOutBrowserSession, synchronizeBrowserSession } from './browser-session'
@@ -8,6 +8,7 @@ const authApi = vi.hoisted(() => ({ refreshSession: vi.fn(), logout: vi.fn(), re
 vi.mock('./auth-api', () => authApi)
 
 describe('cookie session restoration', () => {
+  afterEach(() => vi.restoreAllMocks())
   beforeEach(() => {
     vi.clearAllMocks()
     authApi.logout.mockResolvedValue(undefined)
@@ -87,6 +88,13 @@ describe('cookie session restoration', () => {
     await expect(restoreBrowserSession()).resolves.toBe(false)
     expect(authApi.refreshSession).not.toHaveBeenCalled()
     expect(useAuthStore.getState().status).toBe('unavailable')
+  })
+
+  it('explains blocked site storage and never starts an uncoordinated sign-in', async () => {
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError') })
+    const operation = vi.fn()
+    await expect(authenticateBrowserSession(operation)).rejects.toThrow('Allow site storage')
+    expect(operation).not.toHaveBeenCalled()
   })
 
   it('waits for refresh to finish before sending cookie-backed logout', async () => {
