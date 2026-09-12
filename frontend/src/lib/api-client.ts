@@ -135,6 +135,7 @@ async function fetchWithAuth(
     const refreshed = accessToken !== apiAuthConfig.getAccessToken() || await refreshApiSession()
     checkSession()
     if (refreshed) {
+      await response.body?.cancel().catch(() => undefined)
       return fetchWithAuth(path, init, true, checkSession)
     }
   }

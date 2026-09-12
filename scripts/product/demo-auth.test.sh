@@ -18,7 +18,9 @@ curl() {
   call=$((call + 1))
   printf '%s' "$call" > "$calls"
   case "$scenario:$call" in
-    *:1) printf '{}\n503' ;;
+    unavailable:1) printf '{}\n503' ;;
+    limited:1) printf '{}\n429' ;;
+    *:1) printf '{}\n401' ;;
     *:2) printf '{"message":"Check your inbox"}\n202' ;;
     verified:3|unverified:4) printf '{"accessToken":"test-bearer"}\n200' ;;
     unverified:3) printf '{}\n403' ;;
@@ -46,3 +48,14 @@ if result=$(login dev-demo-owner@chanter.local 'Demo Owner' 2>/dev/null); then
 fi
 test ! -s "$verified"
 echo 'ok: wrong password fails without waiting for nonexistent verification mail'
+
+for scenario in unavailable limited; do
+  printf '0' > "$calls"
+  printf '' > "$verified"
+  if result=$(login dev-demo-owner@chanter.local 'Demo Owner' 2>/dev/null); then
+    echo "FAIL: $scenario login triggered registration" >&2; exit 1
+  fi
+  test "$(cat "$calls")" = '1'
+  test ! -s "$verified"
+done
+echo 'ok: unavailable and rate-limited login never triggers registration'

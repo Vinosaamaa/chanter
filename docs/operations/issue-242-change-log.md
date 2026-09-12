@@ -54,6 +54,8 @@ CodeAnt completed its initial review. Round 1 fixes prevent stale-account stream
 
 The next review pass at `c43b837` completed after the whole hosted suite passed again. Round 2 isolates development-demo cookies, distinguishes neutral registration from actual verification-required login, explains the site-storage requirement, and moves password hashing outside the account row lock while rechecking the hash under lock to preserve reset safety. The [CodeAnt log](issue-242-codeant-fix.md) records each regression and its verification. This remains an active review until the final head's gates complete.
 
+Round 3 preserves truthful password-reset success and clears rejected credentials when site storage fails, recovers concurrent registration through a database savepoint, rejects seed registration during outages/rate limits, and releases discarded HTTP response streams. The browser logout test now waits for the actual revocation response before asserting cookie removal; a new real-service journey exercises concurrent registration and the delivered verification link. See the same review log for evidence, retained single-use OAuth behavior, and the remaining launch-owned retention/capacity work.
+
 The current execution host has no Docker or WSL runtime. The complete production-profile stack therefore cannot run locally yet. Hosted CI has a Docker-backed signed-in browser job and remains required. No test-double result will be reported as full-stack proof.
 
 The GitHub token can read/write repository issues and pull requests, but it lacks project-board scopes. Issue #242 carries the execution checklist until board access is available.

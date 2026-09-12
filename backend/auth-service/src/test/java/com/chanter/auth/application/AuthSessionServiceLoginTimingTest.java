@@ -49,7 +49,6 @@ class AuthSessionServiceLoginTimingTest {
     @Test
     void repeatRegistrationReissuesVerificationForAnUnverifiedAccount() {
         var user = new AuthUser(UUID.randomUUID(), "pending@study.local", "hash", "Pending", false, Instant.now());
-        when(authUserRepository.existsByEmail(user.email())).thenReturn(true);
         when(authUserRepository.findByEmail(user.email())).thenReturn(Optional.of(user));
         var result = authSessionService.registerWithStatus(user.email(), "password123", "Pending");
         org.assertj.core.api.Assertions.assertThat(result.verificationRequired()).isTrue();

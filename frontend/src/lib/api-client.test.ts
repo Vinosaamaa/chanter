@@ -11,7 +11,7 @@ describe('authenticated HTTP requests', () => {
   beforeEach(() => {
     token = 'old-token'
     generation = 1
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     vi.stubGlobal('fetch', fetchMock)
     configureApiAuth({ getAccessToken: () => token, getSessionGeneration: () => generation, refreshSession: refresh })
   })
@@ -26,11 +26,13 @@ describe('authenticated HTTP requests', () => {
   })
 
   it('refreshes once and retries an expired token with the new access token', async () => {
-    fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }))
+    const cancel = vi.fn()
+    fetchMock.mockResolvedValueOnce(new Response(new ReadableStream({ cancel }), { status: 401 }))
       .mockResolvedValueOnce(Response.json({ title: 'My course' }))
     refresh.mockImplementation(async () => { token = 'new-token'; return true })
     await expect(apiFetch('/api/v1/courses')).resolves.toEqual({ title: 'My course' })
     expect(refresh).toHaveBeenCalledTimes(1)
+    expect(cancel).toHaveBeenCalledTimes(1)
     expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer new-token')
   })
 

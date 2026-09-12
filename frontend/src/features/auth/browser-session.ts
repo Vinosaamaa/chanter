@@ -80,7 +80,14 @@ export async function resetBrowserPassword(token: string, password: string): Pro
   const change = currentBrowserSessionChange()
   return withSessionLock(async () => {
     const result = await resetPassword(token, password)
-    if (currentBrowserSessionChange() === change) endBrowserSessionLocally()
+    if (currentBrowserSessionChange() === change) {
+      try {
+        endBrowserSessionLocally()
+      } catch {
+        // Reset already committed and revoked the server's sessions; local credentials clear in finally.
+        return { message: `${result.message} Allow site storage, then sign in again.` }
+      }
+    }
     return result
   })
 }
@@ -143,8 +150,11 @@ async function refreshBrowserSession(): Promise<boolean> {
   } catch (error) {
     if (!stillCurrent()) return false
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-      publishChange('signed-out')
-      useAuthStore.getState().clearSession()
+      try {
+        endBrowserSessionLocally()
+      } catch {
+        // The server rejected this session. Storage failure must not retain its in-memory credentials.
+      }
     } else if (!user) {
       useAuthStore.setState({ status: 'unavailable' })
     }

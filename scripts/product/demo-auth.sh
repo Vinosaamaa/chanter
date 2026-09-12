@@ -40,6 +40,9 @@ login() {
     echo "$body"
     return 0
   fi
+  if [[ "$code" != '401' && "$code" != '403' ]]; then
+    require_http "demo login $email" "$code" "$body"
+  fi
   register_payload=$(python3 -c 'import json, os, sys; print(json.dumps({"email": sys.argv[1], "password": os.environ["DEMO_PASSWORD"], "displayName": sys.argv[2]}))' "$email" "$display_name")
   response=$(curl -sS -w $'\n%{http_code}' -X POST "$GATEWAY/api/v1/auth/register" \
     -H "Origin: ${CHANTER_PUBLIC_BASE_URL:-$FRONTEND}" -H 'X-Chanter-CSRF: 1' \

@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAuthStore } from '../../stores/auth-store'
-import { authenticateBrowserSession, restoreBrowserSession, revokeBrowserSession, signOutBrowserSession, synchronizeBrowserSession } from './browser-session'
+import { authenticateBrowserSession, resetBrowserPassword, restoreBrowserSession, revokeBrowserSession, signOutBrowserSession, synchronizeBrowserSession } from './browser-session'
 import { ApiError } from '../../lib/api-client'
 
-const authApi = vi.hoisted(() => ({ refreshSession: vi.fn(), logout: vi.fn(), revokeSession: vi.fn() }))
+const authApi = vi.hoisted(() => ({ refreshSession: vi.fn(), logout: vi.fn(), revokeSession: vi.fn(), resetPassword: vi.fn() }))
 vi.mock('./auth-api', () => authApi)
 
 describe('cookie session restoration', () => {
@@ -95,6 +95,24 @@ describe('cookie session restoration', () => {
     const operation = vi.fn()
     await expect(authenticateBrowserSession(operation)).rejects.toThrow('Allow site storage')
     expect(operation).not.toHaveBeenCalled()
+  })
+
+  it('reports a completed password reset truthfully when storing its sign-out marker fails', async () => {
+    useAuthStore.getState().setSession(session('owner'))
+    authApi.resetPassword.mockResolvedValue({ message: 'Password updated.' })
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError') })
+    await expect(resetBrowserPassword('one-time-token', 'new-password')).resolves.toEqual({
+      message: 'Password updated. Allow site storage, then sign in again.',
+    })
+    expect(useAuthStore.getState().accessToken).toBeNull()
+  })
+
+  it('clears a rejected session even when storing its sign-out marker fails', async () => {
+    useAuthStore.getState().setSession(session('owner'))
+    authApi.refreshSession.mockRejectedValue(new ApiError('Revoked', 401))
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError') })
+    await expect(restoreBrowserSession()).resolves.toBe(false)
+    expect(useAuthStore.getState().accessToken).toBeNull()
   })
 
   it('waits for refresh to finish before sending cookie-backed logout', async () => {

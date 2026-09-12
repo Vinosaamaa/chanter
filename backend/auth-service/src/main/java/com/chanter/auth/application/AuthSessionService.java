@@ -71,9 +71,10 @@ public class AuthSessionService {
     @Transactional
     public RegisterResult registerWithStatus(String email, String password, String displayName, String userAgent) {
         String normalizedEmail = normalizeEmail(email);
-        if (authUserRepository.existsByEmail(normalizedEmail)) {
+        var existing = authUserRepository.findByEmail(normalizedEmail);
+        if (existing.isPresent()) {
             // Neutral response (SEC-15): never reveal that the email is taken.
-            authUserRepository.findByEmail(normalizedEmail).ifPresent(this::sendExistingAccountNextSteps);
+            sendExistingAccountNextSteps(existing.get());
             return new RegisterResult(null, true, NEUTRAL_REGISTER_MESSAGE);
         }
         boolean verified = !requireEmailVerification;
@@ -88,7 +89,7 @@ public class AuthSessionService {
         try {
             authUserRepository.save(user);
         } catch (DataIntegrityViolationException exception) {
-            authUserRepository.findByEmail(normalizedEmail).ifPresent(this::sendExistingAccountNextSteps);
+            sendExistingAccountNextSteps(authUserRepository.findByEmail(normalizedEmail).orElseThrow(() -> exception));
             return new RegisterResult(null, true, NEUTRAL_REGISTER_MESSAGE);
         }
         if (requireEmailVerification) {

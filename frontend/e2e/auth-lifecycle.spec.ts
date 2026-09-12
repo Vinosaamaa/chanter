@@ -41,7 +41,12 @@ async function signIn(page: Page, email: string, password: string) {
 
 async function signOut(page: Page) {
   await page.getByRole('button', { name: 'Open account menu' }).click()
+  const completed = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/v1/auth/logout'
+    && response.request().method() === 'POST')
   await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click()
+  const response = await completed
+  expect(response.status()).toBe(204)
+  await response.finished()
   await expect(page).toHaveURL(/\/sign-in/)
 }
 
@@ -65,6 +70,24 @@ async function assertCredentialBoundary(page: Page, context: BrowserContext) {
 
 test.describe('Verified account and recovery @product', () => {
   test.skip(!process.env.PLAYWRIGHT_PRODUCT, 'Requires product services and the local SMTP inbox')
+
+  test('concurrent registrations remain neutral and deliver a usable verification link', async ({ page, request }) => {
+    const email = `concurrent-e2e-${randomUUID()}@example.com`
+    const password = `Chanter-${randomUUID()}`
+    const responses = await Promise.all(Array.from({ length: 6 }, () => request.post(
+      new URL('/api/v1/auth/register', appUrl).toString(), {
+        headers: { Origin: new URL(appUrl).origin, 'X-Chanter-CSRF': '1' },
+        data: { email, password, displayName: 'Concurrent learner' },
+      },
+    )))
+    for (const response of responses) {
+      expect(response.status()).toBe(202)
+      expect(await response.json()).not.toHaveProperty('accessToken')
+    }
+    await page.goto(await deliveredLink(request, email, 'Verify your Chanter email', '/verify-email'))
+    await expect(page.getByRole('status')).toContainText(/verified/i)
+    await signIn(page, email, password)
+  })
 
   test('register, verify, restore, rotate and sign out through real services', async ({ page, context, request }) => {
     const email = `auth-e2e-${randomUUID()}@example.com`
