@@ -31,3 +31,9 @@ The owner requires only free resources and has no hosting accounts. The reviewed
 | Public account, DNS/TLS, SMTP, load and rollback test | Pending external prerequisites; no provisioning attempted |
 
 `production-deploy.md` describes build/release provenance, private configuration, infrastructure planning, first installation, compatible rollback, partial failure recovery and the remaining public-release checks. The journal architecture review records the resource and trust decisions. The PR's exact-head hosted checks and eventual deployment receipts must be added before declaring #243 ready or complete.
+
+## Initial hosted feedback and review
+
+Draft [PR #315](https://github.com/Vinosaamaa/chanter/pull/315) exposed an unsupported setup-java version spelling before image build. The workflow now selects the returned exact `21.0.12+8.0.LTS` version and maintained, commit-pinned setup actions. The release gate requires a successful `CI` push run on `main`, excluding edited pull-request runs with skipped build jobs. These changes still require their new hosted run.
+
+Review added native volume ownership/write checks, per-service boot timings, container resource samples and an authenticated secure WebSocket handshake through Caddy's `/livekit/rtc` rewrite. The Caddy image removes its upstream privileged-port file capability before running with all capabilities dropped. Error logging filters credential-bearing query parameters. The runbook requires explicit migration compatibility evidence for unchanged schema epochs, corrects the OAuth browser callback, and excludes future scanner/object-storage memory from the current budget.

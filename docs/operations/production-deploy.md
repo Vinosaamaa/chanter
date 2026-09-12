@@ -21,6 +21,8 @@ Render's free service allocation and expiring free PostgreSQL do not fit ten per
 
 The remaining host memory covers Linux, Docker and filesystem cache. Java uses half each container's memory for heap, at most two processors, bounded direct memory and five database connections per service. PostgreSQL allows 80 connections; Redis uses a 128 MB data cap and rejects writes when full. Migrations run sequentially while application processes are stopped. CPU and memory limits are initial sizing, not measured capacity. Load tests on the actual A1 host must establish concurrent-user and voice-room limits before public enrollment.
 
+This base budget excludes the upload scanner and object-storage process being evaluated under #244. Those services cannot be added by spending the same memory reserve twice. Remeasure the complete runtime under #244/#252 and reduce concurrency or revise the free architecture before enabling them.
+
 Staging and production have separate Compose projects, volumes and secrets, but **only one is active on this VM**. Deploy commands reserve the host and reject a second environment. Normal staging runs on ephemeral standard GitHub-hosted runners; a staging hostname on the VM is an optional maintenance-time replacement for production, not an always-on second environment. Standard runners are free for this public repository; the workflow refuses private repositories. See [GitHub-hosted runner availability and billing](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 
 ## Build and release evidence
@@ -60,7 +62,7 @@ cd infra/production/oci
 tofu init -lockfile=readonly
 tofu validate
 tofu plan -out=reviewed-plan.tfplan
-# Apply only after the owner approves this concrete account/resource plan.
+# Apply only the reviewed account/resource plan within the authorized free scope.
 tofu apply reviewed-plan.tfplan
 ```
 
@@ -86,7 +88,7 @@ Edit `/srv/chanter/production/runtime/auth-service.env` locally with the approve
 
 Files contain literal `KEY=value` lines, without shell quotes or interpolation. Compose **2.30 or newer** is required for `env_file: format: raw`; dollar signs and punctuation in provider passwords are preserved. Never source these files in a shell, print `docker inspect`, print an expanded `docker compose config`, enable shell tracing, or paste runtime logs containing personal data into an issue. Use `config --quiet` for validation. Docker administrators can read container environments; this is an operator trust boundary, not a secret vault. See [Docker's raw environment-file format](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/).
 
-Optional Google OAuth credentials may be added only to the auth file after configuring the exact HTTPS callback `/api/v1/auth/oauth/google/callback` in the provider account. The deployment always requires email verification, disables local email sinks and sets both public base URL and the exact allowed browser origin to `https://<configured-hostname>`. The #242 Secure/HttpOnly/SameSite refresh cookie remains on the same origin; browser auth mutations require the validated Origin and `X-Chanter-CSRF: 1`. Session revocation blocks refresh immediately; already-issued access JWTs can remain valid for at most 15 minutes.
+Optional Google OAuth credentials may be added only to the auth file after configuring the exact HTTPS callback `/oauth/callback/google` in the provider account. This frontend page exchanges the callback through the API. The deployment always requires email verification, disables local email sinks and sets both public base URL and the exact allowed browser origin to `https://<configured-hostname>`. The #242 Secure/HttpOnly/SameSite refresh cookie remains on the same origin; browser auth mutations require the validated Origin and `X-Chanter-CSRF: 1`. Session revocation blocks refresh immediately; already-issued access JWTs can remain valid for at most 15 minutes.
 
 No external inference endpoint or paid model is enabled. The existing deterministic grounding and hashing embeddings remain available; provider-agnostic optional AI belongs to [#248](https://github.com/Vinosaamaa/chanter/issues/248). MinIO and Redpanda are absent because this runtime does not use them. Course files use the dedicated `resources` volume until #244 establishes the durable storage/recovery contract.
 
@@ -94,7 +96,7 @@ No external inference endpoint or paid model is enabled. The existing determinis
 
 ```sh
 node /srv/chanter/releases/COMMIT/scripts/deploy/host.mjs deploy /srv/chanter/releases/COMMIT /srv/chanter/production
-node /srv/chanter/releases/COMMIT/scripts/deploy/host.mjs verify app.owned-domain.example
+node /srv/chanter/releases/COMMIT/scripts/deploy/host.mjs verify app.owned-domain.example /srv/chanter/production
 ```
 
 Deploy checks the host architecture, memory allocation, runtime files, image checksums and Compose configuration, then locks the host. It stops ingress and applications, starts PostgreSQL/Redis, runs each service's Flyway migration once against its owned database, starts applications sequentially, starts LiveKit and ingress, and verifies public TLS/API health. Flyway's database history, not a local marker, makes retries safe. Normal application containers disable automatic migrations. Record `current.json` only after public health passes, retaining the prior receipt as `previous.json`.
@@ -106,6 +108,8 @@ node /srv/chanter/releases/COMMIT/scripts/deploy/host.mjs rollback /srv/chanter/
 ```
 
 Rollback restarts the recorded previous application images against the existing data. It never reverses SQL, deletes volumes or silently restores an old database. It is allowed only when both releases have the same reviewed `schemaEpoch` and identical PostgreSQL/Redis image IDs. Increase `infra/production/release-policy.json`'s epoch whenever a migration removes compatibility with the preceding binary. #242 begins epoch 2 because old browser-token inserts are incompatible with its required session linkage. A changed epoch or persistence image requires a reviewed fix-forward or backup recovery procedure, not automatic rollback.
+
+Every release review must inspect all migrations since the previous receipt and explicitly record whether the previous binary can read and write the new schema. An unchanged epoch is a reviewer assertion of that compatibility, not an automated schema proof. Include the migration diff, chosen epoch and a previous-binary smoke against the migrated staging database in the release evidence; do not approve automatic rollback from the integer alone.
 
 A failed compatible deployment attempts to restore the previous release and rechecks public health; the command still exits unsuccessfully so the failure is visible. An incompatible failure, failed recovery or failed first installation requires operator intervention. Ingress stays stopped after public health failure. Logs report operation names and commit IDs, not credentials. A process crash may leave `.deploy-lock`; confirm no deployment process is running before removing that empty lock directory. Never delete the runtime state or data volumes to clear a lock.
 
