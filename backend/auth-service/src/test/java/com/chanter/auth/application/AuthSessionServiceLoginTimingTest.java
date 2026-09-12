@@ -104,6 +104,20 @@ class AuthSessionServiceLoginTimingTest {
     }
 
     @Test
+    void malformedCurrentHashRejectsLoginAfterNormalDummyWork() {
+        String malformed = "{pbkdf2-sha256-v1}malformed";
+        var user = new AuthUser(UUID.randomUUID(), "invalid@study.local", malformed, "Learner", true, Instant.now());
+        when(authUserRepository.findByEmail(user.email())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong-password", malformed)).thenThrow(new IllegalArgumentException("Invalid hex encoding"));
+
+        assertThatThrownBy(() -> authSessionService.login(user.email(), "wrong-password"))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("401").hasMessageContaining("Invalid email or password");
+        verify(passwordEncoder).matches("wrong-password", AuthSessionService.DUMMY_PASSWORD_HASH);
+        verify(refreshTokenRepository, never()).lockUser(user.id());
+    }
+
+    @Test
     void passwordVerificationDoesNotLockTheAccountAndAConcurrentResetRejectsTheOldPassword() {
         var original = new AuthUser(UUID.randomUUID(), "learner@study.local", "old-hash", "Learner", true, Instant.now());
         var reset = new AuthUser(original.id(), original.email(), "new-hash", original.displayName(), true, original.createdAt());

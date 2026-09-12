@@ -35,7 +35,7 @@ Legacy BCrypt credentials created with overlong passwords cannot recover the dis
 
 The verifier requires an identified package path for every JAR in `BOOT-INF/lib`. Missing Java indexes, incomplete analysis or a changed artifact fail the gate. Findings in one service do not stop the other services from being scanned. The final result fails if any service has missing coverage, a scan error, a relevant vulnerability, or a secret finding.
 
-Raw scanner output remains in ignored local or ephemeral CI storage. The published summary contains only service names, artifact digests, library coverage counts, package versions, advisory IDs and secret rule IDs. It excludes secret matches and local paths. The complete native production image scan remains required in #243 because an application package scan does not inspect the base operating system, Redis, PostgreSQL, Caddy or LiveKit.
+Raw scanner output exists only inside the active ignored run directory. A finally block removes that run's extracted libraries and raw reports after success or failure, after checking the resolved path is an immediate run directory inside the scan cache. The published summary contains only service names, artifact digests, library coverage counts, package versions, advisory IDs and secret rule IDs. It excludes secret matches and local paths. The complete native production image scan remains required in #243 because an application package scan does not inspect the base operating system, Redis, PostgreSQL, Caddy or LiveKit.
 
 ## System review and rollout
 

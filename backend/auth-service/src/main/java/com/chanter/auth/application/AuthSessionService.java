@@ -122,8 +122,13 @@ public class AuthSessionService {
         String bcryptInput = bcryptInputAllowed ? password : "non-account-timing-placeholder";
         boolean legacyMatches = passwordEncoder.matches(bcryptInput,
                 currentFormat ? DUMMY_BCRYPT_HASH : passwordHash);
-        boolean currentMatches = passwordEncoder.matches(password,
-                currentFormat ? passwordHash : DUMMY_PASSWORD_HASH);
+        boolean currentMatches;
+        try {
+            currentMatches = passwordEncoder.matches(password, currentFormat ? passwordHash : DUMMY_PASSWORD_HASH);
+        } catch (IllegalArgumentException malformedHash) {
+            passwordEncoder.matches(password, DUMMY_PASSWORD_HASH);
+            currentMatches = false;
+        }
         boolean passwordMatches = currentFormat ? currentMatches : bcryptInputAllowed && legacyMatches;
         if (user == null || user.passwordHash() == null || !passwordMatches) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
