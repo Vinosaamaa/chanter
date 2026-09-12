@@ -15,15 +15,14 @@ public class LocalCourseResourceStorage {
     public LocalCourseResourceStorage(
             @Value("${chanter.media.storage-dir:./data/course-resources}") String storageDir
     ) throws IOException {
-        this.storageRoot = Path.of(storageDir);
+        this.storageRoot = Path.of(storageDir).toAbsolutePath().normalize();
         Files.createDirectories(storageRoot);
     }
 
-    public void store(UUID resourceId, byte[] content) throws IOException {
-        Files.write(storageRoot.resolve(resourceId.toString()), content);
+    public Path legacyPath(UUID resourceId) throws IOException {
+        Path file = storageRoot.resolve(resourceId.toString());
+        if (Files.isSymbolicLink(storageRoot) || !Files.isRegularFile(file, java.nio.file.LinkOption.NOFOLLOW_LINKS)) throw new IOException("Legacy resource is missing");
+        return file;
     }
-
-    public byte[] load(UUID resourceId) throws IOException {
-        return Files.readAllBytes(storageRoot.resolve(resourceId.toString()));
-    }
+    public void deleteLegacy(UUID resourceId) throws IOException { Files.deleteIfExists(storageRoot.resolve(resourceId.toString())); }
 }

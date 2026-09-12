@@ -1,206 +1,132 @@
 package com.chanter.media.application;
 
 import com.chanter.media.domain.CourseResource;
+import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CourseResourceService {
-
-    private static final long MAX_FILE_BYTES = 10L * 1024L * 1024L;
-
-    /** Allowed upload MIME types (SEC-17). Parameters (e.g. charset) are stripped before compare. */
-    static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "text/plain",
-            "text/markdown",
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "application/vnd.ms-powerpoint",
-            "audio/mpeg",
-            "audio/mp4",
-            "audio/wav",
-            "audio/ogg",
-            "audio/webm",
-            "video/mp4",
-            "video/webm",
-            "video/quicktime"
-    );
-
-    private final CourseResourceRepository repository;
+    private final ResourceLifecycle lifecycle;
     private final CourseResourceAccessClient accessClient;
-    private final LocalCourseResourceStorage storage;
-    private final ResourceIngestionClient resourceIngestionClient;
+    private final PrivateResourceStorage storage;
+    private final UploadValidator validator;
     private final Clock clock;
+    private final Semaphore transfers = new Semaphore(2);
 
-    public CourseResourceService(
-            CourseResourceRepository repository,
-            CourseResourceAccessClient accessClient,
-            LocalCourseResourceStorage storage,
-            ResourceIngestionClient resourceIngestionClient,
-            Clock clock
-    ) {
-        this.repository = repository;
-        this.accessClient = accessClient;
-        this.storage = storage;
-        this.resourceIngestionClient = resourceIngestionClient;
-        this.clock = clock;
+    public CourseResourceService(ResourceLifecycle lifecycle, CourseResourceAccessClient accessClient,
+            PrivateResourceStorage storage, UploadValidator validator, Clock clock) {
+        this.lifecycle = lifecycle; this.accessClient = accessClient; this.storage = storage; this.validator = validator; this.clock = clock;
     }
 
-    @Transactional
-    public CourseResource uploadCourseResource(
-            UUID courseId,
-            UUID uploaderUserId,
-            String title,
-            boolean aiApproved,
-            MultipartFile file
-    ) {
-        CourseResourceAccess access = accessClient.requireAccess(courseId, uploaderUserId);
-        if (!access.canUploadCourseResource()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Course Instructors can upload Course Resources");
-        }
-
-        if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Resource file must not be empty");
-        }
-        if (file.getSize() > MAX_FILE_BYTES) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Resource file exceeds the 10 MB limit");
-        }
-
-        String fileName = sanitizeFileName(file.getOriginalFilename());
-        if (fileName.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Resource file name must not be blank");
-        }
-
-        String normalizedTitle = title == null || title.isBlank() ? fileName : title.trim();
-        if (normalizedTitle.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Resource title must not be blank");
-        }
-
-        UUID resourceId = UUID.randomUUID();
-        String contentType = requireAllowedContentType(file.getContentType());
-
-        byte[] content;
-        try {
-            content = file.getBytes();
+    public CourseResource uploadCourseResource(UUID courseId, UUID userId, String title, boolean aiApproved,
+                                               MultipartFile file, UUID idempotencyKey, String checksum) {
+        requireUpload(courseId, userId);
+        acquire();
+        try (var upload = validator.validate(file, checksum)) {
+            String normalizedTitle = title == null || title.isBlank() ? upload.fileName() : title.strip();
+            if (normalizedTitle.length() > 255 || normalizedTitle.chars().anyMatch(Character::isISOControl)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course Resource title is invalid");
+            }
+            UUID id = UUID.randomUUID();
+            var candidate = new CourseResource(id, courseId, normalizedTitle, upload.fileName(), upload.contentType(), upload.byteSize(),
+                    PrivateResourceStorage.PREFIX + courseId + "/" + id + "/" + UUID.randomUUID(), aiApproved, userId,
+                    clock.instant().truncatedTo(ChronoUnit.MICROS), "STAGING", upload.sha256(),
+                    idempotencyKey == null ? UUID.randomUUID() : idempotencyKey, storage.backend());
+            CourseResource reserved = lifecycle.reserve(candidate);
+            if (!reserved.id().equals(id)) return reserved;
+            try {
+                storage.put(candidate.storageKey(), upload.path(), upload.sha256());
+                lifecycle.quarantine(id);
+            } catch (Exception unavailable) {
+                // A timed-out put may have succeeded. Keep the reservation until a worker confirms deletion.
+                lifecycle.requestDelete(id);
+            }
+            return lifecycle.find(id).orElseThrow();
         } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to read uploaded Course Resource");
-        }
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Course Resource processing is unavailable");
+        } finally { transfers.release(); }
+    }
 
-        CourseResource courseResource = new CourseResource(
-                resourceId,
-                courseId,
-                normalizedTitle,
-                fileName,
-                contentType,
-                content.length,
-                resourceId.toString(),
-                aiApproved,
-                uploaderUserId,
-                clock.instant().truncatedTo(ChronoUnit.MICROS)
-        );
+    public List<CourseResource> listCourseResources(UUID course, UUID user) {
+        var access = requireView(course, user);
+        return lifecycle.list(course, access.canUploadCourseResource());
+    }
 
-        repository.save(courseResource);
+    public CourseResource getCourseResource(UUID id, UUID user) {
+        var resource = existing(id);
+        var access = requireView(resource.courseId(), user);
+        if (!access.canUploadCourseResource() && !resource.state().equals("AVAILABLE")) throw missing();
+        return resource;
+    }
 
+    public void deleteCourseResource(UUID id, UUID user) {
+        var resource = lifecycle.find(id).orElseThrow(CourseResourceService::missing);
+        requireUpload(resource.courseId(), user);
+        lifecycle.requestDelete(id);
+    }
+
+    public ResourceLifecycle.Usage usage(UUID course, UUID user) {
+        requireUpload(course, user);
+        return lifecycle.courseUsage(course);
+    }
+
+    public StoredCourseResourceContent downloadCourseResource(UUID id, UUID user) {
+        var resource = existing(id);
+        requireView(resource.courseId(), user);
+        if (!resource.state().equals("AVAILABLE")) throw new ResponseStatusException(HttpStatus.CONFLICT, "Course Resource is not available");
+        if (!resource.storageBackend().equals(storage.backend())) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Course Resource migration is required");
+        acquire();
+        java.nio.file.Path temporary = null;
         try {
-            storage.store(resourceId, content);
-        } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store Course Resource");
+            var path = validator.verifiedDownload(storage.open(resource.storageKey()), resource.byteSize(), resource.sha256());
+            temporary = path;
+            // Deletion accepted during a provider read must win before any bytes are exposed.
+            var latest = lifecycle.find(id);
+            if (latest.isEmpty() || !latest.get().state().equals("AVAILABLE")) { Files.deleteIfExists(path); throw missing(); }
+            var closed = new AtomicBoolean();
+            InputStream content = new FilterInputStream(Files.newInputStream(path)) {
+                @Override public void close() throws IOException {
+                    if (closed.compareAndSet(false, true)) {
+                        try { super.close(); } finally { try { Files.deleteIfExists(path); } finally { transfers.release(); } }
+                    }
+                }
+            };
+            return new StoredCourseResourceContent(resource, content);
+        } catch (Exception unavailable) {
+            if (temporary != null) try { Files.deleteIfExists(temporary); } catch (IOException ignored) { }
+            transfers.release();
+            if (unavailable instanceof ResponseStatusException status) throw status;
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Course Resource content is unavailable");
         }
-
-        if (aiApproved) {
-            resourceIngestionClient.ingestAiApprovedResource(courseId, resourceId, fileName, content);
-        }
-
-        return courseResource;
     }
 
-    static String sanitizeFileName(String originalFileName) {
-        if (originalFileName == null) {
-            return "";
-        }
-
-        String normalized = originalFileName.replace('\\', '/').trim();
-        int lastSlash = normalized.lastIndexOf('/');
-        if (lastSlash >= 0) {
-            normalized = normalized.substring(lastSlash + 1);
-        }
-
-        if (normalized.equals(".") || normalized.equals("..")) {
-            return "";
-        }
-
-        return normalized;
+    private CourseResource existing(UUID id) {
+        return lifecycle.find(id).filter(resource -> !List.of("DELETE_PENDING", "DELETED").contains(resource.state()))
+                .orElseThrow(CourseResourceService::missing);
     }
-
-    static String requireAllowedContentType(String rawContentType) {
-        String normalized = normalizeContentType(rawContentType);
-        if (normalized == null || !ALLOWED_CONTENT_TYPES.contains(normalized)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Course Resource content type is not allowed"
-            );
-        }
-        return normalized;
+    private CourseResourceAccess requireView(UUID course, UUID user) {
+        var access = accessClient.requireAccess(course, user);
+        if (!access.canViewCourseResources()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Course Resource access requires enrollment or Instructor role");
+        return access;
     }
-
-    /** Strip parameters and lowercase type/subtype; null/blank → null. */
-    static String normalizeContentType(String rawContentType) {
-        if (rawContentType == null || rawContentType.isBlank()) {
-            return null;
-        }
-        String withoutParams = rawContentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
-        if (withoutParams.isEmpty() || withoutParams.indexOf('/') < 1) {
-            return null;
-        }
-        return withoutParams;
+    private void requireUpload(UUID course, UUID user) {
+        if (!accessClient.requireAccess(course, user).canUploadCourseResource()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Course Instructors can manage Course Resources");
     }
-
-    @Transactional(readOnly = true)
-    public List<CourseResource> listCourseResources(UUID courseId, UUID viewerUserId) {
-        CourseResourceAccess access = accessClient.requireAccess(courseId, viewerUserId);
-        if (!access.canViewCourseResources()) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Course Resource access requires Cohort Enrollment or Instructor role"
-            );
-        }
-
-        return repository.findByCourseId(courseId);
+    private void acquire() {
+        if (!transfers.tryAcquire()) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Course Resource transfers are busy; retry later");
     }
-
-    @Transactional(readOnly = true)
-    public StoredCourseResourceContent downloadCourseResource(UUID resourceId, UUID viewerUserId) {
-        CourseResource courseResource = repository.findById(resourceId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Resource not found"));
-
-        CourseResourceAccess access = accessClient.requireAccess(courseResource.courseId(), viewerUserId);
-        if (!access.canViewCourseResources()) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Course Resource access requires Cohort Enrollment or Instructor role"
-            );
-        }
-
-        byte[] content;
-        try {
-            content = storage.load(resourceId);
-        } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Course Resource content is unavailable");
-        }
-
-        return new StoredCourseResourceContent(courseResource, content);
-    }
-
-    public record StoredCourseResourceContent(CourseResource courseResource, byte[] content) {
-    }
+    private static ResponseStatusException missing() { return new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Resource not found"); }
+    public record StoredCourseResourceContent(CourseResource courseResource, InputStream content) { }
 }

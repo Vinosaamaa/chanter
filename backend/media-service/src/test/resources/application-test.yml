@@ -13,4 +13,7 @@ chanter:
     access-token-ttl: 15m
   internal-service-token: test-internal-service-token-for-media
   media:
-    storage-dir: ${java.io.tmpdir}/chanter-media-test
+    storage-dir: target/media-test
+    spool-dir: target/media-spool-test
+    storage-backend: local
+    worker-enabled: false
