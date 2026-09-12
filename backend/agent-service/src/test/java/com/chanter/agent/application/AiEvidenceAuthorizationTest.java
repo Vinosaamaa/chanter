@@ -13,17 +13,41 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 class AiEvidenceAuthorizationTest {
+    @Test void deletedResourceExcludedFromCatalogCannotPublishStoredEvidenceOrDownloadItsOldContent() {
+        var access = mock(SupportQuestionChannelAccessClient.class);
+        var assistant = mock(StudyAssistantRepository.class);
+        var resources = mock(CourseResourceCatalogClient.class);
+        var content = mock(CourseResourceContentClient.class);
+        var faqs = mock(ApprovedFaqClient.class);
+        UUID user = UUID.randomUUID(), channel = UUID.randomUUID(), course = UUID.randomUUID();
+        UUID server = UUID.randomUUID(), resource = UUID.randomUUID(), install = UUID.randomUUID();
+        when(access.requireAccess(channel, user)).thenReturn(new SupportQuestionChannelAccessClient.SupportQuestionChannelAccess(channel, course, server, "q", true, false));
+        when(assistant.findInstallByStudyServerId(server)).thenReturn(java.util.Optional.of(
+                new com.chanter.agent.domain.StudyAssistantInstall(install, server, user, java.time.Instant.now())));
+        when(assistant.findGrantsByInstallId(install)).thenReturn(List.of(
+                new StudyAssistantGrant(UUID.randomUUID(), install, GrantType.COURSE_CHANNEL, channel),
+                new StudyAssistantGrant(UUID.randomUUID(), install, GrantType.COURSE_RESOURCE, resource)));
+        // The document catalog excludes deleted resources even while an old installation grant/citation remains.
+        when(resources.listAiApprovedCourseResources(course, user)).thenReturn(List.of());
+        var guard = new AiEvidenceAuthorization(access, assistant, resources, content, faqs);
+        assertThatThrownBy(() -> guard.requireCurrent(channel, user, List.of(new SourceCitation(resource, "Removed guide", "Previously approved evidence."))))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        verifyNoInteractions(content);
+    }
+
     @Test void checksCurrentApprovalAndContentRatherThanTrustingAnOldRetrievedChunk() {
         var access = mock(SupportQuestionChannelAccessClient.class);
-        var assistant = mock(StudyAssistantService.class);
+        var assistant = mock(StudyAssistantRepository.class);
         var resources = mock(CourseResourceCatalogClient.class);
         var content = mock(CourseResourceContentClient.class);
         var faqs = mock(ApprovedFaqClient.class);
         UUID user = UUID.randomUUID(), channel = UUID.randomUUID(), course = UUID.randomUUID(), server = UUID.randomUUID(), resource = UUID.randomUUID(), install = UUID.randomUUID();
         when(access.requireAccess(channel, user)).thenReturn(new SupportQuestionChannelAccessClient.SupportQuestionChannelAccess(channel, course, server, "q", true, false));
-        when(assistant.findPresence(server, user)).thenReturn(new StudyAssistantService.Presence(server, true, List.of(
+        when(assistant.findInstallByStudyServerId(server)).thenReturn(java.util.Optional.of(
+                new com.chanter.agent.domain.StudyAssistantInstall(install, server, user, java.time.Instant.now())));
+        when(assistant.findGrantsByInstallId(install)).thenReturn(List.of(
                 new StudyAssistantGrant(UUID.randomUUID(), install, GrantType.COURSE_CHANNEL, channel),
-                new StudyAssistantGrant(UUID.randomUUID(), install, GrantType.COURSE_RESOURCE, resource))));
+                new StudyAssistantGrant(UUID.randomUUID(), install, GrantType.COURSE_RESOURCE, resource)));
         when(resources.listAiApprovedCourseResources(course, user)).thenReturn(List.of(new CourseResourceSummary(resource, course, "Guide", "guide.md", true)));
         when(content.downloadContent(resource, user)).thenReturn("An authorized queue excerpt.".getBytes(StandardCharsets.UTF_8));
         var guard = new AiEvidenceAuthorization(access, assistant, resources, content, faqs);
@@ -33,5 +57,7 @@ class AiEvidenceAuthorizationTest {
         assertThatThrownBy(() -> guard.requireCurrent(channel, user, evidence)).isInstanceOf(ResponseStatusException.class);
         when(resources.listAiApprovedCourseResources(course, user)).thenReturn(List.of());
         assertThatThrownBy(() -> guard.requireCurrent(channel, user, evidence)).isInstanceOf(ResponseStatusException.class);
+        when(assistant.findGrantsByInstallId(install)).thenReturn(List.of());
+        assertThatThrownBy(() -> guard.requireCurrent(channel, user, List.of())).isInstanceOf(ResponseStatusException.class);
     }
 }

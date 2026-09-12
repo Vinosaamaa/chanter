@@ -54,7 +54,7 @@ public class LlmModelCatalog {
             return switch (config.provider()) {
                 case "anthropic" -> new com.chanter.agent.infra.AnthropicLlmChatClient(endpoint, config.apiKey(), config.model());
                 case "xai" -> new com.chanter.agent.infra.XaiLlmChatClient(endpoint, config.apiKey(), config.model());
-                case "ollama" -> new com.chanter.agent.infra.OllamaLlmChatClient(baseUrl(config), config.model(), 5, (int) config.timeout().toSeconds());
+                case "ollama" -> new com.chanter.agent.infra.OllamaLlmChatClient(baseUrl(config), config.model(), config.timeout());
                 case "compatible" -> new com.chanter.agent.infra.OpenAiProtocolLlmChatClient(endpoint, config.apiKey(), config.model(), "compatible");
                 default -> new com.chanter.agent.infra.ResponsesLlmChatClient(endpoint, config.apiKey(), config.model(), config.provider());
             };

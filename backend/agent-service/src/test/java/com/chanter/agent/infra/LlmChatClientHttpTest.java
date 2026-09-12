@@ -1,5 +1,7 @@
 package com.chanter.agent.infra;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import com.chanter.agent.application.LlmChatClient.LlmChatRequest;
 import com.sun.net.httpserver.HttpServer;
@@ -21,7 +23,7 @@ class LlmChatClientHttpTest {
         });
         server.start();
         try {
-            var client = new OllamaLlmChatClient("http://127.0.0.1:" + server.getAddress().getPort(), "fixture-local", 2, 3);
+            var client = new OllamaLlmChatClient("http://127.0.0.1:" + server.getAddress().getPort(), "fixture-local", Duration.ofSeconds(3));
             var response = client.complete(new LlmChatRequest("sys", "user", 32));
             assertThat(LlmHttpTransport.JSON.readTree(body.get()).path("options").path("num_predict").asInt()).isEqualTo(32);
             assertThat(response.content()).isEqualTo("Hello");

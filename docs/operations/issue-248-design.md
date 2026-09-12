@@ -18,6 +18,8 @@ An explicit unavailable model is denied before provider work. An unavailable dep
 
 SSE emits status, validated token chunks during provider generation, and complete with the authoritative persisted answer. Clients replace partial text with complete; they discard partial text on error. A failure after a partial quote can end in a low-confidence handoff. Error events contain safe code/status/message values; they never include provider bodies. Client disconnect or timeout cancels the active provider HTTP request/body read. There are no automatic generation retries: ambiguous network failure could already have consumed provider usage.
 
+A possible provider attempt permanently claims its question, including after settlement or a crash before answer persistence. Repeating generation without a saved answer returns 409 / GENERATION_ALREADY_ATTEMPTED, explains the uncertain result, and offers Source only or instructor help. Source-only can recompute approved evidence without another provider call. Only a proven failure before invoking the provider releases the claim. This foundation does not offer paid regeneration or reconstruct a lost provider response.
+
 ## Configuration
 
 The Spring configuration namespace is `chanter.llm`. `enabled` defaults to false and remains the deployment kill switch: even with a populated catalog, disabled generation exposes only source-only, rejects explicit generation selections and definitions, and returns a disabled client without provider probes or traffic. `default-model-id` defaults to source-only and `daily-token-limit` defaults to 100000 per Study Server per UTC day. `models` is a map keyed by stable operator-selected IDs. Each entry configures label, provider, model, optional base-url, a secret-injected api-key for hosted access, max-input-tokens (8192), max-output-tokens (1024), timeout (30s), allowed-course-ids, and optional versioned per-million-token prices. Enabling generation requires both enabled=true and an explicit valid catalog; enabling without a catalog fails startup.
@@ -28,13 +30,19 @@ OpenAI uses native Responses; Anthropic uses native Messages; xAI uses Responses
 
 Input uses a conservative UTF-8 byte bound plus framing allowance. Generation has one step, no provider tools, a configured 1–120s deadline, maximum 8192 output tokens, bounded response/line sizes, and cancellation hooks. HTTP redirects are disabled. These are request controls, not proof against a nonconforming provider billing beyond its advertised bound.
 
+Ollama additionally limits visible output to four UTF-8 bytes per configured maximum output token, before emitting an oversized chunk or accepting a completion. This is an independent payload limit, not a tokenizer; it can conservatively reject a valid long response and does not trust eval_count to bound content. The shared transport's connection timeout is five seconds, bounded by the overall request deadline; there is no separate Ollama connection setting.
+
 ## Authorization and accounting
 
 Before sending content, each request rechecks channel membership, assistant installation/grants, Course resource approval, and current source content. Vector candidate IDs are intersected with current approved Course IDs. Rechecks also happen before each released evidence chunk, final publication, and reading a saved answer. Current text must still contain the cited excerpt; stale content or removed approval fails closed. FAQ evidence is checked against the current approved FAQ set. The existing text-only retrieval seam and cross-service race windows remain #247 work.
 
+Evidence checks use the installation's actual grants after channel authorization, intersected with the requesting viewer's current approved resources and content access. They do not require instructors or TAs to hold learner enrollment. Removing a resource approval still denies saved evidence to staff as well as learners.
+
 A committed database reservation locks the assistant installation before generation and charges the full input/output budget. Concurrent requests cannot both spend the remaining daily budget. Settlement records measured usage once, or retains the reservation if usage is unknown. Stale pending reservations remain charged. Raw provider text, questions, excerpts and credentials are not copied into the generation ledger. Its records contain selection/provider/model, opaque request ID, normalized token measurements, latency, safe outcome, and optional versioned estimated cost. Existing answer storage still contains the authorized learner question and answer under its existing access policy.
 
 Unknown upstream usage is null, never fabricated zero. If authorization or cancellation stops the request after reservation but before any provider attempt, the known unused reservation settles as zero; this is local evidence of no provider call, not an upstream usage measurement. Input totals include cache reads/writes; output totals include reported reasoning. Missing cost metadata remains unknown. Instructor usage aggregates distinguish unknown usage/cost and pending/error counts. Estimated cost is neither a provider invoice nor subscription entitlement. Subscription or API overage is never automatically enabled.
+
+NOT_STARTED is the only settlement state that permits a new provider reservation for the same question. Every other receipt, including stale UNKNOWN and measured zero returned by a provider, keeps the claim across daily budget resets. A late receipt can reconcile unknown usage without reopening generation.
 
 ## Grounded explanation release boundary
 

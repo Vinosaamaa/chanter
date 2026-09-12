@@ -15,7 +15,7 @@ This slice adds a selectable provider runtime, durable token budget accounting, 
 
 Focused red-to-green slices reproduced missing provider configuration, native Anthropic and xAI wire mismatches, stalled stream deadline handling, concurrent quota overspend, fabricated source references, revoked evidence, ignored modelId at the answer endpoint, absent usage aggregates, missing Ollama completion output bounds, late Anthropic output after terminal state, invalid inclusive token totals, and false no-provider-use audit on failed attempts.
 
-The whole endpoint fixture selects local Ollama, emits validated SSE chunks, persists measured usage of 120 tokens, returns instructor-only aggregates, then denies answer reload after resource approval removal. It is an HTTP fixture with the test database and service clients, not a live model or full multi-service retrieval demonstration.
+The whole endpoint fixture selects local Ollama, emits validated SSE chunks, persists measured usage of 120 tokens, permits authorized instructor and TA reads without enrollment, returns instructor-only aggregates, then denies learner and TA reload after resource approval removal. A separate endpoint fixture retains an abandoned provider attempt, reports its uncertain result, and saves a source-only answer with no second provider call. Ledger tests reproduce the concurrent settlement/persistence gap and a crashed reservation across a daily reset. It is an HTTP fixture with the test database and service clients, not a live model or full multi-service retrieval demonstration.
 
 Run affected verification with:
 
@@ -23,11 +23,10 @@ Run affected verification with:
 mvn -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service,gateway-service -am verify
 ```
 
-The committed protocol corpus is backend/agent-service/src/test/resources/evaluations/ai-runtime-v1.json. All five cases passed. Final local verification passed 116 tests: common 13, agent-service 67, gateway-service 36, with zero failures/errors. Hosted-head receipts belong to PR #317. No provider key, paid API call, model download, or native subscription session was used. Frontend and Docker product verification are not claimed by these backend fixtures.
+The committed protocol corpus is backend/agent-service/src/test/resources/evaluations/ai-runtime-v1.json. All five cases passed. Final local verification passed 122 tests: common 13, agent-service 73, gateway-service 36, with zero failures/errors. Hosted-head receipts belong to PR #317. No provider key, paid API call, model download, or native subscription session was used. Frontend and Docker product verification are not claimed by these backend fixtures.
 
 ## Operations
 
 Default deployment makes no generation call. Supply an explicit operator catalog and Course export approvals before offering hosted choices; check account-specific spend controls outside Chanter. The API catalog is the UI source of truth, not a hardcoded model list. A configured client is not a successful readiness probe.
 
 Migration rollback is to disable generation and preserve the usage ledger, rather than deleting accounting. A timed-out request may have consumed upstream usage; it retains its full reservation when the provider returns no receipt. A saved handoff is an answer to the current support question; the learner can ask an Instructor or TA rather than incurring an automatic retry.
-

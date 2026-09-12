@@ -36,15 +36,15 @@ class AiGenerationLedgerTest {
         UUID ticket = ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model);
         assertThatThrownBy(() -> ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("429");
-        ledger.settle(ticket, new LlmUsage(8, 2, null, null, null), "SUCCESS", 12, "fixture", null, model);
-        ledger.settle(ticket, new LlmUsage(90, 90, null, null, null), "SUCCESS", 12, "fixture", null, model);
+        ledger.settle(ticket, new LlmUsage(8, 2, null, null, null), "SUCCESS", 12, "fixture", null, model, true);
+        ledger.settle(ticket, new LlmUsage(90, 90, null, null, null), "SUCCESS", 12, "fixture", null, model, true);
         assertThat(ledger.summary(server).accountedTokens()).isEqualTo(10);
         assertThat(ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model)).isNotNull();
     }
 
     @Test void missingProviderUsageRetainsTheReservationInsteadOfBecomingZero() {
         UUID ticket = ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model);
-        ledger.settle(ticket, LlmUsage.UNKNOWN, "TIMED_OUT", 30, "fixture", null, model);
+        ledger.settle(ticket, LlmUsage.UNKNOWN, "TIMED_OUT", 30, "fixture", null, model, true);
         assertThat(ledger.summary(server).accountedTokens()).isEqualTo(80);
         assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
         assertThatThrownBy(() -> ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model))
@@ -60,6 +60,46 @@ class AiGenerationLedgerTest {
             assertThat((first.get() ? 1 : 0) + (second.get() ? 1 : 0)).isEqualTo(1);
             assertThat(ledger.summary(server).accountedTokens()).isEqualTo(80);
         }
+    }
+
+    @Test void concurrentRequestCannotGenerateAgainAfterSettlementBeforeAnswerPersistence() throws Exception {
+        UUID question = UUID.randomUUID();
+        var settled = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(() -> {
+                UUID ticket = ledger.reserve(server, question, UUID.randomUUID(), "local", model);
+                ledger.settle(ticket, new LlmUsage(8, 2, null, null, null), "SUCCESS", 12, "fixture", null, model, true);
+                // Deliberately no answer persisted: this is the settlement/persistence gap.
+                settled.countDown();
+            });
+            var second = pool.submit(() -> {
+                assertThat(settled.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                assertThatThrownBy(() -> ledger.reserve(server, question, UUID.randomUUID(), "local", model))
+                        .isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
+                return null;
+            });
+            first.get(); second.get();
+        }
+        assertThat(ledger.summary(server).requestCount()).isEqualTo(1);
+    }
+
+    @Test void crashWithoutProviderReceiptCannotRetryEvenAfterTheDailyBudgetResets() {
+        UUID question = UUID.randomUUID();
+        UUID ticket = ledger.reserve(server, question, UUID.randomUUID(), "local", model);
+        jdbc.sql("UPDATE ai_generation_usage SET created_at=:at WHERE id=:id")
+                .param("at", OffsetDateTime.now().minusDays(1)).param("id", ticket).update();
+        assertThatThrownBy(() -> ledger.reserve(server, question, UUID.randomUUID(), "local", model))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
+        assertThat(jdbc.sql("SELECT COUNT(*) FROM ai_generation_usage WHERE support_question_id=:question")
+                .param("question", question).query(Integer.class).single()).isEqualTo(1);
+    }
+
+    @Test void onlyAProvenFailureBeforeProviderInvocationReleasesTheQuestionClaim() {
+        UUID question = UUID.randomUUID();
+        UUID ticket = ledger.reserve(server, question, UUID.randomUUID(), "local", model);
+        ledger.settle(ticket, LlmUsage.UNKNOWN, "REJECTED_EVIDENCE", 1, "fixture", null, model, false);
+        assertThat(ledger.summary(server).accountedTokens()).isZero();
+        assertThat(ledger.reserve(server, question, UUID.randomUUID(), "local", model)).isNotNull();
     }
     private boolean reserveAfter(CountDownLatch start) throws Exception {
         start.await();

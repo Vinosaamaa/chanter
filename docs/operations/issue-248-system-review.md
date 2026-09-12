@@ -8,6 +8,8 @@ The free source path performs no generation and no token reservation. Explicit h
 
 The installation row serializes reservations; a reservation commits before network work. Unknown and stale requests remain budgeted, and repeated settled receipts do not replace prior measurements. Cancellation closes active network reads. A child generation deadline cannot outlive the outer request, and a generation timeout leaves time to return a clear handoff. One generation step and zero automatic retries avoid hidden cost amplification.
 
+The question's claim survives settlement, answer-save failure, process loss and daily budget reset. Only locally proven pre-provider failure releases it. This closes the settlement/persistence gap without holding database locks during network work. A lost answer cannot be regenerated through a paid provider; authorized source-only recovery remains available and preserves the unknown usage receipt. Staff evidence reads use installation grants plus their own current resource access, not learner enrollment.
+
 Native Anthropic and xAI protocols are separate. xAI Responses accounts for reasoning in output bounds. Generic compatible adapters require operator conformance checks. No configured provider is reported as reachable merely because construction succeeded.
 
 ## Remaining release work

@@ -93,6 +93,8 @@ public class GroundedSupportQuestionController {
 
     record StreamError(String code, int status, String message) {
         static StreamError from(Exception failure) {
+            if (failure instanceof com.chanter.agent.application.AiGenerationLedger.AttemptConflict conflict)
+                return new StreamError("GENERATION_ALREADY_ATTEMPTED", 409, conflict.getReason());
             if (failure instanceof ResponseStatusException response) {
                 int status = response.getStatusCode().value();
                 return switch (status) {

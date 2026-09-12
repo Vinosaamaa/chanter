@@ -71,7 +71,7 @@ public class AgentRuntimeService {
             outcome = "REJECTED_EVIDENCE";
             throw authorizationOrPersistenceFailure;
         } finally {
-            ledger.settle(ticket, usage, outcome, (System.nanoTime() - started) / 1_000_000, resolved, requestId, model);
+            ledger.settle(ticket, usage, outcome, (System.nanoTime() - started) / 1_000_000, resolved, requestId, model, attempted);
         }
     }
     private static OrchestratedAnswer handoff(String provider, String model, LlmProviderException.Outcome outcome) {

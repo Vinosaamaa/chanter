@@ -47,7 +47,7 @@ class AgentRuntimeServiceTest {
             var answer = runtime.orchestrate("How does a queue work?", grounding, invocation("local"), execution, ignored -> {});
             assertThat(answer.result().answerBody()).contains("first-in, first-out");
             assertThat(answer.llmUsed()).isTrue();
-            verify(ledger).settle(eq(ticket), eq(new LlmUsage(20, 12, null, null, null)), eq("SUCCESS"), anyLong(), eq("fixture"), isNull(), eq(model));
+            verify(ledger).settle(eq(ticket), eq(new LlmUsage(20, 12, null, null, null)), eq("SUCCESS"), anyLong(), eq("fixture"), isNull(), eq(model), eq(true));
         }
     }
 
@@ -60,7 +60,7 @@ class AgentRuntimeServiceTest {
             assertThat(answer.result().confidence()).isEqualTo(AnswerConfidence.LOW);
             assertThat(answer.result().answerBody()).contains("unavailable");
             assertThat(answer.llmUsed()).isTrue();
-            verify(ledger).settle(eq(ticket), eq(LlmUsage.UNKNOWN), eq("UNAVAILABLE"), anyLong(), eq("fixture"), isNull(), eq(model));
+            verify(ledger).settle(eq(ticket), eq(LlmUsage.UNKNOWN), eq("UNAVAILABLE"), anyLong(), eq("fixture"), isNull(), eq(model), eq(true));
         }
     }
     private void configure() {
@@ -81,7 +81,7 @@ class AgentRuntimeServiceTest {
                     .isInstanceOf(IllegalStateException.class);
         }
         verifyNoInteractions(client);
-        verify(ledger).settle(eq(ticket), eq(new LlmUsage(0, 0, 0, 0, 0)), eq("REJECTED_EVIDENCE"), anyLong(), eq("fixture"), isNull(), eq(model));
+        verify(ledger).settle(eq(ticket), eq(new LlmUsage(0, 0, 0, 0, 0)), eq("REJECTED_EVIDENCE"), anyLong(), eq("fixture"), isNull(), eq(model), eq(false));
     }
 
     @Test void configuredProviderDeadlineInterruptsAStalledGenerationBeforeTheOuterRequestDeadline() {
@@ -102,7 +102,7 @@ class AgentRuntimeServiceTest {
             var answer = runtime.orchestrate("How?", grounding, invocation("local"), execution, ignored -> {});
             assertThat(answer.result().answerBody()).contains("did not finish in time");
             execution.check();
-            verify(ledger).settle(eq(ticket), eq(LlmUsage.UNKNOWN), eq("TIMED_OUT"), anyLong(), eq("fixture"), isNull(), eq(bounded));
+            verify(ledger).settle(eq(ticket), eq(LlmUsage.UNKNOWN), eq("TIMED_OUT"), anyLong(), eq("fixture"), isNull(), eq(bounded), eq(true));
         }
     }
     private AgentRuntimeService.Invocation invocation(String selection) {

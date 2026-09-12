@@ -18,10 +18,26 @@ import com.chanter.agent.application.LlmProviderException;
 import org.junit.jupiter.api.Test;
 
 class NativeProviderContractTest {
+    @Test void ollamaRejectsOversizedVisibleOutputEvenWhenReportedUsageIsSmall() throws Exception {
+        String text = "é".repeat(33);
+        String fixture = new ObjectMapper().writeValueAsString(java.util.Map.of("message", java.util.Map.of("content", text),
+                "done", true, "done_reason", "stop", "eval_count", 1)) + "\n";
+        var server = fixtureServer("/api/chat", fixture);
+        try (var execution = new LlmExecution(Duration.ofSeconds(3))) {
+            var client = new OllamaLlmChatClient("http://127.0.0.1:" + server.getAddress().getPort(), "fixture-local", Duration.ofSeconds(3));
+            var chunks = new ArrayList<String>();
+            assertThatThrownBy(() -> client.stream(new LlmChatRequest("s", "u", 16), execution, chunks::add))
+                    .isInstanceOf(LlmProviderException.class).hasMessageContaining("limit_exceeded");
+            assertThat(chunks).isEmpty();
+            assertThatThrownBy(() -> client.complete(new LlmChatRequest("s", "u", 16), execution))
+                    .isInstanceOf(LlmProviderException.class).hasMessageContaining("limit_exceeded");
+        } finally { server.stop(0); }
+    }
+
     @Test void ollamaInBandErrorIsUnavailableWithoutLeakingItsDiagnostic() throws Exception {
         var server = fixtureServer("/api/chat", "{\"error\":\"private diagnostic fixture\"}\n");
         try (var execution = new LlmExecution(Duration.ofSeconds(3))) {
-            var client = new OllamaLlmChatClient("http://127.0.0.1:" + server.getAddress().getPort(), "fixture-local", 2, 3);
+            var client = new OllamaLlmChatClient("http://127.0.0.1:" + server.getAddress().getPort(), "fixture-local", Duration.ofSeconds(3));
             assertThatThrownBy(() -> client.stream(new LlmChatRequest("s", "u"), execution, ignored -> {}))
                     .isInstanceOf(LlmProviderException.class).hasMessageContaining("unavailable").hasMessageNotContaining("private diagnostic");
         } finally { server.stop(0); }
@@ -64,7 +80,7 @@ class NativeProviderContractTest {
                 + "{\"model\":\"fixture-local\",\"message\":{\"content\":\"answer\"},\"done\":true,\"done_reason\":\"stop\",\"prompt_eval_count\":7,\"eval_count\":2}\n";
         HttpServer server = fixtureServer("/api/chat", fixture);
         try (LlmExecution execution = new LlmExecution(Duration.ofSeconds(3))) {
-            var client = new OllamaLlmChatClient("http://127.0.0.1:" + server.getAddress().getPort(), "fixture-local", 2, 3);
+            var client = new OllamaLlmChatClient("http://127.0.0.1:" + server.getAddress().getPort(), "fixture-local", Duration.ofSeconds(3));
             var chunks = new ArrayList<String>();
             var result = client.stream(new LlmChatRequest("s", "u"), execution, chunks::add);
             assertThat(chunks).containsExactly("Local ", "answer");

@@ -34,9 +34,11 @@ public class AiGenerationLedger {
         OffsetDateTime now = now();
         jdbc.sql("UPDATE ai_generation_usage SET outcome='UNKNOWN', settled_at=:now WHERE study_server_id=:server AND outcome='RESERVED' AND created_at<:stale")
                 .param("now", now).param("server", server).param("stale", now.minusSeconds(130)).update();
-        int active = jdbc.sql("SELECT COUNT(*) FROM ai_generation_usage WHERE study_server_id=:server AND support_question_id=:question AND outcome='RESERVED'")
+        int active = jdbc.sql("SELECT COUNT(*) FROM ai_generation_usage WHERE study_server_id=:server AND support_question_id=:question AND outcome<>'NOT_STARTED'")
                 .param("server", server).param("question", question).query(Integer.class).single();
-        if (active > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "An AI answer is already in progress");
+        // Settlement precedes answer persistence. Every possible provider attempt retains this claim forever,
+        // including abandoned reservations: a process crash cannot prove that no provider call was made.
+        if (active > 0) throw new AttemptConflict();
         long reserved = Math.addExact(model.maxInputTokens(), model.maxOutputTokens());
         if (reserved > catalog.dailyTokenLimit() - summary(server).accountedTokens()) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "The Study Server's daily AI token budget is exhausted");
@@ -55,11 +57,11 @@ public class AiGenerationLedger {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void settle(UUID reservation, LlmUsage usage, String outcome, long latencyMs, String resolvedModel,
-                       String requestId, Model model) {
+                       String requestId, Model model, boolean attempted) {
         if (!Set.of("SUCCESS", "UNAVAILABLE", "RATE_LIMITED", "TIMED_OUT", "CANCELLED", "INVALID_RESPONSE", "REFUSED",
                 "LIMIT_EXCEEDED", "REJECTED_EVIDENCE", "UNSUPPORTED", "UNKNOWN").contains(outcome))
             throw new IllegalArgumentException("Invalid AI outcome");
-        LlmUsage measured = usage == null ? LlmUsage.UNKNOWN : usage;
+        LlmUsage measured = attempted ? (usage == null ? LlmUsage.UNKNOWN : usage) : new LlmUsage(0, 0, 0, 0, 0);
         // A late provider receipt may reconcile UNKNOWN after a process stall, but cannot overwrite a settled receipt.
         jdbc.sql("""
                 UPDATE ai_generation_usage SET input_tokens=:input, output_tokens=:output, cache_read_tokens=:cacheRead,
@@ -69,7 +71,7 @@ public class AiGenerationLedger {
                 """)
                 .param("input", measured.inputTokens()).param("output", measured.outputTokens())
                 .param("cacheRead", measured.cacheReadTokens()).param("cacheWrite", measured.cacheWriteTokens())
-                .param("reasoning", measured.reasoningTokens()).param("measured", measured.measured()).param("outcome", outcome)
+                .param("reasoning", measured.reasoningTokens()).param("measured", measured.measured()).param("outcome", attempted ? outcome : "NOT_STARTED")
                 .param("latency", Math.max(0, latencyMs)).param("resolved", safeId(resolvedModel)).param("request", safeId(requestId))
                 .param("cost", cost(measured, model, resolvedModel)).param("now", now()).param("id", reservation).update();
     }
@@ -104,6 +106,11 @@ public class AiGenerationLedger {
     }
     private static String safeId(String value) { return value != null && value.matches("[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}") ? value : null; }
     private OffsetDateTime now() { return clock.instant().atOffset(ZoneOffset.UTC); }
+    public static final class AttemptConflict extends ResponseStatusException {
+        public AttemptConflict() {
+            super(HttpStatus.CONFLICT, "A provider request has already started for this question. If no saved answer is available, its result may be unknown. Choose Source only or ask an Instructor or TA; another provider request will not be started.");
+        }
+    }
     public record UsageSummary(long accountedTokens, long tokenLimit, long requestCount, long unknownUsageCount,
                                long pendingCount, long errorCount, BigDecimal knownEstimatedCostUsd,
                                long unknownCostCount, OffsetDateTime resetsAt) {}

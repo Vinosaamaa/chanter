@@ -46,6 +46,8 @@ Current membership, assistant grants, Course approval and source text are checke
 
 Generation receipts contain opaque identifiers, normalized usage, safe outcomes, latency and versioned cost estimates. They do not duplicate learner questions or provider bodies. Unknown usage retains the full reservation instead of appearing as zero. Instructor aggregates require instructor authorization and distinguish unknown cost from known estimates.
 
+Any possible provider attempt permanently claims its question, including the interval between usage settlement and answer persistence and recovery after a crash. Only proven pre-provider failure releases the claim. An uncertain result permits source-only recovery without a second provider request. Evidence checks retain installation and resource approval without requiring staff to hold learner enrollment.
+
 ## Verification and limits
 
 Vertical red-to-green tests covered configuration, native wire contracts, cancellation after response headers, atomic concurrent reservations, missing usage, unsupported quotations, revoked sources, model selection through the answer endpoint, and instructor usage access. The five-case versioned protocol corpus is separate from model-quality evaluation. Local affected-module Maven verification and the final hosted head are recorded in the pull request receipt.

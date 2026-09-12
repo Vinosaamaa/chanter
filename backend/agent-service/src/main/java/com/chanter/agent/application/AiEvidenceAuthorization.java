@@ -17,20 +17,24 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class AiEvidenceAuthorization {
     private final SupportQuestionChannelAccessClient access;
-    private final StudyAssistantService assistant;
+    private final StudyAssistantRepository assistant;
     private final CourseResourceCatalogClient resources;
     private final CourseResourceContentClient content;
     private final ApprovedFaqClient faqs;
-    public AiEvidenceAuthorization(SupportQuestionChannelAccessClient access, StudyAssistantService assistant,
+    public AiEvidenceAuthorization(SupportQuestionChannelAccessClient access, StudyAssistantRepository assistant,
             CourseResourceCatalogClient resources, CourseResourceContentClient content, ApprovedFaqClient faqs) {
         this.access = access; this.assistant = assistant; this.resources = resources; this.content = content; this.faqs = faqs;
     }
     public void requireCurrent(UUID channel, UUID user, List<SourceCitation> citations) {
         var scope = access.requireAccess(channel, user);
-        var presence = assistant.findPresence(scope.studyServerId(), user);
-        if (!presence.installed() || presence.grants().stream().noneMatch(g -> g.grantType() == GrantType.COURSE_CHANNEL && g.grantTargetId().equals(channel))) denied();
+        // Installation grants are not learner enrollments. Staff access is checked by the channel and
+        // resource services; a TA must not need learner enrollment to read evidence for their queue.
+        var install = assistant.findInstallByStudyServerId(scope.studyServerId());
+        if (install.isEmpty()) denied();
+        var grants = assistant.findGrantsByInstallId(install.orElseThrow().id());
+        if (grants.stream().noneMatch(g -> g.grantType() == GrantType.COURSE_CHANNEL && g.grantTargetId().equals(channel))) denied();
         if (citations.isEmpty()) return;
-        Set<UUID> granted = presence.grants().stream().filter(g -> g.grantType() == GrantType.COURSE_RESOURCE).map(g -> g.grantTargetId()).collect(Collectors.toSet());
+        Set<UUID> granted = grants.stream().filter(g -> g.grantType() == GrantType.COURSE_RESOURCE).map(g -> g.grantTargetId()).collect(Collectors.toSet());
         Map<UUID, CourseResourceCatalogClient.CourseResourceSummary> approved = new HashMap<>();
         for (var resource : resources.listAiApprovedCourseResources(scope.courseId(), user)) {
             if (resource.aiApproved() && resource.courseId().equals(scope.courseId()) && granted.contains(resource.id())) approved.put(resource.id(), resource);

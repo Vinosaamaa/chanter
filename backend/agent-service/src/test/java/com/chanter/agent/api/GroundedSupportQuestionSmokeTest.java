@@ -75,6 +75,37 @@ class GroundedSupportQuestionSmokeTest {
     static void closeProvider() { PROVIDER.stop(0); }
 
     @Autowired private com.chanter.agent.application.AiGenerationLedger generationLedger;
+    @Autowired private com.chanter.agent.application.LlmModelCatalog modelCatalog;
+
+    @Test
+    void abandonedProviderAttemptAllowsSourceOnlyRecoveryWithoutAnotherProviderCall() throws Exception {
+        UUID server = UUID.randomUUID(), instructor = UUID.randomUUID(), learner = UUID.randomUUID();
+        UUID channel = UUID.randomUUID(), course = UUID.randomUUID(), resource = UUID.randomUUID(), question = UUID.randomUUID();
+        installAssistant(server, instructor, learner, channel, course, UUID.randomUUID(), resource);
+        channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
+        supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
+        courseResourceCatalogClient.grantViewerAccess(course, learner);
+        courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+        generationLedger.reserve(server, question, learner, "fixture", modelCatalog.definition("fixture"));
+        int before = PROVIDER_CALLS.get();
+
+        MvcResult result = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer/stream", channel, question)
+                        .param("modelId", "fixture")
+                        .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.request().asyncStarted()).andReturn();
+        result.getAsyncResult(10_000);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch(result)).andExpect(status().isOk());
+        assertThat(result.getResponse().getContentAsString()).contains("GENERATION_ALREADY_ATTEMPTED", "may be unknown", "Source only");
+
+        mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .param("modelId", "source-only")
+                        .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmUsed").value(false));
+        assertThat(PROVIDER_CALLS.get()).isEqualTo(before);
+        assertThat(generationLedger.summary(server).requestCount()).isEqualTo(1);
+        assertThat(generationLedger.summary(server).unknownUsageCount()).isEqualTo(1);
+    }
 
     @Test
     void selectedLocalProviderStreamsValidatedEvidenceAndPersistsMeasuredUsage() throws Exception {
@@ -102,6 +133,23 @@ class GroundedSupportQuestionSmokeTest {
         assertThat(answer.audit().llmUsed()).isTrue();
         assertThat(answer.audit().llmProvider()).isEqualTo("ollama");
         assertThat(answer.sources()).hasSize(1);
+        // Instructor grant visibility does not require learner enrollment or a personal assistant installation.
+        channelAccessClient.grantInstructorView(channel, instructor, course, server, "questions");
+        supportQuestionClient.grantViewerAccess(question, instructor);
+        courseResourceCatalogClient.grantViewerAccess(course, instructor);
+        mockMvc.perform(get("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .header(AuthHeaders.USER_ID, instructor.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.id").value(answer.id().toString()));
+        UUID teachingAssistant = UUID.randomUUID();
+        grantCandidatesClient.registerViewerScope(server, teachingAssistant,
+                new com.chanter.agent.application.StudyAssistantGrantCandidatesClient.ViewerScope(server, false, Set.of(), Set.of(), Set.of(channel)));
+        channelAccessClient.grantInstructorView(channel, teachingAssistant, course, server, "questions");
+        supportQuestionClient.grantViewerAccess(question, teachingAssistant);
+        courseResourceCatalogClient.grantViewerAccess(course, teachingAssistant);
+        mockMvc.perform(get("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .header(AuthHeaders.USER_ID, teachingAssistant.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                .andExpect(status().isOk());
         assertThat(generationLedger.summary(server).accountedTokens()).isEqualTo(120);
         mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
                         .param("modelId", "removed-model").param("answerMode", "grounded-explanation")
@@ -120,8 +168,12 @@ class GroundedSupportQuestionSmokeTest {
 
         courseResourceCatalogClient.clear();
         courseResourceCatalogClient.grantViewerAccess(course, learner);
+        courseResourceCatalogClient.grantViewerAccess(course, teachingAssistant);
         mockMvc.perform(get("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
                         .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .header(AuthHeaders.USER_ID, teachingAssistant.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isForbidden());
     }
 
