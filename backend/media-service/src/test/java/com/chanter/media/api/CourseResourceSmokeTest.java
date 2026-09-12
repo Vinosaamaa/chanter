@@ -335,4 +335,36 @@ class CourseResourceSmokeTest {
                         .param("aiApproved", "true"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void metadataDoesNotExposeStorageDetailsAndOnlyInstructorCanDeleteOrReadUsage() throws Exception {
+        UUID course = UUID.randomUUID(), teacher = UUID.randomUUID(), learner = UUID.randomUUID();
+        courseResourceAccessClient.grantInstructorUpload(course, teacher);
+        courseResourceAccessClient.grantLearnerView(course, learner);
+        var uploaded = mockMvc.perform(multipart("/api/v1/courses/{course}/course-resources", course)
+                        .file(new MockMultipartFile("file", "notes.txt", "text/plain", "safe notes".getBytes(StandardCharsets.UTF_8)))
+                        .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                        .param("aiApproved", "false")).andExpect(status().isAccepted()).andReturn().getResponse();
+        var resource = objectMapper.readValue(uploaded.getContentAsString(), CourseResourceResponse.class);
+        assertThat(uploaded.getHeader("Location")).isEqualTo("/api/v1/course-resources/" + resource.id());
+        assertThat(uploaded.getContentAsString()).doesNotContain("storageKey", "storageBackend", "lease", "endpoint");
+        mockMvc.perform(get("/api/v1/course-resources/{id}", resource.id())
+                .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/courses/{course}/course-resources/usage", course)
+                .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isForbidden());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/course-resources/{id}", resource.id())
+                .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isForbidden());
+        worker.runOnce();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/course-resources/{id}", resource.id())
+                .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/course-resources/{id}/content", resource.id())
+                .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isNotFound());
+        var usage = mockMvc.perform(get("/api/v1/courses/{course}/course-resources/usage", course)
+                .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(objectMapper.readTree(usage.getContentAsString()).get("reservedBytes").asLong()).isEqualTo(resource.byteSize());
+        worker.runOnce();
+        var deletedUsage = mockMvc.perform(get("/api/v1/courses/{course}/course-resources/usage", course)
+                .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(objectMapper.readTree(deletedUsage.getContentAsString()).get("reservedBytes").asLong()).isZero();
+    }
 }

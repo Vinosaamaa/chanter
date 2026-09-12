@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: private-media-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   actual-storage-and-scanner:
     if: github.event.repository.private == false
