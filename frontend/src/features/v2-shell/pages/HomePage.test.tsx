@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HomePage } from './HomePage'
 import { fetchHomeSummary } from '../../home/home-summary-api'
@@ -34,6 +35,7 @@ function renderHome() {
 }
 
 describe('HomePage', () => {
+  afterEach(cleanup)
   beforeEach(() => {
     vi.mocked(fetchHomeSummary).mockReset()
   })
@@ -68,5 +70,17 @@ describe('HomePage', () => {
     expect(screen.getByText('Up next')).toBeInTheDocument()
     expect(screen.getByText('Nothing coming up yet.')).toBeInTheDocument()
     expect(screen.getByText('Progress unavailable')).toBeInTheDocument()
+  })
+
+  it('retries a failed Home summary and gives a new learner a real join route', async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetchHomeSummary).mockRejectedValueOnce(new Error('Offline')).mockResolvedValueOnce({
+      courses: [], attention: [], upNext: [], partialFailures: [],
+    })
+    renderHome()
+    await user.click(await screen.findByRole('button', { name: 'Try again' }))
+    const join = await screen.findByRole('link', { name: 'Join or create a Study Server' })
+    expect(join).toHaveAttribute('href', '/app/onboarding/join-or-create')
+    expect(fetchHomeSummary).toHaveBeenCalledTimes(2)
   })
 })

@@ -5,6 +5,7 @@ import {
   Megaphone,
   MessageSquare,
   UsersRound,
+  ArrowUpRight,
 } from 'lucide-react'
 import type { CSSProperties } from 'react'
 
@@ -27,7 +28,9 @@ export function HomeAttentionRow({ items }: { items: HomeAttentionItem[] }) {
   }
 
   return (
-    <div className="notice-row">
+    <section className="home-attention" aria-labelledby="home-attention-heading">
+      <h2 id="home-attention-heading">Needs attention</h2>
+      <div className="notice-row">
       {items.map((item) => (
         <article key={item.id} className={`notice ${item.kind}`}>
           <span className={`notice-icon ${item.tone}`}>
@@ -46,7 +49,8 @@ export function HomeAttentionRow({ items }: { items: HomeAttentionItem[] }) {
           </div>
         </article>
       ))}
-    </div>
+      </div>
+    </section>
   )
 }
 
@@ -60,21 +64,19 @@ export function HomeCourseCardView({ course }: { course: HomeCourseCard }) {
 
   return (
     <Link to={course.href} className="course-card" style={style}>
+      <div className="course-cover-context"><span>{course.cohortLabel}</span><ArrowUpRight size={20} aria-hidden="true" /></div>
       <div className="course-title-row">
-        <span className="course-dot" />
         <div>
           <h3>
-            {course.code} <span>— {course.title}</span>
+            {course.code !== course.title ? `${course.code} — ${course.title}` : course.title}
           </h3>
-          <p>
-            {course.cohortLabel} <span>·</span> {course.professor}
-          </p>
+          <p>{course.professor}</p>
         </div>
       </div>
 
       {hasProgress ? (
         <div className="progress-row">
-          <div className="progress-track" aria-label={`${course.progress}% complete`}>
+          <div className="progress-track" role="progressbar" aria-label="Course progress" aria-valuenow={course.progress ?? 0} aria-valuemin={0} aria-valuemax={100}>
             <span />
           </div>
           <small>{course.progress}% complete</small>
@@ -99,14 +101,12 @@ function UpNextIcon({ item }: { item: HomeUpNextItem }) {
   }
 }
 
-export function HomeUpNextPanel({ items }: { items: HomeUpNextItem[] }) {
+export function HomeUpNextPanel({ items, loading = false, unavailable = false }: { items: HomeUpNextItem[]; loading?: boolean; unavailable?: boolean }) {
   return (
     <aside className="up-next">
-      <h2>Up next</h2>
-      {items.length === 0 ? (
-        <p className="empty-search" style={{ marginTop: '0.75rem' }}>
-          Nothing coming up yet.
-        </p>
+      <div className="section-heading"><h2>Up next</h2><CalendarDays size={20} aria-hidden="true" /></div>
+      {loading ? <p className="schedule-empty" role="status">Loading your schedule…</p> : unavailable ? <p className="schedule-empty">Your schedule could not be loaded.</p> : items.length === 0 ? (
+        <div className="schedule-empty"><CalendarDays size={28} aria-hidden="true" /><p>Nothing coming up yet.</p><span>Office Hours and community events will appear here.</span></div>
       ) : (
         <div className="timeline">
           {items.map((item) => (
@@ -122,16 +122,13 @@ export function HomeUpNextPanel({ items }: { items: HomeUpNextItem[] }) {
                 <p>{item.detail}</p>
                 {item.actionLabel && item.href ? (
                   <Link to={item.href}>{item.actionLabel}</Link>
-                ) : item.actionLabel ? (
-                  <button type="button" disabled>
-                    {item.actionLabel}
-                  </button>
                 ) : null}
               </div>
             </div>
           ))}
         </div>
       )}
+      <Link to="/app/calendar" className="calendar-link">View calendar<ArrowUpRight size={16} aria-hidden="true" /></Link>
     </aside>
   )
 }

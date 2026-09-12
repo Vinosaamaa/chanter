@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useParams } from 'react-router-dom'
 import {
   CalendarDays,
@@ -104,6 +104,32 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
   const profileRef = useRef<HTMLButtonElement>(null)
   const unreadQuery = useUnreadNotificationCountQuery()
   const unreadCount = unreadQuery.data?.unreadCount ?? 0
+  const sidebarRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    sidebarRef.current?.querySelector<HTMLButtonElement>('.sidebar-close')?.focus()
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onCloseMenu()
+      }
+      if (event.key !== 'Tab') return
+      const controls = [...(sidebarRef.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), [tabindex="0"]') ?? [])]
+      const first = controls[0]
+      const last = controls.at(-1)
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    }
+    const sidebar = sidebarRef.current
+    sidebar?.addEventListener('keydown', handleKey)
+    return () => sidebar?.removeEventListener('keydown', handleKey)
+  }, [menuOpen, onCloseMenu])
 
   const initialCollapsed = useMemo(() => {
     const ids = new Set<string>()
@@ -139,7 +165,8 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
 
   return (
     <>
-    <aside className={`sidebar${menuOpen ? ' open' : ''}`}>
+    <aside ref={sidebarRef} id="course-navigation" className={`sidebar${menuOpen ? ' open' : ''}`} role={menuOpen ? 'dialog' : undefined} aria-modal={menuOpen || undefined} aria-label={menuOpen ? 'Browse Chanter' : undefined}>
+
       <div className="sidebar-scroll">
         <div className="brand">
           <span className="brand-mark">
@@ -184,6 +211,7 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
         </nav>
 
         <div className="sidebar-rule" />
+        <p className="sidebar-section-title">Study Servers</p>
 
         {data.isLoading ? <p style={{ padding: '0 8px', color: 'var(--muted)' }}>Loading courses…</p> : null}
         {data.isError ? <p style={{ padding: '0 8px', color: '#fca5a5' }}>Could not load courses.</p> : null}
@@ -252,11 +280,7 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
           aria-expanded={accountOpen}
           onClick={() => setAccountOpen((current) => !current)}
         >
-          <span className="avatar" aria-hidden="true">
-            <span className="hair" />
-            <span className="face">⌣</span>
-            <i />
-          </span>
+          <span className="account-initial" aria-hidden="true">{displayName.slice(0, 1).toUpperCase()}</span>
           <strong>{displayName}</strong>
           <ChevronDown size={20} />
         </button>
