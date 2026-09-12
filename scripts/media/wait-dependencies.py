@@ -6,6 +6,7 @@ import urllib.request
 
 deadline = time.monotonic() + 600
 last_report = None
+last_version = None
 while time.monotonic() < deadline:
     phase = "object-store readiness"
     try:
@@ -21,7 +22,12 @@ while time.monotonic() < deadline:
                     raise ValueError("scanner closed its readiness response")
                 data.extend(chunk)
             phase = "scanner definition freshness"
-            updated = datetime.datetime.strptime(data.decode("ascii").strip("\0\r\n ").split("/", 2)[2], "%a %b %d %H:%M:%S %Y").replace(tzinfo=datetime.timezone.utc)
+            version = data.decode("ascii").strip("\0\r\n ")
+            if version != last_version:
+                # Isolated public CI fixture: bounded, escaped scanner metadata contains no application data.
+                print("Scanner VERSION: " + repr(version[:256]), flush=True)
+                last_version = version
+            updated = datetime.datetime.strptime(version.split("/", 2)[2], "%a %b %d %H:%M:%S %Y").replace(tzinfo=datetime.timezone.utc)
             age = datetime.datetime.now(datetime.timezone.utc) - updated
             assert datetime.timedelta(minutes=-5) <= age <= datetime.timedelta(hours=72)
         print("S3 emulator and ClamAV are ready; scanner definitions are within 72 hours")

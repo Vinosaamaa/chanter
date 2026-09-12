@@ -1,20 +1,29 @@
 package com.chanter.media.infra;
 
 import com.chanter.media.application.PrivateResourceStorage;
+import com.chanter.media.application.ResourceLifecycle;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.stereotype.Component;
 
 @Component
+@DependsOnDatabaseInitialization
 @ConditionalOnProperty(name = "chanter.media.storage-backend", havingValue = "local")
 public class LocalPrivateResourceStorage implements PrivateResourceStorage {
     private final Path root;
-    public LocalPrivateResourceStorage(@Value("${chanter.media.storage-dir}") String root) throws IOException {
+    @Autowired
+    public LocalPrivateResourceStorage(@Value("${chanter.media.storage-dir}") String root, ResourceLifecycle lifecycle) throws IOException {
+        this(root);
+        lifecycle.bindNamespace("local\n" + this.root.toRealPath());
+    }
+    public LocalPrivateResourceStorage(String root) throws IOException {
         this.root = Path.of(root).toAbsolutePath().normalize();
         Files.createDirectories(this.root);
         if (Files.getFileStore(this.root).supportsFileAttributeView("posix")) Files.setPosixFilePermissions(this.root, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"));

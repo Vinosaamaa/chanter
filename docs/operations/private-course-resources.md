@@ -34,6 +34,8 @@ The adapter uses path-style addressing, immutable conditional PUT, content MD5 o
 
 Public configuration never permits HTTP object storage. The integration test enables a separate property accepting HTTP only for literal loopback hosts. S3Mock is an emulator and cannot prove provider credentials, IAM policies, anonymous-access denial, region correctness or free-account limits.
 
+Startup binds the database to a SHA-256 fingerprint of the backend and normalized endpoint plus bucket, or the canonical local root. Endpoint trailing slashes and default ports do not change the fingerprint. Credentials are excluded so keys can rotate. A changed namespace stops startup before any object request, including cleanup. The binding persists even when the bucket is empty. Never clear it to work around a startup failure.
+
 ## Upload and download contract
 
 All routes require the existing access-token authorization and course permissions. Browser session issuance/refresh follows #242; downloads do not accept object URLs or a refresh cookie as authorization.
@@ -72,6 +74,8 @@ Run maintained ClamAV with a persistent signature directory, UTC timezone and Fr
 5. Rollback to a release predating V2 is **not compatible**: the old server ignores quarantine and expects local storage. Treat #244 as a schema-epoch boundary in #243. Restore database and local resources together behind maintenance, or fix forward with the current lifecycle model. A database migration alone is not a safe rollback.
 
 On database restore, stop uploads and workers first. Restore the metadata and counters together, then compare a private `resources/v1/` object inventory with reserved database rows. Preserve extra objects while deciding whether they are newer accepted writes or true orphans. Rebuild accurate byte reservations and monthly attempts conservatively before reopening writes; never reset an uncertain monthly request count to zero. The account's independent backup reserve must cover the recovery plan.
+
+To migrate a bound namespace, stop every media instance and keep resource and AI access behind maintenance. Copy the exact reserved object and migration-key inventory without removing originals; validate every destination object's length and SHA-256 against the database. Reconcile failed and interrupted writes and account for copy attempts against both provider budgets. Have the operator review the inventory and destination before updating the singleton `media_storage_budget.storage_namespace` fingerprint and matching release configuration together. Preserve the original binding and object inventory for recovery. Start with workers disabled, verify authorized reads and anonymous denial, then resume workers. A backend change also requires a reviewed metadata migration; changing only the binding is insufficient. There is no automatic rebinding, copy or deletion path.
 
 Ordinary reconciliation runs hourly, processes at most ten pages per run and resumes its cursor. It deletes only module-prefixed objects older than 24 hours that have no active byte reservation. Database-backed interrupted writes and rejected/deleted objects have their own retry leases. Reconciliation never scans backup prefixes. Expired private spool files are removed after one hour. Do not run reconciliation against a partially restored database.
 

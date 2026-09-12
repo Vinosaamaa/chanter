@@ -58,6 +58,8 @@ ClamAV must supply a clean verdict using fresh definitions. Unavailable, malform
 
 The database reserves at most 8 GB of resource bytes. It commits every S3 attempt before network I/O and disables SDK retries. Normal uploads, reads and listings share 36,000 monthly operations; 4,000 operations remain reserved for deletion. Uncertain calls never refund operation counts. These limits control this module, not other provider clients. Account backup space, inventory reconciliation after restore, and provider limits remain operator responsibilities.
 
+A persisted namespace fingerprint binds the database to the normalized endpoint and bucket, or the local root, before the adapter can issue requests. Credentials do not affect the identity. This prevents a configuration change from treating missing objects in a different bucket as successful deletion and releasing real reservations. Changing the namespace requires a reviewed copy, checksum inventory and explicit binding update under maintenance; startup never rebinds automatically.
+
 ## Migration and release boundary
 
 V2 quarantines old metadata and preserves its storage reservation. Opt-in migration validates legacy files, persists the destination key before copying, confirms interrupted writes and scans the copy. Original files stay available to recovery operators. Legacy AI chunks must be cleared during maintenance because they predate the new scanning guarantee.
