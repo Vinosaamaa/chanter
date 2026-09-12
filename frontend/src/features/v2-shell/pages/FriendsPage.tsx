@@ -24,7 +24,7 @@ type FriendsTab = 'friends' | 'pending'
 type AvatarTone = 'blue' | 'purple' | 'amber' | 'green'
 
 export function FriendsPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const hub = useFriendsHub(searchParams.get('friend'))
   const user = useAuthStore((state) => state.user)
   const friendUserIds = useMemo(
@@ -61,8 +61,17 @@ export function FriendsPage() {
     })
   }
 
+  const returnToFriends = () => {
+    setConversationOpen(false)
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.delete('friend')
+      return next
+    }, { replace: true })
+  }
+
   return (
-    <div className={`friends-page${conversationOpen ? ' conversation-open' : ''}`}>
+    <div className={`friends-page${conversationOpen && active ? ' conversation-open' : ''}`}>
       <aside className="friends-list-pane">
         <header>
           <h1>Friends</h1>
@@ -104,7 +113,7 @@ export function FriendsPage() {
         {active ? (
           <>
             <header>
-              <button type="button" className="mobile-back" aria-label="Back to friends" onClick={() => setConversationOpen(false)}><ArrowLeft /></button>
+              <button type="button" className="mobile-back" aria-label="Back to friends" onClick={returnToFriends}><ArrowLeft /></button>
               <V2Avatar
                 name={active.name}
                 tone={active.tone}

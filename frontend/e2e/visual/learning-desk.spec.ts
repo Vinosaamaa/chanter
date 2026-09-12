@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { VISUAL_NOW } from './workspace-fixtures'
+
+test.beforeEach(async ({ page }) => { await page.clock.setFixedTime(new Date(VISUAL_NOW)) })
 
 // Safe synthetic accounts served only by vite.visual.config.ts. These images prove UI layout, not backend behavior.
 for (const width of [360, 390, 768, 1280, 1920, 3840]) {

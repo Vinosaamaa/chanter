@@ -1,16 +1,18 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAuthStore } from '../../../stores/auth-store'
 import { SignInPage } from './SignInPage'
+import * as authApi from '../auth-api'
 
 describe('SignInPage public destinations', () => {
-  afterEach(cleanup)
+  afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
   beforeEach(() => {
     useAuthStore.setState({ accessToken: null, user: null })
+    vi.spyOn(authApi, 'fetchOauthProviders').mockResolvedValue({ providers: [] })
   })
 
   it('exposes Terms, forgot password, and omits unavailable sign-in providers', () => {
@@ -22,9 +24,16 @@ describe('SignInPage public destinations', () => {
 
     expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms')
     expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password')
-    expect(screen.queryByRole('button', { name: 'Continue with Google' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Continue with Google' })).not.toBeInTheDocument()
     expect(screen.queryByText(/CHANTER_OAUTH/)).not.toBeInTheDocument()
     expect(screen.queryByText('3 new')).not.toBeInTheDocument()
+  })
+
+  it('renders a configured Google provider as a navigation link', async () => {
+    const authorizationUrl = 'https://chanter.example.test/api/v1/auth/oauth/google/start'
+    vi.mocked(authApi.fetchOauthProviders).mockResolvedValue({ providers: [{ id: 'google', label: 'Google', authorizationUrl }] })
+    render(<MemoryRouter initialEntries={['/sign-in']}><SignInPage /></MemoryRouter>)
+    expect(await screen.findByRole('link', { name: 'Continue with Google' })).toHaveAttribute('href', authorizationUrl)
   })
 
   it('gives auth modes tab semantics and uniquely names password actions', async () => {

@@ -108,6 +108,7 @@ describe('FriendsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.preferredFriendId = null
+    mocks.hub.selectedFriendId = 'friend-alex'
   })
 
   it('renders real friend profiles, exact DM context, and no demo fallback', () => {
@@ -129,6 +130,19 @@ describe('FriendsPage', () => {
     expect(view.container.querySelector('.friends-page')).toHaveClass('conversation-open')
     await user.click(screen.getByRole('button', { name: 'Back to friends' }))
     expect(view.container.querySelector('.friends-page')).not.toHaveClass('conversation-open')
+  })
+
+  it('keeps the friend list available when a deep link has no active friend', () => {
+    mocks.hub.selectedFriendId = 'missing-friend'
+    const view = renderPage('/app/friends?friend=missing-friend')
+    expect(view.container.querySelector('.friends-page')).not.toHaveClass('conversation-open')
+  })
+
+  it('removes the friend deep link when returning to the mobile list', async () => {
+    const user = userEvent.setup()
+    renderPage('/app/friends?friend=friend-alex')
+    await user.click(screen.getByRole('button', { name: 'Back to friends' }))
+    expect(mocks.preferredFriendId).toBeNull()
   })
 
   it('lists only co-member candidates and sends to the selected user id', async () => {

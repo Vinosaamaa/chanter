@@ -1,9 +1,11 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
+import { VISUAL_NOW } from './workspace-fixtures'
 
 // A synthetic socket supplies connection acknowledgements for layout-only screenshots.
 // Message persistence, delivery and calls are covered by separate real-backend journeys.
 test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(new Date(VISUAL_NOW))
   await page.routeWebSocket('**/api/v1/realtime/ws', socket => {
     socket.onMessage(message => {
       const frame = JSON.parse(String(message))
@@ -142,6 +144,17 @@ test('fixture UI scrolls a long device session list in phone landscape', async (
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-device-sessions-long-landscape.png') })
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()
+})
+
+test('fixture UI phone Friends stays on the list after Back and reload', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/app/friends?friend=visual-peer')
+  await page.getByRole('button', { name: 'Back to friends' }).click()
+  await expect(page).toHaveURL(/\/app\/friends$/)
+  await page.reload()
+  await expect(page.locator('.friends-list-pane')).toBeVisible()
+  await expect(page.locator('.dm-pane')).toBeHidden()
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-friends-back-reload-390.png') })
 })
 
 test('fixture UI phone Inbox marks a notification done and returns to the list', async ({ page }, testInfo) => {

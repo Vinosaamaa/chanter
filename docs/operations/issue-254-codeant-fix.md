@@ -11,3 +11,14 @@ PR: [#314](https://github.com/Vinosaamaa/chanter/pull/314). Initial full review 
 The evidence documentation now records the green 179-fixture / 259-unit / seven-public / fourteen-real-signed-in result at cbe0c128 and distinguishes remaining issue and release gates. Final changed-head CI and re-review are required before integration.
 
 Round-one local verification passed lint, all nine Calendar/session tests, production build and import-graph budgets. The Engineering projection check passed. Two unrelated Windows-only baseline Engineering tests fail on raw schema bytes after CRLF checkout and the scaffold's unsafe-prose case; the same suite passed in the hosted Linux gate at cbe0c128.
+
+Round one at 7b7ea8d passed [all 185 fixture checks](https://github.com/Vinosaamaa/chanter/actions/runs/34676740605), including menu resize and long-list scrolling in all three browsers. The full re-review completed and returned the following findings. The next candidate rebases onto main at 259bf41, which includes the portable Engineering checks.
+
+| Round | Finding | Assessment and action | Verification |
+| --- | --- | --- | --- |
+| 2 | Google provider assertion queries a button instead of a link | Corrected the role and added a configured-provider positive case using the real navigation link. Provider lookup is mocked explicitly. | Sign-in tests passed alongside Friends, 12 tests total. |
+| 2 | Invalid friend deep link can hide the phone list with no active friend | Require an active friend before applying the phone conversation state. | New regression failed before the change and passed afterward. |
+| 2 | Back retains the friend URL parameter | Back removes only the friend parameter with replacement navigation and returns to the list. | New regression failed before the change and passed afterward; browser Back/reload coverage added for all three browsers. |
+| 2 | Visual timestamps depend on host clock and timezone | Use one fixed synthetic UTC timestamp, a matching fixed browser date, en-US locale and UTC browser timezone. Runtime timers remain active. | Hosted screenshot run pending; these controls affect only explicit visual tests. |
+
+Round-two local verification passed lint, all twelve focused Sign-in/Friends tests, production build and budgets, and all 34 portable Engineering tests. The already-tracked contract files were refreshed to their exact LF bytes after the rebase picked up the new attributes; this produces no schema diff. The previous application head 7b7ea8d also completed [full CI](https://github.com/Vinosaamaa/chanter/actions/runs/34676740603) successfully.
