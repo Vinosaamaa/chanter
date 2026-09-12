@@ -14,7 +14,7 @@ const PUBLIC_UNSAFE_PATTERNS = [
   /(?:^|[\s("'`])\/(?:Users|home|root)\/[^\s)"'`]+/m,
   /(?:^|[\s("'`])\/(?:private\/tmp|tmp|var|opt|srv|workspace|mnt|Volumes)\/[^\s)"'`]+/m,
   /(?:^|[\s("'`])~\/[^\s)"'`]+/m,
-  /\b[A-Za-z]:\\[^\s"'`]+/,
+  /\b[A-Za-z]:[\\/][^\s"'`]+/,
   /\\\\[^\s\\]+\\[^\s"'`]+/,
   /\bgh[pousr]_[A-Za-z0-9]{20,}\b/,
   /\bsk-[A-Za-z0-9_-]{20,}\b/,

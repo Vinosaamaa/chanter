@@ -8,7 +8,7 @@
 
 Pinned the three released Engineering schema files to LF checkout bytes. The released schema content and expected SHA-256 hashes remain unchanged. Privacy fixtures now select POSIX or Windows path construction explicitly, so the same tests exercise user-home paths, drive paths, and UNC shares on either host.
 
-The existing Ubuntu `engineering-policy` job keeps its name and validation steps. A separate `engineering-windows` job runs the authoring, validation, and projection tests on Windows with Node 22. Product code and privacy rejection patterns are unchanged.
+The existing Ubuntu `engineering-policy` job keeps its name and validation steps. A separate `engineering-windows` job runs the authoring, validation, and projection tests on Windows with Node 22. Product runtime code is unchanged. Authoring and validation now reject drive paths using either separator, including mixed separators.
 
 ## TDD evidence
 

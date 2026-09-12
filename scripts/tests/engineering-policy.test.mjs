@@ -242,6 +242,8 @@ for (const [shape, privatePath] of [
   ["POSIX user home", posix.join("/", "Users", "person", "private", "notes.txt")],
   ["POSIX Linux home", posix.join("/", "home", "person", "private", "notes.txt")],
   ["Windows drive", win32.join("C:\\", "Users", "person", "private", "notes.txt")],
+  ["Windows forward drive", "C:/Users/person/private/notes.txt"],
+  ["Windows mixed drive", "C:/Users/person\\private/notes.txt"],
   ["Windows UNC", win32.join("\\\\fixture-server", "private", "notes.txt")],
 ]) {
   test(`bounded v1 documents reject ${shape} paths in metadata and prose`, () => {
