@@ -38,6 +38,23 @@ public class ResourceLifecycle {
     }
 
     @Transactional
+    public void bindNamespace(String identity) {
+        String digest;
+        try {
+            digest = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(identity.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+        var binding = jdbc.sql("SELECT storage_namespace FROM media_storage_budget WHERE id=1 FOR UPDATE")
+                .query((rs, row) -> new Namespace(rs.getString("storage_namespace"))).single();
+        if (binding.digest() == null) {
+            jdbc.sql("UPDATE media_storage_budget SET storage_namespace=:digest WHERE id=1").param("digest", digest).update();
+        } else if (!binding.digest().equals(digest)) {
+            throw new IllegalStateException("Private storage namespace changed; reviewed data migration is required");
+        }
+    }
+    private record Namespace(String digest) {}
+
+    @Transactional
     public CourseResource reserve(CourseResource r) {
         long used = jdbc.sql("SELECT reserved_bytes FROM media_storage_budget WHERE id=1 FOR UPDATE").query(Long.class).single();
         Optional<CourseResource> existing = jdbc.sql("SELECT * FROM course_resources WHERE uploaded_by_user_id=:user AND idempotency_key=:key")

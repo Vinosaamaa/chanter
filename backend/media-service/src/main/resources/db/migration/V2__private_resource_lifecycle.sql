@@ -16,6 +16,7 @@ CREATE INDEX idx_resource_processing ON course_resources(state, retry_at, lease_
 
 CREATE TABLE media_storage_budget (
     id INTEGER PRIMARY KEY CHECK (id = 1),
+    storage_namespace VARCHAR(64),
     reserved_bytes BIGINT NOT NULL CHECK (reserved_bytes >= 0),
     request_month VARCHAR(7) NOT NULL,
     foreground_requests INTEGER NOT NULL,

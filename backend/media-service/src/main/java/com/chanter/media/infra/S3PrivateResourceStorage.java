@@ -14,6 +14,7 @@ import java.util.Base64;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -28,6 +29,7 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.*;
 
 @Component
+@DependsOnDatabaseInitialization
 @ConditionalOnProperty(name = "chanter.media.storage-backend", havingValue = "s3")
 public class S3PrivateResourceStorage implements PrivateResourceStorage {
     private final S3Client client;
@@ -51,6 +53,9 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
             throw new IllegalArgumentException("Invalid private S3 configuration");
         }
         this.lifecycle = lifecycle; this.bucket = bucket;
+        int port = uri.getPort() == -1 ? ("https".equals(uri.getScheme()) ? 443 : 80) : uri.getPort();
+        lifecycle.bindNamespace("s3\n" + uri.getScheme().toLowerCase(java.util.Locale.ROOT) + "://"
+                + uri.getHost().toLowerCase(java.util.Locale.ROOT) + ":" + port + "\n" + bucket);
         this.client = S3Client.builder().endpointOverride(uri).region(Region.of(region))
                 .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
                 .httpClientBuilder(UrlConnectionHttpClient.builder().connectionTimeout(Duration.ofSeconds(3)).socketTimeout(Duration.ofSeconds(15)))
