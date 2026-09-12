@@ -13,7 +13,9 @@ public record CourseResourceResponse(
         long byteSize,
         boolean aiApproved,
         UUID uploadedByUserId,
-        Instant createdAt
+        Instant createdAt,
+        String status,
+        String sha256
 ) {
 
     public static CourseResourceResponse from(CourseResource courseResource) {
@@ -26,7 +28,9 @@ public record CourseResourceResponse(
                 courseResource.byteSize(),
                 courseResource.aiApproved(),
                 courseResource.uploadedByUserId(),
-                courseResource.createdAt()
+                courseResource.createdAt(),
+                courseResource.publicStatus(),
+                courseResource.sha256()
         );
     }
 }

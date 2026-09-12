@@ -12,6 +12,10 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @RequestMapping(ServiceInfo.API_V1_PREFIX)
@@ -39,21 +42,20 @@ public class CourseResourceController {
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID uploaderUserId,
             @RequestParam(required = false) String title,
             @RequestParam boolean aiApproved,
-            @RequestPart("file") MultipartFile file
+            @RequestPart("file") MultipartFile file,
+            @RequestHeader(value = "Idempotency-Key", required = false) UUID idempotencyKey,
+            @RequestHeader(value = "X-Content-SHA256", required = false) String checksum
     ) {
         CourseResource courseResource = courseResourceService.uploadCourseResource(
                 courseId,
                 uploaderUserId,
                 title,
                 aiApproved,
-                file
+                file, idempotencyKey, checksum
         );
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{resourceId}")
-                .buildAndExpand(courseResource.id())
-                .toUri();
+        URI location = URI.create(ServiceInfo.API_V1_PREFIX + "/course-resources/" + courseResource.id());
 
-        return ResponseEntity.created(location).body(CourseResourceResponse.from(courseResource));
+        return ResponseEntity.accepted().location(location).body(CourseResourceResponse.from(courseResource));
     }
 
     @GetMapping("/courses/{courseId}/course-resources")
@@ -71,7 +73,7 @@ public class CourseResourceController {
     }
 
     @GetMapping("/course-resources/{resourceId}/content")
-    public ResponseEntity<byte[]> downloadCourseResource(
+    public ResponseEntity<Resource> downloadCourseResource(
             @PathVariable UUID resourceId,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
@@ -86,8 +88,27 @@ public class CourseResourceController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .contentType(safeContentType(stored.courseResource().contentType()))
-                .body(stored.content());
+                .contentLength(stored.courseResource().byteSize())
+                .body(new InputStreamResource(stored.content()));
+    }
+
+    @GetMapping("/course-resources/{resourceId}")
+    public CourseResourceResponse resource(@PathVariable UUID resourceId, @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user) {
+        return CourseResourceResponse.from(courseResourceService.getCourseResource(resourceId, user));
+    }
+
+    @DeleteMapping("/course-resources/{resourceId}")
+    public ResponseEntity<Void> delete(@PathVariable UUID resourceId, @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user) {
+        courseResourceService.deleteCourseResource(resourceId, user);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/courses/{courseId}/course-resources/usage")
+    public com.chanter.media.application.ResourceLifecycle.Usage usage(@PathVariable UUID courseId, @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user) {
+        return courseResourceService.usage(courseId, user);
     }
 
     /** Parse stored content type for download; fall back if missing/invalid (SEC-17). */

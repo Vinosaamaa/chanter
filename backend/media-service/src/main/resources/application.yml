@@ -19,7 +19,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB
-      max-request-size: 10MB
+      max-request-size: 11MB
 
 chanter:
   jwt:
@@ -35,6 +35,24 @@ chanter:
     service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   media:
     storage-dir: ${COURSE_RESOURCE_STORAGE_DIR:./data/course-resources}
+    storage-backend: ${CHANTER_MEDIA_STORAGE_BACKEND:local}
+    spool-dir: ${CHANTER_MEDIA_SPOOL_DIR:./data/media-spool}
+    byte-limit: ${CHANTER_MEDIA_BYTE_LIMIT:8000000000}
+    request-limit: ${CHANTER_MEDIA_REQUEST_LIMIT:40000}
+    cleanup-request-reserve: ${CHANTER_MEDIA_CLEANUP_REQUEST_RESERVE:4000}
+    worker-enabled: ${CHANTER_MEDIA_WORKER_ENABLED:true}
+    migrate-legacy: ${CHANTER_MEDIA_MIGRATE_LEGACY:false}
+    s3:
+      endpoint: ${CHANTER_S3_ENDPOINT:}
+      region: ${CHANTER_S3_REGION:}
+      bucket: ${CHANTER_S3_BUCKET:}
+      access-key: ${CHANTER_S3_ACCESS_KEY:}
+      secret-key: ${CHANTER_S3_SECRET_KEY:}
+    scanner:
+      host: ${CHANTER_CLAMAV_HOST:localhost}
+      port: ${CHANTER_CLAMAV_PORT:3310}
+      timeout: 20s
+      maximum-definition-age: 72h
 
 management:
   endpoints:
