@@ -6,9 +6,16 @@ import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @Configuration
+@EnableConfigurationProperties(LlmProperties.class)
 public class AgentServiceConfig {
+
+    @Bean
+    com.chanter.agent.application.LlmChatClient llmChatClient(com.chanter.agent.application.LlmModelCatalog catalog) {
+        return catalog.client(catalog.defaultModelId());
+    }
 
     @Bean
     Clock clock() {

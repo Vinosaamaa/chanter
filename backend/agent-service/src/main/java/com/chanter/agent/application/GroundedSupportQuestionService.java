@@ -3,6 +3,7 @@ package com.chanter.agent.application;
 import com.chanter.agent.application.CourseResourceCatalogClient.CourseResourceSummary;
 import com.chanter.agent.application.GroundingEngine.GroundingResult;
 import com.chanter.agent.application.GroundingEngine.GroundingSource;
+import com.chanter.agent.application.GroundingEngine.SourceCitation;
 import com.chanter.agent.application.StudyAssistantService.Presence;
 import com.chanter.agent.application.SupportQuestionChannelAccessClient.SupportQuestionChannelAccess;
 import com.chanter.agent.application.SupportQuestionClient.SupportQuestion;
@@ -16,6 +17,7 @@ import com.chanter.agent.domain.StudyAssistantAnswerSource;
 import com.chanter.agent.domain.StudyAssistantGrant;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +27,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.function.Consumer;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -44,6 +47,8 @@ public class GroundedSupportQuestionService {
     private final ObjectProvider<RagGroundingEngine> ragGroundingEngine;
     private final ObjectProvider<KeywordGroundingEngine> keywordGroundingEngine;
     private final AgentRuntimeService agentRuntimeService;
+    private final LlmModelCatalog modelCatalog;
+    private final AiEvidenceAuthorization evidenceAuthorization;
     private final AiQuotaEnforcementService aiQuotaEnforcementService;
     private final StudyAssistantAnswerPersistenceService answerPersistenceService;
     private final StudyAssistantAnswerRepository answerRepository;
@@ -62,6 +67,8 @@ public class GroundedSupportQuestionService {
             ObjectProvider<RagGroundingEngine> ragGroundingEngine,
             ObjectProvider<KeywordGroundingEngine> keywordGroundingEngine,
             AgentRuntimeService agentRuntimeService,
+            LlmModelCatalog modelCatalog,
+            AiEvidenceAuthorization evidenceAuthorization,
             AiQuotaEnforcementService aiQuotaEnforcementService,
             StudyAssistantAnswerPersistenceService answerPersistenceService,
             StudyAssistantAnswerRepository answerRepository,
@@ -79,6 +86,8 @@ public class GroundedSupportQuestionService {
         this.ragGroundingEngine = ragGroundingEngine;
         this.keywordGroundingEngine = keywordGroundingEngine;
         this.agentRuntimeService = agentRuntimeService;
+        this.modelCatalog = modelCatalog;
+        this.evidenceAuthorization = evidenceAuthorization;
         this.aiQuotaEnforcementService = aiQuotaEnforcementService;
         this.answerPersistenceService = answerPersistenceService;
         this.answerRepository = answerRepository;
@@ -92,6 +101,22 @@ public class GroundedSupportQuestionService {
             UUID supportQuestionId,
             UUID learnerUserId
     ) {
+        return answerSupportQuestion(channelId, supportQuestionId, learnerUserId, null);
+    }
+
+    public StudyAssistantAnswer answerSupportQuestion(UUID channelId, UUID supportQuestionId, UUID learnerUserId, String modelId) {
+        return answerSupportQuestion(channelId, supportQuestionId, learnerUserId, modelId, null);
+    }
+
+    public StudyAssistantAnswer answerSupportQuestion(UUID channelId, UUID supportQuestionId, UUID learnerUserId, String modelId, String answerMode) {
+        try (var execution = new LlmExecution(Duration.ofSeconds(120))) {
+            return answerSupportQuestion(channelId, supportQuestionId, learnerUserId, modelId, answerMode, execution, ignored -> {});
+        }
+    }
+
+    public StudyAssistantAnswer answerSupportQuestion(UUID channelId, UUID supportQuestionId, UUID learnerUserId,
+            String modelId, String answerMode, LlmExecution execution, Consumer<String> chunks) {
+        execution.check();
         SupportQuestionChannelAccess access = channelAccessClient.requireAccess(channelId, learnerUserId);
         if (!access.canPostSupportQuestion()) {
             throw new ResponseStatusException(
@@ -106,20 +131,26 @@ public class GroundedSupportQuestionService {
                 learnerUserId
         );
 
+        String selectedModel = modelCatalog.select(modelId, access.courseId());
+        String mode = AiAnswerMode.resolve(answerMode, selectedModel);
+        String selection = "source-only".equals(mode) ? LlmModelCatalog.SOURCE_ONLY : selectedModel;
+        if (!supportQuestion.senderUserId().equals(learnerUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Support Question author can invoke the AI Study Assistant");
+        }
+
         Optional<StudyAssistantAnswer> existingAnswer =
                 answerRepository.findBySupportQuestionId(supportQuestionId);
         if (existingAnswer.isPresent()) {
-            return reconcileExistingAnswer(channelId, supportQuestionId, learnerUserId, existingAnswer.get());
+            StudyAssistantAnswer answer = existingAnswer.get();
+            if (!answer.channelId().equals(channelId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            evidenceAuthorization.requireCurrent(channelId, learnerUserId, citations(answer));
+            execution.check();
+            chunks.accept(answer.answerBody());
+            return reconcileExistingAnswer(channelId, supportQuestionId, learnerUserId, answer);
         }
 
         if (!"UNANSWERED".equals(supportQuestion.status())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
-        }
-        if (!supportQuestion.senderUserId().equals(learnerUserId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Only the Support Question author can invoke the AI Study Assistant"
-            );
         }
 
         Presence presence = studyAssistantService.findPresence(access.studyServerId(), learnerUserId);
@@ -153,7 +184,7 @@ public class GroundedSupportQuestionService {
                 access.courseId(),
                 learnerUserId
         )) {
-            if (!grantedResourceIds.contains(resource.id())) {
+            if (!grantedResourceIds.contains(resource.id()) || !resource.aiApproved() || !resource.courseId().equals(access.courseId())) {
                 continue;
             }
             resourceTitles.put(resource.id(), resource.title());
@@ -176,6 +207,9 @@ public class GroundedSupportQuestionService {
             }
         }
 
+        // A grant alone is insufficient: stale vectors must also belong to currently approved Course material.
+        grantedResourceIds.retainAll(resourceTitles.keySet());
+
         List<GroundingSource> faqSources = loadFaqSources(access.courseId(), learnerUserId);
 
         GroundingResult groundingResult = ground(
@@ -185,9 +219,27 @@ public class GroundedSupportQuestionService {
                 downloadedSources,
                 faqSources
         );
-        AgentRuntimeService.OrchestratedAnswer orchestrated =
-                agentRuntimeService.orchestrate(supportQuestion.body(), groundingResult);
+        if (!LlmModelCatalog.SOURCE_ONLY.equals(selection)) {
+            groundingResult = new GroundingResult(groundingResult.answerBody(), groundingResult.confidence(),
+                    groundingResult.citations().stream().map(c -> new SourceCitation(c.resourceId(), c.resourceTitle(),
+                            AiEvidenceAuthorization.plainExcerpt(c.excerpt()))).toList());
+        }
+        List<SourceCitation> initialEvidence = groundingResult.citations();
+        Runnable reauthorize = () -> {
+            execution.check();
+            var current = channelAccessClient.requireAccess(channelId, learnerUserId);
+            if (!current.canPostSupportQuestion() || !access.courseId().equals(current.courseId())
+                    || !access.studyServerId().equals(current.studyServerId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "AI answer access changed");
+            }
+            modelCatalog.select(selection, current.courseId());
+            evidenceAuthorization.requireCurrent(channelId, learnerUserId, initialEvidence);
+        };
+        AgentRuntimeService.OrchestratedAnswer orchestrated = agentRuntimeService.orchestrate(supportQuestion.body(), groundingResult,
+                new AgentRuntimeService.Invocation(access.studyServerId(), supportQuestionId, learnerUserId, selection, reauthorize), execution, chunks);
         groundingResult = orchestrated.result();
+        execution.check();
+        evidenceAuthorization.requireCurrent(channelId, learnerUserId, groundingResult.citations());
 
         InvocationType invocationType = groundingResult.handoffRecommended()
                 ? InvocationType.LOW_CONFIDENCE_HANDOFF
@@ -317,7 +369,12 @@ public class GroundedSupportQuestionService {
         if (!answer.channelId().equals(channelId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistant answer not found");
         }
+        evidenceAuthorization.requireCurrent(channelId, viewerUserId, citations(answer));
         return answer;
+    }
+
+    private static List<SourceCitation> citations(StudyAssistantAnswer answer) {
+        return answer.sources().stream().map(source -> new SourceCitation(source.resourceId(), source.resourceTitle(), source.excerpt())).toList();
     }
 
     public AnswerView toAnswerView(StudyAssistantAnswer answer, UUID viewerUserId) {
