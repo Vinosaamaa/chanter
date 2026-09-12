@@ -428,7 +428,7 @@ product_prepare_infrastructure() {
   fi
   docker compose -f "$compose_file" --env-file "$root/.env" --profile product stop realtime-service >/dev/null 2>&1 || true
   docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --wait --wait-timeout 180 \
-    postgres redis redpanda minio livekit "${mail_services[@]}"
+    postgres redis redpanda livekit "${mail_services[@]}"
   product_ensure_databases
   echo "Infrastructure is healthy."
 }

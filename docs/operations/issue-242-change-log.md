@@ -28,7 +28,8 @@ Each writer uses an issue-scoped worktree and branch from the baseline. The coor
 | Open and closed equivalent issues | #242 is the existing owner; no duplicate created |
 | Isolated worker and integration worktrees | Created from current main |
 | Java 21 and Maven | Java 21 found; local Maven distribution checksum verified |
-| Backend session/email tests | Pending |
+| Baseline backend | Entire reactor `mvn verify` passed on Java 21 |
+| Integrated session/email and gateway tests | `mvn -pl auth-service,gateway-service -am verify` passed on Java 21 |
 | Frontend unit/lint/build | Pending |
 | Browser account and recovery journeys | Pending |
 | Hosted exact-head checks | Pending |
@@ -44,5 +45,7 @@ The GitHub token can read/write repository issues and pull requests, but it lack
 The initial frontend audit found a high-severity Browserslist advisory in build tooling. The integration lockfile updates Browserslist and its browser data within the existing dependency constraints. The post-update audit reports no high or critical findings. Two moderate Vitest findings remain in development dependencies and need a separately reviewed toolchain update.
 
 The baseline Engineering suite has two Windows portability failures: CRLF checkout conversion changes exact schema hashes, and a POSIX-path fixture is built with Windows path separators. These failures predate this change. Linux hosted checks remain required; the local failure is recorded rather than described as a passing check.
+
+Issue #311 owns the Windows tooling repair in a separate worktree and PR. The first hosted #242 run also exposed a pre-existing startup blocker: the pinned `minio/minio` image cannot be pulled. Course Resources currently use `LocalCourseResourceStorage`; no application uses MinIO. The product startup list now omits that unused dependency, while preserving the optional Compose service and existing data. Issue #244 owns durable private object storage. Shell tests first reproduced the failing service selection, then passed after the startup correction; they also verify that only local SMTP mode starts Mailpit.
 
 Named workflow skills in older repository instructions, including `tdd`, `diagnose`, and `zoom-out`, were not found in the installed skill directories. Their documented repository procedures remain usable. The Engineering authoring commands and schemas are checked into the repo and can be run directly.
