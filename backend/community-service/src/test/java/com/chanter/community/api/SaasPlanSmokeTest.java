@@ -31,7 +31,7 @@ class SaasPlanSmokeTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void newStudyServerDefaultsToStarterPlanAndOwnerCanUpgrade() throws Exception {
+    void ownerCannotRaiseAStudyServerQuotaThroughTheFormerPlanEndpoint() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
 
         MvcResult createdResult = mockMvc.perform(post("/api/v1/study-servers")
@@ -59,9 +59,13 @@ class SaasPlanSmokeTest {
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "planTier", "PRO"
                         ))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
+                        .with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.planTier").value("PRO"))
-                .andExpect(jsonPath("$.aiInvocationLimit").value(100));
+                .andExpect(jsonPath("$.planTier").value("STARTER"))
+                .andExpect(jsonPath("$.aiInvocationLimit").value(5));
 
         UUID strangerUserId = UUID.randomUUID();
         mockMvc.perform(patch("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
