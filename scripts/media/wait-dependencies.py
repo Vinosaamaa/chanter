@@ -1,19 +1,28 @@
-"""Bounded readiness check for the isolated test stack, including fresh ClamAV signatures."""
+"""Bounded readiness for fresh ClamAV signatures and the optional isolated S3 test store."""
+import argparse
 import datetime
+import os
 import socket
 import time
 import urllib.request
 
-deadline = time.monotonic() + 600
+parser = argparse.ArgumentParser()
+parser.add_argument("--scanner-only", action="store_true")
+parser.add_argument("--timeout", type=int, default=600)
+arguments = parser.parse_args()
+if not 1 <= arguments.timeout <= 600:
+    parser.error("timeout must be between 1 and 600 seconds")
+deadline = time.monotonic() + arguments.timeout
 last_report = None
 last_version = None
 while time.monotonic() < deadline:
     phase = "object-store readiness"
     try:
-        with urllib.request.urlopen("http://127.0.0.1:9090/private-media-test", timeout=3) as response:
-            assert response.status == 200
+        if not arguments.scanner_only:
+            with urllib.request.urlopen("http://127.0.0.1:9090/private-media-test", timeout=3) as response:
+                assert response.status == 200
         phase = "scanner connection"
-        with socket.create_connection(("127.0.0.1", 3310), timeout=3) as connection:
+        with socket.create_connection((os.getenv("CHANTER_CLAMAV_HOST", "127.0.0.1"), int(os.getenv("CHANTER_CLAMAV_PORT", "3310"))), timeout=3) as connection:
             connection.sendall(b"zVERSION\0")
             data = bytearray()
             while not data.endswith(b"\0") and len(data) < 4096:
@@ -24,13 +33,13 @@ while time.monotonic() < deadline:
             phase = "scanner definition freshness"
             version = data.decode("ascii").strip("\0\r\n ")
             if version != last_version:
-                # Isolated public CI fixture: bounded, escaped scanner metadata contains no application data.
+                # Bounded, escaped version metadata contains no application or scanned-file data.
                 print("Scanner VERSION: " + repr(version[:256]), flush=True)
                 last_version = version
             updated = datetime.datetime.strptime(version.split("/", 2)[2], "%a %b %d %H:%M:%S %Y").replace(tzinfo=datetime.timezone.utc)
             age = datetime.datetime.now(datetime.timezone.utc) - updated
             assert datetime.timedelta(minutes=-5) <= age <= datetime.timedelta(hours=72)
-        print("S3 emulator and ClamAV are ready; scanner definitions are within 72 hours")
+        print("ClamAV is ready; scanner definitions are within 72 hours")
         break
     except (OSError, ValueError, IndexError, AssertionError):
         if phase != last_report:

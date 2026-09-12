@@ -1,4 +1,10 @@
 services:
+  clamav:
+    extends:
+      file: media-security/compose.yml
+      service: clamav
+    profiles: [product]
+
   mailpit:
     image: axllent/mailpit:v1.31.1
     profiles: [product]
@@ -141,5 +147,6 @@ services:
       - "127.0.0.1:7882:7882/udp"
 
 volumes:
+  clamav-signatures:
   postgres-data:
   minio-data:
