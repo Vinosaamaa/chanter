@@ -10,7 +10,7 @@ capabilityIds: ["responsive-learning-ui"]
 createdAt: 2026-09-12
 reconstructed: false
 confidence: medium
-unknowns: ["Complete route visual review and backend-dependent interaction gates remain pending"]
+unknowns: ["Backend-dependent interaction gates, manual screen-reader and actual browser-zoom verification remain pending"]
 modules: ["frontend-shell", "course-workspace", "community-ui"]
 interfaces: ["responsive-navigation", "learning-workflows"]
 seams: ["frontend-api-capabilities"]
@@ -24,7 +24,7 @@ amends: []
 supersedes: []
 learningRefs: []
 sources: [{"label":"Chanter issue #254","url":"https://github.com/Vinosaamaa/chanter/issues/254","kind":"issue"}]
-verification: {"state":"not-recorded","evidenceRefs":[]}
+verification: {"state":"verified","evidenceRefs":["https://github.com/Vinosaamaa/chanter/actions/runs/34676290434","https://github.com/Vinosaamaa/chanter/actions/runs/34676290436"]}
 visibility: public-safe
 publicationEligibility: eligible
 issue: 254
@@ -48,12 +48,14 @@ Presentation changes retain service-owned permissions, enrollment scope and auth
 
 Home now prioritizes readable Course covers and a compact schedule, with a real retry and an actionable new-account state. Mobile Browse opens the real navigation, contains focus and restores it after Escape. Focused tests were observed failing before each new behavior and passing afterward. Local lint and production build passed for the initial shell/Home slice.
 
-The required isolated Windows browser launch was denied by automatic approval review. A dedicated hosted Linux visual workflow captures synthetic frontend screenshots at the requested widths without traces, video, real credentials or private data. Hosted run 34675226126 passed 81 of 83 layout checks; it confirmed portrait and landscape composers, phone question list/detail/back, Inbox completion, and eight route accessibility scans except the Calendar grid. Calendar row semantics and keyboard movement are now covered by an observed failing then passing regression. A malformed reconnect test string was corrected. Screenshot acceptance of all routes and backend-dependent capability integration remain pending. This proposed record does not claim release or issue completion.
+The required isolated Windows browser launch was denied by automatic approval review. A dedicated hosted Linux visual workflow captures synthetic frontend screenshots without traces, video, real credentials or private data. At commit cbe0c128, run 34676290434 passed all 179 fixture checks. It covers 24 route views at 360, 390, 768, 1280, 1920 and 3840px; phone list/detail/back behavior; portrait and landscape composers; tab scrolling; Calendar accessibility; native session dialogs; and seven Firefox plus seven WebKit checks. Actual images were inspected after the tests, including repaired phone Lounge, question author layout, tablet Teaching, sign-in and landscape sessions. Density-adjusted viewport checks establish equivalent reflow, not actual browser zoom or assistive-technology operation.
+
+At the same commit, CI run 34676290436 passed 259 frontend tests, lint, dependency audits, production build and loading budgets, seven public browser journeys, and fourteen real signed-in journeys against the product services. The real journeys include registration, email verification, password recovery, reload/refresh/sign-out, account isolation and signed-in route loading. They do not establish every visible mutation, resource scanning, AI grounding or billing. This proposed record does not claim release or issue completion.
 
 
 ## Loading boundary
 
-Route imports are deferred by the router, while protected-route ownership stays with authentication. The budget follows each route's static import graph, deduplicates shared files, and excludes unloaded dynamic imports. Initial JavaScript is 106.9 KiB gzip, sign-in is 119.4 KiB, and signed-in Home is 134.2 KiB before secure-session integration. Initial and Home caps are separately named at 120 KB and 150 KB gzip. The deferred voice client is capped at 130 KB; total raw JavaScript remains capped at 1.3 MB and gzip at 400 KB. Independent compression streams add about 43 KB to aggregate gzip while reducing initial loading.
+Route imports are deferred by the router, while protected-route ownership stays with authentication. The budget follows each route's static import graph, deduplicates shared files, and excludes unloaded dynamic imports. With secure sessions integrated, initial JavaScript is 108.7 KiB gzip, sign-in is 121.3 KiB, and signed-in Home is 137.3 KiB. Initial and Home caps are separately named at 120 KB and 150 KB gzip. The deferred voice client is capped at 130 KB; total raw JavaScript remains capped at 1.3 MB and gzip at 400 KB. Independent compression streams add about 43 KB to aggregate gzip while reducing initial loading.
 
 ## Open acceptance
 

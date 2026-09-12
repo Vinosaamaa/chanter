@@ -13,7 +13,7 @@ Complete reconstruction of the learning/community product UI with the pinned fro
 
 ## Verification
 
-Pending implementation. No screenshot, mocked API or component test is recorded as full-stack proof.
+Candidate cbe0c128 passed hosted CI and all 179 fixture browser checks, recorded below. No screenshot, mocked API or component test is recorded as full-stack proof.
 
 
 ## Workspace and public route reconstruction
@@ -51,3 +51,9 @@ Rebased onto main at d9c68b5. The resulting candidate 7bcaffd passed 255 local f
 Real product run 34675941062 passed 13/14 signed-in journeys. Its only failure was an obsolete Teaching heading assertion. Two public tests similarly expected the removed free-plan claim and old auth headline. These assertions now follow the new visible headings and registration control. This does not yet constitute a green final-head release gate.
 
 The assistant stream now cancels an unfinished response and releases its reader on parsing or callback failures, and releases completed readers without cancellation. Four failing regressions were observed before the fix; they and the existing question hook tests passed afterward. Transport session guards from #242 remain unchanged.
+
+## Verified reconstruction candidate
+
+At cbe0c128, [UI fixture run 34676290434](https://github.com/Vinosaamaa/chanter/actions/runs/34676290434) passed all 179 checks. Actual application screenshots cover 24 routes at six widths, plus phone landscape, session dialogs, empty Home and reconnect states. The seven Firefox and seven WebKit smoke checks passed. The repaired phone Lounge composer, tablet Teaching priorities, question author layout, phone sign-in and landscape sessions were visually inspected after download.
+
+[CI run 34676290436](https://github.com/Vinosaamaa/chanter/actions/runs/34676290436) passed backend, frontend, dependency-review, engineering-policy and product-e2e. Frontend evidence is 75 files / 259 tests, lint, complete dependency audits, production build and budgets, and seven public browser journeys. Fourteen signed-in journeys passed against real product services, including registration, verification, recovery, durable sessions and account isolation. Code review was requested for this exact candidate. Full #254 acceptance remains open for the backend integrations, remaining role/control and manual accessibility checks, merged-main and release verification.

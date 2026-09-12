@@ -108,6 +108,42 @@ for (const size of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { 
 }
 
 
+test('fixture UI hides the mobile marketing menu after resizing to desktop', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Open navigation' }).click()
+  const menu = page.getByRole('navigation', { name: 'Mobile marketing' })
+  await expect(menu).toBeVisible()
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await expect(menu).toBeHidden()
+  await expect(page.getByRole('navigation', { name: 'Marketing', exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-marketing-menu-resized-1280.png') })
+})
+
+test('fixture UI scrolls a long device session list in phone landscape', async ({ page }, testInfo) => {
+  const timestamp = '2026-09-12T04:14:00Z'
+  await page.route('**/api/v1/auth/sessions', route => route.fulfill({ json: { sessions: Array.from({ length: 12 }, (_, index) => ({
+    id: `visual-device-${index}`, createdAt: timestamp, lastUsedAt: timestamp, expiresAt: '2026-09-19T04:14:00Z',
+    userAgent: index === 11 ? 'Safari/605.1.15 (iPhone)' : 'Chrome/140.0.0.0 (Windows NT 10.0)', current: index === 0,
+  })) } }))
+  await page.setViewportSize({ width: 844, height: 390 })
+  await page.goto('/app/home')
+  await page.getByRole('button', { name: 'Open navigation' }).click()
+  await page.getByRole('button', { name: 'Open account menu' }).click()
+  await page.getByRole('menuitem', { name: 'Sessions and devices' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Sessions and devices' })
+  const lastDevice = dialog.getByText('Safari on iPhone')
+  await expect(lastDevice).toBeVisible()
+  await lastDevice.scrollIntoViewIfNeeded()
+  await expect(lastDevice).toBeInViewport()
+  expect(await dialog.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
+  await dialog.getByText(/up to 15 minutes/).scrollIntoViewIfNeeded()
+  await expect(dialog.getByText(/up to 15 minutes/)).toBeInViewport()
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-device-sessions-long-landscape.png') })
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+})
+
 test('fixture UI phone Inbox marks a notification done and returns to the list', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/inbox')

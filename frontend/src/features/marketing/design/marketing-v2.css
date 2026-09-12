@@ -9,6 +9,7 @@
 .marketing-v2-primary { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 22px; border-radius: 6px; color: white; background: #2458d3; font-size: 14px; font-weight: 550; }
 .marketing-v2-primary:hover { background: #1744b0; }
 .marketing-v2-menu-button { display: none; }
+.marketing-v2-mobile-nav { display: none; }
 .marketing-v2-hero { background: #f3f6fa; border-bottom: 1px solid #dce3ec; }
 .marketing-v2-hero-inner { max-width: 1280px; margin: auto; padding: 100px 40px 112px; }
 .marketing-v2-hero-split { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,.95fr); gap: 80px; align-items: center; }

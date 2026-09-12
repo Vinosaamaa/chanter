@@ -1,4 +1,4 @@
-.v2-app-shell .sessions-dialog { width: min(680px, calc(100vw - 40px)); max-height: calc(100dvh - 40px); margin: auto; padding: 0; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: white; box-shadow: 0 24px 80px #192c4633; }
+.v2-app-shell .sessions-dialog { width: min(680px, calc(100vw - 40px)); max-height: calc(100dvh - 40px); overflow: auto; margin: auto; padding: 0; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: white; box-shadow: 0 24px 80px #192c4633; }
 .sessions-dialog::backdrop { background: #192c4666; }
 .v2-app-shell .session-content { position: relative; padding: 32px; }
 .v2-app-shell .sessions-dialog header { padding-right: 24px; }
