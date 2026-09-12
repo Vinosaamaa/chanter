@@ -239,7 +239,7 @@ function FriendList({
   return (
     <div className="friends-list">
       <h2>
-        ONLINE <b>{online.length}</b>
+        Online <b>{online.length}</b>
       </h2>
       {online.map((friend) => (
         <FriendButton
@@ -250,7 +250,7 @@ function FriendList({
         />
       ))}
       <h2>
-        ALL <b>{friends.length}</b>
+        All friends <b>{friends.length}</b>
       </h2>
       {offline.map((friend) => (
         <FriendButton

@@ -202,21 +202,14 @@ export function SignInPage() {
             <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Working…' : mode === 'register' ? 'Create account' : 'Sign in'}</button>
           </form>
 
-          <div className="auth-divider"><span />or<span /></div>
           {googleAuthorizationUrl ? (
-            <a className="google-button" href={googleAuthorizationUrl}>
-              <b aria-hidden="true">G</b> Continue with Google
-            </a>
-          ) : (
             <>
-              <button type="button" className="google-button" disabled aria-describedby="google-sign-in-status">
+              <div className="auth-divider"><span />or<span /></div>
+              <a className="google-button" href={googleAuthorizationUrl}>
                 <b aria-hidden="true">G</b> Continue with Google
-              </button>
-              <p id="google-sign-in-status" className="auth-provider-status">
-                Google sign-in is available when CHANTER_OAUTH_GOOGLE_CLIENT_ID / SECRET are set.
-              </p>
+              </a>
             </>
-          )}
+          ) : null}
           <p className="auth-terms">By continuing you agree to the <Link to="/terms">Terms</Link></p>
           <Link className="auth-back" to="/">Back to Chanter</Link>
         </div>

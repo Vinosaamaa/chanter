@@ -26,3 +26,12 @@ Pending implementation. No screenshot, mocked API or component test is recorded 
 - The first workspace production check passed TypeScript and bundling, then rejected CSS size (223,316 bytes against 220,000). Replacing old public-page styles addresses duplicate CSS; the limit is unchanged.
 - The hosted Home run at 86fb2f7 produced twelve Home images, with eleven of twelve checks passing. The remaining failure is drawer focus during its visibility transition. The transition is removed; the browser focus assertion remains.
 - Hosted visual fixtures now cover nineteen routes at phone and desktop widths plus landscape chat. Fixture responses are explicit test-server data and fail on missing API responses. These images do not prove backend functionality.
+
+
+## Browser findings and second candidate
+
+- Hosted run 34674558271: 49/51 checks pass; all requested screenshots captured. Drawer focus/Escape/return is now green. Failing checks identified a missing notification-read fixture and an offscreen landscape composer; portrait inspection found the same composer problem.
+- Removed the old chat minimum height, corrected shared question avatar dimensions, added phone question list/detail/back navigation, and added portrait composer assertions. The fixture socket acknowledges subscriptions only; reconnecting-state coverage remains separate and no live-delivery claim is made.
+- Removed unconfigured Google controls/setup-variable text, fabricated welcome enrollment details, unavailable Study room action, and outdated unused design constants. Community breadcrumbs use the current Study Server (observed red/green).
+- Local verification: 24 component files / 97 tests pass; lint and production build pass. New import-graph budget tests observed red/green. Asset budgets now measure route delivery as described in the design document.
+- Added axe WCAG checks for primary routes, tablet screenshots, Inbox completion/back behavior, question list/back behavior, and a reduced-motion/200%-equivalent reflow check. Hosted outcomes remain pending.

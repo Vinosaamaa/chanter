@@ -9,7 +9,7 @@ import { MARKETING_DEMO_PATH, MARKETING_DOCS_URL, MARKETING_SIGN_IN_PATH } from 
 const NAV_ITEMS = [
   { label: 'Features', href: '#features' },
   { label: 'Use cases', href: '#use-cases' },
-  { label: 'Get started', href: '#pricing' },
+  { label: 'Start a group', href: '#pricing' },
 ] as const
 
 export function MarketingHeader() {

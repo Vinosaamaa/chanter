@@ -3,6 +3,8 @@ import { defineConfig, mergeConfig } from 'vite'
 import base from './vite.config'
 import { workspaceFixture } from './e2e/visual/workspace-fixtures'
 
+const fixtureNotifications = new Map<string, Set<string>>()
+
 const user = { id: 'visual-learner', email: 'learner@example.test', displayName: 'Sam Rivera', emailVerified: true }
 const titles = ['CS 101 — Foundations of computer science', 'Designing for people', 'Mathematics for everyday systems', 'Writing with clarity']
 const coursePath = (id: string) => `/app/servers/visual-study/courses/${id}/overview?cohort=visual-cohort`
@@ -15,7 +17,7 @@ export default mergeConfig(base, defineConfig({
     name: 'explicit-visual-review-fixtures',
     transformIndexHtml() {
       return [
-        { tag: 'script', attrs: { type: 'module' }, injectTo: 'head-prepend', children: `import { useAuthStore } from '/src/stores/auth-store.ts'; const isWorkspace = location.pathname.startsWith('/app/'); document.cookie = 'visual_review=' + (!isWorkspace ? 'anonymous' : ['empty','staff'].includes(new URLSearchParams(location.search).get('visual')) ? new URLSearchParams(location.search).get('visual') : 'populated') + '; Path=/; SameSite=Strict'; if (isWorkspace) useAuthStore.getState().setSession(${ JSON.stringify({ accessToken: 'visual-fixture-only', expiresInSeconds: 900, user })});` },
+        { tag: 'script', attrs: { type: 'module' }, injectTo: 'head-prepend', children: `import { useAuthStore } from '/src/stores/auth-store.ts'; if (!document.cookie.includes('visual_review_id=')) document.cookie = 'visual_review_id=' + crypto.randomUUID() + '; Path=/; SameSite=Strict'; const isWorkspace = location.pathname.startsWith('/app/'); document.cookie = 'visual_review=' + (!isWorkspace ? 'anonymous' : ['empty','staff'].includes(new URLSearchParams(location.search).get('visual')) ? new URLSearchParams(location.search).get('visual') : 'populated') + '; Path=/; SameSite=Strict'; if (isWorkspace) useAuthStore.getState().setSession(${ JSON.stringify({ accessToken: 'visual-fixture-only', expiresInSeconds: 900, user })});` },
         { tag: 'div', attrs: { style: 'position:fixed;right:12px;bottom:80px;z-index:90;background:#192c46;color:white;padding:4px 8px;border-radius:4px;font:10px system-ui;pointer-events:none' }, injectTo: 'body', children: 'UI fixture preview' },
       ]
     },
@@ -33,7 +35,10 @@ export default mergeConfig(base, defineConfig({
         if (pathname.endsWith('/auth/logout')) { response.setHeader('Set-Cookie', 'visual_session=; Path=/; Max-Age=0'); response.statusCode = 204; return response.end() }
         if (pathname.endsWith('/auth/me')) return send(user)
         const staff = request.headers.cookie?.includes('visual_review=staff')
-        const fixture = workspaceFixture(pathname, Boolean(empty), Boolean(staff))
+        const fixtureId = request.headers.cookie?.match(/visual_review_id=([^;]+)/)?.[1] ?? 'preview'
+        const completedNotifications = fixtureNotifications.get(fixtureId) ?? new Set<string>()
+        fixtureNotifications.set(fixtureId, completedNotifications)
+        const fixture = workspaceFixture(pathname, Boolean(empty), Boolean(staff), completedNotifications)
         if (fixture !== undefined) return send(fixture)
         if (pathname.endsWith('/study-servers')) return send(empty ? [] : [{ id: 'visual-study', name: 'Open Learning Collective', owner: Boolean(staff), courseCount: 4, memberCount: 28 }])
         if (pathname.endsWith('/navigation')) return send({ studyServerId: 'visual-study', studyServerName: 'Open Learning Collective', canViewFullCatalog: false, capabilities: { owner: Boolean(staff), canTeach: Boolean(staff), canCreateCourse: Boolean(staff), canManageCommunity: Boolean(staff), canManageEvents: Boolean(staff), canManageBilling: Boolean(staff) }, studyServerChannels: [{ id: 'visual-lounge', name: 'lounge', kind: 'TEXT' }], courses })

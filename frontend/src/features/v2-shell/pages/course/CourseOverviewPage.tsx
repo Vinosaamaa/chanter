@@ -8,7 +8,6 @@ import {
 } from '../../../course-overview/course-overview-summary-api'
 import type { CourseOverviewItem } from '../../../course-overview/course-overview-summary-types'
 import { formatUserFacingApiError } from '../../../../lib/format-api-error'
-import { V2Avatar } from '../../components/V2Avatar'
 import { useV2CourseWorkspace } from '../../layouts/v2-course-workspace-context'
 import { v2CoursePath } from '../../v2-routes'
 
@@ -49,7 +48,7 @@ function RecentIcon({ kind }: { kind: string }) {
   if (kind === 'RESOURCE') {
     return <span className="square-icon blue"><FileText /></span>
   }
-  return <V2Avatar name="Member" tone="purple" size="sm" />
+  return <span className="square-icon purple"><MessageSquare /></span>
 }
 
 export function CourseOverviewPage() {
@@ -169,6 +168,7 @@ export function CourseOverviewPage() {
                   </div>
                 </article>
               ))}
+            {studyRoomHref ? (
             <article>
               <i className="green" />
               <div>
@@ -176,16 +176,11 @@ export function CourseOverviewPage() {
                 <p>
                   <span className="round-icon blue"><Radio /></span>
                   Study room{' '}
-                  {studyRoomHref ? (
-                    <Link aria-label="Join Study room" to={studyRoomHref}>Join</Link>
-                  ) : (
-                    <button type="button" disabled title="No voice channel is available for this Cohort">
-                      Join
-                    </button>
-                  )}
+                  <Link aria-label="Join Study room" to={studyRoomHref}>Join</Link>
                 </p>
               </div>
             </article>
+            ) : null}
           </div>
         )}
       </aside>

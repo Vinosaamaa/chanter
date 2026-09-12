@@ -83,6 +83,7 @@ export function InboxPage() {
     markDone.mutate(selected.id, {
       onSuccess: () => {
         setSelectedId(null)
+        setReadingOpen(false)
       },
     })
   }

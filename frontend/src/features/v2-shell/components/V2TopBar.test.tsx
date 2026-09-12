@@ -41,6 +41,13 @@ describe('V2TopBar', () => {
     expect(screen.getByTestId('search-state')).toHaveTextContent('closed')
   })
 
+  it('uses the current Study Server name in community navigation', () => {
+    navigation.value = { data: { studyServerName: 'Open Learning Collective', courses: [] } }
+    renderTopBar('/app/servers/server-real/community/announcements')
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toHaveTextContent('Open Learning Collective / Community')
+    expect(screen.queryByText('Spring Bootcamp Hub')).not.toBeInTheDocument()
+  })
+
   it('shows the real selected cohort in a course breadcrumb', () => {
     navigation.value = {
       data: {

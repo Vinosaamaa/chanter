@@ -71,7 +71,7 @@ export function V2CommunityHubLayout() {
     },
   })
 
-  const serverName = navigationQuery.data?.studyServerName ?? 'Spring Bootcamp Hub'
+  const serverName = navigationQuery.data?.studyServerName ?? 'Study Server'
   const courseCount = catalogQuery.data?.courses.length ?? navigationQuery.data?.courses.length ?? 0
   const memberCount = memberSummaryQuery.data?.memberCount
   const preview = memberSummaryQuery.data?.preview ?? []

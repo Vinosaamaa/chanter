@@ -2,76 +2,40 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { AuthSessionBootstrap } from './AuthSessionBootstrap'
 
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute'
-import { SignInPage } from '../features/auth/pages/SignInPage'
-import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
-import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
-import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage'
-import { OAuthCallbackPage } from '../features/auth/pages/OAuthCallbackPage'
-import { TermsPage } from '../features/auth/pages/TermsPage'
-import { PrivacyPage } from '../features/auth/pages/PrivacyPage'
-import { LandingPage } from '../features/marketing/pages/LandingPage'
-import { StudyServerPickerPage } from '../features/shell/components/StudyServerPickerPage'
-import { AppChannelLayout, AppShellLayout } from '../features/shell/layouts/AppShellLayout'
-import { AppServerRedirectPage } from '../features/shell/pages/AppServerRedirectPage'
-import { SupportOperationPage } from '../features/support-operations/components/SupportOperationPage'
-import { InstructorDashboardPage } from '../features/instructor-dashboard/components/InstructorDashboardPage'
-import { ChannelSummaryPage } from '../features/channel-summary/components/ChannelSummaryPage'
-import { CohortEnrollmentPage } from '../features/onboarding/components/CohortEnrollmentPage'
-import { StudyServerHomePage } from '../features/onboarding/components/StudyServerHomePage'
-import { V2AppShellLayout } from '../features/v2-shell/layouts/V2AppShellLayout'
-import { HomePage } from '../features/v2-shell/pages/HomePage'
-import { WelcomeJoinedPage } from '../features/v2-shell/pages/WelcomeJoinedPage'
-import { CreateStudyServerV2Page } from '../features/v2-shell/pages/onboarding/CreateStudyServerV2Page'
-import { JoinOrCreatePage } from '../features/v2-shell/pages/onboarding/JoinOrCreatePage'
-import { InboxPage } from '../features/v2-shell/pages/InboxPage'
-import { CalendarPage } from '../features/v2-shell/pages/CalendarPage'
-import { V2CourseWorkspaceLayout } from '../features/v2-shell/layouts/V2CourseWorkspaceLayout'
-import { CourseOverviewPage } from '../features/v2-shell/pages/course/CourseOverviewPage'
-import { CourseChatPage } from '../features/v2-shell/pages/course/CourseChatPage'
-import { CourseQuestionsPage } from '../features/v2-shell/pages/course/CourseQuestionsPage'
-import { CourseResourcesPage } from '../features/v2-shell/pages/course/CourseResourcesPage'
-import { CourseOfficeHoursPage } from '../features/v2-shell/pages/course/CourseOfficeHoursPage'
-import { CoursePeoplePage } from '../features/v2-shell/pages/course/CoursePeoplePage'
-import { CourseGovernancePage } from '../features/v2-shell/pages/course/CourseGovernancePage'
-import { V2CommunityHubLayout } from '../features/v2-shell/layouts/V2CommunityHubLayout'
-import { CommunityAnnouncementsPage, CommunityDiscoverPage, CommunityEventsPage, CommunityLoungePage, CommunityMembersPage } from '../features/v2-shell/pages/community/CommunityPages'
-import { TeachingPage } from '../features/v2-shell/pages/TeachingPage'
-import { BillingSettingsPage } from '../features/v2-shell/pages/BillingSettingsPage'
-import { FriendsPage } from '../features/v2-shell/pages/FriendsPage'
 
 export function createAppRouter() {
   const routes = [
     {
       path: '/',
-      element: <LandingPage />,
+      lazy: async () => ({ Component: (await import('../features/marketing/pages/LandingPage')).LandingPage }),
     },
     {
       path: '/sign-in',
-      element: <SignInPage />,
+      lazy: async () => ({ Component: (await import('../features/auth/pages/SignInPage')).SignInPage }),
     },
     {
       path: '/forgot-password',
-      element: <ForgotPasswordPage />,
+      lazy: async () => ({ Component: (await import('../features/auth/pages/ForgotPasswordPage')).ForgotPasswordPage }),
     },
     {
       path: '/reset-password',
-      element: <ResetPasswordPage />,
+      lazy: async () => ({ Component: (await import('../features/auth/pages/ResetPasswordPage')).ResetPasswordPage }),
     },
     {
       path: '/verify-email',
-      element: <VerifyEmailPage />,
+      lazy: async () => ({ Component: (await import('../features/auth/pages/VerifyEmailPage')).VerifyEmailPage }),
     },
     {
       path: '/oauth/callback/google',
-      element: <OAuthCallbackPage />,
+      lazy: async () => ({ Component: (await import('../features/auth/pages/OAuthCallbackPage')).OAuthCallbackPage }),
     },
     {
       path: '/terms',
-      element: <TermsPage />,
+      lazy: async () => ({ Component: (await import('../features/auth/pages/TermsPage')).TermsPage }),
     },
     {
       path: '/privacy',
-      element: <PrivacyPage />,
+      lazy: async () => ({ Component: (await import('../features/auth/pages/PrivacyPage')).PrivacyPage }),
     },
     {
       path: '/app',
@@ -82,7 +46,7 @@ export function createAppRouter() {
       ),
       children: [
         {
-          element: <V2AppShellLayout />,
+          lazy: async () => ({ Component: (await import('../features/v2-shell/layouts/V2AppShellLayout')).V2AppShellLayout }),
           children: [
             {
               index: true,
@@ -90,96 +54,96 @@ export function createAppRouter() {
             },
             {
               path: 'home',
-              element: <HomePage />,
+              lazy: async () => ({ Component: (await import('../features/v2-shell/pages/HomePage')).HomePage }),
             },
             {
               path: 'welcome',
-              element: <WelcomeJoinedPage />,
+              lazy: async () => ({ Component: (await import('../features/v2-shell/pages/WelcomeJoinedPage')).WelcomeJoinedPage }),
             },
             {
               path: 'onboarding/join-or-create',
-              element: <JoinOrCreatePage />,
+              lazy: async () => ({ Component: (await import('../features/v2-shell/pages/onboarding/JoinOrCreatePage')).JoinOrCreatePage }),
             },
             {
               path: 'onboarding/create-study-server',
-              element: <CreateStudyServerV2Page />,
+              lazy: async () => ({ Component: (await import('../features/v2-shell/pages/onboarding/CreateStudyServerV2Page')).CreateStudyServerV2Page }),
             },
             {
               path: 'inbox',
-              element: <InboxPage />,
+              lazy: async () => ({ Component: (await import('../features/v2-shell/pages/InboxPage')).InboxPage }),
             },
             {
               path: 'calendar',
-              element: <CalendarPage />,
+              lazy: async () => ({ Component: (await import('../features/v2-shell/pages/CalendarPage')).CalendarPage }),
             },
-            { path: 'teaching', element: <TeachingPage /> },
-            { path: 'settings/billing', element: <BillingSettingsPage /> },
-            { path: 'friends', element: <FriendsPage /> },
+            { path: 'teaching', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/TeachingPage')).TeachingPage }) },
+            { path: 'settings/billing', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/BillingSettingsPage')).BillingSettingsPage }) },
+            { path: 'friends', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/FriendsPage')).FriendsPage }) },
             {
               path: 'servers/:serverId/courses/:courseId/settings',
-              element: <CourseGovernancePage />,
+              lazy: async () => ({ Component: (await import('../features/v2-shell/pages/course/CourseGovernancePage')).CourseGovernancePage }),
             },
             {
               path: 'servers/:serverId/courses/:courseId',
-              element: <V2CourseWorkspaceLayout />,
+              lazy: async () => ({ Component: (await import('../features/v2-shell/layouts/V2CourseWorkspaceLayout')).V2CourseWorkspaceLayout }),
               children: [
                 { index: true, element: <Navigate to="overview" replace /> },
-                { path: 'overview', element: <CourseOverviewPage /> },
-                { path: 'chat', element: <CourseChatPage /> },
-                { path: 'questions', element: <CourseQuestionsPage /> },
-                { path: 'resources', element: <CourseResourcesPage /> },
-                { path: 'office-hours', element: <CourseOfficeHoursPage /> },
-                { path: 'people', element: <CoursePeoplePage /> },
+                { path: 'overview', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/course/CourseOverviewPage')).CourseOverviewPage }) },
+                { path: 'chat', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/course/CourseChatPage')).CourseChatPage }) },
+                { path: 'questions', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/course/CourseQuestionsPage')).CourseQuestionsPage }) },
+                { path: 'resources', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/course/CourseResourcesPage')).CourseResourcesPage }) },
+                { path: 'office-hours', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/course/CourseOfficeHoursPage')).CourseOfficeHoursPage }) },
+                { path: 'people', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/course/CoursePeoplePage')).CoursePeoplePage }) },
               ],
             },
-            { path: 'servers/:serverId/community', element: <V2CommunityHubLayout />, children: [
+            { path: 'servers/:serverId/community', lazy: async () => ({ Component: (await import('../features/v2-shell/layouts/V2CommunityHubLayout')).V2CommunityHubLayout }), children: [
               { index: true, element: <Navigate to="announcements" replace /> },
-              { path: 'announcements', element: <CommunityAnnouncementsPage /> },
-              { path: 'lounge', element: <CommunityLoungePage /> },
-              { path: 'events', element: <CommunityEventsPage /> },
-              { path: 'discover', element: <CommunityDiscoverPage /> },
-              { path: 'members', element: <CommunityMembersPage /> },
+              { path: 'announcements', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/community/CommunityPages')).CommunityAnnouncementsPage }) },
+              { path: 'lounge', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/community/CommunityPages')).CommunityLoungePage }) },
+              { path: 'events', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/community/CommunityPages')).CommunityEventsPage }) },
+              { path: 'discover', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/community/CommunityPages')).CommunityDiscoverPage }) },
+              { path: 'members', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/community/CommunityPages')).CommunityMembersPage }) },
             ] },
           ],
         },
         {
-          element: <AppShellLayout />,
+          lazy: async () => ({ Component: (await import('../features/shell/layouts/AppShellLayout')).AppShellLayout }),
           children: [
             {
               path: 'picker',
-              element: <StudyServerPickerPage />,
+              lazy: async () => ({ Component: (await import('../features/shell/components/StudyServerPickerPage')).StudyServerPickerPage }),
             },
             {
               path: 'instructor-dashboard',
-              element: <InstructorDashboardPage />,
+              lazy: async () => ({ Component: (await import('../features/instructor-dashboard/components/InstructorDashboardPage')).InstructorDashboardPage }),
             },
             {
               path: 'servers/:serverId/home',
-              element: <StudyServerHomePage />,
+              lazy: async () => ({ Component: (await import('../features/onboarding/components/StudyServerHomePage')).StudyServerHomePage }),
             },
             {
               path: 'servers/:serverId/courses/:courseId/enrollment',
-              element: <CohortEnrollmentPage />,
+              lazy: async () => ({ Component: (await import('../features/onboarding/components/CohortEnrollmentPage')).CohortEnrollmentPage }),
             },
             {
               path: 'servers/:serverId',
-              element: <AppServerRedirectPage />,
+              lazy: async () => ({ Component: (await import('../features/shell/pages/AppServerRedirectPage')).AppServerRedirectPage }),
             },
             {
               path: 'servers/:serverId/study-channels/:channelId',
-              element: <AppChannelLayout />,
+              lazy: async () => ({ Component: (await import('../features/shell/layouts/AppShellLayout')).AppChannelLayout }),
             },
             {
               path: 'servers/:serverId/course-channels/:channelId/summary',
-              element: <ChannelSummaryPage />,
+              lazy: async () => ({ Component: (await import('../features/channel-summary/components/ChannelSummaryPage')).ChannelSummaryPage }),
             },
             {
               path: 'servers/:serverId/course-channels/:channelId',
-              element: <AppChannelLayout />,
+              lazy: async () => ({ Component: (await import('../features/shell/layouts/AppShellLayout')).AppChannelLayout }),
             },
             {
               path: 'servers/:serverId/courses/:courseId/support/:operation',
-              element: <SupportOperationPage />,
+              lazy: async () => ({ Component: (await import('../features/support-operations/components/SupportOperationPage')).SupportOperationPage }),
             },
           ],
         },

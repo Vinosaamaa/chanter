@@ -137,6 +137,16 @@ vi.mock('../../../support-operations/hooks/use-ta-queue-panel', () => ({
 describe('CourseQuestionsPage', () => {
   afterEach(cleanup)
 
+  it('opens a phone reading pane and returns to its question list', async () => {
+    const user = userEvent.setup()
+    render(<CourseQuestionsPage />)
+    const question = screen.getByRole('button', { name: /Why does the recursive call stop/ })
+    await user.click(question)
+    expect(question.closest('.questions-layout')).toHaveClass('question-reading-open')
+    await user.click(screen.getByRole('button', { name: 'Back to questions' }))
+    expect(question.closest('.questions-layout')).not.toHaveClass('question-reading-open')
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     const question: SupportQuestionSummary = {

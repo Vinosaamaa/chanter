@@ -58,7 +58,7 @@
 .v2-app-shell .course-timeline p :is(a,button) { min-height: 36px; padding: 6px 10px; color: var(--blue); background: var(--blue-soft); border: 0; font-size: 12px; }
 
 /* Chat is a conversation canvas with a compact channel index, not nested cards. */
-.v2-app-shell .course-chat-layout { grid-template-columns: 220px minmax(0,1fr); gap: 0; padding: 0; }
+.v2-app-shell .course-chat-layout { height: 100%; min-height: 0; overflow: hidden; grid-template-columns: 220px minmax(0,1fr); gap: 0; padding: 0; }
 .v2-app-shell :is(.channel-panel,.chat-panel) { border: 0; border-radius: 0; }
 .v2-app-shell .channel-panel { padding: 20px 12px; border-right: 1px solid var(--line); background: #f8fafd; }
 .v2-app-shell .channel-panel section > header { font-size: 12px; font-weight: 600; letter-spacing: 0; padding: 0 8px; }
@@ -67,7 +67,7 @@
 .v2-app-shell .channel-row-main { padding-left: 10px; }
 .v2-app-shell .channel-row-main > svg { width: 18px; height: 18px; flex-basis: 18px; }
 .v2-app-shell .channel-row.active { background: var(--blue-soft); color: var(--blue); }
-.v2-app-shell .chat-panel { background: white; }
+.v2-app-shell .chat-panel { min-height: 0; background: white; }
 .v2-app-shell .chat-conversation-heading { min-height: 58px; display: flex; align-items: center; gap: 8px; padding: 12px 28px; border-bottom: 1px solid var(--line); color: var(--muted); }
 .v2-app-shell .chat-conversation-heading h2 { font-size: 14px; color: var(--ink); margin: 0; }
 .v2-app-shell .chat-message-list { padding: 28px; }
@@ -164,7 +164,7 @@
 .v2-app-shell .community-tabs a.active { color: var(--blue); border-color: var(--blue); }
 .v2-app-shell .community-tab-panel { background: white; }
 .v2-app-shell .questions-layout { padding: 0; gap: 0; grid-template-columns: 320px minmax(0,1fr); }
-.v2-app-shell .question-thread-pane { border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 24px 16px; background: #f8fafd; }
+.v2-app-shell .questions-list-pane { border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 24px 16px; background: #f8fafd; }
 .v2-app-shell .question-detail-pane { border: 0; border-radius: 0; padding: 28px; background: white; }
 .v2-app-shell :is(.question-message,.assistant-answer) { grid-template-columns: 36px minmax(0,1fr); gap: 12px; }
 .v2-app-shell :is(.question-message,.assistant-answer) strong { font-size: 14px; }
@@ -212,7 +212,7 @@
   .v2-app-shell .workspace-tabs { gap: 24px; }
   .v2-app-shell :is(.v2-chip-row button,.course-cohort-picker select,.channel-row-main,.channel-row-actions button) { min-height: 44px; }
   .v2-app-shell .channel-row-actions { opacity: 1; width: auto; flex-basis: auto; }
-  .v2-app-shell .channel-row-actions button { width: 32px; }
+  .v2-app-shell .channel-row-actions button { width: 44px; }
   .v2-app-shell .calendar-page { grid-template-columns: 1fr; overflow: auto; }
   .v2-app-shell .calendar-main { overflow: visible; min-height: 0; border-right: 0; }
   .v2-app-shell .calendar-month-grid { flex: none; }
@@ -274,7 +274,7 @@
   .v2-app-shell .community-tabs { gap: 24px; margin-top: 20px; }
   .v2-app-shell .community-tabs a { font-size: 12px; }
   .v2-app-shell .questions-layout { display: flex; flex-direction: column; overflow: auto; }
-  .v2-app-shell .question-thread-pane { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 16px; }
+  .v2-app-shell .questions-list-pane { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 16px; }
   .v2-app-shell .question-detail-pane { padding: 24px 16px; min-height: 360px; }
   .v2-app-shell :is(.question-message,.assistant-answer) { grid-template-columns: 28px minmax(0,1fr); gap: 10px; }
   .v2-app-shell .assistant-avatar { width: 28px; height: 28px; }
@@ -301,3 +301,78 @@
 }
 
 .v2-app-shell .settings-home-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--blue); font-size: 13px; margin-bottom: 20px; }
+/* Refinements from actual phone/desktop browser review. */
+.v2-app-shell .friends-page { gap: 0; padding: 0; }
+.v2-app-shell :is(.friends-list-pane,.dm-pane) { border-radius: 0; border-top: 0; border-bottom: 0; border-left: 0; }
+.v2-app-shell .dm-pane { border-right: 0; }
+.v2-app-shell .dm-pane > header .mobile-back { display: none; }
+.v2-app-shell .dm-message-list article > div > p { width: auto; max-width: none; padding: 0; border-radius: 0; background: transparent; font-size: 15px; }
+.v2-app-shell .dm-message-list article.own p { border-radius: 0; background: transparent; }
+.v2-app-shell .dm-message-list article time { font-size: 11px; }
+.v2-app-shell .dm-message-list article { margin-top: 0; }
+.v2-app-shell .community-hub-title { gap: 20px; }
+.v2-app-shell .community-hub-title > span { width: 56px; height: 56px; flex: 0 0 56px; border-radius: 12px; color: #315b6a; background: #e0ecf0; }
+.v2-app-shell .community-hub-title > span svg { width: 28px; height: 28px; }
+.v2-app-shell .community-tabs a { min-width: 0; justify-content: start; }
+.v2-app-shell .announcements-layout { padding: 32px 40px; grid-template-columns: minmax(0,1fr) 280px; gap: 40px; }
+.v2-app-shell .announcements-layout > main { min-width: 0; }
+.v2-app-shell .announcement-card { padding: 28px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; grid-template-columns: 36px minmax(0,1fr); gap: 16px; margin: 0; }
+.v2-app-shell .announcement-card > .v2-avatar { width: 36px; height: 36px; font-size: 12px; }
+.v2-app-shell .announcement-card h2 { font-size: 23px; line-height: 1.35; letter-spacing: -.5px; margin: 12px 0; }
+.v2-app-shell .announcement-card > div > span { font-size: 15px; line-height: 1.8; color: var(--ink); }
+.v2-app-shell .announcement-card > div > p { flex-wrap: wrap; gap: 8px; }
+.v2-app-shell .announcement-card > footer { border: 0; margin: 0; padding: 0; grid-column: 2; }
+.v2-app-shell .announcement-card > footer button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; font-size: 12px; }
+.v2-app-shell .announcement-card > footer svg { width: 16px; height: 16px; }
+.v2-app-shell .announcements-layout > aside > section { border: 0; border-radius: 0; border-bottom: 1px solid var(--line); padding: 0 0 24px; margin-bottom: 24px; }
+.v2-app-shell .announcements-layout > aside h2 { font-size: 17px; }
+.v2-app-shell .announcements-layout > aside p { font-size: 13px; line-height: 1.7; }
+.v2-app-shell .announcements-layout > aside a { display: flex; align-items: center; min-height: 44px; color: var(--blue); font-size: 13px; }
+.v2-app-shell .announcements-layout > aside a svg { width: 16px; height: 16px; }
+.v2-app-shell .questions-layout { min-height: 100%; }
+.v2-app-shell .questions-layout.owner-view { grid-template-columns: minmax(220px,.75fr) minmax(0,1.4fr) minmax(220px,.75fr); }
+.v2-app-shell .questions-list-pane { min-height: 0; }
+.v2-app-shell .question-list-heading h2, .v2-app-shell .question-pane-label, .v2-app-shell .question-owner-tools h2 { font-size: 13px; letter-spacing: 0; font-weight: 600; }
+.v2-app-shell .question-filters button { min-height: 44px; padding: 8px 10px; font-size: 12px; border: 0; border-radius: 6px; }
+.v2-app-shell .question-thread-list > button { grid-template-columns: 30px minmax(0,1fr); gap: 10px; padding: 12px; }
+.v2-app-shell .question-thread-list > button > i { display: none; }
+.v2-app-shell .question-thread-list > button .v2-avatar { width: 30px; height: 30px; font-size: 10px; }
+.v2-app-shell .question-thread-list strong { font-size: 13px; line-height: 1.6; }
+.v2-app-shell .question-thread-list small { font-size: 11px; line-height: 1.6; }
+.v2-app-shell .question-message .v2-avatar { width: 36px; height: 36px; font-size: 12px; }
+.v2-app-shell .question-message p, .v2-app-shell .assistant-answer p { flex-wrap: wrap; gap: 6px 10px; }
+.v2-app-shell .question-message > div, .v2-app-shell .assistant-answer > div { min-width: 0; }
+.v2-app-shell .question-detail-pane { min-width: 0; }
+.v2-app-shell .question-composer { grid-template-columns: minmax(0,1fr) 44px; min-height: 62px; border-radius: 8px; padding: 8px 10px; border-color: #bac8da; }
+.v2-app-shell .question-composer .send-button { width: 44px; height: 44px; border-radius: 6px; }
+.v2-app-shell .question-composer:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+.v2-app-shell .mobile-ask-question, .v2-app-shell .question-detail-pane > .mobile-back { display: none; }
+@media (max-width: 1279px) { .v2-app-shell .questions-layout.owner-view { grid-template-columns: 260px minmax(0,1fr); } .v2-app-shell .question-owner-tools { grid-column: 1 / -1; } }
+@media (max-width: 1023px) { .v2-app-shell .announcements-layout { grid-template-columns: minmax(0,1fr); padding: 28px; } .v2-app-shell .announcements-layout > aside { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; } }
+@media (max-width: 767px) {
+  .v2-app-shell .dm-pane > header .mobile-back { display: inline-grid; }
+  .v2-app-shell .community-hub-title > span, .v2-app-shell .community-member-stack { display: none; }
+  .v2-app-shell .announcements-layout { padding: 24px 20px; gap: 28px; }
+  .v2-app-shell .announcements-layout > aside { grid-template-columns: 1fr; gap: 0; }
+  .v2-app-shell .announcement-card { grid-template-columns: 28px minmax(0,1fr); gap: 10px; }
+  .v2-app-shell .announcement-card > .v2-avatar { width: 28px; height: 28px; font-size: 10px; }
+  .v2-app-shell .announcement-card h2 { font-size: 21px; }
+  .v2-app-shell .announcement-card > div > span { font-size: 14px; }
+  .v2-app-shell .questions-layout, .v2-app-shell .questions-layout.owner-view { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: auto; }
+  .v2-app-shell .questions-list-pane { flex: 1; min-height: 0; border: 0; overflow: auto; }
+  .v2-app-shell .questions-layout .question-detail-pane { display: none; }
+  .v2-app-shell .question-reading-open .questions-list-pane, .v2-app-shell .question-reading-open .question-owner-tools { display: none; }
+  .v2-app-shell .question-reading-open .question-detail-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; padding: 16px 20px; }
+  .v2-app-shell .question-detail-pane > .mobile-back { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 24px; border: 0; background: white; color: var(--blue); font-size: 13px; }
+  .v2-app-shell .question-detail-pane > .mobile-back svg { width: 18px; }
+  .v2-app-shell .mobile-ask-question { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 12px 0; padding: 8px 12px; border: 0; border-radius: 6px; color: white; background: var(--blue); font-size: 13px; }
+  .v2-app-shell .question-message { grid-template-columns: 30px minmax(0,1fr); }
+  .v2-app-shell .question-message .v2-avatar { width: 30px; height: 30px; font-size: 10px; }
+  .v2-app-shell .question-composer { margin-top: auto; flex-shrink: 0; }
+}
+.v2-app-shell .overview-item-detail { display: block; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.v2-app-shell .this-week-panel > p { display: grid; grid-template-columns: 32px minmax(0,1fr); column-gap: 16px; row-gap: 2px; }
+.v2-app-shell .this-week-panel > p > .round-icon { grid-row: span 2; }
+.v2-app-shell .this-week-panel .overview-item-detail { grid-column: 2; }
+.v2-app-shell .workspace-tabs { position: relative; padding-right: 24px; }
+@media (max-width: 1023px) { .v2-app-shell .workspace-tabs { scrollbar-width: auto; } .v2-app-shell .workspace-tabs::-webkit-scrollbar { height: 4px; } .v2-app-shell .workspace-tabs::-webkit-scrollbar-thumb { background: #bac8da; border-radius: 4px; } }

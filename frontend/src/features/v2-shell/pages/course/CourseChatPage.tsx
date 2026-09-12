@@ -644,7 +644,7 @@ function ChatMessage({
 }) {
   return (
     <article className="course-chat-message">
-      <V2Avatar name={name} tone={tone} size="lg" online />
+      <V2Avatar name={name} tone={tone} size="lg" />
       <div><p><strong>{name}</strong><time>{time}</time></p><span>{body}</span></div>
     </article>
   )
