@@ -1,0 +1,74 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { validateRelease, composeFor, planDeployment, executeDeployment, modules } from './release.mjs';
+
+const hash = (letter) => `sha256:${letter.repeat(64)}`;
+const release = () => ({ version: 1, commit: 'a'.repeat(40), architecture: 'arm64', schemaEpoch: 2,
+  images: Object.fromEntries([...modules, 'frontend', 'postgres', 'redis', 'livekit'].map(name => [name, hash('b')])) });
+const config = { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' };
+
+test('release accepts only complete immutable image sets and known architectures', () => {
+  assert.doesNotThrow(() => validateRelease(release()));
+  const mutable = release(); mutable.images['auth-service'] = 'chanter/auth:latest';
+  assert.throws(() => validateRelease(mutable), /immutable/);
+  const missing = release(); delete missing.images['auth-service'];
+  assert.throws(() => validateRelease(missing), /auth-service/);
+  const bad = release(); bad.architecture = 'anything';
+  assert.throws(() => validateRelease(bad), /architecture/);
+});
+
+test('all applications have resource caps, non-root users and no published internal ports', () => {
+  const compose = composeFor(release(), config, '/srv/chanter/staging/runtime');
+  for (const name of modules) {
+    const service = compose.services[name];
+    assert.equal(service.user, '10001:10001');
+    assert.equal(service.read_only, true);
+    assert.equal(service.environment.SPRING_FLYWAY_ENABLED, 'false');
+    assert.ok(service.mem_limit);
+    assert.ok(service.healthcheck);
+    assert.equal(service.ports, undefined);
+  }
+  assert.equal(compose.services.minio, undefined);
+  assert.equal(compose.services.redpanda, undefined);
+  const allocated = Object.values(compose.services).filter(s => !s.profiles).reduce((n, s) => n + Number(s.mem_limit.replace('m', '')), 0);
+  assert.ok(allocated <= 9216, `application budget ${allocated} MiB exceeds 9 GiB`);
+});
+
+test('migrations are isolated one-shot jobs and precede application startup', () => {
+  const compose = composeFor(release(), config, '/srv/chanter/staging/runtime');
+  assert.deepEqual(compose.services['migrate-auth-service'].command, ['migrate']);
+  assert.deepEqual(compose.services['migrate-auth-service'].profiles, ['migration']);
+  const plan = planDeployment(release());
+  assert.ok(plan.indexOf('migrate') < plan.indexOf('start-applications'));
+  assert.ok(plan.indexOf('verify-public-health') < plan.indexOf('record-current'));
+});
+
+test('rollback rejects changed schema epochs and persistence images', () => {
+  const before = release(); const after = release(); after.commit = 'c'.repeat(40);
+  assert.doesNotThrow(() => planDeployment(before, after, true));
+  after.schemaEpoch += 1;
+  assert.throws(() => planDeployment(before, after, true), /schema/);
+  after.schemaEpoch = 2; after.images.postgres = hash('d');
+  assert.throws(() => planDeployment(before, after, true), /persistence/);
+});
+
+test('failed public health restores the prior compatible release and never records the failed release', async () => {
+  const before = release(); const after = release(); after.commit = 'c'.repeat(40);
+  const steps = [];
+  await assert.rejects(executeDeployment(after, before, async (operation, target) => {
+    steps.push([operation, target.commit]);
+    if (operation === 'verify-public-health' && target.commit === after.commit) throw new Error('unhealthy');
+  }), /previous release restored/);
+  assert.ok(!steps.some(([operation, commit]) => operation === 'record-current' && commit === after.commit));
+  assert.deepEqual(steps.at(-1), ['record-current', before.commit]);
+});
+
+test('a failure after ingress starts closes it even when schema rollback is incompatible', async () => {
+  const before = release(); const after = release(); after.commit = 'c'.repeat(40); after.schemaEpoch = 3;
+  const steps = [];
+  await assert.rejects(executeDeployment(after, before, async operation => {
+    steps.push(operation);
+    if (operation === 'record-current') throw new Error('disk full');
+  }), /rollback is incompatible/);
+  assert.equal(steps.at(-1), 'stop-ingress');
+});

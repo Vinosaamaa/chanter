@@ -47,6 +47,11 @@ data/
 tmp/
 logs/
 .product/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+**/.terraform/
 
 # Generated artifacts
 generated/
