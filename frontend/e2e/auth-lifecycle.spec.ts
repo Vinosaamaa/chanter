@@ -5,6 +5,9 @@ import { expect, test } from './release-test'
 const appUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
 const inboxUrl = 'http://127.0.0.1:8025'
 
+// These tests handle one-time credentials. Never publish artifacts containing them.
+test.use({ trace: 'off', video: 'off', screenshot: 'off' })
+
 async function deliveredLink(request: APIRequestContext, email: string, subject: string, path: string) {
   let link: URL | undefined
   await expect.poll(async () => {
@@ -62,8 +65,6 @@ async function assertCredentialBoundary(page: Page, context: BrowserContext) {
 
 test.describe('Verified account and recovery @product', () => {
   test.skip(!process.env.PLAYWRIGHT_PRODUCT, 'Requires product services and the local SMTP inbox')
-  // These tests handle one-time credentials. Never publish a browser trace containing them.
-  test.use({ trace: 'off', video: 'off', screenshot: 'off' })
 
   test('register, verify, restore, rotate and sign out through real services', async ({ page, context, request }) => {
     const email = `auth-e2e-${randomUUID()}@example.com`
