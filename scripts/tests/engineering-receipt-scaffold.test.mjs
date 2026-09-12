@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, posix, resolve, win32 } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -40,20 +40,34 @@ test("a coordinator scaffolds one canonical non-material Chanter receipt", (t) =
   assert.match(markdown, /https:\/\/github\.com\/Vinosaamaa\/chanter\/pull\/281/);
 });
 
-test("the scaffold rejects public-unsafe prose without echoing it", (t) => {
-  const root = fixture(t);
-  const unsafe = join("/", "Users", "person", "Projects", "private", "notes.txt");
-  const result = scaffold(root, [
-    "--pr", "282",
-    "--title", "Document one safe Engineering change",
-    "--summary", unsafe,
-    "--classification", "none",
-  ]);
+for (const [shape, unsafe] of [
+  ["POSIX user home", posix.join("/", "Users", "person", "Projects", "private", "notes.txt")],
+  ["POSIX Linux home", posix.join("/", "home", "person", "private", "notes.txt")],
+  ["Windows drive", win32.join("C:\\", "Users", "person", "private", "notes.txt")],
+  ["Windows forward drive", "C:/Users/person/private/notes.txt"],
+  ["Windows mixed drive", "C:/Users/person\\private/notes.txt"],
+  ["Windows UNC", win32.join("\\\\fixture-server", "private", "notes.txt")],
+  ["Windows forward UNC", "//fixture-server/private/notes.txt"],
+  ["Windows mixed UNC", "//fixture-server\\private/notes.txt"],
+  ["Windows backslash-prefix mixed UNC", "\\\\fixture-server/private/notes.txt"],
+  ["Windows alternate-prefix mixed UNC", "\\/fixture-server/private/notes.txt"],
+]) {
+  test(`the scaffold rejects ${shape} prose without echoing it`, (t) => {
+    const root = fixture(t);
+    const result = scaffold(root, [
+      "--pr", "282",
+      "--title", "Document one safe Engineering change",
+      "--summary", unsafe,
+      "--classification", "none",
+    ]);
 
-  assert.equal(result.status, 1);
-  assert.doesNotMatch(result.stderr, new RegExp(unsafe.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.throws(() => readFileSync(join(root, "docs", "engineering", "changes", "pr-282.md")), /ENOENT/);
-});
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Receipt text is not public-safe\./);
+    assert.equal(result.stderr.includes(unsafe), false);
+    assert.equal(result.stdout.includes(unsafe), false);
+    assert.throws(() => readFileSync(join(root, "docs", "engineering", "changes", "pr-282.md")), /ENOENT/);
+  });
+}
 
 test("material scaffolding requires sorted unique exact rich-record references", (t) => {
   const root = fixture(t);

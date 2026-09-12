@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, posix, resolve, win32 } from "node:path";
 import test from "node:test";
 
 import { parseReceipt, parseRecord, validateHistoricalBatch, validatePullRequest } from "../engineering-policy.mjs";
@@ -14,6 +14,28 @@ const VALIDATOR = resolve(ROOT, "scripts/validate-engineering-impact.mjs");
 function sha256(relativePath) {
   return createHash("sha256").update(readFileSync(resolve(ROOT, relativePath))).digest("hex");
 }
+
+test("Git checkouts preserve released schema bytes even with automatic CRLF enabled", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "chanter-engineering-contract-checkout-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  git(root, "init", "--quiet");
+  git(root, "config", "core.autocrlf", "true");
+  mkdirSync(join(root, "docs", "contracts"), { recursive: true });
+  writeFileSync(join(root, ".gitattributes"), readFileSync(join(ROOT, ".gitattributes")));
+  const schemaPaths = [
+    "docs/contracts/engineering-pull-request-receipt.schema.json",
+    "docs/contracts/engineering-journal-record.schema.json",
+    "docs/contracts/engineering-historical-backfill-batch.schema.json",
+  ];
+  const canonicalBytes = schemaPaths.map((path) => execFileSync("git", ["show", `HEAD:${path}`], { cwd: ROOT }));
+  for (const [index, path] of schemaPaths.entries()) writeFileSync(join(root, path), canonicalBytes[index]);
+  git(root, "add", ".gitattributes", ...schemaPaths);
+  for (const path of schemaPaths) rmSync(join(root, path));
+  git(root, "checkout-index", "--force", "--all");
+  for (const [index, path] of schemaPaths.entries()) {
+    assert.deepEqual(readFileSync(join(root, path)), canonicalBytes[index]);
+  }
+});
 
 test("Chanter vendors the exact released Engineering v1 schemas", () => {
   assert.equal(
@@ -216,12 +238,29 @@ test("historical publication is bounded, add-only, and owner-authorized", () => 
   );
 });
 
-test("bounded v1 documents reject private paths and invalid type/status pairs", () => {
-  const privatePath = join("/", "Users", "person", "private", "notes.txt");
-  assert.throws(
-    () => parseReceipt(receipt({ title: privatePath })),
-    /public-safe/,
-  );
+for (const [shape, privatePath] of [
+  ["POSIX user home", posix.join("/", "Users", "person", "private", "notes.txt")],
+  ["POSIX Linux home", posix.join("/", "home", "person", "private", "notes.txt")],
+  ["Windows drive", win32.join("C:\\", "Users", "person", "private", "notes.txt")],
+  ["Windows forward drive", "C:/Users/person/private/notes.txt"],
+  ["Windows mixed drive", "C:/Users/person\\private/notes.txt"],
+  ["Windows UNC", win32.join("\\\\fixture-server", "private", "notes.txt")],
+  ["Windows forward UNC", "//fixture-server/private/notes.txt"],
+  ["Windows mixed UNC", "//fixture-server\\private/notes.txt"],
+  ["Windows backslash-prefix mixed UNC", "\\\\fixture-server/private/notes.txt"],
+  ["Windows alternate-prefix mixed UNC", "\\/fixture-server/private/notes.txt"],
+]) {
+  test(`bounded v1 documents reject ${shape} paths in metadata and prose`, () => {
+    assert.throws(() => parseReceipt(receipt({ title: privatePath })), /public-safe/);
+    assert.throws(() => parseReceipt(`${receipt().trimEnd()} Evidence: ${privatePath}\n`), /public-safe/);
+    assert.throws(() => parseRecord(
+      "docs/engineering/records/architecture-review-chanter-engineering-evidence.md",
+      `${record()}\nEvidence: ${privatePath}\n`,
+    ), /public-safe/);
+  });
+}
+
+test("bounded v1 documents reject invalid type/status pairs", () => {
   assert.throws(
     () => parseRecord(
       "docs/engineering/records/architecture-review-chanter-engineering-evidence.md",

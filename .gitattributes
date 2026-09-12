@@ -1,0 +1,4 @@
+# Released Engineering contracts are verified against their exact LF bytes.
+docs/contracts/engineering-pull-request-receipt.schema.json text eol=lf
+docs/contracts/engineering-journal-record.schema.json text eol=lf
+docs/contracts/engineering-historical-backfill-batch.schema.json text eol=lf

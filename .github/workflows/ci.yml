@@ -147,6 +147,19 @@ jobs:
           make product-down || true
           docker compose -f infra/docker-compose.yml --env-file .env --profile product down --volumes || true
 
+  engineering-windows:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Engineering authoring and policy contracts on Windows
+        run: node --test scripts/tests/engineering-*.test.mjs
+      - name: Verify deterministic Chanter Engineering projections on Windows
+        run: node scripts/build-engineering-journal.mjs --check
+
   engineering-policy:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
