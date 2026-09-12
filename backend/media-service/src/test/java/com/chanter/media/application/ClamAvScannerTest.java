@@ -17,6 +17,24 @@ import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
 class ClamAvScannerTest {
+    @Test
+    void remotePlaintextScannerIsRejectedEvenWhenDevelopmentTcpIsEnabled() {
+        assertThatThrownBy(() -> new ClamAvScanner("", true, "scanner.example.test", 3310,
+                Duration.ofSeconds(1), Duration.ofHours(72), Clock.systemUTC()))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("loopback");
+    }
+
+    @Test
+    void missingUnixSocketFailsWithoutFallingBackToTcp() throws Exception {
+        try (var server = new ServerSocket(0)) {
+            server.setSoTimeout(300);
+            var scanner = new ClamAvScanner(Path.of("target/missing-scanner.sock").toAbsolutePath().toString(), false,
+                    "127.0.0.1", server.getLocalPort(), Duration.ofMillis(100), Duration.ofHours(72), Clock.systemUTC());
+            assertThatThrownBy(() -> scanner.scan(Path.of("target/missing.txt"))).isInstanceOf(java.io.IOException.class);
+            assertThatThrownBy(server::accept).isInstanceOf(java.net.SocketTimeoutException.class);
+        }
+    }
+
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
     void streamsBytesAndDistinguishesMalwareFromClean(boolean infected) throws Exception {
@@ -38,7 +56,7 @@ class ClamAvScannerTest {
                 } catch (Exception exception) { throw new RuntimeException(exception); }
             });
             Path file = Path.of("target/clam-stream-fixture.txt"); Files.createDirectories(file.getParent()); Files.writeString(file, "scan me");
-            var scanner = new ClamAvScanner("127.0.0.1", server.getLocalPort(), Duration.ofSeconds(2), Duration.ofHours(72), Clock.systemUTC());
+            var scanner = new ClamAvScanner("", true, "127.0.0.1", server.getLocalPort(), Duration.ofSeconds(2), Duration.ofHours(72), Clock.systemUTC());
             assertThat(scanner.scan(file)).isEqualTo(infected ? MalwareScanner.Verdict.INFECTED : MalwareScanner.Verdict.CLEAN);
             serving.get(5, java.util.concurrent.TimeUnit.SECONDS);
         }
@@ -47,7 +65,7 @@ class ClamAvScannerTest {
     @Test
     void refusesUnavailableScannerInsteadOfDeclaringTheFileClean() throws Exception {
         int port; try (var server = new ServerSocket(0)) { port = server.getLocalPort(); }
-        var scanner = new ClamAvScanner("127.0.0.1", port, Duration.ofMillis(100), Duration.ofHours(72), Clock.systemUTC());
+        var scanner = new ClamAvScanner("", true, "127.0.0.1", port, Duration.ofMillis(100), Duration.ofHours(72), Clock.systemUTC());
         assertThatThrownBy(() -> scanner.scan(Path.of("target/missing.txt"))).isInstanceOf(java.io.IOException.class);
     }
 
@@ -60,7 +78,7 @@ class ClamAvScannerTest {
                     socket.getOutputStream().write("ClamAV 1.5.2/28000/Mon Jan 1 00:00:00 2024\0".getBytes(StandardCharsets.US_ASCII));
                 } catch (Exception exception) { throw new RuntimeException(exception); }
             });
-            var scanner = new ClamAvScanner("127.0.0.1", server.getLocalPort(), Duration.ofSeconds(1), Duration.ofHours(72), Clock.systemUTC());
+            var scanner = new ClamAvScanner("", true, "127.0.0.1", server.getLocalPort(), Duration.ofSeconds(1), Duration.ofHours(72), Clock.systemUTC());
             assertThatThrownBy(() -> scanner.scan(Path.of("target/missing.txt"))).isInstanceOf(java.io.IOException.class).hasMessageContaining("stale");
             serving.get(2, java.util.concurrent.TimeUnit.SECONDS);
         }
@@ -83,7 +101,7 @@ class ClamAvScannerTest {
                 } catch (Exception exception) { throw new RuntimeException(exception); }
             });
             Path file = Path.of("target/clam-blocked-fixture.bin"); Files.createDirectories(file.getParent()); Files.write(file, new byte[10 * 1024 * 1024]);
-            var scanner = new ClamAvScanner("127.0.0.1", server.getLocalPort(), Duration.ofMillis(150), Duration.ofHours(72), Clock.systemUTC());
+            var scanner = new ClamAvScanner("", true, "127.0.0.1", server.getLocalPort(), Duration.ofMillis(150), Duration.ofHours(72), Clock.systemUTC());
             long started = System.nanoTime();
             assertThatThrownBy(() -> scanner.scan(file)).isInstanceOf(java.io.IOException.class);
             assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(1));

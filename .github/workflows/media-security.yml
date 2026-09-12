@@ -38,8 +38,16 @@ jobs:
           java-version: '21.0.12+8.0.LTS'
       - name: Start real PostgreSQL, S3 emulator and malware scanner
         run: |
+          export CHANTER_SCANNER_CLIENT_GID="$(id -g)"
+          export CHANTER_CLAMAV_SOCKET_PATH="$GITHUB_WORKSPACE/.cache/media-socket/clamd.sock"
+          echo "CHANTER_SCANNER_CLIENT_GID=$CHANTER_SCANNER_CLIENT_GID" >> "$GITHUB_ENV"
+          echo "CHANTER_CLAMAV_SOCKET_PATH=$CHANTER_CLAMAV_SOCKET_PATH" >> "$GITHUB_ENV"
           docker compose -f infra/media-security/compose.yml up -d
           python3 scripts/media/wait-dependencies.py
+          test "$(stat -c '%a' .cache/media-socket/clamd.sock)" = 660
+          test "$(stat -c '%g' .cache/media-socket/clamd.sock)" = "$(id -g)"
+          test "$(stat -c '%u' .cache/media-socket/clamd.sock)" = 1000
+          test "$(stat -c '%a' .cache/media-socket)" = 2770
       - name: Verify private upload, real malware rejection and metered object operations
         run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl media-service -am test -Dtest=PrivateStorageIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false
       - name: Restart database and storage processes while preserving their volumes

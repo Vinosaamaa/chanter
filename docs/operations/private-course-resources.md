@@ -26,7 +26,9 @@ Set these in the reviewed release's secret environment file, readable only by it
 | `CHANTER_MEDIA_CLEANUP_REQUEST_RESERVE` | `4000`; only DELETE uses this protected allowance |
 | `CHANTER_MEDIA_SPOOL_DIR` | Private writable directory; bounded upload/download files, no web mount |
 | `COURSE_RESOURCE_STORAGE_DIR` | Existing local resource directory, retained during migration |
-| `CHANTER_CLAMAV_HOST`, `CHANTER_CLAMAV_PORT` | Private scanner listener, never publicly exposed; port `3310` |
+| `CHANTER_CLAMAV_SOCKET_PATH` | Absolute shared Unix socket path, `/run/clamav/clamd.sock` inside the media container |
+| `CHANTER_SCANNER_CLIENT_GID` | `10001` for the production media process; the native test/product stack uses its caller's group |
+| `CHANTER_CLAMAV_TCP_DEVELOPMENT` | `false`; production uses Unix IPC and never falls back to TCP |
 | `CHANTER_MEDIA_WORKER_ENABLED` | `true`; set `false` during recovery before reconciling backups |
 | `CHANTER_MEDIA_MIGRATE_LEGACY` | `false` normally; enable only for the reviewed legacy import |
 
@@ -61,7 +63,9 @@ Each download fetches once to a private file of at most 10 MiB, verifies length 
 
 ## Scanner and capacity
 
-Run maintained ClamAV with a persistent signature directory, UTC timezone and FreshClam updates. The reviewed Compose service completes an update before starting clamd, preventing an update during engine loading from missing its notification. Startup fails if that update fails. Use `infra/media-security/clamd.conf`: encrypted or over-limit content produces a rejection; reloads block briefly instead of holding two engines. Scan uses the real INSTREAM protocol; missing, malformed, stale (older than 72 hours), or unavailable definitions fail closed. Socket deadlines bound both reads and writes. No local or production clean-verdict bypass exists.
+Run maintained ClamAV with a persistent signature directory, UTC timezone and FreshClam updates. The reviewed Compose service completes an update before starting clamd, preventing an update during engine loading from missing its notification. Startup fails if that update fails. Use `infra/media-security/clamd.conf`: encrypted or over-limit content produces a rejection; reloads block briefly instead of holding two engines. Scan uses the real INSTREAM protocol; missing, malformed, stale (older than 72 hours), or unavailable definitions fail closed. Channel-close deadlines bound connection, reads and writes. No local or production clean-verdict bypass exists.
+
+[ClamAV does not encrypt or authenticate TCP traffic](https://docs.clamav.net/manual/Usage/ClamdProtocol.html). The deployed scanner therefore listens only on a Unix socket. Mount its socket directory only into the scanner and media containers, with directory mode `2770`, socket mode `0660`, owner UID `1000`, and the media process's group. The startup script prepares that group and directory before the daemon drops privileges. A missing or denied socket fails closed. The optional development TCP client requires `CHANTER_CLAMAV_TCP_DEVELOPMENT=true` and accepts only explicit loopback hosts via `CHANTER_CLAMAV_HOST`/`CHANTER_CLAMAV_PORT`; it is never an automatic fallback. Native tests and the product stack use Unix IPC, not this development client.
 
 [ClamAV's container instructions](https://docs.clamav.net/manual/Installing/Docker.html) recommend **4 GB** of RAM. The earlier #243 base caps total 7.625 GiB and exclude scanning. Adding 4 GiB would leave insufficient room for the OS on a 12 GB VM. Reallocate and measure the whole stack before deployment; passing the isolated media integration suite does not prove the full launch capacity. No extra VM or paid scan service is authorized as a fallback.
 
@@ -83,7 +87,7 @@ Ordinary reconciliation runs hourly, processes at most ten pages per run and res
 
 Run local module tests with `mvn -s backend/.mvn/settings.xml -f backend/pom.xml -pl media-service -am verify`. The isolated real-process suite is `.github/workflows/media-security.yml`: pinned PostgreSQL, Adobe S3Mock and ClamAV images on native AMD64 and ARM64, real EICAR rejection, immutable writes, metered attempts, and preserved-volume process restart. EICAR is the harmless standard antivirus test fixture.
 
-For a local Docker host: `docker compose -f infra/media-security/compose.yml up -d`, run `python3 scripts/media/wait-dependencies.py`, then set `MEDIA_INTEGRATION=true` and `MEDIA_RESTART_PHASE=false` for `mvn ... test -Dtest=PrivateStorageIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false`. Restart those three services, set `MEDIA_RESTART_PHASE=true`, and rerun the same test. The fixture uses test-only credentials, loopback ports and independent named volumes. Remove that exact test stack with its Compose `down -v` command when finished.
+On a Linux Docker host, set `CHANTER_SCANNER_CLIENT_GID` to `id -g` and `CHANTER_CLAMAV_SOCKET_PATH` to the repository's absolute `.cache/media-socket/clamd.sock` path. Run `docker compose -f infra/media-security/compose.yml up -d`, then `python3 scripts/media/wait-dependencies.py`. Set `MEDIA_INTEGRATION=true` and `MEDIA_RESTART_PHASE=false` for `mvn ... test -Dtest=PrivateStorageIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false`. Restart those three services, set `MEDIA_RESTART_PHASE=true`, and rerun the same test. The fixture uses test-only credentials, loopback database/object-store ports, a private Unix socket and independent named volumes. Remove that exact test stack with its Compose `down -v` command when finished.
 
 The local product stack inherits the same scanner service and daemon configuration. `make product-up` waits for fresh definitions; `make product-health` checks them again. `make product-demo-seed` uses a safe explicit multipart filename and waits for `AVAILABLE` metadata plus actual index chunks before installing Study Assistant grants. The 14 existing product browser journeys remain enabled. This development stack does not establish production capacity.
 

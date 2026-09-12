@@ -17,3 +17,5 @@ chanter:
     spool-dir: target/media-spool-test
     storage-backend: local
     worker-enabled: false
+    scanner:
+      socket-path: ${user.dir}/target/unused-scanner.sock

@@ -50,7 +50,7 @@ class PrivateStorageIntegrationTest {
         registry.add("chanter.media.s3.access-key", () -> "emulator-only");
         registry.add("chanter.media.s3.secret-key", () -> "emulator-only");
         registry.add("chanter.media.s3.allow-local-http", () -> true);
-        registry.add("chanter.media.scanner.host", () -> "127.0.0.1");
+        registry.add("chanter.media.scanner.socket-path", () -> System.getenv("CHANTER_CLAMAV_SOCKET_PATH"));
     }
     @BeforeAll void setup() {
         access.grantInstructorUpload(COURSE, TEACHER); access.grantLearnerView(COURSE, LEARNER);
