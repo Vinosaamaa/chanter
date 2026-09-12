@@ -20,6 +20,7 @@ chanter:
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
     refresh-token-ttl: ${CHANTER_JWT_REFRESH_TTL:7d}
   auth:
+    allowed-origins: ${CHANTER_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
     require-email-verification: ${CHANTER_AUTH_REQUIRE_EMAIL_VERIFICATION:false}
     email-token-ttl: ${CHANTER_AUTH_EMAIL_TOKEN_TTL:24h}
     rate-limit:

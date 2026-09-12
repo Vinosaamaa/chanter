@@ -115,6 +115,11 @@ public class OAuthAuthService {
      */
     @Transactional
     public AuthSessionService.AuthSession completeGoogleLogin(String code, String state) {
+        return completeGoogleLogin(code, state, "");
+    }
+
+    @Transactional
+    public AuthSessionService.AuthSession completeGoogleLogin(String code, String state, String userAgent) {
         if (googleClientId.isBlank() || googleClientSecret.isBlank()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Google OAuth is not configured");
         }
@@ -155,7 +160,7 @@ public class OAuthAuthService {
                 .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
                 .body(Map.class);
-        return sessionFromGoogleUserInfo(profile);
+        return sessionFromGoogleUserInfo(profile, userAgent);
     }
 
     /**
@@ -164,6 +169,10 @@ public class OAuthAuthService {
      * Already-linked Google subjects may sign in without re-checking email verification.
      */
     AuthSessionService.AuthSession sessionFromGoogleUserInfo(Map<?, ?> profile) {
+        return sessionFromGoogleUserInfo(profile, "");
+    }
+
+    private AuthSessionService.AuthSession sessionFromGoogleUserInfo(Map<?, ?> profile, String userAgent) {
         if (profile == null || profile.get("sub") == null || profile.get("email") == null) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Google profile lookup failed");
         }
@@ -177,11 +186,11 @@ public class OAuthAuthService {
         var linked = oauthAccountRepository.findUserId("google", subject)
                 .flatMap(authUserRepository::findById);
         if (linked.isPresent()) {
-            return authSessionService.issueSessionForUser(linked.get());
+            return authSessionService.issueSessionForUser(linked.get(), userAgent);
         }
 
         requireGoogleEmailVerified(profile);
-        return provisionGoogleUser(subject, email, displayName);
+        return provisionGoogleUser(subject, email, displayName, userAgent);
     }
 
     private static void requireGoogleEmailVerified(Map<?, ?> profile) {
@@ -197,7 +206,7 @@ public class OAuthAuthService {
         }
     }
 
-    private AuthSessionService.AuthSession provisionGoogleUser(String subject, String email, String displayName) {
+    private AuthSessionService.AuthSession provisionGoogleUser(String subject, String email, String displayName, String userAgent) {
         AuthUser existing = authUserRepository.findByEmail(email).orElse(null);
         AuthUser user = existing;
         if (user == null) {
@@ -232,7 +241,7 @@ public class OAuthAuthService {
         } catch (DataIntegrityViolationException ignored) {
             // already linked
         }
-        return authSessionService.issueSessionForUser(user);
+        return authSessionService.issueSessionForUser(user, userAgent);
     }
 
     /**

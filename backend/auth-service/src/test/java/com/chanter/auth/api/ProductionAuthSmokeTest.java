@@ -49,7 +49,7 @@ class ProductionAuthSmokeTest {
     void registerRequiresVerificationThenPasswordResetWorks() throws Exception {
         String email = "verify-" + UUID.randomUUID() + "@study.local";
 
-        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
+        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", email,
@@ -64,7 +64,7 @@ class ProductionAuthSmokeTest {
                 "If this email can be used, check your inbox for next steps."
         );
 
-        mockMvc.perform(post("/api/v1/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", email,
@@ -82,12 +82,12 @@ class ProductionAuthSmokeTest {
                 Instant.now().plusSeconds(3600)
         );
 
-        mockMvc.perform(post("/api/v1/auth/verify-email")
+        mockMvc.perform(post("/api/v1/auth/verify-email").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("token", verifyToken))))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/v1/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", email,
@@ -95,7 +95,7 @@ class ProductionAuthSmokeTest {
                         ))))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/v1/auth/forgot-password")
+        mockMvc.perform(post("/api/v1/auth/forgot-password").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("email", email))))
                 .andExpect(status().isOk());
@@ -109,7 +109,7 @@ class ProductionAuthSmokeTest {
                 Instant.now().plusSeconds(3600)
         );
 
-        mockMvc.perform(post("/api/v1/auth/reset-password")
+        mockMvc.perform(post("/api/v1/auth/reset-password").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "token", resetToken,
@@ -117,7 +117,7 @@ class ProductionAuthSmokeTest {
                         ))))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/v1/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", email,
@@ -130,7 +130,7 @@ class ProductionAuthSmokeTest {
     void duplicateRegisterReturnsNeutralAcceptedResponse() throws Exception {
         String email = "dup-" + UUID.randomUUID() + "@study.local";
 
-        mockMvc.perform(post("/api/v1/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", email,
@@ -139,7 +139,7 @@ class ProductionAuthSmokeTest {
                         ))))
                 .andExpect(status().isAccepted());
 
-        MvcResult duplicate = mockMvc.perform(post("/api/v1/auth/register")
+        MvcResult duplicate = mockMvc.perform(post("/api/v1/auth/register").header("Origin", "http://localhost:5173").header("X-Chanter-CSRF", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", email,
