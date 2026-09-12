@@ -7,6 +7,9 @@ spring:
     enabled: true
 
 chanter:
+  email:
+    local-sink: true
+    worker-enabled: false
   internal-service-token: test-internal-service-token-for-auth
   jwt:
     secret: test-jwt-secret-for-auth-service-smoke-tests-only

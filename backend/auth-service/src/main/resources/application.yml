@@ -27,14 +27,25 @@ chanter:
       window: ${CHANTER_AUTH_RATE_LIMIT_WINDOW:1m}
       max-entries: ${CHANTER_AUTH_RATE_LIMIT_MAX_ENTRIES:10000}
   email:
-    provider: ${CHANTER_EMAIL_PROVIDER:log}
+    provider: ${CHANTER_EMAIL_PROVIDER:smtp}
     from: ${CHANTER_EMAIL_FROM:noreply@chanter.local}
+    local-sink: ${CHANTER_EMAIL_LOCAL_SINK:false}
+    poll-interval: ${CHANTER_EMAIL_POLL_INTERVAL:5s}
+    smtp:
+      host: ${CHANTER_SMTP_HOST:localhost}
+      port: ${CHANTER_SMTP_PORT:587}
+      username: ${CHANTER_SMTP_USERNAME:}
+      password: ${CHANTER_SMTP_PASSWORD:}
+      tls-mode: ${CHANTER_SMTP_TLS_MODE:starttls}
   oauth:
     google:
       client-id: ${CHANTER_OAUTH_GOOGLE_CLIENT_ID:}
       client-secret: ${CHANTER_OAUTH_GOOGLE_CLIENT_SECRET:}
 
 management:
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:

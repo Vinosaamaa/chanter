@@ -7,6 +7,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.UUID;
@@ -22,6 +24,8 @@ public class ProductionAuthService {
 
     public static final String PURPOSE_EMAIL_VERIFY = "EMAIL_VERIFY";
     public static final String PURPOSE_PASSWORD_RESET = "PASSWORD_RESET";
+    private static final DateTimeFormatter EMAIL_EXPIRY = DateTimeFormatter
+            .ofPattern("d MMM uuuu 'at' HH:mm 'UTC'", Locale.ENGLISH).withZone(ZoneOffset.UTC);
 
     private final AuthUserRepository authUserRepository;
     private final AuthEmailTokenRepository emailTokenRepository;
@@ -54,13 +58,14 @@ public class ProductionAuthService {
 
     @Transactional
     public void sendEmailVerification(AuthUser user) {
-        String rawToken = createToken(user.id(), PURPOSE_EMAIL_VERIFY);
-        String link = publicBaseUrl + "/verify-email?token=" + rawToken;
+        EmailToken token = createToken(user.id(), PURPOSE_EMAIL_VERIFY);
+        String link = publicBaseUrl + "/verify-email?token=" + token.raw();
         emailSender.send(
                 user.email(),
                 "Verify your Chanter email",
-                "Welcome to Chanter.\n\nVerify your email:\n" + link + "\n\nThis link expires in "
-                        + tokenTtl.toHours() + " hours."
+                "Welcome to Chanter.\n\nVerify your email:\n" + link + "\n\nThis link expires on "
+                        + EMAIL_EXPIRY.format(token.expiresAt()) + ".\nIf you did not create this account, you can ignore this email.",
+                token.expiresAt()
         );
     }
 
@@ -69,6 +74,7 @@ public class ProductionAuthService {
      * The HTTP register response stays neutral; this email tells the owner without revealing
      * existence to the caller.
      */
+    @Transactional
     public void notifyExistingAccountRegisterAttempt(AuthUser user) {
         emailSender.send(
                 user.email(),
@@ -95,12 +101,14 @@ public class ProductionAuthService {
             return;
         }
         emailTokenRepository.invalidateActiveForUser(user.id(), PURPOSE_PASSWORD_RESET, Instant.now());
-        String rawToken = createToken(user.id(), PURPOSE_PASSWORD_RESET);
-        String link = publicBaseUrl + "/reset-password?token=" + rawToken;
+        EmailToken token = createToken(user.id(), PURPOSE_PASSWORD_RESET);
+        String link = publicBaseUrl + "/reset-password?token=" + token.raw();
         emailSender.send(
                 user.email(),
                 "Reset your Chanter password",
-                "Reset your password:\n" + link + "\n\nIf you did not request this, ignore this email."
+                "Reset your Chanter password:\n" + link + "\n\nThis link expires on "
+                        + EMAIL_EXPIRY.format(token.expiresAt()) + ".\nIf you did not request this, ignore this email.",
+                token.expiresAt()
         );
     }
 
@@ -122,16 +130,17 @@ public class ProductionAuthService {
         return new TokenUser(record.id(), record.userId());
     }
 
-    private String createToken(UUID userId, String purpose) {
+    private EmailToken createToken(UUID userId, String purpose) {
         String rawToken = generateToken();
+        Instant expiresAt = Instant.now().plus(tokenTtl);
         emailTokenRepository.save(
                 UUID.randomUUID(),
                 userId,
                 hashToken(rawToken),
                 purpose,
-                Instant.now().plus(tokenTtl)
+                expiresAt
         );
-        return rawToken;
+        return new EmailToken(rawToken, expiresAt);
     }
 
     private String generateToken() {
@@ -150,5 +159,12 @@ public class ProductionAuthService {
     }
 
     private record TokenUser(UUID tokenId, UUID userId) {
+    }
+
+    private record EmailToken(String raw, Instant expiresAt) {
+        @Override
+        public String toString() {
+            return "EmailToken[redacted]";
+        }
     }
 }
