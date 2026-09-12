@@ -13,6 +13,7 @@ Owning issue: [#244](https://github.com/Vinosaamaa/chanter/issues/244). Lane: me
 - AI ingestion waits for a clean scan; ingestion and deletion failures are retried by the durable worker instead of being swallowed.
 - Clean file publication is independent of indexing: durable ingestion status retries failures while preserving `AVAILABLE` content and its byte reservation. Index failure never triggers object expiry or deletion.
 - Added native architecture CI using pinned PostgreSQL16.15, S3Mock5.2.2 and ClamAV1.5.4, actual EICAR scanning and restart durability checks.
+- The product stack inherits that scanner configuration and checks definition freshness. Demo seeding supplies an explicit safe filename and waits for clean availability and usable index chunks before installing grants.
 
 ## Test evidence
 
@@ -25,10 +26,10 @@ Owning issue: [#244](https://github.com/Vinosaamaa/chanter/issues/244). Lane: me
 - The namespace-change regression first failed because a changed bucket could construct a client. Startup binding now rejects bucket or endpoint changes before any network request, while normalized endpoints and rotated credentials pass.
 - The new Compose file validates with Docker Compose; the new workflow passes actionlint. Container execution is delegated to hosted CI because the implementation host has no Docker daemon. No mock result is described as real scanner/provider evidence.
 - The first native ARM64 job exposed that the ClamAV Alpine image has no ARM64 manifest. The suite now pins ClamAV's official Debian multi-architecture image, with AMD64 and ARM64 digests verified from the registry. The native gate remains enabled.
-- Real startup logs show signatures downloaded before clamd's socket was available for notification. The explicit daemon configuration rechecks definitions every 60 seconds, uses bounded scan limits, rejects encrypted/over-limit content and avoids duplicate engines during reload. Readiness still failed the freshness check; a bounded version-response diagnostic records the actual scanner metadata without weakening the gate. The native suite tests a compressed fixture beyond the scan limit as well as EICAR.
+- Native AMD64 and ARM64 diagnostics proved clamd retained September 7 signatures after FreshClam downloaded September 10 definitions during engine startup. One-minute self-checks reported no change and did not repair the missed notification. Startup now completes a foreground update before handing control back to the upstream daemon entrypoint. The 72-hour gate stays unchanged. Explicit scan limits reject encrypted/over-limit content and avoid duplicate engines during reload; the native suite tests a compressed fixture beyond the scan limit as well as EICAR.
 
 ## Remaining release proof
 
-The provider is unprovisioned. Native container checks must pass at the final head, followed by #243 integration, actual private bucket permissions/anonymous-denial and recovery tests, processing/failure UI browser evidence, and a measured 2 OCPU/12 GB full-stack workload. ClamAV's 4 GB container guidance cannot be added on top of the earlier 7.625 GiB base caps without reallocation. Schema V2 requires a deployment epoch boundary; old code must not be rolled back onto the new lifecycle data.
+The provider is unprovisioned. Native container checks must pass at the final head, followed by #243 integration, actual private bucket permissions/anonymous-denial and recovery tests, processing/failure UI browser evidence, and a measured 2 OCPU/12 GB full-stack workload. ClamAV's 4 GB container guidance cannot be added on top of the earlier 7.625 GiB base caps without reallocation. Schema V2 requires deployment epoch 4, following #319's authentication epoch 3; old code must not be rolled back onto the new lifecycle data.
 
 See [the operator runbook](private-course-resources.md) and [the system review](../engineering/records/architecture-review-chanter-private-resources.md).

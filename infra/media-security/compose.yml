@@ -26,6 +26,9 @@ services:
     mem_limit: 512m
   clamav:
     image: clamav/clamav-debian:1.5.4@sha256:4c975c439fcb7ab9cbdd72162c2802f5efcb4a11dcf5b0b37da1d746474ef20e
+    # The upstream entrypoint prepares volume ownership before executing this command.
+    # Refresh before starting clamd: an update during engine loading can miss its reload notification.
+    command: ['sh', '-ec', 'unset CLAMAV_NO_CLAMD; freshclam --foreground --stdout; exec /init']
     environment:
       TZ: UTC
       CLAMD_STARTUP_TIMEOUT: '600'

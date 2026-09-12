@@ -162,13 +162,13 @@ echo "==> Upload AI-approved course resource for Study Assistant grounding"
 RESOURCE_TITLE="Homework Help Guide"
 EXISTING_RESOURCES=$(curl -sf "$GATEWAY/api/v1/courses/$COURSE_ID/course-resources" \
   -H "Authorization: Bearer $OWNER_TOKEN")
-HAS_RESOURCE=$(echo "$EXISTING_RESOURCES" | python3 -c "
+RESOURCE_ID=$(echo "$EXISTING_RESOURCES" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 resources = data.get('courseResources', data.get('resources', []))
-print('yes' if any(r.get('title') == '$RESOURCE_TITLE' for r in resources) else 'no')
+print(next((r['id'] for r in resources if r.get('title') == '$RESOURCE_TITLE'), ''))
 ")
-if [[ "$HAS_RESOURCE" == "yes" ]]; then
+if [[ -n "$RESOURCE_ID" ]]; then
   echo "   reusing existing $RESOURCE_TITLE"
 else
   RESOURCE_FILE="$ROOT/scripts/.workable-demo-ai-resource.txt"
@@ -179,13 +179,41 @@ Submit homework assignments through the course portal before Friday at 11:59 PM.
 Late submissions receive a ten percent penalty per day unless you request an extension
 from your instructor in the questions channel.
 EOF
-  curl -sf -X POST "$GATEWAY/api/v1/courses/$COURSE_ID/course-resources" \
+  RESOURCE_JSON=$(curl -sf -X POST "$GATEWAY/api/v1/courses/$COURSE_ID/course-resources" \
     -H "Authorization: Bearer $OWNER_TOKEN" \
     -F "title=$RESOURCE_TITLE" \
     -F "aiApproved=true" \
-    -F "file=@$RESOURCE_FILE;type=text/plain" >/dev/null
-  echo "   uploaded $RESOURCE_TITLE (aiApproved=true)"
+    -F "file=@$RESOURCE_FILE;type=text/plain;filename=homework-help-guide.txt")
+  RESOURCE_ID=$(echo "$RESOURCE_JSON" | json_field "['id']")
+  echo "   queued $RESOURCE_TITLE for validation and scanning"
 fi
+
+echo "==> Wait for a clean resource and usable Study Assistant index"
+RESOURCE_READY=false
+RESOURCE_DEADLINE=$((SECONDS + 180))
+while ((SECONDS < RESOURCE_DEADLINE)); do
+  RESOURCE_STATE=$(curl -sf --max-time 10 "$GATEWAY/api/v1/course-resources/$RESOURCE_ID" \
+    -H "Authorization: Bearer $OWNER_TOKEN" | json_field "['status']")
+  if [[ "$RESOURCE_STATE" == "REJECTED" || "$RESOURCE_STATE" == "FAILED" ]]; then
+    echo "error: demo resource did not pass scanning ($RESOURCE_STATE)" >&2
+    exit 1
+  fi
+  if [[ "$RESOURCE_STATE" == "AVAILABLE" ]]; then
+    if CHUNK_COUNT=$(curl -sf --max-time 10 \
+      "${AGENT_SERVICE_URL:-http://localhost:${AGENT_PORT:-8085}}/api/v1/internal/resource-chunks/$RESOURCE_ID" \
+      -H "X-Chanter-Internal-Service-Token: $CHANTER_INTERNAL_SERVICE_TOKEN" \
+      | python3 -c 'import sys,json; print(len(json.load(sys.stdin)["chunks"]))' 2>/dev/null) && [[ "$CHUNK_COUNT" -gt 0 ]]; then
+      RESOURCE_READY=true
+      break
+    fi
+  fi
+  sleep 3
+done
+if [[ "$RESOURCE_READY" != "true" ]]; then
+  echo "error: demo resource scan/index did not become ready within the bounded wait" >&2
+  exit 1
+fi
+echo "   resource is available and indexed"
 
 echo "==> Install AI Study Assistant (idempotent)"
 ASSISTANT_INSTALLED=$(curl -sf "$GATEWAY/api/v1/study-servers/$SERVER_ID/study-assistant" \

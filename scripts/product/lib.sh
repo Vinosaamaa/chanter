@@ -427,8 +427,9 @@ product_prepare_infrastructure() {
     mail_services+=(mailpit)
   fi
   docker compose -f "$compose_file" --env-file "$root/.env" --profile product stop realtime-service >/dev/null 2>&1 || true
-  docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --wait --wait-timeout 180 \
-    postgres redis redpanda livekit "${mail_services[@]}"
+  docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --wait --wait-timeout 600 \
+    postgres redis redpanda livekit clamav "${mail_services[@]}"
+  python3 "$root/scripts/media/wait-dependencies.py" --scanner-only
   product_ensure_databases
   echo "Infrastructure is healthy."
 }
