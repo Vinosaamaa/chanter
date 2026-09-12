@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -119,9 +119,16 @@ describe('FriendsPage', () => {
     expect(screen.queryByText('Taylor Johnson')).not.toBeInTheDocument()
     expect(screen.queryByText('Want to study calculus tonight?')).not.toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: 'Attach file (not available yet)' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Add emoji (not available yet)' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Start video call (not available yet)' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /Attach file|Add emoji|Start video call/ })).not.toBeInTheDocument()
+  })
+
+  it('opens a friend conversation with a return path to the mobile friend list', async () => {
+    const user = userEvent.setup()
+    const view = renderPage()
+    await user.click(within(screen.getByRole('complementary')).getByRole('button', { name: /Alex Chen/i }))
+    expect(view.container.querySelector('.friends-page')).toHaveClass('conversation-open')
+    await user.click(screen.getByRole('button', { name: 'Back to friends' }))
+    expect(view.container.querySelector('.friends-page')).not.toHaveClass('conversation-open')
   })
 
   it('lists only co-member candidates and sends to the selected user id', async () => {

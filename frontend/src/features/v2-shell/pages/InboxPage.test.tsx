@@ -92,6 +92,8 @@ describe('InboxPage', () => {
 
     await user.click(screen.getByRole('button', { name: /Mark done/i }))
     expect(markDoneMutate).toHaveBeenCalledWith('n1', expect.any(Object))
+    await user.click(screen.getByRole('button', { name: 'Back to inbox' }))
+    expect(screen.getByRole('region', { name: 'Inbox' })).not.toHaveClass('reading-open')
   })
 
   it('filters Mentions via API', async () => {

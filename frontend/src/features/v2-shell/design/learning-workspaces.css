@@ -1,0 +1,303 @@
+/* Reading, conversation and operational layouts. Shared shell tokens live in learning-desk.css. */
+.v2-app-shell .v2-workspace-page { background: var(--paper); color: var(--ink); width: 100%; max-width: 1680px; margin-inline: auto; border-inline: 0; }
+.v2-app-shell :is(h1,h2,h3) { font-weight: 600; }
+.v2-app-shell :is(.v2-primary-button,.v2-outline-button,.v2-success-button) { min-height: 44px; padding: 10px 16px; font-size: 13px; font-weight: 550; border-radius: 6px; }
+.v2-app-shell .v2-primary-button { background: var(--blue); border: 1px solid var(--blue); color: white; }
+.v2-app-shell .v2-outline-button { background: white; border: 1px solid var(--line); color: var(--ink); }
+.v2-app-shell .v2-success-button { background: #edf7f2; border: 1px solid #b7d6c6; color: var(--success); }
+.v2-app-shell .v2-chip-row { gap: 6px; }
+.v2-app-shell .v2-chip-row button { min-height: 40px; border: 0; border-radius: 6px; font-size: 13px; padding: 8px 12px; color: var(--muted); background: transparent; }
+.v2-app-shell .v2-chip-row button.active { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
+.v2-app-shell .v2-avatar { border: 0; color: #315685; background: #e0e9f7; font-weight: 600; }
+.v2-app-shell .v2-avatar.green { color: #27664f; background: #dceee5; }
+.v2-app-shell .v2-avatar.purple { color: #655092; background: #eae4f5; }
+.v2-app-shell .v2-avatar.amber { color: #825b2d; background: #f3e9d8; }
+.v2-app-shell .v2-avatar.rose { color: #874762; background: #f4e3eb; }
+.v2-app-shell .v2-avatar > i { border-color: white; background: #a2afbf; }
+.v2-app-shell .v2-avatar > i.online { background: var(--success); }
+.v2-app-shell :is(.inline-error,.v2-inline-error) { color: var(--error); background: #fff4f5; border-color: #e9bbc3; }
+.v2-app-shell .inline-success { color: var(--success); }
+.v2-app-shell .mobile-back, .v2-app-shell .mobile-channel-toggle { display: none; }
+.v2-app-shell :is(input,select,textarea)::placeholder { color: var(--muted); opacity: 1; }
+
+/* The Course header and tabs form a single, quiet working context. */
+.v2-app-shell .course-workspace-chrome { padding: 30px 40px 0; background: white; }
+.v2-app-shell .course-heading-row { gap: 24px; align-items: center; }
+.v2-app-shell .course-heading-copy { align-items: flex-start; gap: 16px; }
+.v2-app-shell .course-workspace-mark { flex: 0 0 48px; height: 52px; display: grid; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 3px 8px 8px 3px; border-left: 4px solid var(--blue); }
+.v2-app-shell .course-heading-copy h1 { white-space: normal; overflow-wrap: anywhere; font-size: 28px; letter-spacing: -.7px; line-height: 1.25; color: var(--ink); }
+.v2-app-shell .course-heading-copy p { gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.v2-app-shell .course-instructor { color: var(--muted); }
+.v2-app-shell .course-cohort-picker select { color: var(--ink); padding: 6px 24px 6px 8px; min-height: 40px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; background: white; font-size: 13px; }
+.v2-app-shell .workspace-tabs { display: flex; gap: 28px; margin-top: 20px; scrollbar-width: thin; }
+.v2-app-shell .workspace-tabs a { justify-content: start; min-height: 48px; padding: 10px 0 12px; flex-shrink: 0; border-bottom-width: 2px; font-size: 13px; color: var(--muted); }
+.v2-app-shell .workspace-tabs a.active { color: var(--blue); border-color: var(--blue); font-weight: 600; }
+.v2-app-shell .course-tab-panel { background: white; }
+.v2-app-shell .v2-panel { color: var(--ink); background: transparent; border: 0; border-radius: 0; }
+.v2-app-shell .v2-panel h2 { font-size: 19px; letter-spacing: -.3px; }
+.v2-app-shell .course-overview-layout { min-height: 0; grid-template-columns: minmax(0,1fr) 300px; gap: 48px; padding: 32px 40px; max-width: 1440px; margin: 0 auto; }
+.v2-app-shell .overview-main-column { display: flex; flex-direction: column; gap: 30px; }
+.v2-app-shell .this-week-panel { order: 0; }
+.v2-app-shell .recent-panel { order: 1; }
+.v2-app-shell .progress-panel { order: 2; border-top: 1px solid var(--line); }
+.v2-app-shell :is(.this-week-panel,.recent-panel,.progress-panel) { padding: 0; min-height: 0; }
+.v2-app-shell .progress-panel { padding-top: 24px; }
+.v2-app-shell :is(.this-week-panel,.recent-panel) > p { font-size: 14px; padding: 14px 0; min-height: 56px; flex-wrap: wrap; line-height: 1.65; }
+.v2-app-shell :is(.this-week-panel,.recent-panel) h2 { margin-bottom: 12px; }
+.v2-app-shell :is(.this-week-panel,.recent-panel) a { color: var(--blue); }
+.v2-app-shell .progress-panel > p { font-size: 13px; line-height: 1.6; max-width: 64ch; }
+.v2-app-shell .progress-panel > strong { font-size: 30px; }
+.v2-app-shell .overview-progress { height: 5px; background: #e0e6ef; }
+.v2-app-shell .overview-progress span { background: var(--blue); }
+.v2-app-shell .course-up-next { min-height: 0; padding: 0 0 0 28px; border-left: 1px solid var(--line); }
+.v2-app-shell .course-timeline article { min-height: 100px; grid-template-columns: 10px minmax(0,1fr); gap: 14px; }
+.v2-app-shell .course-timeline article > i { width: 7px; height: 7px; margin-top: 7px; background: var(--blue); }
+.v2-app-shell .course-timeline article:not(:last-child)::after { left: 3px; border-left: 1px solid var(--line); }
+.v2-app-shell .course-timeline p { font-size: 14px; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.v2-app-shell .course-timeline small { font-size: 12px; }
+.v2-app-shell .course-timeline p :is(a,button) { min-height: 36px; padding: 6px 10px; color: var(--blue); background: var(--blue-soft); border: 0; font-size: 12px; }
+
+/* Chat is a conversation canvas with a compact channel index, not nested cards. */
+.v2-app-shell .course-chat-layout { grid-template-columns: 220px minmax(0,1fr); gap: 0; padding: 0; }
+.v2-app-shell :is(.channel-panel,.chat-panel) { border: 0; border-radius: 0; }
+.v2-app-shell .channel-panel { padding: 20px 12px; border-right: 1px solid var(--line); background: #f8fafd; }
+.v2-app-shell .channel-panel section > header { font-size: 12px; font-weight: 600; letter-spacing: 0; padding: 0 8px; }
+.v2-app-shell .channel-panel section > header > svg { display: none; }
+.v2-app-shell .channel-row, .v2-app-shell .channel-row-main { min-height: 42px; font-size: 13px; }
+.v2-app-shell .channel-row-main { padding-left: 10px; }
+.v2-app-shell .channel-row-main > svg { width: 18px; height: 18px; flex-basis: 18px; }
+.v2-app-shell .channel-row.active { background: var(--blue-soft); color: var(--blue); }
+.v2-app-shell .chat-panel { background: white; }
+.v2-app-shell .chat-conversation-heading { min-height: 58px; display: flex; align-items: center; gap: 8px; padding: 12px 28px; border-bottom: 1px solid var(--line); color: var(--muted); }
+.v2-app-shell .chat-conversation-heading h2 { font-size: 14px; color: var(--ink); margin: 0; }
+.v2-app-shell .chat-message-list { padding: 28px; }
+.v2-app-shell .course-chat-message { grid-template-columns: 36px minmax(0,1fr); gap: 12px; margin-bottom: 24px; max-width: 900px; }
+.v2-app-shell .course-chat-message .v2-avatar { width: 36px; height: 36px; font-size: 12px; }
+.v2-app-shell .course-chat-message p { margin: 0 0 5px; flex-wrap: wrap; gap: 8px; }
+.v2-app-shell .course-chat-message strong { font-size: 14px; font-weight: 600; }
+.v2-app-shell .course-chat-message time { font-size: 11px; }
+.v2-app-shell .course-chat-message > div > span { font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+.v2-app-shell .chat-composer { display: grid; grid-template-columns: minmax(0,1fr) 44px; gap: 12px; min-height: 64px; margin: 12px 24px 24px; padding: 8px 10px 8px 16px; border-radius: 8px; border: 1px solid #bac8da; background: white; }
+.v2-app-shell .chat-composer input { font-size: 15px; color: var(--ink); }
+.v2-app-shell .chat-composer .send-button { width: 44px; height: 44px; border-radius: 6px; color: white; background: var(--blue); }
+.v2-app-shell .chat-composer .send-button svg { width: 18px; height: 18px; }
+.v2-app-shell .chat-composer:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+.v2-app-shell .course-voice-workspace { background: white; }
+.v2-app-shell .course-voice-workspace > header { padding: 24px; }
+.v2-app-shell .course-voice-stage { background: var(--desk); }
+
+/* Friends and Inbox retain distinct lists and reading panes. */
+.v2-app-shell .friends-page { display: grid; grid-template-columns: 300px minmax(0,1fr); height: 100%; min-height: 0; overflow: hidden; background: white; color: var(--ink); max-width: 1680px; width: 100%; margin: auto; }
+.v2-app-shell .friends-list-pane { min-height: 0; padding: 28px 16px; overflow: auto; background: #f8fafd; border-right: 1px solid var(--line); }
+.v2-app-shell .friends-list-pane > header { padding: 0 4px 20px; gap: 8px; }
+.v2-app-shell .friends-list-pane h1 { font-size: 25px; letter-spacing: -.6px; margin: 0; }
+.v2-app-shell .friends-list-pane > header button { min-height: 40px; padding: 8px 10px; font-size: 12px; color: var(--blue); border: 0; background: var(--blue-soft); border-radius: 6px; }
+.v2-app-shell .friends-list-pane > header button svg { width: 15px; height: 15px; }
+.v2-app-shell .friends-list-pane nav { display: flex; gap: 4px; margin: 0 0 24px; }
+.v2-app-shell .friends-list-pane nav button { min-height: 40px; padding: 8px 10px; border-radius: 6px; font-size: 12px; color: var(--muted); border: 0; background: transparent; }
+.v2-app-shell .friends-list-pane nav button.active { color: var(--blue); background: var(--blue-soft); }
+.v2-app-shell .friends-list h2 { letter-spacing: 0; font-size: 12px; font-weight: 550; padding-inline: 8px; color: var(--muted); }
+.v2-app-shell .friends-list > button { min-height: 60px; border-radius: 8px; padding: 10px 12px; font-size: 14px; background: transparent; color: var(--ink); }
+.v2-app-shell .friends-list > button.active { background: #eaf0fa; }
+.v2-app-shell .dm-pane { display: flex; flex-direction: column; min-height: 0; padding: 0; background: white; }
+.v2-app-shell .dm-pane > header { display: flex; min-height: 80px; padding: 16px 28px; border-bottom: 1px solid var(--line); gap: 12px; }
+.v2-app-shell .dm-pane > header .v2-avatar { width: 38px; height: 38px; font-size: 12px; }
+.v2-app-shell .dm-pane > header h2 { font-size: 16px; margin: 0 0 2px; overflow-wrap: anywhere; }
+.v2-app-shell .dm-pane > header p { font-size: 12px; margin: 0; color: var(--success); }
+.v2-app-shell .dm-pane > header p.offline { color: var(--muted); }
+.v2-app-shell .dm-pane > header button { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); }
+.v2-app-shell .dm-pane > header button:not(.mobile-back) { margin-left: auto; }
+.v2-app-shell .dm-message-list { padding: 28px; min-height: 0; }
+.v2-app-shell .today-divider { color: var(--muted); font-size: 11px; margin: 0 0 28px; }
+.v2-app-shell .dm-message-list article { margin-bottom: 24px; gap: 10px; }
+.v2-app-shell .dm-message-list article > div { max-width: min(76ch,85%); border-radius: 2px 12px 12px; padding: 12px 16px; background: var(--desk); color: var(--ink); }
+.v2-app-shell .dm-message-list article.own > div { background: var(--blue-soft); border-radius: 12px 2px 12px 12px; color: var(--ink); }
+.v2-app-shell .dm-message-list article p { font-size: 15px; line-height: 1.65; overflow-wrap: anywhere; }
+.v2-app-shell .dm-message-list time { color: var(--muted); font-size: 10px; }
+.v2-app-shell .dm-pane > form { display: grid; grid-template-columns: minmax(0,1fr) 44px; min-height: 64px; padding: 8px 10px 8px 16px; margin: 12px 24px 24px; border: 1px solid #bac8da; border-radius: 8px; background: white; }
+.v2-app-shell .dm-pane > form input { font-size: 15px; min-width: 0; }
+.v2-app-shell .dm-pane > form button.send { width: 44px; height: 44px; border-radius: 6px; background: var(--blue); color: white; }
+.v2-app-shell .dm-pane > form:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+.v2-app-shell .inbox-page { grid-template-columns: 330px minmax(0,1fr); }
+.v2-app-shell .inbox-thread-pane { padding: 28px 16px; background: #f8fafd; }
+.v2-app-shell .inbox-thread-pane h1 { font-size: 25px; margin: 0 8px 24px; letter-spacing: -.6px; }
+.v2-app-shell .inbox-thread-pane .v2-chip-row { gap: 2px; }
+.v2-app-shell .inbox-thread-pane .v2-chip-row button { font-size: 12px; padding: 8px 10px; }
+.v2-app-shell .v2-section-label { font-size: 12px; margin: 24px 8px 10px; }
+.v2-app-shell .inbox-thread-list > button { padding: 16px 10px; min-height: 76px; gap: 10px; grid-template-columns: 6px minmax(0,1fr) auto; border-radius: 7px; font-size: 13px; }
+.v2-app-shell .inbox-thread-list > button.active { background: var(--blue-soft); border-color: transparent; }
+.v2-app-shell .thread-dot { width: 6px; height: 6px; background: var(--blue); margin-top: 7px; }
+.v2-app-shell .inbox-thread-list time { font-size: 10px; }
+.v2-app-shell .inbox-reading-pane { padding: 32px; }
+.v2-app-shell .reading-header { display: grid; gap: 20px; }
+.v2-app-shell .reading-header h2 { font-size: 25px; letter-spacing: -.5px; line-height: 1.3; }
+.v2-app-shell .reading-header p { font-size: 12px; }
+.v2-app-shell .inbox-message-card { display: block; padding: 24px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: white; max-width: 76ch; }
+.v2-app-shell .inbox-message-card p { font-size: 15px; line-height: 1.7; }
+.v2-app-shell .message-author { flex-wrap: wrap; }
+.v2-app-shell .message-author strong { font-size: 14px; }
+.v2-app-shell .message-author time { font-size: 11px; }
+
+/* Calendar days stay tap-sized; the agenda becomes primary on narrow screens. */
+.v2-app-shell .calendar-page { grid-template-columns: minmax(0,1fr) 320px; }
+.v2-app-shell .calendar-main { padding: 32px; min-height: 0; }
+.v2-app-shell .month-switcher h1 { font-size: 25px; letter-spacing: -.5px; }
+.v2-app-shell .calendar-filters { margin: 24px 0; }
+.v2-app-shell .calendar-weekdays, .v2-app-shell .calendar-month-grid { min-width: 0; }
+.v2-app-shell .calendar-month-grid > button { min-height: 80px; padding: 12px; font-size: 14px; }
+.v2-app-shell .calendar-month-grid > button.today { background: var(--blue-soft); color: var(--blue); }
+.v2-app-shell .calendar-month-grid > button.selected { border: 2px solid var(--blue); }
+.v2-app-shell .calendar-agenda { padding: 32px 24px; background: #f8fafd; }
+.v2-app-shell .calendar-agenda h2 { font-size: 18px; }
+.v2-app-shell .agenda-card { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 18px 0; background: transparent; min-height: 0; }
+.v2-app-shell .agenda-card p { font-size: 13px; }
+.v2-app-shell .agenda-card :is(a,button) { min-height: 40px; font-size: 13px; }
+.v2-app-shell .upcoming-row { padding: 12px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; grid-template-columns: 36px 42px minmax(0,1fr); gap: 10px; font-size: 12px; }
+.v2-app-shell .upcoming-row .agenda-icon { width: 32px; height: 32px; }
+
+/* Community and operational surfaces use readable posts, rows and forms. */
+.v2-app-shell .community-hub-chrome { background: var(--desk); padding: 32px 40px 0; border-bottom: 1px solid var(--line); }
+.v2-app-shell .community-hub-title h1 { font-size: 32px; line-height: 1.2; letter-spacing: -.8px; overflow-wrap: anywhere; }
+.v2-app-shell .community-hub-title p { font-size: 14px; max-width: 70ch; color: var(--muted); }
+.v2-app-shell .community-tabs { display: flex; gap: 28px; overflow-x: auto; margin-top: 28px; }
+.v2-app-shell .community-tabs a { min-height: 48px; font-size: 13px; white-space: nowrap; flex-shrink: 0; padding: 12px 0; border-bottom-width: 2px; }
+.v2-app-shell .community-tabs a.active { color: var(--blue); border-color: var(--blue); }
+.v2-app-shell .community-tab-panel { background: white; }
+.v2-app-shell .questions-layout { padding: 0; gap: 0; grid-template-columns: 320px minmax(0,1fr); }
+.v2-app-shell .question-thread-pane { border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 24px 16px; background: #f8fafd; }
+.v2-app-shell .question-detail-pane { border: 0; border-radius: 0; padding: 28px; background: white; }
+.v2-app-shell :is(.question-message,.assistant-answer) { grid-template-columns: 36px minmax(0,1fr); gap: 12px; }
+.v2-app-shell :is(.question-message,.assistant-answer) strong { font-size: 14px; }
+.v2-app-shell :is(.question-message,.assistant-answer) time { font-size: 11px; }
+.v2-app-shell :is(.question-message,.assistant-answer) > div > span { font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+.v2-app-shell .assistant-avatar { width: 36px; height: 36px; border-radius: 8px; background: var(--blue-soft); color: var(--blue); }
+.v2-app-shell .assistant-avatar svg { width: 21px; height: 21px; }
+.v2-app-shell .stream-cursor { background: var(--blue); }
+.v2-app-shell .office-hours-page { padding: 32px 40px; gap: 28px; max-width: 1440px; margin-inline: auto; }
+.v2-app-shell .office-hours-page.owner { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+.v2-app-shell :is(.learner-office-panel,.owner-live-office,.upcoming-office-panel,.next-office-summary,.office-schedule-form) { border-radius: 8px; }
+.v2-app-shell .office-heading { min-height: 0; padding-bottom: 24px; gap: 16px; }
+.v2-app-shell .office-heading h2 { font-size: 23px; }
+.v2-app-shell .office-heading p { font-size: 14px; }
+.v2-app-shell .office-heading small { font-size: 12px; }
+.v2-app-shell .office-hours-page h3 { letter-spacing: 0; font-size: 13px; font-weight: 550; }
+.v2-app-shell .people-page, .v2-app-shell .resources-page { padding: 32px 40px; max-width: 1440px; margin: 0 auto; }
+.v2-app-shell .teaching-page { width: 100%; max-width: 1440px; margin: 0 auto; background: white; padding: 36px 40px; color: var(--ink); }
+.v2-app-shell .teaching-page > header h1 { font-size: 32px; letter-spacing: -.8px; }
+.v2-app-shell .teaching-page > header p { font-size: 15px; }
+.v2-app-shell .teaching-page > header span { font-size: 13px; color: var(--muted); }
+.v2-app-shell .settings-page { overflow: auto; background: white; min-height: 0; flex: 1; }
+.v2-app-shell .settings-page .settings-modal { width: 100%; max-width: 1440px; margin: 0 auto; height: auto; min-height: 100%; box-shadow: none; border: 0; border-radius: 0; }
+.v2-app-shell .settings-modal > aside { background: #f8fafd; padding: 32px 24px; }
+.v2-app-shell .settings-modal > .settings-content { padding: 36px; }
+.v2-app-shell .settings-modal > .settings-content > header h1 { font-size: 30px; letter-spacing: -.7px; }
+.v2-app-shell .settings-modal > .settings-content > header p { font-size: 14px; }
+.v2-app-shell :is(.v2-modal-backdrop,.settings-overlay) { padding: 24px; background: #192c4666; backdrop-filter: none; }
+.v2-app-shell :is(.create-event-modal,.create-course-modal,.channel-editor-modal,.add-friend-modal) { max-height: calc(100dvh - 48px); overflow: auto; border: 1px solid var(--line); border-radius: 14px; background: white; color: var(--ink); box-shadow: 0 20px 64px #192c4626; }
+.v2-app-shell :is(.create-event-modal,.create-course-modal,.channel-editor-modal,.add-friend-modal) :is(input,select,textarea) { min-height: 44px; font-size: 15px; color: var(--ink); background: white; border: 1px solid #bac8da; border-radius: 6px; }
+
+@media (max-width: 1279px) {
+  .v2-app-shell .course-overview-layout { grid-template-columns: minmax(0,1fr) 260px; gap: 28px; padding: 28px; }
+  .v2-app-shell .course-workspace-chrome { padding: 24px 28px 0; }
+  .v2-app-shell .course-chat-layout { grid-template-columns: 190px minmax(0,1fr); }
+  .v2-app-shell .friends-page { grid-template-columns: 260px minmax(0,1fr); }
+  .v2-app-shell .inbox-page { grid-template-columns: 300px minmax(0,1fr); }
+  .v2-app-shell .calendar-page { grid-template-columns: minmax(0,1fr) 270px; }
+  .v2-app-shell .calendar-main { padding: 24px; }
+  .v2-app-shell .calendar-agenda { padding: 24px 18px; }
+  .v2-app-shell .calendar-month-grid > button { min-height: 64px; }
+}
+@media (max-width: 1023px) {
+  .v2-app-shell .course-heading-copy h1 { font-size: 25px; }
+  .v2-app-shell .workspace-tabs { gap: 24px; }
+  .v2-app-shell :is(.v2-chip-row button,.course-cohort-picker select,.channel-row-main,.channel-row-actions button) { min-height: 44px; }
+  .v2-app-shell .channel-row-actions { opacity: 1; width: auto; flex-basis: auto; }
+  .v2-app-shell .channel-row-actions button { width: 32px; }
+  .v2-app-shell .calendar-page { grid-template-columns: 1fr; overflow: auto; }
+  .v2-app-shell .calendar-main { overflow: visible; min-height: 0; border-right: 0; }
+  .v2-app-shell .calendar-month-grid { flex: none; }
+  .v2-app-shell .calendar-month-grid > button { min-height: 52px; }
+  .v2-app-shell .calendar-agenda { overflow: visible; border-top: 1px solid var(--line); }
+  .v2-app-shell .office-hours-page.owner { grid-template-columns: 1fr; }
+  .v2-app-shell .community-hub-chrome { padding: 28px 28px 0; }
+}
+@media (max-width: 767px) {
+  .v2-app-shell .course-workspace-chrome { padding: 20px 20px 0; }
+  .v2-app-shell .course-heading-row { align-items: start; gap: 12px; }
+  .v2-app-shell .course-workspace-mark { display: none; }
+  .v2-app-shell .course-heading-copy h1 { font-size: 22px; letter-spacing: -.5px; }
+  .v2-app-shell .course-heading-copy p { font-size: 12px; gap: 8px; }
+  .v2-app-shell .course-heading-actions .v2-outline-button { padding: 8px; font-size: 12px; }
+  .v2-app-shell .workspace-tabs { margin-top: 12px; gap: 24px; }
+  .v2-app-shell .workspace-tabs a { font-size: 12px; }
+  .v2-app-shell .course-overview-layout { grid-template-columns: 1fr; gap: 28px; padding: 24px 20px; }
+  .v2-app-shell .course-up-next { border-left: 0; padding: 24px 0 0; border-top: 1px solid var(--line); }
+  .v2-app-shell .course-chat-layout { display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: 48px minmax(0,1fr); min-height: 0; }
+  .v2-app-shell .mobile-channel-toggle { display: flex; align-items: center; gap: 8px; padding: 8px 20px; border: 0; border-bottom: 1px solid var(--line); background: var(--desk); color: var(--ink); font-size: 13px; text-align: left; }
+  .v2-app-shell .mobile-channel-toggle span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .v2-app-shell .channel-panel { display: none; }
+  .v2-app-shell .channels-open .channel-panel { display: block; border-right: 0; }
+  .v2-app-shell .channels-open .chat-panel { display: none; }
+  .v2-app-shell .chat-conversation-heading { display: none; }
+  .v2-app-shell .chat-message-list { padding: 20px 16px; }
+  .v2-app-shell .course-chat-message { grid-template-columns: 30px minmax(0,1fr); gap: 10px; }
+  .v2-app-shell .course-chat-message .v2-avatar { width: 30px; height: 30px; }
+  .v2-app-shell .course-chat-message > div > span { font-size: 14px; }
+  .v2-app-shell .chat-composer { margin: 8px 12px 12px; min-height: 60px; padding: 7px 8px 7px 12px; }
+  .v2-app-shell .chat-composer input { font-size: 16px; }
+  .v2-app-shell .friends-page, .v2-app-shell .inbox-page { grid-template-columns: minmax(0,1fr); overflow: hidden; }
+  .v2-app-shell .friends-list-pane, .v2-app-shell .inbox-thread-pane { max-height: none; height: 100%; padding: 24px 16px; border: 0; }
+  .v2-app-shell .friends-page .dm-pane, .v2-app-shell .inbox-page .inbox-reading-pane { display: none; }
+  .v2-app-shell .conversation-open .friends-list-pane, .v2-app-shell .reading-open .inbox-thread-pane { display: none; }
+  .v2-app-shell .conversation-open .dm-pane, .v2-app-shell .reading-open .inbox-reading-pane { display: flex; min-height: 0; }
+  .v2-app-shell .dm-pane > header { min-height: 72px; padding: 12px 16px; gap: 8px; }
+  .v2-app-shell .dm-pane > header h2 { font-size: 14px; }
+  .v2-app-shell .dm-pane > header .mobile-back, .v2-app-shell .inbox-reading-pane .mobile-back { display: inline-grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; background: white; border: 0; color: var(--ink); margin: 0; }
+  .v2-app-shell .dm-message-list { padding: 20px 16px; }
+  .v2-app-shell .dm-pane > form { margin: 8px 12px 12px; }
+  .v2-app-shell .dm-pane > form input { font-size: 16px; }
+  .v2-app-shell .inbox-reading-pane { padding: 16px 20px; overflow: auto; }
+  .v2-app-shell .reading-header h2 { font-size: 23px; }
+  .v2-app-shell .reading-header > div:last-child { width: auto; }
+  .v2-app-shell .inbox-message-card { padding-top: 20px; }
+  .v2-app-shell .calendar-toolbar { flex-wrap: wrap; }
+  .v2-app-shell .month-switcher { gap: 4px; }
+  .v2-app-shell .month-switcher h1 { font-size: 21px; }
+  .v2-app-shell .calendar-main { padding: 24px 16px; overflow: visible; }
+  .v2-app-shell .calendar-filters { gap: 4px; margin: 16px 0; }
+  .v2-app-shell .calendar-month-grid > button { min-height: 44px; padding: 6px; font-size: 13px; }
+  .v2-app-shell .calendar-weekdays { font-size: 11px; }
+  .v2-app-shell .calendar-agenda { padding: 24px 20px; }
+  .v2-app-shell .community-hub-chrome { padding: 24px 20px 0; }
+  .v2-app-shell .community-hub-title h1 { font-size: 27px; }
+  .v2-app-shell .community-hub-title p { font-size: 13px; }
+  .v2-app-shell .community-tabs { gap: 24px; margin-top: 20px; }
+  .v2-app-shell .community-tabs a { font-size: 12px; }
+  .v2-app-shell .questions-layout { display: flex; flex-direction: column; overflow: auto; }
+  .v2-app-shell .question-thread-pane { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 16px; }
+  .v2-app-shell .question-detail-pane { padding: 24px 16px; min-height: 360px; }
+  .v2-app-shell :is(.question-message,.assistant-answer) { grid-template-columns: 28px minmax(0,1fr); gap: 10px; }
+  .v2-app-shell .assistant-avatar { width: 28px; height: 28px; }
+  .v2-app-shell :is(.question-message,.assistant-answer) > div > span { font-size: 14px; }
+  .v2-app-shell .office-hours-page, .v2-app-shell .people-page, .v2-app-shell .resources-page, .v2-app-shell .teaching-page { padding: 24px 20px; }
+  .v2-app-shell .settings-page .settings-modal { display: block; }
+  .v2-app-shell .settings-modal > aside { padding: 20px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .v2-app-shell .settings-modal > .settings-content { padding: 24px 20px; }
+  .v2-app-shell .v2-modal-backdrop { padding: 12px; }
+  .v2-app-shell :is(.create-event-modal,.create-course-modal,.channel-editor-modal,.add-friend-modal) { max-height: calc(100dvh - 24px); width: 100%; padding: 24px 20px; }
+  .v2-app-shell :is(.create-event-modal,.create-course-modal,.channel-editor-modal,.add-friend-modal) :is(input,select,textarea) { font-size: 16px; }
+}
+@media (max-height: 480px) and (max-width: 1023px) {
+  .v2-app-shell .course-workspace-chrome { padding-top: 12px; }
+  .v2-app-shell .course-heading-copy h1 { font-size: 18px; }
+  .v2-app-shell .course-heading-copy p { display: none; }
+  .v2-app-shell .workspace-tabs { margin-top: 4px; }
+  .v2-app-shell .workspace-tabs a { min-height: 40px; padding-block: 8px; }
+  .v2-app-shell .course-chat-layout { grid-template-columns: 150px minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
+  .v2-app-shell .mobile-channel-toggle { display: none; }
+  .v2-app-shell .channel-panel { display: block; padding: 10px 8px; }
+  .v2-app-shell .chat-composer, .v2-app-shell .dm-pane > form { min-height: 54px; margin: 4px 10px 8px; padding-block: 4px; }
+  .v2-app-shell .v2-modal-backdrop { align-items: start; overflow: auto; }
+}
+
+.v2-app-shell .settings-home-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--blue); font-size: 13px; margin-bottom: 20px; }

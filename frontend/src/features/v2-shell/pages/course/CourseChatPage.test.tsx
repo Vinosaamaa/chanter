@@ -143,8 +143,8 @@ describe('CourseChatPage', () => {
     expect(screen.getByText('No voice channels yet.')).toBeInTheDocument()
     expect(screen.queryByText('Dr. Alex Johnson')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'general' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add attachment' })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('button', { name: 'Add emoji' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('button', { name: 'Add attachment' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add emoji' })).not.toBeInTheDocument()
   })
 
   it('selects a real channel from the current Cohort and hides other Cohorts', () => {
@@ -167,6 +167,17 @@ describe('CourseChatPage', () => {
     expect(screen.queryByRole('button', { name: 'private-cohort' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add text channel' })).toBeInTheDocument()
     expect(mocks.useConversation).toHaveBeenCalledWith('course', 'channel-1')
+  })
+
+  it('offers a mobile channel chooser that collapses after selecting a channel', async () => {
+    const user = userEvent.setup()
+    mocks.workspace.course.channels = [{ id: 'chat-1', cohortId: 'cohort-1', name: 'discussion', kind: 'TEXT' }]
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><CourseChatPage /></MemoryRouter></QueryClientProvider>)
+    const chooser = screen.getByRole('button', { name: 'Choose channel' })
+    await user.click(chooser)
+    expect(chooser).toHaveAttribute('aria-expanded', 'true')
+    await user.click(screen.getByRole('button', { name: 'discussion' }))
+    expect(chooser).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('traps channel editor focus, closes with Escape, and restores the trigger', async () => {

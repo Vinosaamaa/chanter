@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Check, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Check, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import {
@@ -49,6 +49,7 @@ function isYesterday(iso: string): boolean {
 export function InboxPage() {
   const [filter, setFilter] = useState<InboxFilter>('All')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [readingOpen, setReadingOpen] = useState(false)
   const notificationsQuery = useNotificationsQuery(FILTER_TO_API[filter], 'OPEN')
   const markRead = useMarkNotificationReadMutation()
   const markDone = useMarkNotificationDoneMutation()
@@ -69,6 +70,7 @@ export function InboxPage() {
   const yesterdayItems = notifications.filter((item) => isYesterday(item.createdAt))
 
   const onSelect = (id: string) => {
+    setReadingOpen(true)
     setSelectedId(id)
     const item = notifications.find((notification) => notification.id === id)
     if (item?.unread) {
@@ -86,15 +88,16 @@ export function InboxPage() {
   }
 
   return (
-    <section className="v2-workspace-page inbox-page" aria-label="Inbox">
+    <section className={`v2-workspace-page inbox-page${readingOpen ? ' reading-open' : ''}`} aria-label="Inbox">
       <aside className="inbox-thread-pane">
         <h1>Inbox</h1>
-        <div className="v2-chip-row" role="tablist" aria-label="Inbox filters">
+        <div className="v2-chip-row" role="group" aria-label="Inbox filters">
           {(['All', 'Mentions', 'Announcements'] as InboxFilter[]).map((item) => (
             <button
               key={item}
               type="button"
               className={filter === item ? 'active' : undefined}
+              aria-pressed={filter === item}
               onClick={() => {
                 setFilter(item)
                 setSelectedId(null)
@@ -145,6 +148,7 @@ export function InboxPage() {
       </aside>
 
       <div className="inbox-reading-pane">
+        <button type="button" className="mobile-back" aria-label="Back to inbox" onClick={() => setReadingOpen(false)}><ArrowLeft /></button>
         {selected ? (
           <>
             <header className="reading-header">

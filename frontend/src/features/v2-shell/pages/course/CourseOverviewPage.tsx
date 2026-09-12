@@ -89,9 +89,6 @@ export function CourseOverviewPage() {
           ) : progressUnavailable ? (
             <>
               <p>Progress is unavailable until a curriculum is published for this course.</p>
-              {summary?.progressUnavailableReason ? (
-                <p><small>{summary.progressUnavailableReason}</small></p>
-              ) : null}
             </>
           ) : (
             <>

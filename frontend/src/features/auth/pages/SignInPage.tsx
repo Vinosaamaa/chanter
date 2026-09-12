@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Eye, EyeOff, FileText, HelpCircle, MessageSquare, CalendarDays } from 'lucide-react'
+import { Eye, EyeOff, BookOpen, MessageSquare, CalendarDays } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { CohortInviteRedirect } from '../components/CohortInviteRedirect'
@@ -100,22 +100,13 @@ export function SignInPage() {
       <section className="v2-auth-hero">
         <V2Brand to="/" className="v2-auth-brand" />
         <div className="auth-hero-copy">
-          <h1>Where your<br />courses come<br /><span>together</span></h1>
-          <p>Chat, questions, resources, and<br />office hours — one place per course.</p>
+          <h1>A place for your next question.</h1>
+          <p>Come back to your Courses, find your people, and keep learning together.</p>
         </div>
-        <div className="auth-course-preview" aria-hidden="true">
-          <div className="preview-card preview-back two" />
-          <div className="preview-card preview-back one" />
-          <article className="preview-card preview-front">
-            <div className="preview-title"><span>CS</span><strong>CS 101 — Intro to<br />Computer Science</strong></div>
-            <div className="preview-tabs">
-              <span><MessageSquare />Chat</span>
-              <span><HelpCircle />Questions</span>
-              <span><FileText />Resources</span>
-              <span><CalendarDays />Office Hours</span>
-            </div>
-            <div className="preview-message"><i>AJ</i><p><strong>Dr. Alex Johnson</strong><small>Welcome to CS 101! I&apos;m excited to learn together…</small></p><time>2h ago</time></div>
-          </article>
+        <div className="auth-learning-map" aria-hidden="true">
+          <span><BookOpen /><strong>Your Courses</strong><small>Materials and ideas worth returning to</small></span>
+          <span><MessageSquare /><strong>Your conversations</strong><small>Questions, perspectives and shared progress</small></span>
+          <span><CalendarDays /><strong>Your time together</strong><small>Office Hours and community events</small></span>
         </div>
       </section>
 
@@ -129,17 +120,11 @@ export function SignInPage() {
               }}>Retry sign-out</button>
             </div>
           ) : null}
-          {inviteFromUrl ? (
-            <div className="v2-auth-invite">
-              <span className="invite-course-icon">CS</span>
-              <p><small>You&apos;ve been invited to join</small><strong>CS 101 — Intro to Computer Science</strong><span>Spring cohort · Dr. Alex Johnson</span></p>
-            </div>
-          ) : (
-            <div className="v2-auth-invite compact">
-              <span className="invite-course-icon">C</span>
-              <p><small>Welcome to Chanter</small><strong>Your courses, conversations, and support</strong><span>Sign in to continue learning.</span></p>
-            </div>
-          )}
+          <header className="auth-card-heading">
+            <h2>{inviteFromUrl ? 'Join your learning community' : 'Welcome to Chanter'}</h2>
+            <p>{inviteFromUrl ? 'Create an account or sign in to accept your Course invitation.' : 'Sign in to pick up where you left off.'}</p>
+          </header>
+
 
           <div className="v2-auth-tabs" role="tablist" aria-label="Authentication mode">
             <button
@@ -214,7 +199,7 @@ export function SignInPage() {
             ) : null}
             {error ? <p role="alert" className="v2-auth-error">{error}</p> : null}
             {info ? <p role="status" className="v2-auth-info">{info}</p> : null}
-            <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Working…' : mode === 'register' ? `Create account${inviteFromUrl ? ' & join CS 101' : ''}` : 'Sign in'}</button>
+            <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Working…' : mode === 'register' ? 'Create account' : 'Sign in'}</button>
           </form>
 
           <div className="auth-divider"><span />or<span /></div>

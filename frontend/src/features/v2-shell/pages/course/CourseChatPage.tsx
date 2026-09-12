@@ -9,7 +9,6 @@ import {
   Plus,
   Radio,
   Send,
-  Smile,
   Volume2,
   X,
 } from 'lucide-react'
@@ -47,6 +46,8 @@ export function CourseChatPage() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const [draft, setDraft] = useState('')
+  const [channelsOpen, setChannelsOpen] = useState(false)
+  const channelToggleRef = useRef<HTMLButtonElement>(null)
   const [editor, setEditor] = useState<ChannelEditorState | null>(null)
   const [managementError, setManagementError] = useState<string | null>(null)
   const [isManaging, setIsManaging] = useState(false)
@@ -109,6 +110,8 @@ export function CourseChatPage() {
     nextParams.set('channel', channelId)
     setSearchParams(nextParams)
     setDraft('')
+    setChannelsOpen(false)
+    if (channelsOpen) requestAnimationFrame(() => channelToggleRef.current?.focus())
   }
 
   const openEditor = (nextEditor: ChannelEditorState) => {
@@ -172,11 +175,12 @@ export function CourseChatPage() {
   }
 
   return (
-    <div className="course-chat-layout">
-      <aside className="channel-panel" inert={editor ? true : undefined} aria-hidden={editor ? true : undefined}>
+    <div className={`course-chat-layout${channelsOpen ? ' channels-open' : ''}`}>
+      <button ref={channelToggleRef} type="button" className="mobile-channel-toggle" aria-label="Choose channel" aria-expanded={channelsOpen} aria-controls="course-channel-list" onClick={() => setChannelsOpen((open) => !open)}><Hash size={18} /><span>{selectedChannel?.name ?? 'Channels'}</span><ChevronDown size={18} /></button>
+      <aside id="course-channel-list" className="channel-panel" inert={editor ? true : undefined} aria-hidden={editor ? true : undefined}>
         <section>
           <ChannelSectionHeader
-            label="CHANNELS"
+            label="Channels"
             canManage={courseCapabilities.canManageCourse && Boolean(selectedCohort)}
             onAdd={() => openEditor({ mode: 'create', kind: 'TEXT' })}
             addLabel="Add text channel"
@@ -199,7 +203,7 @@ export function CourseChatPage() {
 
         <section className="voice-section">
           <ChannelSectionHeader
-            label="VOICE"
+            label="Voice"
             canManage={courseCapabilities.canManageCourse && Boolean(selectedCohort)}
             onAdd={() => openEditor({ mode: 'create', kind: 'VOICE' })}
             addLabel="Add voice channel"
@@ -395,7 +399,6 @@ function TextChannelWorkspace({
   onSubmit: (event: FormEvent) => void
   canPostMessages: boolean
 }) {
-  const unavailableExplanation = 'This capability is not available yet.'
   const composerDisabled = !channel || !canPostMessages
   const composerPlaceholder = !channel
     ? 'Select a text channel to message'
@@ -404,6 +407,7 @@ function TextChannelWorkspace({
       : `#${channel.name} is read-only for your role`
   return (
     <>
+      {channel ? <div className="chat-conversation-heading"><Hash size={18} aria-hidden="true" /><h2>{channel.name}</h2></div> : null}
       <div className="chat-message-list">
         {!channel ? (
           <div className="chat-empty-state"><Hash /><h2>No text channel selected</h2><p>Create or select a text channel to start a conversation.</p></div>
@@ -432,15 +436,6 @@ function TextChannelWorkspace({
         })}
       </div>
       <form className="chat-composer" onSubmit={onSubmit}>
-        <button
-          type="button"
-          aria-label="Add attachment"
-          aria-disabled="true"
-          aria-describedby="course-chat-unavailable-capability"
-          title={unavailableExplanation}
-        >
-          <Plus />
-        </button>
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -449,18 +444,6 @@ function TextChannelWorkspace({
           disabled={composerDisabled}
           maxLength={4000}
         />
-        <button
-          type="button"
-          aria-label="Add emoji"
-          aria-disabled="true"
-          aria-describedby="course-chat-unavailable-capability"
-          title={unavailableExplanation}
-        >
-          <Smile />
-        </button>
-        <span id="course-chat-unavailable-capability" className="sr-only">
-          Attachments and emoji are not available yet.
-        </span>
         <button
           type="submit"
           className="send-button"

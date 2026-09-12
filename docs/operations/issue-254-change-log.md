@@ -14,3 +14,15 @@ Complete reconstruction of the learning/community product UI with the pinned fro
 ## Verification
 
 Pending implementation. No screenshot, mocked API or component test is recorded as full-stack proof.
+
+
+## Workspace and public route reconstruction
+
+- Replaced dark surface colors with the learning-desk semantic palette; removed the legacy saved-light-theme override.
+- Rebuilt Course context with a native cohort selector, continuous conversation canvas, phone channel chooser, and responsive reading panels.
+- Added phone list/conversation navigation for Friends and Inbox. Removed unsupported attachment, emoji and video buttons. Billing is a regular page with a direct Home route.
+- Rebuilt marketing, authentication and legal reading surfaces. Removed fabricated invitation Course details and misleading illustrative queue actions from public entry.
+- Focused tests: 21 V2 files / 85 tests pass. Billing deep-link navigation was observed failing before the direct Home link and passing afterward. Earlier cohort-selection and phone-chat regressions were also observed red/green.
+- The first workspace production check passed TypeScript and bundling, then rejected CSS size (223,316 bytes against 220,000). Replacing old public-page styles addresses duplicate CSS; the limit is unchanged.
+- The hosted Home run at 86fb2f7 produced twelve Home images, with eleven of twelve checks passing. The remaining failure is drawer focus during its visibility transition. The transition is removed; the browser focus assertion remains.
+- Hosted visual fixtures now cover nineteen routes at phone and desktop widths plus landscape chat. Fixture responses are explicit test-server data and fail on missing API responses. These images do not prove backend functionality.

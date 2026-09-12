@@ -58,7 +58,7 @@ describe('LandingPage', () => {
     expect(document.getElementById('pricing')).toBeTruthy()
   })
 
-  it('shows product preview chrome with Join Queue and legal links', () => {
+  it('labels the illustrative Course and preserves legal navigation', () => {
     render(
       <MemoryRouter>
         <LandingPage />
@@ -66,9 +66,8 @@ describe('LandingPage', () => {
     )
 
     expect(screen.getByLabelText(/product preview/i)).toBeTruthy()
-    expect(screen.getByLabelText(/ta queue preview/i)).toBeTruthy()
-    expect(screen.getByLabelText(/course stats/i)).toBeTruthy()
-    expect(screen.getByRole('link', { name: /join queue/i })).toHaveAttribute('href', '/sign-in')
+    expect(screen.getByText('An example Course in Chanter')).toBeVisible()
+    expect(screen.queryByRole('link', { name: /join queue/i })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /^terms$/i })).toHaveAttribute('href', '/terms')
     expect(screen.getByRole('link', { name: /^privacy$/i })).toHaveAttribute('href', '/privacy')
   })

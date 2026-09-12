@@ -96,6 +96,12 @@ describe('BillingSettingsPage', () => {
     expect(await screen.findByText('Home redirected')).toBeVisible()
   })
 
+  it('provides a direct route back to Home from a billing deep link', async () => {
+    renderBilling()
+    await userEvent.click(await screen.findByRole('link', { name: 'Back to Home' }))
+    expect(await screen.findByText('Home redirected')).toBeVisible()
+  })
+
   it('shows real plan and AI usage without fake invoices or storage', async () => {
     const user = userEvent.setup()
     const savePlan = vi.fn()

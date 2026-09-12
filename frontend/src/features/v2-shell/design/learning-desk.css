@@ -8,6 +8,8 @@
   --blue: #2458d3;
   --blue-soft: #eaf0ff;
   --error: #b42332;
+  --success: #197451;
+  --warning: #8a5c12;
   color: var(--ink);
   color-scheme: light;
   font-family: var(--font-sans);
@@ -150,13 +152,15 @@
 .v2-app-shell .course-loading > div { min-height: 210px; border-radius: 10px; background: var(--desk); }
 .v2-app-shell .sidebar-backdrop, .v2-app-shell .mobile-navigation { display: none; }
 .v2-app-shell .home-invites-panel { background: #eef5ff; border: 1px solid #ccddf5; border-radius: 8px; margin: 0 0 32px; padding: 20px; }
+.v2-app-shell .home-next-action { display: none; }
 html:has(.v2-app-shell), html:has(.v2-app-shell) body, html:has(.v2-app-shell) #root { height: 100%; min-height: 100dvh; overflow: hidden; background: #f3f6fa; }
 
 @media (min-width: 1600px) {
   .v2-app-shell .dashboard { padding: 54px 64px; }
   .v2-app-shell .lower-grid { grid-template-columns: minmax(0,1fr) 300px; gap: 56px; }
-  .v2-app-shell .course-card { min-height: 246px; padding: 24px 28px; }
-  .v2-app-shell .course-title-row h3 { font-size: 25px; }
+  .v2-app-shell .course-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .v2-app-shell .course-card { min-height: 214px; padding: 22px 24px; }
+  .v2-app-shell .course-title-row h3 { font-size: 23px; }
 }
 @media (max-width: 1279px) {
   .v2-app-shell .sidebar { width: 224px; flex-basis: 224px; }
@@ -169,7 +173,7 @@ html:has(.v2-app-shell), html:has(.v2-app-shell) body, html:has(.v2-app-shell) #
   .v2-app-shell .up-next { padding-left: 22px; }
 }
 @media (max-width: 1023px) {
-  .v2-app-shell .sidebar { position: fixed; inset: 0 auto 0 0; width: min(340px,88vw); transform: translateX(-100%); visibility: hidden; transition: transform 180ms ease, visibility 180ms; box-shadow: 16px 0 48px #192c4626; z-index: 40; }
+  .v2-app-shell .sidebar { position: fixed; inset: 0 auto 0 0; width: min(340px,88vw); transform: translateX(-100%); visibility: hidden; transition: none; box-shadow: 16px 0 48px #192c4626; z-index: 40; }
   .v2-app-shell .sidebar.open { transform: none; visibility: visible; }
   .v2-app-shell .sidebar-close, .v2-app-shell .menu-button { display: inline-grid; place-items: center; flex-shrink: 0; }
   .v2-app-shell .sidebar-backdrop.show { display: block; position: fixed; inset: 0; border: 0; background: #172c4666; z-index: 35; }
@@ -201,6 +205,10 @@ html:has(.v2-app-shell), html:has(.v2-app-shell) body, html:has(.v2-app-shell) #
   .v2-app-shell .greeting p { font-size: 13px; max-width: 32ch; }
   .v2-app-shell .greeting .greeting-date { font-size: 11px; margin-bottom: 10px; }
   .v2-app-shell .lower-grid { grid-template-columns: 1fr; gap: 32px; }
+  .v2-app-shell .home-next-action { display: grid; grid-template-columns: 24px minmax(0,1fr) 18px; align-items: center; gap: 12px; padding: 16px 0; border-block: 1px solid var(--line); margin-bottom: 20px; color: var(--blue); }
+  .v2-app-shell .home-next-action strong, .v2-app-shell .home-next-action small, .v2-app-shell .home-next-action span span { display: block; }
+  .v2-app-shell .home-next-action strong { font-size: 14px; color: var(--ink); font-weight: 600; }
+  .v2-app-shell .home-next-action small, .v2-app-shell .home-next-action span span { font-size: 11px; color: var(--muted); }
   .v2-app-shell .section-heading { margin-bottom: 14px; }
   .v2-app-shell .section-heading h2, .v2-app-shell .home-attention h2 { font-size: 18px; }
   .v2-app-shell .course-grid { gap: 14px; }

@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import './features/v2-shell/design/v2-auth.css';
 @import './features/v2-shell/design/v2-pages.css';
+@import './features/v2-shell/design/learning-workspaces.css';
 @import './features/v2-shell/design/learning-desk.css';
 
 @font-face {
@@ -22,17 +23,6 @@
   --color-app-muted: #596a80;
   --color-app-accent: #2458d3;
   --color-app-accent-hover: #1744b0;
-}
-
-:root[data-theme='light'] {
-  --color-app-bg: #ebedef;
-  --color-app-surface: #ffffff;
-  --color-app-elevated: #f2f3f5;
-  --color-app-border: #d4d7dc;
-  --color-app-text: #060607;
-  --color-app-muted: #4e5058;
-  --color-app-accent: #5865f2;
-  --color-app-accent-hover: #4752c4;
 }
 
 @layer base {

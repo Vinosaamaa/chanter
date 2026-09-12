@@ -2,17 +2,15 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Ban,
+  ArrowLeft,
   Check,
   CheckCheck,
   Mic,
   MicOff,
-  Paperclip,
   Phone,
   Plus,
   Send,
-  Smile,
   UserPlus,
-  Video,
   X,
 } from 'lucide-react'
 
@@ -37,6 +35,7 @@ export function FriendsPage() {
   const [tab, setTab] = useState<FriendsTab>('friends')
   const [draft, setDraft] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [conversationOpen, setConversationOpen] = useState(Boolean(searchParams.get('friend')))
   const friendRows = useMemo(
     () =>
       hub.friends.map((friend) => ({
@@ -63,7 +62,7 @@ export function FriendsPage() {
   }
 
   return (
-    <div className="friends-page">
+    <div className={`friends-page${conversationOpen ? ' conversation-open' : ''}`}>
       <aside className="friends-list-pane">
         <header>
           <h1>Friends</h1>
@@ -94,7 +93,7 @@ export function FriendsPage() {
             selectedFriendId={hub.selectedFriendId}
             isLoading={hub.isLoadingFriends}
             error={hub.friendsListError}
-            onSelect={hub.selectFriend}
+            onSelect={(friendId) => { hub.selectFriend(friendId); setConversationOpen(true) }}
           />
         ) : (
           <PendingRequests relationships={relationships} />
@@ -105,6 +104,7 @@ export function FriendsPage() {
         {active ? (
           <>
             <header>
+              <button type="button" className="mobile-back" aria-label="Back to friends" onClick={() => setConversationOpen(false)}><ArrowLeft /></button>
               <V2Avatar
                 name={active.name}
                 tone={active.tone}
@@ -129,14 +129,6 @@ export function FriendsPage() {
                 }
               >
                 <Phone />
-              </button>
-              <button
-                type="button"
-                aria-label="Start video call (not available yet)"
-                title="Video calls are not available yet"
-                disabled
-              >
-                <Video />
               </button>
             </header>
 
@@ -174,14 +166,6 @@ export function FriendsPage() {
             </div>
 
             <form onSubmit={submitMessage}>
-              <button
-                type="button"
-                aria-label="Attach file (not available yet)"
-                title="DM attachments are not available yet"
-                disabled
-              >
-                <Paperclip />
-              </button>
               <input
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -189,14 +173,6 @@ export function FriendsPage() {
                 aria-label={`Message ${active.name}`}
                 maxLength={4000}
               />
-              <button
-                type="button"
-                aria-label="Add emoji (not available yet)"
-                title="Emoji picker is not available yet"
-                disabled
-              >
-                <Smile />
-              </button>
               <button
                 type="submit"
                 className="send"

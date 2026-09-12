@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { BookOpen, Plus, RefreshCw } from 'lucide-react'
+import { ArrowUpRight, BookOpen, CalendarDays, Plus, RefreshCw } from 'lucide-react'
 
 import { fetchHomeSummary, homeSummaryQueryKey } from '../../home/home-summary-api'
 import { formatUserFacingApiError } from '../../../lib/format-api-error'
@@ -47,6 +47,7 @@ export function HomePage() {
         ) : null}
 
         <HomeStudyServerInvites />
+        {model.upNext[0]?.href ? <Link to={model.upNext[0].href} className="home-next-action"><CalendarDays aria-hidden="true" /><span><small>Up next</small><strong>{model.upNext[0].title}</strong><span>{model.upNext[0].detail}</span></span><ArrowUpRight aria-hidden="true" /></Link> : null}
 
         <div className="lower-grid">
           <section className="learning">
