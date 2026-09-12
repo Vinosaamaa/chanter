@@ -53,6 +53,7 @@ login() {
   local body code response login_payload register_payload
   login_payload=$(python3 -c 'import json, os, sys; print(json.dumps({"email": sys.argv[1], "password": os.environ["DEMO_PASSWORD"]}))' "$email")
   response=$(curl -sS -w $'\n%{http_code}' -X POST "$GATEWAY/api/v1/auth/login" \
+    -H "Origin: ${CHANTER_PUBLIC_BASE_URL:-$FRONTEND}" -H 'X-Chanter-CSRF: 1' \
     -H 'Content-Type: application/json' \
     -d "$login_payload")
   code="${response##*$'\n'}"
@@ -63,11 +64,18 @@ login() {
   fi
   register_payload=$(python3 -c 'import json, os, sys; print(json.dumps({"email": sys.argv[1], "password": os.environ["DEMO_PASSWORD"], "displayName": sys.argv[2]}))' "$email" "$display_name")
   response=$(curl -sS -w $'\n%{http_code}' -X POST "$GATEWAY/api/v1/auth/register" \
+    -H "Origin: ${CHANTER_PUBLIC_BASE_URL:-$FRONTEND}" -H 'X-Chanter-CSRF: 1' \
     -H 'Content-Type: application/json' \
     -d "$register_payload")
   code="${response##*$'\n'}"
   body="${response%$'\n'*}"
   require_http "login/register $email" "$code" "$body"
+  if [[ "$code" == "202" ]]; then
+    node "$ROOT/scripts/product/verify-demo-email.mjs" "$email"
+    body=$(curl_json "login verified demo persona" -X POST "$GATEWAY/api/v1/auth/login" \
+      -H "Origin: ${CHANTER_PUBLIC_BASE_URL:-$FRONTEND}" -H 'X-Chanter-CSRF: 1' \
+      -H 'Content-Type: application/json' -d "$login_payload")
+  fi
   echo "$body"
 }
 

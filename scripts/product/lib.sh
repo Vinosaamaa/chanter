@@ -62,6 +62,9 @@ ${gateway}/actuator/health
 ${gateway}/api/v1/auth/health
 http://localhost:${REALTIME_PORT:-8087}/actuator/health
 EOF
+  if [ "${CHANTER_EMAIL_LOCAL_SINK:-false}" = "true" ]; then
+    echo "http://localhost:8025/readyz"
+  fi
 }
 
 product_configure_java_home() {
@@ -415,13 +418,17 @@ product_ensure_databases() {
 
 product_prepare_infrastructure() {
   local root compose_file
+  local mail_services=()
   root="$(product_repo_root)"
   compose_file="$root/infra/docker-compose.yml"
 
   echo "Starting Chanter product infrastructure..."
+  if [ "${CHANTER_EMAIL_LOCAL_SINK:-false}" = "true" ]; then
+    mail_services+=(mailpit)
+  fi
   docker compose -f "$compose_file" --env-file "$root/.env" --profile product stop realtime-service >/dev/null 2>&1 || true
   docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --wait --wait-timeout 180 \
-    postgres redis redpanda minio livekit
+    postgres redis redpanda minio livekit "${mail_services[@]}"
   product_ensure_databases
   echo "Infrastructure is healthy."
 }

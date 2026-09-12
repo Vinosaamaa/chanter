@@ -1,4 +1,20 @@
 services:
+  mailpit:
+    image: axllent/mailpit:v1.31.1
+    profiles: [product]
+    container_name: chanter-mailpit
+    environment:
+      MP_MAX_MESSAGES: 100
+      MP_DISABLE_VERSION_CHECK: "true"
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   postgres:
     image: postgres:16.14-alpine
     container_name: chanter-postgres

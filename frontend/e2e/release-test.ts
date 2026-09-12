@@ -40,7 +40,7 @@ export const test = base.extend<{ browserHealth: void }>({
       if (!ignoredNavigationAbort(request)) {
         failures.push({
           kind: 'request',
-          detail: `${request.method()} ${request.url()} (${request.failure()?.errorText ?? 'unknown failure'})`,
+          detail: `${request.method()} ${new URL(request.url()).pathname} (${request.failure()?.errorText ?? 'unknown failure'})`,
         })
       }
     })

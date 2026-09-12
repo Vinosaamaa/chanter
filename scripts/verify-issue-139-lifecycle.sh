@@ -6,6 +6,7 @@ product_load_env
 DEMO_PASSWORD="${DEMO_PASSWORD:-chanter-dev-demo}"
 GATEWAY="$(product_gateway_url)"
 TOKEN=$(curl -sf -m 10 -X POST "$GATEWAY/api/v1/auth/login" \
+  -H "Origin: ${CHANTER_PUBLIC_BASE_URL:-http://localhost:5173}" -H 'X-Chanter-CSRF: 1' \
   -H 'Content-Type: application/json' \
   -d "{\"email\":\"dev-demo-owner@chanter.local\",\"password\":\"${DEMO_PASSWORD}\"}" \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')

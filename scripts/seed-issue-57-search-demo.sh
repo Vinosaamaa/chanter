@@ -14,9 +14,11 @@ MARKER="issue57-search-demo-$(date +%s)"
 login() {
   local email="$1"
   curl -sf -X POST "$GATEWAY/api/v1/auth/login" \
+    -H "Origin: ${CHANTER_PUBLIC_BASE_URL:-http://localhost:5173}" -H 'X-Chanter-CSRF: 1' \
     -H 'Content-Type: application/json' \
     -d "{\"email\":\"$email\",\"password\":\"$DEMO_PASSWORD\"}" \
     || curl -sf -X POST "$GATEWAY/api/v1/auth/register" \
+      -H "Origin: ${CHANTER_PUBLIC_BASE_URL:-http://localhost:5173}" -H 'X-Chanter-CSRF: 1' \
       -H 'Content-Type: application/json' \
       -d "{\"email\":\"$email\",\"password\":\"$DEMO_PASSWORD\",\"displayName\":\"$2\"}"
 }
