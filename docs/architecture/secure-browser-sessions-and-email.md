@@ -76,7 +76,7 @@ Deploy schema changes through Flyway with the auth release. Back up auth data fi
 | Cross-account data leakage | Deferred response/refresh tests and two-account browser sequence |
 | Broken recovery | Real SMTP sink, browser verification link, reset link, old-session rejection |
 | Lost mail on provider failure | Committed queue survives failure, retries, and clears delivered payload |
-| Duplicate queue worker claims | Competing claims and expired-lease recovery tests |
+| Duplicate queue worker claims | Competing row-lock claims, transaction rollback and retry tests |
 | Broken production routing | Gateway-backed browser run through the configured public origin |
 | Unusable session controls | Keyboard operation, accessible names, desktop/mobile visual inspection |
 

@@ -28,7 +28,7 @@ verification: {"state":"not-recorded","evidenceRefs":[]}
 visibility: public-safe
 publicationEligibility: eligible
 issue: 242
-pr: null
+pr: 312
 release: null
 run: null
 ---
@@ -57,7 +57,7 @@ Use a local-only Mailpit inbox for browser recovery tests. The tests must read t
 - A transaction rollback on refresh rejection can undo replay revocation.
 - Sign-in and OAuth exchange need the same origin policy as refresh/logout.
 - Session list/revoke must enforce ownership at the auth service.
-- A worker crash can lose or duplicate mail unless claims expire and delivery is retryable.
+- A worker crash releases its transaction's row lock so another worker can retry; a crash after SMTP acceptance can duplicate delivery.
 - Browser traces can capture one-time account links; credential-handling journeys disable trace, video and screenshots.
 
 ## Evidence and release gates

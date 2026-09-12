@@ -88,6 +88,25 @@ test.describe('Verified account and recovery @product', () => {
     await expect(page.getByRole('button', { name: 'Open account menu' })).toBeVisible()
     const rotated = await assertCredentialBoundary(page, context)
     expect(rotated.value === original.value).toBe(false)
+
+    // A separate API context owns a second device's real refresh cookie. Its
+    // revocation must be visible in the UI and enforced by the auth service.
+    const headers = { Origin: new URL(appUrl).origin, 'X-Chanter-CSRF': '1' }
+    const secondDevice = await request.post(new URL('/api/v1/auth/login', appUrl).toString(), {
+      headers: { ...headers, 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0' },
+      data: { email, password },
+    })
+    expect(secondDevice.ok()).toBe(true)
+    await page.getByRole('button', { name: 'Open account menu' }).click()
+    await page.getByRole('menuitem', { name: 'Sessions and devices', exact: true }).click()
+    const devices = page.getByRole('dialog', { name: 'Sessions and devices' })
+    await expect(devices.getByText('This device', { exact: true })).toBeVisible()
+    await devices.getByRole('button', { name: 'Sign out Firefox on Linux', exact: true }).click()
+    await expect(devices.getByRole('button', { name: 'Sign out Firefox on Linux', exact: true })).toHaveCount(0)
+    const revoked = await request.post(new URL('/api/v1/auth/refresh', appUrl).toString(), { headers })
+    expect(revoked.status()).toBe(401)
+    await page.keyboard.press('Escape')
+    await expect(devices).toHaveCount(0)
     await signOut(page)
     await page.reload()
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
