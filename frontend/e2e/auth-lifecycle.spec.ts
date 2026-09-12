@@ -46,7 +46,8 @@ async function signOut(page: Page) {
   await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click()
   const response = await completed
   expect(response.status()).toBe(204)
-  await response.finished()
+  // Chromium may never emit a completion event for a bodyless 204. Verify the browser effect instead.
+  await expect.poll(async () => (await page.context().cookies()).some((cookie) => cookie.name === 'chanter_refresh')).toBe(false)
   await expect(page).toHaveURL(/\/sign-in/)
 }
 
