@@ -15,6 +15,11 @@
     <description>Shared contracts and utilities</description>
 
     <dependencies>
+        <!-- Preserve the existing JSON contract during the supported-framework migration. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
@@ -22,7 +27,7 @@
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
-            <version>9.47</version>
+            <version>10.9.1</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

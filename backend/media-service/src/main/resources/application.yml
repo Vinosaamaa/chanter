@@ -2,6 +2,11 @@ server:
   port: ${MEDIA_PORT:8084}
 
 spring:
+  http:
+    codecs:
+      preferred-json-mapper: jackson2
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: media-service
   datasource:

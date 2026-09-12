@@ -2,6 +2,11 @@ server:
   port: ${NOTIFICATION_PORT:8089}
 
 spring:
+  http:
+    codecs:
+      preferred-json-mapper: jackson2
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: notification-service
   datasource:

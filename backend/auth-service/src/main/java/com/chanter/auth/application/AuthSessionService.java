@@ -30,11 +30,11 @@ public class AuthSessionService {
             "If this email can be used, check your inbox for next steps.";
 
     /**
-     * Precomputed BCrypt hash used when the account is missing or has no password hash,
+     * Precomputed hash using the current password work factor when the account is missing or has no password hash,
      * so {@code matches} always runs (SEC-16 login timing side-channel).
      */
     static final String DUMMY_PASSWORD_HASH =
-            "$2b$10$UmakdiX3qQt/PTm0vHM/iOIRL3j8/Yy1jq0dyjHg79Og4QqH/tWkK";
+            "{pbkdf2-sha256-v1}a02bf7ebdc59dc9305f55009849ace566786d5ae9a01e5b8ed626bd91156ab8a1fdbf7636c9419b52446ccdb2fce9872";
 
     private final AuthUserRepository authUserRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -123,7 +123,7 @@ public class AuthSessionService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
         refreshTokenRepository.lockUser(user.id());
-        // BCrypt is expensive. Lock only after verification, then reject a password changed by a concurrent reset.
+        // Password hashing is expensive. Lock only after verification, then reject a password changed by a concurrent reset.
         user = authUserRepository.findById(user.id()).orElse(null);
         if (user == null || !passwordHash.equals(user.passwordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");

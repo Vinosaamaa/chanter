@@ -169,7 +169,11 @@ class DirectMessageCallSignalingSmokeTest {
                 .uri("http://localhost:" + port + "/api/v1/direct-message-calls/{callId}/media-token", callId)
                 .header(HttpHeaders.AUTHORIZATION, AuthHeaders.BEARER_PREFIX + tokenA)
                 .retrieve()
-                .bodyToMono(JsonNode.class)
+                .bodyToMono(String.class)
+                .map(payload -> {
+                    try { return objectMapper.readTree(payload); }
+                    catch (java.io.IOException exception) { throw new IllegalStateException(exception); }
+                })
                 .block(Duration.ofSeconds(5));
 
         assertThat(tokenResponse).isNotNull();

@@ -2,6 +2,11 @@ server:
   port: ${ANALYTICS_PORT:8086}
 
 spring:
+  http:
+    codecs:
+      preferred-json-mapper: jackson2
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: analytics-service
 

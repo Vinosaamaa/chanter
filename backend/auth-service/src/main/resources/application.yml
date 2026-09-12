@@ -3,6 +3,11 @@ server:
   forward-headers-strategy: framework
 
 spring:
+  http:
+    codecs:
+      preferred-json-mapper: jackson2
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: auth-service
   datasource:
