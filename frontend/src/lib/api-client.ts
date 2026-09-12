@@ -62,9 +62,37 @@ export async function apiFetchBlob(path: string, init?: ApiFetchInit): Promise<B
   return result
 }
 
-/** Auth-aware fetch that returns the raw Response (for SSE / streaming bodies). */
+/** Auth-aware streaming response; every body read remains bound to its account. */
 export async function apiFetchResponse(path: string, init?: ApiFetchInit): Promise<Response> {
-  return fetchWithAuth(path, init, init?.skipAuthRefresh ?? false, sessionGuard(init))
+  const checkSession = sessionGuard(init)
+  const response = await fetchWithAuth(path, init, init?.skipAuthRefresh ?? false, checkSession)
+  if (!response.body) return response
+
+  const reader = response.body.getReader()
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        checkSession()
+        const chunk = await reader.read()
+        checkSession()
+        if (chunk.done) {
+          controller.close()
+          reader.releaseLock()
+        } else {
+          controller.enqueue(chunk.value)
+        }
+      } catch (error) {
+        controller.error(error)
+        await reader.cancel(error).catch(() => undefined)
+        reader.releaseLock()
+      }
+    },
+    async cancel(reason) {
+      await reader.cancel(reason)
+      reader.releaseLock()
+    },
+  }, { highWaterMark: 0 }) // Never prefetch a chunk that a later account could consume.
+  return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
 }
 
 function sessionGuard(init?: ApiFetchInit): () => void {

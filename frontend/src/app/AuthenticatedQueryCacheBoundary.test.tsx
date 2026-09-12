@@ -56,7 +56,7 @@ describe('AuthenticatedQueryCacheBoundary', () => {
     })
   })
 
-  it('lets newly mounted account queries finish after cookie restoration', async () => {
+  it('lets newly mounted account queries finish after the auth store receives a session', async () => {
     useAuthStore.getState().clearSession()
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={queryClient}><AuthenticatedQueryCacheBoundary>

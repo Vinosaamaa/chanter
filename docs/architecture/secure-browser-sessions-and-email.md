@@ -29,6 +29,8 @@ The server returns an access token and user in JSON after successful authenticat
 
 The browser keeps the access token in memory. On startup it tries cookie refresh before deciding whether a protected route needs sign-in. API calls capture the current account generation. A response started under an earlier account must not update the new account's cache or retry using its credentials. An expired access token triggers one coordinated refresh and one retry, not an unlimited loop.
 
+Streaming bodies check the same generation before and after each read, without prefetching chunks into the guarded stream. An account change rejects the read and cancels the upstream body. Provider metadata is read-only: Google sign-in state and its browser cookie are created only when the customer follows the first-party OAuth start URL. Opening another sign-in tab does not replace an active flow's cookie.
+
 Browser tabs serialize cookie-changing operations with Web Locks where supported. Shared browser state carries only an opaque account-change marker, never a token. Sign-out and account switching invalidate pending work in every tab. The UI must distinguish initialization, a transient renewal failure, and an anonymous session without displaying another account's content.
 
 ## Refresh-token lifecycle

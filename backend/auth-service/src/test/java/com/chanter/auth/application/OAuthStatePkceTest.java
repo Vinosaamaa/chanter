@@ -94,6 +94,15 @@ class OAuthStatePkceTest {
     // --- authorizationUrl includes state and code_challenge ---
 
     @Test
+    void listingProvidersDoesNotAllocatePendingLoginState() {
+        int before = pendingStore.size();
+        assertThat(oauthAuthService.listProviders()).singleElement()
+                .satisfies(provider -> assertThat(provider.authorizationUrl())
+                        .isEqualTo("http://localhost:5173/api/v1/auth/oauth/google/start"));
+        assertThat(pendingStore.size()).isEqualTo(before);
+    }
+
+    @Test
     void authorizationUrlContainsStateAndCodeChallenge() {
         String url = oauthAuthService.authorizationUrl("google");
         assertThat(url)

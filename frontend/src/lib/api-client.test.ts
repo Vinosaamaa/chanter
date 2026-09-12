@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { apiFetch, configureApiAuth } from './api-client'
+import { apiFetch, apiFetchResponse, configureApiAuth } from './api-client'
 
 describe('authenticated HTTP requests', () => {
   let token: string | null
@@ -56,5 +56,48 @@ describe('authenticated HTTP requests', () => {
     generation += 1
     resolveBody('{"private":"owner"}')
     await expect(result).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
+  it('rejects a buffered stream from the previous account before the first read', async () => {
+    const cancel = vi.fn()
+    fetchMock.mockResolvedValue(new Response(new ReadableStream({
+      start(controller) { controller.enqueue(new TextEncoder().encode('private owner answer')) },
+      cancel,
+    })))
+    const response = await apiFetchResponse('/api/v1/answer/stream')
+    generation += 1
+    await expect(response.body!.getReader().read()).rejects.toMatchObject({ name: 'AbortError' })
+    expect(cancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('discards a stream chunk that arrives while an account change interrupts a pending read', async () => {
+    let upstream: ReadableStreamDefaultController<Uint8Array>
+    const cancel = vi.fn()
+    fetchMock.mockResolvedValue(new Response(new ReadableStream<Uint8Array>({
+      start(controller) { upstream = controller },
+      cancel,
+    }), { headers: { 'Content-Type': 'text/event-stream' } }))
+    const response = await apiFetchResponse('/api/v1/answer/stream')
+    const reader = response.body!.getReader()
+    upstream!.enqueue(new TextEncoder().encode('first account chunk'))
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe('first account chunk')
+    const pending = reader.read()
+    await Promise.resolve()
+    generation += 1
+    upstream!.enqueue(new TextEncoder().encode('late private chunk'))
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    expect(cancel).toHaveBeenCalledTimes(1)
+    expect(response.headers.get('Content-Type')).toBe('text/event-stream')
+  })
+
+  it('propagates consumer cancellation and closes a normal streaming response', async () => {
+    const cancel = vi.fn()
+    fetchMock.mockResolvedValueOnce(new Response(new ReadableStream({ cancel })))
+      .mockResolvedValueOnce(new Response('complete answer'))
+    const cancelled = await apiFetchResponse('/api/v1/answer/stream')
+    await cancelled.body!.cancel('left the question')
+    expect(cancel).toHaveBeenCalledWith('left the question')
+    const complete = await apiFetchResponse('/api/v1/answer/stream')
+    await expect(complete.text()).resolves.toBe('complete answer')
   })
 })

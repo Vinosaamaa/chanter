@@ -27,12 +27,12 @@ class OAuthBrowserStateTest {
 
     @Test
     void oauthAuthorizationStateIsBoundToTheBrowserThatStartedIt() throws Exception {
-        var result = mvc.perform(get("/api/v1/auth/oauth/providers")).andExpect(status().isOk()).andReturn();
+        var result = mvc.perform(get("/api/v1/auth/oauth/google/start")).andExpect(status().isFound()).andReturn();
         Cookie stateCookie = result.getResponse().getCookie("chanter_oauth_state");
         assertThat(stateCookie).isNotNull();
         assertThat(stateCookie.isHttpOnly()).isTrue();
         assertThat(stateCookie.getSecure()).isTrue();
-        String url = json.readTree(result.getResponse().getContentAsString()).get("providers").get(0).get("authorizationUrl").asText();
+        String url = result.getResponse().getHeader("Location");
         assertThat(url).contains("state=" + stateCookie.getValue());
         String payload = json.writeValueAsString(Map.of("code", "unredeemed-code", "state", stateCookie.getValue()));
         // A valid server-issued state still cannot be moved into another browser's callback.
@@ -43,5 +43,18 @@ class OAuthBrowserStateTest {
                         .header("X-Chanter-CSRF", "1").cookie(new Cookie("chanter_oauth_state", "another-browser"))
                         .contentType("application/json").content(payload))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listingProvidersDoesNotReplaceAnExistingBrowserLogin() throws Exception {
+        var started = mvc.perform(get("/api/v1/auth/oauth/google/start"))
+                .andExpect(status().isFound()).andReturn();
+        Cookie stateCookie = started.getResponse().getCookie("chanter_oauth_state");
+        var listed = mvc.perform(get("/api/v1/auth/oauth/providers").cookie(stateCookie))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(listed.getResponse().getHeaders("Set-Cookie")).isEmpty();
+        String startUrl = json.readTree(listed.getResponse().getContentAsString())
+                .get("providers").get(0).get("authorizationUrl").asText();
+        assertThat(startUrl).isEqualTo("http://localhost:5173/api/v1/auth/oauth/google/start");
     }
 }

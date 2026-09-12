@@ -33,13 +33,15 @@ class ProductionAuthEmailTest {
         var auth = new ProductionAuthService(users, tokens, mock(RefreshTokenRepository.class), email,
                 mock(PasswordEncoder.class), Duration.ofHours(2), "https://learning.chanter.test/");
 
+        Instant earliestExpiry = Instant.now().plus(Duration.ofHours(2));
         if (reset) {
             auth.requestPasswordReset(user.email());
         } else {
             auth.sendEmailVerification(user);
         }
 
-        assertThat(email.expiresAt).isEqualTo(tokenExpiry[0]);
+        Instant latestExpiry = Instant.now().plus(Duration.ofHours(2));
+        assertThat(email.expiresAt).isEqualTo(tokenExpiry[0]).isBetween(earliestExpiry, latestExpiry);
         assertThat(email.subject.contains("Chanter")).isTrue();
         assertThat(email.body.contains("Chanter")).isTrue();
         assertThat(email.body.contains("https://learning.chanter.test/" + (reset ? "reset-password" : "verify-email") + "?token=")).isTrue();

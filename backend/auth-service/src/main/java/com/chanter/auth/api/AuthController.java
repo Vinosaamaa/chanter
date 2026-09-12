@@ -155,10 +155,8 @@ public class AuthController {
     }
 
     @GetMapping("/oauth/providers")
-    public OAuthProvidersResponse listOauthProviders(HttpServletResponse response) {
+    public OAuthProvidersResponse listOauthProviders() {
         List<OAuthAuthService.ProviderInfo> providers = oauthAuthService.listProviders();
-        providers.stream().filter(provider -> "google".equals(provider.id())).findFirst()
-                .ifPresent(provider -> bindOauthState(response, provider.authorizationUrl()));
         return new OAuthProvidersResponse(providers.stream()
                 .map(provider -> new OAuthProviderResponse(provider.id(), provider.label(), provider.authorizationUrl()))
                 .toList());

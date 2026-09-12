@@ -65,7 +65,7 @@ public class OAuthAuthService {
     public List<ProviderInfo> listProviders() {
         List<ProviderInfo> providers = new ArrayList<>();
         if (!googleClientId.isBlank() && !googleClientSecret.isBlank()) {
-            providers.add(new ProviderInfo("google", "Google", authorizationUrl("google")));
+            providers.add(new ProviderInfo("google", "Google", publicBaseUrl + "/api/v1/auth/oauth/google/start"));
         }
         return providers;
     }

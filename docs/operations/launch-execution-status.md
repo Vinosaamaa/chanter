@@ -20,13 +20,13 @@ The open dependency-update PRs and the older environment PR remain separate work
 
 | Issue | Customer or operator outcome | Current state |
 |---|---|---|
-| #242 | Reliable sign-in, verification, recovery, device sessions | Integrated in PR #312; hosted browser and release proof pending |
+| #242 | Reliable sign-in, verification, recovery, device sessions | PR #312 full hosted journeys passed; review fixes need exact-head rerun; provider/HTTPS proof pending |
 | #243 | Reproducible staging and production with rollback | Deployment package in progress; free single-host choice recorded, provisioning unverified |
 | #244 | Durable private resource storage and quarantine | Open; depends on infrastructure |
 | #245 | Durable notifications and search indexing | Open; depends on infrastructure |
 | #246 | Truthful supported resource ingestion | Open; depends on storage/events |
 | #247 | Authorized production vector retrieval | Open; depends on ingestion |
-| #248 | Evaluated AI safety, usage and cost accounting | Open; depends on retrieval/provider |
+| #248 | Evaluated AI safety, usage and cost accounting | Provider adapters, model catalog and metering in progress; final retrieval/provider proof pending |
 | #249 | Administration, reports and moderation | Open; depends on sessions/infrastructure/events |
 | #250 | Truthful free-beta mode or real paid billing | Open; billing mode/provider evidence needed |
 | #251 | Export, deletion, retention and accurate policy pages | Open; depends on durable data/moderation |
