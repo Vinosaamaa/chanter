@@ -41,6 +41,7 @@ describe('session settings', () => {
     openDialog()
     expect(screen.getByRole('dialog', { name: 'Sessions and devices' })).toBeInTheDocument()
     expect(await screen.findByText('This device')).toBeInTheDocument()
+    expect(screen.getByText(/up to 15 minutes/)).toBeInTheDocument()
     const otherDevice = screen.getByRole('listitem', { name: 'Safari on iPhone' })
     await user.click(within(otherDevice).getByRole('button', { name: 'Sign out Safari on iPhone' }))
     expect(authApi.revokeSession).toHaveBeenCalledWith('other')

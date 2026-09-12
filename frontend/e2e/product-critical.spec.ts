@@ -8,15 +8,15 @@ const memberEmail = process.env.DEMO_MEMBER_EMAIL ?? 'dev-demo-member@chanter.lo
 const learnerEmail = process.env.DEMO_LEARNER_EMAIL ?? 'dev-demo-learner@chanter.local'
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173'
 
+// Authenticated traces contain bearer tokens and HttpOnly cookie values.
+test.use({ baseURL, trace: 'off', video: 'off', screenshot: 'off' })
+
 /**
  * Full product critical paths (@product). Requires `make product-up` + `make product-demo-seed`
  * and PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:5173.
  */
 test.describe('Product critical paths @product', () => {
   test.skip(!process.env.PLAYWRIGHT_PRODUCT, 'Set PLAYWRIGHT_PRODUCT=1 after product-up + demo-seed')
-
-  // Authenticated traces contain bearer tokens and HttpOnly cookie values.
-  test.use({ baseURL, trace: 'off', video: 'off', screenshot: 'off' })
 
   test('owner can sign in and reach home', async ({ page }) => {
     await openAndSignIn(page, ownerEmail)

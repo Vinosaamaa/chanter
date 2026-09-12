@@ -129,7 +129,7 @@ export function SessionsDialog({ onClose }: { onClose: () => void }) {
             })}
           </ul>
           {sessionsQuery.data.sessions.length === 0 ? <p>No active sessions were found.</p> : null}
-          <p className="session-help">Signing out ends that device&apos;s access. It will need to sign in again.</p>
+          <p className="session-help">Other devices can keep access for up to 15 minutes, then must sign in again.</p>
         </> : null}
       </main>
     </dialog>
