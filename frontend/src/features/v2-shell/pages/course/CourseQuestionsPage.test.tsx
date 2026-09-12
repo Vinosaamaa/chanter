@@ -8,6 +8,7 @@ import type {
   SupportQuestionSummary,
   TaQueueItem,
 } from '../../../questions/support-question-types'
+import { useAuthStore } from '../../../../stores/auth-store'
 import { CourseQuestionsPage } from './CourseQuestionsPage'
 
 const mocks = vi.hoisted(() => ({
@@ -149,6 +150,7 @@ describe('CourseQuestionsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.workspace.courseCapabilities.canManageQuestions = true
     const question: SupportQuestionSummary = {
       id: 'question-1',
       channelMessageId: 'message-1',
@@ -256,6 +258,20 @@ describe('CourseQuestionsPage', () => {
     render(<CourseQuestionsPage />)
 
     expect(screen.queryByRole('button', { name: /add to ta queue/i })).not.toBeInTheDocument()
+  })
+
+  it('shows learners the saved answer’s actual provider and model', () => {
+    useAuthStore.setState({ user: { id: 'learner-1', displayName: 'Learner Lin', email: 'learner@example.test' } })
+    mocks.workspace.courseCapabilities.canManageQuestions = false
+    mocks.questions.selectedAnswer = {
+      id: 'saved-answer', supportQuestionId: 'question-1', channelId: 'questions-1', studyServerId: 'server-1', learnerUserId: 'learner-1',
+      questionBody: 'Question', answerBody: 'Persisted quotation', confidence: 'HIGH', supportQuestionStatus: 'AI_ANSWERED', handoffRecommended: false,
+      sources: [], createdAt: '2026-07-14T20:02:00.000Z',
+      audit: { llmUsed: true, llmProvider: 'actual-provider', llmModel: 'saved-model', sourceCount: 1, invocationType: 'GROUNDED_ANSWER', createdAt: '2026-07-14T20:02:00.000Z' },
+    }
+    render(<CourseQuestionsPage />)
+    expect(screen.getByText(/actual-provider \/ saved-model/)).toBeInTheDocument()
+    mocks.workspace.courseCapabilities.canManageQuestions = true
   })
 
   it('keeps the active filter aligned with the selected thread status', async () => {

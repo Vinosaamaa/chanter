@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { AssistantStreamError, type StreamAssistantHandlers } from '../../questions/questions-api'
 import { useAuthStore } from '../../../stores/auth-store'
 import { useQuestionsChannel } from './use-questions-channel'
 
@@ -140,6 +141,67 @@ describe('useQuestionsChannel', () => {
     expect(result.current.selectedAnswer?.answerBody).toBe('Hello world')
     expect(result.current.selectedAnswer?.sources).toHaveLength(1)
     expect(result.current.selectedQuestion?.status).toBe('AI_ANSWERED')
+  })
+
+  it('discards an interrupted draft and permits only explicit source recovery after a provider attempt', async () => {
+    mocks.streamAssistantAnswer.mockImplementation(async (_channel, _question, handlers) => {
+      handlers.onToken('Unsaved draft')
+      throw new AssistantStreamError('STREAM_INTERRUPTED', 'The answer was interrupted.', 502)
+    })
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+    await act(() => result.current.invokeAssistant('question-1', { modelId: 'provider-model', answerMode: 'quoted-evidence' }))
+    expect(result.current.streamPhase).toBe('error')
+    expect(result.current.streamingText).toBe('')
+    expect(result.current.selectedAnswer).toBeNull()
+    expect(result.current.requiresSourceRecovery).toBe(true)
+    await act(() => result.current.invokeAssistant('question-1', { modelId: 'provider-model', answerMode: 'quoted-evidence' }))
+    expect(mocks.streamAssistantAnswer).toHaveBeenCalledTimes(1)
+    await act(() => result.current.invokeAssistant('question-1', { modelId: 'source-only', answerMode: 'source-only' }))
+    expect(mocks.streamAssistantAnswer).toHaveBeenCalledTimes(2)
+    expect(mocks.streamAssistantAnswer.mock.lastCall?.[3]).toEqual({ modelId: 'source-only', answerMode: 'source-only' })
+  })
+
+  it('ignores superseded stream callbacks and settlement while the next request is active', async () => {
+    const streams: { handlers: StreamAssistantHandlers; resolve: () => void }[] = []
+    mocks.streamAssistantAnswer.mockImplementation((_channel, _question, handlers) => new Promise<void>((resolve) => streams.push({ handlers, resolve })))
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+    let first!: Promise<void>
+    let second!: Promise<void>
+    act(() => { first = result.current.invokeAssistant('question-1', { modelId: 'source-only', answerMode: 'source-only' }) })
+    act(() => { second = result.current.invokeAssistant('question-1', { modelId: 'source-only', answerMode: 'source-only' }) })
+    await act(async () => {
+      streams[1].handlers.onToken('Current draft')
+      streams[0].handlers.onToken('Stale draft')
+      streams[0].resolve()
+      await first
+    })
+    expect(streams[0].handlers.signal?.aborted).toBe(true)
+    expect(result.current.streamingText).toBe('Current draft')
+    expect(result.current.invokingQuestionId).toBe('question-1')
+    expect(result.current.streamPhase).toBe('streaming')
+    await act(async () => { streams[1].resolve(); await second })
+  })
+
+  it('aborts a channel stream on navigation and ignores its late draft', async () => {
+    let handlers!: StreamAssistantHandlers
+    let resolve!: () => void
+    mocks.streamAssistantAnswer.mockImplementation((_channel, _question, nextHandlers) => {
+      handlers = nextHandlers
+      return new Promise<void>((done) => { resolve = done })
+    })
+    const { result, rerender } = renderHook(({ channelId }) => useQuestionsChannel({ channelId, cohortId: 'cohort-1' }), {
+      initialProps: { channelId: 'questions-1' },
+    })
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+    let request!: Promise<void>
+    act(() => { request = result.current.invokeAssistant('question-1') })
+    rerender({ channelId: 'questions-2' })
+    await act(async () => { handlers.onToken('Prior channel content'); resolve(); await request })
+    expect(handlers.signal?.aborted).toBe(true)
+    expect(result.current.streamingText).toBe('')
+    expect(result.current.streamPhase).toBe('idle')
   })
 
   it('marks an answer helpful', async () => {

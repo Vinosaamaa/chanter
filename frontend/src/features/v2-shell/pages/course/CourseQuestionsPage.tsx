@@ -20,6 +20,7 @@ import type { SupportQuestionStatus } from '../../../questions/support-question-
 import { useFaqApprovalPanel } from '../../../support-operations/hooks/use-faq-approval-panel'
 import { useTaQueuePanel } from '../../../support-operations/hooks/use-ta-queue-panel'
 import { useQuestionsChannel } from '../../../shell/hooks/use-questions-channel'
+import { AssistantAnswerControls } from './AssistantAnswerControls'
 import { V2Avatar } from '../../components/V2Avatar'
 import { useV2CourseWorkspace } from '../../layouts/v2-course-workspace-context'
 
@@ -74,8 +75,11 @@ export function CourseQuestionsPage() {
     channelId: questionChannel?.id ?? '',
     cohortId: selectedCohort?.id ?? '',
   })
-  const faq = useFaqApprovalPanel(course.id, questionChannel?.id)
-  const queue = useTaQueuePanel(selectedCohort?.id)
+  const faq = useFaqApprovalPanel(
+    courseCapabilities.canApproveFaq ? course.id : undefined,
+    courseCapabilities.canApproveFaq ? questionChannel?.id : undefined,
+  )
+  const queue = useTaQueuePanel(courseCapabilities.canManageTaQueue ? selectedCohort?.id : undefined)
   const [filter, setFilter] = useState<QuestionFilter>('open')
   const [draft, setDraft] = useState('')
   const [readingOpen, setReadingOpen] = useState(false)
@@ -215,15 +219,29 @@ export function CourseQuestionsPage() {
               </div>
             </article>
 
+            {canAskAi && userId ? (
+              <AssistantAnswerControls
+                key={`${questionChannel.id}:${userId}:${selected.id}`}
+                channelId={questionChannel.id}
+                userId={userId}
+                isInvoking={questions.invokingQuestionId === selected.id}
+                requiresSourceRecovery={questions.requiresSourceRecovery}
+                onInvoke={(selection) => void questions.invokeAssistant(selected.id, selection)}
+              />
+            ) : null}
+            {questions.streamPhase === 'streaming' && !questions.streamingText ? (
+              <p className="assistant-retrieval-status" role="status">{questions.streamStatus === 'retrieving' ? 'Finding approved course sources…' : 'Starting your answer request…'}</p>
+            ) : null}
+
             {questions.streamPhase === 'streaming' && questions.streamingText ? (
               <>
                 <div className="question-answer-divider" />
                 <article className="assistant-answer assistant-answer-streaming">
                   <span className="assistant-avatar"><Sparkles /></span>
                   <div>
-                    <p><strong>AI Study Assistant</strong><b>AI</b><time>Streaming…</time></p>
+                    <p><strong>AI Study Assistant</strong><b>AI</b><time>Draft · not saved</time></p>
                     <span className="assistant-stream-body">{questions.streamingText}<i className="stream-cursor" aria-hidden /></span>
-                    <small>Citations appear when the answer completes</small>
+                    <small>The saved answer and citations appear only after this request completes.</small>
                   </div>
                 </article>
               </>
@@ -244,8 +262,7 @@ export function CourseQuestionsPage() {
                           {questions.selectedAnswer.sources.map((source) => {
                             const isFaqSource = source.resourceTitle.startsWith('FAQ: ')
                             return (
-                              <button
-                                type="button"
+                              <span
                                 className={`citation-chip ${isFaqSource ? 'faq' : 'document'}`}
                                 key={`${source.resourceId}-${source.resourceTitle}`}
                                 title={source.excerpt}
@@ -253,7 +270,7 @@ export function CourseQuestionsPage() {
                               >
                                 {isFaqSource ? 'FAQ' : <FileText size={14} />}
                                 <strong>{source.resourceTitle}</strong>
-                              </button>
+                              </span>
                             )
                           })}
                         </div>
@@ -277,15 +294,13 @@ export function CourseQuestionsPage() {
                         </div>
                       </>
                     ) : null}
-                    {manageQuestions && questions.selectedAnswer.audit ? (
+                    {questions.selectedAnswer.audit ? (
                       <p className="assistant-audit-snippet">
-                        AI audit · {questions.selectedAnswer.audit.llmUsed
-                          ? `${questions.selectedAnswer.audit.llmProvider ?? 'llm'} / ${questions.selectedAnswer.audit.llmModel ?? 'model'}`
-                          : 'RAG only'}
+                        Saved answer · {questions.selectedAnswer.audit.llmUsed
+                          ? `${questions.selectedAnswer.audit.llmProvider ?? 'Provider not recorded'} / ${questions.selectedAnswer.audit.llmModel ?? 'model not recorded'}`
+                          : 'Approved sources · no generation model'}
                         {' · '}
                         {questions.selectedAnswer.audit.sourceCount} source{questions.selectedAnswer.audit.sourceCount === 1 ? '' : 's'}
-                        {' · '}
-                        {questions.selectedAnswer.audit.invocationType.replaceAll('_', ' ').toLowerCase()}
                       </p>
                     ) : null}
                   </div>
@@ -307,15 +322,6 @@ export function CourseQuestionsPage() {
             })}
 
             <div className="question-answer-actions">
-              {canAskAi ? (
-                <button
-                  type="button"
-                  onClick={() => void questions.invokeAssistant(selected.id)}
-                  disabled={questions.invokingQuestionId === selected.id || questions.streamPhase === 'streaming'}
-                >
-                  <Sparkles />{questions.streamPhase === 'streaming' ? 'Streaming…' : questions.invokingQuestionId ? 'Asking AI…' : 'Ask AI'}
-                </button>
-              ) : null}
               {!manageQuestions
                   && selected?.senderUserId === userId
                   && questions.selectedAnswer?.handoffRecommended ? (
@@ -352,7 +358,7 @@ export function CourseQuestionsPage() {
           </>
         )}
 
-        {questions.error ? <p className="inline-error">{questions.error}</p> : null}
+        {questions.error ? <p className="inline-error" role="alert">{questions.error}</p> : null}
         {questions.taQueueSuccess ? <p className="inline-success">{questions.taQueueSuccess}</p> : null}
         {(!manageQuestions || selected) ? (
           <form className="question-composer" onSubmit={submitComposer}>

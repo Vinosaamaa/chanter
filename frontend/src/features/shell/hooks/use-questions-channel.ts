@@ -6,6 +6,7 @@ import { fetchPublicProfiles } from '../../friends/friends-api'
 import type { PublicUserProfile } from '../../friends/types'
 import {
   addSupportQuestionToTaQueue,
+  AssistantStreamError,
   fetchAssistantAnswer,
   listSupportQuestionReplies,
   listSupportQuestions,
@@ -18,6 +19,7 @@ import {
 } from '../../questions/questions-api'
 import type {
   AssistantAnswer,
+  AssistantAnswerSelection,
   AssistantStreamPhase,
   SupportQuestionModerationStatus,
   SupportQuestionReply,
@@ -50,10 +52,12 @@ type UseQuestionsChannelResult = {
   error: string | null
   postQuestion: (body: string) => Promise<boolean>
   isPosting: boolean
-  invokeAssistant: (supportQuestionId: string) => Promise<void>
+  invokeAssistant: (supportQuestionId: string, selection?: AssistantAnswerSelection) => Promise<void>
   invokingQuestionId: string | null
   streamingText: string
   streamPhase: AssistantStreamPhase
+  streamStatus: 'retrieving' | null
+  requiresSourceRecovery: boolean
   markHelpful: (supportQuestionId: string) => Promise<void>
   markingHelpfulQuestionId: string | null
   addToTaQueue: (supportQuestionId: string) => Promise<void>
@@ -93,6 +97,10 @@ export function useQuestionsChannel({
   const [isModerating, setIsModerating] = useState(false)
   const [invokingQuestionId, setInvokingQuestionId] = useState<string | null>(null)
   const [streamingText, setStreamingText] = useState('')
+  const [streamContextKey, setStreamContextKey] = useState<string | null>(null)
+  const [streamStatus, setStreamStatus] = useState<'retrieving' | null>(null)
+  const generationAttemptsRef = useRef(new Set<string>())
+  const [generationAttempts, setGenerationAttempts] = useState(new Set<string>())
   const [streamPhase, setStreamPhase] = useState<AssistantStreamPhase>('idle')
   const [markingHelpfulQuestionId, setMarkingHelpfulQuestionId] = useState<string | null>(null)
   const streamAbortRef = useRef<AbortController | null>(null)
@@ -103,6 +111,11 @@ export function useQuestionsChannel({
   const contextKey = channelId && userId ? `${channelId}:${userId}` : null
   const requestKey = contextKey ? `${contextKey}:${reloadToken}` : null
   const hasActiveData = contextKey !== null && loadedContextKey === contextKey
+
+  useEffect(() => () => {
+    streamAbortRef.current?.abort()
+    streamAbortRef.current = null
+  }, [contextKey])
 
   useEffect(() => {
     if (!contextKey || !requestKey) return
@@ -259,13 +272,24 @@ export function useQuestionsChannel({
     }
   }, [channelId, userId])
 
-  const invokeAssistant = useCallback(async (supportQuestionId: string) => {
+  const invokeAssistant = useCallback(async (supportQuestionId: string, selection?: AssistantAnswerSelection) => {
+    if (!contextKey) return
+    const attemptKey = `${contextKey}:${supportQuestionId}`
+    const sourceOnly = selection?.answerMode === 'source-only' || selection?.modelId === 'source-only'
+    if (!sourceOnly && generationAttemptsRef.current.has(attemptKey)) return
+    if (!sourceOnly) {
+      generationAttemptsRef.current.add(attemptKey)
+      setGenerationAttempts(new Set(generationAttemptsRef.current))
+    }
     streamAbortRef.current?.abort()
     const abortController = new AbortController()
     streamAbortRef.current = abortController
+    const ownsRequest = () => streamAbortRef.current === abortController && !abortController.signal.aborted
 
+    setStreamContextKey(contextKey)
     setInvokingQuestionId(supportQuestionId)
     setStreamingText('')
+    setStreamStatus(null)
     setStreamPhase('streaming')
     setError(null)
     setTaQueueSuccess(null)
@@ -273,10 +297,12 @@ export function useQuestionsChannel({
     try {
       await streamAssistantAnswer(channelId, supportQuestionId, {
         signal: abortController.signal,
+        onStatus: (status) => { if (ownsRequest()) setStreamStatus(status) },
         onToken: (token) => {
-          setStreamingText((current) => current + token)
+          if (ownsRequest()) setStreamingText((current) => current + token)
         },
         onComplete: (answer) => {
+          if (!ownsRequest()) return
           setAnswersByQuestionId((current) => ({ ...current, [supportQuestionId]: answer }))
           setSupportQuestions((current) => current.map((question) =>
             question.id === supportQuestionId
@@ -286,33 +312,24 @@ export function useQuestionsChannel({
           setStreamingText('')
           setStreamPhase('complete')
         },
-      })
+      }, selection)
     } catch (caught) {
-      if (abortController.signal.aborted) {
-        setStreamPhase('idle')
-        return
-      }
+      if (!ownsRequest()) return
       setStreamPhase('error')
-      if (caught instanceof ApiError && caught.status === 429) {
+      if (caught instanceof ApiError && !(caught instanceof AssistantStreamError) && caught.status === 429) {
         setError(quotaExhaustedMessage(caught.body))
       } else {
         setError(caught instanceof Error ? caught.message : 'Unable to invoke AI Study Assistant')
       }
     } finally {
-      if (streamAbortRef.current === abortController) {
+      if (ownsRequest()) {
         streamAbortRef.current = null
-      }
-      setInvokingQuestionId(null)
-      if (!abortController.signal.aborted) {
-        setStreamingText((current) => {
-          if (current.length > 0) {
-            return ''
-          }
-          return current
-        })
+        setInvokingQuestionId(null)
+        setStreamingText('')
+        setStreamStatus(null)
       }
     }
-  }, [channelId])
+  }, [channelId, contextKey])
 
   const markHelpful = useCallback(async (supportQuestionId: string) => {
     setMarkingHelpfulQuestionId(supportQuestionId)
@@ -333,6 +350,9 @@ export function useQuestionsChannel({
       streamAbortRef.current = null
       setStreamingText('')
       setStreamPhase('idle')
+      setInvokingQuestionId(null)
+      setStreamStatus(null)
+      setError(null)
     }
     setSelectedSupportQuestionId(supportQuestionId)
   }, [selectedSupportQuestionId])
@@ -407,9 +427,11 @@ export function useQuestionsChannel({
     postQuestion,
     isPosting,
     invokeAssistant,
-    invokingQuestionId,
-    streamingText,
-    streamPhase,
+    invokingQuestionId: streamContextKey === contextKey ? invokingQuestionId : null,
+    streamingText: streamContextKey === contextKey ? streamingText : '',
+    streamPhase: streamContextKey === contextKey ? streamPhase : 'idle',
+    streamStatus: streamContextKey === contextKey ? streamStatus : null,
+    requiresSourceRecovery: Boolean(contextKey && selectedSupportQuestionId && generationAttempts.has(`${contextKey}:${selectedSupportQuestionId}`)),
     markHelpful,
     markingHelpfulQuestionId,
     addToTaQueue,
@@ -418,7 +440,7 @@ export function useQuestionsChannel({
     selectedSupportQuestionId,
     selectSupportQuestion,
     selectedQuestion,
-    selectedAnswer: selectedSupportQuestionId
+    selectedAnswer: hasActiveData && selectedQuestion && selectedSupportQuestionId
       ? answersByQuestionId[selectedSupportQuestionId] ?? null
       : null,
     selectedReplies,
