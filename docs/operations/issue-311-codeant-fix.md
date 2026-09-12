@@ -13,4 +13,6 @@
 
 Three remediation rounds are complete. Remaining nonblocking suggestions are documented rather than triggering unbounded refactoring; confirmed security or failing verification still blocks merge.
 
+The final review of `44fbf71` identified one remaining confirmed privacy bypass: UNC paths with a backslash or mixed prefix followed by a forward separator. Under the security exception, four reproducing cases were added and both existing UNC patterns now accept either separator. All 34 Engineering tests pass, including valid public HTTPS receipts. No additional refactoring was added.
+
 Review source: [CodeAnt suggestions](https://github.com/Vinosaamaa/chanter/pull/313#issuecomment-5643417609) and [drive-path finding](https://github.com/Vinosaamaa/chanter/pull/313#discussion_r3995098423). The earlier MinIO and frontend dependency failures were repaired by merged PR #312; this branch includes that merged baseline.

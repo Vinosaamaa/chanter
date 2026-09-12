@@ -49,6 +49,8 @@ for (const [shape, unsafe] of [
   ["Windows UNC", win32.join("\\\\fixture-server", "private", "notes.txt")],
   ["Windows forward UNC", "//fixture-server/private/notes.txt"],
   ["Windows mixed UNC", "//fixture-server\\private/notes.txt"],
+  ["Windows backslash-prefix mixed UNC", "\\\\fixture-server/private/notes.txt"],
+  ["Windows alternate-prefix mixed UNC", "\\/fixture-server/private/notes.txt"],
 ]) {
   test(`the scaffold rejects ${shape} prose without echoing it`, (t) => {
     const root = fixture(t);
