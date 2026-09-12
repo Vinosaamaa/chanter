@@ -9,9 +9,10 @@ public record AiUsageMetricsResponse(
         int aiInvocationLimit,
         int remainingInvocations,
         boolean quotaExhausted,
-        int lowConfidenceHandoffs
+        int lowConfidenceHandoffs,
+        com.chanter.agent.application.AiGenerationLedger.UsageSummary generationUsage
 ) {
-    static AiUsageMetricsResponse from(AiUsageMetrics metrics) {
+    static AiUsageMetricsResponse from(AiUsageMetrics metrics, com.chanter.agent.application.AiGenerationLedger.UsageSummary generationUsage) {
         return new AiUsageMetricsResponse(
                 metrics.studyServerId(),
                 metrics.planTier(),
@@ -19,7 +20,8 @@ public record AiUsageMetricsResponse(
                 metrics.aiInvocationLimit(),
                 metrics.remainingInvocations(),
                 metrics.quotaExhausted(),
-                metrics.lowConfidenceHandoffs()
+                metrics.lowConfidenceHandoffs(),
+                generationUsage
         );
     }
 }

@@ -3,6 +3,7 @@ package com.chanter.agent.infra;
 import com.chanter.agent.application.SupportQuestionClient;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.context.annotation.Profile;
@@ -15,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class TestSupportQuestionClient implements SupportQuestionClient {
 
     private final Map<UUID, SupportQuestion> supportQuestions = new ConcurrentHashMap<>();
+    private final Map<UUID, Set<UUID>> viewers = new ConcurrentHashMap<>();
 
     public void registerSupportQuestion(SupportQuestion supportQuestion) {
         supportQuestions.put(supportQuestion.id(), supportQuestion);
@@ -22,6 +24,11 @@ public class TestSupportQuestionClient implements SupportQuestionClient {
 
     public void clear() {
         supportQuestions.clear();
+        viewers.clear();
+    }
+
+    public void grantViewerAccess(UUID question, UUID viewer) {
+        viewers.computeIfAbsent(question, ignored -> ConcurrentHashMap.newKeySet()).add(viewer);
     }
 
     @Override
@@ -30,7 +37,7 @@ public class TestSupportQuestionClient implements SupportQuestionClient {
         if (supportQuestion == null || !supportQuestion.channelId().equals(channelId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Support Question not found");
         }
-        if (!supportQuestion.senderUserId().equals(viewerUserId)) {
+        if (!supportQuestion.senderUserId().equals(viewerUserId) && !viewers.getOrDefault(supportQuestionId, Set.of()).contains(viewerUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support Question access denied");
         }
         return supportQuestion;

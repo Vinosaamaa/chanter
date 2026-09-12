@@ -23,15 +23,9 @@ chanter:
     retrieval-top-k: ${CHANTER_GROUNDING_TOP_K:5}
   llm:
     enabled: ${CHANTER_LLM_ENABLED:false}
-    provider: ${CHANTER_LLM_PROVIDER:ollama}
-    model: ${CHANTER_LLM_MODEL:llama3.2}
-    connect-timeout-seconds: 5
-    read-timeout-seconds: 120
-    ollama:
-      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-    openai:
-      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
-      api-key: ${OPENAI_API_KEY:}
+    default-model-id: ${CHANTER_LLM_DEFAULT_MODEL_ID:source-only}
+    daily-token-limit: ${CHANTER_LLM_DAILY_TOKEN_LIMIT:100000}
+    # Explicit model definitions belong in deployment configuration; no hosted provider or model is enabled by default.
   embeddings:
     provider: ${CHANTER_EMBEDDINGS_PROVIDER:hashing}
     dimensions: ${CHANTER_EMBEDDINGS_DIMENSIONS:384}

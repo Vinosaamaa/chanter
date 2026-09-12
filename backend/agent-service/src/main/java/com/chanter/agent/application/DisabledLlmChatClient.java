@@ -1,15 +1,11 @@
 package com.chanter.agent.application;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Default LLM client when {@code chanter.llm.enabled=false} (local product without a model).
+ * Client for the free source-only selection.
  */
-@Component
-@ConditionalOnProperty(name = "chanter.llm.enabled", havingValue = "false", matchIfMissing = true)
 public class DisabledLlmChatClient implements LlmChatClient {
 
     @Override
@@ -31,7 +27,7 @@ public class DisabledLlmChatClient implements LlmChatClient {
     public LlmChatResponse complete(LlmChatRequest request) {
         throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
-                "LLM provider is disabled. Set CHANTER_LLM_ENABLED=true and configure Ollama or an OpenAI-compatible endpoint."
+                "No generation model is configured. Approved source answers remain available."
         );
     }
 

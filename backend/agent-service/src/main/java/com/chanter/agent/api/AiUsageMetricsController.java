@@ -1,6 +1,7 @@
 package com.chanter.agent.api;
 
 import com.chanter.agent.application.AiUsageMetricsService;
+import com.chanter.agent.application.AiGenerationLedger;
 import com.chanter.agent.domain.AiUsageMetrics;
 import com.chanter.common.ServiceInfo;
 import com.chanter.common.auth.AuthHeaders;
@@ -16,9 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AiUsageMetricsController {
 
     private final AiUsageMetricsService aiUsageMetricsService;
+    private final AiGenerationLedger generationLedger;
 
-    public AiUsageMetricsController(AiUsageMetricsService aiUsageMetricsService) {
+    public AiUsageMetricsController(AiUsageMetricsService aiUsageMetricsService, AiGenerationLedger generationLedger) {
         this.aiUsageMetricsService = aiUsageMetricsService;
+        this.generationLedger = generationLedger;
     }
 
     @GetMapping("/ai-usage-metrics")
@@ -27,6 +30,6 @@ public class AiUsageMetricsController {
             @RequestHeader(AuthHeaders.USER_ID) UUID viewerUserId
     ) {
         AiUsageMetrics metrics = aiUsageMetricsService.findMetrics(studyServerId, viewerUserId);
-        return AiUsageMetricsResponse.from(metrics);
+        return AiUsageMetricsResponse.from(metrics, generationLedger.summary(studyServerId));
     }
 }

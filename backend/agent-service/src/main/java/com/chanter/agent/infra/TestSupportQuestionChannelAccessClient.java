@@ -36,6 +36,10 @@ public class TestSupportQuestionChannelAccessClient implements SupportQuestionCh
         accessRules.clear();
     }
 
+    public void grantInstructorView(UUID channelId, UUID userId, UUID courseId, UUID studyServerId, String channelName) {
+        accessRules.put(key(channelId, userId), new SupportQuestionChannelAccess(channelId, courseId, studyServerId, channelName, false, true));
+    }
+
     @Override
     public SupportQuestionChannelAccess requireAccess(UUID channelId, UUID userId) {
         SupportQuestionChannelAccess access = accessRules.get(key(channelId, userId));
