@@ -72,7 +72,7 @@ class AgentRuntimeServiceTest {
     @Test void authorizationRevokedBeforeTransportSettlesKnownZeroWithoutCallingTheProvider() {
         configure();
         var checks = new java.util.concurrent.atomic.AtomicInteger();
-        var invocation = new AgentRuntimeService.Invocation(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "local", () -> {
+        var invocation = new AgentRuntimeService.Invocation(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "local", activeExecution -> {
             if (checks.incrementAndGet() == 2) throw new IllegalStateException("revoked");
         });
         var runtime = new AgentRuntimeService(catalog, ledger, new GroundedAnswerValidator());
@@ -88,8 +88,10 @@ class AgentRuntimeServiceTest {
         configure();
         Model bounded = new Model("Local", "ollama", "fixture", null, null, 2048, 128, Duration.ofSeconds(1), Set.of(), null);
         when(catalog.definition("local")).thenReturn(bounded);
+        var recheckedExecution = new java.util.concurrent.atomic.AtomicReference<LlmExecution>();
         doAnswer(call -> {
             LlmExecution providerExecution = call.getArgument(1);
+            assertThat(recheckedExecution.get()).isSameAs(providerExecution);
             var interrupted = new java.util.concurrent.CountDownLatch(1);
             try (var hook = providerExecution.onCancel(interrupted::countDown)) {
                 assertThat(interrupted.await(2, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
@@ -99,13 +101,14 @@ class AgentRuntimeServiceTest {
         }).when(client).stream(any(), any(), any());
         var runtime = new AgentRuntimeService(catalog, ledger, new GroundedAnswerValidator());
         try (var execution = new LlmExecution(Duration.ofSeconds(10))) {
-            var answer = runtime.orchestrate("How?", grounding, invocation("local"), execution, ignored -> {});
+            var invocation = new AgentRuntimeService.Invocation(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "local", recheckedExecution::set);
+            var answer = runtime.orchestrate("How?", grounding, invocation, execution, ignored -> {});
             assertThat(answer.result().answerBody()).contains("did not finish in time");
             execution.check();
             verify(ledger).settle(eq(ticket), eq(LlmUsage.UNKNOWN), eq("TIMED_OUT"), anyLong(), eq("fixture"), isNull(), eq(bounded), eq(true));
         }
     }
     private AgentRuntimeService.Invocation invocation(String selection) {
-        return new AgentRuntimeService.Invocation(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), selection, () -> {});
+        return new AgentRuntimeService.Invocation(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), selection, activeExecution -> {});
     }
 }

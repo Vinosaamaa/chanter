@@ -25,7 +25,7 @@ public class AgentRuntimeService {
     public OrchestratedAnswer orchestrate(String question, GroundingResult grounding, Invocation invocation,
                                          LlmExecution execution, Consumer<String> chunks) {
         execution.check();
-        invocation.reauthorize().run();
+        invocation.reauthorize().accept(execution);
         if (LlmModelCatalog.SOURCE_ONLY.equals(invocation.modelId()) || grounding.confidence() != AnswerConfidence.HIGH || grounding.citations().isEmpty()) {
             chunks.accept(grounding.answerBody());
             return new OrchestratedAnswer(grounding, "disabled", "none", false);
@@ -48,9 +48,9 @@ public class AgentRuntimeService {
         String outcome = "UNKNOWN";
         boolean attempted = false;
         try (var providerExecution = execution.child(model.timeout())) {
-            invocation.reauthorize().run();
+            invocation.reauthorize().accept(providerExecution);
             providerExecution.check();
-            var stream = validator.stream(grounding.citations(), () -> { providerExecution.check(); invocation.reauthorize().run(); }, chunks);
+            var stream = validator.stream(grounding.citations(), () -> { providerExecution.check(); invocation.reauthorize().accept(providerExecution); }, chunks);
             usage = LlmUsage.UNKNOWN;
             attempted = true;
             var response = catalog.client(invocation.modelId()).stream(
@@ -85,6 +85,6 @@ public class AgentRuntimeService {
         };
         return new OrchestratedAnswer(new GroundingResult(reason + " An Instructor or TA can help with this question.", AnswerConfidence.LOW, List.of()), provider, model, false);
     }
-    public record Invocation(UUID studyServerId, UUID questionId, UUID userId, String modelId, Runnable reauthorize) {}
+    public record Invocation(UUID studyServerId, UUID questionId, UUID userId, String modelId, Consumer<LlmExecution> reauthorize) {}
     public record OrchestratedAnswer(GroundingResult result, String providerId, String modelId, boolean llmUsed) {}
 }

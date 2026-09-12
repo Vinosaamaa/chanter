@@ -26,7 +26,14 @@ public class AiEvidenceAuthorization {
         this.access = access; this.assistant = assistant; this.resources = resources; this.content = content; this.faqs = faqs;
     }
     public void requireCurrent(UUID channel, UUID user, List<SourceCitation> citations) {
+        try (var execution = new LlmExecution(java.time.Duration.ofSeconds(120))) {
+            requireCurrent(channel, user, citations, execution);
+        }
+    }
+    public void requireCurrent(UUID channel, UUID user, List<SourceCitation> citations, LlmExecution execution) {
+        execution.check();
         var scope = access.requireAccess(channel, user);
+        execution.check();
         // Installation grants are not learner enrollments. Staff access is checked by the channel and
         // resource services; a TA must not need learner enrollment to read evidence for their queue.
         var install = assistant.findInstallByStudyServerId(scope.studyServerId());
@@ -36,22 +43,26 @@ public class AiEvidenceAuthorization {
         if (citations.isEmpty()) return;
         Set<UUID> granted = grants.stream().filter(g -> g.grantType() == GrantType.COURSE_RESOURCE).map(g -> g.grantTargetId()).collect(Collectors.toSet());
         Map<UUID, CourseResourceCatalogClient.CourseResourceSummary> approved = new HashMap<>();
+        execution.check();
         for (var resource : resources.listAiApprovedCourseResources(scope.courseId(), user)) {
             if (resource.aiApproved() && resource.courseId().equals(scope.courseId()) && granted.contains(resource.id())) approved.put(resource.id(), resource);
         }
         Map<UUID, String> currentText = new HashMap<>();
         for (var citation : citations) {
+            execution.check();
             if (approved.containsKey(citation.resourceId()) && !currentText.containsKey(citation.resourceId())) {
                 byte[] bytes = content.downloadContent(citation.resourceId(), user);
                 if (bytes == null || bytes.length > 2_000_000) denied();
                 currentText.put(citation.resourceId(), new String(bytes, StandardCharsets.UTF_8));
             }
         }
+        execution.check();
         if (citations.stream().anyMatch(c -> !approved.containsKey(c.resourceId()))) {
             for (var faq : faqs.listApprovedFaqs(scope.courseId(), user)) {
                 if (faq.question() != null && faq.answer() != null) currentText.putIfAbsent(faq.id(), faq.question() + "\n\n" + faq.answer());
             }
         }
+        execution.check();
         for (var citation : citations) {
             String text = currentText.get(citation.resourceId());
             String excerpt = plainExcerpt(citation.excerpt());

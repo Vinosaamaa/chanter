@@ -125,6 +125,7 @@ public class GroundedSupportQuestionService {
             );
         }
 
+        execution.check();
         SupportQuestion supportQuestion = supportQuestionClient.getSupportQuestion(
                 channelId,
                 supportQuestionId,
@@ -140,7 +141,7 @@ public class GroundedSupportQuestionService {
         if (existingAnswer.isPresent()) {
             StudyAssistantAnswer answer = existingAnswer.get();
             if (!answer.channelId().equals(channelId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-            evidenceAuthorization.requireCurrent(channelId, learnerUserId, citations(answer));
+            evidenceAuthorization.requireCurrent(channelId, learnerUserId, citations(answer), execution);
             execution.check();
             chunks.accept(answer.answerBody());
             return reconcileExistingAnswer(channelId, supportQuestionId, learnerUserId, answer);
@@ -154,6 +155,7 @@ public class GroundedSupportQuestionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
         }
 
+        execution.check();
         Presence presence = studyAssistantService.findPresence(access.studyServerId(), learnerUserId);
         if (!presence.installed()) {
             throw new ResponseStatusException(
@@ -181,10 +183,12 @@ public class GroundedSupportQuestionService {
 
         Map<UUID, String> resourceTitles = new HashMap<>();
         List<GroundingSource> downloadedSources = new ArrayList<>();
+        execution.check();
         for (CourseResourceSummary resource : courseResourceCatalogClient.listAiApprovedCourseResources(
                 access.courseId(),
                 learnerUserId
         )) {
+            execution.check();
             if (!grantedResourceIds.contains(resource.id()) || !resource.aiApproved() || !resource.courseId().equals(access.courseId())) {
                 continue;
             }
@@ -211,7 +215,9 @@ public class GroundedSupportQuestionService {
         // A grant alone is insufficient: stale vectors must also belong to currently approved Course material.
         grantedResourceIds.retainAll(resourceTitles.keySet());
 
+        execution.check();
         List<GroundingSource> faqSources = loadFaqSources(access.courseId(), learnerUserId);
+        execution.check();
 
         GroundingResult groundingResult = ground(
                 supportQuestion.body(),
@@ -226,21 +232,21 @@ public class GroundedSupportQuestionService {
                             AiEvidenceAuthorization.plainExcerpt(c.excerpt()))).toList());
         }
         List<SourceCitation> initialEvidence = groundingResult.citations();
-        Runnable reauthorize = () -> {
-            execution.check();
+        Consumer<LlmExecution> reauthorize = activeExecution -> {
+            activeExecution.check();
             var current = channelAccessClient.requireAccess(channelId, learnerUserId);
             if (!current.canPostSupportQuestion() || !access.courseId().equals(current.courseId())
                     || !access.studyServerId().equals(current.studyServerId())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "AI answer access changed");
             }
             modelCatalog.select(selection, current.courseId());
-            evidenceAuthorization.requireCurrent(channelId, learnerUserId, initialEvidence);
+            evidenceAuthorization.requireCurrent(channelId, learnerUserId, initialEvidence, activeExecution);
         };
         AgentRuntimeService.OrchestratedAnswer orchestrated = agentRuntimeService.orchestrate(supportQuestion.body(), groundingResult,
                 new AgentRuntimeService.Invocation(access.studyServerId(), supportQuestionId, learnerUserId, selection, reauthorize), execution, chunks);
         groundingResult = orchestrated.result();
         execution.check();
-        evidenceAuthorization.requireCurrent(channelId, learnerUserId, groundingResult.citations());
+        evidenceAuthorization.requireCurrent(channelId, learnerUserId, groundingResult.citations(), execution);
 
         InvocationType invocationType = groundingResult.handoffRecommended()
                 ? InvocationType.LOW_CONFIDENCE_HANDOFF

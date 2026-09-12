@@ -23,7 +23,7 @@ Run affected verification with:
 mvn -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service,gateway-service -am verify
 ```
 
-The committed protocol corpus is backend/agent-service/src/test/resources/evaluations/ai-runtime-v1.json. All five cases passed. Final local verification passed 122 tests: common 13, agent-service 73, gateway-service 36, with zero failures/errors. Hosted-head receipts belong to PR #317. No provider key, paid API call, model download, or native subscription session was used. Frontend and Docker product verification are not claimed by these backend fixtures.
+The committed protocol corpus is backend/agent-service/src/test/resources/evaluations/ai-runtime-v1.json. All five cases passed. Final local verification passed 126 tests: common 13, agent-service 77, gateway-service 36, with zero failures/errors. Hosted-head receipts belong to PR #317. No provider key, paid API call, model download, or native subscription session was used. Frontend and Docker product verification are not claimed by these backend fixtures.
 
 ## Operations
 

@@ -62,6 +62,7 @@ public class GroundedSupportQuestionController {
     ) {
         SseEmitter emitter = new SseEmitter(120_000L);
         LlmExecution execution = new LlmExecution(Duration.ofSeconds(120));
+        // Spring closes the emitter before this callback; a terminal frame is not guaranteed on timeout.
         emitter.onTimeout(execution::cancel);
         emitter.onError(ignored -> execution.cancel());
         emitter.onCompletion(execution::cancel);
