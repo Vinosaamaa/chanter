@@ -10,6 +10,7 @@ Owning issue: [#244](https://github.com/Vinosaamaa/chanter/issues/244). Lane: me
 - Upload returns 202 with public `status` and `sha256`. Added metadata polling, instructor deletion and course usage routes. Storage keys, endpoints and scanner details stay private.
 - Added monthly attempted-operation accounting with dedicated deletion headroom. Uncertain PUT responses preserve reservations until cleanup confirms deletion.
 - AI ingestion waits for a clean scan; ingestion and deletion failures are retried by the durable worker instead of being swallowed.
+- Clean file publication is independent of indexing: durable ingestion status retries failures while preserving `AVAILABLE` content and its byte reservation. Index failure never triggers object expiry or deletion.
 - Added native architecture CI using pinned PostgreSQL16.15, S3Mock5.2.2 and ClamAV1.5.4, actual EICAR scanning and restart durability checks.
 
 ## Test evidence
@@ -17,8 +18,9 @@ Owning issue: [#244](https://github.com/Vinosaamaa/chanter/issues/244). Lane: me
 - Initial validation/lifecycle/scanner tests were written before their implementations and failed at compilation. The focused suite passed after implementation.
 - The blocked scanner-write regression failed after approximately 2.54 seconds against a 1-second assertion; adding the socket deadline made it pass.
 - The provider-stream closure regression failed when spool creation was unavailable; closing the provider stream around spool creation made it pass.
+- Review identified clean-file deletion risk when indexing and scan failure shared a state. The regression first failed because a learner could not read the clean resource; separate durable index work now keeps the file available across repeated index failures and retries to completion.
 - Local module verification covers concurrent idempotency and request caps, stale leases, deletion versus scanning/reading, real local immutable writes, corrupt content, unavailable/infected scan outcomes, uncertain PUT cleanup, preserved legacy bytes and reconciliation.
-- Java21 affected-module verification passed after the secure-session rebase. Focused additions cover legacy-index purge, HTTP delete/usage authorization and a real HTTP500 server proving one attempt per S3 operation, bringing the local media suite to34 tests. Five separately gated real-process cases require hosted containers. Exact hosted results are recorded in PR checks.
+- Java21 affected-module verification passed after the secure-session rebase. The35 local media tests cover index-outage preservation, legacy-index purge, HTTP delete/usage authorization and a real HTTP500 server proving one attempt per S3 operation. Five separately gated real-process cases require hosted containers. Exact hosted results are recorded in PR checks.
 - The new Compose file validates with Docker Compose; the new workflow passes actionlint. Container execution is delegated to hosted CI because the implementation host has no Docker daemon. No mock result is described as real scanner/provider evidence.
 - The first native ARM64 job exposed that the ClamAV Alpine image has no ARM64 manifest. The suite now pins ClamAV's official Debian multi-architecture image, with AMD64 and ARM64 digests verified from the registry. The native gate remains enabled.
 - Real startup logs show fresh signatures downloaded before clamd's socket was available for notification. The explicit daemon configuration rechecks definitions every60 seconds, uses bounded scan limits, rejects encrypted/over-limit content and avoids duplicate engines during reload. The native suite tests a compressed fixture beyond the scan limit as well as EICAR.

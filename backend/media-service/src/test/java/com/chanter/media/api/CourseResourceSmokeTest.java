@@ -130,6 +130,8 @@ class CourseResourceSmokeTest {
         assertThat(downloadResult.getResponse().getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
         assertThat(downloadResult.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
 
+        assertThat(resourceIngestionClient.ingestCalls()).isEmpty();
+        worker.runOnce();
         assertThat(resourceIngestionClient.ingestCalls()).hasSize(1);
         TestResourceIngestionClient.IngestCall ingestCall = resourceIngestionClient.ingestCalls().getFirst();
         assertThat(ingestCall.courseId()).isEqualTo(courseId);

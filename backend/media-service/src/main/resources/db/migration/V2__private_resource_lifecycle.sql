@@ -3,6 +3,7 @@ ALTER TABLE course_resources ADD COLUMN sha256 VARCHAR(64);
 ALTER TABLE course_resources ADD COLUMN idempotency_key UUID;
 ALTER TABLE course_resources ADD COLUMN storage_backend VARCHAR(16) NOT NULL DEFAULT 'legacy';
 ALTER TABLE course_resources ADD COLUMN migration_key VARCHAR(512);
+ALTER TABLE course_resources ADD COLUMN ingestion_status VARCHAR(16) NOT NULL DEFAULT 'NONE';
 ALTER TABLE course_resources ADD COLUMN byte_reservation BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE course_resources ADD COLUMN lease_id UUID;
 ALTER TABLE course_resources ADD COLUMN lease_until TIMESTAMP WITH TIME ZONE;
