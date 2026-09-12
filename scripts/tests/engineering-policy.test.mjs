@@ -245,6 +245,8 @@ for (const [shape, privatePath] of [
   ["Windows forward drive", "C:/Users/person/private/notes.txt"],
   ["Windows mixed drive", "C:/Users/person\\private/notes.txt"],
   ["Windows UNC", win32.join("\\\\fixture-server", "private", "notes.txt")],
+  ["Windows forward UNC", "//fixture-server/private/notes.txt"],
+  ["Windows mixed UNC", "//fixture-server\\private/notes.txt"],
 ]) {
   test(`bounded v1 documents reject ${shape} paths in metadata and prose`, () => {
     assert.throws(() => parseReceipt(receipt({ title: privatePath })), /public-safe/);
