@@ -1,0 +1,4 @@
+/scripts/deploy/*.sh text eol=lf
+/infra/production/*.sh text eol=lf
+/infra/production/java/*.sh text eol=lf
+/infra/production/oci/*.sh text eol=lf

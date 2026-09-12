@@ -1,0 +1,108 @@
+name: Release package
+
+on:
+  pull_request:
+    paths: ['infra/production/**', 'scripts/deploy/**', '.github/workflows/release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: github.event.repository.private == false && github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '21.0.12+8'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.19.0'
+      - run: node --test scripts/deploy/*.test.mjs
+      - name: Build verified artifacts
+        run: |
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml verify -Dproject.build.outputTimestamp="$SOURCE_DATE_EPOCH"
+          npm --prefix frontend ci
+          npm --prefix frontend run lint
+          npm --prefix frontend test
+          npm --prefix frontend run build
+      - name: Build and scan release images
+        run: bash scripts/deploy/build-release.sh '${{ matrix.architecture }}'
+      - name: Run ephemeral staging
+        run: bash scripts/deploy/smoke-release.sh '${{ matrix.architecture }}'
+  package:
+    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '21.0.12+8'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.19.0'
+      - name: Test deployment state transitions
+        run: node --test scripts/deploy/*.test.mjs
+      - name: Build verified artifacts
+        run: |
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml verify -Dproject.build.outputTimestamp="$SOURCE_DATE_EPOCH"
+          npm --prefix frontend ci
+          npm --prefix frontend run lint
+          npm --prefix frontend test
+          npm --prefix frontend run build
+      - name: Build, scan and prepare immutable image bundle
+        run: bash scripts/deploy/build-release.sh '${{ matrix.architecture }}'
+      - name: Run ephemeral staging from the release images
+        run: bash scripts/deploy/smoke-release.sh '${{ matrix.architecture }}'
+      - name: Publish public release asset after exact-commit CI
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          count="$(gh run list --workflow CI --commit "$GITHUB_SHA" --status success --json databaseId --jq length)"
+          test "$count" -gt 0 || { echo 'Exact-commit CI must finish first.' >&2; exit 1; }
+          asset="chanter-$GITHUB_SHA-$ARCHITECTURE.tar.gz"
+          tar --sort=name --mtime="@$(git show -s --format=%ct HEAD)" --owner=0 --group=0 --numeric-owner \
+            -czf ".cache/$asset" -C ".cache/release/$ARCHITECTURE" .
+          test "$(stat -c %s ".cache/$asset")" -lt 2000000000 || { echo 'Release asset exceeds the free delivery limit.' >&2; exit 1; }
+          (cd .cache && sha256sum "$asset" > "$asset.sha256")
+          tag="deploy-$GITHUB_SHA"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --title "Deployment $GITHUB_SHA" \
+              --notes 'Immutable deployment bundles. Review staging evidence and publish this draft before operator installation.' \
+              || gh release view "$tag" >/dev/null
+          fi
+          gh release upload "$tag" ".cache/$asset" ".cache/$asset.sha256"
