@@ -1,6 +1,19 @@
 {
 	http_port 8080
 	https_port 8443
+	log {
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					delete access_token
+					delete token
+					delete code
+					delete state
+				}
+			}
+		}
+	}
 }
 
 {$CHANTER_HOSTNAME} {

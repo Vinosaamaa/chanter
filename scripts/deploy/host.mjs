@@ -100,7 +100,7 @@ async function sha256(file) {
   return hash.digest('hex');
 }
 
-export async function verifyPublic(hostname) {
+export async function verifyPublic(hostname, stateDir) {
   const base = `https://${hostname}`;
   const request = async (suffix, options = {}) => fetch(base + suffix, { ...options, signal: AbortSignal.timeout(10000), redirect: 'error' });
   const home = await request('/');
@@ -111,6 +111,23 @@ export async function verifyPublic(hostname) {
   if (bootstrap.status !== 204) throw new Error('Secure browser-session bootstrap requires the #242 release');
   const foreign = await request('/api/v1/auth/refresh', { method: 'POST', headers: { Origin: 'https://foreign.invalid', 'X-Chanter-CSRF': '1' } });
   if (foreign.status !== 403) throw new Error('Browser origin protection is missing');
+  if (stateDir) {
+    const credentials = readEnv(path.join(stateDir, 'runtime/community-service.env'));
+    const now = Math.floor(Date.now() / 1000);
+    const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+    const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ iss: credentials.LIVEKIT_API_KEY,
+      sub: `release-health-${crypto.randomUUID()}`, nbf: now - 10, exp: now + 60,
+      video: { roomJoin: true, room: '__chanter_release_health', canPublish: false, canSubscribe: false, canPublishData: false } })}`;
+    const token = `${unsigned}.${crypto.createHmac('sha256', credentials.LIVEKIT_API_SECRET).update(unsigned).digest('base64url')}`;
+    const endpoint = new URL(`wss://${hostname}/livekit/rtc`);
+    endpoint.search = new URLSearchParams({ access_token: token, protocol: '15', sdk: 'js', version: '2.20.0', auto_subscribe: '0' });
+    await new Promise((resolve, reject) => {
+      const socket = new WebSocket(endpoint);
+      const timeout = setTimeout(() => { socket.close(); reject(new Error('Secure LiveKit handshake timed out')); }, 10000);
+      socket.addEventListener('open', () => { clearTimeout(timeout); socket.close(); resolve(); }, { once: true });
+      socket.addEventListener('error', () => { clearTimeout(timeout); reject(new Error('Secure LiveKit handshake failed')); }, { once: true });
+    });
+  }
 }
 
 function docker(args, capture = false) {
@@ -173,7 +190,7 @@ export async function deploy(bundleDir, stateDir, rollback = false) {
       else if (operation === 'verify-public-health') {
         let healthy = false;
         for (let attempt = 0; attempt < 12 && !healthy; attempt += 1) {
-          try { await verifyPublic(prepared.config.hostname); healthy = true; }
+          try { await verifyPublic(prepared.config.hostname, stateDir); healthy = true; }
           catch { await new Promise(resolve => setTimeout(resolve, 5000)); }
         }
         if (!healthy) { compose(['stop', 'frontend']); throw new Error('Public TLS/API health failed'); }
@@ -216,8 +233,8 @@ async function main(args) {
   } else if (command === 'stop' && first) {
     stopEnvironment(path.resolve(first));
     console.log('Environment stopped; persistent volumes and release receipts retained.');
-  } else if (command === 'verify' && first) await verifyPublic(first);
-  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | verify HOST');
+  } else if (command === 'verify' && first) await verifyPublic(first, second ? path.resolve(second) : undefined);
+  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | verify HOST [STATE]');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
