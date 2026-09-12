@@ -70,6 +70,16 @@ export function FriendsPage() {
     }, { replace: true })
   }
 
+  const openConversation = (friendId: string) => {
+    hub.selectFriend(friendId)
+    setConversationOpen(true)
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.set('friend', friendId)
+      return next
+    }, { replace: true })
+  }
+
   return (
     <div className={`friends-page${conversationOpen && active ? ' conversation-open' : ''}`}>
       <aside className="friends-list-pane">
@@ -102,7 +112,7 @@ export function FriendsPage() {
             selectedFriendId={hub.selectedFriendId}
             isLoading={hub.isLoadingFriends}
             error={hub.friendsListError}
-            onSelect={(friendId) => { hub.selectFriend(friendId); setConversationOpen(true) }}
+            onSelect={openConversation}
           />
         ) : (
           <PendingRequests relationships={relationships} />

@@ -155,6 +155,11 @@ test('fixture UI phone Friends stays on the list after Back and reload', async (
   await expect(page.locator('.friends-list-pane')).toBeVisible()
   await expect(page.locator('.dm-pane')).toBeHidden()
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-friends-back-reload-390.png') })
+  await page.locator('.friends-list-pane').getByRole('button', { name: /Alexandra Montgomery-Williams/ }).click()
+  await expect(page).toHaveURL(/friend=visual-peer$/)
+  await page.reload()
+  await expect(page.locator('.dm-pane')).toBeVisible()
+  await expect(page.locator('.friends-list-pane')).toBeHidden()
 })
 
 test('fixture UI phone Inbox marks a notification done and returns to the list', async ({ page }, testInfo) => {

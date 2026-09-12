@@ -127,6 +127,7 @@ describe('FriendsPage', () => {
     const user = userEvent.setup()
     const view = renderPage()
     await user.click(within(screen.getByRole('complementary')).getByRole('button', { name: /Alex Chen/i }))
+    expect(mocks.preferredFriendId).toBe('friend-alex')
     expect(view.container.querySelector('.friends-page')).toHaveClass('conversation-open')
     await user.click(screen.getByRole('button', { name: 'Back to friends' }))
     expect(view.container.querySelector('.friends-page')).not.toHaveClass('conversation-open')
