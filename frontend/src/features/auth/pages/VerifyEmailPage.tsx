@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { verifyEmail } from '../auth-api'
@@ -9,13 +9,17 @@ export function VerifyEmailPage() {
   const token = params.get('token') ?? ''
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const verification = useRef<{ token: string; request: ReturnType<typeof verifyEmail> } | null>(null)
 
   useEffect(() => {
     if (!token) {
       return
     }
     let cancelled = false
-    void verifyEmail(token)
+    if (verification.current?.token !== token) {
+      verification.current = { token, request: verifyEmail(token) }
+    }
+    void verification.current.request
       .then((result) => {
         if (!cancelled) setMessage(result.message)
       })

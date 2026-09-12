@@ -1,60 +1,33 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { AuthSession } from '../features/auth/types'
+import { apiFetch, getApiAccessToken } from '../lib/api-client'
 import { useAuthStore } from '../stores/auth-store'
+import './api-auth'
 
-type ApiAuthConfiguration = {
-  refreshSession: () => Promise<boolean>
-}
-
-const apiClient = vi.hoisted(() => ({ configureApiAuth: vi.fn() }))
 const authApi = vi.hoisted(() => ({ refreshSession: vi.fn() }))
+vi.mock('../features/auth/auth-api', () => authApi)
 
-vi.mock('../lib/api-client', () => ({ configureApiAuth: apiClient.configureApiAuth }))
-vi.mock('../features/auth/auth-api', () => ({ refreshSession: authApi.refreshSession }))
-
-describe('API authentication account boundary', () => {
+describe('configured browser API authentication', () => {
   beforeEach(() => {
-    vi.resetModules()
     vi.clearAllMocks()
+    localStorage.clear()
+    Object.defineProperty(navigator, 'locks', { configurable: true, value: {
+      request: vi.fn((_name, callback) => Promise.resolve().then(callback)),
+    } })
     useAuthStore.getState().clearSession()
   })
 
-  afterEach(() => useAuthStore.getState().clearSession())
-
-  it('does not restore a session from a refresh completed after sign-out', async () => {
-    let configured: ApiAuthConfiguration | undefined
-    apiClient.configureApiAuth.mockImplementation((configuration: ApiAuthConfiguration) => {
-      configured = configuration
-    })
-    useAuthStore.getState().setSession(sessionFor('owner', 'refresh-owner'))
-
-    let resolveRefresh: ((session: AuthSession) => void) | undefined
-    authApi.refreshSession.mockReturnValue(new Promise<AuthSession>((resolve) => {
-      resolveRefresh = resolve
-    }))
-    await import('./api-auth')
-
-    const refreshAttempt = configured?.refreshSession()
-    expect(refreshAttempt).toBeDefined()
-    useAuthStore.getState().clearSession()
-    resolveRefresh?.(sessionFor('owner', 'refresh-owner-next'))
-
-    await expect(refreshAttempt).resolves.toBe(false)
-    expect(useAuthStore.getState().accessToken).toBeNull()
-    expect(useAuthStore.getState().user).toBeNull()
+  it('retries using a cookie-refreshed memory token for the same account', async () => {
+    const user = { id: 'owner', email: 'owner@example.com', displayName: 'Owner' }
+    useAuthStore.getState().setSession({ accessToken: 'expired', expiresInSeconds: 900, user })
+    authApi.refreshSession.mockResolvedValue({ accessToken: 'renewed', expiresInSeconds: 900, user })
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ title: 'Course' }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(apiFetch('/api/v1/courses')).resolves.toEqual({ title: 'Course' })
+    expect(authApi.refreshSession).toHaveBeenCalledWith()
+    expect(getApiAccessToken()).toBe('renewed')
+    expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer renewed')
   })
 })
-
-function sessionFor(userId: string, refreshToken: string): AuthSession {
-  return {
-    accessToken: `access-${userId}`,
-    refreshToken,
-    expiresInSeconds: 900,
-    user: {
-      id: userId,
-      email: `${userId}@chanter.local`,
-      displayName: userId,
-    },
-  }
-}

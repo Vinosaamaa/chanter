@@ -55,7 +55,6 @@ function SignInLocationProbe() {
 function sessionFor(userId: string): AuthSession {
   return {
     accessToken: `access-${userId}`,
-    refreshToken: `refresh-${userId}`,
     expiresInSeconds: 900,
     user: {
       id: userId,

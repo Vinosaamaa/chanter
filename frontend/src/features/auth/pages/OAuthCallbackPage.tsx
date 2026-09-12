@@ -1,27 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { completeGoogleOauth } from '../auth-api'
-import { useAuthStore } from '../../../stores/auth-store'
+import { authenticateBrowserSession } from '../browser-session'
 import { V2Brand } from '../../v2-shell/components/V2Brand'
 
 export function OAuthCallbackPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const setSession = useAuthStore((state) => state.setSession)
   const code = params.get('code')
   const state = params.get('state')
   const [error, setError] = useState<string | null>(null)
+  const exchange = useRef<{ key: string; request: ReturnType<typeof completeGoogleOauth> } | null>(null)
 
   useEffect(() => {
     if (!code || !state) {
       return
     }
     let cancelled = false
-    void completeGoogleOauth(code, state)
-      .then((session) => {
+    const key = JSON.stringify([code, state])
+    if (exchange.current?.key !== key) {
+      exchange.current = { key, request: authenticateBrowserSession(() => completeGoogleOauth(code, state)) }
+    }
+    void exchange.current.request
+      .then(() => {
         if (cancelled) return
-        setSession(session)
         navigate('/app/home', { replace: true })
       })
       .catch((caught: unknown) => {
@@ -31,7 +34,7 @@ export function OAuthCallbackPage() {
     return () => {
       cancelled = true
     }
-  }, [code, state, navigate, setSession])
+  }, [code, state, navigate])
 
   const displayError = code && state ? error : 'OAuth code or state missing.'
 

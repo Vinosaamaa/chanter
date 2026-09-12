@@ -15,7 +15,8 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173'
 test.describe('Product critical paths @product', () => {
   test.skip(!process.env.PLAYWRIGHT_PRODUCT, 'Set PLAYWRIGHT_PRODUCT=1 after product-up + demo-seed')
 
-  test.use({ baseURL })
+  // Authenticated traces contain bearer tokens and HttpOnly cookie values.
+  test.use({ baseURL, trace: 'off', video: 'off', screenshot: 'off' })
 
   test('owner can sign in and reach home', async ({ page }) => {
     await openAndSignIn(page, ownerEmail)
@@ -54,7 +55,7 @@ test.describe('Product critical paths @product', () => {
   })
 
   test('generic member can load Study Server navigation without Course access', async ({ page }) => {
-    await openAndSignIn(page, memberEmail)
+    const { accessToken } = await openAndSignIn(page, memberEmail)
     await expect(page).toHaveURL(/\/app\/home/, { timeout: 30_000 })
     await expect(page.getByText('Loading courses…')).toHaveCount(0, { timeout: 15_000 })
     await expect(page.getByText('Loading your home…')).toHaveCount(0, { timeout: 15_000 })
@@ -63,12 +64,6 @@ test.describe('Product critical paths @product', () => {
       name: /^Good (morning|afternoon|evening),/,
     })).toBeVisible({ timeout: 15_000 })
 
-    const accessToken = await page.evaluate(() => {
-      const persisted = localStorage.getItem('chanter-auth')
-      if (!persisted) return null
-      const parsed = JSON.parse(persisted) as { state?: { accessToken?: string } }
-      return parsed.state?.accessToken ?? null
-    })
     expect(accessToken).not.toBeNull()
 
     const serversResponse = await page.request.get('/api/v1/study-servers', {
@@ -93,15 +88,9 @@ test.describe('Product critical paths @product', () => {
   })
 
   test('owner sign-out isolates route and requests before learner sign-in', async ({ page }) => {
-    await openAndSignIn(page, ownerEmail)
+    const { accessToken: ownerAccessToken } = await openAndSignIn(page, ownerEmail)
     await expect(page).toHaveURL(/\/app\/home/, { timeout: 30_000 })
 
-    const ownerAccessToken = await page.evaluate(() => {
-      const persisted = localStorage.getItem('chanter-auth')
-      if (!persisted) return null
-      const parsed = JSON.parse(persisted) as { state?: { accessToken?: string } }
-      return parsed.state?.accessToken ?? null
-    })
     expect(ownerAccessToken).not.toBeNull()
 
     const createResponse = await page.request.post('/api/v1/study-servers', {
@@ -139,8 +128,9 @@ test.describe('Product critical paths @product', () => {
       expect(apiPathsAfterSignOut.some((path) => path.includes(ownerOnlyServer.id))).toBe(false)
     } finally {
       trackAccountBoundary = false
+      const { accessToken: cleanupAccessToken } = await openAndSignIn(page, ownerEmail)
       const cleanupResponse = await page.request.delete(`/api/v1/study-servers/${ownerOnlyServer.id}`, {
-        headers: { Authorization: `Bearer ${ownerAccessToken}` },
+        headers: { Authorization: `Bearer ${cleanupAccessToken}` },
       })
       expect(cleanupResponse.ok()).toBe(true)
     }
@@ -190,12 +180,22 @@ test.describe('Product critical paths @product', () => {
 })
 
 async function openAndSignIn(page: Page, email: string) {
+  // Clear the shared-cookie session before choosing an account for this journey.
+  if (new URL(page.url()).protocol.startsWith('http')) {
+    await page.request.post('/api/v1/auth/logout', { headers: { Origin: baseURL, 'X-Chanter-CSRF': '1' } })
+  }
   await page.goto('/sign-in')
-  await submitCredentials(page, email)
+  return submitCredentials(page, email)
 }
 
 async function submitCredentials(page: Page, email: string) {
+  const loginResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === '/api/v1/auth/login' && response.request().method() === 'POST',
+  )
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill(demoPassword)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  const response = await loginResponse
+  expect(response.status()).toBe(200)
+  return response.json() as Promise<{ accessToken: string }>
 }

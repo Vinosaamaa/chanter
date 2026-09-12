@@ -30,7 +30,6 @@ describe('LandingPage', () => {
   it('routes authenticated users directly to onboarding', () => {
     useAuthStore.getState().setSession({
       accessToken: 'token',
-      refreshToken: 'refresh',
       expiresInSeconds: 900,
       user: { id: 'user-1', email: 'teacher@example.com', displayName: 'Teacher' },
     })

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { resetPassword } from '../auth-api'
+import { resetBrowserPassword } from '../browser-session'
 import { V2Brand } from '../../v2-shell/components/V2Brand'
 
 export function ResetPasswordPage() {
@@ -18,7 +18,7 @@ export function ResetPasswordPage() {
     setError(null)
     setMessage(null)
     try {
-      const result = await resetPassword(token, password)
+      const result = await resetBrowserPassword(token, password)
       setMessage(result.message)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to reset password')

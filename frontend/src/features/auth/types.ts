@@ -6,7 +6,6 @@ export type AuthUser = {
 
 export type AuthSession = {
   accessToken: string
-  refreshToken: string
   expiresInSeconds: number
   user: AuthUser
 }

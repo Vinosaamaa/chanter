@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useParams } from 'react-router-dom'
 import {
   CalendarDays,
@@ -10,6 +10,7 @@ import {
   LogOut,
   Plus,
   Sprout,
+  ShieldCheck,
   UsersRound,
   X,
 } from 'lucide-react'
@@ -28,6 +29,7 @@ import type { V2SidebarData, V2SidebarServerGroup } from '../hooks/use-v2-sideba
 import { useUnreadNotificationCountQuery } from '../../inbox/hooks/use-inbox-queries'
 import { useAuthStore } from '../../../stores/auth-store'
 import { useSignOut } from '../../auth/hooks/use-sign-out'
+import { SessionsDialog } from '../../auth/components/SessionsDialog'
 
 type V2SidebarProps = {
   data: V2SidebarData
@@ -98,6 +100,8 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
   const displayName = user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'You'
   const [accountOpen, setAccountOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [sessionsOpen, setSessionsOpen] = useState(false)
+  const profileRef = useRef<HTMLButtonElement>(null)
   const unreadQuery = useUnreadNotificationCountQuery()
   const unreadCount = unreadQuery.data?.unreadCount ?? 0
 
@@ -134,6 +138,7 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
   }
 
   return (
+    <>
     <aside className={`sidebar${menuOpen ? ' open' : ''}`}>
       <div className="sidebar-scroll">
         <div className="brand">
@@ -210,6 +215,10 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
               <strong>{user?.displayName ?? displayName}</strong>
               <small>{user?.email}</small>
             </p>
+            <button role="menuitem" type="button" onClick={() => {
+              setAccountOpen(false)
+              setSessionsOpen(true)
+            }}><ShieldCheck />Sessions and devices</button>
             {data.showBillingNav ? (
               <Link
                 role="menuitem"
@@ -237,6 +246,7 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
         <button
           type="button"
           className="profile"
+          ref={profileRef}
           aria-label="Open account menu"
           aria-haspopup="menu"
           aria-expanded={accountOpen}
@@ -252,5 +262,10 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
         </button>
       </div>
     </aside>
+    {sessionsOpen ? <SessionsDialog onClose={() => {
+      setSessionsOpen(false)
+      profileRef.current?.focus()
+    }} /> : null}
+    </>
   )
 }

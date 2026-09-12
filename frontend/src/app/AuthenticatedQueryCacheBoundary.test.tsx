@@ -1,5 +1,5 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, render, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { useAuthStore } from '../stores/auth-store'
@@ -55,12 +55,28 @@ describe('AuthenticatedQueryCacheBoundary', () => {
       expect(queryClient.getQueryData(['friend-public-profiles', 'user-a'])).toBeUndefined()
     })
   })
+
+  it('lets newly mounted account queries finish after cookie restoration', async () => {
+    useAuthStore.getState().clearSession()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={queryClient}><AuthenticatedQueryCacheBoundary>
+      <AccountQuery />
+    </AuthenticatedQueryCacheBoundary></QueryClientProvider>)
+    act(() => useAuthStore.getState().setSession(sessionFor('restored-user', 'restored-token')))
+    expect(await screen.findByText('Courses for restored-user')).toBeInTheDocument()
+  })
 })
+
+function AccountQuery() {
+  const userId = useAuthStore((state) => state.user?.id)
+  const query = useQuery({ queryKey: ['account-courses', userId], enabled: Boolean(userId),
+    queryFn: async () => `Courses for ${userId}` })
+  return <p>{query.data ?? 'Loading courses'}</p>
+}
 
 function sessionFor(userId: string, accessToken: string): AuthSession {
   return {
     accessToken,
-    refreshToken: `refresh-${userId}`,
     expiresInSeconds: 900,
     user: {
       id: userId,

@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+import { AuthSessionBootstrap } from './AuthSessionBootstrap'
 
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute'
 import { SignInPage } from '../features/auth/pages/SignInPage'
@@ -39,7 +40,7 @@ import { BillingSettingsPage } from '../features/v2-shell/pages/BillingSettingsP
 import { FriendsPage } from '../features/v2-shell/pages/FriendsPage'
 
 export function createAppRouter() {
-  return createBrowserRouter([
+  const routes = [
     {
       path: '/',
       element: <LandingPage />,
@@ -200,5 +201,9 @@ export function createAppRouter() {
       path: '*',
       element: <Navigate to="/" replace />,
     },
-  ])
+  ]
+  return createBrowserRouter([{
+    element: <AuthSessionBootstrap><Outlet /></AuthSessionBootstrap>,
+    children: routes,
+  }])
 }

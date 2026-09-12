@@ -1,6 +1,24 @@
 import { apiFetch } from '../../lib/api-client'
 import type { AuthSession, AuthUser } from './types'
 
+export type BrowserSession = {
+  id: string
+  createdAt: string
+  lastUsedAt: string
+  expiresAt: string
+  userAgent: string | null
+  current: boolean
+}
+
+export function fetchSessions(): Promise<{ sessions: BrowserSession[] }> {
+  return apiFetch('/api/v1/auth/sessions')
+}
+
+export function revokeSession(id: string): Promise<void> {
+  // The browser session coordinator refreshes outside its cookie mutation lock.
+  return apiFetch(`/api/v1/auth/sessions/${encodeURIComponent(id)}`, { method: 'DELETE', skipAuthRefresh: true })
+}
+
 export type RegisterInput = {
   email: string
   password: string
@@ -32,18 +50,16 @@ export async function login(input: LoginInput): Promise<AuthSession> {
   })
 }
 
-export async function refreshSession(refreshToken: string): Promise<AuthSession> {
-  return apiFetch<AuthSession>('/api/v1/auth/refresh', {
+export async function refreshSession(): Promise<AuthSession | undefined> {
+  return apiFetch<AuthSession | undefined>('/api/v1/auth/refresh', {
     method: 'POST',
-    body: JSON.stringify({ refreshToken }),
     skipAuthRefresh: true,
   })
 }
 
-export async function logout(refreshToken: string): Promise<void> {
+export async function logout(): Promise<void> {
   await apiFetch<void>('/api/v1/auth/logout', {
     method: 'POST',
-    body: JSON.stringify({ refreshToken }),
     skipAuthRefresh: true,
   })
 }
