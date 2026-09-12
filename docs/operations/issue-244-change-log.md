@@ -20,6 +20,7 @@ Owning issue: [#244](https://github.com/Vinosaamaa/chanter/issues/244). Lane: me
 - Local module verification covers concurrent idempotency and request caps, stale leases, deletion versus scanning/reading, real local immutable writes, corrupt content, unavailable/infected scan outcomes, uncertain PUT cleanup, preserved legacy bytes and reconciliation.
 - Java21 `mvn -s backend/.mvn/settings.xml -f backend/pom.xml -pl media-service -am verify` passed: 31 media tests, with four separately gated real-process integration cases skipped locally. The final legacy-index purge received an additional focused worker regression run. Exact hosted results are recorded in PR checks.
 - The new Compose file validates with Docker Compose; the new workflow passes actionlint. Container execution is delegated to hosted CI because the implementation host has no Docker daemon. No mock result is described as real scanner/provider evidence.
+- The first native ARM64 job exposed that the ClamAV Alpine image has no ARM64 manifest. The suite now pins ClamAV's official Debian multi-architecture image, with AMD64 and ARM64 digests verified from the registry. The native gate remains enabled.
 
 ## Remaining release proof
 
