@@ -15,7 +15,6 @@ import type { TeachingCourseSummary } from '../../instructor-dashboard/instructo
 import { useInstructorDashboardPage } from '../../instructor-dashboard/hooks/use-instructor-dashboard-page'
 import { listOfficeHoursSessions } from '../../support-operations/office-hours-api'
 import type { OfficeHoursSession } from '../../support-operations/support-operations-types'
-import { useAuthStore } from '../../../stores/auth-store'
 import { useV2SidebarData } from '../hooks/use-v2-sidebar-data'
 
 type TeachingOfficeHoursSession = {
@@ -65,7 +64,6 @@ function TeachingContent() {
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null)
   const selectServer = useCallback((id: string) => setSelectedServerId(id), [])
   const page = useInstructorDashboardPage(selectedServerId, selectServer)
-  const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
   const dashboard = page.dashboard
   const courses = useMemo(() => dashboard?.courses ?? [], [dashboard?.courses])
@@ -141,9 +139,8 @@ function TeachingContent() {
     <section className="teaching-page">
       <header>
         <div>
-          <h1>Good evening, {user?.displayName ?? 'Instructor'}</h1>
-          <p>Teaching overview</p>
-          <span>Cross-course actions for courses you instruct</span>
+          <h1>Teaching</h1>
+          <p>Questions, Office Hours and Course activity.</p>
         </div>
         {page.servers.length > 1 ? (
           <label className="teaching-server-select">
@@ -271,7 +268,7 @@ function TeachingContent() {
               <p><b>{dashboard.planTier} plan</b>{used} / {limit} AI queries</p>
               <small>{dashboard.remainingAiInvocations} queries remaining this period</small>
             </div>
-            <div className="teaching-usage-bar" aria-label={`${percent}% of AI quota used`}>
+            <div className="teaching-usage-bar" role="progressbar" aria-label="AI query quota used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={limit > 0 ? percent : undefined} aria-valuetext={limit > 0 ? `${used} of ${limit} queries` : 'Quota unavailable'}>
               <i style={{ width: `${percent}%` }} />
             </div>
             <strong>{percent}%</strong>

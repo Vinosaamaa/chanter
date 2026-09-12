@@ -1,0 +1,39 @@
+name: UI fixture review
+
+on:
+  push:
+    branches: [codex/254-ui-reconstruction]
+    paths: ['frontend/**', '.github/workflows/visual-review.yml']
+  pull_request:
+    branches: [main]
+    paths: ['frontend/**', '.github/workflows/visual-review.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  visual-fixture-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium firefox webkit
+        working-directory: frontend
+      - name: Render actual application with explicit visual fixtures
+        run: npx playwright test --config playwright.visual.config.ts
+        working-directory: frontend
+      - name: Retain synthetic UI screenshots only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-ui-review
+          path: frontend/test-results/visual-review/**/fixture-ui-*.png
+          if-no-files-found: error
+          retention-days: 7

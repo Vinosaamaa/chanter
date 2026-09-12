@@ -12,6 +12,7 @@ import {
 import { formatUserFacingApiError } from '../../../lib/format-api-error'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
 import { V2Avatar } from '../components/V2Avatar'
+import { WorkspaceTabStrip } from '../components/WorkspaceTabStrip'
 import { v2CommunityPath, type V2CommunityTab } from '../v2-routes'
 import type { V2CommunityContext } from './v2-community-context'
 
@@ -71,7 +72,7 @@ export function V2CommunityHubLayout() {
     },
   })
 
-  const serverName = navigationQuery.data?.studyServerName ?? 'Spring Bootcamp Hub'
+  const serverName = navigationQuery.data?.studyServerName ?? 'Study Server'
   const courseCount = catalogQuery.data?.courses.length ?? navigationQuery.data?.courses.length ?? 0
   const memberCount = memberSummaryQuery.data?.memberCount
   const preview = memberSummaryQuery.data?.preview ?? []
@@ -133,13 +134,13 @@ export function V2CommunityHubLayout() {
             {overflow > 0 ? <i>+{overflow}</i> : null}
           </div>
         </div>
-        <nav className="community-tabs">
+        <WorkspaceTabStrip className="community-tabs" label="Community tabs">
           {tabs.map((tab) => (
             <NavLink key={tab.id} to={v2CommunityPath(serverId, tab.id)}>
               {tab.label}
             </NavLink>
           ))}
-        </nav>
+        </WorkspaceTabStrip>
       </header>
       <div className="community-tab-panel">
         <Outlet context={context} />

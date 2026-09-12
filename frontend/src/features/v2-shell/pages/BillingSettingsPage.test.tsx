@@ -96,6 +96,12 @@ describe('BillingSettingsPage', () => {
     expect(await screen.findByText('Home redirected')).toBeVisible()
   })
 
+  it('provides a direct route back to Home from a billing deep link', async () => {
+    renderBilling()
+    await userEvent.click(await screen.findByRole('link', { name: 'Back to Home' }))
+    expect(await screen.findByText('Home redirected')).toBeVisible()
+  })
+
   it('shows real plan and AI usage without fake invoices or storage', async () => {
     const user = userEvent.setup()
     const savePlan = vi.fn()
@@ -130,7 +136,7 @@ describe('BillingSettingsPage', () => {
     expect(screen.queryByText(/45 GB of 50 GB/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/\$29/)).not.toBeInTheDocument()
     expect(screen.getByText(/does not charge a card/i)).toBeVisible()
-    expect(screen.getByText(/Storage metering and invoices are not available/i)).toBeVisible()
+    expect(screen.getByText(/Paid subscriptions, invoices and storage usage are not available yet/i)).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: /Save plan change/i }))
     await waitFor(() => expect(savePlan).toHaveBeenCalled())

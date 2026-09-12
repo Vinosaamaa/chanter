@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Monitor, ShieldCheck, Smartphone, X } from 'lucide-react'
+import { Monitor, Smartphone, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { useAuthStore } from '../../../stores/auth-store'
@@ -72,7 +72,7 @@ export function SessionsDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <dialog ref={dialogRef} className="settings-modal sessions-dialog" aria-labelledby="session-settings-title"
+    <dialog ref={dialogRef} className="sessions-dialog" aria-labelledby="session-settings-title"
       aria-describedby="session-settings-description" onCancel={(event) => {
         event.preventDefault()
         closeDialog()
@@ -89,12 +89,7 @@ export function SessionsDialog({ onClose }: { onClose: () => void }) {
           first?.focus()
         }
       }}>
-      <aside>
-        <h2>Settings</h2>
-        <small>USER ACCOUNT</small>
-        <p className="session-settings-nav"><ShieldCheck size={19} />Sessions and devices</p>
-      </aside>
-      <main>
+      <div className="session-content">
         <button ref={closeButtonRef} type="button" className="settings-close" aria-label="Close session settings" onClick={closeDialog}><X size={22} /></button>
         <header>
           <h1 id="session-settings-title">Sessions and devices</h1>
@@ -131,7 +126,7 @@ export function SessionsDialog({ onClose }: { onClose: () => void }) {
           {sessionsQuery.data.sessions.length === 0 ? <p>No active sessions were found.</p> : null}
           <p className="session-help">Other devices can keep access for up to 15 minutes, then must sign in again.</p>
         </> : null}
-      </main>
+      </div>
     </dialog>
   )
 }

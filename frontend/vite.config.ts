@@ -10,6 +10,19 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   envDir: path.resolve(rootDir, '..'),
   plugins: [react(), tailwindcss()],
+  build: {
+    manifest: true,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          minSize: 20_000,
+          groups: [
+            { name: 'icons', test: /node_modules[\\/]lucide-react/ },
+          ],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(rootDir, './src'),

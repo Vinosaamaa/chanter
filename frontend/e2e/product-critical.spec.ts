@@ -155,7 +155,7 @@ test.describe('Product critical paths @product', () => {
     await openAndSignIn(page, ownerEmail)
     await expect(page).toHaveURL(/\/app\//, { timeout: 30_000 })
     await page.goto('/app/teaching')
-    await expect(page.getByText('Teaching overview')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Teaching', exact: true })).toBeVisible()
     await expect(page.getByText('Loading dashboard...')).toHaveCount(0, { timeout: 15_000 })
     await page.goto('/app/settings/billing')
     await expect(page.getByRole('heading', { level: 1, name: 'Plan and Billing' })).toBeVisible()

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import {
+  ArrowLeft,
   CheckCircle2,
   Copy,
   ExternalLink,
@@ -77,6 +78,8 @@ export function CourseQuestionsPage() {
   const queue = useTaQueuePanel(selectedCohort?.id)
   const [filter, setFilter] = useState<QuestionFilter>('open')
   const [draft, setDraft] = useState('')
+  const [readingOpen, setReadingOpen] = useState(false)
+  const selectedRowRef = useRef<HTMLButtonElement | null>(null)
   const draftVersionRef = useRef(0)
   const selected = questions.selectedQuestion
 
@@ -141,10 +144,10 @@ export function CourseQuestionsPage() {
   }
 
   return (
-    <div className={`questions-layout ${manageQuestions ? 'owner-view' : ''}`}>
+    <div className={`questions-layout ${manageQuestions ? 'owner-view' : ''}${readingOpen ? ' question-reading-open' : ''}`}>
       <aside className="questions-list-pane">
         <div className="question-list-heading">
-          <h2>QUESTIONS</h2>
+          <h2>Questions</h2>
           <button type="button" aria-label="Refresh questions" onClick={() => void questions.refresh()}>
             <RefreshCw />
           </button>
@@ -161,6 +164,7 @@ export function CourseQuestionsPage() {
             </button>
           ))}
         </div>
+        {!manageQuestions ? <button type="button" className="mobile-ask-question" onClick={() => { clearDraft(); questions.selectSupportQuestion(null); setReadingOpen(true) }}><Plus size={16} /> Ask a question</button> : null}
         <div className="question-thread-list">
           {questions.isLoadingHistory ? <p className="question-empty-state">Loading questions…</p> : null}
           {!questions.isLoadingHistory && filteredQuestions.length === 0 ? (
@@ -173,7 +177,9 @@ export function CourseQuestionsPage() {
                 type="button"
                 className={questions.selectedSupportQuestionId === question.id ? 'active' : undefined}
                 key={question.id}
-                onClick={() => {
+                onClick={(event) => {
+                  selectedRowRef.current = event.currentTarget
+                  setReadingOpen(true)
                   clearDraft()
                   questions.selectSupportQuestion(question.id)
                 }}
@@ -191,7 +197,8 @@ export function CourseQuestionsPage() {
       </aside>
 
       <section className="question-detail-pane">
-        {manageQuestions ? <h2 className="question-pane-label">THREAD</h2> : null}
+        <button type="button" className="mobile-back" aria-label="Back to questions" onClick={() => { setReadingOpen(false); requestAnimationFrame(() => selectedRowRef.current?.focus()) }}><ArrowLeft /> Questions</button>
+        {manageQuestions ? <h2 className="question-pane-label">Thread</h2> : null}
         {!selected ? (
           <div className="question-detail-empty">
             <h2>{questions.supportQuestions.length === 0 ? 'No questions yet' : 'Select a question'}</h2>
@@ -350,6 +357,7 @@ export function CourseQuestionsPage() {
         {(!manageQuestions || selected) ? (
           <form className="question-composer" onSubmit={submitComposer}>
             <input
+              aria-label={manageQuestions ? 'Reply to this question' : 'Ask a support question'}
               value={draft}
               onChange={(event) => updateDraft(event.target.value)}
               placeholder={manageQuestions ? 'Reply to this question…' : 'Ask a support question…'}
@@ -371,7 +379,7 @@ export function CourseQuestionsPage() {
           {courseCapabilities.canApproveFaq ? (
             <section>
               <div className="owner-tool-heading">
-                <h2>FAQ CANDIDATES <Info /></h2>
+                <h2>FAQ candidates <Info /></h2>
                 <button type="button" aria-label="Refresh FAQ candidates" onClick={() => void faq.refresh()} disabled={faq.isSaving}><RefreshCw /></button>
               </div>
               {faq.isLoading ? <small>Loading candidates…</small> : null}
@@ -401,7 +409,7 @@ export function CourseQuestionsPage() {
           {courseCapabilities.canManageTaQueue ? (
             <section>
               <div className="owner-tool-heading">
-                <h2>TA QUEUE <Info /></h2>
+                <h2>TA queue <Info /></h2>
                 <button type="button" aria-label="Refresh TA queue" onClick={() => void queue.refresh()}><RefreshCw /></button>
               </div>
               {queue.isLoading ? <small>Loading queue…</small> : null}

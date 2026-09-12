@@ -1,33 +1,27 @@
-.v2-app-shell .settings-modal.sessions-dialog {
-  width: min(940px, calc(100vw - 48px));
-  height: min(620px, calc(100dvh - 48px));
-  max-width: none;
-  max-height: none;
-  margin: auto;
-  padding: 0;
-  color: #eef1f5;
-  grid-template-columns: 215px minmax(0, 1fr);
-}
-.sessions-dialog::backdrop { background: rgb(0 7 17 / 72%); }
-.v2-app-shell .session-settings-nav { display: flex; align-items: center; gap: 9px; margin: 0 12px; padding: 12px; border-radius: 6px; color: white; background: #4556d6; font-size: 13px; }
-.v2-app-shell .sessions-dialog main > header { padding-right: 24px; }
-.v2-app-shell .sessions-dialog .settings-close { display: grid; place-items: center; width: 36px; height: 36px; top: 10px; right: 10px; border-radius: 6px; cursor: pointer; }
-.v2-app-shell .sessions-dialog button:focus-visible { outline: 2px solid #aab7ff; outline-offset: 3px; }
-.v2-app-shell .session-device-list { display: grid; gap: 12px; margin: 24px 0 18px; padding: 0; list-style: none; }
-.v2-app-shell .session-device-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 17px 14px; border: 1px solid #3c4f64; border-radius: 9px; background: #0a1b2c; }
-.v2-app-shell .session-device-icon { padding-top: 3px; color: #a8b4f8; }
+.v2-app-shell .sessions-dialog { width: min(680px, calc(100vw - 40px)); max-height: calc(100dvh - 40px); overflow: auto; margin: auto; padding: 0; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: white; box-shadow: 0 24px 80px #192c4633; }
+.sessions-dialog::backdrop { background: #192c4666; }
+.v2-app-shell .session-content { position: relative; padding: 32px; }
+.v2-app-shell .sessions-dialog header { padding-right: 24px; }
+.v2-app-shell .sessions-dialog header h1 { font-size: 27px; letter-spacing: -.6px; line-height: 1.25; margin: 0 0 12px; }
+.v2-app-shell .sessions-dialog header p { font-size: 14px; line-height: 1.6; color: var(--muted); }
+.v2-app-shell .sessions-dialog .settings-close { position: absolute; display: grid; place-items: center; width: 44px; height: 44px; top: 12px; right: 12px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; cursor: pointer; }
+.v2-app-shell .sessions-dialog button:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.v2-app-shell .session-device-list { display: grid; gap: 0; margin: 24px 0 18px; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.v2-app-shell .session-device-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 22px 0; border-bottom: 1px solid var(--line); }
+.v2-app-shell .session-device-icon { padding-top: 3px; color: var(--muted); }
 .v2-app-shell .session-device-details h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 15px; }
-.v2-app-shell .session-device-details p { margin: 5px 0 0; color: #b7c1ce; font-size: 12px; line-height: 1.5; }
-.v2-app-shell .session-current { border-radius: 5px; padding: 3px 7px; color: #a4efcb; background: #143e35; font-size: 11px; font-weight: 500; }
-.v2-app-shell .session-revoke { min-height: 36px; padding: 6px 10px; border: 1px solid #5b6b80; border-radius: 6px; color: #f0c3cb; background: transparent; cursor: pointer; white-space: nowrap; }
-.v2-app-shell .session-revoke:hover { background: #302332; }
+.v2-app-shell .session-device-details p { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.v2-app-shell .session-current { border-radius: 4px; padding: 3px 7px; color: var(--success); background: #edf7f2; font-size: 11px; font-weight: 500; }
+.v2-app-shell .session-revoke { min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--error); background: transparent; cursor: pointer; white-space: nowrap; }
+.v2-app-shell .session-revoke:hover { background: #fff4f5; }
 .v2-app-shell .session-revoke:disabled { opacity: .65; cursor: wait; }
-.v2-app-shell .session-help { color: #b7c1ce; line-height: 1.6; font-size: 13px; }
-.v2-app-shell .session-error { padding: 12px; border: 1px solid #965b6b; border-radius: 6px; color: #ffd2dc; background: #341f2d; }
-.v2-app-shell .session-notice { color: #a4efcb; }
-@media (max-width: 700px) {
-  .v2-app-shell .settings-modal.sessions-dialog { width: calc(100vw - 24px); height: min(640px, calc(100dvh - 24px)); grid-template-columns: minmax(0, 1fr); border-radius: 11px; }
-  .v2-app-shell .sessions-dialog main > header h1 { font-size: 22px; }
-  .v2-app-shell .session-device-list li { grid-template-columns: 26px minmax(0, 1fr); }
-  .v2-app-shell .session-revoke { grid-column: 2; justify-self: start; margin-top: 4px; }
+.v2-app-shell .session-help { color: var(--muted); line-height: 1.6; font-size: 13px; }
+.v2-app-shell .session-error { padding: 12px; border: 1px solid #e9bbc3; border-radius: 6px; color: var(--error); background: #fff4f5; }
+.v2-app-shell .session-notice { color: var(--success); }
+@media (max-width: 600px) {
+ .v2-app-shell .sessions-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); border-radius: 11px; }
+ .v2-app-shell .session-content { padding: 24px 20px; }
+ .v2-app-shell .sessions-dialog header h1 { font-size: 23px; }
+ .v2-app-shell .session-device-list li { grid-template-columns: 26px minmax(0, 1fr); }
+ .v2-app-shell .session-revoke { grid-column: 2; justify-self: start; margin-top: 4px; }
 }

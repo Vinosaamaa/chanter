@@ -1,11 +1,11 @@
-import { ChevronDown, UserPlus } from 'lucide-react'
-import { useState } from 'react'
+import { BookOpen, UserPlus } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 
 import { useCohortRosterQuery } from '../../people/use-cohort-roster'
 import type { ShellCohort } from '../../shell/types'
 import type { V2CourseTab } from '../v2-routes'
 import { v2CoursePath } from '../v2-routes'
+import { WorkspaceTabStrip } from './WorkspaceTabStrip'
 
 type CourseChromeContext = {
   serverId: string
@@ -28,7 +28,6 @@ const tabs: { id: V2CourseTab; label: string }[] = [
 export function V2CourseChrome({ context }: { context: CourseChromeContext }) {
   const location = useLocation()
   const roster = useCohortRosterQuery(context.selectedCohort?.id)
-  const [cohortMenuOpen, setCohortMenuOpen] = useState(false)
   const cohortName = context.selectedCohort?.name ?? 'Cohort'
   const activeTab = tabs.find((tab) => location.pathname.endsWith(`/${tab.id}`))?.id ?? 'overview'
   const showInviteAction = activeTab !== 'people' && context.courseCapabilities.canManagePeople
@@ -39,41 +38,22 @@ export function V2CourseChrome({ context }: { context: CourseChromeContext }) {
     <header className="course-workspace-chrome">
       <div className="course-heading-row">
         <div className="course-heading-copy">
-          <span className="course-workspace-dot" />
+          <span className="course-workspace-mark" aria-hidden="true"><BookOpen size={24} /></span>
           <div>
             <h1>{context.course.title}</h1>
             <p>
               {canSwitchCohort ? (
                 <span className="course-cohort-picker">
-                  <button
-                    type="button"
+                  <select
                     aria-label="Change cohort"
-                    aria-expanded={cohortMenuOpen}
-                    onClick={() => setCohortMenuOpen((open) => !open)}
+                    value={context.selectedCohort?.id ?? ''}
+                    onChange={(event) => context.selectCohort(event.target.value)}
                   >
-                    {cohortName}<ChevronDown size={16} />
-                  </button>
-                  {cohortMenuOpen ? (
-                    <span className="course-cohort-menu" role="menu" aria-label="Available cohorts">
-                      {context.course.cohorts.map((cohort) => (
-                        <button
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={cohort.id === context.selectedCohort?.id}
-                          key={cohort.id}
-                          onClick={() => {
-                            context.selectCohort(cohort.id)
-                            setCohortMenuOpen(false)
-                          }}
-                        >
-                          {cohort.name}
-                        </button>
-                      ))}
-                    </span>
-                  ) : null}
+                    {context.course.cohorts.map((cohort) => <option key={cohort.id} value={cohort.id}>{cohort.name}</option>)}
+                  </select>
                 </span>
               ) : cohortName}
-              <i>·</i> {instructorName}
+              <span className="course-instructor">{instructorName}</span>
             </p>
           </div>
         </div>
@@ -86,17 +66,17 @@ export function V2CourseChrome({ context }: { context: CourseChromeContext }) {
           </NavLink>
         </div> : null}
       </div>
-      <nav className="workspace-tabs" aria-label="Course workspace tabs">
+      <WorkspaceTabStrip className="workspace-tabs" label="Course workspace tabs">
         {tabs.map((tab) => (
           <NavLink
             key={tab.id}
             to={`${v2CoursePath(context.serverId, context.courseId, tab.id)}${context.selectedCohort ? `?cohort=${encodeURIComponent(context.selectedCohort.id)}` : ''}`}
             className={activeTab === tab.id ? 'active' : undefined}
           >
-            {tab.label}{tab.id === 'questions' ? <i /> : null}
+            {tab.label}
           </NavLink>
         ))}
-      </nav>
+      </WorkspaceTabStrip>
     </header>
   )
 }

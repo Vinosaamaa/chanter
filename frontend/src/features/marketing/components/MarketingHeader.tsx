@@ -1,4 +1,4 @@
-import { ArrowRight, Menu, Play, X } from 'lucide-react'
+import { Menu, Play, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -9,7 +9,7 @@ import { MARKETING_DEMO_PATH, MARKETING_DOCS_URL, MARKETING_SIGN_IN_PATH } from 
 const NAV_ITEMS = [
   { label: 'Features', href: '#features' },
   { label: 'Use cases', href: '#use-cases' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Start a group', href: '#pricing' },
 ] as const
 
 export function MarketingHeader() {
@@ -76,18 +76,15 @@ export function MarketingHero() {
 
   return (
     <div className="marketing-v2-hero-copy">
-      <p className="marketing-v2-eyebrow">Built for educators. Designed for learners.</p>
-      <h1 id="marketing-title">Chanter</h1>
-      <p className="marketing-v2-tagline">Your learning community, finally in one place.</p>
+      <h1 id="marketing-title">Make room for the next question.</h1>
       <p className="marketing-v2-intro">
-        Bring courses, conversations, grounded AI support, office hours, and teaching operations
-        together in one focused workspace.
+        A shared place for your Courses, conversations and Office Hours.
+        Find the material, ask for help, and keep learning together.
       </p>
 
       <div className="marketing-v2-hero-actions">
         <Link className="marketing-v2-primary" to={createServerCta.to} state={createServerCta.state}>
           Create Study Server
-          <ArrowRight aria-hidden="true" />
         </Link>
         {import.meta.env.DEV ? (
           <Link className="marketing-v2-secondary" to={MARKETING_DEMO_PATH}>

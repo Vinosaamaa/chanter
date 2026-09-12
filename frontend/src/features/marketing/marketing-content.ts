@@ -15,7 +15,7 @@ export const MARKETING_FEATURES: MarketingFeature[] = [
     id: 'ai-assistant',
     title: 'AI Study Assistant',
     description:
-      '24/7 AI support that explains concepts, summarizes content, and helps students learn faster.',
+      'Ask questions grounded in approved Course materials, with source references and a route to human help.',
   },
   {
     id: 'course-channels',
@@ -27,13 +27,13 @@ export const MARKETING_FEATURES: MarketingFeature[] = [
     id: 'ta-queue',
     title: 'TA Queue',
     description:
-      'Transparent help queue system so every student gets the support they need, when they need it.',
+      'Give teaching assistants a shared queue of questions that need a closer look.',
   },
   {
     id: 'instructor-dashboard',
     title: 'Instructor Dashboard',
     description:
-      'Real-time insights into student activity, help requests, and course engagement.',
+      'See open questions, upcoming Office Hours and support requests across your Courses.',
   },
 ]
 
@@ -49,6 +49,6 @@ export const MARKETING_USE_CASES: string[] = [
 ]
 
 export const MARKETING_PRICING_TEASER: MarketingPricingTeaser = {
-  headline: 'Free for educators to start',
-  body: 'Launch a Study Server, enroll your first cohort, and explore AI-assisted support before upgrading your SaaS plan.',
+  headline: 'Start with your learning community.',
+  body: 'Create a Study Server for your group, add a Course, and invite your first learners.',
 }

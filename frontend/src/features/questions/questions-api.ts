@@ -88,32 +88,40 @@ export async function streamAssistantAnswer(
     }
   }
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) {
-      break
+  let exhausted = false
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        exhausted = true
+        break
+      }
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split(/\r?\n/)
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        if (line === '') {
+          flushEvent()
+          continue
+        }
+        if (line.startsWith(':')) {
+          continue
+        }
+        if (line.startsWith('event:')) {
+          eventName = line.slice(6).trim()
+          continue
+        }
+        if (line.startsWith('data:')) {
+          dataLines.push(line.slice(5).trimStart())
+        }
+      }
     }
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split(/\r?\n/)
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      if (line === '') {
-        flushEvent()
-        continue
-      }
-      if (line.startsWith(':')) {
-        continue
-      }
-      if (line.startsWith('event:')) {
-        eventName = line.slice(6).trim()
-        continue
-      }
-      if (line.startsWith('data:')) {
-        dataLines.push(line.slice(5).trimStart())
-      }
-    }
+    flushEvent()
+  } finally {
+    // Parsing and consumer errors must stop the transport without hiding the original failure.
+    if (!exhausted) await reader.cancel().catch(() => undefined)
+    reader.releaseLock()
   }
-  flushEvent()
 }
 
 export async function fetchAssistantAnswer(

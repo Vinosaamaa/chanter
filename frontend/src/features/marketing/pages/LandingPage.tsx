@@ -1,4 +1,4 @@
-import { BarChart3, Check, GraduationCap, Hash, ShieldCheck, Sparkles, UsersRound, Zap } from 'lucide-react'
+import { BarChart3, Hash, Sparkles, UsersRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { MarketingHeader, MarketingHero } from '../components/MarketingHeader'
@@ -16,12 +16,6 @@ const FEATURE_ICONS = {
   'instructor-dashboard': BarChart3,
 } as const
 
-const TRUST_POINTS = [
-  { icon: GraduationCap, label: 'Free for educators' },
-  { icon: ShieldCheck, label: 'Student privacy first' },
-  { icon: Zap, label: 'Ready in minutes' },
-] as const
-
 export function LandingPage() {
   const createServerCta = useStudyServerCta()
 
@@ -31,18 +25,9 @@ export function LandingPage() {
 
       <main>
         <section className="marketing-v2-hero" aria-labelledby="marketing-title">
-          <div className="marketing-v2-hero-atmosphere" aria-hidden="true" />
           <div className="marketing-v2-hero-inner marketing-v2-hero-split">
             <div>
               <MarketingHero />
-              <ul className="marketing-v2-trust" aria-label="Product benefits">
-                {TRUST_POINTS.map(({ icon: Icon, label }) => (
-                  <li key={label}>
-                    <Icon aria-hidden="true" />
-                    {label}
-                  </li>
-                ))}
-              </ul>
             </div>
             <MarketingProductPreview />
           </div>
@@ -51,8 +36,7 @@ export function LandingPage() {
         <section className="marketing-v2-features" id="features">
           <div className="marketing-v2-section-inner">
             <div className="marketing-v2-section-heading">
-              <p>One workspace</p>
-              <h2>Everything a learning community needs to move forward</h2>
+              <h2>Stay close to what you are learning.</h2>
               <span>
                 Give learners clear places to learn and ask for help. Give teaching teams the
                 context and tools to respond well.
@@ -69,10 +53,6 @@ export function LandingPage() {
                     </span>
                     <h3>{feature.title}</h3>
                     <p>{feature.description}</p>
-                    <a href="#pricing">
-                      Learn more
-                      <span aria-hidden="true">+</span>
-                    </a>
                   </article>
                 )
               })}
@@ -83,18 +63,12 @@ export function LandingPage() {
         <section className="marketing-v2-use-cases" id="use-cases">
           <div className="marketing-v2-section-inner marketing-v2-use-cases-inner">
             <div className="marketing-v2-section-heading marketing-v2-section-heading-dark">
-              <p>Built around the course</p>
-              <h2>Less tool switching. More time for teaching and learning.</h2>
+              <h2>Built around people who learn together.</h2>
             </div>
             <div className="marketing-v2-use-case-list">
-              {MARKETING_USE_CASES.map((useCase, index) => (
+              {MARKETING_USE_CASES.map((useCase) => (
                 <article key={useCase}>
-                  <span>0{index + 1}</span>
                   <h3>{useCase}</h3>
-                  <p>
-                    <Check aria-hidden="true" />
-                    Courses, support, community, and live sessions together
-                  </p>
                 </article>
               ))}
             </div>
@@ -104,7 +78,6 @@ export function LandingPage() {
         <section className="marketing-v2-pricing" id="pricing">
           <div className="marketing-v2-section-inner marketing-v2-pricing-inner">
             <div>
-              <p className="marketing-v2-pricing-label">Start today</p>
               <h2>{MARKETING_PRICING_TEASER.headline}</h2>
               <p>{MARKETING_PRICING_TEASER.body}</p>
             </div>

@@ -11,6 +11,9 @@ const forbidden = [
   'dev-demo-owner@chanter.local',
   'bootstrapDemoPersonas',
   'DevDemoLazyRoute',
+  'visual-fixture-only',
+  'explicit-visual-review-fixtures',
+  'UI fixture preview',
 ]
 
 function collectFiles(dir, out = []) {

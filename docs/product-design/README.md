@@ -8,6 +8,10 @@ Start here if you want the **product story** — what Chanter is, what it looks 
 
 > Discord for learning communities, with AI teaching assistants and instructor operations built in.
 
+## Current reconstruction
+
+The owner-requested [learning desk v3](learning-desk-v3.md) supersedes older visual geometry and mockups for issue #254. Product permissions and enrollment rules remain authoritative. Apply the reusable [repository frontend-design skill](../../.agents/skills/frontend-design/SKILL.md) before changing the visual direction; [provenance and invocation](../../.agents/skills/frontend-design/PROVENANCE.md) pin the upstream revision and explain updates. Older mockups below are historical context while reconstruction remains under review.
+
 ## Quick tour
 
 | Asset | What it shows |

@@ -13,35 +13,11 @@ type V2TopBarProps = {
   onOpenMenu: () => void
 }
 
-function resolveTopBarChrome(pathname: string) {
-  const primary = resolveV2PrimaryNav(pathname)
-  const courseMatch = pathname.match(/^\/app\/servers\/[^/]+\/courses\/[^/]+/)
-  if (courseMatch) {
-    return {
-      pageTitle: 'CS 101',
-      showHomeIcon: false,
-      breadcrumbs: [
-        { label: 'Spring Bootcamp Hub' },
-        { label: 'CS 101' },
-      ],
-    }
-  }
-  const communityMatch = pathname.match(/^\/app\/servers\/[^/]+\/community\//)
-  if (communityMatch) {
-    return { pageTitle: 'Community', showHomeIcon: false, breadcrumbs: [{ label: 'Spring Bootcamp Hub' }, { label: 'Community' }] }
-  }
-  const pageTitle = primary ? primary[0].toUpperCase() + primary.slice(1) : 'Home'
-  return {
-    pageTitle,
-    showHomeIcon: primary === 'home',
-    breadcrumbs: [] as { label: string; href?: string }[],
-  }
-}
-
 export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
   const { pathname, search: locationSearch } = useLocation()
   const primary = resolveV2PrimaryNav(pathname)
-  const { pageTitle, showHomeIcon, breadcrumbs } = resolveTopBarChrome(pathname)
+  const pageTitle = pathname.startsWith('/app/settings') ? 'Settings' : primary ? primary[0].toUpperCase() + primary.slice(1) : 'Home'
+  const communityServerId = pathname.match(/^\/app\/servers\/([^/]+)\/community\//)?.[1]
   const courseRoute = resolveCourseRoute(pathname)
   const search = resolveV2SearchConfig(pathname)
   const { openSearch } = useGlobalSearch()
@@ -66,28 +42,17 @@ export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
             courseId={courseRoute.courseId}
             cohortId={new URLSearchParams(locationSearch).get('cohort')}
           />
-        ) : breadcrumbs.length > 0 ? (
-          <nav className="breadcrumb-trail" aria-label="Breadcrumb">
-            {breadcrumbs.map((segment, index) => (
-              <span key={`${segment.label}-${index}`}>
-                {index > 0 ? <span className="breadcrumb-sep"> / </span> : null}
-                {segment.href ? (
-                  <Link to={segment.href}>{segment.label}</Link>
-                ) : (
-                  <span>{segment.label}</span>
-                )}
-              </span>
-            ))}
-          </nav>
+        ) : communityServerId ? (
+          <CommunityBreadcrumbTrail serverId={communityServerId} />
         ) : (
           <>
-            {showHomeIcon ? <HomeIcon size={27} /> : null}
+            {primary === 'home' ? <HomeIcon size={27} /> : null}
             <span>{pageTitle}</span>
           </>
         )}
       </div>
 
-      <label className="search-box">
+      <label className={`search-box${calendarSearch ? ' calendar-search' : ''}`}>
         <Search size={28} />
         {calendarSearch ? (
           <CalendarSearchInput placeholder={search.placeholder} />
@@ -102,6 +67,7 @@ export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
         )}
         <span>⌘F</span>
       </label>
+      {!calendarSearch ? <button type="button" className="mobile-search-trigger" onClick={openSearch}><Search size={18} aria-hidden="true" />Search</button> : null}
 
       <Link
         to="/app/inbox"
@@ -188,6 +154,17 @@ function CourseBreadcrumbTrail({
           {segment.href ? <Link to={segment.href}>{segment.label}</Link> : <span>{segment.label}</span>}
         </span>
       ))}
+    </nav>
+  )
+}
+
+function CommunityBreadcrumbTrail({ serverId }: { serverId: string }) {
+  const navigation = useStudyServerNavigationQuery(serverId)
+  return (
+    <nav className="breadcrumb-trail" aria-label="Breadcrumb">
+      <Link to={v2CommunityPath(serverId)}>{navigation.data?.studyServerName ?? 'Study Server'}</Link>
+      <span className="breadcrumb-sep"> / </span>
+      <span>Community</span>
     </nav>
   )
 }

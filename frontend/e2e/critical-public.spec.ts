@@ -21,14 +21,14 @@ test.describe('Critical public surfaces @critical', () => {
   test('landing loads and CTA routes to sign-in', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-    await expect(page.getByText('Free for educators', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Get started', exact: true }).first()).toBeVisible()
     await page.getByRole('link', { name: 'Sign in' }).first().click()
     await expect(page).toHaveURL(/sign-in/)
   })
 
   test('sign-in exposes forgot password and terms', async ({ page }) => {
     await page.goto('/sign-in')
-    await expect(page.getByRole('heading', { name: /Where your courses come together/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Welcome to Chanter', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password')
     await expect(page.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms')

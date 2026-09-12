@@ -7,11 +7,9 @@ import {
   Plus,
   Search,
   Send,
-  Smile,
   Sprout,
   UsersRound,
   Hash,
-  Volume2,
   X,
 } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
@@ -34,6 +32,7 @@ import {
 } from '../../../community-members/community-members-api'
 import type { StudyServerMember, StudyServerMemberFilter } from '../../../community-members/community-member-types'
 import { formatUserFacingApiError } from '../../../../lib/format-api-error'
+import { fetchPublicProfiles } from '../../../friends/friends-api'
 import { useAcceptedFriendIds } from '../../../people/use-accepted-friend-ids'
 import { useChannelConversation } from '../../../shell/hooks/use-channel-conversation'
 import { fetchChannelMessageAccess } from '../../../shell/channel-messages-api'
@@ -146,7 +145,7 @@ export function CommunityAnnouncementsPage() {
 
   return (
     <div className="announcements-layout">
-      <main>
+      <div className="announcements-feed">
         <div className="announcements-toolbar">
           <h2>Announcements</h2>
           {canManage ? (
@@ -205,7 +204,7 @@ export function CommunityAnnouncementsPage() {
             </footer>
           </article>
         ))}
-      </main>
+      </div>
       <aside>
         <section>
           <h2>
@@ -309,128 +308,62 @@ function AnnouncementEditorModal({
 
 export function CommunityLoungePage() {
   const { navigation } = useV2Community()
-  const textChannels = navigation?.studyServerChannels.filter((channel) => channel.kind === 'TEXT') ?? []
-  const voiceChannels = navigation?.studyServerChannels.filter((channel) => channel.kind === 'VOICE') ?? []
-  const [selectedId, setSelectedId] = useState(textChannels[0]?.id ?? 'lounge-demo')
-  const selected = textChannels.find((channel) => channel.id === selectedId) ?? textChannels[0]
+  const userId = useAuthStore(state => state.user?.id)
+  const textChannels = navigation?.studyServerChannels.filter(channel => channel.kind === 'TEXT') ?? []
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = textChannels.find(channel => channel.id === selectedId) ?? textChannels[0]
   const conversation = useChannelConversation('study', selected?.id)
   const messageAccess = useQuery({
-    queryKey: ['study-channel-message-access', selected?.id],
+    queryKey: ['study-channel-message-access', userId, selected?.id],
     queryFn: () => fetchChannelMessageAccess('study', selected!.id),
-    enabled: Boolean(selected?.id) && !selected?.id.endsWith('-demo'),
+    enabled: Boolean(selected?.id),
   })
-  const canPostMessages = messageAccess.data?.canPostMessages === true || Boolean(selected?.id.endsWith('-demo'))
+  const authorIds = [...new Set(conversation.messages.map(message => message.senderUserId))].sort()
+  const profiles = useQuery({
+    queryKey: ['community-message-profiles', userId, authorIds],
+    queryFn: () => fetchPublicProfiles(authorIds),
+    enabled: authorIds.length > 0,
+  })
+  const names = new Map(profiles.data?.profiles.map(profile => [profile.userId, profile.displayName]))
+  const canPostMessages = messageAccess.data?.canPostMessages === true
+  const connected = conversation.connectionStatus === 'connected'
   const [draft, setDraft] = useState('')
+  const selectChannel = (id: string) => { setSelectedId(id); setDraft('') }
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (!canPostMessages) return
-    void conversation.sendMessage(draft).then((sent) => sent && setDraft(''))
+    const submitted = draft.trim()
+    if (!canPostMessages || !connected || !submitted) return
+    void conversation.sendMessage(submitted).then(sent => {
+      if (sent) setDraft(current => current.trim() === submitted ? '' : current)
+    })
   }
-  const demo = [
-    ['Priya Patel', 'Anyone else stuck on problem set 2?', 'ADMIN', 'purple'],
-    ['Marcus Webb', 'Welcome to the hub — say hi in #introductions', 'ADMIN', 'green'],
-    ['Maria Gonzalez', 'Study room has 3 people if you want to pair', 'TA', 'amber'],
-  ] as const
+  if (!selected) return <div className="course-workspace-state" role="status">This community has no text channels yet.</div>
   return (
-    <div className="community-lounge-layout">
-      <aside>
-        <h2>CHANNELS</h2>
-        {(textChannels.length
-          ? textChannels
-          : [
-              { id: 'lounge-demo', name: 'lounge', kind: 'TEXT' as const },
-              { id: 'general-demo', name: 'general', kind: 'TEXT' as const },
-              { id: 'intro-demo', name: 'introductions', kind: 'TEXT' as const },
-              { id: 'off-demo', name: 'off-topic', kind: 'TEXT' as const },
-            ]
-        ).map((channel) => (
-          <button
-            type="button"
-            key={channel.id}
-            className={(selected?.id ?? 'lounge-demo') === channel.id ? 'active' : undefined}
-            onClick={() => setSelectedId(channel.id)}
-          >
-            <Hash />
-            {channel.name}
-          </button>
-        ))}
-        <hr />
-        <h2>VOICE</h2>
-        {(voiceChannels.length
-          ? voiceChannels
-          : [{ id: 'voice-demo', name: 'Community Lounge', kind: 'VOICE' as const }]
-        ).map((channel) => (
-          <button type="button" className="community-voice" key={channel.id}>
-            <Volume2 />
-            {channel.name}
-          </button>
-        ))}
+    <div className="course-chat-layout community-lounge-layout">
+      <aside className="channel-panel">
+        <h2>Channels</h2>
+        {textChannels.map(channel => <button type="button" className={`channel-row${selected.id === channel.id ? ' active' : ''}`} aria-pressed={selected.id === channel.id} key={channel.id} onClick={() => selectChannel(channel.id)}><Hash size={18} />{channel.name}</button>)}
       </aside>
-      <section>
-        <div className="community-message-list">
-          {conversation.messages.length
-            ? conversation.messages.map((message, index) => (
-                <CommunityMessage
-                  key={message.id}
-                  name={`Member ${index + 1}`}
-                  body={message.body}
-                  role=""
-                  tone="blue"
-                />
-              ))
-            : demo.map(([name, body, role, tone]) => (
-                <CommunityMessage key={name} name={name} body={body} role={role} tone={tone} />
-              ))}
+      <section className="chat-panel" aria-label={`Conversation in ${selected.name}`}>
+        <header className="chat-conversation-heading"><Hash size={18} /><h2>{selected.name}</h2></header>
+        <label className="lounge-channel-select"><Hash size={18} /><select aria-label="Choose community channel" value={selected.id} onChange={event => selectChannel(event.target.value)}>{textChannels.map(channel => <option value={channel.id} key={channel.id}>{channel.name}</option>)}</select></label>
+        {conversation.error ? <p className="inline-error" role="alert">{conversation.error}</p> : null}
+        {messageAccess.isError ? <p className="inline-error" role="alert">Unable to check your message permissions.</p> : null}
+        {!connected ? <p className="chat-connection-status" role="status">Reconnecting to live messages...</p> : null}
+        <div className="chat-message-list">
+          {conversation.isLoadingHistory ? <p role="status">Loading messages...</p> : null}
+          {!conversation.isLoadingHistory && !conversation.error && conversation.messages.length === 0 ? <p className="chat-empty">No messages yet. Start the conversation.</p> : null}
+          {conversation.messages.map(message => <article className="course-chat-message" key={message.id}>
+            <V2Avatar name={names.get(message.senderUserId) ?? 'Member'} tone="blue" size="md" />
+            <div><p><strong>{names.get(message.senderUserId) ?? 'Member'}</strong><time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</time></p><span>{message.body}</span></div>
+          </article>)}
         </div>
-        <form onSubmit={submit}>
-          <button type="button">
-            <Plus />
-          </button>
-          <input
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder={
-              canPostMessages
-                ? `Message #${selected?.name ?? 'lounge'}`
-                : `#${selected?.name ?? 'lounge'} is read-only for your role`
-            }
-            disabled={!canPostMessages}
-          />
-          <button type="button">
-            <Smile />
-          </button>
-          <button type="submit" className="send" disabled={!canPostMessages || !draft.trim()}>
-            <Send />
-          </button>
+        <form className="chat-composer" onSubmit={submit}>
+          <input aria-label={`Message ${selected.name}`} value={draft} onChange={event => setDraft(event.target.value)} placeholder={canPostMessages ? `Message #${selected.name}` : 'This channel is read-only'} disabled={!canPostMessages} />
+          <button type="submit" className="send-button" aria-label="Send message" disabled={!canPostMessages || !connected || !draft.trim() || conversation.isSending}><Send /></button>
         </form>
       </section>
     </div>
-  )
-}
-
-function CommunityMessage({
-  name,
-  body,
-  role,
-  tone,
-}: {
-  name: string
-  body: string
-  role: string
-  tone: AvatarTone
-}) {
-  return (
-    <article className="community-message">
-      <V2Avatar name={name} tone={tone} size="lg" />
-      <div>
-        <p>
-          <strong>{name}</strong>
-          {role ? <b>{role}</b> : null}
-          <time>2:14 PM</time>
-        </p>
-        <span>{body}</span>
-      </div>
-    </article>
   )
 }
 

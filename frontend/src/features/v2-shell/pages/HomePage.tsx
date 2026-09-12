@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { ArrowUpRight, BookOpen, CalendarDays, Plus, RefreshCw } from 'lucide-react'
 
 import { fetchHomeSummary, homeSummaryQueryKey } from '../../home/home-summary-api'
 import { formatUserFacingApiError } from '../../../lib/format-api-error'
@@ -15,7 +17,7 @@ import { HomeStudyServerInvites } from '../components/HomeStudyServerInvites'
 export function HomePage() {
   const user = useAuthStore((state) => state.user)
   const displayName =
-    user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'Sam'
+    user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'
 
   const summaryQuery = useQuery({
     queryKey: homeSummaryQueryKey(user?.id),
@@ -32,31 +34,32 @@ export function HomePage() {
     <div className="dashboard">
       <div className="dashboard-inner">
         <div className="greeting">
+          <p className="greeting-date">{model.dateLabel}</p>
           <h1>{model.greeting}</h1>
-          <p>{model.dateLabel}</p>
+          <p>Your Courses and conversations, in one place.</p>
         </div>
 
         {summaryQuery.isError ? (
-          <p style={{ color: 'var(--muted)' }}>
-            {formatUserFacingApiError(summaryQuery.error, 'Unable to load home summary.')}
-          </p>
+          <div className="page-error" role="alert">
+            <p>{formatUserFacingApiError(summaryQuery.error, 'Unable to load your Home.')}</p>
+            <button type="button" onClick={() => void summaryQuery.refetch()}><RefreshCw size={16} />Try again</button>
+          </div>
         ) : null}
 
-        {summaryQuery.isLoading ? (
-          <p style={{ color: 'var(--muted)' }}>Loading your home…</p>
-        ) : (
-          <HomeAttentionRow items={model.attention} />
-        )}
         <HomeStudyServerInvites />
+        {model.upNext[0]?.href ? <Link to={model.upNext[0].href} className="home-next-action"><CalendarDays aria-hidden="true" /><span><small>Up next</small><strong>{model.upNext[0].title}</strong><span>{model.upNext[0].detail}</span></span><ArrowUpRight aria-hidden="true" /></Link> : null}
 
         <div className="lower-grid">
           <section className="learning">
-            <h2>Continue learning</h2>
+            <div className="section-heading"><h2>Continue learning</h2><Link to="/app/onboarding/join-or-create" className="quiet-link"><Plus size={16} />Join a Course</Link></div>
             {summaryQuery.isLoading ? (
-              <p style={{ color: 'var(--muted)' }}>Loading your courses…</p>
-            ) : model.courses.length === 0 ? (
-              <div className="empty-search">
-                No courses yet. Use <strong>Join or create</strong> in the sidebar.
+              <div className="course-loading" role="status"><span>Loading your courses…</span><div /><div /></div>
+            ) : summaryQuery.isError ? null : model.courses.length === 0 ? (
+              <div className="learning-empty">
+                <BookOpen size={36} aria-hidden="true" />
+                <h3>A place for your next Course</h3>
+                <p>Join your learning community with an invite, or create a Study Server of your own.</p>
+                <Link to="/app/onboarding/join-or-create" className="desk-primary-button">Join or create a Study Server</Link>
               </div>
             ) : (
               <div className="course-grid">
@@ -65,9 +68,10 @@ export function HomePage() {
                 ))}
               </div>
             )}
+            <HomeAttentionRow items={model.attention} />
           </section>
 
-          <HomeUpNextPanel items={summaryQuery.isLoading ? [] : model.upNext} />
+          <HomeUpNextPanel items={model.upNext} loading={summaryQuery.isLoading} unavailable={summaryQuery.isError} />
         </div>
       </div>
     </div>
