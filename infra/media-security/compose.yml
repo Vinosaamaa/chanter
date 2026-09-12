@@ -31,7 +31,9 @@ services:
       CLAMD_STARTUP_TIMEOUT: '600'
       FRESHCLAM_CHECKS: '12'
     ports: ['127.0.0.1:3310:3310']
-    volumes: ['clamav-signatures:/var/lib/clamav']
+    volumes:
+      - clamav-signatures:/var/lib/clamav
+      - ./clamd.conf:/etc/clamav/clamd.conf:ro
     mem_limit: 4g
     healthcheck:
       test: ['CMD', 'clamdcheck.sh']

@@ -98,7 +98,7 @@ class ResourceWorkerSafetyTest {
         var resource = upload(UUID.randomUUID()); worker.runOnce(); clearInvocations(storage);
         assertThatThrownBy(() -> service.downloadCourseResource(resource.id(), UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
         verify(storage, never()).open(anyString());
-        doReturn(new java.io.ByteArrayInputStream("tampered bytes".getBytes())).when(storage).open(resource.storageKey());
+        doReturn(new java.io.ByteArrayInputStream("changed notes".getBytes())).when(storage).open(resource.storageKey());
         notAvailable(resource.id(), 503);
         try (var spools = Files.list(Path.of("target/media-spool-test"))) {
             assertThat(spools.filter(p -> p.getFileName().toString().startsWith("download-")).count()).isZero();
