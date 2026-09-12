@@ -1,4 +1,4 @@
 {
-  "schemaEpoch": 2,
-  "reason": "The #242 session schema requires session_id on new refresh rows; pre-#242 binaries cannot use it. Increase this epoch whenever a migration makes the previous application incompatible. Rollback never reverses SQL or changes database/cache images."
+  "schemaEpoch": 3,
+  "reason": "Issue 319 introduces versioned PBKDF2 password hashes that older application binaries cannot verify. Epoch 2 already required the issue 242 session linkage. Increase this epoch whenever stored data or schema becomes incompatible with the previous application. Rollback never reverses SQL or changes database/cache images."
 }

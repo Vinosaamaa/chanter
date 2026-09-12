@@ -37,3 +37,9 @@ The owner requires only free resources and has no hosting accounts. The reviewed
 Draft [PR #315](https://github.com/Vinosaamaa/chanter/pull/315) exposed an unsupported setup-java version spelling before image build. The workflow now selects the returned exact `21.0.12+8.0.LTS` version and maintained, commit-pinned setup actions. The release gate requires a successful `CI` push run on `main`, excluding edited pull-request runs with skipped build jobs. These changes still require their new hosted run.
 
 Review added native volume ownership/write checks, per-service boot timings, container resource samples and an authenticated secure WebSocket handshake through Caddy's `/livekit/rtc` rewrite. The Caddy image removes its upstream privileged-port file capability before running with all capabilities dropped. Error logging filters credential-bearing query parameters. The runbook requires explicit migration compatibility evidence for unchanged schema epochs, corrects the OAuth browser callback, and excludes future scanner/object-storage memory from the current budget.
+
+## Packaged dependency blocker and compatibility
+
+Native release run 34675772167 built the application images and then failed security scanning: the original Spring Boot 3.4.1 application package contained 33 high/critical findings. Issue #319 and PR #320 own the supported-framework repair and complete nested-library scan. No advisory was suppressed. This deployment branch waits for that repair before its next native build.
+
+The new password encoder creates versioned PBKDF2 hashes, which the previous application cannot verify. The release policy therefore advances to epoch 3 before any such data is written. This incompatibility exists without a database-column change. The later media quarantine migration must use epoch 4. Rebase onto merged UI and AI foundations preserved the exact release scripts and combined the existing LF rules with the Engineering schema rules from PR #313.
