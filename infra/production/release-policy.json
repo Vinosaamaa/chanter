@@ -1,0 +1,4 @@
+{
+  "schemaEpoch": 2,
+  "reason": "The #242 session schema requires session_id on new refresh rows; pre-#242 binaries cannot use it. Increase this epoch whenever a migration makes the previous application incompatible. Rollback never reverses SQL or changes database/cache images."
+}
