@@ -18,6 +18,14 @@ import com.chanter.agent.application.LlmProviderException;
 import org.junit.jupiter.api.Test;
 
 class NativeProviderContractTest {
+    @Test void ollamaInBandErrorIsUnavailableWithoutLeakingItsDiagnostic() throws Exception {
+        var server = fixtureServer("/api/chat", "{\"error\":\"private diagnostic fixture\"}\n");
+        try (var execution = new LlmExecution(Duration.ofSeconds(3))) {
+            var client = new OllamaLlmChatClient("http://127.0.0.1:" + server.getAddress().getPort(), "fixture-local", 2, 3);
+            assertThatThrownBy(() -> client.stream(new LlmChatRequest("s", "u"), execution, ignored -> {}))
+                    .isInstanceOf(LlmProviderException.class).hasMessageContaining("unavailable").hasMessageNotContaining("private diagnostic");
+        } finally { server.stop(0); }
+    }
     @Test void anthropicRejectsTextAfterItsTerminalEvent() throws Exception {
         String fixture = "data: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-fixture\"}}\n\n"
                 + "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"First\"}}\n\n"

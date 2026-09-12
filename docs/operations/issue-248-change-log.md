@@ -23,10 +23,11 @@ Run affected verification with:
 mvn -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service,gateway-service -am verify
 ```
 
-The committed protocol corpus is backend/agent-service/src/test/resources/evaluations/ai-runtime-v1.json. All five cases passed. Final local verification passed 113 tests: common 13, agent-service 64, gateway-service 36, with zero failures/errors. Hosted-head receipts belong to PR #317. No provider key, paid API call, model download, or native subscription session was used. Frontend and Docker product verification are not claimed by these backend fixtures.
+The committed protocol corpus is backend/agent-service/src/test/resources/evaluations/ai-runtime-v1.json. All five cases passed. Final local verification passed 116 tests: common 13, agent-service 67, gateway-service 36, with zero failures/errors. Hosted-head receipts belong to PR #317. No provider key, paid API call, model download, or native subscription session was used. Frontend and Docker product verification are not claimed by these backend fixtures.
 
 ## Operations
 
 Default deployment makes no generation call. Supply an explicit operator catalog and Course export approvals before offering hosted choices; check account-specific spend controls outside Chanter. The API catalog is the UI source of truth, not a hardcoded model list. A configured client is not a successful readiness probe.
 
 Migration rollback is to disable generation and preserve the usage ledger, rather than deleting accounting. A timed-out request may have consumed upstream usage; it retains its full reservation when the provider returns no receipt. A saved handoff is an answer to the current support question; the learner can ask an Instructor or TA rather than incurring an automatic retry.
+

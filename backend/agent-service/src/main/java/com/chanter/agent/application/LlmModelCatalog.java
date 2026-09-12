@@ -36,15 +36,17 @@ public class LlmModelCatalog {
         }
     }
 
-    public String defaultModelId() { return properties.defaultModelId(); }
+    public String defaultModelId() { return properties.enabled() ? properties.defaultModelId() : SOURCE_ONLY; }
     public long dailyTokenLimit() { return properties.dailyTokenLimit(); }
-    public Map<String, Model> configuredModels() { return properties.models(); }
+    public Map<String, Model> configuredModels() { return properties.enabled() ? properties.models() : Map.of(); }
     public Model definition(String id) {
+        if (!properties.enabled()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "AI generation is disabled");
         Model model = properties.models().get(id);
         if (model == null) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unknown AI model");
         return model;
     }
     public LlmChatClient client(String id) {
+        if (!properties.enabled()) return clients.computeIfAbsent(SOURCE_ONLY, ignored -> new DisabledLlmChatClient());
         return clients.computeIfAbsent(id, selection -> {
             if (SOURCE_ONLY.equals(selection)) return new DisabledLlmChatClient();
             Model config = definition(selection);
@@ -90,7 +92,7 @@ public class LlmModelCatalog {
     }
 
     private boolean permitted(Model model, UUID courseId) {
-        return "ollama".equals(model.provider()) || model.allowedCourseIds().contains(courseId);
+        return properties.enabled() && ("ollama".equals(model.provider()) || model.allowedCourseIds().contains(courseId));
     }
 
     private void validate(String id, Model model) {

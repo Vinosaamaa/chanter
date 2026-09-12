@@ -48,7 +48,8 @@ public final class OllamaLlmChatClient implements LlmChatClient {
                     String[] metadata = new String[]{model, null};
                     boolean[] done = new boolean[]{false};
                     LlmHttpTransport.events(input, true, execution, event -> {
-                        if (event == null || event.has("error") || done[0]) throw new LlmProviderException(LlmProviderException.Outcome.INVALID_RESPONSE);
+                        if (event == null || done[0]) throw new LlmProviderException(LlmProviderException.Outcome.INVALID_RESPONSE);
+                        if (event.has("error")) throw new LlmProviderException(LlmProviderException.Outcome.UNAVAILABLE);
                         if (event.hasNonNull("model")) metadata[0] = event.path("model").asText();
                         String text = LlmHttpTransport.text(event.path("message"), "content");
                         if (text != null) { content.append(text); chunks.accept(text); }

@@ -69,6 +69,21 @@ class AgentRuntimeServiceTest {
         when(ledger.reserve(any(), any(), any(), anyString(), any())).thenReturn(ticket);
     }
 
+    @Test void authorizationRevokedBeforeTransportSettlesKnownZeroWithoutCallingTheProvider() {
+        configure();
+        var checks = new java.util.concurrent.atomic.AtomicInteger();
+        var invocation = new AgentRuntimeService.Invocation(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "local", () -> {
+            if (checks.incrementAndGet() == 2) throw new IllegalStateException("revoked");
+        });
+        var runtime = new AgentRuntimeService(catalog, ledger, new GroundedAnswerValidator());
+        try (var execution = new LlmExecution(Duration.ofSeconds(3))) {
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> runtime.orchestrate("How?", grounding, invocation, execution, ignored -> {}))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+        verifyNoInteractions(client);
+        verify(ledger).settle(eq(ticket), eq(new LlmUsage(0, 0, 0, 0, 0)), eq("REJECTED_EVIDENCE"), anyLong(), eq("fixture"), isNull(), eq(model));
+    }
+
     @Test void configuredProviderDeadlineInterruptsAStalledGenerationBeforeTheOuterRequestDeadline() {
         configure();
         Model bounded = new Model("Local", "ollama", "fixture", null, null, 2048, 128, Duration.ofSeconds(1), Set.of(), null);

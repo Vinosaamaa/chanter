@@ -45,6 +45,7 @@ class GroundedSupportQuestionSmokeTest {
 
     @org.springframework.test.context.DynamicPropertySource
     static void localProvider(org.springframework.test.context.DynamicPropertyRegistry properties) {
+        properties.add("chanter.llm.enabled", () -> "true");
         properties.add("chanter.llm.models.fixture.provider", () -> "ollama");
         properties.add("chanter.llm.models.fixture.model", () -> "fixture-local");
         properties.add("chanter.llm.models.fixture.label", () -> "Local fixture");
@@ -102,6 +103,12 @@ class GroundedSupportQuestionSmokeTest {
         assertThat(answer.audit().llmProvider()).isEqualTo("ollama");
         assertThat(answer.sources()).hasSize(1);
         assertThat(generationLedger.summary(server).accountedTokens()).isEqualTo(120);
+        mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .param("modelId", "removed-model").param("answerMode", "grounded-explanation")
+                        .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.id").value(answer.id().toString()));
+        assertThat(PROVIDER_CALLS.get() - before).isEqualTo(1);
         mockMvc.perform(get("/api/v1/study-servers/{server}/ai-usage-metrics", server)
                         .header(AuthHeaders.USER_ID, instructor.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())

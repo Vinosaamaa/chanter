@@ -131,9 +131,6 @@ public class GroundedSupportQuestionService {
                 learnerUserId
         );
 
-        String selectedModel = modelCatalog.select(modelId, access.courseId());
-        String mode = AiAnswerMode.resolve(answerMode, selectedModel);
-        String selection = "source-only".equals(mode) ? LlmModelCatalog.SOURCE_ONLY : selectedModel;
         if (!supportQuestion.senderUserId().equals(learnerUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Support Question author can invoke the AI Study Assistant");
         }
@@ -148,6 +145,10 @@ public class GroundedSupportQuestionService {
             chunks.accept(answer.answerBody());
             return reconcileExistingAnswer(channelId, supportQuestionId, learnerUserId, answer);
         }
+
+        String selectedModel = modelCatalog.select(modelId, access.courseId());
+        String mode = AiAnswerMode.resolve(answerMode, selectedModel);
+        String selection = "source-only".equals(mode) ? LlmModelCatalog.SOURCE_ONLY : selectedModel;
 
         if (!"UNANSWERED".equals(supportQuestion.status())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
