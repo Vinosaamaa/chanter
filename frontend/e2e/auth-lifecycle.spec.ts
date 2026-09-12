@@ -97,13 +97,21 @@ test.describe('Verified account and recovery @product', () => {
       data: { email, password },
     })
     expect(secondDevice.ok()).toBe(true)
+    const deviceCookie = secondDevice.headersArray()
+      .find((header) => header.name.toLowerCase() === 'set-cookie' && header.value.startsWith('chanter_refresh='))
+      ?.value.split(';')[0]
+    expect(Boolean(deviceCookie)).toBe(true)
     await page.getByRole('button', { name: 'Open account menu' }).click()
     await page.getByRole('menuitem', { name: 'Sessions and devices', exact: true }).click()
     const devices = page.getByRole('dialog', { name: 'Sessions and devices' })
     await expect(devices.getByText('This device', { exact: true })).toBeVisible()
     await devices.getByRole('button', { name: 'Sign out Firefox on Linux', exact: true }).click()
     await expect(devices.getByRole('button', { name: 'Sign out Firefox on Linux', exact: true })).toHaveCount(0)
-    const revoked = await request.post(new URL('/api/v1/auth/refresh', appUrl).toString(), { headers })
+    // API cookie jars do not consistently send Secure cookies over loopback HTTP.
+    // The browser's real cookie behavior is asserted separately above.
+    const revoked = await request.post(new URL('/api/v1/auth/refresh', appUrl).toString(), {
+      headers: { ...headers, Cookie: deviceCookie! },
+    })
     expect(revoked.status()).toBe(401)
     await page.keyboard.press('Escape')
     await expect(devices).toHaveCount(0)

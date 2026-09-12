@@ -110,9 +110,13 @@ test.describe('Product critical paths @product', () => {
     try {
       await page.goto(`/app/servers/${ownerOnlyServer.id}/community/members`)
       await expect(page).toHaveURL(new RegExp(`/app/servers/${ownerOnlyServer.id}/community/members`))
+      // The URL changes before cookie restoration and the initial member fetch.
+      // Start the sign-out boundary only after this owner's page has actually loaded.
+      await expect(page.getByText(/\(You\)$/)).toBeVisible()
+      await expect(page.getByText('Loading courses…')).toHaveCount(0)
 
-      trackAccountBoundary = true
       await page.getByRole('button', { name: 'Open account menu' }).click()
+      trackAccountBoundary = true
       await page.getByRole('menuitem', { name: 'Sign out' }).click()
       await expect(page).toHaveURL(/\/sign-in$/, { timeout: 15_000 })
       expect(await page.evaluate(() => window.history.state?.usr ?? null)).toBeNull()

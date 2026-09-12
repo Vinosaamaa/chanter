@@ -8,6 +8,8 @@ Chanter has substantial local-beta product code. It has no verified public relea
 
 The owner has delegated product and technical decisions, including revisions to the current design. The initial release must use free resources. No provider account or hosting environment exists yet. Paid upgrades and automatic recharge remain disabled. The architecture review may consolidate runtime processes if that produces a more reliable free deployment without weakening authorization or data ownership.
 
+The owner subsequently rejected the current interface and explicitly requested a full modern redesign with mobile and multiple screen sizes. #254 now owns that reconstruction and the reusable, pinned `frontend-design` skill, in addition to its final interaction/accessibility/performance gates. Independent visual work runs alongside launch infrastructure; old visual mockups no longer constrain the new design.
+
 AI provider and model choice must be configurable. OpenAI, Anthropic, xAI/Grok, compatible endpoints and local/no-provider operation belong to #248. Subscription-backed operation must use provider-supported access. ChatGPT API billing is separate from chat subscriptions; xAI's current usage documentation includes API activity in its subscription usage view, so entitlement must be checked per provider and account. Sources: [OpenAI billing](https://help.openai.com/en/articles/9039756), [Claude API access](https://support.claude.com/en/articles/9876003), [xAI usage](https://docs.x.ai/grok/faq).
 
 [#238](https://github.com/Vinosaamaa/chanter/issues/238) through [#241](https://github.com/Vinosaamaa/chanter/issues/241) are closed. [#242](https://github.com/Vinosaamaa/chanter/issues/242), secure browser sessions and transactional email, is in implementation. See its [design](../architecture/secure-browser-sessions-and-email.md) and [implementation record](issue-242-change-log.md).
@@ -18,8 +20,8 @@ The open dependency-update PRs and the older environment PR remain separate work
 
 | Issue | Customer or operator outcome | Current state |
 |---|---|---|
-| #242 | Reliable sign-in, verification, recovery, device sessions | Implementing |
-| #243 | Reproducible staging and production with rollback | Open; hosting account/server selection needed |
+| #242 | Reliable sign-in, verification, recovery, device sessions | Integrated in PR #312; hosted browser and release proof pending |
+| #243 | Reproducible staging and production with rollback | Deployment package in progress; free single-host choice recorded, provisioning unverified |
 | #244 | Durable private resource storage and quarantine | Open; depends on infrastructure |
 | #245 | Durable notifications and search indexing | Open; depends on infrastructure |
 | #246 | Truthful supported resource ingestion | Open; depends on storage/events |
@@ -30,7 +32,7 @@ The open dependency-update PRs and the older environment PR remain separate work
 | #251 | Export, deletion, retention and accurate policy pages | Open; depends on durable data/moderation |
 | #252 | Monitoring, alerts, backups and proven restore | Open; depends on deployed infrastructure |
 | #253 | Trusted edge, proxy handling and abuse limits | Open; edge/account evidence needed |
-| #254 | Working controls, accessibility and responsive performance | Open; final product journey audit |
+| #254 | Complete modern UI reconstruction, working controls and responsive accessibility | Design and implementation in progress; final capability/browser gates remain |
 | #255 | Release-candidate proof and public cutover | Open; requires preceding gates |
 
 The [ordered breakdown](../issues/product-readiness-issue-breakdown.md) defines dependencies and acceptance. This table summarizes that program; it does not create a second issue queue.
