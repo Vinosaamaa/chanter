@@ -57,7 +57,7 @@ Each download fetches once to a private file of at most 10 MiB, verifies length 
 
 ## Scanner and capacity
 
-Run maintained ClamAV with a persistent signature directory, UTC timezone and FreshClam updates. Scan uses its real INSTREAM protocol; missing, malformed, stale (older than 72 hours), or unavailable definitions fail closed. Socket deadlines bound both reads and writes. No local or production clean-verdict bypass exists.
+Run maintained ClamAV with a persistent signature directory, UTC timezone and FreshClam updates. Use the reviewed `infra/media-security/clamd.conf`: one-minute signature checks recover a startup notification race; encrypted or over-limit content produces a rejection; reloads block briefly instead of holding two engines. Scan uses the real INSTREAM protocol; missing, malformed, stale (older than 72 hours), or unavailable definitions fail closed. Socket deadlines bound both reads and writes. No local or production clean-verdict bypass exists.
 
 [ClamAV's container instructions](https://docs.clamav.net/manual/Installing/Docker.html) recommend **4 GB** of RAM. The earlier #243 base caps total 7.625 GiB and exclude scanning. Adding 4 GiB would leave insufficient room for the OS on a 12 GB VM. Reallocate and measure the whole stack before deployment; passing the isolated media integration suite does not prove the full launch capacity. No extra VM or paid scan service is authorized as a fallback.
 

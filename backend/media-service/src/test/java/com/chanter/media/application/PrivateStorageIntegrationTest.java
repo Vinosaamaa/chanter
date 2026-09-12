@@ -91,6 +91,15 @@ class PrivateStorageIntegrationTest {
         assertThatThrownBy(() -> storage.open(resource.storageKey())).isInstanceOf(java.io.IOException.class);
     }
     @Test @Order(3) @EnabledIfEnvironmentVariable(named = "MEDIA_RESTART_PHASE", matches = "false")
+    void realScannerRejectsNestedContentBeyondItsInspectionLimit() throws Exception {
+        Path compressed = Path.of("target/clamav-limit-fixture.gz");
+        try (var gzip = new java.util.zip.GZIPOutputStream(Files.newOutputStream(compressed))) {
+            byte[] block = new byte[1024 * 1024];
+            for (int index = 0; index < 60; index++) gzip.write(block);
+        }
+        assertThat(scanner.scan(compressed)).isEqualTo(MalwareScanner.Verdict.INFECTED);
+    }
+    @Test @Order(4) @EnabledIfEnvironmentVariable(named = "MEDIA_RESTART_PHASE", matches = "false")
     void conditionalWritesCannotReplaceObjectsAndAllAttemptsAreMetered() throws Exception {
         String key = PrivateResourceStorage.PREFIX + UUID.randomUUID() + "/" + UUID.randomUUID() + "/" + UUID.randomUUID();
         Path file = Path.of("target/s3-immutable.txt"); Files.write(file, CLEAN);
@@ -106,7 +115,7 @@ class PrivateStorageIntegrationTest {
         assertThat(jdbc.sql("SELECT foreground_requests FROM media_storage_budget WHERE id=1").query(Integer.class).single() - normalBefore).isEqualTo(5);
         assertThat(jdbc.sql("SELECT maintenance_requests FROM media_storage_budget WHERE id=1").query(Integer.class).single() - deletesBefore).isEqualTo(1);
     }
-    @Test @Order(4) @EnabledIfEnvironmentVariable(named = "MEDIA_RESTART_PHASE", matches = "true")
+    @Test @Order(5) @EnabledIfEnvironmentVariable(named = "MEDIA_RESTART_PHASE", matches = "true")
     void databaseObjectStoreAndApplicationRestartPreserveIdentityAndContent() throws Exception {
         var resource = uploadClean();
         assertThat(resource.publicStatus()).isEqualTo("AVAILABLE");
