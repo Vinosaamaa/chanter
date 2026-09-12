@@ -45,12 +45,14 @@ public class ResourceWorker {
                     case "DELETE" -> delete(job);
                     case "MIGRATE" -> migrate(job);
                     case "SCAN" -> scan(job);
+                    case "INDEX" -> index(job);
                     default -> throw new IllegalStateException("Unsupported resource operation");
                 }
             } catch (Exception failure) {
                 // Provider errors and scanner signatures can contain private information.
                 log.warn("Course Resource work deferred resourceId={} operation={}", job.resource().id(), job.operation());
                 if (job.operation().equals("DELETE")) lifecycle.retryJob(job.resource().id(), job.leaseId());
+                else if (job.operation().equals("INDEX")) lifecycle.finishIndex(job.resource().id(), job.leaseId(), false);
                 else lifecycle.finishScan(job.resource().id(), job.leaseId(), "SCAN_FAILED");
             }
         });
@@ -65,9 +67,20 @@ public class ResourceWorker {
             if (verdict == MalwareScanner.Verdict.INFECTED) {
                 lifecycle.finishScan(resource.id(), job.leaseId(), "REJECTED");
             } else if (verdict == MalwareScanner.Verdict.CLEAN) {
-                if (resource.aiApproved()) ingestion.ingestAiApprovedResource(resource.courseId(), resource.id(), resource.fileName(), Files.readAllBytes(verified));
                 lifecycle.finishScan(resource.id(), job.leaseId(), "AVAILABLE");
             } else throw new IOException("Scanner did not return a verdict");
+        } finally { Files.deleteIfExists(verified); }
+    }
+
+    private void index(ResourceLifecycle.Job job) throws IOException {
+        var resource = job.resource();
+        requireBackend(resource.storageBackend());
+        Path verified = validator.verifiedDownload(storage.open(resource.storageKey()), resource.byteSize(), resource.sha256());
+        try {
+            if (lifecycle.find(resource.id()).filter(current -> current.state().equals("AVAILABLE")).isPresent()) {
+                ingestion.ingestAiApprovedResource(resource.courseId(), resource.id(), resource.fileName(), Files.readAllBytes(verified));
+            }
+            lifecycle.finishIndex(resource.id(), job.leaseId(), true);
         } finally { Files.deleteIfExists(verified); }
     }
 

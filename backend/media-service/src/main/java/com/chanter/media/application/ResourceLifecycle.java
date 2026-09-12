@@ -111,6 +111,7 @@ public class ResourceLifecycle {
                     state IN ('QUARANTINED','SCANNING','DELETE_PENDING')
                     OR (state='SCAN_FAILED' AND byte_reservation=TRUE AND (attempts<5 OR (updated_at<:expired AND storage_backend<>'legacy')))
                     OR (state='REJECTED' AND byte_reservation=TRUE)
+                    OR (state='AVAILABLE' AND ingestion_status IN ('PENDING','FAILED'))
                     OR (state='STAGING' AND created_at<:abandoned)
                     OR (state='LEGACY' AND :migrate=TRUE))
                 ORDER BY updated_at,id LIMIT 1 FOR UPDATE SKIP LOCKED
@@ -121,21 +122,22 @@ public class ResourceLifecycle {
         CourseResource r = row.get().resource();
         boolean delete = List.of("DELETE_PENDING", "REJECTED", "STAGING").contains(r.state())
                 || (r.state().equals("SCAN_FAILED") && row.get().attempts() >= 5);
-        String state = delete ? (r.state().equals("STAGING") ? "DELETE_PENDING" : r.state()) : "SCANNING";
+        boolean index = r.state().equals("AVAILABLE");
+        String state = delete ? (r.state().equals("STAGING") ? "DELETE_PENDING" : r.state()) : index ? "AVAILABLE" : "SCANNING";
         UUID lease = UUID.randomUUID();
         String migrationKey = row.get().migrationKey();
         if (!delete && r.storageBackend().equals("legacy") && migrationKey == null) migrationKey = PrivateResourceStorage.PREFIX + r.courseId() + "/" + r.id() + "/" + UUID.randomUUID();
         jdbc.sql("UPDATE course_resources SET state=:state, lease_id=:lease, lease_until=:until, migration_key=:migration, attempts=attempts+1, updated_at=:now WHERE id=:id")
                 .param("state", state).param("lease", lease).param("until", time(instant.plusSeconds(180)))
                 .param("migration", migrationKey).param("now", time(instant)).param("id", r.id()).update();
-        return Optional.of(new Job(r, lease, delete ? "DELETE" : r.storageBackend().equals("legacy") ? "MIGRATE" : "SCAN", migrationKey));
+        return Optional.of(new Job(r, lease, delete ? "DELETE" : index ? "INDEX" : r.storageBackend().equals("legacy") ? "MIGRATE" : "SCAN", migrationKey));
     }
 
     @Transactional
     public void finishMigration(Job job, UploadValidator.ValidatedUpload upload, String backend) {
         int changed = jdbc.sql("""
                 UPDATE course_resources SET storage_key=:key, storage_backend=:backend, sha256=:hash,
-                 file_name=:file,content_type=:type,state='QUARANTINED',lease_id=NULL,lease_until=NULL,
+                 file_name=:file,content_type=:type,state='QUARANTINED',ingestion_status='NONE',lease_id=NULL,lease_until=NULL,
                  attempts=0,retry_at=NULL,updated_at=:now WHERE id=:id AND lease_id=:lease AND state='SCANNING'
                 """).param("key", job.migrationKey()).param("backend", backend).param("hash", upload.sha256())
                 .param("file", upload.fileName()).param("type", upload.contentType()).param("now", now())
@@ -148,12 +150,25 @@ public class ResourceLifecycle {
         if (!List.of("AVAILABLE", "REJECTED", "SCAN_FAILED").contains(state)) throw new IllegalArgumentException("Invalid scan result");
         int changed = jdbc.sql("""
                 UPDATE course_resources SET state=:state, lease_id=NULL, lease_until=NULL, updated_at=:now,
+                  ingestion_status=CASE WHEN :state='AVAILABLE' AND ai_approved THEN 'PENDING' ELSE 'NONE' END,
+                  attempts=CASE WHEN :state='AVAILABLE' THEN 0 ELSE attempts END,
                   retry_at=:retry WHERE id=:id AND lease_id=:lease AND state='SCANNING'
                 """).param("state", state).param("now", now())
                 .param("retry", state.equals("SCAN_FAILED") ? time(clock.instant().plusSeconds(60)) : null)
                 .param("id", id).param("lease", lease).update();
         if (changed == 0) releaseLease(id, lease);
         return changed == 1;
+    }
+
+    @Transactional
+    public void finishIndex(UUID id, UUID lease, boolean complete) {
+        int changed = jdbc.sql("""
+                UPDATE course_resources SET ingestion_status=:status,lease_id=NULL,lease_until=NULL,
+                  retry_at=:retry,updated_at=:now WHERE id=:id AND lease_id=:lease AND state='AVAILABLE'
+                """).param("status", complete ? "COMPLETE" : "FAILED")
+                .param("retry", complete ? null : time(clock.instant().plusSeconds(600)))
+                .param("now", now()).param("id", id).param("lease", lease).update();
+        if (changed == 0) releaseLease(id, lease);
     }
 
     @Transactional

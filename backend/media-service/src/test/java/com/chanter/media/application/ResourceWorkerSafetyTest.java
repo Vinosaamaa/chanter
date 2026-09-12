@@ -32,7 +32,7 @@ class ResourceWorkerSafetyTest {
     @Autowired ResourceLifecycle lifecycle;
     @Autowired JdbcClient jdbc;
     @Autowired TestCourseResourceAccessClient access;
-    @Autowired TestResourceIngestionClient ingestion;
+    @MockitoSpyBean TestResourceIngestionClient ingestion;
     @Autowired LocalCourseResourceStorage legacy;
     @Autowired UploadValidator validator;
     @MockitoBean MalwareScanner scanner;
@@ -150,5 +150,22 @@ class ResourceWorkerSafetyTest {
         reconciler.reconcile();
         verify(storage).delete(orphan); verify(storage, never()).delete(resource.storageKey());
         assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
+    }
+
+    @Test void cleanResourcesStayAvailableAndReservedAcrossIndexFailuresUntilIndexRetrySucceeds() throws Exception {
+        var resource = upload(UUID.randomUUID());
+        doThrow(new IllegalStateException("index unavailable")).when(ingestion).ingestAiApprovedResource(any(), any(), anyString(), any());
+        worker.runOnce();
+        assertThat(service.getCourseResource(resource.id(), learner).publicStatus()).isEqualTo("AVAILABLE");
+        worker.runOnce();
+        assertThat(jdbc.sql("SELECT ingestion_status FROM course_resources WHERE id=:id").param("id", resource.id()).query(String.class).single()).isEqualTo("FAILED");
+        jdbc.sql("UPDATE course_resources SET attempts=20,retry_at=NULL,updated_at=TIMESTAMP WITH TIME ZONE '2000-01-01 00:00:00Z'").update();
+        worker.runOnce();
+        assertThat(service.getCourseResource(resource.id(), learner).publicStatus()).isEqualTo("AVAILABLE");
+        assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
+        verify(storage, never()).delete(resource.storageKey());
+        doCallRealMethod().when(ingestion).ingestAiApprovedResource(any(), any(), anyString(), any());
+        jdbc.sql("UPDATE course_resources SET retry_at=NULL").update(); worker.runOnce();
+        assertThat(jdbc.sql("SELECT ingestion_status FROM course_resources WHERE id=:id").param("id", resource.id()).query(String.class).single()).isEqualTo("COMPLETE");
     }
 }
