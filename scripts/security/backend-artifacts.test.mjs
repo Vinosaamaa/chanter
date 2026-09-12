@@ -10,6 +10,11 @@ test('a metadata-only or incomplete library scan cannot pass', () => {
   assert.throws(() => assessReport({ Results: [{ Type: 'jar', Packages: [
     { FilePath: 'BOOT-INF/lib/first.jar' },
   ] }] }, ['first.jar', 'second.jar']), /second.jar/);
+  for (const candidate of ['BOOT-INF/classes/first.jar', 'other/BOOT-INF/lib/first.jar']) {
+    assert.throws(() => assessReport({ Results: [{ Type: 'jar', Packages: [
+      { FilePath: candidate },
+    ] }] }, ['first.jar']), /coverage/);
+  }
 });
 
 test('complete coverage retains vulnerability and secret failures', () => {

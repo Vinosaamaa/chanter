@@ -8,7 +8,7 @@ export function assessReport(report, expectedLibraries) {
   const results = Array.isArray(report?.Results) ? report.Results : [];
   const libraries = new Set(results.filter(result => result.Type === 'jar')
     .flatMap(result => result.Packages ?? [])
-    .map(pkg => pkg.FilePath?.replaceAll('\\', '/').split('/').at(-1)).filter(Boolean));
+    .map(pkg => pkg.FilePath?.replaceAll('\\', '/').match(/^BOOT-INF\/lib\/([^/]+\.jar)$/)?.[1]).filter(Boolean));
   const missing = expectedLibraries.filter(name => !libraries.has(name));
   if (!expectedLibraries.length || !libraries.size || missing.length) {
     throw new Error(`Incomplete Java library coverage${missing.length ? ': ' + missing.join(', ') : ''}`);
