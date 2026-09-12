@@ -398,15 +398,15 @@
 .v2-app-shell .tab-scroll-control { width: 44px; min-height: 48px; flex: 0 0 44px; display: grid; place-items: center; color: var(--blue); border: 0; background: transparent; cursor: pointer; }
 .v2-app-shell .tab-scroll-control:disabled { color: var(--muted); opacity: .35; cursor: default; }
 /* Teaching starts with a compact list of things that need attention. */
-.v2-app-shell .teaching-metrics { gap: 0; border-block: 1px solid var(--line); }
+.v2-app-shell .teaching-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin-top: 24px; gap: 0; border-block: 1px solid var(--line); }
 .v2-app-shell .teaching-metrics > article { display: grid; grid-template-columns: 32px minmax(0,1fr) auto; align-items: center; gap: 14px; min-height: 130px; padding: 22px; border: 0; border-right: 1px solid var(--line); border-radius: 0; }
 .v2-app-shell .teaching-metrics > article:last-child { border-right: 0; }
 .v2-app-shell .teaching-metrics > article > span { width: 32px; height: 32px; padding: 0; }
 .v2-app-shell .teaching-metrics svg { width: 24px; height: 24px; }
 .v2-app-shell .teaching-metrics strong { font-size: 25px; line-height: 1.3; }
-.v2-app-shell .teaching-metrics p { font-size: 13px; line-height: 1.5; margin: 4px 0; }
-.v2-app-shell .teaching-metrics small { font-size: 12px; line-height: 1.5; }
-.v2-app-shell .teaching-metrics button { grid-column: auto; align-self: center; margin: 0; min-height: 44px; padding: 8px; font-size: 13px; }
+.v2-app-shell .teaching-metrics p { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 4px 0; }
+.v2-app-shell .teaching-metrics small { display: block; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.v2-app-shell .teaching-metrics button { border: 0; background: transparent; color: var(--blue); cursor: pointer; grid-column: auto; align-self: center; margin: 0; min-height: 44px; padding: 8px; font-size: 13px; }
 .v2-app-shell .teaching-grid { gap: 32px; }
 .v2-app-shell .teaching-grid > article { border: 0; border-radius: 0; padding: 12px 0; }
 .v2-app-shell .teaching-grid h2 { margin-bottom: 18px; }
@@ -442,9 +442,9 @@
  .v2-app-shell .teaching-metrics > article > button { grid-column: 2; justify-self: start; padding-left: 0; }
  .v2-app-shell .billing-summary { grid-template-columns: minmax(0,1fr); }
 }
-@media (max-width: 600px) {
+@media (max-width: 1023px) {
  .v2-app-shell .teaching-metrics { grid-template-columns: minmax(0,1fr); }
- .v2-app-shell .teaching-metrics > article { min-height: 108px; padding: 16px 0; grid-template-columns: 28px minmax(0,1fr) auto; border-right: 0; border-bottom: 1px solid var(--line); }
+ .v2-app-shell .teaching-metrics > article { min-height: 96px; padding: 16px 0; grid-template-columns: 28px minmax(0,1fr) auto; border-right: 0; border-bottom: 1px solid var(--line); }
  .v2-app-shell .teaching-metrics > article:last-child { border-bottom: 0; }
  .v2-app-shell .teaching-metrics > article > button { grid-column: 3; padding: 8px; }
  .v2-app-shell .teaching-ai-usage { grid-template-columns: 24px minmax(0,1fr) 44px; }
@@ -460,6 +460,7 @@
 .v2-app-shell .community-lounge-layout .channel-row.active { background: var(--blue-soft); }
 .v2-app-shell .lounge-channel-select { display: none; }
 @media (max-width: 600px) {
+ .v2-app-shell .community-lounge-layout { grid-template-rows: minmax(0,1fr); }
  .v2-app-shell .lounge-channel-select { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--desk); }
  .v2-app-shell .lounge-channel-select select { width: 100%; min-height: 44px; color: var(--ink); background: transparent; border: 0; font-size: 16px; }
 }

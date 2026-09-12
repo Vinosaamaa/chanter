@@ -120,7 +120,7 @@ export function CreateStudyServerV2Page() {
             </button>
           </header>
 
-          <div className="wizard-progress" aria-label={`Step ${step + 1} of 4`}>
+          <div className="wizard-progress" role="progressbar" aria-label="Study Server setup" aria-valuemin={1} aria-valuemax={4} aria-valuenow={step + 1} aria-valuetext={`Step ${step + 1} of 4: ${stepNames[step]}`}>
             {stepNames.map((label, index) => (
               <span key={label} className={index <= step ? 'active' : undefined} />
             ))}

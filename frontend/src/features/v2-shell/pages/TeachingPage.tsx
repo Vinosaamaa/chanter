@@ -268,7 +268,7 @@ function TeachingContent() {
               <p><b>{dashboard.planTier} plan</b>{used} / {limit} AI queries</p>
               <small>{dashboard.remainingAiInvocations} queries remaining this period</small>
             </div>
-            <div className="teaching-usage-bar" aria-label={`${percent}% of AI quota used`}>
+            <div className="teaching-usage-bar" role="progressbar" aria-label="AI query quota used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={limit > 0 ? percent : undefined} aria-valuetext={limit > 0 ? `${used} of ${limit} queries` : 'Quota unavailable'}>
               <i style={{ width: `${percent}%` }} />
             </div>
             <strong>{percent}%</strong>

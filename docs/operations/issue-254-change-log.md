@@ -42,3 +42,12 @@ Pending implementation. No screenshot, mocked API or component test is recorded 
 Hosted run 34675226126 passed 81/83 checks. It established the repaired phone question reading flow, shared author layout, visible chat composers in both orientations, Inbox completion, and zoom-equivalent reflow. Calendar ARIA row semantics failed; a new keyboard regression reproduced that failure before the implementation added named dates, one tab entry, arrow/week/month movement and proper rows. The reconnect test had a malformed ellipsis and now matches the actual status.
 
 A further route audit found production Community Lounge rendering sample messages on empty history. Those samples, fake timestamps and unsupported controls were removed. Real profile lookup, honest empty/error/reconnect states and the shared conversation layout now replace them. Teaching priorities and Billing forms were compacted after screenshot review. Course and Community tab overflow now has visible controls. The next hosted review expands route images to all six widths and adds Firefox/WebKit interaction smoke checks; these remain synthetic layout evidence.
+
+
+## Secure-session integration and broader browser results
+
+Rebased onto main at d9c68b5. The resulting candidate 7bcaffd passed 255 local frontend tests, lint and build. Hosted review 34675941057 passed 175/179 fixture checks across six widths, including all seven Firefox and seven WebKit checks, Calendar accessibility, mobile tab scrolling, reconnect status and native device dialogs in portrait, landscape and desktop. The four failures identified a two-row mobile grid incorrectly applied to Lounge, and missing progress semantics in Teaching/onboarding; fixes retain the failing checks.
+
+Real product run 34675941062 passed 13/14 signed-in journeys. Its only failure was an obsolete Teaching heading assertion. Two public tests similarly expected the removed free-plan claim and old auth headline. These assertions now follow the new visible headings and registration control. This does not yet constitute a green final-head release gate.
+
+The assistant stream now cancels an unfinished response and releases its reader on parsing or callback failures, and releases completed readers without cancellation. Four failing regressions were observed before the fix; they and the existing question hook tests passed afterward. Transport session guards from #242 remain unchanged.
