@@ -30,7 +30,7 @@ test('native Codex initializes the restricted profile without authentication or 
   } finally { client.close(); }
 });
 
-async function runFixture(attack) {
+async function runFixture(attack, productionTransport = false) {
   const { state, plan } = await setup();
   const canary = 'CANARY-NOT-A-CREDENTIAL-316';
   const canaryPath = path.join(state, 'outside.txt');
@@ -77,6 +77,21 @@ async function runFixture(attack) {
     `model_providers.fixture={name="Loopback fixture",base_url="http://127.0.0.1:${server.address().port}/v1",wire_api="responses",requires_openai_auth=false}`,
     '-c', 'features.responses_websockets=false', '-c', 'features.responses_websockets_v2=false');
   const child = spawn(executable, plan.args, plan.options);
+  if (productionTransport) {
+    const client = new CodexAppServer(child);
+    try {
+      await client.initialize();
+      const result = await client.studyTurn({ model: 'fixture-model', prompt: 'Reply with Fixture answer.',
+        maxInputBytes: 4096, maxOutputBytes: 4096, deadlineMs: 20_000 });
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0].store, false);
+      assert.deepEqual(requests[0].tools.map((tool) => tool.name ?? tool.type), ['skills']);
+      assert.ok(!JSON.stringify(requests).includes(canary));
+      return result;
+    } finally {
+      client.close(); server.closeAllConnections(); await new Promise((resolve) => server.close(resolve));
+    }
+  }
   child.stderr.resume();
   let nextId = 0, buffer = '';
   const pending = new Map();
@@ -143,6 +158,11 @@ async function runFixture(attack) {
 
 test('native synthetic turn exposes only the fixed skill namespace and never loads host instructions', native, async () => {
   assert.deepEqual(await runFixture(), []);
+});
+
+test('native synthetic turn completes through the bounded production stdio client', native, async () => {
+  assert.deepEqual(await runFixture(null, true), { text: 'Fixture answer.',
+    usage: { inputTokens: 12, outputTokens: 4 }, provenance: 'native-client-report' });
 });
 
 for (const authority of ['orchestrator', 'executor']) {
