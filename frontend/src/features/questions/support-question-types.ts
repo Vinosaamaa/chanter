@@ -81,6 +81,31 @@ export type AssistantAnswer = {
 
 export type AssistantStreamPhase = 'idle' | 'streaming' | 'complete' | 'error'
 
+export type AssistantAnswerMode = 'source-only' | 'quoted-evidence' | 'grounded-explanation'
+
+export type AssistantAnswerSelection = {
+  modelId: string
+  answerMode: AssistantAnswerMode
+}
+
+export type AssistantModelCatalog = {
+  defaultModelId: string
+  models: {
+    id: string
+    label: string
+    provider: string
+    model: string
+    mode: 'sources' | 'local' | 'api'
+    billing: string
+  }[]
+  answerModes: {
+    id: AssistantAnswerMode
+    label: string
+    available: boolean
+    unavailableReason: string | null
+  }[]
+}
+
 export type StudyAssistantGrant = {
   grantType: string
   grantTargetId: string

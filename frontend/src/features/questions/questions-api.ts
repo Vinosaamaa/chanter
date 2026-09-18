@@ -2,6 +2,8 @@ import { ApiError, apiFetch, apiFetchResponse, type ApiFetchInit } from '../../l
 
 import type {
   AssistantAnswer,
+  AssistantAnswerSelection,
+  AssistantModelCatalog,
   StudyAssistantPresence,
   SupportQuestion,
   SupportQuestionListResponse,
@@ -33,35 +35,60 @@ export async function listSupportQuestions(
 export async function invokeAssistantAnswer(
   channelId: string,
   supportQuestionId: string,
+  selection?: AssistantAnswerSelection,
 ): Promise<AssistantAnswer> {
   return apiFetch<AssistantAnswer>(
-    `/api/v1/course-channels/${channelId}/support-questions/${supportQuestionId}/assistant-answer`,
+    `/api/v1/course-channels/${channelId}/support-questions/${supportQuestionId}/assistant-answer${selectionQuery(selection)}`,
     {
       method: 'POST',
     },
   )
 }
 
+export function fetchAssistantModels(channelId: string): Promise<AssistantModelCatalog> {
+  return apiFetch<AssistantModelCatalog>(`/api/v1/course-channels/${channelId}/assistant-models`)
+}
+
+function selectionQuery(selection?: AssistantAnswerSelection): string {
+  return selection ? `?${new URLSearchParams(selection).toString()}` : ''
+}
+
+export class AssistantStreamError extends ApiError {
+  readonly code: string
+
+  constructor(code: string, message: string, status: number) {
+    super(message, status)
+    this.code = code
+  }
+}
+
+function interruptedStream(): AssistantStreamError {
+  return new AssistantStreamError('STREAM_INTERRUPTED',
+    'The answer was interrupted before it could be saved. Use approved sources or ask your Instructor / TA.', 502)
+}
+
 export type StreamAssistantHandlers = {
   onToken: (token: string) => void
   onComplete: (answer: AssistantAnswer) => void
+  onStatus?: (status: 'retrieving') => void
   signal?: AbortSignal
 }
 
 /**
- * POST SSE stream for Ask AI (#100). Emits named events `token` then `complete`.
+ * Only an authoritative complete event finishes an answer. Draft tokens are never a saved answer.
  */
 export async function streamAssistantAnswer(
   channelId: string,
   supportQuestionId: string,
   handlers: StreamAssistantHandlers,
+  selection?: AssistantAnswerSelection,
 ): Promise<void> {
-  const path = `/api/v1/course-channels/${channelId}/support-questions/${supportQuestionId}/assistant-answer/stream`
+  const path = `/api/v1/course-channels/${channelId}/support-questions/${supportQuestionId}/assistant-answer/stream${selectionQuery(selection)}`
   const init: ApiFetchInit = { method: 'POST', signal: handlers.signal }
   const response = await apiFetchResponse(path, init)
 
   if (!response.body) {
-    throw new ApiError('Streaming response had no body', response.status)
+    throw interruptedStream()
   }
 
   const reader = response.body.getReader()
@@ -69,6 +96,7 @@ export async function streamAssistantAnswer(
   let buffer = ''
   let eventName = 'message'
   let dataLines: string[] = []
+  let completed = false
 
   const flushEvent = () => {
     if (dataLines.length === 0) {
@@ -79,18 +107,27 @@ export async function streamAssistantAnswer(
     dataLines = []
     const name = eventName
     eventName = 'message'
+    if (name === 'status' && data === 'retrieving') {
+      handlers.onStatus?.('retrieving')
+      return
+    }
+    if (name === 'error') {
+      const error = JSON.parse(data) as { code: string; status: number; message: string }
+      throw new AssistantStreamError(error.code, error.message, error.status)
+    }
     if (name === 'token') {
       handlers.onToken(data)
       return
     }
     if (name === 'complete') {
       handlers.onComplete(JSON.parse(data) as AssistantAnswer)
+      completed = true
     }
   }
 
   let exhausted = false
   try {
-    while (true) {
+    while (!completed) {
       const { done, value } = await reader.read()
       if (done) {
         exhausted = true
@@ -102,6 +139,7 @@ export async function streamAssistantAnswer(
       for (const line of lines) {
         if (line === '') {
           flushEvent()
+          if (completed) break
           continue
         }
         if (line.startsWith(':')) {
@@ -116,7 +154,8 @@ export async function streamAssistantAnswer(
         }
       }
     }
-    flushEvent()
+    // An unfinished frame at EOF is not a dispatched SSE event.
+    if (!completed) throw interruptedStream()
   } finally {
     // Parsing and consumer errors must stop the transport without hiding the original failure.
     if (!exhausted) await reader.cancel().catch(() => undefined)

@@ -1,0 +1,10 @@
+.v2-app-shell .assistant-answer-setup { margin: 18px 0 24px; padding: 18px 0; border-block: 1px solid var(--line); }
+.v2-app-shell .assistant-answer-setup fieldset { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
+.v2-app-shell .assistant-answer-setup label { display: grid; gap: 7px; font-size: 13px; font-weight: 600; min-width: 0; }
+.v2-app-shell .assistant-answer-setup select { width: 100%; min-width: 0; min-height: 44px; padding: 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
+.v2-app-shell .assistant-answer-setup p, .v2-app-shell .assistant-options-status, .v2-app-shell .assistant-retrieval-status { margin: 8px 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.v2-app-shell .assistant-answer-setup .v2-primary-button { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; }
+@media (max-width: 900px) {
+  .v2-app-shell .assistant-answer-setup fieldset { grid-template-columns: minmax(0,1fr); }
+  .v2-app-shell .assistant-answer-setup select { font-size: 16px; }
+}
