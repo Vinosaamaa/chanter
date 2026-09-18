@@ -166,7 +166,8 @@ RESOURCE_ID=$(echo "$EXISTING_RESOURCES" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 resources = data.get('courseResources', data.get('resources', []))
-print(next((r['id'] for r in resources if r.get('title') == '$RESOURCE_TITLE'), ''))
+print(next((r['id'] for r in resources if r.get('title') == '$RESOURCE_TITLE'
+            and r.get('status') in ('PROCESSING', 'AVAILABLE')), ''))
 ")
 if [[ -n "$RESOURCE_ID" ]]; then
   echo "   reusing existing $RESOURCE_TITLE"

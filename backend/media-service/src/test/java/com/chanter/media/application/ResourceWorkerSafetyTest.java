@@ -152,6 +152,35 @@ class ResourceWorkerSafetyTest {
         assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
     }
 
+    @Test void failedLegacyMigrationRetriesMigrationAndPreservesOriginalWhenExhausted() throws Exception {
+        UUID id = UUID.randomUUID(); byte[] content = "legacy retry notes".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        Path original = Path.of("target/media-test", id.toString()); Files.createDirectories(original.getParent()); Files.write(original, content);
+        jdbc.sql("""
+                INSERT INTO course_resources (id,course_id,title,file_name,content_type,byte_size,storage_key,ai_approved,uploaded_by_user_id,created_at,updated_at)
+                VALUES (:id,:course,'Legacy','legacy.txt','text/plain',:size,:key,TRUE,:user,:now,:now)
+                """).param("id", id).param("course", course).param("size", content.length).param("key", id.toString()).param("user", teacher)
+                .param("now", java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)).update();
+        jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=:size").param("size", content.length).update();
+        var importer = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, Clock.systemUTC(), false, true);
+        doThrow(new IllegalStateException("index temporarily unavailable")).when(ingestion).deleteResourceChunks(id);
+        for (int attempt = 0; attempt < 5; attempt++) {
+            jdbc.sql("UPDATE course_resources SET retry_at=NULL").update();
+            importer.runOnce();
+        }
+        verify(ingestion, times(5)).deleteResourceChunks(id);
+        jdbc.sql("UPDATE course_resources SET retry_at=NULL,updated_at=TIMESTAMP WITH TIME ZONE '2000-01-01 00:00:00Z'").update();
+        assertThat(lifecycle.claim(true)).isEmpty();
+        assertThat(Files.readAllBytes(original)).isEqualTo(content);
+        assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(content.length);
+        verify(storage, never()).delete(anyString());
+        // An explicit operator retry remains migration work and reuses the reserved migration key.
+        jdbc.sql("UPDATE course_resources SET attempts=0").update();
+        doCallRealMethod().when(ingestion).deleteResourceChunks(id);
+        importer.runOnce();
+        assertThat(lifecycle.find(id).orElseThrow().state()).isEqualTo("QUARANTINED");
+        assertThat(Files.readAllBytes(original)).isEqualTo(content);
+    }
+
     @Test void cleanResourcesStayAvailableAndReservedAcrossIndexFailuresUntilIndexRetrySucceeds() throws Exception {
         var resource = upload(UUID.randomUUID());
         doThrow(new IllegalStateException("index unavailable")).when(ingestion).ingestAiApprovedResource(any(), any(), anyString(), any());

@@ -1,10 +1,14 @@
 """Bounded readiness for fresh ClamAV signatures and the optional isolated S3 test store."""
 import argparse
 import datetime
+import locale
 import os
 import socket
 import time
 import urllib.request
+
+# ClamAV's VERSION dates use English weekday and month names.
+locale.setlocale(locale.LC_TIME, "C")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--scanner-only", action="store_true")
@@ -20,7 +24,8 @@ while time.monotonic() < deadline:
     try:
         if not arguments.scanner_only:
             with urllib.request.urlopen("http://127.0.0.1:9090/private-media-test", timeout=3) as response:
-                assert response.status == 200
+                if response.status != 200:
+                    raise ValueError("object store is not ready")
         phase = "scanner connection"
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
             connection.settimeout(3)
@@ -40,13 +45,14 @@ while time.monotonic() < deadline:
                 last_version = version
             updated = datetime.datetime.strptime(version.split("/", 2)[2], "%a %b %d %H:%M:%S %Y").replace(tzinfo=datetime.timezone.utc)
             age = datetime.datetime.now(datetime.timezone.utc) - updated
-            assert datetime.timedelta(minutes=-5) <= age <= datetime.timedelta(hours=72)
+            if not datetime.timedelta(minutes=-5) <= age <= datetime.timedelta(hours=72):
+                raise ValueError("scanner definitions are stale or in the future")
         print("ClamAV is ready; scanner definitions are within 72 hours")
         break
-    except (OSError, ValueError, IndexError, AssertionError):
+    except (OSError, ValueError, IndexError):
         if phase != last_report:
             print("Waiting for " + phase, flush=True)
             last_report = phase
-        time.sleep(5)
+        time.sleep(min(5, max(0, deadline - time.monotonic())))
 else:
     raise SystemExit("Private media dependencies did not become ready with fresh scanner definitions")

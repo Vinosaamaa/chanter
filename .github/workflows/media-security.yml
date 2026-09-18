@@ -38,6 +38,7 @@ jobs:
           java-version: '21.0.12+8.0.LTS'
       - name: Start real PostgreSQL, S3 emulator and malware scanner
         run: |
+          python3 -O -m unittest discover -s scripts/media -p 'test_*.py'
           export CHANTER_SCANNER_CLIENT_GID="$(id -g)"
           export CHANTER_CLAMAV_SOCKET_PATH="$GITHUB_WORKSPACE/.cache/media-socket/clamd.sock"
           echo "CHANTER_SCANNER_CLIENT_GID=$CHANTER_SCANNER_CLIENT_GID" >> "$GITHUB_ENV"

@@ -68,4 +68,8 @@ Older code ignores the new states and cannot be a safe rollback target. Deployme
 
 ## Evidence limits
 
+The local filesystem adapter trusts the operating-system account that owns its private root. Preliminary symlink checks reject static substitutions but do not isolate a hostile process with that account's filesystem authority. Production selects S3.
+
+Remote indexing may continue after a caller timeout and create chunks after deletion. Media completion leases cannot prevent those writes. Strict authorization of currently available, AI-approved resources and durable ingestion/deletion coordination remain production gates under #246/#251.
+
 Local tests exercise the real lifecycle SQL using H2, real filesystem bytes, scanner socket protocol, concurrency and failure injection. A separate native AMD64/ARM64 workflow runs real PostgreSQL, S3Mock and ClamAV, tests EICAR rejection and restarts processes with preserved volumes. S3Mock does not establish OCI IAM behavior. Actual private-provider access, constrained full-stack workload and user-facing browser acceptance remain required before deployment completion.
