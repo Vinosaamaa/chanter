@@ -40,6 +40,6 @@ Review added native volume ownership/write checks, per-service boot timings, con
 
 ## Packaged dependency blocker and compatibility
 
-Native release run 34675772167 built the application images and then failed security scanning: the original Spring Boot 3.4.1 application package contained 33 high/critical findings. Issue #319 and PR #320 own the supported-framework repair and complete nested-library scan. No advisory was suppressed. This deployment branch waits for that repair before its next native build.
+The initial native release built the application images and then failed security scanning: the original Spring Boot 3.4.1 application package contained 33 high/critical findings. PR #320 is now merged with the supported-framework repair and complete nested-library scan. No advisory was suppressed. This deployment branch has been rebased onto that repair; native image and staging verification must run again against the integrated candidate before it can be accepted.
 
 The new password encoder creates versioned PBKDF2 hashes, which the previous application cannot verify. The release policy therefore advances to epoch 3 before any such data is written. This incompatibility exists without a database-column change. The later media quarantine migration must use epoch 4. Rebase onto merged UI and AI foundations preserved the exact release scripts and combined the existing LF rules with the Engineering schema rules from PR #313.
