@@ -304,10 +304,6 @@ function App() {
   const [isLoadingInstructorDashboard, setIsLoadingInstructorDashboard] = useState(false)
   const [instructorDashboardResult, setInstructorDashboardResult] = useState<string | null>(null)
   const [instructorDashboardError, setInstructorDashboardError] = useState<string | null>(null)
-  const [saasPlanTier, setSaasPlanTier] = useState('STARTER')
-  const [isUpdatingSaasPlan, setIsUpdatingSaasPlan] = useState(false)
-  const [saasPlanResult, setSaasPlanResult] = useState<string | null>(null)
-  const [saasPlanError, setSaasPlanError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -527,7 +523,6 @@ function App() {
 
       const viewed: StudyServer = await viewedResponse.json()
       setStudyServer(viewed)
-      setSaasPlanTier(viewed.planTier ?? 'STARTER')
       setCourse(null)
       resetTaQueueState()
       resetOfficeHoursState()
@@ -914,40 +909,6 @@ function App() {
     }
   }
 
-  const updateSaasPlan = async () => {
-    if (!studyServer) {
-      return
-    }
-
-    setIsUpdatingSaasPlan(true)
-    setSaasPlanError(null)
-    setSaasPlanResult(null)
-
-    try {
-      const response = await fetch(`/api/v1/study-servers/${studyServer.id}/saas-plan`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planTier: saasPlanTier,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`SaaS Plan update failed with ${response.status}`)
-      }
-
-      const plan: { planTier: string; aiInvocationLimit: number } = await response.json()
-      setSaasPlanTier(plan.planTier)
-      setStudyServer((current) =>
-        current ? { ...current, planTier: plan.planTier } : current,
-      )
-      setSaasPlanResult(`Plan updated to ${plan.planTier} (${plan.aiInvocationLimit} AI invocations).`)
-    } catch (caught) {
-      setSaasPlanError(caught instanceof Error ? caught.message : 'Unable to update SaaS Plan')
-    } finally {
-      setIsUpdatingSaasPlan(false)
-    }
-  }
 
   const addToTaQueue = async () => {
     if (!course || !questionsChannel || !lastSupportQuestionId || !assistantAnswer?.handoffRecommended) {
@@ -2261,35 +2222,6 @@ function App() {
                             ))}
                           </ul>
                         ) : null}
-                      </section>
-                    ) : null}
-                    {studyServer ? (
-                      <section className="support-question-summary">
-                        <p className="eyebrow">SaaS Plan (#24)</p>
-                        <p className="system-line">
-                          Current tier: {studyServer.planTier ?? saasPlanTier}
-                        </p>
-                        <label htmlFor="saas-plan-tier">Plan tier (Owner)</label>
-                        <select
-                          id="saas-plan-tier"
-                          value={saasPlanTier}
-                          onChange={(event) => setSaasPlanTier(event.target.value)}
-                        >
-                          <option value="STARTER">Starter (5 AI invocations)</option>
-                          <option value="PRO">Pro (100 AI invocations)</option>
-                          <option value="ORGANIZATION">Organization (1000 AI invocations)</option>
-                        </select>
-                        <div className="voice-actions">
-                          <button
-                            type="button"
-                            onClick={updateSaasPlan}
-                            disabled={isUpdatingSaasPlan}
-                          >
-                            {isUpdatingSaasPlan ? 'Updating...' : 'Update plan (Owner)'}
-                          </button>
-                        </div>
-                        {saasPlanResult ? <p className="system-line">{saasPlanResult}</p> : null}
-                        {saasPlanError ? <p className="form-error">{saasPlanError}</p> : null}
                       </section>
                     ) : null}
                     {studyServer ? (

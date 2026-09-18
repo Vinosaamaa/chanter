@@ -77,7 +77,8 @@ export function createAppRouter() {
               lazy: async () => ({ Component: (await import('../features/v2-shell/pages/CalendarPage')).CalendarPage }),
             },
             { path: 'teaching', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/TeachingPage')).TeachingPage }) },
-            { path: 'settings/billing', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/BillingSettingsPage')).BillingSettingsPage }) },
+            { path: 'settings/billing', element: <Navigate to="/app/settings/usage" replace /> },
+            { path: 'settings/usage', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/UsageSettingsPage')).UsageSettingsPage }) },
             { path: 'friends', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/FriendsPage')).FriendsPage }) },
             {
               path: 'servers/:serverId/courses/:courseId/settings',

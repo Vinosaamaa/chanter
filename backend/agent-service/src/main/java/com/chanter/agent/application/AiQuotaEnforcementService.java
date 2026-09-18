@@ -47,9 +47,8 @@ public class AiQuotaEnforcementService {
         if (usage.totalInvocations() >= plan.aiInvocationLimit()) {
             throw new ResponseStatusException(
                     HttpStatus.TOO_MANY_REQUESTS,
-                    "AI Study Assistant quota exhausted for the "
-                            + plan.planTier()
-                            + " plan. Upgrade the Study Server SaaS Plan to continue."
+                    "AI Study Assistant quota exhausted for this Study Server. "
+                            + "Course resources and instructor support remain available."
             );
         }
     }

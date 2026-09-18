@@ -1,6 +1,7 @@
 package com.chanter.community.domain;
 
 public enum SaasPlanTier {
+    FREE_BETA(1000),
     STARTER(5),
     PRO(100),
     ORGANIZATION(1000);

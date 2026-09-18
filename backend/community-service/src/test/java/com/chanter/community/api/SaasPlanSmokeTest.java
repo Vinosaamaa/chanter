@@ -15,11 +15,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(properties = "chanter.beta.assistant-run-limit=17")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class SaasPlanSmokeTest {
@@ -29,6 +30,9 @@ class SaasPlanSmokeTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JdbcClient jdbcClient;
 
     @Test
     void ownerCannotRaiseAStudyServerQuotaThroughTheFormerPlanEndpoint() throws Exception {
@@ -50,8 +54,8 @@ class SaasPlanSmokeTest {
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
                         .with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.planTier").value("STARTER"))
-                .andExpect(jsonPath("$.aiInvocationLimit").value(5));
+                .andExpect(jsonPath("$.planTier").value("FREE_BETA"))
+                .andExpect(jsonPath("$.aiInvocationLimit").value(17));
 
         mockMvc.perform(patch("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
                         .with(asUser(ownerUserId))
@@ -64,8 +68,22 @@ class SaasPlanSmokeTest {
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
                         .with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.planTier").value("STARTER"))
-                .andExpect(jsonPath("$.aiInvocationLimit").value(5));
+                .andExpect(jsonPath("$.planTier").value("FREE_BETA"))
+                .andExpect(jsonPath("$.aiInvocationLimit").value(17));
+
+        org.junit.jupiter.api.Assertions.assertEquals("STARTER", jdbcClient
+                .sql("SELECT plan_tier FROM study_servers WHERE id = :id")
+                .param("id", studyServerId).query(String.class).single());
+
+        jdbcClient.sql("UPDATE study_servers SET plan_tier = 'ORGANIZATION' WHERE id = :id")
+                .param("id", studyServerId).update();
+        mockMvc.perform(get("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
+                        .with(asUser(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.planTier").value("FREE_BETA"))
+                .andExpect(jsonPath("$.aiInvocationLimit").value(17))
+                .andExpect(jsonPath("$.entitlementSource").value("OPERATOR_POLICY"))
+                .andExpect(jsonPath("$.usageWindow").value("LIFETIME"));
 
         UUID strangerUserId = UUID.randomUUID();
         mockMvc.perform(patch("/api/v1/study-servers/{studyServerId}/saas-plan", studyServerId)
