@@ -1,0 +1,62 @@
+name: Backend package security
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'scripts/security/**'
+      - '.github/workflows/backend-security.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'scripts/security/**'
+      - '.github/workflows/backend-security.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packaged-java-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '21.0.12+8.0.LTS'
+          cache: maven
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.19.0'
+      - name: Test complete-coverage enforcement
+        run: node --test scripts/security/backend-artifacts.test.mjs
+      - name: Package every runtime service
+        run: mvn -B -q -s backend/.mvn/settings.xml -f backend/pom.xml -DskipTests package
+      - name: Install checksum-pinned scanner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/tools/trivy
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 180 \
+            https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-64bit.tar.gz \
+            --output .cache/tools/trivy.tar.gz
+          printf '%s  %s\n' '2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a' '.cache/tools/trivy.tar.gz' | sha256sum --check --strict
+          tar -xzf .cache/tools/trivy.tar.gz -C .cache/tools/trivy trivy
+      - name: Scan all packaged Java libraries and application resources
+        run: node scripts/security/backend-artifacts.mjs "$PWD/.cache/tools/trivy/trivy"
+      - name: Retain sanitized coverage and advisory summary
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: backend-package-security-summary
+          path: .cache/backend-security/summary.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -29,12 +29,10 @@ public class AuthSessionService {
     static final String NEUTRAL_REGISTER_MESSAGE =
             "If this email can be used, check your inbox for next steps.";
 
-    /**
-     * Precomputed BCrypt hash used when the account is missing or has no password hash,
-     * so {@code matches} always runs (SEC-16 login timing side-channel).
-     */
+    // Every login runs both supported work factors, including missing and passwordless accounts (SEC-16).
     static final String DUMMY_PASSWORD_HASH =
-            "$2b$10$UmakdiX3qQt/PTm0vHM/iOIRL3j8/Yy1jq0dyjHg79Og4QqH/tWkK";
+            "{pbkdf2-sha256-v1}a02bf7ebdc59dc9305f55009849ace566786d5ae9a01e5b8ed626bd91156ab8a1fdbf7636c9419b52446ccdb2fce9872";
+    static final String DUMMY_BCRYPT_HASH = "$2b$10$UmakdiX3qQt/PTm0vHM/iOIRL3j8/Yy1jq0dyjHg79Og4QqH/tWkK";
 
     private final AuthUserRepository authUserRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -118,12 +116,25 @@ public class AuthSessionService {
         String passwordHash = user != null && user.passwordHash() != null
                 ? user.passwordHash()
                 : DUMMY_PASSWORD_HASH;
-        boolean passwordMatches = passwordEncoder.matches(password, passwordHash);
+        boolean currentFormat = passwordHash.startsWith("{pbkdf2-sha256-v1}");
+        boolean bcryptInputAllowed = password.getBytes(StandardCharsets.UTF_8).length <= 72;
+        // An overlong guess must still perform BCrypt work, but can never authenticate a legacy hash.
+        String bcryptInput = bcryptInputAllowed ? password : "non-account-timing-placeholder";
+        boolean legacyMatches = passwordEncoder.matches(bcryptInput,
+                currentFormat ? DUMMY_BCRYPT_HASH : passwordHash);
+        boolean currentMatches;
+        try {
+            currentMatches = passwordEncoder.matches(password, currentFormat ? passwordHash : DUMMY_PASSWORD_HASH);
+        } catch (IllegalArgumentException malformedHash) {
+            passwordEncoder.matches(password, DUMMY_PASSWORD_HASH);
+            currentMatches = false;
+        }
+        boolean passwordMatches = currentFormat ? currentMatches : bcryptInputAllowed && legacyMatches;
         if (user == null || user.passwordHash() == null || !passwordMatches) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
         refreshTokenRepository.lockUser(user.id());
-        // BCrypt is expensive. Lock only after verification, then reject a password changed by a concurrent reset.
+        // Password hashing is expensive. Lock only after verification, then reject a password changed by a concurrent reset.
         user = authUserRepository.findById(user.id()).orElse(null);
         if (user == null || !passwordHash.equals(user.passwordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");

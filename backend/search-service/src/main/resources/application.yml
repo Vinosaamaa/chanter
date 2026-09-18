@@ -2,6 +2,11 @@ server:
   port: ${SEARCH_PORT:8088}
 
 spring:
+  http:
+    codecs:
+      preferred-json-mapper: jackson2
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: search-service
   datasource:

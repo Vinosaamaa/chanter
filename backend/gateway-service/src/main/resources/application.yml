@@ -2,96 +2,103 @@ server:
   port: ${GATEWAY_PORT:8080}
 
 spring:
+  http:
+    codecs:
+      preferred-json-mapper: jackson2
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: gateway-service
   cloud:
     gateway:
-      routes:
-        - id: realtime-service
-          uri: ${REALTIME_SERVICE_URL:ws://localhost:8087}
-          predicates:
-            - Path=/api/v1/realtime/**
-        - id: realtime-service-dm-calls
-          uri: ${REALTIME_SERVICE_HTTP_URL:http://localhost:8087}
-          order: -2
-          predicates:
-            - Path=/api/v1/direct-message-calls/*/media-token
-            - Method=POST
-        - id: auth-service
-          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
-          predicates:
-            - Path=/api/v1/auth/**
-        - id: message-service-channel-messages
-          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
-          order: -1
-          predicates:
-            - Path=/api/v1/study-server-channels/*/messages,/api/v1/course-channels/*/messages
-        - id: message-service-support-questions
-          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
-          order: -1
-          predicates:
-            - Path=/api/v1/course-channels/*/support-questions,/api/v1/course-channels/*/support-questions/**
-        - id: message-service-ta-queue
-          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
-          order: -1
-          predicates:
-            - Path=/api/v1/cohorts/*/ta-queue,/api/v1/cohorts/*/ta-queue/**
-        - id: message-service-channel-summary
-          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
-          order: -1
-          predicates:
-            - Path=/api/v1/course-channels/*/channel-summary
-        - id: message-service-approved-faqs
-          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
-          order: -1
-          predicates:
-            - Path=/api/v1/courses/*/approved-faqs,/api/v1/courses/*/approved-faqs/**,/api/v1/course-channels/*/faq-candidates
-        - id: media-service-course-resources
-          uri: ${MEDIA_SERVICE_URL:http://localhost:8084}
-          order: -1
-          predicates:
-            - Path=/api/v1/courses/*/course-resources,/api/v1/courses/*/course-resources/**,/api/v1/course-resources/**
-        - id: agent-service-support-question-answer
-          uri: ${AGENT_SERVICE_URL:http://localhost:8085}
-          order: -2
-          predicates:
-            - Path=/api/v1/course-channels/*/support-questions/*/assistant-answer,/api/v1/course-channels/*/support-questions/*/assistant-answer/**,/api/v1/course-channels/*/assistant-models
-        - id: agent-service-study-assistant
-          uri: ${AGENT_SERVICE_URL:http://localhost:8085}
-          order: -1
-          predicates:
-            - Path=/api/v1/study-servers/*/study-assistant,/api/v1/study-servers/*/study-assistant/**,/api/v1/study-servers/*/ai-usage-metrics
-        - id: analytics-service-instructor-dashboard
-          uri: ${ANALYTICS_SERVICE_URL:http://localhost:8086}
-          order: -2
-          predicates:
-            - Path=/api/v1/study-servers/*/instructor-dashboard
-        - id: search-service-global-search
-          uri: ${SEARCH_SERVICE_URL:http://localhost:8088}
-          order: -2
-          predicates:
-            - Path=/api/v1/study-servers/*/search,/api/v1/study-servers/*/search/**
-        - id: notification-service-me-notifications
-          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8089}
-          order: -2
-          predicates:
-            - Path=/api/v1/me/notifications,/api/v1/me/notifications/**
-        - id: message-service-instructor-dashboard
-          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
-          order: -1
-          predicates:
-            - Path=/api/v1/instructor-dashboard/**
-        - id: community-service
-          # /api/v1/me/** covers /me/calendar and /me/home-summary.
-          # /me/notifications/** is claimed earlier by notification-service (order -2).
-          uri: ${COMMUNITY_SERVICE_URL:http://localhost:8082}
-          predicates:
-            - Path=/api/v1/me/**,/api/v1/study-servers/**,/api/v1/study-server-channels/**,/api/v1/study-server-invitations,/api/v1/study-server-invitations/**,/api/v1/cohorts/**,/api/v1/course-channels/**,/api/v1/courses/*/cohorts,/api/v1/courses/*/instructor,/api/v1/courses/*/publish,/api/v1/courses/*/unpublish,/api/v1/courses/*/archive,/api/v1/courses/*/overview-summary,/api/v1/courses/*,/api/v1/courses/*/resource-access,/api/v1/cohorts/*/ta-queue-access,/api/v1/cohorts/*/office-hours-access,/api/v1/office-hours/**,/api/v1/users/*/co-membership,/api/v1/social/**
-        - id: message-service
-          uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
-          predicates:
-            - Path=/api/v1/friend-requests/**,/api/v1/friendships/**,/api/v1/direct-messages/**,/api/v1/direct-message-calls/**,/api/v1/user-blocks/**
-      # CORS is configured in CorsConfig from chanter.cors.allowed-origins (CHANTER_CORS_ORIGINS).
+      server:
+        webflux:
+          routes:
+            - id: realtime-service
+              uri: ${REALTIME_SERVICE_URL:ws://localhost:8087}
+              predicates:
+                - Path=/api/v1/realtime/**
+            - id: realtime-service-dm-calls
+              uri: ${REALTIME_SERVICE_HTTP_URL:http://localhost:8087}
+              order: -2
+              predicates:
+                - Path=/api/v1/direct-message-calls/*/media-token
+                - Method=POST
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/auth/**
+            - id: message-service-channel-messages
+              uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+              order: -1
+              predicates:
+                - Path=/api/v1/study-server-channels/*/messages,/api/v1/course-channels/*/messages
+            - id: message-service-support-questions
+              uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+              order: -1
+              predicates:
+                - Path=/api/v1/course-channels/*/support-questions,/api/v1/course-channels/*/support-questions/**
+            - id: message-service-ta-queue
+              uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+              order: -1
+              predicates:
+                - Path=/api/v1/cohorts/*/ta-queue,/api/v1/cohorts/*/ta-queue/**
+            - id: message-service-channel-summary
+              uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+              order: -1
+              predicates:
+                - Path=/api/v1/course-channels/*/channel-summary
+            - id: message-service-approved-faqs
+              uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+              order: -1
+              predicates:
+                - Path=/api/v1/courses/*/approved-faqs,/api/v1/courses/*/approved-faqs/**,/api/v1/course-channels/*/faq-candidates
+            - id: media-service-course-resources
+              uri: ${MEDIA_SERVICE_URL:http://localhost:8084}
+              order: -1
+              predicates:
+                - Path=/api/v1/courses/*/course-resources,/api/v1/courses/*/course-resources/**,/api/v1/course-resources/**
+            - id: agent-service-support-question-answer
+              uri: ${AGENT_SERVICE_URL:http://localhost:8085}
+              order: -2
+              predicates:
+                - Path=/api/v1/course-channels/*/support-questions/*/assistant-answer,/api/v1/course-channels/*/support-questions/*/assistant-answer/**,/api/v1/course-channels/*/assistant-models
+            - id: agent-service-study-assistant
+              uri: ${AGENT_SERVICE_URL:http://localhost:8085}
+              order: -1
+              predicates:
+                - Path=/api/v1/study-servers/*/study-assistant,/api/v1/study-servers/*/study-assistant/**,/api/v1/study-servers/*/ai-usage-metrics
+            - id: analytics-service-instructor-dashboard
+              uri: ${ANALYTICS_SERVICE_URL:http://localhost:8086}
+              order: -2
+              predicates:
+                - Path=/api/v1/study-servers/*/instructor-dashboard
+            - id: search-service-global-search
+              uri: ${SEARCH_SERVICE_URL:http://localhost:8088}
+              order: -2
+              predicates:
+                - Path=/api/v1/study-servers/*/search,/api/v1/study-servers/*/search/**
+            - id: notification-service-me-notifications
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8089}
+              order: -2
+              predicates:
+                - Path=/api/v1/me/notifications,/api/v1/me/notifications/**
+            - id: message-service-instructor-dashboard
+              uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+              order: -1
+              predicates:
+                - Path=/api/v1/instructor-dashboard/**
+            - id: community-service
+              # /api/v1/me/** covers /me/calendar and /me/home-summary.
+              # /me/notifications/** is claimed earlier by notification-service (order -2).
+              uri: ${COMMUNITY_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/me/**,/api/v1/study-servers/**,/api/v1/study-server-channels/**,/api/v1/study-server-invitations,/api/v1/study-server-invitations/**,/api/v1/cohorts/**,/api/v1/course-channels/**,/api/v1/courses/*/cohorts,/api/v1/courses/*/instructor,/api/v1/courses/*/publish,/api/v1/courses/*/unpublish,/api/v1/courses/*/archive,/api/v1/courses/*/overview-summary,/api/v1/courses/*,/api/v1/courses/*/resource-access,/api/v1/cohorts/*/ta-queue-access,/api/v1/cohorts/*/office-hours-access,/api/v1/office-hours/**,/api/v1/users/*/co-membership,/api/v1/social/**
+            - id: message-service
+              uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/friend-requests/**,/api/v1/friendships/**,/api/v1/direct-messages/**,/api/v1/direct-message-calls/**,/api/v1/user-blocks/**
+          # CORS is configured in CorsConfig from chanter.cors.allowed-origins (CHANTER_CORS_ORIGINS).
 
 chanter:
   jwt:

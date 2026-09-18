@@ -2,6 +2,11 @@ server:
   port: ${COMMUNITY_PORT:8082}
 
 spring:
+  http:
+    codecs:
+      preferred-json-mapper: jackson2
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: community-service
   datasource:
