@@ -10,7 +10,7 @@ capabilityIds: ["chanter-ai-study-assistant-runtime"]
 createdAt: 2026-09-12
 reconstructed: false
 confidence: high
-unknowns: ["Hosted browser and exact-head CI checks are pending on the initial candidate.", "Live provider accounts, semantic explanations and production deployment are unverified."]
+unknowns: ["Final exact-head review, merged-main and required release checks remain delivery gates.", "Live provider accounts, semantic explanations and production deployment are unverified."]
 modules: ["frontend-questions", "frontend-course-workspace"]
 interfaces: ["authenticated-assistant-model-catalog", "assistant-answer-sse"]
 seams: ["stream-draft-to-saved-answer", "provider-attempt-to-source-recovery"]
@@ -28,7 +28,7 @@ verification: {"state":"verified", "evidenceRefs":["test:stream-assistant-contra
 visibility: public-safe
 publicationEligibility: eligible
 issue: 321
-pr: null
+pr: 322
 release: null
 run: null
 ---
@@ -40,4 +40,4 @@ The Questions workspace now consumes the authenticated catalog and sends explici
 
 Only a completed SSE frame commits an answer in the browser. EOF and errors discard drafts; transport readers are released. Request ownership prevents late callbacks from a superseded question or channel from changing the current view. After a possibly billable request, the current workspace permits only explicit source-only recovery. This conservative UI rule does not replace the durable server ledger across reloads and tabs.
 
-The implementation adds a compact controls component within the existing reading pane. Existing design tokens and buttons keep the new CSS within the unchanged bundle budget. Local tests reproduce the prior failure modes and pass after the changes. Hosted fixture images prove responsive rendering separately from the real seeded source-retrieval and persisted-reload browser test. Exact-head review, hosted checks and release evidence are recorded in the owning receipt and issue before delivery.
+The implementation adds compact controls within the existing reading pane. Existing design tokens and buttons keep the new CSS within the unchanged bundle budget. Tests reproduce the prior failure modes. Hosted fixture checks and reviewed images verify responsive rendering separately from the passing real seeded source-retrieval and persisted-reload browser test. Final exact-head review and checks remain separate from merged-main and release verification.

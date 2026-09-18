@@ -83,6 +83,8 @@ for (const terminal of ['eof', 'error'] as const) {
     await page.screenshot({ path: info.outputPath(`fixture-ui-ai-${terminal}-recovery-390.png`) })
     await page.getByRole('button', { name: 'Use approved sources' }).click()
     await expect(page.getByText(/Approved sources · no generation model/)).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Answer recovery' })).toHaveCount(0)
+    await expect(page.getByRole('combobox', { name: 'Answer source' })).toHaveCount(0)
     expect(selections).toEqual(['visual-model', 'source-only'])
     await page.screenshot({ path: info.outputPath(`fixture-ui-ai-${terminal}-recovered-390.png`) })
   })

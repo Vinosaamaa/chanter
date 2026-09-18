@@ -136,7 +136,10 @@ vi.mock('../../../support-operations/hooks/use-ta-queue-panel', () => ({
 }))
 
 describe('CourseQuestionsPage', () => {
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    useAuthStore.setState(useAuthStore.getInitialState())
+  })
 
   it('opens a phone reading pane and returns to its question list', async () => {
     const user = userEvent.setup()
