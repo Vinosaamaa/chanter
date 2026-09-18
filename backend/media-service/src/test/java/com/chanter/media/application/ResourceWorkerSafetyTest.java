@@ -152,6 +152,16 @@ class ResourceWorkerSafetyTest {
         assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
     }
 
+    @Test void requestBudgetFailureIsReportedWhileCleanupKeepsItsReservation() throws Exception {
+        doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                "Private storage request budget reached")).when(storage).put(anyString(), any(), anyString());
+        assertThatThrownBy(() -> upload(UUID.randomUUID())).isInstanceOfSatisfying(ResponseStatusException.class,
+                failure -> assertThat(failure.getStatusCode().value()).isEqualTo(503));
+        assertThat(jdbc.sql("SELECT state FROM course_resources").query(String.class).single()).isEqualTo("DELETE_PENDING");
+        assertThat(service.usage(course, teacher).reservedBytes()).isPositive();
+        assertThat(service.listCourseResources(course, learner)).isEmpty();
+    }
+
     @Test void failedLegacyMigrationRetriesMigrationAndPreservesOriginalWhenExhausted() throws Exception {
         UUID id = UUID.randomUUID(); byte[] content = "legacy retry notes".getBytes(java.nio.charset.StandardCharsets.UTF_8);
         Path original = Path.of("target/media-test", id.toString()); Files.createDirectories(original.getParent()); Files.write(original, content);

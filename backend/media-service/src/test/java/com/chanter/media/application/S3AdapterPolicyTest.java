@@ -37,6 +37,8 @@ class S3AdapterPolicyTest {
             doThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE))
                     .when(lifecycle).countRequest(false);
             assertThatThrownBy(() -> adapter.open(key)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+            assertThatThrownBy(() -> adapter.put(key, content, UploadValidator.checksum(content)))
+                    .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
             assertThat(counter.get()).isEqualTo(4);
         } finally { adapter.close(); server.stop(0); }
     }

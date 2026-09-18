@@ -167,7 +167,7 @@ import sys, json
 data = json.load(sys.stdin)
 resources = data.get('courseResources', data.get('resources', []))
 print(next((r['id'] for r in resources if r.get('title') == '$RESOURCE_TITLE'
-            and r.get('status') in ('PROCESSING', 'AVAILABLE')), ''))
+            and r.get('status') in ('PROCESSING', 'AVAILABLE') and r.get('aiApproved') is True), ''))
 ")
 if [[ -n "$RESOURCE_ID" ]]; then
   echo "   reusing existing $RESOURCE_TITLE"

@@ -36,6 +36,10 @@ Owning issue: [#244](https://github.com/Vinosaamaa/chanter/issues/244). Lane: me
 
 The September 18 continuation rebases onto #319's supported backend. The Spring Boot 4 media dependency and test-import changes applied cleanly and affected-module verification passed. Full CodeAnt review completed at the saved Unix-socket head; [review dispositions](issue-244-codeant-fix.md) cover the readiness and demo-seed corrections, migration regression and unresolved production boundary. Optimized-Python regressions reproduced both readiness bypasses before explicit checks replaced assertions, and the seed regression reproduced reuse of a failed entry before filtering by status.
 
+The integrated package scan found unused Apache 5 HTTP transport jars introduced by the AWS SDK. The media POM now excludes `apache5-client` because the adapter explicitly uses the URL-connection transport. This removes the vulnerable transitive HttpCore artifacts without suppressing advisories or changing the scanner policy.
+
+The next review adds AI approval to demo-resource reuse and preserves explicit HTTP 503 request-budget failures through the S3 adapter and upload service. Both behaviors failed their regression tests before the changes. Failed upload cleanup keeps its byte reservation until confirmed deletion.
+
 The provider is unprovisioned. Native container checks must pass at the final head, followed by #243 integration, actual private bucket permissions/anonymous-denial and recovery tests, processing/failure UI browser evidence, and a measured 2 OCPU/12 GB full-stack workload. ClamAV's 4 GB container guidance cannot be added on top of the earlier 7.625 GiB base caps without reallocation. Schema V2 requires deployment epoch 4, following #319's authentication epoch 3; old code must not be rolled back onto the new lifecycle data.
 
 See [the operator runbook](private-course-resources.md) and [the system review](../engineering/records/architecture-review-chanter-private-resources.md).

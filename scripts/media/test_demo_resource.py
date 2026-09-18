@@ -18,13 +18,16 @@ class DemoResourceTest(unittest.TestCase):
 
     def test_failed_or_rejected_seed_is_not_reused(self):
         self.assertEqual(self.select([
-            {"id": "failed", "title": "Guide", "status": "FAILED"},
-            {"id": "rejected", "title": "Guide", "status": "REJECTED"},
-            {"id": "safe", "title": "Guide", "status": "AVAILABLE"},
+            {"id": "failed", "title": "Guide", "status": "FAILED", "aiApproved": True},
+            {"id": "rejected", "title": "Guide", "status": "REJECTED", "aiApproved": True},
+            {"id": "safe", "title": "Guide", "status": "AVAILABLE", "aiApproved": True},
         ]), "safe")
 
     def test_pending_seed_is_reused_while_its_scan_finishes(self):
-        self.assertEqual(self.select([{"id": "pending", "title": "Guide", "status": "PROCESSING"}]), "pending")
+        self.assertEqual(self.select([{"id": "pending", "title": "Guide", "status": "PROCESSING", "aiApproved": True}]), "pending")
+
+    def test_resource_without_ai_approval_is_not_reused(self):
+        self.assertEqual(self.select([{"id": "private", "title": "Guide", "status": "AVAILABLE", "aiApproved": False}]), "")
 
 
 if __name__ == "__main__":

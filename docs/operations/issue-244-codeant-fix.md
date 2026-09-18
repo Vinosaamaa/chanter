@@ -24,4 +24,10 @@ Retain generic exceptions without provider causes because HTTP/provider exceptio
 
 ## Production boundary
 
+The second review at `8e2670e` also raised deletion after the final download authorization check and reclaiming expired worker leases. The documented download contract permits a download authorized before a later deletion to finish; new downloads and deletion during provider reads remain denied. Expired leases deliberately permit recovery with at-least-once work. A stale lease cannot overwrite the newer lifecycle state; repeated provider attempts are still metered, immutable puts reject replacements and repeated deletes are idempotent. This does not establish exactly-once remote indexing.
+
+The integrated backend-package scan found two HIGH advisories in unused HttpCore 5.3.6 libraries brought by the AWS SDK's new `apache5-client` runtime dependency. The adapter explicitly selects `UrlConnectionHttpClient`; exclude the unused Apache 5 transport alongside the existing Apache 4 and Netty exclusions. Repackage and rerun the complete artifact scan without suppressions.
+
+The second remediation round also requires `aiApproved=true` when reusing a demo seed and propagates an explicit request-budget denial as HTTP 503. Cleanup still retains the byte reservation until deletion is confirmed; uncertain provider writes retain their existing durable failed-resource behavior. Regressions first reproduced the unapproved seed selection and swallowed budget rejection at both adapter and service boundaries. The optimized-Python regressions run under the workflow's actual `python3 -O` invocation; they do not claim subprocess isolation inside each test.
+
 Deletion can race indexing that continues after the caller times out. A completion lease protects media metadata but does not prevent late AI chunks. Issues #246/#251 must provide durable ingestion/deletion coordination, and retrieval must require a currently `AVAILABLE`, approved resource before using chunks. This is an unresolved production gate, not a completed deletion guarantee. #243 composition, epoch 4, actual private-provider recovery and measured full-stack capacity also remain required.

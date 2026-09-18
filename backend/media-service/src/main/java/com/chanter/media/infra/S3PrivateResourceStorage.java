@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
@@ -73,7 +74,8 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
             lifecycle.countRequest(false);
             client.putObject(PutObjectRequest.builder().bucket(bucket).key(key).ifNoneMatch("*").contentMD5(md5)
                     .contentType("application/octet-stream").metadata(Map.of("sha256", sha256)).build(), RequestBody.fromFile(content));
-        } catch (Exception exception) { throw failure(); }
+        } catch (ResponseStatusException budget) { throw budget; }
+        catch (Exception exception) { throw failure(); }
     }
     @Override public InputStream open(String key) throws IOException {
         PrivateResourceStorage.requireKey(key);

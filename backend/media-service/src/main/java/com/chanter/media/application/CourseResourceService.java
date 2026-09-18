@@ -52,6 +52,7 @@ public class CourseResourceService {
             } catch (Exception unavailable) {
                 // A timed-out put may have succeeded. Keep the reservation until a worker confirms deletion.
                 lifecycle.requestDelete(id);
+                if (unavailable instanceof ResponseStatusException budget) throw budget;
             }
             return lifecycle.find(id).orElseThrow();
         } catch (IOException exception) {
