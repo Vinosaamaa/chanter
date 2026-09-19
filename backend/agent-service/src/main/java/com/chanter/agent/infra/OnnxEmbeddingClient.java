@@ -55,6 +55,7 @@ public final class OnnxEmbeddingClient implements EmbeddingClient, AutoCloseable
     }
 
     @Override public float[] embed(String text) {
+        if (Thread.currentThread().isInterrupted()) throw new java.util.concurrent.CancellationException("Embedding request cancelled");
         if (text == null || text.isBlank() || text.length() > 16384) {
             throw new IllegalArgumentException("Embedding input must contain 1 to 16384 characters");
         }
@@ -67,6 +68,7 @@ public final class OnnxEmbeddingClient implements EmbeddingClient, AutoCloseable
                  var mask = OnnxTensor.createTensor(environment, new long[][]{encoded.getAttentionMask()});
                  var types = OnnxTensor.createTensor(environment, new long[][]{encoded.getTypeIds()});
                  var result = session.run(Map.of("input_ids", ids, "attention_mask", mask, "token_type_ids", types))) {
+                if (Thread.currentThread().isInterrupted()) throw new java.util.concurrent.CancellationException("Embedding request cancelled");
                 var tokens = ((float[][][]) result.get(0).getValue())[0];
                 float[] vector = new float[dimensions()];
                 for (int token = 0; token < tokens.length; token++) {
@@ -77,7 +79,7 @@ public final class OnnxEmbeddingClient implements EmbeddingClient, AutoCloseable
             }
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Semantic embedding interrupted");
+            throw new java.util.concurrent.CancellationException("Embedding request cancelled");
         } catch (OrtException failed) {
             throw new IllegalStateException("Semantic embedding failed", failed);
         } finally { if (acquired) inference.release(); }

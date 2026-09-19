@@ -35,11 +35,12 @@ public final class ApiEmbeddingClient implements EmbeddingClient {
     @Override public int dimensions(){return metadata.dimensions();}
     @Override public EmbeddingModel metadata(){return metadata;}
     @Override public float[] embed(String text) {
+        if(Thread.currentThread().isInterrupted()) throw new java.util.concurrent.CancellationException("Embedding request cancelled");
         if(text==null || text.isBlank() || text.length()>16384) throw new IllegalArgumentException("Invalid bounded embedding input");
         try {
             var request=client.post().uri(path);
             if(apiKey!=null && !apiKey.isBlank()) request.header("Authorization","Bearer "+apiKey);
-            return request.body(Map.of("model",metadata.model(),"input",text,"encoding_format","float"))
+            var result=request.body(Map.of("model",metadata.model(),"input",text,"encoding_format","float"))
                     .exchange((sent,response)->{
                         if(!response.getStatusCode().is2xxSuccessful()) throw new IllegalStateException("Embedding API rejected request");
                         byte[] bytes=response.getBody().readNBytes(65537);
@@ -64,7 +65,10 @@ public final class ApiEmbeddingClient implements EmbeddingClient {
                         catch(IllegalArgumentException invalid) { throw new IllegalStateException("Embedding API returned invalid coordinates"); }
                         return vector;
                     });
+            if(Thread.currentThread().isInterrupted()) throw new java.util.concurrent.CancellationException("Embedding request cancelled");
+            return result;
         } catch(org.springframework.web.client.RestClientException unavailable) {
+            if(Thread.currentThread().isInterrupted()) throw new java.util.concurrent.CancellationException("Embedding request cancelled");
             throw new IllegalStateException("Embedding API is unavailable");
         }
     }

@@ -32,6 +32,11 @@ class OnnxEmbeddingClientTest {
             assertThatThrownBy(() -> client.embed(" ")).isInstanceOf(IllegalArgumentException.class);
             assertThat(client.embed("bounded text ".repeat(1000))).hasSize(384);
             assertThatCode(()->VectorValue.encode(client.embed("?! ..."),384)).doesNotThrowAnyException();
+            Thread.currentThread().interrupt();
+            try {
+                assertThatThrownBy(()->client.embed("Evidence query")).isInstanceOf(java.util.concurrent.CancellationException.class);
+                assertThat(Thread.currentThread().isInterrupted()).isTrue();
+            } finally {Thread.interrupted();}
         }
     }
 

@@ -9,6 +9,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class ApiEmbeddingClientTest {
+    @Test void cancelledRequestIsNotAnUnavailableProviderAnswer() {
+        var client=new ApiEmbeddingClient("api",URI.create("http://127.0.0.1:1"),null,"stable","v1",8);
+        Thread.currentThread().interrupt();
+        try {
+            assertThatThrownBy(()->client.embed("Evidence query")).isInstanceOf(java.util.concurrent.CancellationException.class);
+            assertThat(Thread.currentThread().isInterrupted()).isTrue();
+        } finally {Thread.interrupted();}
+    }
     @Test void remoteModelDimensionsAndFiniteCoordinatesAreRequired() throws Exception {
         var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         var body=new AtomicReference<>("{\"model\":\"stable-model\",\"data\":[{\"index\":0,\"embedding\":[2,0,0,0,0,0,0,0]}]}");

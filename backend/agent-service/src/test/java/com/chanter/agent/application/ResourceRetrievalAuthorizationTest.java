@@ -104,6 +104,12 @@ class ResourceRetrievalAuthorizationTest {
                 .isInstanceOf(SemanticRetrievalUnavailableException.class);
         verifyNoInteractions(embeddings);
     }
+    @Test void cancelledProviderDoesNotBecomeAHandoffResult() {
+        when(embeddingClient.embed("question")).thenThrow(new java.util.concurrent.CancellationException("cancelled"));
+        assertThatThrownBy(()->retrieval.retrieve("question",course,viewer,Set.of(resource),5))
+                .isInstanceOf(java.util.concurrent.CancellationException.class);
+        verifyNoInteractions(embeddings);
+    }
 
     @Test void datastoreReceivesTheLiveAuthorizedScopeAndSourceVersion() {
         assertThat(retrieval.retrieve("question", course, viewer, Set.of(resource), 5)).hasSize(1);

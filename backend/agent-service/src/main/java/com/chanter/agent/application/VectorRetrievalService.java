@@ -42,6 +42,7 @@ public class VectorRetrievalService {
             var model=client.metadata();
             float[] vector;
             try { vector=client.embed(query); }
+            catch(java.util.concurrent.CancellationException cancelled) { throw cancelled; }
             catch(IllegalStateException unavailable) { throw new SemanticRetrievalUnavailableException(); }
             if(java.util.stream.IntStream.range(0,vector.length).allMatch(i->vector[i]==0)) return List.of();
             return search.nearest(model,courseId,authorized,vector,topK<1?5:Math.min(topK,50),minimumScore);

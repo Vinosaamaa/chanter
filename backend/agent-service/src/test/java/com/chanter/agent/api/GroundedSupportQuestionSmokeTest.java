@@ -66,18 +66,23 @@ class GroundedSupportQuestionSmokeTest {
         assertThat(response.sources()).isEmpty();
     }
 
-    @Test void deniedRetrievalDoesNotBecomeASavedLowConfidenceAnswer() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})
+    void deniedOrCancelledRetrievalDoesNotBecomeASavedLowConfidenceAnswer(boolean cancelled) throws Exception {
         UUID server=UUID.randomUUID(),instructor=UUID.randomUUID(),learner=UUID.randomUUID(),channel=UUID.randomUUID(),
                 course=UUID.randomUUID(),resource=UUID.randomUUID(),question=UUID.randomUUID();
         installAssistant(server,instructor,learner,channel,course,UUID.randomUUID(),resource);
         channelAccessClient.grantLearnerPost(channel,learner,course,server,"questions");
         supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question,channel,learner,"A question"));
-        org.mockito.Mockito.doThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN))
+        org.mockito.Mockito.doThrow(cancelled ? new java.util.concurrent.CancellationException("cancelled")
+                : new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN))
                 .when(vectorRetrieval).retrieve(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.eq(course),
                     org.mockito.ArgumentMatchers.eq(learner),org.mockito.ArgumentMatchers.anySet(),org.mockito.ArgumentMatchers.anyInt());
-        mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions/{questionId}/assistant-answer",channel,question)
-                .header(AuthHeaders.USER_ID,learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-agent"))
-                .andExpect(status().isForbidden());
+        var request=post("/api/v1/course-channels/{channelId}/support-questions/{questionId}/assistant-answer",channel,question)
+                .header(AuthHeaders.USER_ID,learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-agent");
+        if(cancelled) org.assertj.core.api.Assertions.assertThatThrownBy(()->mockMvc.perform(request))
+                .hasRootCauseInstanceOf(java.util.concurrent.CancellationException.class);
+        else mockMvc.perform(request).andExpect(status().isForbidden());
         assertThat(jdbcClient.sql("SELECT COUNT(*) FROM study_assistant_answers WHERE support_question_id=:id").param("id",question).query(Long.class).single()).isZero();
     }
 
