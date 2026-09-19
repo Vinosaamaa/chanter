@@ -36,6 +36,21 @@ public final class VectorRuntimeProbe {
         var app=new SpringApplication(AgentServiceApplication.class);
         try(var context=app.run(args)) {
             var jdbc=context.getBean(JdbcClient.class);
+            int port=context.getEnvironment().getRequiredProperty("local.server.port",Integer.class);
+            // A low trace ID is sampled deterministically at 0.05. A raw socket avoids an
+            // instrumented client replacing this fixture's incoming traceparent.
+            try(var socket=new java.net.Socket("127.0.0.1",port)) {
+                socket.setSoTimeout(5000);
+                socket.getOutputStream().write(("GET /actuator/health?private=vector-private-canary-247 HTTP/1.1\r\n"
+                        +"Host: 127.0.0.1\r\ntraceparent: 00-00000000000000000000000000000001-0000000000000001-01\r\n"
+                        +"Connection: close\r\n\r\n").getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                socket.getOutputStream().flush();
+                var response=new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream(),java.nio.charset.StandardCharsets.US_ASCII));
+                String status=response.readLine();
+                if(status==null || !status.startsWith("HTTP/1.1 200"))
+                    throw new AssertionError("Telemetry canary request did not reach the actual application");
+                while(response.readLine()!=null) { /* Drain the bounded health response before closing. */ }
+            }
             if(jdbc.sql("SELECT rolsuper OR rolcreatedb OR rolcreaterole FROM pg_roles WHERE rolname=current_user").query(Boolean.class).single())
                 throw new AssertionError("Runtime proof must use an unprivileged schema owner");
             var search=context.getBean(JdbcVectorSearch.class);
