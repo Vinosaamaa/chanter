@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { modules, databaseModules, validateRelease, validateConfig, composeFor, executeDeployment } from './release.mjs';
-import { assertMigrationFloor, backupEnvironment } from './recovery.mjs';
+import { assertMigrationFloor, backupEnvironment, backupUnits, summarizeBackup } from './recovery.mjs';
 
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const writePrivateText = (file, value) => {
@@ -329,6 +329,41 @@ export function stopEnvironment(stateDir, run = docker) {
   } finally { fs.rmdirSync(lock); }
 }
 
+export function backupDatabase(stateDir, type = 'incr', run = docker) {
+  if (!['full', 'incr', 'check'].includes(type)) throw new Error('Backup type must be full, incr or check');
+  const lock = path.join(path.dirname(stateDir), '.deploy-lock');
+  try { fs.mkdirSync(lock); } catch { throw new Error('Deployment or backup is active; inspect the lock before retrying'); }
+  try {
+    const activeFile = path.join(path.dirname(stateDir), 'active-environment.json');
+    const currentFile = path.join(stateDir, 'current.json');
+    if (!fs.existsSync(activeFile) || !fs.existsSync(currentFile)) throw new Error('Backup requires an active accepted deployment');
+    const current = json(currentFile); const active = json(activeFile);
+    if (active.stateDir !== stateDir || active.bundleDir !== current.bundleDir) throw new Error('Deployment has not completed; reconcile recovery state before scheduled backup');
+    const release = validateRelease(json(path.join(current.bundleDir, 'release.json')));
+    if (release.commit !== current.commit) throw new Error('Backup release receipt does not match its bundle');
+    const config = validateConfig(json(path.join(stateDir, 'config.json')));
+    verifyMigrationHistory(stateDir, release, config.environment, run);
+    // Use the accepted container configuration. Rendering here could silently
+    // point a running cluster at credentials it has not loaded.
+    const file = path.join(stateDir, 'rendered', release.commit, 'compose.json');
+    if (!fs.existsSync(file)) throw new Error('Accepted deployment configuration is missing');
+    const execute = args => run(['compose', '--project-name', `chanter-${config.environment}`, '-f', file,
+      'exec', '-T', 'postgres', 'pgbackrest', ...args], true);
+    execute(['check']);
+    if (type !== 'check') execute([`--type=${type}`, `--annotation=release=${release.commit}`, 'backup']);
+    const receipt = { status: 'ok', checkedAt: new Date().toISOString(), release: release.commit,
+      ...summarizeBackup(JSON.parse(execute(['--output=json', 'info']))) };
+    if (receipt.stale) throw new Error('Backup chain is stale');
+    writeJson(path.join(stateDir, 'backup-status.json'), receipt);
+    return receipt;
+  } catch {
+    // Keep provider bodies, repository paths, configuration and exception
+    // messages out of the timer journal and monitoring receipt.
+    writeJson(path.join(stateDir, 'backup-status.json'), { status: 'failed', checkedAt: new Date().toISOString() });
+    throw new Error('Database backup verification failed; inspect the private deployment and repository state');
+  } finally { fs.rmdirSync(lock); }
+}
+
 async function main(args) {
   const [command, first, second, third, fourth] = args;
   if (command === 'init' && first && second && third && fourth) {
@@ -343,8 +378,18 @@ async function main(args) {
   } else if (command === 'stop' && first) {
     stopEnvironment(path.resolve(first));
     console.log('Environment stopped; persistent volumes and release receipts retained.');
+  } else if (command === 'backup' && first) {
+    console.log(JSON.stringify(backupDatabase(path.resolve(first), second ?? 'incr')));
+  } else if (command === 'backup-schedule' && first) {
+    const state = path.resolve(first);
+    const units = backupUnits(state);
+    const directory = path.join(state, 'systemd');
+    fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+    writePrivateText(path.join(state, 'backup-runner.mjs'), fs.readFileSync(new URL('./backup-runner.mjs', import.meta.url), 'utf8'));
+    for (const [name, contents] of Object.entries(units)) writePrivateText(path.join(directory, name), contents);
+    console.log('Backup units prepared in the private state systemd directory. Install and enable them using the recovery runbook.');
   } else if (command === 'verify' && first) await verifyPublic(first, second ? path.resolve(second) : undefined);
-  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | verify HOST [STATE]');
+  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | backup STATE [full|incr|check] | backup-schedule STATE | verify HOST [STATE]');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

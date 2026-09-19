@@ -33,7 +33,16 @@ failed before writing a successful release receipt. An existing database volume
 without migration history also fails closed. Empty historical deployments remain
 valid. Focused deployment tests cover the failure ordering and recovery guards.
 
-Remaining implementation: scheduled backup operation and timers,
+The scheduled operator command now checks the archive, creates a full/incremental
+backup and verifies a complete, fresh chain for the current database identity.
+It shares the deployment lock, uses accepted runtime configuration and records
+only bounded safe status. Generated systemd timers follow the accepted release
+on each run. The [backup runbook](backup-and-recovery.md) describes configuration,
+schedule installation, failure handling and the limits of the current drill.
+Focused lock/failure/privacy tests pass. Actual timer validation and the updated
+native drill remain hosted gates for this increment.
+
+Remaining implementation:
 safe restore commands, object/configuration protection, telemetry/privacy gates,
 metrics/error reporting, alert/runbook coverage and application-level recovery.
 Actual S3, operator notification and measured production recovery remain separate

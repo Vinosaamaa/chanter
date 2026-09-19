@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory } from './host.mjs';
+import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render } from './host.mjs';
 import { imageNames } from './release.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
@@ -200,4 +200,39 @@ test('a failed first deployment can be stopped without deleting its volumes or l
   assert.equal(calls[0].at(-1), 'stop');
   assert.equal(fs.existsSync(marker), false);
   assert.equal(fs.existsSync(path.join(state, 'runtime/auth-service.env')), true);
+});
+
+test('scheduled backup verifies real completion, shares the deployment lock and redacts failure details', t => {
+  const { root, state } = fixture(t);
+  const bundle = path.join(root, 'bundle');
+  fs.mkdirSync(path.join(bundle, 'infra/production'), { recursive: true });
+  const release = { version: 1, commit: 'a'.repeat(40), architecture: 'arm64', schemaEpoch: 5,
+    images: Object.fromEntries(imageNames.map(name => [name, 'sha256:' + 'b'.repeat(64)])) };
+  fs.writeFileSync(path.join(bundle, 'release.json'), JSON.stringify(release));
+  for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.writeFileSync(path.join(bundle, 'infra/production', name), 'fixture');
+  const prepared = render(bundle, state);
+  const renderedBefore = fs.readFileSync(prepared.file, 'utf8');
+  fs.writeFileSync(path.join(state, 'current.json'), JSON.stringify({ commit: release.commit, bundleDir: bundle }));
+  fs.writeFileSync(path.join(root, 'active-environment.json'), JSON.stringify({ stateDir: state, bundleDir: bundle }));
+  const calls = [];
+  const run = args => {
+    calls.push(args);
+    return JSON.stringify([{ name: 'chanter', status: { code: 0 }, db: [{ id: 1, 'repo-key': 1 }],
+      backup: [{ type: 'full', error: false, database: { id: 1, 'repo-key': 1 },
+      label: '20260918-000000F', timestamp: { stop: Math.floor(Date.now() / 1000) } }] }]);
+  };
+  assert.equal(backupDatabase(state, 'full', run).status, 'ok');
+  assert.deepEqual(calls.map(args => args.at(-1)), ['check', 'backup', 'info']);
+  assert.equal(calls.some(args => args.includes('--type=full')), true);
+  assert.equal(fs.readFileSync(prepared.file, 'utf8'), renderedBefore);
+  fs.mkdirSync(path.join(root, '.deploy-lock'));
+  assert.throws(() => backupDatabase(state, 'full', run), /active/);
+  fs.rmdirSync(path.join(root, '.deploy-lock'));
+  assert.throws(() => backupDatabase(state, 'full', () => { throw new Error('private-secret'); }), /verification failed/);
+  assert.equal(fs.readFileSync(path.join(state, 'backup-status.json'), 'utf8').includes('private-secret'), false);
+  assert.equal(fs.existsSync(path.join(root, '.deploy-lock')), false);
+  calls.length = 0;
+  fs.writeFileSync(path.join(root, 'active-environment.json'), JSON.stringify({ stateDir: state, bundleDir: path.join(root, 'failed-release') }));
+  assert.throws(() => backupDatabase(state, 'check', run), /verification failed/);
+  assert.equal(calls.length, 0);
 });

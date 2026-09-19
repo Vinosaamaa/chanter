@@ -19,7 +19,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate recovery configuration
-        run: node --test scripts/deploy/recovery.test.mjs
+        run: |
+          node --test scripts/deploy/recovery.test.mjs scripts/deploy/host.test.mjs
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import { backupUnits } from './scripts/deploy/recovery.mjs';
+          fs.mkdirSync('.cache/recovery-units', { recursive: true });
+          for (const [name, value] of Object.entries(backupUnits('/srv/chanter/production'))) {
+            fs.writeFileSync(`.cache/recovery-units/${name}`, value);
+          }
+          JS
+          systemd-analyze verify .cache/recovery-units/*.service .cache/recovery-units/*.timer
       - name: Build pinned backup-capable PostgreSQL
         run: |
           base=$(node -p 'JSON.parse(require("fs").readFileSync("infra/production/runtime-lock.json")).postgres')

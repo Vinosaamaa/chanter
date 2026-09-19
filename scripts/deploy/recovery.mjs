@@ -6,6 +6,40 @@ export function assertMigrationFloor(release, floor) {
   if (release.schemaEpoch < floor.schemaEpoch) throw new Error('Deployment cannot cross the persisted migration floor; fix forward');
 }
 
+/** Project repository health into a bounded, credential-free operator receipt. */
+export function summarizeBackup(info, now = Date.now()) {
+  const stanza = Array.isArray(info) ? info.find(value => value.name === 'chanter') : null;
+  if (!stanza || stanza.status?.code !== 0) throw new Error('Backup repository is unavailable or incomplete');
+  const currentDatabase = (stanza.db ?? []).filter(value => value['repo-key'] === 1 && Number.isSafeInteger(value.id))
+    .reduce((found, item) => Math.max(found, item.id), 0);
+  if (!currentDatabase) throw new Error('Backup repository has no current database identity');
+  const backups = (stanza.backup ?? []).filter(value => value.error === false
+    && value.database?.['repo-key'] === 1 && value.database?.id === currentDatabase
+    && ['full', 'diff', 'incr'].includes(value.type)
+    && /^[0-9]{8}-[0-9]{6}F(?:_[0-9]{8}-[0-9]{6}[DI])?$/.test(value.label ?? '')
+    && Number.isSafeInteger(value.timestamp?.stop) && value.timestamp.stop > 0
+    && value.timestamp.stop * 1000 <= now + 300000);
+  const latest = backups.reduce((found, item) => !found || item.timestamp.stop > found.timestamp.stop ? item : found, null);
+  const full = backups.filter(item => item.type === 'full')
+    .reduce((found, item) => !found || item.timestamp.stop > found.timestamp.stop ? item : found, null);
+  if (!latest || !full) throw new Error('No complete recoverable backup chain is available');
+  return { label: latest.label, type: latest.type, completedAt: new Date(latest.timestamp.stop * 1000).toISOString(),
+    fullCompletedAt: new Date(full.timestamp.stop * 1000).toISOString(),
+    stale: now - latest.timestamp.stop * 1000 > 30 * 3600000 || now - full.timestamp.stop * 1000 > 8 * 86400000 };
+}
+
+export function backupUnits(stateDir) {
+  if (!/^\/[A-Za-z0-9_./-]+$/.test(stateDir) || stateDir.split('/').includes('..')) {
+    throw new Error('Backup timers require an absolute Linux state path without shell or unit substitutions');
+  }
+  return Object.fromEntries(Object.entries({ full: 'Sun *-*-* 02:00:00 UTC',
+    incr: 'Mon..Sat *-*-* 02:00:00 UTC', check: '*-*-* *:00/10:00 UTC' }).flatMap(([type, schedule]) => {
+    const name = `chanter-backup-${type}`;
+    return [[`${name}.service`, `[Unit]\nDescription=Chanter database backup ${type}\nAfter=docker.service network-online.target\nWants=network-online.target\n\n[Service]\nType=oneshot\nUMask=0077\nNice=10\nIOSchedulingClass=best-effort\nIOSchedulingPriority=7\nTimeoutStartSec=3h\nExecStart=/usr/bin/node ${stateDir}/backup-runner.mjs ${stateDir} ${type}\n`],
+      [`${name}.timer`, `[Unit]\nDescription=Chanter database backup ${type} schedule\n\n[Timer]\nOnCalendar=${schedule}\nPersistent=true\nRandomizedDelaySec=${type === 'check' ? '30' : '600'}\n\n[Install]\nWantedBy=timers.target\n`]];
+  }));
+}
+
 /** Production backup policy. Secrets are returned only for private container configuration. */
 export function backupEnvironment(settings, environment = 'production') {
   if (!['staging', 'production'].includes(environment)) throw new Error('Invalid backup environment');

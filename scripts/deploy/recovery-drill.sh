@@ -46,6 +46,13 @@ psql_source 'CREATE TABLE recovery_marker (id integer PRIMARY KEY); INSERT INTO 
 docker exec "$source" pgbackrest stanza-create
 docker exec "$source" pgbackrest check
 docker exec "$source" pgbackrest --type=full backup
+docker exec "$source" pgbackrest --output=json info > "$state/backup-info.json"
+node --input-type=module - "$state/backup-info.json" <<'JS'
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { summarizeBackup } from './scripts/deploy/recovery.mjs';
+assert.equal(summarizeBackup(JSON.parse(fs.readFileSync(process.argv[2]))).stale, false);
+JS
 psql_source 'INSERT INTO recovery_marker VALUES (2)' >/dev/null
 # Separate commands commit marker 2 before the recovery point is written.
 psql_source "SELECT pg_create_restore_point('chanter_drill_target')" >/dev/null

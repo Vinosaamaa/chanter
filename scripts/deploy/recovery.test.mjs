@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertMigrationFloor, backupEnvironment } from './recovery.mjs';
+import { assertMigrationFloor, backupEnvironment, backupUnits, summarizeBackup } from './recovery.mjs';
 
 const configured = () => ({
   CHANTER_BACKUP_S3_ENDPOINT: 'https://backup.example.test',
@@ -9,6 +9,30 @@ const configured = () => ({
   CHANTER_BACKUP_S3_ACCESS_KEY: 'fixture-access',
   CHANTER_BACKUP_S3_SECRET_KEY: 'fixture-secret',
   CHANTER_BACKUP_CIPHER_PASS: 'fixture-independent-backup-passphrase-32bytes',
+});
+
+test('backup timer commands reject shell and systemd substitutions in operator paths', () => {
+  for (const state of ['relative', '/srv/a b', '/srv/a%h', '/srv/$HOME', '/srv/a\nExecStart=bad', '/srv/../data']) {
+    assert.throws(() => backupUnits(state), /absolute Linux/);
+  }
+  const units = backupUnits('/srv/chanter/production');
+  assert.equal(Object.keys(units).length, 6);
+  assert.match(units['chanter-backup-full.service'], /backup-runner.mjs \/srv\/chanter\/production full/);
+  assert.match(units['chanter-backup-full.timer'], /Persistent=true/);
+});
+
+test('backup status rejects failures and marks overdue chains without copying provider metadata', () => {
+  const now = Date.parse('2026-09-19T00:00:00Z');
+  const complete = { error: false, type: 'full', label: '20260918-000000F', timestamp: { stop: now / 1000 - 3600 },
+    database: { id: 1, 'repo-key': 1 } };
+  const info = [{ name: 'chanter', status: { code: 0 }, db: [{ id: 1, 'repo-key': 1 }], backup: [complete], secret: 'do-not-copy' }];
+  assert.equal(summarizeBackup(info, now).stale, false);
+  assert.equal(JSON.stringify(summarizeBackup(info, now)).includes('do-not-copy'), false);
+  assert.equal(summarizeBackup(info, now + 31 * 3600000).stale, true);
+  assert.throws(() => summarizeBackup([{ ...info[0], status: { code: 1 } }], now), /unavailable/);
+  assert.throws(() => summarizeBackup([{ ...info[0], backup: [{ ...complete, error: true }] }], now), /No complete/);
+  assert.throws(() => summarizeBackup([{ ...info[0], db: [{ id: 2, 'repo-key': 1 }] }], now), /No complete/);
+  assert.throws(() => summarizeBackup([{ ...info[0], backup: [{ ...complete, timestamp: { stop: now / 1000 + 3600 } }] }], now), /No complete/);
 });
 
 test('failed first migrations prevent an older writer even without a successful release', () => {
