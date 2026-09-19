@@ -98,6 +98,7 @@ public class FetchResourceChunkTool implements AssistantTool {
         map.put("sourceSha256", chunk.sourceSha256());
         map.put("parserVersion", chunk.parserVersion());
         map.put("extractionSignals", chunk.extractionSignals());
+        map.put("sourceScope", chunk.sourceScope());
         map.put("untrustedSource", true);
         return map;
     }

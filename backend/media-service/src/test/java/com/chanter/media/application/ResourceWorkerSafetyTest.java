@@ -59,7 +59,7 @@ class ResourceWorkerSafetyTest {
     @Test void extractionOutcomeIsSeparateFromDownloadAvailabilityAndOnlyFailureCanRetry() {
         var resource = upload(UUID.randomUUID()); worker.runOnce();
         doReturn(new ResourceIngestionClient.Outcome("OCR_REQUIRED", java.util.Set.of()))
-                .when(ingestion).ingestAiApprovedResource(eq(course), eq(resource.id()), anyString(), any());
+                .when(ingestion).status(eq(resource.id()), any(), eq(resource.sha256()));
         worker.runOnce();
         var current = service.getCourseResource(resource.id(), teacher);
         assertThat(current.publicStatus()).isEqualTo("AVAILABLE");
@@ -77,6 +77,29 @@ class ResourceWorkerSafetyTest {
         assertThat(current.ingestionStatus()).isEqualTo("READY");
         assertThat(current.ingestionSignals()).containsExactly("VISUAL_CONTENT_NOT_EXTRACTED");
         assertThatThrownBy(() -> service.retryIngestion(resource.id(), teacher)).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test void ingestionSourceRequiresCurrentApprovalCourseHashAndAvailability() throws Exception {
+        var resource = upload(UUID.randomUUID());
+        assertThatThrownBy(() -> service.downloadForIngestion(resource.id(), course, resource.sha256()))
+                .isInstanceOf(ResponseStatusException.class);
+        worker.runOnce();
+        assertThatThrownBy(() -> service.downloadForIngestion(resource.id(), UUID.randomUUID(), resource.sha256()))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> service.downloadForIngestion(resource.id(), course, "0".repeat(64)))
+                .isInstanceOf(ResponseStatusException.class);
+        try (var content = service.downloadForIngestion(resource.id(), course, resource.sha256()).content()) {
+            assertThat(new String(content.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)).isEqualTo("bounded notes");
+        }
+        doAnswer(call -> {
+            var content = call.callRealMethod();
+            jdbc.sql("UPDATE course_resources SET ai_approved=FALSE WHERE id=:id").param("id", resource.id()).update();
+            return content;
+        }).when(storage).open(resource.storageKey());
+        assertThatThrownBy(() -> service.downloadForIngestion(resource.id(), course, resource.sha256()))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> service.downloadForIngestion(resource.id(), course, resource.sha256()))
+                .isInstanceOf(ResponseStatusException.class);
     }
 
     @Test void expiredIndexLeaseRecoversProcessingAndDeletionRejectsLateOutcome() {
@@ -167,7 +190,7 @@ class ResourceWorkerSafetyTest {
         jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=:size").param("size", content.length).update();
         notAvailable(id, 409);
         doAnswer(call -> { call.callRealMethod(); throw new IOException("lost response"); }).when(storage).put(anyString(), any(), anyString());
-        var importer = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, Clock.systemUTC(), false, true);
+        var importer = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, access, Clock.systemUTC(), false, true);
         importer.runOnce();
         assertThat(lifecycle.find(id).orElseThrow().state()).isEqualTo("QUARANTINED");
         assertThat(ingestion.purgeCalls()).containsExactly(id);
@@ -185,7 +208,7 @@ class ResourceWorkerSafetyTest {
         doReturn(new PrivateResourceStorage.Page(java.util.List.of(
                 new PrivateResourceStorage.ObjectInfo(resource.storageKey(), Instant.now().minusSeconds(90000)),
                 new PrivateResourceStorage.ObjectInfo(orphan, Instant.now().minusSeconds(90000))), null)).when(storage).list(null);
-        var reconciler = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, Clock.systemUTC(), true, false);
+        var reconciler = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, access, Clock.systemUTC(), true, false);
         reconciler.reconcile();
         verify(storage).delete(orphan); verify(storage, never()).delete(resource.storageKey());
         assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
@@ -227,7 +250,7 @@ class ResourceWorkerSafetyTest {
                 """).param("id", id).param("course", course).param("size", content.length).param("key", id.toString()).param("user", teacher)
                 .param("now", java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)).update();
         jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=:size").param("size", content.length).update();
-        var importer = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, Clock.systemUTC(), false, true);
+        var importer = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, access, Clock.systemUTC(), false, true);
         doThrow(new IllegalStateException("index temporarily unavailable")).when(ingestion).purgeResourceChunks(id);
         for (int attempt = 0; attempt < 5; attempt++) {
             jdbc.sql("UPDATE course_resources SET retry_at=NULL").update();
@@ -249,18 +272,57 @@ class ResourceWorkerSafetyTest {
 
     @Test void cleanResourcesStayAvailableAndReservedAcrossIndexFailuresUntilIndexRetrySucceeds() throws Exception {
         var resource = upload(UUID.randomUUID());
-        doThrow(new IllegalStateException("index unavailable")).when(ingestion).ingestAiApprovedResource(any(), any(), anyString(), any());
+        doThrow(new IllegalStateException("index unavailable")).when(ingestion).status(any(), any(), anyString());
         worker.runOnce();
         assertThat(service.getCourseResource(resource.id(), learner).publicStatus()).isEqualTo("AVAILABLE");
         worker.runOnce();
-        assertThat(jdbc.sql("SELECT ingestion_status FROM course_resources WHERE id=:id").param("id", resource.id()).query(String.class).single()).isEqualTo("FAILED");
+        assertThat(jdbc.sql("SELECT ingestion_status FROM course_resources WHERE id=:id").param("id", resource.id()).query(String.class).single()).isEqualTo("PROCESSING");
         jdbc.sql("UPDATE course_resources SET attempts=20,retry_at=NULL,updated_at=TIMESTAMP WITH TIME ZONE '2000-01-01 00:00:00Z'").update();
         worker.runOnce();
         assertThat(service.getCourseResource(resource.id(), learner).publicStatus()).isEqualTo("AVAILABLE");
         assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
         verify(storage, never()).delete(resource.storageKey());
-        doCallRealMethod().when(ingestion).ingestAiApprovedResource(any(), any(), anyString(), any());
+        doCallRealMethod().when(ingestion).status(any(), any(), anyString());
         jdbc.sql("UPDATE course_resources SET retry_at=NULL").update(); worker.runOnce();
         assertThat(jdbc.sql("SELECT ingestion_status FROM course_resources WHERE id=:id").param("id", resource.id()).query(String.class).single()).isEqualTo("READY");
+    }
+
+    @Test void durableEventCarriesAuthoritativeScopeAndRevocationFencesOldStatus() {
+        var resource = upload(UUID.randomUUID());
+        assertThat(agentPayloads(resource.id())).isEmpty();
+        worker.runOnce();
+        var published = lifecycle.find(resource.id()).orElseThrow();
+        assertThat(published.studyServerId()).isEqualTo(access.requireStudyServerId(course));
+        assertThat(published.ingestionEventId()).isNotNull();
+        assertThat(agentPayloads(resource.id())).singleElement().asString()
+                .contains(course.toString(), published.studyServerId().toString(), resource.sha256(), "\"aiApproved\":true")
+                .doesNotContain("storageKey", "contentBase64");
+        var stale = lifecycle.claim(false).orElseThrow();
+        assertThatThrownBy(() -> service.setAiApproved(resource.id(), learner, false)).isInstanceOf(ResponseStatusException.class);
+        service.setAiApproved(resource.id(), teacher, false);
+        lifecycle.synchronizeIndex(resource.id(), stale.leaseId(), published.ingestionEventId(), new ResourceIngestionClient.Outcome("READY", java.util.Set.of()));
+        assertThat(service.getCourseResource(resource.id(), learner).aiApproved()).isFalse();
+        assertThat(service.getCourseResource(resource.id(), learner).ingestionStatus()).isEqualTo("NONE");
+        assertThat(agentPayloads(resource.id())).hasSize(2);
+        service.setAiApproved(resource.id(), teacher, false);
+        assertThat(agentPayloads(resource.id())).hasSize(2);
+        verify(ingestion, never()).ingestAiApprovedResource(any(), any(), anyString(), any());
+    }
+
+    @Test void exhaustedEventDeliveryIsVisibleAndManualRetryPublishesNewIdentity() {
+        var resource = upload(UUID.randomUUID()); worker.runOnce();
+        var previous = lifecycle.find(resource.id()).orElseThrow().ingestionEventId();
+        jdbc.sql("UPDATE durable_outbox SET status='FAILED' WHERE id=:id").param("id", previous).update();
+        worker.runOnce();
+        assertThat(lifecycle.find(resource.id()).orElseThrow().ingestionStatus()).isEqualTo("FAILED");
+        assertThat(lifecycle.claim(false)).isEmpty();
+        service.retryIngestion(resource.id(), teacher);
+        assertThat(lifecycle.find(resource.id()).orElseThrow().ingestionEventId()).isNotEqualTo(previous);
+        assertThat(agentPayloads(resource.id())).hasSize(2);
+    }
+
+    private java.util.List<String> agentPayloads(UUID resource) {
+        return jdbc.sql("SELECT payload FROM durable_outbox WHERE destination='agent' AND aggregate_key=:key ORDER BY revision")
+                .param("key", "RESOURCE:" + resource).query(String.class).list();
     }
 }

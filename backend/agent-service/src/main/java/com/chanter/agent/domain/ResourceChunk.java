@@ -19,9 +19,18 @@ public record ResourceChunk(
         String locatorLabel,
         String sourceSha256,
         String parserVersion,
-        java.util.Set<String> extractionSignals
+        java.util.Set<String> extractionSignals,
+        ResourceSourceScope sourceScope
 ) {
     public ResourceChunk { extractionSignals = java.util.Set.copyOf(extractionSignals); }
+    public ResourceChunk(UUID id, UUID resourceId, UUID courseId, int chunkIndex, int startOffset,
+            int endOffset, String contentText, String contentSha256, String fileName, Instant createdAt,
+            String locatorKind, Integer locatorNumber, String locatorLabel, String sourceSha256, String parserVersion,
+            java.util.Set<String> extractionSignals) {
+        this(id, resourceId, courseId, chunkIndex, startOffset, endOffset, contentText, contentSha256,
+                fileName, createdAt, locatorKind, locatorNumber, locatorLabel, sourceSha256, parserVersion,
+                extractionSignals, ResourceSourceScope.course(null, 0));
+    }
     public ResourceChunk(UUID id, UUID resourceId, UUID courseId, int chunkIndex, int startOffset,
             int endOffset, String contentText, String contentSha256, String fileName, Instant createdAt,
             String locatorKind, Integer locatorNumber, String locatorLabel, String sourceSha256, String parserVersion) {

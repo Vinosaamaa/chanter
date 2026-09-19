@@ -28,16 +28,19 @@ public class ResourceLifecycle {
     private final int requestLimit;
     private final int cleanupReserve;
     private final com.chanter.common.events.SearchEventWriter searchEvents;
+    private final com.chanter.common.events.ResourceEventWriter resourceEvents;
 
     public ResourceLifecycle(JdbcClient jdbc, Clock clock,
             @Value("${chanter.media.byte-limit:8000000000}") long byteLimit,
             @Value("${chanter.media.request-limit:40000}") int requestLimit,
             @Value("${chanter.media.cleanup-request-reserve:4000}") int cleanupReserve,
-            com.chanter.common.events.SearchEventWriter searchEvents) {
+            com.chanter.common.events.SearchEventWriter searchEvents,
+            com.chanter.common.events.ResourceEventWriter resourceEvents) {
         if (byteLimit < 1 || byteLimit > 8_000_000_000L || requestLimit < 1 || requestLimit > 40_000
                 || cleanupReserve < 1 || cleanupReserve >= requestLimit) throw new IllegalArgumentException("Invalid free storage budget");
         this.jdbc = jdbc; this.clock = clock; this.byteLimit = byteLimit; this.requestLimit = requestLimit; this.cleanupReserve = cleanupReserve;
         this.searchEvents = searchEvents;
+        this.resourceEvents = resourceEvents;
     }
 
     @Transactional
@@ -74,12 +77,12 @@ public class ResourceLifecycle {
         if (r.byteSize() < 1 || r.byteSize() > byteLimit - used) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Course Resource storage quota reached");
         jdbc.sql("""
                 INSERT INTO course_resources (id,course_id,title,file_name,content_type,byte_size,storage_key,ai_approved,
-                  uploaded_by_user_id,created_at,state,sha256,idempotency_key,storage_backend,updated_at)
-                VALUES (:id,:course,:title,:file,:type,:bytes,:object,:ai,:user,:created,'STAGING',:hash,:key,:backend,:created)
+                  uploaded_by_user_id,created_at,state,sha256,idempotency_key,storage_backend,updated_at,study_server_id)
+                VALUES (:id,:course,:title,:file,:type,:bytes,:object,:ai,:user,:created,'STAGING',:hash,:key,:backend,:created,:server)
                 """).param("id", r.id()).param("course", r.courseId()).param("title", r.title()).param("file", r.fileName())
                 .param("type", r.contentType()).param("bytes", r.byteSize()).param("object", r.storageKey()).param("ai", r.aiApproved())
                 .param("user", r.uploadedByUserId()).param("created", time(r.createdAt())).param("hash", r.sha256())
-                .param("key", r.idempotencyKey()).param("backend", r.storageBackend()).update();
+                .param("key", r.idempotencyKey()).param("backend", r.storageBackend()).param("server", r.studyServerId()).update();
         jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=reserved_bytes+:bytes WHERE id=1").param("bytes", r.byteSize()).update();
         return r;
     }
@@ -119,7 +122,10 @@ public class ResourceLifecycle {
     public void requestDelete(UUID id) {
         int changed = jdbc.sql("UPDATE course_resources SET state='DELETE_PENDING', updated_at=:now, retry_at=NULL WHERE id=:id AND state NOT IN ('DELETED','DELETE_PENDING')")
                 .param("now", now()).param("id", id).update();
-        if (changed == 1) publishSearch(id, true);
+        if (changed == 1) {
+            publishSearch(id, true);
+            resourceEvents.append(new com.chanter.common.events.ResourceChanged(id, null, null, null, null, false, true));
+        }
     }
 
     @Transactional
@@ -132,7 +138,7 @@ public class ResourceLifecycle {
                     state IN ('QUARANTINED','SCANNING','DELETE_PENDING')
                     OR (state='SCAN_FAILED' AND byte_reservation=TRUE AND (attempts<5 OR (updated_at<:expired AND storage_backend<>'legacy')))
                     OR (state='REJECTED' AND byte_reservation=TRUE)
-                    OR (state='AVAILABLE' AND ingestion_status IN ('PENDING','FAILED','PROCESSING'))
+                    OR (state='AVAILABLE' AND ingestion_status IN ('PENDING','PROCESSING'))
                     OR (state='STAGING' AND created_at<:abandoned)
                     OR (state='LEGACY' AND :migrate=TRUE))
                 ORDER BY updated_at,id LIMIT 1 FOR UPDATE SKIP LOCKED
@@ -179,7 +185,10 @@ public class ResourceLifecycle {
                 .param("retry", state.equals("SCAN_FAILED") ? time(clock.instant().plusSeconds(60)) : null)
                 .param("id", id).param("lease", lease).update();
         if (changed == 0) releaseLease(id, lease);
-        if (changed == 1 && state.equals("AVAILABLE")) publishSearch(id, false);
+        if (changed == 1 && state.equals("AVAILABLE")) {
+            publishSearch(id, false);
+            if (find(id).orElseThrow().studyServerId() != null) publishIngestion(id);
+        }
         return changed == 1;
     }
 
@@ -195,7 +204,7 @@ public class ResourceLifecycle {
                   retry_at=:retry,updated_at=:now WHERE id=:id AND lease_id=:lease AND state='AVAILABLE'
                 """).param("status", outcome.status())
                 .param("signals", outcome.signals().stream().sorted().collect(java.util.stream.Collectors.joining(",")))
-                .param("retry", outcome.status().equals("FAILED") ? time(clock.instant().plusSeconds(600)) : null)
+                .param("retry", java.util.Set.of("PENDING", "PROCESSING").contains(outcome.status()) ? time(clock.instant().plusSeconds(5)) : null)
                 .param("now", now()).param("id", id).param("lease", lease).update();
         if (changed == 0) releaseLease(id, lease);
     }
@@ -208,6 +217,48 @@ public class ResourceLifecycle {
                     AND (lease_until IS NULL OR lease_until<:now)
                 """).param("id", id).param("now", now()).update();
         if (changed != 1) throw new ResponseStatusException(HttpStatus.CONFLICT, "Only failed AI preparation can be retried");
+        if (find(id).orElseThrow().studyServerId() != null) publishIngestion(id);
+        else jdbc.sql("UPDATE course_resources SET ingestion_event_id=NULL WHERE id=:id").param("id", id).update();
+    }
+
+    @Transactional
+    public void setAiApproved(UUID id, boolean approved) {
+        var current = jdbc.sql("SELECT * FROM course_resources WHERE id=:id FOR UPDATE").param("id", id)
+                .query(ResourceLifecycle::map).optional().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Resource not found"));
+        if (!current.state().equals("AVAILABLE")) throw new ResponseStatusException(HttpStatus.CONFLICT, "Course Resource is not available");
+        if (current.aiApproved() == approved) return;
+        jdbc.sql("""
+                UPDATE course_resources SET ai_approved=:approved,ingestion_status=:status,ingestion_signals='',
+                    ingestion_event_id=NULL,lease_id=NULL,lease_until=NULL,retry_at=NULL,updated_at=:now WHERE id=:id
+                """).param("approved", approved).param("status", approved || current.studyServerId() == null ? "PENDING" : "NONE")
+                .param("now", now()).param("id", id).update();
+        if (current.studyServerId() != null) publishIngestion(id);
+        publishSearch(id, false);
+    }
+
+    @Transactional
+    public void queueLegacyIndex(UUID id, UUID lease, UUID server) {
+        if (server == null) throw new IllegalArgumentException("Course scope is required");
+        var row = jdbc.sql("SELECT * FROM course_resources WHERE id=:id AND lease_id=:lease FOR UPDATE")
+                .param("id", id).param("lease", lease).query(ResourceLifecycle::map).optional();
+        if (row.isPresent() && row.get().state().equals("AVAILABLE") && row.get().ingestionEventId() == null) {
+            jdbc.sql("UPDATE course_resources SET study_server_id=:server WHERE id=:id").param("server", server).param("id", id).update();
+            publishIngestion(id);
+        }
+        releaseLease(id, lease);
+    }
+
+    public boolean ingestionDeliveryFailed(UUID event) {
+        return jdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE id=:id AND destination='agent' AND status='FAILED'")
+                .param("id", event).query(Integer.class).single() == 1;
+    }
+
+    @Transactional
+    public void synchronizeIndex(UUID id, UUID lease, UUID event, ResourceIngestionClient.Outcome outcome) {
+        var current = jdbc.sql("SELECT * FROM course_resources WHERE id=:id FOR UPDATE").param("id", id)
+                .query(ResourceLifecycle::map).optional();
+        if (current.isPresent() && event.equals(current.get().ingestionEventId())) finishIndex(id, lease, outcome);
+        else releaseLease(id, lease);
     }
 
     @Transactional
@@ -255,13 +306,21 @@ public class ResourceLifecycle {
         searchEvents.append(new com.chanter.common.events.SearchChange("RESOURCE", id, null, resource.courseId(),
                 null, null, null, resource.title(), resource.fileName(), null, deleted));
     }
+    private void publishIngestion(UUID id) {
+        var resource = find(id).orElseThrow();
+        UUID event = resourceEvents.append(new com.chanter.common.events.ResourceChanged(id, resource.courseId(),
+                resource.studyServerId(), resource.sha256(), resource.fileName(), resource.aiApproved(), false));
+        jdbc.sql("UPDATE course_resources SET ingestion_event_id=:event,ingestion_status=:status,ingestion_signals='',retry_at=NULL WHERE id=:id")
+                .param("event", event).param("status", resource.aiApproved() ? "PENDING" : "NONE").param("id", id).update();
+    }
     private static OffsetDateTime time(Instant instant) { return instant.atOffset(ZoneOffset.UTC); }
     private static CourseResource map(ResultSet rs, int row) throws SQLException {
         return new CourseResource(rs.getObject("id", UUID.class), rs.getObject("course_id", UUID.class), rs.getString("title"),
                 rs.getString("file_name"), rs.getString("content_type"), rs.getLong("byte_size"), rs.getString("storage_key"),
                 rs.getBoolean("ai_approved"), rs.getObject("uploaded_by_user_id", UUID.class), rs.getObject("created_at", OffsetDateTime.class).toInstant(),
                 rs.getString("state"), rs.getString("sha256"), rs.getObject("idempotency_key", UUID.class), rs.getString("storage_backend"),
-                rs.getString("ingestion_status"), rs.getString("ingestion_signals").isBlank() ? java.util.Set.of() : java.util.Set.of(rs.getString("ingestion_signals").split(",")));
+                rs.getString("ingestion_status"), rs.getString("ingestion_signals").isBlank() ? java.util.Set.of() : java.util.Set.of(rs.getString("ingestion_signals").split(",")),
+                rs.getObject("study_server_id", UUID.class), rs.getObject("ingestion_event_id", UUID.class));
     }
     private record Budget(String month, int foreground, int maintenance) { }
     private record Candidate(CourseResource resource, int attempts, String migrationKey) { }

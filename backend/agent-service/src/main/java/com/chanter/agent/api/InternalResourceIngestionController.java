@@ -208,7 +208,8 @@ public class InternalResourceIngestionController {
             String locatorLabel,
             String sourceSha256,
             String parserVersion,
-            Set<String> extractionSignals
+            Set<String> extractionSignals,
+            com.chanter.agent.domain.ResourceSourceScope sourceScope
     ) {
         static RankedChunkResponse from(RankedChunk chunk) {
             return new RankedChunkResponse(
@@ -222,7 +223,7 @@ public class InternalResourceIngestionController {
                     chunk.fileName(),
                     chunk.score(),
                     chunk.modelId(), chunk.locatorKind(), chunk.locatorNumber(), chunk.locatorLabel(),
-                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals()
+                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals(), chunk.sourceScope()
             );
         }
     }
@@ -245,7 +246,8 @@ public class InternalResourceIngestionController {
             String locatorLabel,
             String sourceSha256,
             String parserVersion,
-            Set<String> extractionSignals
+            Set<String> extractionSignals,
+            com.chanter.agent.domain.ResourceSourceScope sourceScope
     ) {
         static ChunkResponse from(ResourceChunk chunk) {
             return new ChunkResponse(
@@ -258,7 +260,7 @@ public class InternalResourceIngestionController {
                     chunk.contentText(),
                     chunk.contentSha256(),
                     chunk.fileName(), chunk.locatorKind(), chunk.locatorNumber(), chunk.locatorLabel(),
-                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals()
+                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals(), chunk.sourceScope()
             );
         }
     }

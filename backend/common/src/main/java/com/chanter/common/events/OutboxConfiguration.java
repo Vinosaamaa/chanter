@@ -40,6 +40,9 @@ public class OutboxConfiguration {
     @Bean SearchEventWriter searchEventWriter(DurableOutbox outbox, ObjectMapper mapper) {
         return new SearchEventWriter(outbox, mapper);
     }
+    @Bean ResourceEventWriter resourceEventWriter(DurableOutbox outbox, ObjectMapper mapper) {
+        return new ResourceEventWriter(outbox, mapper);
+    }
     @Bean DurableOutbox durableOutbox(JdbcTemplate jdbc, PlatformTransactionManager transactions,
             @Value("${spring.application.name}") String serviceName) {
         return new DurableOutbox(jdbc, new TransactionTemplate(transactions), serviceName.replace("-service", ""), Clock.systemUTC());
@@ -50,9 +53,11 @@ public class OutboxConfiguration {
     DispatchSchedule eventDispatchSchedule(DurableOutbox outbox, ObjectMapper mapper,
             @Value("${SEARCH_SERVICE_URL:http://localhost:8088}") String search,
             @Value("${NOTIFICATION_SERVICE_URL:http://localhost:8089}") String notification,
+            @Value("${AGENT_SERVICE_URL:http://localhost:8085}") String agent,
             @Value("${chanter.internal-service-token}") String token) {
         return new DispatchSchedule(new OutboxDispatcher(outbox, mapper, Map.of(
                 "search", URI.create(search + "/api/v1/internal/events"),
+                "agent", URI.create(agent + "/api/v1/internal/events"),
                 "notification", URI.create(notification + "/api/v1/internal/events")), token));
     }
 

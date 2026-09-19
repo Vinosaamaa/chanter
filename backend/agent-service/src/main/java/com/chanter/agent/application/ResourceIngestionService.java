@@ -63,6 +63,19 @@ public class ResourceIngestionService {
             return new IngestResult(resourceId, courseId, attempt.chunks().size(), textSha,
                     attempt.chunks().isEmpty(), "READY", sourceSha256, ResourceTextExtractor.PARSER_VERSION, attempt.generation(), attempt.signals());
         }
+        return prepare(courseId, resourceId, safeFileName, content, sourceSha256, attempt);
+    }
+
+    public IngestResult ingestClaim(ResourceIngestionJobs.Job job, byte[] content) {
+        if (content == null || !job.sourceSha256().equals(sha256Bytes(content))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Resource source version does not match the queued event");
+        }
+        return prepare(job.courseId(), job.resourceId(), job.fileName(), content, job.sourceSha256(),
+                new ResourceIndexStore.Attempt(job.generation(), false, List.of(), java.util.Set.of()));
+    }
+
+    private IngestResult prepare(UUID courseId, UUID resourceId, String safeFileName, byte[] content,
+            String sourceSha256, ResourceIndexStore.Attempt attempt) {
         try {
             var extraction = ResourceTextExtractor.extractDocument(content, safeFileName);
             String contentSha256 = sha256Hex(extraction.text());

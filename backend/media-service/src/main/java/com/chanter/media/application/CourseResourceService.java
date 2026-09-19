@@ -33,6 +33,7 @@ public class CourseResourceService {
     public CourseResource uploadCourseResource(UUID courseId, UUID userId, String title, boolean aiApproved,
                                                MultipartFile file, UUID idempotencyKey, String checksum) {
         requireUpload(courseId, userId);
+        UUID studyServerId = accessClient.requireStudyServerId(courseId);
         acquire();
         try (var upload = validator.validate(file, checksum)) {
             String normalizedTitle = title == null || title.isBlank() ? upload.fileName() : title.strip();
@@ -43,7 +44,7 @@ public class CourseResourceService {
             var candidate = new CourseResource(id, courseId, normalizedTitle, upload.fileName(), upload.contentType(), upload.byteSize(),
                     PrivateResourceStorage.PREFIX + courseId + "/" + id + "/" + UUID.randomUUID(), aiApproved, userId,
                     clock.instant().truncatedTo(ChronoUnit.MICROS), "STAGING", upload.sha256(),
-                    idempotencyKey == null ? UUID.randomUUID() : idempotencyKey, storage.backend());
+                    idempotencyKey == null ? UUID.randomUUID() : idempotencyKey, storage.backend(), "NONE", java.util.Set.of(), studyServerId, null);
             CourseResource reserved = lifecycle.reserve(candidate);
             if (!reserved.id().equals(id)) return reserved;
             try {
@@ -93,6 +94,27 @@ public class CourseResourceService {
     public StoredCourseResourceContent downloadCourseResource(UUID id, UUID user) {
         var resource = existing(id);
         requireView(resource.courseId(), user);
+        return download(resource, current -> true);
+    }
+
+    public CourseResource setAiApproved(UUID id, UUID user, boolean approved) {
+        var resource = existing(id);
+        requireUpload(resource.courseId(), user);
+        lifecycle.setAiApproved(id, approved);
+        return existing(id);
+    }
+
+    public StoredCourseResourceContent downloadForIngestion(UUID id, UUID course, String sha256) {
+        var resource = existing(id);
+        java.util.function.Predicate<CourseResource> matches = current -> current.aiApproved()
+                && current.courseId().equals(course) && current.sha256().equals(sha256);
+        if (!matches.test(resource)) throw missing();
+        return download(resource, matches);
+    }
+
+    private StoredCourseResourceContent download(CourseResource resource,
+            java.util.function.Predicate<CourseResource> stillAuthorized) {
+        UUID id = resource.id();
         if (!resource.state().equals("AVAILABLE")) throw new ResponseStatusException(HttpStatus.CONFLICT, "Course Resource is not available");
         if (!resource.storageBackend().equals(storage.backend())) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Course Resource migration is required");
         acquire();
@@ -102,7 +124,9 @@ public class CourseResourceService {
             temporary = path;
             // Deletion accepted during a provider read must win before any bytes are exposed.
             var latest = lifecycle.find(id);
-            if (latest.isEmpty() || !latest.get().state().equals("AVAILABLE")) { Files.deleteIfExists(path); throw missing(); }
+            if (latest.isEmpty() || !latest.get().state().equals("AVAILABLE") || !stillAuthorized.test(latest.get())) {
+                Files.deleteIfExists(path); throw missing();
+            }
             var closed = new AtomicBoolean();
             InputStream content = new FilterInputStream(Files.newInputStream(path)) {
                 @Override public void close() throws IOException {

@@ -80,6 +80,20 @@ public class HttpCourseResourceAccessClient implements CourseResourceAccessClien
         }
     }
 
+    @Override public UUID requireStudyServerId(UUID courseId) {
+        try {
+            var scope = restClient.get().uri("/api/v1/internal/course-scope/{id}", courseId)
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, internalServiceToken).retrieve().body(ScopeResponse.class);
+            if (scope == null || !courseId.equals(scope.courseId()) || scope.studyServerId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service returned invalid resource scope");
+            }
+            return scope.studyServerId();
+        } catch (RestClientException unavailable) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Course scope is unavailable");
+        }
+    }
+    private record ScopeResponse(UUID courseId, UUID studyServerId) {}
+
     private record AccessResponse(
             UUID courseId,
             boolean canUploadCourseResource,

@@ -34,6 +34,9 @@ class ResourceIndexDeletionFenceTest {
     @Autowired PlatformTransactionManager transactions;
     @Autowired EmbeddingPipelineService embeddings;
     @MockitoSpyBean EmbeddingClient embeddingClient;
+    @Autowired com.chanter.agent.application.ResourceIngestionJobs jobs;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate template;
+    @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
 
     @Test void backfillAfterDeletionIsRejectedBeforeComputingEmbeddings() {
         UUID resource = UUID.randomUUID();
@@ -183,6 +186,56 @@ class ResourceIndexDeletionFenceTest {
         ingestion.ingest(course, resource, "same.txt", content);
         assertThat(chunks.findByResourceId(resource)).isEqualTo(original);
         verify(embeddingClient, never()).embed(anyString());
+    }
+
+    @Test void durableDeletionCompletesDuringEmbeddingAndRejectsItsLatePublication() throws Exception {
+        UUID resource = UUID.randomUUID(), course = UUID.randomUUID(), server = UUID.randomUUID();
+        byte[] bytes = "durable delayed evidence".getBytes(StandardCharsets.UTF_8);
+        queue(resource, course, server, bytes, 1);
+        var claim = jobs.claim().orElseThrow();
+        var computing = new CountDownLatch(1); var finish = new CountDownLatch(1);
+        doAnswer(call -> { computing.countDown(); await(finish); return call.callRealMethod(); })
+                .when(embeddingClient).embed("durable delayed evidence");
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var late = executor.submit(() -> ingestion.ingestClaim(claim, bytes));
+            await(computing);
+            try { executor.submit(() -> ingestion.deleteByResourceId(resource)).get(2, TimeUnit.SECONDS); assertEmpty(resource); }
+            finally { finish.countDown(); }
+            assertThatThrownBy(() -> late.get(10, TimeUnit.SECONDS)).hasCauseInstanceOf(ResponseStatusException.class);
+        } finally { finish.countDown(); }
+        assertEmpty(resource);
+    }
+
+    @Test void newerDurableEventPublishesWhileOlderEmbeddingIsStillBlocked() throws Exception {
+        UUID resource = UUID.randomUUID(), course = UUID.randomUUID(), server = UUID.randomUUID();
+        byte[] old = "durable older evidence".getBytes(StandardCharsets.UTF_8);
+        byte[] current = "durable newest evidence".getBytes(StandardCharsets.UTF_8);
+        queue(resource, course, server, old, 1);
+        var claim = jobs.claim().orElseThrow();
+        var computing = new CountDownLatch(1); var finish = new CountDownLatch(1);
+        doAnswer(call -> { computing.countDown(); await(finish); return call.callRealMethod(); })
+                .when(embeddingClient).embed("durable older evidence");
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var late = executor.submit(() -> ingestion.ingestClaim(claim, old));
+            await(computing);
+            try {
+                queue(resource, course, server, current, 2);
+                var replacement = jobs.claim().orElseThrow();
+                executor.submit(() -> ingestion.ingestClaim(replacement, current)).get(2, TimeUnit.SECONDS);
+            } finally { finish.countDown(); }
+            assertThatThrownBy(() -> late.get(10, TimeUnit.SECONDS)).hasCauseInstanceOf(ResponseStatusException.class);
+        } finally { finish.countDown(); }
+        assertThat(chunks.findByResourceId(resource)).extracting(ResourceChunk::contentText).containsExactly("durable newest evidence");
+        assertThat(embeddingCount(resource)).isEqualTo(1);
+    }
+
+    private void queue(UUID resource, UUID course, UUID server, byte[] bytes, long revision) throws Exception {
+        String sha = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        var change = new com.chanter.common.events.ResourceChanged(resource, course, server, sha, "guide.txt", true, false);
+        var event = new com.chanter.common.events.DurableEvent(UUID.randomUUID(), 1, "media", revision,
+                "RESOURCE_CHANGED", "RESOURCE:" + resource, mapper.writeValueAsString(change));
+        new com.chanter.common.events.DurableConsumer(template, new TransactionTemplate(transactions))
+                .apply(event, false, () -> jobs.accept(event, change));
     }
 
     private void assertEmpty(UUID resource) {

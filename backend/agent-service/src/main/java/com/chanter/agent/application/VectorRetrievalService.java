@@ -91,7 +91,7 @@ public class VectorRetrievalService {
                     chunk.fileName(),
                     score,
                     embedding.modelId(), chunk.locatorKind(), chunk.locatorNumber(), chunk.locatorLabel(),
-                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals()
+                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals(), chunk.sourceScope()
             ));
         }
 
@@ -118,9 +118,18 @@ public class VectorRetrievalService {
             String locatorLabel,
             String sourceSha256,
             String parserVersion,
-            Set<String> extractionSignals
+            Set<String> extractionSignals,
+            com.chanter.agent.domain.ResourceSourceScope sourceScope
     ) {
         public RankedChunk { extractionSignals = Set.copyOf(extractionSignals); }
+        public RankedChunk(UUID chunkId, UUID resourceId, UUID courseId, int chunkIndex, int startOffset,
+                int endOffset, String contentText, String fileName, double score, String modelId,
+                String locatorKind, Integer locatorNumber, String locatorLabel, String sourceSha256, String parserVersion,
+                Set<String> extractionSignals) {
+            this(chunkId, resourceId, courseId, chunkIndex, startOffset, endOffset, contentText, fileName,
+                    score, modelId, locatorKind, locatorNumber, locatorLabel, sourceSha256, parserVersion, extractionSignals,
+                    com.chanter.agent.domain.ResourceSourceScope.course(null, 0));
+        }
         public RankedChunk(UUID chunkId, UUID resourceId, UUID courseId, int chunkIndex, int startOffset,
                 int endOffset, String contentText, String fileName, double score, String modelId,
                 String locatorKind, Integer locatorNumber, String locatorLabel, String sourceSha256, String parserVersion) {

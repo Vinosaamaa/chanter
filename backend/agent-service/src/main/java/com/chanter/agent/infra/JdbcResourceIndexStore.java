@@ -30,6 +30,7 @@ public class JdbcResourceIndexStore implements ResourceIndexStore {
     public Attempt begin(UUID courseId, UUID resourceId, String fileName, String sourceSha256) {
         chunks.lockForIndexing(resourceId);
         var state = state(resourceId);
+        if (state.sourceEventId() != null) throw conflict("Resource ingestion is managed by durable events");
         var existing = chunks.findByResourceId(resourceId);
         if ((state.courseId() != null && !state.courseId().equals(courseId))
                 || existing.stream().anyMatch(c -> !c.courseId().equals(courseId))) {
@@ -66,7 +67,7 @@ public class JdbcResourceIndexStore implements ResourceIndexStore {
         requireCurrent(resourceId, generation);
         chunks.replaceAllForResource(resourceId, prepared);
         embeddings.replaceAllForResource(resourceId, vectors);
-        jdbc.sql("UPDATE resource_index_lifecycle SET status=:status, signals=:signals WHERE resource_id=:id")
+        jdbc.sql("UPDATE resource_index_lifecycle SET status=:status, signals=:signals,job_lease_id=NULL,job_lease_until=NULL,job_retry_at=NULL WHERE resource_id=:id")
                 .param("status", status).param("signals", signals.stream().sorted().collect(java.util.stream.Collectors.joining(",")))
                 .param("id", resourceId).update();
     }
@@ -94,12 +95,12 @@ public class JdbcResourceIndexStore implements ResourceIndexStore {
         if (state(resourceId).generation() != generation) throw conflict("Resource ingestion was superseded");
     }
     private State state(UUID resourceId) {
-        return jdbc.sql("SELECT generation, course_id, source_sha256, parser_version, file_name, status, signals FROM resource_index_lifecycle WHERE resource_id=:id")
+        return jdbc.sql("SELECT generation, course_id, source_sha256, parser_version, file_name, status, signals, source_event_id FROM resource_index_lifecycle WHERE resource_id=:id")
                 .param("id", resourceId).query((rs, row) -> new State(rs.getLong("generation"),
                         rs.getObject("course_id", UUID.class), rs.getString("source_sha256"),
-                        rs.getString("parser_version"), rs.getString("file_name"), rs.getString("status"), rs.getString("signals").isBlank() ? Set.of() : Set.of(rs.getString("signals").split(",")))).single();
+                        rs.getString("parser_version"), rs.getString("file_name"), rs.getString("status"), rs.getString("signals").isBlank() ? Set.of() : Set.of(rs.getString("signals").split(",")), rs.getObject("source_event_id", UUID.class))).single();
     }
-    private record State(long generation, UUID courseId, String sourceSha256, String parserVersion, String fileName, String status, Set<String> signals) {}
+    private record State(long generation, UUID courseId, String sourceSha256, String parserVersion, String fileName, String status, Set<String> signals, UUID sourceEventId) {}
     private static ResponseStatusException conflict(String reason) {
         return new ResponseStatusException(HttpStatus.CONFLICT, reason);
     }

@@ -85,6 +85,19 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
 
     private record IngestResponse(UUID resourceId, UUID courseId, String status, java.util.Set<String> signals) {}
 
+    @Override public Outcome status(UUID resourceId, UUID eventId, String sourceSha256) {
+        try {
+            var result = restClient.get().uri("/api/v1/internal/resource-ingestion/{id}/status?eventId={event}", resourceId, eventId)
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, serviceToken).retrieve().body(StatusResponse.class);
+            if (result == null || !resourceId.equals(result.resourceId()) || !eventId.equals(result.eventId())
+                    || !(sourceSha256.equals(result.sourceSha256()) || result.sourceSha256() == null && "PENDING".equals(result.status()))) {
+                throw new IllegalStateException("Invalid resource indexing status");
+            }
+            return new Outcome(result.status(), result.signals());
+        } catch (RestClientException unavailable) { throw new IllegalStateException("Resource indexing status is unavailable"); }
+    }
+    private record StatusResponse(UUID resourceId, UUID eventId, String sourceSha256, String status, java.util.Set<String> signals) {}
+
     @Override
     public void purgeResourceChunks(UUID resourceId) {
         try {

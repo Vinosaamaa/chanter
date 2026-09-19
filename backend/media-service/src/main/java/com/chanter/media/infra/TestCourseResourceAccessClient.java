@@ -17,9 +17,11 @@ public class TestCourseResourceAccessClient implements CourseResourceAccessClien
 
     private final Map<String, CourseResourceAccess> accessRules = new ConcurrentHashMap<>();
     private final Set<UUID> existingCourses = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, UUID> studyServers = new ConcurrentHashMap<>();
 
     public void registerCourse(UUID courseId) {
         existingCourses.add(courseId);
+        studyServers.computeIfAbsent(courseId, ignored -> UUID.randomUUID());
     }
 
     public void grantInstructorUpload(UUID courseId, UUID userId) {
@@ -35,6 +37,7 @@ public class TestCourseResourceAccessClient implements CourseResourceAccessClien
     public void clear() {
         accessRules.clear();
         existingCourses.clear();
+        studyServers.clear();
     }
 
     @Override
@@ -54,5 +57,10 @@ public class TestCourseResourceAccessClient implements CourseResourceAccessClien
 
     private static String key(UUID courseId, UUID userId) {
         return courseId + ":" + userId;
+    }
+    @Override public UUID requireStudyServerId(UUID courseId) {
+        UUID server = studyServers.get(courseId);
+        if (server == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found");
+        return server;
     }
 }
