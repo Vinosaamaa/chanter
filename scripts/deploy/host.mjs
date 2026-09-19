@@ -244,6 +244,11 @@ export function configurationSnapshot(stateDir, release) {
     migrationFloor: fs.existsSync(floor) ? json(floor) : null };
 }
 
+export function configurationFingerprint(stateDir, release) {
+  return crypto.createHash('sha256').update(JSON.stringify({ snapshot: configurationSnapshot(stateDir, release),
+    backup: readEnv(path.join(stateDir, 'runtime/backup.env')) })).digest('hex');
+}
+
 export async function deploy(bundleDir, stateDir, rollback = false) {
   if (process.platform !== 'linux') throw new Error('Host deployment requires Linux; use render and unit tests on other systems');
   validateRuntime(stateDir);
@@ -323,7 +328,8 @@ export async function deploy(bundleDir, stateDir, rollback = false) {
         if (!healthy) { compose(['stop', 'frontend']); throw new Error('Public TLS/API health failed'); }
       } else if (operation === 'record-current') {
         if (current && !recovering) writeJson(path.join(stateDir, 'previous.json'), current);
-        writeJson(currentFile, { commit: target.commit, bundleDir: source, completedAt: new Date().toISOString() });
+        writeJson(currentFile, { commit: target.commit, bundleDir: source, completedAt: new Date().toISOString(),
+          configurationFingerprint: configurationFingerprint(stateDir, target) });
       }
     }, rollback);
   } finally { fs.rmdirSync(lock); }
@@ -361,6 +367,9 @@ export function backupDatabase(stateDir, type = 'incr', run = docker, saveConfig
     if (release.commit !== current.commit) throw new Error('Backup release receipt does not match its bundle');
     const config = validateConfig(json(path.join(stateDir, 'config.json')));
     verifyMigrationHistory(stateDir, release, config.environment, run);
+    if (current.configurationFingerprint !== configurationFingerprint(stateDir, release)) {
+      throw new Error('Runtime configuration differs from the accepted deployment');
+    }
     // Use the accepted container configuration. Rendering here could silently
     // point a running cluster at credentials it has not loaded.
     const file = path.join(stateDir, 'rendered', release.commit, 'compose.json');

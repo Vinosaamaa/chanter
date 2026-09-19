@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render, configurationSnapshot } from './host.mjs';
+import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render, configurationSnapshot, configurationFingerprint } from './host.mjs';
 import { imageNames } from './release.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
@@ -213,7 +213,8 @@ test('scheduled backup verifies real completion, shares the deployment lock and 
   for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.writeFileSync(path.join(bundle, 'infra/production', name), 'fixture');
   const prepared = render(bundle, state);
   const renderedBefore = fs.readFileSync(prepared.file, 'utf8');
-  fs.writeFileSync(path.join(state, 'current.json'), JSON.stringify({ commit: release.commit, bundleDir: bundle }));
+  fs.writeFileSync(path.join(state, 'current.json'), JSON.stringify({ commit: release.commit, bundleDir: bundle,
+    configurationFingerprint: configurationFingerprint(state, release) }));
   fs.writeFileSync(path.join(root, 'active-environment.json'), JSON.stringify({ stateDir: state, bundleDir: bundle }));
   const calls = [];
   const run = args => {
@@ -243,6 +244,9 @@ test('scheduled backup verifies real completion, shares the deployment lock and 
   assert.equal(fs.readFileSync(path.join(state, 'backup-status.json'), 'utf8').includes('private-secret'), false);
   assert.equal(fs.existsSync(path.join(root, '.deploy-lock')), false);
   calls.length = 0;
+  fs.appendFileSync(path.join(state, 'runtime/auth-service.env'), 'PENDING_CONFIGURATION_CHANGE=private-unaccepted-value\n');
+  assert.throws(() => backupDatabase(state, 'check', run, save, verify), /verification failed/);
+  assert.equal(calls.length, 0, 'unaccepted configuration cannot be advertised as matching the running database');
   fs.writeFileSync(path.join(root, 'active-environment.json'), JSON.stringify({ stateDir: state, bundleDir: path.join(root, 'failed-release') }));
   assert.throws(() => backupDatabase(state, 'check', run), /verification failed/);
   assert.equal(calls.length, 0);

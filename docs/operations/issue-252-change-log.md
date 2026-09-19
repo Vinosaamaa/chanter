@@ -80,3 +80,9 @@ the telemetry module working directory. Actual decoded native OTLP assertions on
 both architectures prove the privacy extension is active, including removal of
 planted canaries. Configuration recovery native validation remains pending for
 this increment. Full application restore and free-provider quota proof remain open.
+
+Integration review found a configuration consistency gap: private runtime files
+can be edited before deployment. Successful deployment now records their digest;
+scheduled backup rejects changed state before touching the repository. This keeps
+unaccepted credentials from being advertised as matching a running database.
+The encrypted configuration/database drill now passes on AMD64 and ARM64.

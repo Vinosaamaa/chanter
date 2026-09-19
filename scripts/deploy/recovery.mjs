@@ -38,7 +38,7 @@ export function summarizeBackup(info, now = Date.now()) {
     for (const label of new Set([...item.reference, item.prior])) {
       const dependency = byLabel.get(label);
       if (!dependency || dependency.label.split('_')[0] !== fullLabel
-          || dependency.timestamp.stop >= item.timestamp.stop) throw new Error('Backup dependency chain is incomplete');
+          || dependency.timestamp.stop > item.timestamp.stop || dependency.label >= item.label) throw new Error('Backup dependency chain is incomplete');
       pending.push(dependency);
     }
   }

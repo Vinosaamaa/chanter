@@ -72,6 +72,11 @@ deployments. Failed or incomplete deployments cannot become scheduled backup
 owners. Switching environments requires disabling the old timers and generating
 the new environment's units. Only one environment may occupy the free host.
 
+The accepted deployment receipt fingerprints its configuration and runtime secret
+files. Editing those files before a successful deployment makes scheduled backup
+fail closed: pending credentials must not be recorded as the running database's
+matching configuration. Deploy the reviewed configuration to resume this check.
+
 `backup-status.json` contains a bounded status, backup label, accepted release,
 completion time, matching configuration snapshot and full-backup time. It contains no repository credentials or
 raw provider error. A chain is stale after 30 hours without a complete backup or
