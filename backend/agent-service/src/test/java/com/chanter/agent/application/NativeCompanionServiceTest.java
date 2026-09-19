@@ -146,7 +146,10 @@ class NativeCompanionServiceTest {
         requests.expire();
         var row = jdbc.sql("SELECT outcome,evidence_json FROM native_companion_requests WHERE id=:id")
                 .param("id", issued.requestId()).query().singleRow();
-        assertThat(row.get("outcome")).isEqualTo("EXPIRED"); assertThat(row.get("evidence_json")).isNull();
+        assertThat(row.get("outcome")).isEqualTo("ACCEPTING"); assertThat(row.get("evidence_json")).isNull();
+        // Redaction cannot falsely terminate an in-flight acceptance; its eventual settlement remains authoritative.
+        requests.finish(issued.requestId(), true, null, null);
+        assertThat(jdbc.sql("SELECT outcome FROM native_companion_requests WHERE id=:id").param("id", issued.requestId()).query(String.class).single()).isEqualTo("ACCEPTED");
         assertThatThrownBy(() -> accept(issued.requestId(), RESULT)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
         assertThatThrownBy(this::issue).isInstanceOf(AiGenerationLedger.AttemptConflict.class);
         assertThat(ledger.summary(server).accountedTokens()).isEqualTo(40960);

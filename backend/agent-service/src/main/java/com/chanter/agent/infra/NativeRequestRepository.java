@@ -55,8 +55,10 @@ public class NativeRequestRepository {
     @Scheduled(fixedDelay = 60000)
     public void expire() {
         jdbc.sql("""
-                UPDATE native_companion_requests SET outcome='EXPIRED',evidence_json=NULL
-                WHERE (outcome='ISSUED' AND accept_until<=:now) OR (outcome='ACCEPTING' AND accept_until<=:abandoned)
+                UPDATE native_companion_requests
+                SET outcome=CASE WHEN outcome='ISSUED' THEN 'EXPIRED' ELSE outcome END,evidence_json=NULL
+                WHERE evidence_json IS NOT NULL AND ((outcome='ISSUED' AND accept_until<=:now)
+                    OR (outcome='ACCEPTING' AND accept_until<=:abandoned))
                 """).param("now", clock.instant().atOffset(ZoneOffset.UTC))
                 .param("abandoned", clock.instant().minusSeconds(60).atOffset(ZoneOffset.UTC)).update();
     }

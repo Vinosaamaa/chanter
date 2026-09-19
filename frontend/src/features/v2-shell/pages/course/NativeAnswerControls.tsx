@@ -59,7 +59,7 @@ export function NativeAnswerControls({ disabled, onInvoke }: Props) {
         <select id={`${id}-model`} value={model} onChange={(event) => setModel(event.target.value)}>
           {models.map((value) => <option key={value}>{value}</option>)}
         </select>
-        <label className="assistant-native-consent"><input type="checkbox" checked={approved} onChange={(event) => setApproved(event.target.checked)} />
+        <label style={{ display: 'flex', alignItems: 'flex-start' }}><input type="checkbox" style={{ flexShrink: 0, marginTop: 4 }} checked={approved} onChange={(event) => setApproved(event.target.checked)} />
           Send this question and its approved course passages to Codex through my native companion. This uses my provider account limits.</label>
         <p>Find source quotations only. Usage returned by the companion is a client report. A started request cannot be retried with another provider.</p>
         <button type="button" className="v2-primary-button" disabled={!approved || busy || disabled} onClick={() => { setApproved(false); onInvoke(pairing, model) }}>Find quotations with my Codex account</button>

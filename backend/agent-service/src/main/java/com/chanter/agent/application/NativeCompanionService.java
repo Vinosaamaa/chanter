@@ -64,6 +64,7 @@ public class NativeCompanionService {
         var session = sessions.requireActive(authorization, user);
         var request = requests.claim(requestId, channel, question, user, session.sessionId(), installation);
         boolean accepted = false;
+        String outcome = "UNKNOWN";
         try (var execution = new LlmExecution(Duration.ofSeconds(30))) {
             NativeEvidence evidence = decode(request.evidenceJson());
             if (!NativeCapabilitySigner.sha256(request.evidenceJson()).equals(request.evidenceHash()))
@@ -80,13 +81,15 @@ public class NativeCompanionService {
             reauthorize.run();
             var answer = questions.acceptNativeAnswer(channel, question, user, evidence, result, request.model(), execution);
             accepted = true;
+            outcome = "SUCCESS";
             return answer;
         } catch (LlmProviderException invalidResult) {
+            outcome = "INVALID_RESPONSE";
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Native result did not contain valid approved source quotations");
         } finally {
             // Even a submitted zero is a client report, never measured provider usage or a budget refund.
-            ledger.settle(requestId, LlmUsage.UNKNOWN, accepted ? "SUCCESS" : "REJECTED_EVIDENCE", 0, request.model(), null, definition(request.model()), true);
-            requests.finish(requestId, accepted, inputTokens, outputTokens);
+            try { ledger.settle(requestId, LlmUsage.UNKNOWN, outcome, 0, request.model(), null, definition(request.model()), true); }
+            finally { requests.finish(requestId, accepted, inputTokens, outputTokens); }
         }
     }
     private void requireOrigin(String origin) {
