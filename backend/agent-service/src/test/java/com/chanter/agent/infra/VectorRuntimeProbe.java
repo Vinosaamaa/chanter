@@ -63,7 +63,8 @@ public final class VectorRuntimeProbe {
             float[] unrelated=client.embed("Who won the football championship in Argentina?");
             if(vectors.stream().anyMatch(vector->cosine(unrelated,vector)>=0.35)) throw new AssertionError("Unrelated question crossed the evidence threshold");
             // A dedicated empty schema is mandatory: the probe never clears an existing corpus.
-            if(jdbc.sql("SELECT COUNT(*) FROM resource_chunks").query(Long.class).single()!=0) throw new AssertionError("Probe database must be empty");
+            if(jdbc.sql("SELECT (SELECT COUNT(*) FROM resource_chunks)+(SELECT COUNT(*) FROM resource_index_lifecycle)").query(Long.class).single()!=0)
+                throw new AssertionError("Probe database must be empty");
             jdbc.sql("""
                 INSERT INTO resource_index_lifecycle(resource_id,course_id,study_server_id,cohort_id,source_sha256,parser_version,file_name,status,generation)
                 SELECT md5('resource-'||r)::uuid,md5('course-'||(r%10))::uuid,md5('server-'||(r%5))::uuid,
@@ -105,6 +106,14 @@ public final class VectorRuntimeProbe {
             long invalid=jdbc.sql("SELECT COUNT(*) FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=current_schema() AND NOT i.indisvalid")
                     .query(Long.class).single();
             if(invalid!=0) throw new AssertionError("Invalid vector database index");
+            long vectorIndexes=jdbc.sql("""
+                    SELECT COUNT(*) FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+                    JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_am a ON a.oid=c.relam
+                    JOIN pg_class t ON t.oid=i.indrelid
+                    WHERE n.nspname=current_schema() AND t.relname='resource_chunk_embeddings'
+                      AND a.amname='hnsw' AND i.indisvalid
+                    """).query(Long.class).single();
+            if(vectorIndexes!=1) throw new AssertionError("Expected the pinned model's valid pgvector HNSW index");
             var parallel=new ArrayList<Double>();
             try(var executor=java.util.concurrent.Executors.newFixedThreadPool(4)) {
                 var tasks=new ArrayList<java.util.concurrent.Callable<Double>>();

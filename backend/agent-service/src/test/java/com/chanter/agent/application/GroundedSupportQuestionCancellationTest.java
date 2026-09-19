@@ -27,6 +27,7 @@ class GroundedSupportQuestionCancellationTest {
         var faqs = mock(ApprovedFaqClient.class);
         var runtime = mock(AgentRuntimeService.class);
         var catalog = mock(LlmModelCatalog.class);
+        var retrieval = mock(VectorRetrievalService.class);
         var factory = new DefaultListableBeanFactory();
         when(access.requireAccess(channel, user)).thenReturn(new SupportQuestionChannelAccessClient.SupportQuestionChannelAccess(channel, course, server, "q", true, false));
         when(questions.getSupportQuestion(channel, question, user)).thenReturn(new SupportQuestionClient.SupportQuestion(question, channel, user, "How does a queue work?", "UNANSWERED", Instant.now()));
@@ -39,7 +40,7 @@ class GroundedSupportQuestionCancellationTest {
                 new CourseResourceCatalogClient.CourseResourceSummary(first, course, "First", "first.md", true),
                 new CourseResourceCatalogClient.CourseResourceSummary(second, course, "Second", "second.md", true)));
         var service = new GroundedSupportQuestionService(assistant, access, questions, resources, faqs,
-                mock(VectorRetrievalService.class), factory.getBeanProvider(RagGroundingEngine.class),
+                retrieval, factory.getBeanProvider(RagGroundingEngine.class),
                 runtime, catalog, mock(AiEvidenceAuthorization.class), mock(AiQuotaEnforcementService.class),
                 mock(StudyAssistantAnswerPersistenceService.class), mock(StudyAssistantAnswerRepository.class), Clock.systemUTC(), "rag", 5);
         try (var execution = new LlmExecution(Duration.ofSeconds(3))) {
@@ -54,7 +55,7 @@ class GroundedSupportQuestionCancellationTest {
             assertThatThrownBy(() -> service.answerSupportQuestion(channel, question, user, "source-only", null, execution, ignored -> {}))
                     .isInstanceOf(LlmProviderException.class).hasMessageContaining("cancelled");
             verify(content, never()).downloadContent(second, user);
-            verifyNoInteractions(faqs, runtime);
+            verifyNoInteractions(retrieval, faqs, runtime);
         }
     }
 }
