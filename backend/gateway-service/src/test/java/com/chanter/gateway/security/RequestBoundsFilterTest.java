@@ -45,13 +45,20 @@ class RequestBoundsFilterTest {
         assertThat(chunked.getResponse().getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
     }
 
-    @Test void slowBodiesExpireWithoutForwarding() {
+    @Test void slowBodiesExpireWithoutForwardingAndReleaseCapacity() {
         var filter = new RequestBoundsFilter(16, 32, 1, Duration.ofMillis(40));
         var slow = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/login").body(Flux.never()));
         StepVerifier.withVirtualTime(() -> filter.filter(slow,
                 next -> Mono.error(new AssertionError("Incomplete body reached backend"))))
                 .thenAwait(Duration.ofMillis(40)).verifyComplete();
         assertThat(slow.getResponse().getStatusCode()).isEqualTo(HttpStatus.REQUEST_TIMEOUT);
+        var accepted = new AtomicBoolean();
+        var retried = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/login").body("{}"));
+        StepVerifier.withVirtualTime(() -> filter.filter(retried, next -> {
+            accepted.set(true);
+            return Mono.empty();
+        })).verifyComplete();
+        assertThat(accepted).isTrue();
     }
 
     @Test void cancellationReleasesCapacityForTheNextRequest() {
