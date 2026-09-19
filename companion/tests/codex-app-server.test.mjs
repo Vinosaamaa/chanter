@@ -59,6 +59,16 @@ test('provider timeout closes the child and cannot return a late result', async 
   await assert.rejects(client.initialize(), { code: 'COMPANION_CLOSED' });
 });
 
+test('an unresponsive provider is forcibly terminated after the shutdown grace period', async () => {
+  const { child } = provider();
+  const signals = [];
+  child.kill = (signal) => { signals.push(signal ?? 'SIGTERM'); return true; };
+  const client = new CodexAppServer(child);
+  client.close();
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  assert.deepEqual(signals, ['SIGTERM', 'SIGKILL']);
+});
+
 test('credential refresh and tool approval requests are denied without echoing their content', async () => {
   const { child, calls } = provider();
   const client = new CodexAppServer(child);

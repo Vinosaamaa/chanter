@@ -12,6 +12,7 @@ export class CodexAppServer {
   #closed = false; #initialized = false; #timeoutMs;
   #loginId = null; #loginStarting = false;
   #study = null; #studyUsed = false;
+  #exited = false; #killTimer;
 
   constructor(child, { timeoutMs = 10_000 } = {}) {
     if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) throw new CompanionError('INVALID_TIMEOUT');
@@ -20,7 +21,7 @@ export class CodexAppServer {
     child.stdout.on('data', (chunk) => this.#receive(chunk));
     child.stderr.resume(); // Provider diagnostics may contain paths, content, or credentials.
     child.on('error', () => this.close('PROVIDER_UNAVAILABLE'));
-    child.on('exit', () => this.close('PROVIDER_DISCONNECTED'));
+    child.on('exit', () => { this.#exited = true; clearTimeout(this.#killTimer); this.close('PROVIDER_DISCONNECTED'); });
     child.stdin.on('error', () => this.close('PROVIDER_DISCONNECTED'));
     child.stdout.on('error', () => this.close('PROVIDER_DISCONNECTED'));
     child.stdout.on('end', () => this.close('PROVIDER_DISCONNECTED'));
@@ -155,6 +156,10 @@ export class CodexAppServer {
     this.#pending.clear();
     this.#child.stdin.end();
     this.#child.kill();
+    if (!this.#exited) {
+      this.#killTimer = setTimeout(() => { if (!this.#exited) this.#child.kill('SIGKILL'); }, 1000);
+      this.#killTimer.unref();
+    }
   }
 
   #requireInitialized() {

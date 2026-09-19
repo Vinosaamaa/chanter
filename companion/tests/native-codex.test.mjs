@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { createServer } from 'node:http';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { codexLaunchPlan, requireSupportedVersion } from '../src/codex-launch.mjs';
 import { CodexAppServer } from '../src/codex-app-server.mjs';
+import { NativeState } from '../src/native-state.mjs';
+import { startNativeServer } from '../src/native-server.mjs';
 
 // Explicit native-only gate. No credentials, provider login, or external model transport.
 const executable = process.env.CHANTER_CODEX_TEST_BINARY;
@@ -79,9 +82,37 @@ async function runFixture(attack, productionTransport = false) {
   const child = spawn(executable, plan.args, plan.options);
   if (productionTransport) {
     const client = new CodexAppServer(child);
+    let protectedState, listener;
     try {
       await client.initialize();
-      const result = await client.studyTurn({ model: 'fixture-model', prompt: 'Reply with Fixture answer.',
+      let result;
+      if (productionTransport === 'loopback') {
+        protectedState = await NativeState.open(path.join(state, 'companion-state'));
+        const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+        const origin = 'https://chanter.example';
+        const ticket = (value) => {
+          const body = Buffer.from(JSON.stringify(value)).toString('base64url');
+          return body + '.' + sign(null, Buffer.from('chanter-native-v1.' + body), privateKey).toString('base64url');
+        };
+        listener = await startNativeServer({ state: protectedState, origin, publicKey, port: 0,
+          approve: async () => true, transport: (request, options) => client.studyTurn(request, options) });
+        const common = { version: 1, origin, installationId: protectedState.installationId, userId: 'fixture-user', sessionId: 'fixture-session',
+          issuedAt: Date.now(), expiresAt: Date.now() + 60_000 };
+        const { handle } = await listener.pair(ticket({ ...common, kind: 'pair', requestId: 'fixture-pair' }));
+        const prompt = 'Reply with Fixture answer.';
+        const hash = createHash('sha256').update(prompt).digest('hex');
+        const response = await fetch(`http://127.0.0.1:${listener.port}/study`, { method: 'POST',
+          headers: { origin, 'content-type': 'application/json', 'x-chanter-pairing': handle },
+          body: JSON.stringify({ prompt, ticket: ticket({ ...common, kind: 'study', requestId: 'fixture-request', questionId: 'fixture-question',
+            provider: 'codex', model: 'fixture-model', mode: 'quoted-evidence', promptSha256: hash, evidenceSha256: [hash],
+            maxInputBytes: 4096, maxOutputBytes: 4096, deadlineMs: 20_000 }) }) });
+        assert.equal(response.status, 200);
+        const events = await response.text();
+        assert.ok(!events.includes('event: error'));
+        const completed = events.split('\n\n').find((event) => event.startsWith('event: completed\n'));
+        assert.ok(completed);
+        result = JSON.parse(completed.slice('event: completed\ndata: '.length));
+      } else result = await client.studyTurn({ model: 'fixture-model', prompt: 'Reply with Fixture answer.',
         maxInputBytes: 4096, maxOutputBytes: 4096, deadlineMs: 20_000 });
       assert.equal(requests.length, 1);
       assert.equal(requests[0].store, false);
@@ -89,6 +120,7 @@ async function runFixture(attack, productionTransport = false) {
       assert.ok(!JSON.stringify(requests).includes(canary));
       return result;
     } finally {
+      await listener?.close(); protectedState?.close();
       client.close(); server.closeAllConnections(); await new Promise((resolve) => server.close(resolve));
     }
   }
@@ -162,6 +194,11 @@ test('native synthetic turn exposes only the fixed skill namespace and never loa
 
 test('native synthetic turn completes through the bounded production stdio client', native, async () => {
   assert.deepEqual(await runFixture(null, true), { text: 'Fixture answer.',
+    usage: { inputTokens: 12, outputTokens: 4 }, provenance: 'native-client-report' });
+});
+
+test('native synthetic turn crosses signed pairing, real loopback HTTP, durable consumption and unmodified Codex', native, async () => {
+  assert.deepEqual(await runFixture(null, 'loopback'), { text: 'Fixture answer.',
     usage: { inputTokens: 12, outputTokens: 4 }, provenance: 'native-client-report' });
 });
 

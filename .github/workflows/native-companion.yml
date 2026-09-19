@@ -1,0 +1,28 @@
+name: Native companion boundary
+
+on:
+  pull_request:
+    paths: ['companion/**', '.github/workflows/native-companion.yml']
+  push:
+    branches: [main]
+    paths: ['companion/**', '.github/workflows/native-companion.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify native request and protected state boundaries
+        run: node --test companion/tests/*.test.mjs
+      # Native Codex tests skip without an explicitly supplied supported binary.
+      # Hosted boundary tests do not establish provider entitlement or native isolation.

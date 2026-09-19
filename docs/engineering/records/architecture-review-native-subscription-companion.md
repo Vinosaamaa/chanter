@@ -10,21 +10,21 @@ capabilityIds: ["chanter-ai-study-assistant-runtime"]
 createdAt: 2026-09-12
 reconstructed: false
 confidence: medium
-unknowns: ["Eligible-account subscription inference is unverified.", "Pairing, backend capability acceptance, signing, and operational retention remain incomplete.", "Native isolation is exercised on Windows CLI 0.153.4 only."]
+unknowns: ["Eligible-account subscription inference is unverified.", "Native launcher/approval UI, backend capability issuance/acceptance, installer signing, and operational retention remain incomplete.", "Native isolation is exercised on Windows CLI 0.153.4 only."]
 modules: ["native-companion"]
-interfaces: ["companion/src/codex-app-server.mjs", "companion/src/codex-launch.mjs"]
+interfaces: ["companion/src/codex-app-server.mjs", "companion/src/codex-launch.mjs", "companion/src/native-request.mjs", "companion/src/native-server.mjs", "companion/src/native-state.mjs"]
 seams: ["native-ui-to-provider-managed-auth", "restricted-stdio-to-provider-runtime", "backend-evidence-to-local-capability"]
 adapters: ["companion/src/codex-app-server.mjs"]
 relatedRecords: ["architecture-review-chanter-ai-provider-runtime@1"]
 decisions: []
 incidents: []
 features: []
-capabilities: ["Provider-managed native authentication", "Sanitized account and model discovery", "Bounded private stdio", "Native isolation canary fixtures"]
+capabilities: ["Provider-managed native authentication", "Sanitized account and model discovery", "Bounded native streaming and cancellation", "Native isolation canary fixtures", "Signed loopback request validation", "Protected pairing and durable replay rejection"]
 amends: []
 supersedes: []
 learningRefs: []
 sources: [{"label":"Native subscription companion issue", "url":"https://github.com/Vinosaamaa/chanter/issues/316", "kind":"issue"}, {"label":"Provider runtime issue", "url":"https://github.com/Vinosaamaa/chanter/issues/248", "kind":"issue"}]
-verification: {"state":"verified", "evidenceRefs":["test:companion/tests/codex-account.test.mjs", "test:companion/tests/codex-app-server.test.mjs", "test:companion/tests/codex-launch.test.mjs", "test:companion/tests/native-codex.test.mjs"]}
+verification: {"state":"verified", "evidenceRefs":["test:companion/tests/codex-account.test.mjs", "test:companion/tests/codex-app-server.test.mjs", "test:companion/tests/codex-launch.test.mjs", "test:companion/tests/codex-study-turn.test.mjs", "test:companion/tests/native-codex.test.mjs", "test:companion/tests/native-request.test.mjs", "test:companion/tests/native-server.test.mjs", "test:companion/tests/native-state.test.mjs"]}
 visibility: public-safe
 publicationEligibility: eligible
 issue: 316
@@ -42,4 +42,6 @@ Native tests exercise CLI 0.153.4 with a synthetic loopback provider, an empty e
 
 Production evidence release requires an independently authenticated native pairing and a backend-issued single-use request capability binding the current user/session, provider/model, evidence hashes, bounds, and expiry. Current authorization, export approval, reservation, and evidence validation must be repeated at the appropriate backend boundaries. A possible provider attempt retains the existing one-attempt-per-question rule. Client-reported usage is provenance, not billing authority.
 
-The initial 21-test checkpoint establishes the protocol/configuration slice only. No real provider inference, eligible-account login, signed installer, pairing endpoint, or backend capability integration is claimed. Ephemeral threads and upstream `store=false` were observed, but provider operational databases still exist and need a retention audit. The remaining delivery and security gates are explicit in the issue design and system review.
+The resumed boundary adds a real loopback HTTP listener with exact Host/Origin checks and a non-simple authenticated request. Pairing is a native action without an HTTP route. A pinned deployment key verifies short-lived Ed25519 tickets binding identity, session, installation, question, provider/model, mode, prompt/evidence hashes, and bounds. Native approval is bounded by ticket expiry and repeated pairing validation precedes the durable claim. SQLite commits that claim before transport, so uncertain completion cannot produce an automatic retry. Windows filesystem tests reject broadened state permissions; installation secrets and consumed identifiers remain native. The database stores no provider credentials or course text.
+
+An unmodified native Codex fixture now runs through signed pairing, the HTTP listener, durable consumption, and bounded private stdio. It uses synthetic signing keys and a loopback model provider, with no login, copied credential, external inference, or subscription usage. This is protocol/security evidence only. The backend issuer, current authorization/reservation/result acceptance, native approval UI, eligible-account flow, and signed installer remain incomplete. Ephemeral threads and upstream `store=false` were observed, but provider operational databases still exist and need a retention audit. The remaining delivery and security gates are explicit in the issue design and system review.
