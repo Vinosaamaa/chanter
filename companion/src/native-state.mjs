@@ -10,6 +10,14 @@ import { CompanionError } from './codex-app-server.mjs';
 const run = promisify(execFile);
 const id = (value) => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
 
+/** Invoke only immediately after exclusive creation; never repair an existing entry. */
+export async function ownCreatedEntry(directory, entry) {
+  if (process.platform !== 'win32') return;
+  await run(path.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+    ['-NoProfile', '-NonInteractive', '-File', fileURLToPath(new URL('./protect-state.ps1', import.meta.url)),
+      '-StatePath', directory, '-CreatedEntry', entry], { windowsHide: true, timeout: 10_000, maxBuffer: 4096 });
+}
+
 /** Native-selected location only. State contains no provider credentials or course content. */
 export class NativeState {
   #db; #secret; #installationId;
@@ -35,7 +43,7 @@ export class NativeState {
             || (process.platform !== 'win32' && (stat.uid !== process.getuid() || (stat.mode & 0o077) !== 0))) throw new Error();
       }
       // Set the database's creation mode explicitly; SQLite journals inherit its permissions.
-      try { const file = await open(path.join(directory, 'state.sqlite'), 'wx', 0o600); await file.close(); }
+      try { const file = await open(path.join(directory, 'state.sqlite'), 'wx', 0o600); await file.close(); await ownCreatedEntry(directory, 'state.sqlite'); }
       catch (error) { if (error.code !== 'EEXIST') throw error; }
       db = new DatabaseSync(path.join(directory, 'state.sqlite'));
       db.exec(`PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;

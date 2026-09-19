@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
-import { lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, realpath, rmdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CompanionError } from './codex-app-server.mjs';
+import { ownCreatedEntry } from './native-state.mjs';
 
 const samePath = (a, b) => process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
 const alive = (pid) => { if (pid === 0) return false; try { process.kill(pid, 0); return true; } catch (error) { return error.code !== 'ESRCH'; } };
@@ -16,23 +17,34 @@ async function directoryAt(root, directory) {
 }
 
 async function removeVerifiedTree(root, directory) {
-  // Verify the resolved absolute target and every descendant before recursive deletion.
+  // Snapshot the owned tree, then remove only those exact entries. Never recursively
+  // delete a tree that could gain uninspected entries after the snapshot.
   await directoryAt(root, directory);
   let count = 0;
+  const entries = [];
   async function inspect(current, depth) {
     if (++count > 4096 || depth > 16) throw blocked();
     const stat = await lstat(current);
     if (stat.isSymbolicLink() || (!stat.isDirectory() && !stat.isFile())) throw blocked();
     if (stat.isDirectory()) for (const name of await readdir(current)) await inspect(path.join(current, name), depth + 1);
+    entries.push({ current, stat });
   }
   await inspect(directory, 0);
-  await rm(directory, { recursive: true, maxRetries: 2, retryDelay: 50 });
+  for (const { current, stat } of entries) {
+    await directoryAt(root, directory);
+    const fresh = await lstat(current);
+    if (fresh.isSymbolicLink() || fresh.dev !== stat.dev || fresh.ino !== stat.ino
+        || fresh.isDirectory() !== stat.isDirectory() || !samePath(await realpath(current), path.resolve(current))) throw blocked();
+    if (stat.isDirectory()) await rmdir(current);
+    else await unlink(current);
+  }
 }
 
 export async function createRun(root, installationId) {
   try {
     const runs = path.join(root, 'runs');
-    await mkdir(runs, { mode: 0o700 }).catch((error) => { if (error.code !== 'EEXIST') throw error; });
+    try { await mkdir(runs, { mode: 0o700 }); await ownCreatedEntry(root, 'runs'); }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
     await directoryAt(root, runs);
     const directory = path.join(runs, randomUUID());
     await mkdir(directory, { mode: 0o700 });
@@ -72,7 +84,8 @@ export async function finishRun(root, run, installationId) {
 export async function recoverRuns(root, installationId) {
   try {
     const runs = path.join(root, 'runs');
-    await mkdir(runs, { mode: 0o700 }).catch((error) => { if (error.code !== 'EEXIST') throw error; });
+    try { await mkdir(runs, { mode: 0o700 }); await ownCreatedEntry(root, 'runs'); }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
     await directoryAt(root, runs);
     for (const name of await readdir(runs)) {
       if (!/^[a-f0-9-]{36}$/.test(name)) throw blocked();

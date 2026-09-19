@@ -4,7 +4,7 @@ import { copyFile, lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CompanionError } from './codex-app-server.mjs';
-import { NativeState } from './native-state.mjs';
+import { NativeState, ownCreatedEntry } from './native-state.mjs';
 
 const sources = ['codex-account.mjs', 'codex-app-server.mjs', 'codex-launch.mjs', 'native-application.mjs',
   'native-console.mjs', 'native-install.mjs', 'native-provider.mjs', 'native-request.mjs', 'native-retention.mjs',
@@ -52,6 +52,7 @@ export async function installCompanion({ directory, origin, publicKey, codexPath
     await writeFile(path.join(directory, 'configuration.json'), JSON.stringify(config, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     const psQuote = (value) => "'" + value.replaceAll("'", "''") + "'";
     await writeFile(path.join(directory, 'start.ps1'), `# Unsigned Chanter developer installation.\n& ${psQuote(process.execPath)} (Join-Path $PSScriptRoot 'app/cli.mjs') start --directory $PSScriptRoot\nexit $LASTEXITCODE\n`, { flag: 'wx', mode: 0o600 });
+    for (const entry of ['app', 'configuration.json', 'start.ps1']) await ownCreatedEntry(directory, entry);
     return { installationId: state.installationId, build: config.build, distribution: config.distribution, configured: true };
   } catch (error) { throw error instanceof CompanionError ? error : new CompanionError('NATIVE_INSTALL_INCOMPLETE'); }
   finally { state.close(); }

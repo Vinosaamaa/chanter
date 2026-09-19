@@ -15,6 +15,9 @@ test('account summaries expose the ChatGPT category and reject other account typ
       state: 'unsupported-auth', provider: 'codex', plan: null,
     });
   }
+  for (const planType of [undefined, null, 'future-plan']) {
+    assert.equal(accountSummary({ account: { type: 'chatgpt', planType } }).state, 'unsupported-auth');
+  }
 });
 
 test('unknown usage stays unknown and model-specific limits do not leak account metadata', () => {

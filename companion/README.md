@@ -14,7 +14,7 @@ node companion/cli.mjs status --directory <absolute-install-directory>
 node companion/cli.mjs start --directory <absolute-install-directory>
 ```
 
-The installation also contains `start.ps1` for launching the copied package in a visible PowerShell terminal. Installation copies only the companion program; it does not change PATH, register a service, schedule startup, download Codex, or sign in. An existing installation is preserved and replacement is refused. Setup status checks the configuration and binary version; it explicitly reports account/listener status as unchecked. Use the running terminal's `status` command for current provider state.
+The installation also contains `start.ps1` for launching the copied package in a visible PowerShell terminal. Installation copies only the companion program; it does not change PATH, register a service, schedule startup, download Codex, or sign in. An existing installation is preserved and replacement is refused. If installation is interrupted, choose a new empty directory; preserve the incomplete directory for operator inspection. The installer does not overwrite or delete uncertain existing state. Setup status checks the configuration and binary version; it explicitly reports account/listener status as unchecked. Use the running terminal's `status` command for current provider state.
 
 The terminal accepts:
 

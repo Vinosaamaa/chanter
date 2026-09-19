@@ -4,7 +4,7 @@ const PLANS = new Set(['free', 'go', 'plus', 'pro', 'team', 'business', 'enterpr
 export function accountSummary(response) {
   const account = response?.account;
   return {
-    state: account == null ? 'signed-out' : account.type === 'chatgpt' ? 'subscription' : 'unsupported-auth',
+    state: account == null ? 'signed-out' : account.type === 'chatgpt' && PLANS.has(account.planType) ? 'subscription' : 'unsupported-auth',
     provider: 'codex',
     plan: account?.type === 'chatgpt' && PLANS.has(account.planType) ? account.planType : null,
   };

@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { CodexAppServer, CompanionError } from './codex-app-server.mjs';
 import { codexLaunchPlan, requireSupportedVersion } from './codex-launch.mjs';
 import { createRun, finishRun, markProvider, recoverRuns, removeProviderTemporary } from './native-retention.mjs';
+import { ownCreatedEntry } from './native-state.mjs';
 
 export async function verifyNativeBinary(executable, signal) {
   if (process.platform !== 'win32') throw new CompanionError('UNSUPPORTED_NATIVE_PLATFORM');
@@ -29,7 +30,8 @@ export class NativeProvider {
   async initialize() {
     await verifyNativeBinary(this.#executable);
     await recoverRuns(this.#root, this.#installationId);
-    await mkdir(path.join(this.#root, 'provider'), { mode: 0o700 }).catch((error) => { if (error.code !== 'EEXIST') throw error; });
+    try { await mkdir(path.join(this.#root, 'provider'), { mode: 0o700 }); await ownCreatedEntry(this.#root, 'provider'); }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
     const providerHome = path.join(this.#root, 'provider');
     const stat = await lstat(providerHome);
     if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(providerHome)).toLowerCase() !== path.resolve(providerHome).toLowerCase()) {
