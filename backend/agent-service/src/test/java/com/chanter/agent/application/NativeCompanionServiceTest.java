@@ -131,6 +131,25 @@ class NativeCompanionServiceTest {
         org.mockito.Mockito.doNothing().when(questions).requireNativeEvidenceCurrent(any(), any(), any(), any(), any());
         assertThatThrownBy(this::issue).isInstanceOf(AiGenerationLedger.AttemptConflict.class);
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"true,400", "false,400", "true,403", "false,403", "true,504", "false,504"})
+    void rejectedResultKeepsItsOriginalStatusWhenSettlementAlsoFails(boolean ledgerFailure, int status) {
+        var issued = issue();
+        var failure = new org.springframework.dao.TransientDataAccessResourceException("synthetic settlement failure");
+        if (ledgerFailure) doThrow(failure).when(ledger).settle(eq(issued.requestId()), any(), any(), org.mockito.ArgumentMatchers.anyLong(), any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        else doThrow(failure).when(requests).finish(issued.requestId(), false, 0, 0);
+        if (status != 400) doThrow(status == 403 ? new ResponseStatusException(HttpStatus.FORBIDDEN)
+                : new LlmProviderException(LlmProviderException.Outcome.TIMED_OUT))
+                .when(questions).requireNativeEvidenceCurrent(any(), any(), any(), any(), any());
+        assertThatThrownBy(() -> accept(issued.requestId(), status == 400 ? "invalid quotation" : RESULT))
+                .isInstanceOfSatisfying(ResponseStatusException.class, error -> assertThat(error.getStatusCode().value()).isEqualTo(status));
+        assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
+        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(40960);
+        assertThatThrownBy(() -> accept(issued.requestId(), RESULT)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
+        org.mockito.Mockito.doNothing().when(questions).requireNativeEvidenceCurrent(any(), any(), any(), any(), any());
+        assertThatThrownBy(this::issue).isInstanceOf(AiGenerationLedger.AttemptConflict.class);
+        verify(questions, never()).acceptNativeAnswer(any(), any(), any(), any(), any(), any(), any());
+    }
     @Test void revokedSessionAndMissingExportApprovalPreventEvidenceRelease() {
         assertThatThrownBy(() -> companion.issue(channel, question, user, AUTH, ORIGIN, installation, "fixture-model", false))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");

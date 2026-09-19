@@ -99,11 +99,10 @@ public class NativeCompanionService {
                 try { ledger.settle(requestId, LlmUsage.UNKNOWN, outcome, 0, request.model(), null, definition(request.model()), true); }
                 finally { requests.finish(requestId, accepted, inputTokens, outputTokens); }
             } catch (RuntimeException settlementUnavailable) {
-                if (!accepted) throw settlementUnavailable;
-                // Persistence is authoritative. Existing reservation/claim rows still prevent another
-                // attempt; expiry redacts evidence and stale reservations retain unknown usage.
+                // Preserve the original result, including rejection. Existing reservation/claim rows
+                // prevent another attempt; expiry redacts evidence and usage remains unknown.
                 org.slf4j.LoggerFactory.getLogger(NativeCompanionService.class)
-                        .warn("Saved native answer settlement unavailable");
+                        .warn("Native result settlement unavailable");
             }
         }
     }
