@@ -3,15 +3,13 @@ import { ArrowLeft, Info, Sprout } from 'lucide-react'
 import { Link, Navigate } from 'react-router-dom'
 import { useInstructorDashboardPage } from '../../instructor-dashboard/hooks/use-instructor-dashboard-page'
 import { useAccessibleStudyServersQuery } from '../../shell/hooks/use-shell-queries'
-import { useV2SidebarData } from '../hooks/use-v2-sidebar-data'
 
 export function UsageSettingsPage() {
-  const sidebar = useV2SidebarData()
   const servers = useAccessibleStudyServersQuery()
-  if (servers.isLoading || sidebar.isLoading) {
+  if (servers.isLoading) {
     return <section className="v2-workspace-page course-workspace-state" role="status"><p>Loading usage…</p></section>
   }
-  if (servers.isError || sidebar.isError) {
+  if (servers.isError) {
     return <section className="v2-workspace-page course-workspace-state">
       <h1>Usage</h1>
       <p role="alert">Unable to load Study Server access. Reload the page to try again.</p>
@@ -19,7 +17,7 @@ export function UsageSettingsPage() {
     </section>
   }
   const ownedServers = servers.data?.filter(server => server.owner) ?? []
-  if (!sidebar.showBillingNav || !ownedServers.length) return <Navigate to="/app/home" replace />
+  if (!ownedServers.length) return <Navigate to="/app/home" replace />
   return <OwnerUsagePage servers={ownedServers} />
 }
 

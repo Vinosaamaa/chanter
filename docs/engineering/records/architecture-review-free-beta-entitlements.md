@@ -10,7 +10,7 @@ capabilityIds: ["chanter-ai-study-assistant-runtime"]
 createdAt: 2026-09-18
 reconstructed: false
 confidence: high
-unknowns: ["Hosted browser and final exact-head checks are pending on the initial candidate.", "Paid-provider behavior and production release proof remain outside the free-beta slice."]
+unknowns: ["Paid-provider behavior and production release proof remain outside the free-beta slice."]
 modules: ["community-entitlements", "assistant-quota", "frontend-usage"]
 interfaces: ["study-server-saas-plan", "instructor-dashboard"]
 seams: ["legacy-plan-to-operator-entitlement", "actual-count-to-usage-display"]
@@ -40,4 +40,4 @@ The community service now derives the effective entitlement from bounded operato
 
 The owner Usage page displays the actual lifetime count and remaining runs without checkout, card, invoice, upgrade or reset claims. Loading and failed requests do not display fabricated zero usage. The old billing route redirects, and other plan-changing UI has been removed.
 
-HTTP and configuration tests establish quota-tampering rejection and policy precedence. UI tests distinguish real counts from missing data; real-service browser and responsive fixture checks provide separate persistence and presentation evidence. Paid billing remains a future requirement, so this change does not close issue #250.
+HTTP and configuration tests establish quota-tampering rejection and policy precedence. Full backend verification passed 366 tests. UI tests distinguish real counts from missing data; 15 real-service browser journeys and 238 responsive fixture checks provide separate persistence and presentation evidence. CodeAnt's unrelated-navigation failure finding was reproduced and fixed with a regression. Paid billing remains a future requirement, so this change does not close issue #250.

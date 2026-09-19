@@ -72,4 +72,10 @@ describe('UsageSettingsPage', () => {
     expect(screen.queryByText('Home redirected')).not.toBeInTheDocument()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
+
+  it('loads owned-server usage despite an unrelated navigation failure', async () => {
+    mocks.sidebar.mockReturnValue({ isLoading: false, isError: true, showBillingNav: false })
+    renderUsage()
+    expect(await screen.findByText('42 of 100 assistant runs used, 58 remaining')).toBeVisible()
+  })
 })
