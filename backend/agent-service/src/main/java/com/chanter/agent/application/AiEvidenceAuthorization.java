@@ -2,7 +2,6 @@ package com.chanter.agent.application;
 
 import com.chanter.agent.application.GroundingEngine.SourceCitation;
 import com.chanter.agent.domain.GrantType;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,8 +51,10 @@ public class AiEvidenceAuthorization {
             execution.check();
             if (approved.containsKey(citation.resourceId()) && !currentText.containsKey(citation.resourceId())) {
                 byte[] bytes = content.downloadContent(citation.resourceId(), user);
-                if (bytes == null || bytes.length > 2_000_000) denied();
-                currentText.put(citation.resourceId(), new String(bytes, StandardCharsets.UTF_8));
+                execution.check();
+                var extraction = ResourceTextExtractor.extractDocument(bytes, approved.get(citation.resourceId()).fileName());
+                if (extraction.status() != ResourceTextExtractor.Status.READY) denied();
+                currentText.put(citation.resourceId(), extraction.text());
             }
         }
         execution.check();

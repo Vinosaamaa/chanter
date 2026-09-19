@@ -17,8 +17,25 @@ public record CourseResource(
         String state,
         String sha256,
         UUID idempotencyKey,
-        String storageBackend
+        String storageBackend,
+        String ingestionStatus,
+        java.util.Set<String> ingestionSignals,
+        UUID studyServerId,
+        UUID ingestionEventId
 ) {
+    public CourseResource(UUID id, UUID courseId, String title, String fileName, String contentType, long byteSize,
+            String storageKey, boolean aiApproved, UUID uploadedByUserId, Instant createdAt, String state,
+            String sha256, UUID idempotencyKey, String storageBackend, String ingestionStatus, java.util.Set<String> ingestionSignals) {
+        this(id, courseId, title, fileName, contentType, byteSize, storageKey, aiApproved, uploadedByUserId,
+                createdAt, state, sha256, idempotencyKey, storageBackend, ingestionStatus, ingestionSignals, null, null);
+    }
+    public CourseResource(UUID id, UUID courseId, String title, String fileName, String contentType, long byteSize,
+            String storageKey, boolean aiApproved, UUID uploadedByUserId, Instant createdAt, String state,
+            String sha256, UUID idempotencyKey, String storageBackend) {
+        this(id, courseId, title, fileName, contentType, byteSize, storageKey, aiApproved, uploadedByUserId,
+                createdAt, state, sha256, idempotencyKey, storageBackend, "NONE", java.util.Set.of());
+    }
+    public CourseResource { ingestionSignals = java.util.Set.copyOf(ingestionSignals); }
     public String publicStatus() {
         return switch (state) {
             case "AVAILABLE" -> "AVAILABLE";

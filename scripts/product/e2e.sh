@@ -20,6 +20,7 @@ if [ "$MODE" = "product" ]; then
   source scripts/product/lib.sh
   product_load_env
   node scripts/product/durable-events-drill.mjs
+  node scripts/product/resource-ingestion-drill.mjs
   export PLAYWRIGHT_PRODUCT=1
   export PLAYWRIGHT_SKIP_WEBSERVER=1
   export PLAYWRIGHT_BASE_URL="${PLAYWRIGHT_BASE_URL:-http://127.0.0.1:5173}"

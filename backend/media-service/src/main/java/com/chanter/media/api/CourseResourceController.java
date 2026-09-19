@@ -106,10 +106,24 @@ public class CourseResourceController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/course-resources/{resourceId}/retry-ingestion")
+    public ResponseEntity<CourseResourceResponse> retryIngestion(@PathVariable UUID resourceId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user) {
+        return ResponseEntity.accepted().body(CourseResourceResponse.from(courseResourceService.retryIngestion(resourceId, user)));
+    }
+
     @GetMapping("/courses/{courseId}/course-resources/usage")
     public com.chanter.media.application.ResourceLifecycle.Usage usage(@PathVariable UUID courseId, @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user) {
         return courseResourceService.usage(courseId, user);
     }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/course-resources/{resourceId}/ai-approval")
+    public CourseResourceResponse approval(@PathVariable UUID resourceId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody ApprovalRequest request) {
+        return CourseResourceResponse.from(courseResourceService.setAiApproved(resourceId, user, request.aiApproved()));
+    }
+    public record ApprovalRequest(@jakarta.validation.constraints.NotNull Boolean aiApproved) {}
 
     /** Parse stored content type for download; fall back if missing/invalid (SEC-17). */
     static MediaType safeContentType(String rawContentType) {

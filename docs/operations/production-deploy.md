@@ -137,12 +137,22 @@ Restore both service databases and the private object namespace consistently.
 The retained terminal deletion records prevent delayed indexing from recreating
 deleted content; an older application must not be rolled back across this epoch.
 
-The current compatibility epoch is 5 after accepted #245. Community V18,
+Compatibility epoch 5 includes accepted #245. Community V18,
 message V9 and media V3 introduce transactional outboxes; notification/search
 V2 record delivery cursors. Older source binaries can still write SQL but omit
 durable events, violating projection consistency. Automatic rollback to epoch 4
 is therefore forbidden. Recover source and consumer databases consistently;
 never reset event cursors independently or enable Flyway out-of-order migration.
+
+The current compatibility epoch is 6 for #246. Agent V9 introduces generation-fenced
+extraction and V10 adds durable resource jobs and consumer cursors. Media V4 records
+extraction outcomes, authoritative source scope and expected ingestion events.
+Older binaries can bypass generation checks or fail to publish ingestion events;
+automatic rollback or ordinary deployment to epoch 5 is forbidden. Recover media
+and agent databases with private objects and their source/consumer cursors as one
+consistent recovery point. Do not erase terminal deletion markers, reset a cursor
+independently or run old index writers against this schema. This release does not
+claim private-provider recovery until the account-specific drill is complete.
 
 The community service's runtime file sets `CHANTER_BETA_MODE=free_beta` and
 `CHANTER_BETA_ASSISTANT_RUN_LIMIT=1000`. The operator may lower the lifetime
@@ -175,7 +185,7 @@ This procedure has downtime, including database migration and JVM startup. Exist
 node /srv/chanter/releases/COMMIT/scripts/deploy/host.mjs rollback /srv/chanter/production
 ```
 
-Rollback restarts the recorded previous application images against the existing data. It never reverses SQL, deletes volumes or silently restores an old database. It is allowed only when both releases have the same reviewed `schemaEpoch` and identical PostgreSQL/Redis image IDs. Increase `infra/production/release-policy.json`'s epoch whenever stored data or schema removes compatibility with the preceding binary. Historical epochs 2 and 3 introduced browser-session linkage and versioned PBKDF2 password hashes respectively. The storage and durable-event compatibility requirements for epochs 4 and 5 are described above. A changed epoch or persistence image requires a reviewed fix-forward or backup recovery procedure, not automatic rollback.
+Rollback restarts the recorded previous application images against the existing data. It never reverses SQL, deletes volumes or silently restores an old database. It is allowed only when both releases have the same reviewed `schemaEpoch` and identical PostgreSQL/Redis image IDs. Increase `infra/production/release-policy.json`'s epoch whenever stored data or schema removes compatibility with the preceding binary. Historical epochs 2 and 3 introduced browser-session linkage and versioned PBKDF2 password hashes respectively. The storage, durable-event and generation-fenced ingestion requirements for epochs 4 through 6 are described above. A changed epoch or persistence image requires a reviewed fix-forward or backup recovery procedure, not automatic rollback.
 
 Every release review must inspect all migrations since the previous receipt and explicitly record whether the previous binary can read and write the new schema. An unchanged epoch is a reviewer assertion of that compatibility, not an automated schema proof. Include the migration diff, chosen epoch and a previous-binary smoke against the migrated staging database in the release evidence; do not approve automatic rollback from the integer alone.
 

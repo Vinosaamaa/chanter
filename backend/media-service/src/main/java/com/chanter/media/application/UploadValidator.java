@@ -27,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class UploadValidator {
     private static final Map<String, String> TYPES = Map.ofEntries(
             Map.entry("txt", "text/plain"), Map.entry("md", "text/markdown"), Map.entry("markdown", "text/markdown"),
+            Map.entry("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
             Map.entry("pdf", "application/pdf"), Map.entry("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
             Map.entry("mp3", "audio/mpeg"), Map.entry("m4a", "audio/mp4"), Map.entry("wav", "audio/wav"),
             Map.entry("ogg", "audio/ogg"), Map.entry("mp4", "video/mp4"), Map.entry("webm", "video/webm"),
@@ -61,9 +62,9 @@ public class UploadValidator {
             try (var input = TikaInputStream.get(temporary)) {
                 detected = new DefaultDetector().detect(input, new Metadata(), new org.apache.tika.parser.ParseContext()).toString();
             }
-            if (expected.equals(TYPES.get("pptx"))) {
+            if (extension.equals("pptx") || extension.equals("docx")) {
                 if (!detected.contains("zip") && !detected.contains("ooxml")) throw bad("File bytes do not match the file type");
-                verifyPresentation(temporary);
+                verifyOffice(temporary, extension.equals("docx") ? "word/document.xml" : "ppt/presentation.xml");
             } else if (expected.startsWith("text/")) {
                 if (!detected.equals("text/plain")) throw bad("File bytes do not match the file type");
                 String text = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
@@ -143,20 +144,20 @@ public class UploadValidator {
         } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
 
-    private static void verifyPresentation(Path file) throws IOException {
-        boolean types = false, presentation = false; long expanded = 0; int entries = 0;
+    private static void verifyOffice(Path file, String mainPart) throws IOException {
+        boolean types = false, main = false; long expanded = 0; int entries = 0;
         try (var zip = new ZipInputStream(Files.newInputStream(file))) {
             java.util.zip.ZipEntry entry; byte[] buffer = new byte[8192];
             while ((entry = zip.getNextEntry()) != null) {
                 String name = entry.getName();
                 if (++entries > 1024 || name.startsWith("/") || name.contains("..") || name.contains("\\")
-                        || name.toLowerCase(Locale.ROOT).contains("vbaproject")) throw bad("Presentation archive is not supported");
-                types |= name.equals("[Content_Types].xml"); presentation |= name.equals("ppt/presentation.xml");
+                        || name.toLowerCase(Locale.ROOT).contains("vbaproject")) throw bad("Office archive is not supported");
+                types |= name.equals("[Content_Types].xml"); main |= name.equals(mainPart);
                 int count;
-                while ((count = zip.read(buffer)) != -1) if ((expanded += count) > 40L * 1024 * 1024) throw bad("Presentation archive is too large");
+                while ((count = zip.read(buffer)) != -1) if ((expanded += count) > 40L * 1024 * 1024) throw bad("Office archive is too large");
             }
         }
-        if (!types || !presentation) throw bad("File is not a PowerPoint presentation");
+        if (!types || !main) throw bad("File does not match the Office document type");
     }
 
     public static String filename(String original) {

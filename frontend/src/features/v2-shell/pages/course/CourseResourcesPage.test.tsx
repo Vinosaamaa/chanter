@@ -28,6 +28,8 @@ const mocks = vi.hoisted(() => ({
     previewResource: vi.fn(),
     downloadingResourceId: null,
     aiApprovedCount: 0,
+    retryIngestion: vi.fn(),
+    retryingResourceId: null as string | null,
   },
   install: {
     preview: null as StudyAssistantInstallPreview | null,
@@ -121,7 +123,7 @@ describe('CourseResourcesPage', () => {
 
     expect(screen.getByText('Recursion notes')).toBeInTheDocument()
     expect(screen.getByText('PDF · 2.0 KB')).toBeInTheDocument()
-    expect(screen.getByText('AI-approved')).toBeInTheDocument()
+    expect(screen.getByText('AI ready')).toBeInTheDocument()
 
     fireEvent.change(screen.getByPlaceholderText('Search resources…'), {
       target: { value: 'recursion' },
@@ -147,6 +149,33 @@ describe('CourseResourcesPage', () => {
     renderPage()
 
     expect(screen.getByText('Recursion notes').closest('article')).toHaveClass('highlighted')
+  })
+
+  it('explains scanned files and lets instructors retry only failed AI preparation', async () => {
+    const user = userEvent.setup()
+    const scanned = courseResource({ id: 'scan', title: 'Scanned worksheet', ingestionStatus: 'OCR_REQUIRED' })
+    const failed = courseResource({ id: 'failed', title: 'Lecture notes', ingestionStatus: 'FAILED' })
+    mocks.resources.resources = [scanned, failed]
+    mocks.resources.filteredResources = [scanned, failed]
+    renderPage()
+    expect(screen.getByText('Text needed')).toBeInTheDocument()
+    expect(screen.getByText('Upload a version with selectable text. OCR is not available.')).toBeInTheDocument()
+    expect(screen.queryByText('AI ready')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download Scanned worksheet' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Retry AI preparation for Lecture notes' }))
+    expect(mocks.resources.retryIngestion).toHaveBeenCalledWith(failed)
+    expect(screen.queryByRole('button', { name: 'Retry AI preparation for Scanned worksheet' })).not.toBeInTheDocument()
+  })
+
+  it('does not offer instructor retry to learners or download while scanning', () => {
+    mocks.resources.canUpload = false
+    const resource = courseResource({ status: 'PROCESSING', ingestionStatus: 'FAILED' })
+    mocks.resources.resources = [resource]
+    mocks.resources.filteredResources = [resource]
+    renderPage()
+    expect(screen.getByText('Checking file')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download Recursion notes' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /Retry AI preparation/ })).not.toBeInTheDocument()
   })
 
   it('uploads the selected file with explicit title and AI approval', async () => {
@@ -322,6 +351,8 @@ function courseResource(overrides: Partial<CourseResource> = {}): CourseResource
     contentType: 'application/pdf',
     byteSize: 2048,
     aiApproved: true,
+    status: 'AVAILABLE',
+    ingestionStatus: 'READY',
     uploadedByUserId: 'owner-1',
     createdAt: '2026-07-13T12:00:00Z',
     ...overrides,

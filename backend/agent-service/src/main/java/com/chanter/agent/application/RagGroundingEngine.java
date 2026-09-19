@@ -46,6 +46,9 @@ public class RagGroundingEngine {
 
         if (best != null && best.score() >= minScore && best.contentText() != null && !best.contentText().isBlank()) {
             String title = resourceTitles.getOrDefault(best.resourceId(), best.fileName());
+            if (best.locatorKind() != null && best.locatorNumber() != null) {
+                title += " (" + best.locatorKind().toLowerCase(java.util.Locale.ROOT) + " " + best.locatorNumber() + ")";
+            }
             String excerpt = excerptWithOffsets(best);
             String answerBody = "Based on \"" + title + "\" (chars " + best.startOffset()
                     + "-" + best.endOffset() + "): " + truncate(best.contentText(), 400);

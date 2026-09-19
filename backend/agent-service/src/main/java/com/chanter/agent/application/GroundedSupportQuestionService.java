@@ -437,17 +437,6 @@ public class GroundedSupportQuestionService {
     }
 
     private static String decodeTextContent(byte[] content, String fileName) {
-        if (content == null || content.length == 0) {
-            return "";
-        }
-
-        String lowerFileName = fileName == null ? "" : fileName.toLowerCase(Locale.ROOT);
-        if (!(lowerFileName.endsWith(".md")
-                || lowerFileName.endsWith(".txt")
-                || lowerFileName.endsWith(".markdown"))) {
-            return "";
-        }
-
-        return new String(content, StandardCharsets.UTF_8).trim();
+        return ResourceTextExtractor.extractDocument(content, fileName).text();
     }
 }

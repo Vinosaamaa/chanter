@@ -101,7 +101,7 @@ class ResourceLifecycleTest {
         assertThat(lifecycle.finishScan(resource.id(), scan.leaseId(), "AVAILABLE")).isTrue();
         lifecycle.requestDelete(resource.id());
         assertThat(lifecycle.finishScan(resource.id(), scan.leaseId(), "AVAILABLE")).isFalse();
-        var payloads = jdbc.sql("SELECT payload FROM durable_outbox WHERE aggregate_key=:key ORDER BY revision")
+        var payloads = jdbc.sql("SELECT payload FROM durable_outbox WHERE aggregate_key=:key AND destination='search' ORDER BY revision")
                 .param("key", "RESOURCE:" + resource.id()).query(String.class).list();
         assertThat(payloads).hasSize(2);
         assertThat(payloads.get(0)).contains("\"deleted\":false");

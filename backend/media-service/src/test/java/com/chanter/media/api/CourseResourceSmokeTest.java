@@ -113,8 +113,10 @@ class CourseResourceSmokeTest {
         CourseResourceResponse listedResource = listed.courseResources().getFirst();
         assertThat(listedResource)
                 .usingRecursiveComparison()
-                .ignoringFields("createdAt", "status")
+                .ignoringFields("createdAt", "status", "ingestionStatus")
                 .isEqualTo(uploaded);
+        assertThat(uploaded.ingestionStatus()).isEqualTo("NONE");
+        assertThat(listedResource.ingestionStatus()).isEqualTo("PENDING");
         // Postgres stores timestamps at microsecond precision; upload responses truncate to match.
         assertThat(listedResource.createdAt()).isEqualTo(uploaded.createdAt().truncatedTo(ChronoUnit.MICROS));
 
@@ -132,12 +134,11 @@ class CourseResourceSmokeTest {
 
         assertThat(resourceIngestionClient.ingestCalls()).isEmpty();
         worker.runOnce();
-        assertThat(resourceIngestionClient.ingestCalls()).hasSize(1);
-        TestResourceIngestionClient.IngestCall ingestCall = resourceIngestionClient.ingestCalls().getFirst();
-        assertThat(ingestCall.courseId()).isEqualTo(courseId);
-        assertThat(ingestCall.resourceId()).isEqualTo(uploaded.id());
-        assertThat(ingestCall.fileName()).isEqualTo("spring-security-guide.md");
-        assertThat(ingestCall.content()).isEqualTo(fileContent);
+        assertThat(resourceIngestionClient.ingestCalls()).isEmpty();
+        assertThat(jdbc.sql("SELECT ingestion_status FROM course_resources WHERE id=:id").param("id", uploaded.id()).query(String.class).single()).isEqualTo("READY");
+        assertThat(jdbc.sql("SELECT payload FROM durable_outbox WHERE destination='agent' AND aggregate_key=:key")
+                .param("key", "RESOURCE:" + uploaded.id()).query(String.class).single())
+                .contains(courseId.toString(), uploaded.id().toString(), "spring-security-guide.md").doesNotContain("contentBase64");
     }
 
     @Test
@@ -368,5 +369,33 @@ class CourseResourceSmokeTest {
         var deletedUsage = mockMvc.perform(get("/api/v1/courses/{course}/course-resources/usage", course)
                 .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk()).andReturn().getResponse();
         assertThat(objectMapper.readTree(deletedUsage.getContentAsString()).get("reservedBytes").asLong()).isZero();
+    }
+
+    @Test void workerContentUsesInternalAuthenticationAndApprovalUpdatesRequireInstructor() throws Exception {
+        UUID course = UUID.randomUUID(), teacher = UUID.randomUUID(), learner = UUID.randomUUID();
+        courseResourceAccessClient.grantInstructorUpload(course, teacher);
+        courseResourceAccessClient.grantLearnerView(course, learner);
+        var uploaded = mockMvc.perform(multipart("/api/v1/courses/{course}/course-resources", course)
+                .file(new MockMultipartFile("file", "notes.txt", "text/plain", "safe notes".getBytes(StandardCharsets.UTF_8)))
+                .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                .param("aiApproved", "true")).andExpect(status().isAccepted()).andReturn().getResponse();
+        var resource = objectMapper.readValue(uploaded.getContentAsString(), CourseResourceResponse.class);
+        worker.runOnce();
+        String sha = jdbc.sql("SELECT sha256 FROM course_resources WHERE id=:id").param("id", resource.id()).query(String.class).single();
+        mockMvc.perform(get("/api/v1/internal/resource-ingestion/{id}/content", resource.id())
+                .param("courseId", course.toString()).param("sha256", sha)).andExpect(status().isUnauthorized());
+        var content = mockMvc.perform(get("/api/v1/internal/resource-ingestion/{id}/content", resource.id())
+                .param("courseId", course.toString()).param("sha256", sha).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(content.getContentAsString()).isEqualTo("safe notes");
+        for (UUID user : java.util.List.of(learner, teacher)) {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/v1/course-resources/{id}/ai-approval", resource.id())
+                    .header(AuthHeaders.USER_ID, user.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                    .contentType("application/json").content("{\"aiApproved\":false}"))
+                    .andExpect(user.equals(teacher) ? status().isOk() : status().isForbidden());
+        }
+        mockMvc.perform(get("/api/v1/internal/resource-ingestion/{id}/content", resource.id())
+                .param("courseId", course.toString()).param("sha256", sha).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isNotFound());
     }
 }

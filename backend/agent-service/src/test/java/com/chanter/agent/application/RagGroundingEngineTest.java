@@ -14,6 +14,15 @@ class RagGroundingEngineTest {
 
     private final RagGroundingEngine engine = new RagGroundingEngine(0.12);
 
+    @Test void pageLocatorRemainsVisibleInTheSignedCitationTitle() {
+        UUID resource = UUID.randomUUID();
+        var chunk = new RankedChunk(UUID.randomUUID(), resource, UUID.randomUUID(), 0, 0, 20,
+                "Queue evidence", "guide.pdf", 0.8, "hashing", "PAGE", 3, "Page 3", "source", "documents-v1");
+        var answer = engine.answer("queue", List.of(chunk), List.of(), Map.of(resource, "Course guide"));
+        assertThat(answer.citations().getFirst().resourceTitle()).isEqualTo("Course guide (page 3)");
+        assertThat(AiEvidenceAuthorization.plainExcerpt(answer.citations().getFirst().excerpt())).isEqualTo("Queue evidence");
+    }
+
     @Test
     void highConfidenceUsesChunkOffsetsInCitation() {
         UUID resourceId = UUID.randomUUID();

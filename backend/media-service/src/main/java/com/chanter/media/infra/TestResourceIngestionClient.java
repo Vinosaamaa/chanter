@@ -17,10 +17,14 @@ public class TestResourceIngestionClient implements ResourceIngestionClient {
     private final List<IngestCall> ingestCalls = new ArrayList<>();
     private final List<UUID> deleteCalls = new ArrayList<>();
     private final List<UUID> purgeCalls = new ArrayList<>();
+    @Override public Outcome status(UUID resourceId, UUID eventId, String sourceSha256) {
+        return new Outcome("READY", java.util.Set.of());
+    }
 
     @Override
-    public void ingestAiApprovedResource(UUID courseId, UUID resourceId, String fileName, byte[] content) {
+    public Outcome ingestAiApprovedResource(UUID courseId, UUID resourceId, String fileName, byte[] content) {
         ingestCalls.add(new IngestCall(courseId, resourceId, fileName, content));
+        return new Outcome("READY", java.util.Set.of());
     }
 
     @Override

@@ -193,13 +193,23 @@ echo "==> Wait for a clean resource and usable Study Assistant index"
 RESOURCE_READY=false
 RESOURCE_DEADLINE=$((SECONDS + 180))
 while ((SECONDS < RESOURCE_DEADLINE)); do
-  RESOURCE_STATE=$(curl -sf --max-time 10 "$GATEWAY/api/v1/course-resources/$RESOURCE_ID" \
-    -H "Authorization: Bearer $OWNER_TOKEN" | json_field "['status']")
+  RESOURCE_METADATA=$(curl -sf --max-time 10 "$GATEWAY/api/v1/course-resources/$RESOURCE_ID" \
+    -H "Authorization: Bearer $OWNER_TOKEN")
+  RESOURCE_STATE=$(echo "$RESOURCE_METADATA" | json_field "['status']")
+  RESOURCE_PREPARATION=$(echo "$RESOURCE_METADATA" | json_field ".get('ingestionStatus', '')")
   if [[ "$RESOURCE_STATE" == "REJECTED" || "$RESOURCE_STATE" == "FAILED" ]]; then
     echo "error: demo resource did not pass scanning ($RESOURCE_STATE)" >&2
     exit 1
   fi
   if [[ "$RESOURCE_STATE" == "AVAILABLE" ]]; then
+    case "$RESOURCE_PREPARATION" in
+      FAILED|EMPTY|OCR_REQUIRED|ENCRYPTED|MALFORMED|UNSUPPORTED|LIMIT_EXCEEDED|NONE)
+        echo "error: demo resource cannot provide Study Assistant evidence ($RESOURCE_PREPARATION)" >&2
+        exit 1
+        ;;
+    esac
+  fi
+  if [[ "$RESOURCE_STATE" == "AVAILABLE" && "$RESOURCE_PREPARATION" == "READY" ]]; then
     if CHUNK_COUNT=$(curl -sf --max-time 10 \
       "${AGENT_SERVICE_URL:-http://localhost:${AGENT_PORT:-8085}}/api/v1/internal/resource-chunks/$RESOURCE_ID" \
       -H "X-Chanter-Internal-Service-Token: $CHANTER_INTERNAL_SERVICE_TOKEN" \
@@ -231,6 +241,8 @@ import sys, json
 preview = json.load(sys.stdin)
 if preview.get('alreadyInstalled'):
     raise SystemExit(0)
+if not any(resource['id'] == '$RESOURCE_ID' for resource in preview.get('courseResources', [])):
+    raise SystemExit('Ready demo resource is missing from the authorized install preview')
 grants = []
 for ch in preview['candidates']['studyServerChannels']:
     grants.append({'grantType': 'STUDY_SERVER_CHANNEL', 'grantTargetId': ch['id']})

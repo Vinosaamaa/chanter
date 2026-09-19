@@ -20,6 +20,7 @@ public class ResourceWorker {
     private final UploadValidator validator;
     private final MalwareScanner scanner;
     private final ResourceIngestionClient ingestion;
+    private final CourseResourceAccessClient access;
     private final Clock clock;
     private final boolean enabled;
     private final boolean migrateLegacy;
@@ -27,12 +28,12 @@ public class ResourceWorker {
 
     public ResourceWorker(ResourceLifecycle lifecycle, PrivateResourceStorage storage,
             LocalCourseResourceStorage legacy, UploadValidator validator, MalwareScanner scanner,
-            ResourceIngestionClient ingestion, Clock clock,
+            ResourceIngestionClient ingestion, CourseResourceAccessClient access, Clock clock,
             @Value("${chanter.media.worker-enabled:true}") boolean enabled,
             @Value("${chanter.media.migrate-legacy:false}") boolean migrateLegacy) {
         this.lifecycle = lifecycle; this.storage = storage; this.legacy = legacy;
         this.validator = validator; this.scanner = scanner; this.ingestion = ingestion;
-        this.clock = clock; this.enabled = enabled; this.migrateLegacy = migrateLegacy;
+        this.access = access; this.clock = clock; this.enabled = enabled; this.migrateLegacy = migrateLegacy;
     }
 
     @Scheduled(fixedDelayString = "${chanter.media.worker-delay-ms:5000}")
@@ -52,7 +53,13 @@ public class ResourceWorker {
                 // Provider errors and scanner signatures can contain private information.
                 log.warn("Course Resource work deferred resourceId={} operation={}", job.resource().id(), job.operation());
                 if (job.operation().equals("DELETE")) lifecycle.retryJob(job.resource().id(), job.leaseId());
-                else if (job.operation().equals("INDEX")) lifecycle.finishIndex(job.resource().id(), job.leaseId(), false);
+                else if (job.operation().equals("INDEX")) {
+                    if (failure instanceof org.springframework.web.server.ResponseStatusException status
+                            && status.getStatusCode().is4xxClientError()
+                            && !java.util.Set.of(408, 429).contains(status.getStatusCode().value())) {
+                        lifecycle.finishIndex(job.resource().id(), job.leaseId(), false);
+                    } else lifecycle.retryJob(job.resource().id(), job.leaseId());
+                }
                 else lifecycle.finishScan(job.resource().id(), job.leaseId(), "SCAN_FAILED");
             }
         });
@@ -72,16 +79,16 @@ public class ResourceWorker {
         } finally { Files.deleteIfExists(verified); }
     }
 
-    private void index(ResourceLifecycle.Job job) throws IOException {
+    private void index(ResourceLifecycle.Job job) {
         var resource = job.resource();
-        requireBackend(resource.storageBackend());
-        Path verified = validator.verifiedDownload(storage.open(resource.storageKey()), resource.byteSize(), resource.sha256());
-        try {
-            if (lifecycle.find(resource.id()).filter(current -> current.state().equals("AVAILABLE")).isPresent()) {
-                ingestion.ingestAiApprovedResource(resource.courseId(), resource.id(), resource.fileName(), Files.readAllBytes(verified));
-            }
-            lifecycle.finishIndex(resource.id(), job.leaseId(), true);
-        } finally { Files.deleteIfExists(verified); }
+        if (resource.ingestionEventId() == null) {
+            lifecycle.queueLegacyIndex(resource.id(), job.leaseId(), access.requireStudyServerId(resource.courseId()));
+            return;
+        }
+        var outcome = lifecycle.ingestionDeliveryFailed(resource.ingestionEventId())
+                ? new ResourceIngestionClient.Outcome("FAILED", java.util.Set.of())
+                : ingestion.status(resource.id(), resource.ingestionEventId(), resource.sha256());
+        lifecycle.synchronizeIndex(resource.id(), job.leaseId(), resource.ingestionEventId(), outcome);
     }
 
     private void delete(ResourceLifecycle.Job job) throws IOException {

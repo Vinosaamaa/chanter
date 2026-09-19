@@ -92,6 +92,14 @@ public class FetchResourceChunkTool implements AssistantTool {
         map.put("endOffset", chunk.endOffset());
         map.put("contentText", chunk.contentText());
         map.put("fileName", chunk.fileName());
+        map.put("locatorKind", chunk.locatorKind());
+        map.put("locatorNumber", chunk.locatorNumber());
+        map.put("locatorLabel", chunk.locatorLabel());
+        map.put("sourceSha256", chunk.sourceSha256());
+        map.put("parserVersion", chunk.parserVersion());
+        map.put("extractionSignals", chunk.extractionSignals());
+        map.put("sourceScope", chunk.sourceScope());
+        map.put("untrustedSource", true);
         return map;
     }
 

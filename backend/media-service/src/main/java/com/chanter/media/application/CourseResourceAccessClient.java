@@ -5,4 +5,5 @@ import java.util.UUID;
 public interface CourseResourceAccessClient {
 
     CourseResourceAccess requireAccess(UUID courseId, UUID userId);
+    UUID requireStudyServerId(UUID courseId);
 }

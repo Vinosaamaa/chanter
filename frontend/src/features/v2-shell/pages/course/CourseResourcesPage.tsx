@@ -171,6 +171,9 @@ export function CourseResourcesPage() {
                   isDownloading={resources.downloadingResourceId === resource.id}
                   onPreview={() => void resources.previewResource(resource)}
                   onDownload={() => void resources.downloadResource(resource)}
+                  canManage={canManageResources}
+                  isRetrying={resources.retryingResourceId === resource.id}
+                  onRetry={() => void resources.retryIngestion(resource)}
                 />
               ))}
             </div>
@@ -356,6 +359,7 @@ function UploadResourceDialog({
           />
           <span>Allow AI Study Assistant to use this resource</span>
         </label>
+        <small>AI can read selectable text in PDF, Word, PowerPoint, text and Markdown files. Scans, audio and video need a text version.</small>
         <footer>
           <button
             type="button"
@@ -384,14 +388,23 @@ function LiveResourceRow({
   isDownloading,
   onPreview,
   onDownload,
+  canManage,
+  isRetrying,
+  onRetry,
 }: {
   resource: CourseResource
   highlighted: boolean
   isDownloading: boolean
   onPreview: () => void
   onDownload: () => void
+  canManage: boolean
+  isRetrying: boolean
+  onRetry: () => void
 }) {
   const kind = resourceFileKind(resource)
+  const readiness = resourceReadiness(resource)
+  const canDownload = resource.status === 'AVAILABLE'
+  const canRetry = canManage && canDownload && resource.aiApproved && resource.ingestionStatus === 'FAILED'
   const rowRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -415,21 +428,28 @@ function LiveResourceRow({
         <p>
           {resourceKindLabel(kind)} · {formatByteSize(resource.byteSize)}
         </p>
+        {readiness.message ? <p className="resource-preparation-help">{readiness.message}</p> : null}
+        {resource.ingestionSignals?.includes('VISUAL_CONTENT_NOT_EXTRACTED') ? <p className="resource-preparation-help">Images are not included in AI answers.</p> : null}
+        {resource.ingestionSignals?.includes('HEADER_FOOTER_NOT_EXTRACTED') ? <p className="resource-preparation-help">Headers and footers are not included in AI answers.</p> : null}
+        {resource.ingestionSignals?.includes('SPEAKER_NOTES_NOT_EXTRACTED') ? <p className="resource-preparation-help">Speaker notes are not included in AI answers.</p> : null}
       </div>
       <span className="resource-statuses">
-        {resource.aiApproved ? (
-          <b>
-            <Check />
-            AI-approved
-          </b>
-        ) : null}
+        <b className={readiness.tone === 'error' ? 'due' : `prep-${readiness.tone}`}>
+          {readiness.label === 'AI ready' ? <Check /> : null}
+          {readiness.label}
+        </b>
+        {canRetry ? <button type="button" className="v2-outline-button"
+          onClick={onRetry} disabled={isRetrying}
+          aria-label={`Retry AI preparation for ${resource.title}`}>
+          {isRetrying ? 'Retrying…' : 'Retry AI preparation'}
+        </button> : null}
       </span>
       <span className="resource-row-actions">
         {isPdfResource(resource) ? (
           <button
             type="button"
             onClick={onPreview}
-            disabled={isDownloading}
+            disabled={isDownloading || !canDownload}
             aria-label={`Open ${resource.title}`}
             title="Open"
           >
@@ -439,7 +459,7 @@ function LiveResourceRow({
         <button
           type="button"
           onClick={onDownload}
-          disabled={isDownloading}
+          disabled={isDownloading || !canDownload}
           aria-label={`Download ${resource.title}`}
           title="Download"
         >
@@ -448,4 +468,24 @@ function LiveResourceRow({
       </span>
     </article>
   )
+}
+
+function resourceReadiness(resource: CourseResource) {
+  if (resource.status === 'PROCESSING') return { label: 'Checking file', message: 'Downloads are available after the safety check.', tone: 'pending' }
+  if (resource.status === 'REJECTED') return { label: 'File rejected', message: 'The safety check rejected this file. Upload a safe replacement.', tone: 'error' }
+  if (resource.status !== 'AVAILABLE') return { label: 'File unavailable', message: 'This file is not available for download.', tone: 'error' }
+  if (!resource.aiApproved) return { label: 'Not shared with AI', message: '', tone: 'muted' }
+  switch (resource.ingestionStatus) {
+    case 'READY': return { label: 'AI ready', message: '', tone: 'ready' }
+    case 'PENDING': return { label: 'AI preparation queued', message: '', tone: 'pending' }
+    case 'PROCESSING': return { label: 'Preparing for AI', message: '', tone: 'pending' }
+    case 'FAILED': return { label: 'AI preparation failed', message: 'The file is available. Retry to prepare its text for AI.', tone: 'error' }
+    case 'OCR_REQUIRED': return { label: 'Text needed', message: 'Upload a version with selectable text. OCR is not available.', tone: 'warning' }
+    case 'ENCRYPTED': return { label: 'Password protected', message: 'Upload an unencrypted copy to use it with AI.', tone: 'warning' }
+    case 'MALFORMED': return { label: 'Unreadable document', message: 'Export a new copy and upload it again.', tone: 'warning' }
+    case 'UNSUPPORTED': return { label: 'AI format unsupported', message: 'Upload PDF, Word, PowerPoint, text or Markdown with selectable text. Audio and video are not transcribed.', tone: 'warning' }
+    case 'LIMIT_EXCEEDED': return { label: 'Document too complex', message: 'Split this document into smaller files and upload them.', tone: 'warning' }
+    case 'EMPTY': return { label: 'No text found', message: 'Upload a document that contains selectable text.', tone: 'warning' }
+    default: return { label: 'AI status unavailable', message: 'Approval alone does not mean the file is ready for AI.', tone: 'muted' }
+  }
 }

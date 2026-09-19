@@ -7,48 +7,38 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class EmbeddingPipelineService {
 
-    private static final Logger log = LoggerFactory.getLogger(EmbeddingPipelineService.class);
-
-    private final ResourceChunkRepository chunkRepository;
-    private final ResourceChunkEmbeddingRepository embeddingRepository;
+    private final ResourceIndexStore indexStore;
     private final EmbeddingClient embeddingClient;
     private final Clock clock;
 
     public EmbeddingPipelineService(
-            ResourceChunkRepository chunkRepository,
-            ResourceChunkEmbeddingRepository embeddingRepository,
+            ResourceIndexStore indexStore,
             EmbeddingClient embeddingClient,
             Clock clock
     ) {
-        this.chunkRepository = chunkRepository;
-        this.embeddingRepository = embeddingRepository;
+        this.indexStore = indexStore;
         this.embeddingClient = embeddingClient;
         this.clock = clock;
     }
 
-    @Transactional
     public EmbedResult embedResource(UUID resourceId) {
         if (resourceId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "resourceId is required");
         }
-        chunkRepository.lockForIndexing(resourceId);
-        List<ResourceChunk> chunks = chunkRepository.findByResourceId(resourceId);
-        if (chunks.isEmpty()) {
-            embeddingRepository.deleteByResourceId(resourceId);
-            log.info("Embedding pipeline cleared embeddings resourceId={} reason=no_chunks", resourceId);
-            return new EmbedResult(resourceId, 0, embeddingClient.modelId());
-        }
+        var snapshot = indexStore.snapshot(resourceId);
+        var prepared = prepare(snapshot.chunks());
+        indexStore.completeBackfill(resourceId, snapshot, prepared);
+        return new EmbedResult(resourceId, prepared.size(), embeddingClient.modelId());
+    }
 
+    public List<ResourceChunkEmbedding> prepare(List<ResourceChunk> chunks) {
         var createdAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
         List<ResourceChunkEmbedding> embeddings = new ArrayList<>(chunks.size());
         for (ResourceChunk chunk : chunks) {
@@ -63,17 +53,9 @@ public class EmbeddingPipelineService {
                     createdAt
             ));
         }
-        embeddingRepository.replaceAllForResource(resourceId, embeddings);
-        log.info(
-                "Embedding pipeline stored embeddings resourceId={} chunkCount={} modelId={}",
-                resourceId,
-                embeddings.size(),
-                embeddingClient.modelId()
-        );
-        return new EmbedResult(resourceId, embeddings.size(), embeddingClient.modelId());
+        return List.copyOf(embeddings);
     }
 
-    @Transactional
     public EmbedResult backfillResource(UUID resourceId) {
         return embedResource(resourceId);
     }

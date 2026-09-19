@@ -12,6 +12,26 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 class UploadValidatorTest {
+    @Test void acceptsWordContainerButRejectsWrongMainPartAndMacros() throws Exception {
+        var type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        try (var upload = validator().validate(new MockMultipartFile("file", "notes.docx", type, office("word/document.xml", false)), null)) {
+            assertThat(upload.contentType()).isEqualTo(type);
+        }
+        assertThatThrownBy(() -> validator().validate(new MockMultipartFile("file", "notes.docx", type,
+                office("ppt/presentation.xml", false)), null)).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> validator().validate(new MockMultipartFile("file", "notes.docx", type,
+                office("word/document.xml", true)), null)).isInstanceOf(ResponseStatusException.class);
+    }
+    private static byte[] office(String mainPart, boolean macro) throws Exception {
+        var bytes = new java.io.ByteArrayOutputStream();
+        try (var zip = new java.util.zip.ZipOutputStream(bytes)) {
+            for (String name : macro ? java.util.List.of("[Content_Types].xml", mainPart, "word/vbaProject.bin")
+                    : java.util.List.of("[Content_Types].xml", mainPart)) {
+                zip.putNextEntry(new java.util.zip.ZipEntry(name)); zip.write("<fixture/>".getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
+            }
+        }
+        return bytes.toByteArray();
+    }
     @org.junit.jupiter.api.Test
     void failedDownloadSpoolCreationClosesTheProviderStream() throws Exception {
         Path directory = Files.createTempDirectory("media-spool-closed-");

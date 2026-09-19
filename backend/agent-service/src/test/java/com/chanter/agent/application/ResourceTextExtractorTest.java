@@ -18,6 +18,7 @@ class ResourceTextExtractorTest {
         assertThat(ResourceTextExtractor.extract("%PDF-1.4".getBytes(), "slides.pdf")).isEmpty();
         assertThat(ResourceTextExtractor.extract(new byte[0], "notes.txt")).isEmpty();
         assertThat(ResourceTextExtractor.extract(null, "notes.txt")).isEmpty();
-        assertThat(ResourceTextExtractor.supportsFileName("deck.pdf")).isFalse();
+        assertThat(ResourceTextExtractor.supportsFileName("deck.pdf")).isTrue();
+        assertThat(ResourceTextExtractor.supportsFileName("recording.mp4")).isFalse();
     }
 }

@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
@@ -145,8 +146,8 @@ public class InternalResourceIngestionController {
     public record IngestRequest(
             @NotNull UUID courseId,
             @NotNull UUID resourceId,
-            @NotBlank String fileName,
-            @NotBlank String contentBase64
+            @NotBlank @Size(max = 512) String fileName,
+            @NotNull @Size(max = 13_981_016) String contentBase64
     ) {
     }
 
@@ -155,7 +156,12 @@ public class InternalResourceIngestionController {
             UUID courseId,
             int chunkCount,
             String contentSha256,
-            boolean empty
+            boolean empty,
+            String status,
+            String sourceSha256,
+            String parserVersion,
+            long generation,
+            Set<String> signals
     ) {
         static IngestResponse from(IngestResult result) {
             return new IngestResponse(
@@ -163,7 +169,7 @@ public class InternalResourceIngestionController {
                     result.courseId(),
                     result.chunkCount(),
                     result.contentSha256(),
-                    result.empty()
+                    result.empty(), result.status(), result.sourceSha256(), result.parserVersion(), result.generation(), result.signals()
             );
         }
     }
@@ -196,7 +202,14 @@ public class InternalResourceIngestionController {
             String contentText,
             String fileName,
             double score,
-            String modelId
+            String modelId,
+            String locatorKind,
+            Integer locatorNumber,
+            String locatorLabel,
+            String sourceSha256,
+            String parserVersion,
+            Set<String> extractionSignals,
+            com.chanter.agent.domain.ResourceSourceScope sourceScope
     ) {
         static RankedChunkResponse from(RankedChunk chunk) {
             return new RankedChunkResponse(
@@ -209,7 +222,8 @@ public class InternalResourceIngestionController {
                     chunk.contentText(),
                     chunk.fileName(),
                     chunk.score(),
-                    chunk.modelId()
+                    chunk.modelId(), chunk.locatorKind(), chunk.locatorNumber(), chunk.locatorLabel(),
+                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals(), chunk.sourceScope()
             );
         }
     }
@@ -226,7 +240,14 @@ public class InternalResourceIngestionController {
             int endOffset,
             String contentText,
             String contentSha256,
-            String fileName
+            String fileName,
+            String locatorKind,
+            Integer locatorNumber,
+            String locatorLabel,
+            String sourceSha256,
+            String parserVersion,
+            Set<String> extractionSignals,
+            com.chanter.agent.domain.ResourceSourceScope sourceScope
     ) {
         static ChunkResponse from(ResourceChunk chunk) {
             return new ChunkResponse(
@@ -238,7 +259,8 @@ public class InternalResourceIngestionController {
                     chunk.endOffset(),
                     chunk.contentText(),
                     chunk.contentSha256(),
-                    chunk.fileName()
+                    chunk.fileName(), chunk.locatorKind(), chunk.locatorNumber(), chunk.locatorLabel(),
+                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals(), chunk.sourceScope()
             );
         }
     }

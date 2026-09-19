@@ -5,7 +5,7 @@ source "$(dirname "$0")/lib.sh"
 product_load_env
 action="${1:?action required}"
 module="${2:?module required}"
-case "$module" in search-service|notification-service) ;; *) exit 2 ;; esac
+case "$module" in search-service|notification-service|agent-service) ;; *) exit 2 ;; esac
 root="$(product_repo_root)"
 pid_file="$(product_pids_dir)/${module}.pid"
 marker="$(product_state_dir)/${module}.event-drill-stopped"

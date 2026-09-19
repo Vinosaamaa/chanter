@@ -26,19 +26,21 @@ public class ResourceIngestionService {
     private final TextResourceChunker chunker;
     private final EmbeddingPipelineService embeddingPipelineService;
     private final Clock clock;
+    private final ResourceIndexStore indexStore;
 
     public ResourceIngestionService(
             ResourceChunkRepository repository,
             EmbeddingPipelineService embeddingPipelineService,
-            Clock clock
+            Clock clock,
+            ResourceIndexStore indexStore
     ) {
         this.repository = repository;
         this.chunker = new TextResourceChunker();
         this.embeddingPipelineService = embeddingPipelineService;
         this.clock = clock;
+        this.indexStore = indexStore;
     }
 
-    @Transactional
     public IngestResult ingest(
             UUID courseId,
             UUID resourceId,
@@ -52,52 +54,53 @@ public class ResourceIngestionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fileName is required");
         }
 
-        String text = ResourceTextExtractor.extract(content, fileName);
-        String contentSha256 = sha256Hex(text == null ? "" : text);
         String safeFileName = fileName.trim();
-
-        if (text.isEmpty()) {
-            repository.replaceAllForResource(resourceId, List.of());
-            embeddingPipelineService.embedResource(resourceId);
-            log.info(
-                    "Resource ingestion cleared chunks resourceId={} courseId={} fileName={} reason=empty_or_unsupported",
-                    resourceId,
-                    courseId,
-                    safeFileName
-            );
-            return new IngestResult(resourceId, courseId, 0, contentSha256, true);
+        if (safeFileName.length() > 512) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fileName is too long");
+        String sourceSha256 = sha256Bytes(content == null ? new byte[0] : content);
+        var attempt = indexStore.begin(courseId, resourceId, safeFileName, sourceSha256);
+        if (attempt.alreadyReady()) {
+            String textSha = attempt.chunks().isEmpty() ? sha256Hex("") : attempt.chunks().getFirst().contentSha256();
+            return new IngestResult(resourceId, courseId, attempt.chunks().size(), textSha,
+                    attempt.chunks().isEmpty(), "READY", sourceSha256, ResourceTextExtractor.PARSER_VERSION, attempt.generation(), attempt.signals());
         }
+        return prepare(courseId, resourceId, safeFileName, content, sourceSha256, attempt);
+    }
 
-        List<TextResourceChunker.ChunkSpan> spans = chunker.chunk(text);
-        var createdAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
-        List<ResourceChunk> chunks = new ArrayList<>(spans.size());
-        for (int i = 0; i < spans.size(); i++) {
-            TextResourceChunker.ChunkSpan span = spans.get(i);
-            chunks.add(new ResourceChunk(
-                    UUID.randomUUID(),
-                    resourceId,
-                    courseId,
-                    i,
-                    span.startOffset(),
-                    span.endOffset(),
-                    span.text(),
-                    contentSha256,
-                    safeFileName,
-                    createdAt
-            ));
+    public IngestResult ingestClaim(ResourceIngestionJobs.Job job, byte[] content) {
+        if (content == null || !job.sourceSha256().equals(sha256Bytes(content))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Resource source version does not match the queued event");
         }
+        return prepare(job.courseId(), job.resourceId(), job.fileName(), content, job.sourceSha256(),
+                new ResourceIndexStore.Attempt(job.generation(), false, List.of(), java.util.Set.of()));
+    }
 
-        repository.replaceAllForResource(resourceId, chunks);
-        embeddingPipelineService.embedResource(resourceId);
-        log.info(
-                "Resource ingestion stored chunks resourceId={} courseId={} fileName={} chunkCount={} contentSha256={}",
-                resourceId,
-                courseId,
-                safeFileName,
-                chunks.size(),
-                contentSha256
-        );
-        return new IngestResult(resourceId, courseId, chunks.size(), contentSha256, false);
+    private IngestResult prepare(UUID courseId, UUID resourceId, String safeFileName, byte[] content,
+            String sourceSha256, ResourceIndexStore.Attempt attempt) {
+        try {
+            var extraction = ResourceTextExtractor.extractDocument(content, safeFileName);
+            String contentSha256 = sha256Hex(extraction.text());
+            var createdAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
+            List<ResourceChunk> prepared = new ArrayList<>();
+            int segmentOffset = 0;
+            for (var segment : extraction.segments()) {
+                var locator = segment.locator();
+                for (var span : chunker.chunk(segment.text())) {
+                    prepared.add(new ResourceChunk(UUID.randomUUID(), resourceId, courseId, prepared.size(),
+                            segmentOffset + span.startOffset(), segmentOffset + span.endOffset(), span.text(),
+                            contentSha256, safeFileName, createdAt, locator.kind(), locator.number(), locator.label(),
+                            sourceSha256, ResourceTextExtractor.PARSER_VERSION, extraction.signals()));
+                }
+                segmentOffset += segment.text().length() + 2;
+            }
+            var vectors = embeddingPipelineService.prepare(prepared);
+            indexStore.complete(resourceId, attempt.generation(), prepared, vectors, extraction.status().name(), extraction.signals());
+            log.info("Resource extraction completed resourceId={} status={} chunkCount={}", resourceId, extraction.status(), prepared.size());
+            return new IngestResult(resourceId, courseId, prepared.size(), contentSha256, prepared.isEmpty(),
+                    extraction.status().name(), sourceSha256, ResourceTextExtractor.PARSER_VERSION, attempt.generation(), extraction.signals());
+        } catch (RuntimeException failure) {
+            indexStore.fail(resourceId, attempt.generation());
+            throw failure;
+        }
     }
 
     @Transactional
@@ -121,9 +124,13 @@ public class ResourceIngestionService {
     }
 
     static String sha256Hex(String text) {
+        return sha256Bytes(text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    static String sha256Bytes(byte[] bytes) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(text.getBytes(StandardCharsets.UTF_8));
+            byte[] hash = digest.digest(bytes);
             return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 not available", exception);
@@ -135,7 +142,12 @@ public class ResourceIngestionService {
             UUID courseId,
             int chunkCount,
             String contentSha256,
-            boolean empty
+            boolean empty,
+            String status,
+            String sourceSha256,
+            String parserVersion,
+            long generation,
+            java.util.Set<String> signals
     ) {
     }
 }
