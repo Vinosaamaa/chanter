@@ -1,5 +1,6 @@
 server:
   port: ${GATEWAY_PORT:8080}
+  forward-headers-strategy: none
 
 spring:
   http:
@@ -101,6 +102,9 @@ spring:
           # CORS is configured in CorsConfig from chanter.cors.allowed-origins (CHANTER_CORS_ORIGINS).
 
 chanter:
+  edge:
+    trusted-proxy-addresses: ${CHANTER_TRUSTED_PROXY_ADDRESSES:}
+    public-origin: ${CHANTER_EDGE_PUBLIC_ORIGIN:}
   jwt:
     secret: ${CHANTER_JWT_SECRET}
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
