@@ -37,4 +37,6 @@ if [ "$failures" -gt 0 ]; then
   exit 1
 fi
 
+python3 "$(product_repo_root)/scripts/media/wait-dependencies.py" --scanner-only --timeout 5
+
 echo "Product stack health checks passed."

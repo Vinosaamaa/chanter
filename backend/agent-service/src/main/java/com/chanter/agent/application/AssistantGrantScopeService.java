@@ -49,7 +49,8 @@ public class AssistantGrantScopeService {
                 courseId,
                 viewerUserId
         )) {
-            if (grantedResourceIds.contains(resource.id())) {
+            if (resource.aiApproved() && courseId.equals(resource.courseId())
+                    && grantedResourceIds.contains(resource.id())) {
                 grantedResources.put(resource.id(), resource);
             }
         }
@@ -85,7 +86,10 @@ public class AssistantGrantScopeService {
     }
 
     public void requireResourceGranted(GrantScope scope, UUID resourceId) {
-        if (!scope.grantedResourceIds().contains(resourceId)) {
+        if (!scope.grantedResourceIds().contains(resourceId)
+                || courseResourceCatalogClient.listAiApprovedCourseResources(scope.courseId(), scope.viewerUserId())
+                        .stream().noneMatch(resource -> resourceId.equals(resource.id())
+                                && scope.courseId().equals(resource.courseId()) && resource.aiApproved())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Resource is outside Study Assistant grants"

@@ -1,6 +1,8 @@
 package com.chanter.media.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -8,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.media.infra.TestCourseResourceAccessClient;
 import com.chanter.media.infra.TestResourceIngestionClient;
+import com.chanter.media.application.MalwareScanner;
+import com.chanter.media.application.ResourceWorker;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.temporal.ChronoUnit;
@@ -26,6 +30,10 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class CourseResourceSmokeTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    MalwareScanner scanner;
+    @Autowired ResourceWorker worker;
+    @Autowired org.springframework.jdbc.core.simple.JdbcClient jdbc;
 
     private static final String INTERNAL_TOKEN = "test-internal-service-token-for-media";
 
@@ -42,9 +50,12 @@ class CourseResourceSmokeTest {
     private TestResourceIngestionClient resourceIngestionClient;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         courseResourceAccessClient.clear();
         resourceIngestionClient.clear();
+        jdbc.sql("DELETE FROM course_resources").update();
+        jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=0, foreground_requests=0, maintenance_requests=0").update();
+        when(scanner.scan(any())).thenReturn(MalwareScanner.Verdict.CLEAN);
     }
 
     @Test
@@ -68,7 +79,7 @@ class CourseResourceSmokeTest {
                         .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("title", "Spring Security Guide")
                         .param("aiApproved", "true"))
-                .andExpect(status().isCreated())
+                .andExpect(status().isAccepted())
                 .andReturn();
         CourseResourceResponse uploaded = objectMapper.readValue(
                 uploadResult.getResponse().getContentAsString(),
@@ -80,6 +91,13 @@ class CourseResourceSmokeTest {
         assertThat(uploaded.fileName()).isEqualTo("spring-security-guide.md");
         assertThat(uploaded.aiApproved()).isTrue();
         assertThat(uploaded.uploadedByUserId()).isEqualTo(instructorUserId);
+        assertThat(uploaded.status()).isEqualTo("PROCESSING");
+        assertThat(uploaded.sha256()).hasSize(64);
+        mockMvc.perform(get("/api/v1/course-resources/{id}/content", uploaded.id())
+                        .header(AuthHeaders.USER_ID, learnerUserId.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isConflict());
+        assertThat(resourceIngestionClient.ingestCalls()).isEmpty();
+        worker.runOnce();
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/courses/{courseId}/course-resources", courseId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
@@ -95,7 +113,7 @@ class CourseResourceSmokeTest {
         CourseResourceResponse listedResource = listed.courseResources().getFirst();
         assertThat(listedResource)
                 .usingRecursiveComparison()
-                .ignoringFields("createdAt")
+                .ignoringFields("createdAt", "status")
                 .isEqualTo(uploaded);
         // Postgres stores timestamps at microsecond precision; upload responses truncate to match.
         assertThat(listedResource.createdAt()).isEqualTo(uploaded.createdAt().truncatedTo(ChronoUnit.MICROS));
@@ -109,7 +127,11 @@ class CourseResourceSmokeTest {
         assertThat(downloadResult.getResponse().getContentAsByteArray()).isEqualTo(fileContent);
         assertThat(downloadResult.getResponse().getHeader("Content-Disposition"))
                 .contains("spring-security-guide.md");
+        assertThat(downloadResult.getResponse().getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
+        assertThat(downloadResult.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
 
+        assertThat(resourceIngestionClient.ingestCalls()).isEmpty();
+        worker.runOnce();
         assertThat(resourceIngestionClient.ingestCalls()).hasSize(1);
         TestResourceIngestionClient.IngestCall ingestCall = resourceIngestionClient.ingestCalls().getFirst();
         assertThat(ingestCall.courseId()).isEqualTo(courseId);
@@ -154,7 +176,7 @@ class CourseResourceSmokeTest {
         UUID courseId = UUID.randomUUID();
         UUID instructorUserId = UUID.randomUUID();
         courseResourceAccessClient.grantInstructorUpload(courseId, instructorUserId);
-        byte[] pdfBytes = "%PDF-1.4 demo".getBytes(StandardCharsets.UTF_8);
+        byte[] pdfBytes = "%PDF-1.4 demo\n%%EOF".getBytes(StandardCharsets.UTF_8);
 
         MvcResult uploadResult = mockMvc.perform(multipart("/api/v1/courses/{courseId}/course-resources", courseId)
                         .file(new MockMultipartFile(
@@ -167,7 +189,7 @@ class CourseResourceSmokeTest {
                         .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("title", "Syllabus")
                         .param("aiApproved", "false"))
-                .andExpect(status().isCreated())
+                .andExpect(status().isAccepted())
                 .andReturn();
 
         CourseResourceResponse uploaded = objectMapper.readValue(
@@ -206,7 +228,7 @@ class CourseResourceSmokeTest {
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("aiApproved", "true"))
-                .andExpect(status().isCreated());
+                .andExpect(status().isAccepted());
 
         mockMvc.perform(get("/api/v1/courses/{courseId}/course-resources", courseId)
                         .header(AuthHeaders.USER_ID, strangerUserId.toString())
@@ -251,7 +273,7 @@ class CourseResourceSmokeTest {
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("aiApproved", "true"))
-                .andExpect(status().isCreated())
+                .andExpect(status().isAccepted())
                 .andReturn();
 
         CourseResourceResponse uploaded = objectMapper.readValue(
@@ -280,7 +302,7 @@ class CourseResourceSmokeTest {
                         .header(AuthHeaders.USER_ID, instructorUserId.toString())
                         .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("aiApproved", "true"))
-                .andExpect(status().isCreated())
+                .andExpect(status().isAccepted())
                 .andReturn();
         CourseResourceResponse uploaded = objectMapper.readValue(
                 uploadResult.getResponse().getContentAsString(),
@@ -314,5 +336,37 @@ class CourseResourceSmokeTest {
                         .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
                         .param("aiApproved", "true"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void metadataDoesNotExposeStorageDetailsAndOnlyInstructorCanDeleteOrReadUsage() throws Exception {
+        UUID course = UUID.randomUUID(), teacher = UUID.randomUUID(), learner = UUID.randomUUID();
+        courseResourceAccessClient.grantInstructorUpload(course, teacher);
+        courseResourceAccessClient.grantLearnerView(course, learner);
+        var uploaded = mockMvc.perform(multipart("/api/v1/courses/{course}/course-resources", course)
+                        .file(new MockMultipartFile("file", "notes.txt", "text/plain", "safe notes".getBytes(StandardCharsets.UTF_8)))
+                        .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                        .param("aiApproved", "false")).andExpect(status().isAccepted()).andReturn().getResponse();
+        var resource = objectMapper.readValue(uploaded.getContentAsString(), CourseResourceResponse.class);
+        assertThat(uploaded.getHeader("Location")).isEqualTo("/api/v1/course-resources/" + resource.id());
+        assertThat(uploaded.getContentAsString()).doesNotContain("storageKey", "storageBackend", "lease", "endpoint");
+        mockMvc.perform(get("/api/v1/course-resources/{id}", resource.id())
+                .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/courses/{course}/course-resources/usage", course)
+                .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isForbidden());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/course-resources/{id}", resource.id())
+                .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isForbidden());
+        worker.runOnce();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/course-resources/{id}", resource.id())
+                .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/course-resources/{id}/content", resource.id())
+                .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isNotFound());
+        var usage = mockMvc.perform(get("/api/v1/courses/{course}/course-resources/usage", course)
+                .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(objectMapper.readTree(usage.getContentAsString()).get("reservedBytes").asLong()).isEqualTo(resource.byteSize());
+        worker.runOnce();
+        var deletedUsage = mockMvc.perform(get("/api/v1/courses/{course}/course-resources/usage", course)
+                .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(objectMapper.readTree(deletedUsage.getContentAsString()).get("reservedBytes").asLong()).isZero();
     }
 }

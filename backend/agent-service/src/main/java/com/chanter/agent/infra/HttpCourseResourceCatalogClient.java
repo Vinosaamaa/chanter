@@ -64,7 +64,8 @@ public class HttpCourseResourceCatalogClient implements CourseResourceCatalogCli
                     : List.of();
 
             return courseResources.stream()
-                    .filter(CourseResourceResponse::aiApproved)
+                    .filter(resource -> resource != null && resource.id() != null && courseId.equals(resource.courseId())
+                            && resource.aiApproved() && "AVAILABLE".equals(resource.status()))
                     .map(resource -> new CourseResourceSummary(
                             resource.id(),
                             resource.courseId(),
@@ -98,7 +99,8 @@ public class HttpCourseResourceCatalogClient implements CourseResourceCatalogCli
             UUID courseId,
             String title,
             String fileName,
-            boolean aiApproved
+            boolean aiApproved,
+            String status
     ) {
     }
 }

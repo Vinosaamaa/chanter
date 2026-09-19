@@ -10,6 +10,9 @@ import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Repository
 public class JdbcResourceChunkRepository implements ResourceChunkRepository {
@@ -23,6 +26,10 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     @Override
     @Transactional
     public void replaceAllForResource(UUID resourceId, List<ResourceChunk> chunks) {
+        lockForIndexing(resourceId);
+        if (chunks.stream().anyMatch(chunk -> !resourceId.equals(chunk.resourceId()))) {
+            throw new IllegalArgumentException("Chunk resource does not match replacement target");
+        }
         jdbcClient.sql("DELETE FROM resource_chunks WHERE resource_id = :resourceId")
                 .param("resourceId", resourceId)
                 .update();
@@ -70,9 +77,41 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     @Override
     @Transactional
     public void deleteByResourceId(UUID resourceId) {
+        lockResource(resourceId);
+        jdbcClient.sql("UPDATE resource_index_lifecycle SET deleted=TRUE WHERE resource_id=:resourceId")
+                .param("resourceId", resourceId).update();
+        clearChunks(resourceId);
+    }
+
+    @Override
+    @Transactional
+    public void purgeByResourceId(UUID resourceId) {
+        requireLive(lockResource(resourceId));
+        clearChunks(resourceId);
+    }
+
+    private void clearChunks(UUID resourceId) {
         jdbcClient.sql("DELETE FROM resource_chunks WHERE resource_id = :resourceId")
                 .param("resourceId", resourceId)
                 .update();
+    }
+
+    private boolean lockResource(UUID resourceId) {
+        // The row survives content deletion. Concurrent first ingestion/deletion also serialize.
+        jdbcClient.sql("INSERT INTO resource_index_lifecycle (resource_id) VALUES (:resourceId) ON CONFLICT DO NOTHING")
+                .param("resourceId", resourceId).update();
+        return jdbcClient.sql("SELECT deleted FROM resource_index_lifecycle WHERE resource_id=:resourceId FOR UPDATE")
+                .param("resourceId", resourceId).query(Boolean.class).single();
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockForIndexing(UUID resourceId) {
+        requireLive(lockResource(resourceId));
+    }
+
+    private static void requireLive(boolean deleted) {
+        if (deleted) throw new ResponseStatusException(HttpStatus.CONFLICT, "Resource index is permanently deleted");
     }
 
     @Override

@@ -92,6 +92,32 @@ class ResourceIngestionSmokeTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void authenticatedMigrationPurgeAllowsReingestionButDeleteIsTerminal() throws Exception {
+        UUID course = UUID.randomUUID(), resource = UUID.randomUUID();
+        ingest(course, resource, "legacy.txt", "legacy text");
+        mockMvc.perform(post("/api/v1/internal/resource-chunks/{resourceId}/purge", resource))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/internal/resource-chunks/{resourceId}/purge", resource)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isNoContent());
+        assertThat(listChunks(resource).get("chunks")).isEmpty();
+        ingest(course, resource, "clean.txt", "clean text");
+        mockMvc.perform(delete("/api/v1/internal/resource-chunks/{resourceId}", resource)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/v1/internal/resource-chunks/{resourceId}/purge", resource)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isConflict());
+        mockMvc.perform(post("/api/v1/internal/resource-chunks/ingest")
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(Map.of("courseId", course, "resourceId", resource,
+                                "fileName", "late.txt", "contentBase64", Base64.getEncoder().encodeToString("late text".getBytes(StandardCharsets.UTF_8))))))
+                .andExpect(status().isConflict());
+        assertThat(listChunks(resource).get("chunks")).isEmpty();
+    }
+
     private IngestResponse ingest(UUID courseId, UUID resourceId, String fileName, String text) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("courseId", courseId);

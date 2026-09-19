@@ -96,6 +96,7 @@ public class InternalResourceIngestionController {
         Set<UUID> granted = new HashSet<>(request.grantedResourceIds());
         List<RankedChunk> ranked = vectorRetrievalService.retrieve(
                 request.query(),
+                request.courseId(), request.viewerUserId(),
                 granted,
                 request.topK() == null ? 5 : request.topK()
         );
@@ -120,6 +121,16 @@ public class InternalResourceIngestionController {
         requireInternalService(serviceToken);
         List<ResourceChunk> chunks = resourceIngestionService.listByResourceId(resourceId);
         return new ChunkListResponse(chunks.stream().map(ChunkResponse::from).toList());
+    }
+
+    @PostMapping("/{resourceId}/purge")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void purge(
+            @RequestHeader(value = AuthHeaders.INTERNAL_SERVICE_TOKEN, required = false) String serviceToken,
+            @PathVariable UUID resourceId
+    ) {
+        requireInternalService(serviceToken);
+        resourceIngestionService.purgeByResourceId(resourceId);
     }
 
     private void requireInternalService(String presentedToken) {
@@ -165,6 +176,8 @@ public class InternalResourceIngestionController {
 
     public record RetrieveRequest(
             @NotBlank String query,
+            @NotNull UUID courseId,
+            @NotNull UUID viewerUserId,
             @NotEmpty List<@NotNull UUID> grantedResourceIds,
             Integer topK
     ) {

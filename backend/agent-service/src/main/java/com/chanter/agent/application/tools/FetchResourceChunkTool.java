@@ -75,6 +75,7 @@ public class FetchResourceChunkTool implements AssistantTool {
 
         List<ResourceChunk> chunks = resourceChunkRepository.findByResourceId(resourceId);
         return chunks.stream()
+                .filter(chunk -> resourceId.equals(chunk.resourceId()) && scope.courseId().equals(chunk.courseId()))
                 .filter(chunk -> chunk.chunkIndex() == chunkIndex)
                 .findFirst()
                 .map(FetchResourceChunkTool::toMap)

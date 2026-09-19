@@ -151,6 +151,9 @@ product_load_env() {
   set +a
   export LIVEKIT_URL="${LIVEKIT_URL:-ws://localhost:7880}"
   export LIVEKIT_HTTP_URL="${LIVEKIT_HTTP_URL:-http://localhost:7880}"
+  export CHANTER_SCANNER_CLIENT_GID="${CHANTER_SCANNER_CLIENT_GID:-$(id -g)}"
+  export CHANTER_CLAMAV_SOCKET_DIR="${CHANTER_CLAMAV_SOCKET_DIR:-$root/.product/clamav}"
+  export CHANTER_CLAMAV_SOCKET_PATH="${CHANTER_CLAMAV_SOCKET_PATH:-$CHANTER_CLAMAV_SOCKET_DIR/clamd.sock}"
   product_validate_runtime_secrets "$env_file"
 }
 
@@ -427,8 +430,9 @@ product_prepare_infrastructure() {
     mail_services+=(mailpit)
   fi
   docker compose -f "$compose_file" --env-file "$root/.env" --profile product stop realtime-service >/dev/null 2>&1 || true
-  docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --wait --wait-timeout 180 \
-    postgres redis redpanda livekit "${mail_services[@]}"
+  docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --wait --wait-timeout 600 \
+    postgres redis redpanda livekit clamav "${mail_services[@]}"
+  python3 "$root/scripts/media/wait-dependencies.py" --scanner-only
   product_ensure_databases
   echo "Infrastructure is healthy."
 }

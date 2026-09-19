@@ -44,7 +44,9 @@ Uploading a new AI-approved `.txt`/`.md` resource already embeds automatically v
 curl -X POST "http://localhost:8085/api/v1/internal/resource-chunks/retrieve" \
   -H "Content-Type: application/json" \
   -H "X-Chanter-Internal-Service-Token: $CHANTER_INTERNAL_SERVICE_TOKEN" \
-  -d '{"query":"How do I submit homework?","grantedResourceIds":["<resource-uuid>"],"topK":5}'
+  -d '{"query":"How do I submit homework?","courseId":"<course-uuid>","viewerUserId":"<viewer-uuid>","grantedResourceIds":["<resource-uuid>"],"topK":5}'
 ```
 
-Grant filtering is mandatory: only chunks whose `resourceId` is in `grantedResourceIds` are considered.
+Grant filtering is mandatory. The actual course and viewer are required; requests omitting them return HTTP 400. The agent intersects supplied resource grants with the live media catalog: the resource must be AVAILABLE, AI-approved, in that course and readable by that viewer. Missing metadata, revoked access and media failures never fall back to stale chunks. Update internal callers together with the epoch 4 release; the old request shape cannot safely authorize retrieval.
+
+Terminal resource deletion permanently retires its index identity. Re-ingestion and backfill return HTTP 409 for that ID. Legacy migration uses the authenticated nonterminal purge route described in [private resource operations](private-course-resources.md); purge cannot revive a terminally deleted resource.

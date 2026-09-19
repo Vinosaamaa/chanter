@@ -10,8 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -22,8 +20,6 @@ import org.springframework.web.client.RestClientException;
 @Component
 @Profile("!test")
 public class HttpResourceIngestionClient implements ResourceIngestionClient {
-
-    private static final Logger log = LoggerFactory.getLogger(HttpResourceIngestionClient.class);
 
     private final RestClient restClient;
     private final String serviceToken;
@@ -50,11 +46,6 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
     @Override
     public void ingestAiApprovedResource(UUID courseId, UUID resourceId, String fileName, byte[] content) {
         if (!isTextResource(fileName)) {
-            log.info(
-                    "Skipping resource ingestion for unsupported file resourceId={} fileName={}",
-                    resourceId,
-                    fileName
-            );
             return;
         }
         if (content == null) {
@@ -75,12 +66,7 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientException exception) {
-            log.warn(
-                    "Failed to ingest AI-approved resource chunks resourceId={} courseId={}: {}",
-                    resourceId,
-                    courseId,
-                    exception.getMessage()
-            );
+            throw new IllegalStateException("Resource indexing is unavailable");
         }
     }
 
@@ -93,16 +79,24 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientException exception) {
-            log.warn(
-                    "Failed to delete resource chunks resourceId={}: {}",
-                    resourceId,
-                    exception.getMessage()
-            );
+            throw new IllegalStateException("Resource index deletion is unavailable");
         }
     }
 
     private static boolean isTextResource(String fileName) {
         String lower = fileName == null ? "" : fileName.toLowerCase(Locale.ROOT);
         return lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".markdown");
+    }
+
+    @Override
+    public void purgeResourceChunks(UUID resourceId) {
+        try {
+            restClient.post()
+                    .uri("/api/v1/internal/resource-chunks/{resourceId}/purge", resourceId)
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, serviceToken)
+                    .retrieve().toBodilessEntity();
+        } catch (RestClientException exception) {
+            throw new IllegalStateException("Resource index purge is unavailable");
+        }
     }
 }

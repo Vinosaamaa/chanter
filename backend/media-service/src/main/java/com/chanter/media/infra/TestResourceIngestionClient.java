@@ -16,6 +16,7 @@ public class TestResourceIngestionClient implements ResourceIngestionClient {
 
     private final List<IngestCall> ingestCalls = new ArrayList<>();
     private final List<UUID> deleteCalls = new ArrayList<>();
+    private final List<UUID> purgeCalls = new ArrayList<>();
 
     @Override
     public void ingestAiApprovedResource(UUID courseId, UUID resourceId, String fileName, byte[] content) {
@@ -35,8 +36,14 @@ public class TestResourceIngestionClient implements ResourceIngestionClient {
         return List.copyOf(deleteCalls);
     }
 
+    @Override
+    public void purgeResourceChunks(UUID resourceId) { purgeCalls.add(resourceId); }
+
+    public List<UUID> purgeCalls() { return List.copyOf(purgeCalls); }
+
     public void clear() {
         ingestCalls.clear();
         deleteCalls.clear();
+        purgeCalls.clear();
     }
 }

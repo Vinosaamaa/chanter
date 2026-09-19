@@ -7,4 +7,6 @@ public interface ResourceIngestionClient {
     void ingestAiApprovedResource(UUID courseId, UUID resourceId, String fileName, byte[] content);
 
     void deleteResourceChunks(UUID resourceId);
+
+    void purgeResourceChunks(UUID resourceId);
 }

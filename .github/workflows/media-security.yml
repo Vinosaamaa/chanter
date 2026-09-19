@@ -1,0 +1,76 @@
+name: Private media storage
+
+on:
+  pull_request:
+    paths: ['backend/media-service/**', 'backend/agent-service/**', 'infra/media-security/**', 'scripts/media/**', '.github/workflows/media-security.yml']
+  push:
+    branches: [main]
+    paths: ['backend/media-service/**', 'backend/agent-service/**', 'infra/media-security/**', 'scripts/media/**', '.github/workflows/media-security.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-media-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actual-storage-and-scanner:
+    if: github.event.repository.private == false
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    env:
+      MEDIA_INTEGRATION: 'true'
+      MEDIA_RESTART_PHASE: 'false'
+      COMPOSE_PROJECT_NAME: media-security-test
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '21.0.12+8.0.LTS'
+      - name: Start real PostgreSQL, S3 emulator and malware scanner
+        run: |
+          python3 -O -m unittest discover -s scripts/media -p 'test_*.py'
+          export CHANTER_SCANNER_CLIENT_GID="$(id -g)"
+          export CHANTER_CLAMAV_SOCKET_PATH="$GITHUB_WORKSPACE/.cache/media-socket/clamd.sock"
+          echo "CHANTER_SCANNER_CLIENT_GID=$CHANTER_SCANNER_CLIENT_GID" >> "$GITHUB_ENV"
+          echo "CHANTER_CLAMAV_SOCKET_PATH=$CHANTER_CLAMAV_SOCKET_PATH" >> "$GITHUB_ENV"
+          docker compose -f infra/media-security/compose.yml up -d
+          python3 scripts/media/wait-dependencies.py
+          test "$(stat -c '%a' .cache/media-socket/clamd.sock)" = 660
+          test "$(stat -c '%g' .cache/media-socket/clamd.sock)" = "$(id -g)"
+          test "$(stat -c '%u' .cache/media-socket/clamd.sock)" = 1000
+          test "$(stat -c '%a' .cache/media-socket)" = 2770
+      - name: Verify private upload, real malware rejection and metered object operations
+        run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl media-service -am test -Dtest=PrivateStorageIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Verify PostgreSQL indexing and terminal deletion serialization
+        run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service -am test -Dtest=PostgresResourceIndexDeletionFenceTest -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Restart database and storage processes while preserving their volumes
+        run: |
+          docker compose -f infra/media-security/compose.yml restart postgres s3 clamav
+          python3 scripts/media/wait-dependencies.py
+      - name: Verify durable metadata, object bytes, idempotency and deletion after restart
+        env:
+          MEDIA_RESTART_PHASE: 'true'
+        run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl media-service -am test -Dtest=PrivateStorageIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Verify agent deletion markers after PostgreSQL restart
+        env:
+          MEDIA_RESTART_PHASE: 'true'
+        run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service -am test -Dtest=PostgresResourceIndexDeletionFenceTest -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Capture resource limits and actual container use
+        if: always()
+        run: |
+          docker stats --no-stream
+          docker compose -f infra/media-security/compose.yml ps
+          docker compose -f infra/media-security/compose.yml logs --tail 60
+      - name: Remove only the ephemeral test stack
+        if: always()
+        run: docker compose -f infra/media-security/compose.yml down -v

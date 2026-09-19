@@ -1,0 +1,50 @@
+# Ephemeral CI/development dependencies only. S3Mock does not prove provider IAM isolation.
+services:
+  postgres:
+    image: postgres:16.15-alpine3.23@sha256:421b84e07a72bb8f3715f20501a1fdbe1219aad1fa4af7786a49d9a3f2480296
+    environment:
+      POSTGRES_USER: media_test
+      POSTGRES_PASSWORD: media-test-only-password
+      POSTGRES_DB: chanter_media
+    ports: ['127.0.0.1:5544:5432']
+    volumes: ['postgres-data:/var/lib/postgresql/data']
+    mem_limit: 256m
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U media_test -d chanter_media']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  s3:
+    image: adobe/s3mock:5.2.2@sha256:e7c36014dcf4c7f0f6bec9de888477d1d9b8f55eceb7d9c1186f70d7aadf81ca
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3mockroot
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: 'true'
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: private-media-test
+      JAVA_TOOL_OPTIONS: -Xmx320m
+    ports: ['127.0.0.1:9090:9090']
+    volumes: ['s3-data:/s3mockroot']
+    mem_limit: 512m
+  clamav:
+    image: clamav/clamav-debian:1.5.4@sha256:4c975c439fcb7ab9cbdd72162c2802f5efcb4a11dcf5b0b37da1d746474ef20e
+    command: ['sh', '/etc/clamav/start-scanner.sh']
+    environment:
+      TZ: UTC
+      CLAMD_STARTUP_TIMEOUT: '600'
+      FRESHCLAM_CHECKS: '12'
+      CHANTER_SCANNER_CLIENT_GID: ${CHANTER_SCANNER_CLIENT_GID:-10001}
+    volumes:
+      - clamav-signatures:/var/lib/clamav
+      - ./clamd.conf:/etc/clamav/clamd.conf:ro
+      - ./start-scanner.sh:/etc/clamav/start-scanner.sh:ro
+      - ../../.cache/media-socket:/run/clamav
+    mem_limit: 4g
+    healthcheck:
+      test: ['CMD-SHELL', "printf 'zPING\\000' | nc -U /run/clamav/clamd.sock | tr -d '\\000' | grep -qx PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+volumes:
+  postgres-data:
+  s3-data:
+  clamav-signatures:
