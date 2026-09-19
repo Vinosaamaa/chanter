@@ -79,3 +79,25 @@ Debian image, whose runtime scan failed. Combined service limits are 10,048 MiB;
 native image/security/startup proof is required at this candidate before merge.
 The native smoke explicitly uses local storage, not an unverified private
 provider. Actual provider authorization, restore and load acceptance stay open.
+
+## Draft release publication repair
+
+The first merged-main package run built, scanned and started both native image
+sets, then failed before uploading assets. GitHub's REST lookup by tag returned
+404 for the unpublished draft, although authenticated `gh release view` found
+it. Resolve the draft through that command, validate its numeric release ID and
+matching tag, then read REST metadata and every asset page by ID. Existing digest
+checks and the refusal to replace assets or extend published releases remain.
+
+The failing regression preceded the repair. All 19 deployment tests pass after
+it, including multi-page draft discovery, changed-identity rejection and partial
+upload retry protection. A read-only request against the existing empty draft
+also succeeds. Hosted review and a fresh main-only package run must still prove
+actual upload; this result does not establish provider deployment.
+
+The review follow-up binds uploads to the validated numeric ID and rechecks
+identity/draft state before every file. The operator must not publish or edit the
+draft while packaging runs; the provider has no atomic draft-state condition on
+asset upload. The CLI's real binary transport passes a local HTTP test, and the
+new regression rejects state changes between uploads. All 21 deployment tests
+pass. A new exact-head hosted run and real main-only publication are required.

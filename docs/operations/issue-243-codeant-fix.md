@@ -104,3 +104,20 @@ archiving a reused build directory. Unexpected leftovers are excluded without
 deleting operator data. Scanner tests also connect as the media UID and reject
 an unrelated UID. Seventeen local deployment tests and Actionlint pass. These
 changes require fresh exact-head native checks before acceptance.
+
+## Draft publication follow-up, PR326
+
+The numeric-ID lookup fixes the observed draft REST 404. Review also found that
+uploading by tag could resolve a different release after validation. Uploads now
+use the validated numeric release ID, and each file rechecks that ID, tag and
+draft state immediately before sending bytes. A regression rejects a published
+or changed draft between files. An actual GitHub CLI request to an owned local
+HTTP fixture verifies binary bytes and Content-Length without provider writes.
+
+GitHub does not offer an atomic draft-state precondition on asset upload. The
+operator must wait for the packaging workflow to finish before publishing or
+editing its draft. A privileged concurrent operator publication cannot be made
+transactional by this client. The workflow serializes each commit/architecture,
+never deletes or overwrites an existing asset, and fails closed on detected
+state changes. The metadata-memory suggestion needs no change for the fixed
+four-asset layout; payload hashing and upload are streamed.

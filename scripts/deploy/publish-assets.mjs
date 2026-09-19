@@ -21,7 +21,32 @@ export async function publishAssets(tag, files, io) {
     } else pending.push(file);
   }
   if (pending.length && !release.draft) throw new Error('Cannot add assets to an already published release');
-  for (const file of pending) await io.upload(tag, file);
+  for (const file of pending) await io.upload(release, file);
+}
+
+export function githubReleaseIo(repo, run = execFileSync) {
+  const readJson = args => JSON.parse(run('gh', args, { encoding: 'utf8' }));
+  return {
+    readRelease(tag) {
+      // GitHub's REST tag endpoint excludes unpublished drafts. The CLI resolves
+      // drafts for authenticated writers; use that immutable ID for REST digests.
+      const { databaseId } = readJson(['release', 'view', tag, '--repo', repo, '--json', 'databaseId']);
+      if (!Number.isSafeInteger(databaseId) || databaseId <= 0) throw new Error('Invalid release identity');
+      const endpoint = `repos/${repo}/releases/${databaseId}`;
+      const release = readJson(['api', endpoint]);
+      if (release.id !== databaseId || release.tag_name !== tag) throw new Error('Release identity changed during discovery');
+      release.assets = readJson(['api', `${endpoint}/assets`, '--paginate', '--slurp']).flat();
+      return release;
+    },
+    upload(release, file) {
+      const current = readJson(['api', `repos/${repo}/releases/${release.id}`]);
+      if (current.id !== release.id || current.tag_name !== release.tag_name) throw new Error('Release identity changed before upload');
+      if (current.draft !== true) throw new Error('Release must remain a draft before upload');
+      const endpoint = `https://uploads.github.com/repos/${repo}/releases/${release.id}/assets?name=${encodeURIComponent(path.basename(file))}`;
+      run('gh', ['api', endpoint, '--method', 'POST', '--input', file, '--header', 'Content-Type: application/octet-stream',
+        '--header', `Content-Length: ${fs.statSync(file).size}`, '--silent'], { stdio: 'inherit' });
+    },
+  };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
@@ -30,8 +55,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   if (!/^deploy-[a-f0-9]{40}$/.test(tag ?? '') || !files.length || !/^[\w.-]+\/[\w.-]+$/.test(repo ?? '')) {
     throw new Error('A commit deployment tag, asset paths and GITHUB_REPOSITORY are required');
   }
-  await publishAssets(tag, files, {
-    readRelease: name => JSON.parse(execFileSync('gh', ['api', `repos/${repo}/releases/tags/${name}`], { encoding: 'utf8' })),
-    upload: (name, file) => execFileSync('gh', ['release', 'upload', name, file, '--repo', repo], { stdio: 'inherit' }),
-  });
+  await publishAssets(tag, files, githubReleaseIo(repo));
 }
