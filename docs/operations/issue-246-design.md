@@ -10,6 +10,8 @@ Keep the 10 MiB source limit, cap decompressed Office data, entry count and extr
 
 Normalize extracted text consistently for chunking and citation verification. Store source locators separately from text; retain the original source checksum and parser version. Resource text remains untrusted quoted evidence. Record suspicious control characters/instruction markers as signals, not proof of malice and not executable instructions. Course-scoped resources remain course-scoped; do not invent a Cohort or language when the source does not supply one.
 
+Extraction signals live on the resource index row and are committed with the chunks. Chunk reads include those signals from the same database statement, avoiding a second persisted copy. Retrieval responses and the granted chunk tool expose them; tool evidence is explicitly marked as untrusted. Signals neither grant access nor prove that text is safe.
+
 ## Persistence and deletion
 
 Parsing and embedding preparation run outside the final database transaction. The final transaction locks the resource index row, checks terminal deletion and the expected source version, and replaces chunks plus embeddings atomically. An older completion cannot overwrite a newer source or restore a deleted ID. Direct backfill uses the same final validation. Existing live AVAILABLE/approved/course/viewer authorization remains independent of retained index rows.

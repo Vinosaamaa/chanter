@@ -130,7 +130,8 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     public Optional<ResourceChunk> findById(UUID chunkId) {
         return jdbcClient.sql("""
                         SELECT id, resource_id, course_id, chunk_index, start_offset, end_offset,
-                               content_text, content_sha256, file_name, created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version
+                               content_text, content_sha256, file_name, created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version,
+                               (SELECT signals FROM resource_index_lifecycle WHERE resource_id=resource_chunks.resource_id) AS extraction_signals
                         FROM resource_chunks
                         WHERE id = :chunkId
                         """)
@@ -144,7 +145,8 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     public List<ResourceChunk> findByResourceId(UUID resourceId) {
         return jdbcClient.sql("""
                         SELECT id, resource_id, course_id, chunk_index, start_offset, end_offset,
-                               content_text, content_sha256, file_name, created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version
+                               content_text, content_sha256, file_name, created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version,
+                               (SELECT signals FROM resource_index_lifecycle WHERE resource_id=resource_chunks.resource_id) AS extraction_signals
                         FROM resource_chunks
                         WHERE resource_id = :resourceId
                         ORDER BY chunk_index ASC
@@ -159,7 +161,8 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     public List<ResourceChunk> findByCourseId(UUID courseId) {
         return jdbcClient.sql("""
                         SELECT id, resource_id, course_id, chunk_index, start_offset, end_offset,
-                               content_text, content_sha256, file_name, created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version
+                               content_text, content_sha256, file_name, created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version,
+                               (SELECT signals FROM resource_index_lifecycle WHERE resource_id=resource_chunks.resource_id) AS extraction_signals
                         FROM resource_chunks
                         WHERE course_id = :courseId
                         ORDER BY resource_id ASC, chunk_index ASC
@@ -197,7 +200,9 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
                 rs.getObject("locator_number", Integer.class),
                 rs.getString("locator_label"),
                 rs.getString("source_sha256"),
-                rs.getString("parser_version")
+                rs.getString("parser_version"),
+                rs.getString("extraction_signals") == null || rs.getString("extraction_signals").isBlank()
+                        ? java.util.Set.of() : java.util.Set.of(rs.getString("extraction_signals").split(","))
         );
     }
 }

@@ -75,7 +75,7 @@ public class ResourceIngestionService {
                     prepared.add(new ResourceChunk(UUID.randomUUID(), resourceId, courseId, prepared.size(),
                             segmentOffset + span.startOffset(), segmentOffset + span.endOffset(), span.text(),
                             contentSha256, safeFileName, createdAt, locator.kind(), locator.number(), locator.label(),
-                            sourceSha256, ResourceTextExtractor.PARSER_VERSION));
+                            sourceSha256, ResourceTextExtractor.PARSER_VERSION, extraction.signals()));
                 }
                 segmentOffset += segment.text().length() + 2;
             }

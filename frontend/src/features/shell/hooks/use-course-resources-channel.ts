@@ -60,7 +60,12 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
   const requestKey = courseId && userId ? `${courseId}:${userId}` : null
   const isLoading = requestKey !== null && loadedKey !== requestKey
   const activeRequestKeyRef = useRef(requestKey)
-  useEffect(() => { activeRequestKeyRef.current = requestKey }, [requestKey])
+  const viewGenerationRef = useRef(0)
+  useEffect(() => {
+    activeRequestKeyRef.current = requestKey
+    viewGenerationRef.current += 1
+    return () => { activeRequestKeyRef.current = null; viewGenerationRef.current += 1 }
+  }, [requestKey])
 
   useEffect(() => {
     return () => {
@@ -136,10 +141,14 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
     if (!canView || isLoading || isUploading || retryingResourceId || !resources.some((r) => r.status === 'PROCESSING'
       || (r.aiApproved && ['PENDING', 'PROCESSING'].includes(r.ingestionStatus ?? '')))) return
     let cancelled = false
-    const timer = window.setTimeout(() => {
+    let timer: number
+    const refresh = () => {
       const revision = resourceRevisionRef.current
       void listCourseResources(courseId).then((list) => {
-        if (!cancelled && activeRequestKeyRef.current === requestKey && resourceRevisionRef.current === revision) setResources(list.courseResources)
+        if (!cancelled && activeRequestKeyRef.current === requestKey && resourceRevisionRef.current === revision) {
+          setResources(list.courseResources)
+          setError(null)
+        }
       }).catch((caught: unknown) => {
         if (cancelled || activeRequestKeyRef.current !== requestKey || resourceRevisionRef.current !== revision) return
         setError(resourceAccessDeniedMessage(caught))
@@ -147,9 +156,12 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
           setCanView(false)
           setCanUpload(false)
           setResources([])
+        } else {
+          timer = window.setTimeout(refresh, 5000)
         }
       })
-    }, 5000)
+    }
+    timer = window.setTimeout(refresh, 5000)
     return () => { cancelled = true; window.clearTimeout(timer) }
   }, [canView, courseId, isLoading, isUploading, requestKey, resources, retryingResourceId])
 
@@ -157,16 +169,17 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
     if (!canUpload || resource.courseId !== courseId || resource.status !== 'AVAILABLE'
       || !resource.aiApproved || resource.ingestionStatus !== 'FAILED' || retryingResourceId) return
     resourceRevisionRef.current += 1
+    const viewGeneration = viewGenerationRef.current
     setRetryingResourceId(resource.id)
     setError(null)
     try {
       const updated = await retryCourseResourceIngestion(resource.id)
-      if (activeRequestKeyRef.current !== requestKey) return
+      if (activeRequestKeyRef.current !== requestKey || viewGenerationRef.current !== viewGeneration) return
       setResources((current) => current.map((item) => item.id === updated.id ? updated : item))
     } catch (caught) {
-      if (activeRequestKeyRef.current === requestKey) setError(resourceAccessDeniedMessage(caught))
+      if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setError(resourceAccessDeniedMessage(caught))
     } finally {
-      if (activeRequestKeyRef.current === requestKey) setRetryingResourceId(null)
+      if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setRetryingResourceId(null)
     }
   }, [canUpload, courseId, requestKey, retryingResourceId])
 
@@ -191,12 +204,13 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
 
       setIsUploading(true)
       resourceRevisionRef.current += 1
+      const viewGeneration = viewGenerationRef.current
       setError(null)
       setUploadSuccess(null)
 
       try {
         const created = await uploadCourseResource(courseId, file, options)
-        if (activeRequestKeyRef.current !== requestKey) return false
+        if (activeRequestKeyRef.current !== requestKey || viewGenerationRef.current !== viewGeneration) return false
         setResources((current) => {
           if (current.some((resource) => resource.id === created.id)) {
             return current
@@ -206,10 +220,10 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
         setUploadSuccess(`Uploaded ${created.title}.`)
         return true
       } catch (caught) {
-        if (activeRequestKeyRef.current === requestKey) setError(resourceAccessDeniedMessage(caught))
+        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setError(resourceAccessDeniedMessage(caught))
         return false
       } finally {
-        if (activeRequestKeyRef.current === requestKey) setIsUploading(false)
+        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setIsUploading(false)
       }
     },
     [canUpload, courseId, requestKey, userId],

@@ -103,6 +103,45 @@ describe('useCourseResourcesChannel', () => {
     expect(result.current.resources).toEqual([queued, processing])
   })
 
+  it('continues polling after transient failures and clears the error on recovery', async () => {
+    const pending = resource({ aiApproved: true, status: 'AVAILABLE', ingestionStatus: 'PENDING' })
+    const ready = { ...pending, ingestionStatus: 'READY' as const }
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValueOnce({ courseResources: [pending] })
+      .mockRejectedValueOnce(new Error('Temporary outage'))
+      .mockRejectedValueOnce(new Error('Temporary outage'))
+      .mockResolvedValueOnce({ courseResources: [ready] })
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useCourseResourcesChannel('course-1'))
+    await act(async () => { await Promise.resolve() })
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+    expect(result.current.error).toBe('Temporary outage')
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000) })
+    expect(result.current.resources).toEqual([ready])
+    expect(result.current.error).toBeNull()
+  })
+
+  it('ignores a retry from an earlier visit after returning to the same course', async () => {
+    const failed = resource({ aiApproved: true, status: 'AVAILABLE', ingestionStatus: 'FAILED' })
+    const ready = { ...failed, ingestionStatus: 'READY' as const }
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValue({ courseResources: [failed] })
+    let finish!: (value: CourseResource) => void
+    vi.mocked(retryCourseResourceIngestion).mockReturnValue(new Promise((resolve) => { finish = resolve }))
+    const { result, rerender } = renderHook(({ courseId }) => useCourseResourcesChannel(courseId), { initialProps: { courseId: 'course-1' } })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    let retry!: Promise<void>
+    act(() => { retry = result.current.retryIngestion(failed) })
+    mockedListResources.mockResolvedValue({ courseResources: [] })
+    rerender({ courseId: 'course-2' })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    mockedListResources.mockResolvedValue({ courseResources: [ready] })
+    rerender({ courseId: 'course-1' })
+    await waitFor(() => expect(result.current.resources).toEqual([ready]))
+    await act(async () => { finish({ ...failed, ingestionStatus: 'PENDING' }); await retry })
+    expect(result.current.resources).toEqual([ready])
+  })
+
   it('loads durable resources, applies live filters, and keeps successful uploads', async () => {
     const recording = resource({
       id: 'recording-1',

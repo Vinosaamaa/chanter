@@ -8,6 +8,8 @@ The next completed review found a same-course polling/retry race ([review commen
 
 The migration-order finding ([review comment](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051857580)) is accepted and remains an integration blocker: media V4 must follow accepted #245 V3. The final branch will contain both through rebase, without enabling Flyway out-of-order. This draft must not be deployed first.
 
+The follow-up review's transient polling failure and return-to-the-same-course findings are accepted ([poll recovery](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051895128), [earlier visit](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051895130)). Both failed targeted deferred-response/timer tests. Transient errors schedule the next bounded-delay poll and clear on recovery; permission failures stop polling. Each mounted course visit now has its own generation, so a response from an earlier visit cannot update the new one even when course/user IDs match.
+
 The custom suggestions concern bounded-buffer/SQL efficiency, shared validation and presentation refactors. The current 10 MiB source and 2M-character output caps bound the parser draft; the durable-event integration will remove the production Base64 delivery path. Query batching and shared Office validation are not claimed as completed. Neither suggestion changes the required live authorization or generation/deletion fences.
 
 The draft remains open for accepted durable-event integration, source-scope metadata and final system review. No security finding is waived or suppressed.

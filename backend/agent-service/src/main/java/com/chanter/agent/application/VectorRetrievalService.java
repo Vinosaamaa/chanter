@@ -91,7 +91,7 @@ public class VectorRetrievalService {
                     chunk.fileName(),
                     score,
                     embedding.modelId(), chunk.locatorKind(), chunk.locatorNumber(), chunk.locatorLabel(),
-                    chunk.sourceSha256(), chunk.parserVersion()
+                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals()
             ));
         }
 
@@ -117,8 +117,16 @@ public class VectorRetrievalService {
             Integer locatorNumber,
             String locatorLabel,
             String sourceSha256,
-            String parserVersion
+            String parserVersion,
+            Set<String> extractionSignals
     ) {
+        public RankedChunk { extractionSignals = Set.copyOf(extractionSignals); }
+        public RankedChunk(UUID chunkId, UUID resourceId, UUID courseId, int chunkIndex, int startOffset,
+                int endOffset, String contentText, String fileName, double score, String modelId,
+                String locatorKind, Integer locatorNumber, String locatorLabel, String sourceSha256, String parserVersion) {
+            this(chunkId, resourceId, courseId, chunkIndex, startOffset, endOffset, contentText, fileName,
+                    score, modelId, locatorKind, locatorNumber, locatorLabel, sourceSha256, parserVersion, Set.of());
+        }
         public RankedChunk(UUID chunkId, UUID resourceId, UUID courseId, int chunkIndex, int startOffset,
                 int endOffset, String contentText, String fileName, double score, String modelId) {
             this(chunkId, resourceId, courseId, chunkIndex, startOffset, endOffset, contentText, fileName,
