@@ -27,6 +27,8 @@ Auth owns the public job and download authority. Source services own explicit pr
 
 Use bounded chunks and streaming archive output so one export cannot load an account's entire history into memory. Snapshot pages remain private in their owning database and expire after 24 hours. A job is downloadable only after every required participant has a committed receipt. Partial, oversized, expired, or failed work is visible and never labeled complete. Concurrent export and deletion serialize through terminal account authority; deleting an account invalidates pending exports and download access. Active-job limits and expiry bound retained work.
 
+The initial source store uses 256 KiB pages, a 256 MiB snapshot limit, a 1 GiB retained-source limit, and at most sixteen live snapshots per service with one per account. These limits reject work explicitly rather than truncating it. Archive entry paths are generated from fixed section names or resource UUIDs. A source transaction commits the snapshot and receipt together. Terminal account cancellation removes retained pages and prevents delayed capture from recreating them.
+
 The existing durable outbox transports fixed lifecycle requests and receipts. The existing consumer transaction commits each source snapshot or deletion step with its receipt event. Duplicate delivery is idempotent. The existing operator replay mechanism is the only delivery retry mechanism. Timed cleanup only expires private snapshots and completed job payloads; it does not start a parallel retry queue.
 
 ## Deletion and preservation
