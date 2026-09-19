@@ -22,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CommunityEventService {
+    private final com.chanter.common.events.SearchEventWriter searchEvents;
 
     private static final int MAX_FANOUT = 200;
 
@@ -36,13 +37,15 @@ public class CommunityEventService {
             StudyServerRepository studyServerRepository,
             CourseRepository courseRepository,
             NotificationClient notificationClient,
-            Clock clock
+            Clock clock,
+            com.chanter.common.events.SearchEventWriter searchEvents
     ) {
         this.eventRepository = eventRepository;
         this.studyServerRepository = studyServerRepository;
         this.courseRepository = courseRepository;
         this.notificationClient = notificationClient;
         this.clock = clock;
+        this.searchEvents = searchEvents;
     }
 
     @Transactional(readOnly = true)
@@ -101,6 +104,7 @@ public class CommunityEventService {
         );
         CommunityEvent saved = eventRepository.save(event);
         notifyMembersOfEvent(saved, actorUserId);
+        publishSearch(saved);
         return saved;
     }
 
@@ -147,7 +151,10 @@ public class CommunityEventService {
                 existing.interestedCount(),
                 existing.viewerRsvp()
         );
-        return eventRepository.update(updated);
+        CommunityEvent saved = eventRepository.update(updated);
+        publishSearch(saved);
+        notifyMembersOfEvent(saved, actorUserId);
+        return saved;
     }
 
     @Transactional
@@ -158,8 +165,10 @@ public class CommunityEventService {
             return existing;
         }
         eventRepository.setStatus(eventId, CommunityEventStatus.CANCELLED, clock.instant());
-        return eventRepository.findById(eventId, actorUserId)
+        CommunityEvent cancelled = eventRepository.findById(eventId, actorUserId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+        publishSearch(cancelled);
+        return cancelled;
     }
 
     @Transactional
@@ -269,6 +278,7 @@ public class CommunityEventService {
             preview = preview.substring(0, 237) + "...";
         }
         for (UUID recipientId : recipientIds) {
+            if (!viewerCanSee(event, recipientId)) continue;
             notificationClient.createNotification(
                     recipientId,
                     "COMMUNITY_EVENT",
@@ -287,7 +297,13 @@ public class CommunityEventService {
     }
 
     private void requireViewerCanSee(CommunityEvent event, UUID viewerUserId) {
-        boolean visible = switch (event.visibility()) {
+        if (!viewerCanSee(event, viewerUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Event is not visible to this member");
+        }
+    }
+
+    private boolean viewerCanSee(CommunityEvent event, UUID viewerUserId) {
+        return switch (event.visibility()) {
             case HUB -> true;
             case COURSE -> event.courseId() != null
                     && (courseRepository.isStudyServerOwner(event.studyServerId(), viewerUserId)
@@ -296,9 +312,12 @@ public class CommunityEventService {
                     && (courseRepository.isStudyServerOwner(event.studyServerId(), viewerUserId)
                     || eventRepository.isCohortAccessible(event.cohortId(), viewerUserId));
         };
-        if (!visible) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Event is not visible to this member");
-        }
+    }
+
+    private void publishSearch(CommunityEvent event) {
+        searchEvents.append(new com.chanter.common.events.SearchChange("EVENT", event.id(), event.studyServerId(),
+                event.courseId(), event.cohortId(), null, null, event.title(), event.description(),
+                "/app/servers/" + event.studyServerId() + "/community/events", event.cancelled()));
     }
 
     private CommunityEvent requireEventOnServer(UUID studyServerId, UUID eventId, UUID viewerUserId) {

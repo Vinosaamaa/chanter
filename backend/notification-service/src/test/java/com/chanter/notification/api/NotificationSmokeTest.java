@@ -23,6 +23,13 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class NotificationSmokeTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.chanter.notification.application.NotificationVisibility visibility;
+
+    @org.junit.jupiter.api.BeforeEach
+    void allowSourceVisibility() {
+        org.mockito.Mockito.when(visibility.canView(org.mockito.ArgumentMatchers.any())).thenReturn(true);
+    }
 
     private static final String INTERNAL_TOKEN = "test-internal-service-token-for-notification";
 
@@ -145,6 +152,55 @@ class NotificationSmokeTest {
                                 "sourceId", UUID.randomUUID()
                         ))))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void revokedSourceAccessHidesContentAndUnreadCount() throws Exception {
+        UUID userId = UUID.randomUUID();
+        var result = mockMvc.perform(post("/api/v1/internal/notifications")
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("userId", userId, "kind", "ANNOUNCEMENT",
+                    "title", "Private announcement", "href", "/app/inbox", "sourceType", "ANNOUNCEMENT", "sourceId", UUID.randomUUID()))))
+                .andExpect(status().isCreated()).andReturn();
+        var id = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+        org.mockito.Mockito.when(visibility.canView(org.mockito.ArgumentMatchers.any())).thenReturn(false);
+        mockMvc.perform(get("/api/v1/me/notifications").header(AuthHeaders.USER_ID, userId)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications.length()").value(0));
+        mockMvc.perform(get("/api/v1/me/notifications/unread-count").header(AuthHeaders.USER_ID, userId)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.unreadCount").value(0));
+        mockMvc.perform(post("/api/v1/me/notifications/{id}/read", id).header(AuthHeaders.USER_ID, userId)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void eventReplayAndOlderRevisionPreserveSingleReadNotification() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID sourceId = UUID.randomUUID();
+        String payload = objectMapper.writeValueAsString(Map.of("userId", userId, "kind", "ANNOUNCEMENT",
+                "title", "Current title", "href", "/app/inbox", "sourceType", "ANNOUNCEMENT", "sourceId", sourceId));
+        String key = "NOTIFICATION:" + userId + ":ANNOUNCEMENT:" + sourceId + ":ANNOUNCEMENT";
+        var event = new com.chanter.common.events.DurableEvent(UUID.randomUUID(), 1, "community", 2, "NOTIFICATION", key, payload);
+        mockMvc.perform(post("/api/v1/internal/events").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(event))).andExpect(status().isUnauthorized());
+        for (int delivery = 0; delivery < 2; delivery++) {
+            mockMvc.perform(post("/api/v1/internal/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                    .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(event))).andExpect(status().isNoContent());
+        }
+        var list = mockMvc.perform(get("/api/v1/me/notifications").header(AuthHeaders.USER_ID, userId)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications.length()").value(1)).andReturn();
+        String id = objectMapper.readTree(list.getResponse().getContentAsString()).path("notifications").get(0).path("id").asText();
+        mockMvc.perform(post("/api/v1/me/notifications/{id}/read", id).header(AuthHeaders.USER_ID, userId)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk());
+        var old = new com.chanter.common.events.DurableEvent(UUID.randomUUID(), 1, "community", 1, "NOTIFICATION", key, payload.replace("Current title", "Old title"));
+        mockMvc.perform(post("/api/v1/internal/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(old))).andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/me/notifications").header(AuthHeaders.USER_ID, userId)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications[0].title").value("Current title"))
+                .andExpect(jsonPath("$.notifications[0].unread").value(false));
     }
 
     @Test

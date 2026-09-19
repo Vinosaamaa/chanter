@@ -20,10 +20,12 @@ public class NotificationService {
 
     private final NotificationRepository repository;
     private final Clock clock;
+    private final NotificationVisibility visibility;
 
-    public NotificationService(NotificationRepository repository, Clock clock) {
+    public NotificationService(NotificationRepository repository, Clock clock, NotificationVisibility visibility) {
         this.repository = repository;
         this.clock = clock;
+        this.visibility = visibility;
     }
 
     @Transactional
@@ -61,16 +63,18 @@ public class NotificationService {
             NotificationListFilter filter,
             NotificationListStatus status
     ) {
-        return repository.findForUser(userId, filter, status, DEFAULT_LIST_LIMIT);
+        return repository.findForUser(userId, filter, status, DEFAULT_LIST_LIMIT).stream().filter(visibility::canView).toList();
     }
 
     @Transactional(readOnly = true)
     public long unreadCount(UUID userId) {
-        return repository.countUnread(userId);
+        return repository.findForUser(userId, NotificationListFilter.ALL, NotificationListStatus.OPEN, Integer.MAX_VALUE)
+                .stream().filter(notification -> notification.readAt() == null).filter(visibility::canView).count();
     }
 
     @Transactional
     public Notification markRead(UUID notificationId, UUID userId) {
+        requireVisible(notificationId, userId);
         if (!repository.markRead(notificationId, userId, clock.instant())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found");
         }
@@ -80,6 +84,7 @@ public class NotificationService {
 
     @Transactional
     public Notification markDone(UUID notificationId, UUID userId) {
+        requireVisible(notificationId, userId);
         if (!repository.markDone(notificationId, userId, clock.instant())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found");
         }
@@ -93,5 +98,11 @@ public class NotificationService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void requireVisible(UUID id, UUID userId) {
+        Notification notification = repository.findByIdForUser(id, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));
+        if (!visibility.canView(notification)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found");
     }
 }

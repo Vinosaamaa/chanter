@@ -35,6 +35,9 @@ class CommunityEventSmokeTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     @Test
     void durableEventsSupportCreateRsvpFilterShareAndIcs() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
@@ -61,6 +64,8 @@ class CommunityEventSmokeTest {
 
         JsonNode created = objectMapper.readTree(createdResult.getResponse().getContentAsString());
         UUID eventId = UUID.fromString(created.get("id").asText());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=?", Integer.class, "EVENT:" + eventId)).isEqualTo(1);
         String sharePath = created.get("sharePath").asText();
 
         mockMvc.perform(put("/api/v1/study-servers/{id}/events/{eventId}/rsvp", studyServerId, eventId)
@@ -152,6 +157,9 @@ class CommunityEventSmokeTest {
                         .with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=?", Integer.class, "EVENT:" + eventId)).isEqualTo(3);
 
         mockMvc.perform(put("/api/v1/study-servers/{id}/events/{eventId}/rsvp", studyServerId, eventId)
                         .with(asUser(ownerUserId))

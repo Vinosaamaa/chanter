@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CommunityAnnouncementService {
+    private final com.chanter.common.events.SearchEventWriter searchEvents;
 
     private static final int MAX_FANOUT = 200;
 
@@ -35,7 +36,8 @@ public class CommunityAnnouncementService {
             CourseRepository courseRepository,
             AuthUserDirectoryClient authUserDirectoryClient,
             NotificationClient notificationClient,
-            Clock clock
+            Clock clock,
+            com.chanter.common.events.SearchEventWriter searchEvents
     ) {
         this.announcementRepository = announcementRepository;
         this.studyServerRepository = studyServerRepository;
@@ -43,6 +45,7 @@ public class CommunityAnnouncementService {
         this.authUserDirectoryClient = authUserDirectoryClient;
         this.notificationClient = notificationClient;
         this.clock = clock;
+        this.searchEvents = searchEvents;
     }
 
     @Transactional(readOnly = true)
@@ -93,6 +96,7 @@ public class CommunityAnnouncementService {
         );
         CommunityAnnouncement saved = announcementRepository.save(announcement);
         notifyMembersOfAnnouncement(saved, actorUserId);
+        publishSearch(saved);
         return saved;
     }
 
@@ -122,7 +126,10 @@ public class CommunityAnnouncementService {
                 existing.likeCount(),
                 existing.viewerLiked()
         );
-        return announcementRepository.update(updated);
+        CommunityAnnouncement saved = announcementRepository.update(updated);
+        publishSearch(saved);
+        notifyMembersOfAnnouncement(saved, actorUserId);
+        return saved;
     }
 
     @Transactional
@@ -138,7 +145,9 @@ public class CommunityAnnouncementService {
         }
         Instant now = clock.instant();
         announcementRepository.setStatus(announcementId, CommunityAnnouncementStatus.ARCHIVED, now, now);
-        return requireAnnouncementOnServer(studyServerId, announcementId, actorUserId);
+        CommunityAnnouncement archived = requireAnnouncementOnServer(studyServerId, announcementId, actorUserId);
+        publishSearch(archived);
+        return archived;
     }
 
     @Transactional
@@ -225,6 +234,12 @@ public class CommunityAnnouncementService {
     private void requireStudyServerExists(UUID studyServerId) {
         studyServerRepository.findById(studyServerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
+    }
+
+    private void publishSearch(CommunityAnnouncement announcement) {
+        searchEvents.append(new com.chanter.common.events.SearchChange("ANNOUNCEMENT", announcement.id(),
+                announcement.studyServerId(), null, null, null, null, announcement.title(), announcement.body(),
+                "/app/servers/" + announcement.studyServerId() + "/community/announcements", announcement.archived()));
     }
 
     private void requireStudyServerMember(UUID studyServerId, UUID userId) {
