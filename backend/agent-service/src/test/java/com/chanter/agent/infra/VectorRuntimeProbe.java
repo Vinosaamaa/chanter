@@ -36,18 +36,25 @@ public final class VectorRuntimeProbe {
         var app=new SpringApplication(AgentServiceApplication.class);
         try(var context=app.run(args)) {
             var jdbc=context.getBean(JdbcClient.class);
+            if(jdbc.sql("SELECT rolsuper OR rolcreatedb OR rolcreaterole FROM pg_roles WHERE rolname=current_user").query(Boolean.class).single())
+                throw new AssertionError("Runtime proof must use an unprivileged schema owner");
             var search=context.getBean(JdbcVectorSearch.class);
             var client=context.getBean(EmbeddingModelRouter.class).pinned();
             if(!client.metadata().provider().equals("onnx")) throw new AssertionError("Runtime proof requires the real local semantic model");
             var vectors=new ArrayList<float[]>();
             for(String document:DOCUMENTS) vectors.add(client.embed(document));
-            int correct=0;
+            int correct=0,answered=0;
+            boolean[] expectedAnswers=new boolean[QUESTIONS.length];
             for(int i=0;i<QUESTIONS.length;i++) {
                 float[] query=client.embed(QUESTIONS[i]);int best=-1;double score=-1;
                 for(int j=0;j<vectors.size();j++) { double candidate=cosine(query,vectors.get(j));if(candidate>score){score=candidate;best=j;} }
-                if(best==i && score>=0.35) correct++;
+                if(best==i) correct++;
+                if(score>=0.35) {
+                    if(best!=i) throw new AssertionError("Wrong confident semantic source for fixture "+i);
+                    expectedAnswers[i]=true;answered++;
+                }
             }
-            if(correct<9) throw new AssertionError("Semantic paraphrase relevance below 9/10: "+correct);
+            if(correct<9 || answered<8) throw new AssertionError("Semantic ranking/coverage below fixture baseline: "+correct+"/"+answered);
             float[] unrelated=client.embed("Who won the football championship in Argentina?");
             if(vectors.stream().anyMatch(vector->cosine(unrelated,vector)>=0.35)) throw new AssertionError("Unrelated question crossed the evidence threshold");
             // A dedicated empty schema is mandatory: the probe never clears an existing corpus.
@@ -83,7 +90,7 @@ public final class VectorRuntimeProbe {
             for(int i=0;i<45;i++) {
                 long start=System.nanoTime();float[] query=client.embed(QUESTIONS[i%QUESTIONS.length]);long embedded=System.nanoTime();
                 var results=search.nearest(client.metadata(),course,authorized,query,5,0.35);long completed=System.nanoTime();
-                if(results.isEmpty() || results.size()>5 || results.stream().anyMatch(row->!allowed.contains(row.resourceId()) || !course.equals(row.courseId())))
+                if(results.isEmpty()==expectedAnswers[i%QUESTIONS.length] || results.size()>5 || results.stream().anyMatch(row->!allowed.contains(row.resourceId()) || !course.equals(row.courseId())))
                     throw new AssertionError("Scoped datastore retrieval violated its result contract");
                 if(i>=5){inference.add((embedded-start)/1e6);database.add((completed-embedded)/1e6);combined.add((completed-start)/1e6);}
             }
@@ -93,8 +100,8 @@ public final class VectorRuntimeProbe {
             long invalid=jdbc.sql("SELECT COUNT(*) FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=current_schema() AND NOT i.indisvalid")
                     .query(Long.class).single();
             if(invalid!=0) throw new AssertionError("Invalid vector database index");
-            System.out.printf(java.util.Locale.ROOT,"VECTOR_PROOF corpus=100000 resources=1000 courses=10 authorized=%d relevance=%d/10 inference_p50_ms=%.1f inference_p95_ms=%.1f database_p50_ms=%.1f database_p95_ms=%.1f combined_p95_ms=%.1f cgroup_peak_bytes=%s%n",
-                    authorized.size(),correct,percentile(inference,0.5),percentile(inference,0.95),percentile(database,0.5),percentile(database,0.95),percentile(combined,0.95),Files.readString(Path.of("/sys/fs/cgroup/memory.peak")).trim());
+            System.out.printf(java.util.Locale.ROOT,"VECTOR_PROOF corpus=100000 resources=1000 courses=10 authorized=%d top1=%d/10 answered=%d/10 inference_p50_ms=%.1f inference_p95_ms=%.1f database_p50_ms=%.1f database_p95_ms=%.1f combined_p95_ms=%.1f cgroup_peak_bytes=%s%n",
+                    authorized.size(),correct,answered,percentile(inference,0.5),percentile(inference,0.95),percentile(database,0.5),percentile(database,0.95),percentile(combined,0.95),Files.readString(Path.of("/sys/fs/cgroup/memory.peak")).trim());
             if(percentile(combined,0.95)>2000) throw new AssertionError("Scoped answer retrieval exceeds two-second p95 budget");
         }
     }

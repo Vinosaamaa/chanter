@@ -26,11 +26,11 @@ class EmbeddingVersionStoreTest {
     @BeforeEach void reset() {
         jdbc.sql("DELETE FROM resource_chunks").update();
         jdbc.sql("DELETE FROM resource_index_lifecycle").update();
-        jdbc.sql("UPDATE embedding_control SET candidate_model_id=NULL,previous_model_id=NULL").update();
+        jdbc.sql("UPDATE embedding_control SET active_model_id='hashing-v1-384',candidate_model_id=NULL,previous_model_id=NULL").update();
         course=UUID.randomUUID(); resource=UUID.randomUUID();
     }
     @org.junit.jupiter.api.AfterEach void clearCandidate() {
-        jdbc.sql("UPDATE embedding_control SET candidate_model_id=NULL,previous_model_id=NULL").update();
+        jdbc.sql("UPDATE embedding_control SET active_model_id='hashing-v1-384',candidate_model_id=NULL,previous_model_id=NULL").update();
     }
 
     @Test void candidateActivationNeedsFullCoverageAndBackfillPreservesPreviousVectors() {

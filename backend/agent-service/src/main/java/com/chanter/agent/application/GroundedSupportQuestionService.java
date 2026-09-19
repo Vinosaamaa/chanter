@@ -341,7 +341,7 @@ public class GroundedSupportQuestionService {
 
         List<RankedChunk> ranked;
         try { ranked = vectorRetrievalService.retrieve(question, courseId, viewerUserId, grantedResourceIds, retrievalTopK); }
-        catch (RuntimeException unavailable) { ranked = List.of(); }
+        catch (SemanticRetrievalUnavailableException unavailable) { ranked = List.of(); }
         return rag.answer(question, ranked, faqSources, resourceTitles);
     }
 

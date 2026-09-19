@@ -37,11 +37,15 @@ public class VectorRetrievalService {
             authorized.add(new JdbcVectorSearch.AuthorizedResource(resource.id(),resource.studyServerId(),resource.cohortId(),resource.sourceSha256()));
         }
         if(authorized.isEmpty()) return List.of();
-        var client=models.pinned();
-        var model=client.metadata();
-        float[] vector=client.embed(query);
-        if(java.util.stream.IntStream.range(0,vector.length).allMatch(i->vector[i]==0)) return List.of();
-        return search.nearest(model,courseId,authorized,vector,topK<1?5:Math.min(topK,50),minimumScore);
+        try {
+            var client=models.pinned();
+            var model=client.metadata();
+            float[] vector;
+            try { vector=client.embed(query); }
+            catch(IllegalStateException unavailable) { throw new SemanticRetrievalUnavailableException(); }
+            if(java.util.stream.IntStream.range(0,vector.length).allMatch(i->vector[i]==0)) return List.of();
+            return search.nearest(model,courseId,authorized,vector,topK<1?5:Math.min(topK,50),minimumScore);
+        } catch(org.springframework.dao.DataAccessException unavailable) { throw new SemanticRetrievalUnavailableException(); }
     }
 
     public record RankedChunk(

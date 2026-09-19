@@ -54,7 +54,7 @@ class GroundedSupportQuestionSmokeTest {
         courseResourceCatalogClient.registerResource(new CourseResourceSummary(resource,course,"Homework","homework.txt",true));
         courseResourceCatalogClient.grantViewerAccess(course,learner);
         courseResourceContentClient.registerContent(resource,"Homework is due Friday. Submit homework before Friday.".getBytes(StandardCharsets.UTF_8));
-        if(providerFailed) org.mockito.Mockito.doThrow(new IllegalStateException("Synthetic semantic provider outage"))
+        if(providerFailed) org.mockito.Mockito.doThrow(new com.chanter.agent.application.SemanticRetrievalUnavailableException())
                 .when(vectorRetrieval).retrieve(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.eq(course),
                     org.mockito.ArgumentMatchers.eq(learner),org.mockito.ArgumentMatchers.anySet(),org.mockito.ArgumentMatchers.anyInt());
         var result=mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions/{questionId}/assistant-answer",channel,question)
@@ -64,6 +64,21 @@ class GroundedSupportQuestionSmokeTest {
         assertThat(response.confidence()).isEqualTo("LOW");
         assertThat(response.handoffRecommended()).isTrue();
         assertThat(response.sources()).isEmpty();
+    }
+
+    @Test void deniedRetrievalDoesNotBecomeASavedLowConfidenceAnswer() throws Exception {
+        UUID server=UUID.randomUUID(),instructor=UUID.randomUUID(),learner=UUID.randomUUID(),channel=UUID.randomUUID(),
+                course=UUID.randomUUID(),resource=UUID.randomUUID(),question=UUID.randomUUID();
+        installAssistant(server,instructor,learner,channel,course,UUID.randomUUID(),resource);
+        channelAccessClient.grantLearnerPost(channel,learner,course,server,"questions");
+        supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question,channel,learner,"A question"));
+        org.mockito.Mockito.doThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN))
+                .when(vectorRetrieval).retrieve(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.eq(course),
+                    org.mockito.ArgumentMatchers.eq(learner),org.mockito.ArgumentMatchers.anySet(),org.mockito.ArgumentMatchers.anyInt());
+        mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions/{questionId}/assistant-answer",channel,question)
+                .header(AuthHeaders.USER_ID,learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-agent"))
+                .andExpect(status().isForbidden());
+        assertThat(jdbcClient.sql("SELECT COUNT(*) FROM study_assistant_answers WHERE support_question_id=:id").param("id",question).query(Long.class).single()).isZero();
     }
 
     private static final com.sun.net.httpserver.HttpServer PROVIDER = fixtureProvider();
