@@ -1,7 +1,7 @@
 name: Scoped semantic retrieval
 on:
   pull_request:
-    paths: ['backend/agent-service/**', 'infra/vector/**', 'scripts/vector/**', '.github/workflows/vector-retrieval.yml']
+    paths: ['backend/agent-service/**', 'infra/vector/**', 'infra/production/java/**', 'infra/production/runtime-lock.json', 'scripts/vector/**', 'scripts/deploy/build-release.sh', '.github/workflows/vector-retrieval.yml']
   workflow_dispatch:
 permissions:
   contents: read

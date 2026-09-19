@@ -1,7 +1,12 @@
 # Ephemeral CI/development dependencies only. S3Mock does not prove provider IAM isolation.
 services:
   postgres:
-    image: postgres:16.15-alpine3.23@sha256:421b84e07a72bb8f3715f20501a1fdbe1219aad1fa4af7786a49d9a3f2480296
+    image: chanter-media-test-pgvector:0.8.6
+    build:
+      context: ../..
+      dockerfile: infra/vector/Dockerfile
+      args:
+        POSTGRES_IMAGE: postgres:16.15-alpine3.23@sha256:3dc6d8874cacc4a9c5c1d7f63cfe5b385a22f8f3527c4896f94f9ec897dd01f2
     environment:
       POSTGRES_USER: media_test
       POSTGRES_PASSWORD: media-test-only-password

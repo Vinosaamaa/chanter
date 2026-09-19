@@ -24,7 +24,12 @@ services:
       retries: 10
 
   postgres:
-    image: postgres:16.14-alpine
+    image: chanter-development-pgvector:0.8.6
+    build:
+      context: ..
+      dockerfile: infra/vector/Dockerfile
+      args:
+        POSTGRES_IMAGE: postgres:16.15-alpine3.23@sha256:3dc6d8874cacc4a9c5c1d7f63cfe5b385a22f8f3527c4896f94f9ec897dd01f2
     container_name: chanter-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-chanter}

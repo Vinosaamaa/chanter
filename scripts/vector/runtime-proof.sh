@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p .cache/vector-proof
+mkdir -p .cache/vector-proof/classes/com/chanter/agent/infra
+cp backend/agent-service/target/test-classes/com/chanter/agent/infra/VectorRuntimeProbe.class .cache/vector-proof/classes/com/chanter/agent/infra/
 node scripts/vector/download-model.mjs backend/agent-service/target/embedding-model
 locked() { node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync("infra/production/runtime-lock.json"))[process.argv[1]])' "$1"; }
 docker build -f infra/production/java/Dockerfile --build-arg MODULE=agent-service \
@@ -8,7 +10,7 @@ docker build -f infra/production/java/Dockerfile --build-arg MODULE=agent-servic
 docker run --name chanter-vector-runtime --network host --memory 640m --memory-swap 640m --cpus 2 --cpuset-cpus 0,1 \
   --read-only --cap-drop ALL --security-opt no-new-privileges:true --user 10001:10001 \
   --tmpfs /tmp:size=64m,mode=1777 \
-  --mount "type=bind,src=$PWD/backend/agent-service/target/test-classes,dst=/probe,readonly" \
+  --mount "type=bind,src=$PWD/.cache/vector-proof/classes,dst=/probe,readonly" \
   -e 'JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=50 -XX:InitialRAMPercentage=10 -XX:MaxDirectMemorySize=64m -XX:ActiveProcessorCount=2 -XX:+ExitOnOutOfMemoryError -Xss512k' \
   -e CHANTER_JWT_SECRET=vector-runtime-test-jwt-secret-32bytes \
   -e CHANTER_INTERNAL_SERVICE_TOKEN=vector-runtime-test-internal-token-32bytes \

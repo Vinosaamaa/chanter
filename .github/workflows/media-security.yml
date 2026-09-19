@@ -43,8 +43,9 @@ jobs:
           export CHANTER_CLAMAV_SOCKET_PATH="$GITHUB_WORKSPACE/.cache/media-socket/clamd.sock"
           echo "CHANTER_SCANNER_CLIENT_GID=$CHANTER_SCANNER_CLIENT_GID" >> "$GITHUB_ENV"
           echo "CHANTER_CLAMAV_SOCKET_PATH=$CHANTER_CLAMAV_SOCKET_PATH" >> "$GITHUB_ENV"
-          docker compose -f infra/media-security/compose.yml up -d
+          docker compose -f infra/media-security/compose.yml up -d --build
           python3 scripts/media/wait-dependencies.py
+          docker compose -f infra/media-security/compose.yml exec -T postgres psql -U media_test -d chanter_media -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public'
           test "$(stat -c '%a' .cache/media-socket/clamd.sock)" = 660
           test "$(stat -c '%g' .cache/media-socket/clamd.sock)" = "$(id -g)"
           test "$(stat -c '%u' .cache/media-socket/clamd.sock)" = 1000

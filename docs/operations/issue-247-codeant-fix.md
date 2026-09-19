@@ -1,0 +1,11 @@
+# Issue #247 review dispositions
+
+The initial completed full review covers `14446eb`. The integrated implementation is undergoing another complete review; quality/SAST statuses alone do not establish review completion.
+
+- Zero vectors from the former default hashing embedder: production hashing has been removed and is explicitly rejected by provider configuration. The real pinned ONNX model produces valid normalized coordinates for the punctuation fixture. Tokenless queries return no evidence before inference. The datastore continues rejecting zero/nonfinite vectors; the explicit API adapter also rejects them. Hashing remains a deterministic test-profile fixture and is not silently substituted in production.
+- Candidate preparation could only use the active model: the pipeline now exposes preparation for a registered target model, and a durable resource/model worker fills candidates while active ingestion continues. Tests cover candidate coverage, activation/rollback, bounded retries, lease expiry, discarded candidates and replacement/deletion during delayed provider work.
+- Model metadata length bounds disagreed with storage: ID/provider/model/revision validation now matches the database limits, with regression coverage. Model IDs also use a restricted character set before creation of a model-specific partial index.
+
+Independent system review removed downloaded-resource keyword fallback after empty or failed semantic retrieval, removed the whole-vector repository read API, bounded retained versions to active/candidate/previous, and retained the short generation/lease-checked final transaction. Native image verification exposed two runtime integration defects: JNI extraction into non-executable scratch, and the tokenizer's directory-override null handling. Native libraries are now loaded from immutable image assets using an explicit library file for the tokenizer. Neither issue is treated as resolved runtime evidence until both architectures pass.
+
+No broad suppression or authorization/data-loss deferral is used. Production pgvector bootstrap and epoch-8 integration depend on the accepted #252 changes. Final native memory/load, packaged security, complete CI and full-review receipts remain required before acceptance.
