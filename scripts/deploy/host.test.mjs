@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic } from './host.mjs';
 import { imageNames } from './release.mjs';
 
@@ -35,6 +36,61 @@ const fixture = t => {
     (_, key) => `${key}=${key === 'CHANTER_S3_ENDPOINT' ? 'https://private-storage.example' : 'fixture-only'}`));
   return { root, state, auth };
 };
+
+test('native signer is absent by default and a complete matching agent-only configuration passes', t => {
+  const { state } = fixture(t);
+  const file = path.join(state, 'runtime/agent-service.env');
+  const before = fs.readFileSync(file, 'utf8');
+  assert.ok(!before.includes('CHANTER_NATIVE_COMPANION_'));
+  assert.doesNotThrow(() => validateRuntime(state));
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  const pair = crypto.generateKeyPairSync('ed25519');
+  const values = {
+    CHANTER_NATIVE_COMPANION_ORIGIN: 'https://staging.chanter.example',
+    CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8: pair.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'),
+    CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI: pair.publicKey.export({ format: 'der', type: 'spki' }).toString('base64'),
+    CHANTER_NATIVE_COMPANION_MODELS: 'fixture-model, fixture/model:2',
+  };
+  const text = Object.entries(values).map(([key, value]) => `${key}=${value}`).join('\n') + '\n';
+  fs.appendFileSync(file, text);
+  assert.doesNotThrow(() => validateRuntime(state));
+  assert.equal(fs.readFileSync(file, 'utf8'), before + text);
+  const unpadded = Object.entries(values).map(([key, value]) => `${key}=${value.replace(/=+$/, '')}`).join('\n') + '\n';
+  fs.writeFileSync(file, before + unpadded);
+  assert.doesNotThrow(() => validateRuntime(state));
+  assert.equal(fs.readFileSync(file, 'utf8'), before + unpadded);
+  const gateway = path.join(state, 'runtime/gateway-service.env');
+  assert.ok(!fs.readFileSync(gateway, 'utf8').includes('CHANTER_NATIVE_COMPANION_'));
+  fs.appendFileSync(gateway, text);
+  assert.throws(() => validateRuntime(state), /only in agent-service/);
+});
+
+test('native signer preflight rejects partial, mismatched, malformed and foreign-origin configuration', t => {
+  const { state } = fixture(t);
+  const file = path.join(state, 'runtime/agent-service.env');
+  const before = fs.readFileSync(file, 'utf8');
+  const pair = crypto.generateKeyPairSync('ed25519');
+  const values = {
+    CHANTER_NATIVE_COMPANION_ORIGIN: 'https://staging.chanter.example',
+    CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8: pair.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'),
+    CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI: pair.publicKey.export({ format: 'der', type: 'spki' }).toString('base64'),
+    CHANTER_NATIVE_COMPANION_MODELS: 'fixture-model',
+  };
+  const reject = candidate => {
+    fs.writeFileSync(file, before + Object.entries(candidate).map(([key, value]) => `${key}=${value}`).join('\n') + '\n');
+    assert.throws(() => validateRuntime(state), /native companion|NATIVE_COMPANION/);
+  };
+  for (const key of Object.keys(values)) { const partial = { ...values }; delete partial[key]; reject(partial); }
+  for (const origin of ['https://foreign.example', 'http://staging.chanter.example', 'https://staging.chanter.example/', 'https://staging.chanter.example:443'])
+    reject({ ...values, CHANTER_NATIVE_COMPANION_ORIGIN: origin });
+  for (const models of ['', 'bad model', Array.from({ length: 21 }, (_, i) => `model-${i}`).join(',')])
+    reject({ ...values, CHANTER_NATIVE_COMPANION_MODELS: models });
+  reject({ ...values, CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI: crypto.generateKeyPairSync('ed25519').publicKey.export({ format: 'der', type: 'spki' }).toString('base64') });
+  reject({ ...values, CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8: values.CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8 + '!' });
+  const ec = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  reject({ ...values, CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8: ec.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'),
+    CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI: ec.publicKey.export({ format: 'der', type: 'spki' }).toString('base64') });
+});
 
 test('initialization isolates credentials and refuses to overwrite existing or partial state', t => {
   const { state } = fixture(t);

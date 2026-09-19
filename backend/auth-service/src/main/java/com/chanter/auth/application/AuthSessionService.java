@@ -154,7 +154,7 @@ public class AuthSessionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
         AuthUser user = authUserRepository.findById(session.userId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
-        return new AuthSession(jwtTokenService.createAccessToken(user.id()), replacement,
+        return new AuthSession(jwtTokenService.createAccessToken(user.id(), session.id()), replacement,
                 jwtTokenService.accessTokenTtlSeconds(), AuthUserProfile.from(user), session.expiresAt());
     }
 
@@ -189,6 +189,15 @@ public class AuthSessionService {
         return jwtTokenService.parseUserId(authorizationHeader);
     }
 
+    public JwtTokenService.AccessSession requireActiveAccessSession(String authorizationHeader) {
+        var token = jwtTokenService.parseAccessSession(authorizationHeader);
+        var session = refreshTokenRepository.findActiveSessions(token.userId(), Instant.now()).stream()
+                .filter(candidate -> candidate.id().equals(token.sessionId())).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session is no longer active"));
+        Instant expiry = token.expiresAt().isBefore(session.expiresAt()) ? token.expiresAt() : session.expiresAt();
+        return new JwtTokenService.AccessSession(token.userId(), token.sessionId(), expiry);
+    }
+
     public List<AuthUserProfile> findPublicProfiles(List<UUID> requestedUserIds) {
         List<UUID> distinctIds = requestedUserIds.stream().distinct().toList();
         Map<UUID, AuthUser> usersById = new LinkedHashMap<>();
@@ -220,15 +229,16 @@ public class AuthSessionService {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(refreshTokenTtl);
         String agent = userAgent == null ? "" : userAgent.substring(0, Math.min(userAgent.length(), 255));
+        UUID sessionId = UUID.randomUUID();
         refreshTokenRepository.createSession(
-                UUID.randomUUID(),
+                sessionId,
                 user.id(),
                 UUID.randomUUID(),
                 hashToken(refreshToken),
                 now, expiresAt, agent
         );
         return new AuthSession(
-                jwtTokenService.createAccessToken(user.id()),
+                jwtTokenService.createAccessToken(user.id(), sessionId),
                 refreshToken,
                 jwtTokenService.accessTokenTtlSeconds(),
                 AuthUserProfile.from(user), expiresAt

@@ -144,8 +144,8 @@ durable events, violating projection consistency. Automatic rollback to epoch 4
 is therefore forbidden. Recover source and consumer databases consistently;
 never reset event cursors independently or enable Flyway out-of-order migration.
 
-The current compatibility epoch is 6 for #246. Agent V9 introduces generation-fenced
-extraction and V10 adds durable resource jobs and consumer cursors. Media V4 records
+Compatibility epoch 6 for #246 includes agent V9 generation-fenced
+extraction and V10 durable resource jobs and consumer cursors. Media V4 records
 extraction outcomes, authoritative source scope and expected ingestion events.
 Older binaries can bypass generation checks or fail to publish ingestion events;
 automatic rollback or ordinary deployment to epoch 5 is forbidden. Recover media
@@ -170,6 +170,19 @@ Optional Google OAuth credentials may be added only to the auth file after confi
 
 No external inference endpoint or paid model is enabled. The existing deterministic grounding and hashing embeddings remain available; provider-agnostic optional AI belongs to [#248](https://github.com/Vinosaamaa/chanter/issues/248). MinIO and Redpanda are absent because this runtime does not use them. Course files use the dedicated `resources` volume until #244 establishes the durable storage/recovery contract.
 
+## Optional native companion issuer
+
+Native access is disabled while all four issuer values are absent. To provision it after the #316 acceptance gates, add only to the private `agent-service.env`:
+
+- `CHANTER_NATIVE_COMPANION_ORIGIN`: the exact `https://` deployment hostname, without a trailing slash or explicit default port.
+- `CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8`: base64 DER for the operator-owned Ed25519 private key.
+- `CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI`: base64 DER for its matching public key.
+- `CHANTER_NATIVE_COMPANION_MODELS`: the comma-separated allowlist intersected with provider discovery.
+
+Preflight rejects partial configuration, mismatched keys, foreign origins, invalid models, and these settings in another service's environment. It neither generates keys nor enables the feature by default. Provision only the corresponding public verifier key and exact origin into the native installation through the reviewed operator path in `companion/README.md`. Keep the private key in the agent runtime file; never copy provider credentials into any backend. Existing Compose routing supplies agent with `AUTH_SERVICE_URL=http://auth-service:8080` and `MESSAGE_SERVICE_URL=http://message-service:8080` on the private application network.
+
+The current compatibility epoch is 7. Agent V11 stores native request claims, V12 commits answer/status events atomically, and message V10 records accepted-answer delivery cursors. Older writers can omit status events or native replay authority. Deployment and automatic rollback to epoch 6 are forbidden after this migration. Retain epoch 6's extraction/ingestion requirements and restore agent, message, and related source/consumer state consistently. This package remains disabled until separately provisioned; its source attestation does not establish OS-trusted signing or eligible-account execution.
+
 ## Deploy, rollback and recovery
 
 ```sh
@@ -185,7 +198,7 @@ This procedure has downtime, including database migration and JVM startup. Exist
 node /srv/chanter/releases/COMMIT/scripts/deploy/host.mjs rollback /srv/chanter/production
 ```
 
-Rollback restarts the recorded previous application images against the existing data. It never reverses SQL, deletes volumes or silently restores an old database. It is allowed only when both releases have the same reviewed `schemaEpoch` and identical PostgreSQL/Redis image IDs. Increase `infra/production/release-policy.json`'s epoch whenever stored data or schema removes compatibility with the preceding binary. Historical epochs 2 and 3 introduced browser-session linkage and versioned PBKDF2 password hashes respectively. The storage, durable-event and generation-fenced ingestion requirements for epochs 4 through 6 are described above. A changed epoch or persistence image requires a reviewed fix-forward or backup recovery procedure, not automatic rollback.
+Rollback restarts the recorded previous application images against the existing data. It never reverses SQL, deletes volumes or silently restores an old database. It is allowed only when both releases have the same reviewed `schemaEpoch` and identical PostgreSQL/Redis image IDs. Increase `infra/production/release-policy.json`'s epoch whenever stored data or schema removes compatibility with the preceding binary. Historical epochs 2 and 3 introduced browser-session linkage and versioned PBKDF2 password hashes respectively. The storage, durable-event, generation-fenced ingestion and native-answer requirements for epochs 4 through 7 are described above. A changed epoch or persistence image requires a reviewed fix-forward or backup recovery procedure, not automatic rollback.
 
 Every release review must inspect all migrations since the previous receipt and explicitly record whether the previous binary can read and write the new schema. An unchanged epoch is a reviewer assertion of that compatibility, not an automated schema proof. Include the migration diff, chosen epoch and a previous-binary smoke against the migrated staging database in the release evidence; do not approve automatic rollback from the integer alone.
 

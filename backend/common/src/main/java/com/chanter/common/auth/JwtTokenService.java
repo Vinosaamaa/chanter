@@ -38,11 +38,16 @@ public final class JwtTokenService {
     }
 
     public String createAccessToken(UUID userId) {
+        return createAccessToken(userId, null);
+    }
+
+    public String createAccessToken(UUID userId, UUID sessionId) {
         Instant now = Instant.now();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject(userId.toString())
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(now.plusSeconds(accessTokenTtlSeconds)))
+                .claim("sid", sessionId == null ? null : sessionId.toString())
                 .build();
         try {
             SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
@@ -54,6 +59,21 @@ public final class JwtTokenService {
     }
 
     public UUID parseUserId(String authorizationHeader) {
+        return UUID.fromString(verifiedClaims(authorizationHeader).getSubject());
+    }
+
+    /** Native capability issuance requires a durable session; legacy web tokens remain valid elsewhere. */
+    public AccessSession parseAccessSession(String authorizationHeader) {
+        JWTClaimsSet claims = verifiedClaims(authorizationHeader);
+        try {
+            return new AccessSession(UUID.fromString(claims.getSubject()), UUID.fromString(claims.getStringClaim("sid")),
+                    claims.getExpirationTime().toInstant());
+        } catch (ParseException | IllegalArgumentException | NullPointerException missingSession) {
+            throw new InvalidJwtException("Access token has no valid session");
+        }
+    }
+
+    private JWTClaimsSet verifiedClaims(String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith(AuthHeaders.BEARER_PREFIX)) {
             throw new InvalidJwtException("Missing or invalid Authorization header");
         }
@@ -63,19 +83,20 @@ public final class JwtTokenService {
         }
         try {
             SignedJWT signedJwt = SignedJWT.parse(token);
-            if (!signedJwt.verify(new MACVerifier(secret))) {
+            if (!JWSAlgorithm.HS256.equals(signedJwt.getHeader().getAlgorithm()) || !signedJwt.verify(new MACVerifier(secret))) {
                 throw new InvalidJwtException("Invalid token signature");
             }
             JWTClaimsSet claims = signedJwt.getJWTClaimsSet();
             Date expiration = claims.getExpirationTime();
-            if (expiration == null || expiration.before(new Date())) {
+            if (expiration == null || !expiration.toInstant().isAfter(Instant.now())) {
                 throw new InvalidJwtException("Token expired");
             }
             String subject = claims.getSubject();
             if (subject == null || subject.isBlank()) {
                 throw new InvalidJwtException("Token missing subject");
             }
-            return UUID.fromString(subject);
+            UUID.fromString(subject);
+            return claims;
         } catch (ParseException | JOSEException | IllegalArgumentException exception) {
             throw new InvalidJwtException("Invalid access token", exception);
         }
@@ -84,4 +105,6 @@ public final class JwtTokenService {
     public long accessTokenTtlSeconds() {
         return accessTokenTtlSeconds;
     }
+
+    public record AccessSession(UUID userId, UUID sessionId, Instant expiresAt) {}
 }

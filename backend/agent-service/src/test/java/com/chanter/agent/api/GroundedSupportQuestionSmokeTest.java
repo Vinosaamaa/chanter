@@ -42,19 +42,38 @@ class GroundedSupportQuestionSmokeTest {
 
     private static final com.sun.net.httpserver.HttpServer PROVIDER = fixtureProvider();
     private static final java.util.concurrent.atomic.AtomicInteger PROVIDER_CALLS = new java.util.concurrent.atomic.AtomicInteger();
+    private static final java.util.concurrent.atomic.AtomicInteger STATUS_FAILURE_CALLS = new java.util.concurrent.atomic.AtomicInteger();
+    private static final java.util.concurrent.atomic.AtomicInteger STATUS_RESPONSE = new java.util.concurrent.atomic.AtomicInteger(503);
+    private static final java.security.KeyPair NATIVE_KEYS = nativeKeys();
+    private static java.security.KeyPair nativeKeys() {
+        try { return java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair(); }
+        catch (Exception failure) { throw new ExceptionInInitializerError(failure); }
+    }
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.chanter.agent.infra.NativeSessionClient nativeSessions;
+    @Autowired private com.chanter.common.auth.JwtTokenService jwtTokens;
 
     @org.springframework.test.context.DynamicPropertySource
     static void localProvider(org.springframework.test.context.DynamicPropertyRegistry properties) {
+        properties.add("spring.datasource.url", () -> "jdbc:h2:mem:grounded-support-smoke;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
         properties.add("chanter.llm.enabled", () -> "true");
         properties.add("chanter.llm.models.fixture.provider", () -> "ollama");
         properties.add("chanter.llm.models.fixture.model", () -> "fixture-local");
         properties.add("chanter.llm.models.fixture.label", () -> "Local fixture");
         properties.add("chanter.llm.models.fixture.base-url", () -> "http://127.0.0.1:" + PROVIDER.getAddress().getPort());
+        properties.add("chanter.native-companion.origin", () -> "https://chanter.example");
+        properties.add("chanter.native-companion.private-key-pkcs8", () -> java.util.Base64.getEncoder().encodeToString(NATIVE_KEYS.getPrivate().getEncoded()));
+        properties.add("chanter.native-companion.public-key-spki", () -> java.util.Base64.getEncoder().encodeToString(NATIVE_KEYS.getPublic().getEncoded()));
+        properties.add("chanter.native-companion.models", () -> "fixture-native");
     }
 
     private static com.sun.net.httpserver.HttpServer fixtureProvider() {
         try {
             var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+            server.createContext("/api/v1/internal/events", exchange -> {
+                STATUS_FAILURE_CALLS.incrementAndGet(); exchange.getRequestBody().readAllBytes();
+                exchange.sendResponseHeaders(STATUS_RESPONSE.get(), -1); exchange.close();
+            });
             server.createContext("/api/chat", exchange -> {
                 PROVIDER_CALLS.incrementAndGet();
                 String quote = "{\"sourceId\":\"S1\",\"quote\":\"Spring Security uses a filter chain.\"}\n";
@@ -74,8 +93,191 @@ class GroundedSupportQuestionSmokeTest {
     @org.junit.jupiter.api.AfterAll
     static void closeProvider() { PROVIDER.stop(0); }
 
-    @Autowired private com.chanter.agent.application.AiGenerationLedger generationLedger;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private com.chanter.agent.application.AiGenerationLedger generationLedger;
     @Autowired private com.chanter.agent.application.LlmModelCatalog modelCatalog;
+    @Autowired private org.springframework.jdbc.core.simple.JdbcClient nativeJdbc;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate nativeTemplate;
+    @Autowired private org.springframework.transaction.PlatformTransactionManager nativeTransactions;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private com.chanter.common.events.DurableOutbox nativeOutbox;
+
+    @Test
+    void nativeHttpFlowRechecksEvidenceAndPersistsOnlyValidatedClientQuotations() throws Exception {
+        for (String scenario : List.of("status-unavailable", "accepted", "settlement-unavailable", "revoked")) {
+            boolean revoke = scenario.equals("revoked"), unavailable = scenario.equals("status-unavailable");
+            UUID server = UUID.randomUUID(), instructor = UUID.randomUUID(), learner = UUID.randomUUID();
+            UUID channel = UUID.randomUUID(), course = UUID.randomUUID(), resource = UUID.randomUUID(), question = UUID.randomUUID();
+            UUID session = UUID.randomUUID(), installation = UUID.randomUUID();
+            installAssistant(server, instructor, learner, channel, course, UUID.randomUUID(), resource);
+            channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
+            supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
+            courseResourceCatalogClient.grantViewerAccess(course, learner);
+            courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+            String bearer = "Bearer " + jwtTokens.createAccessToken(learner, session);
+            org.mockito.Mockito.when(nativeSessions.requireActive(bearer, learner)).thenReturn(
+                    new com.chanter.common.auth.JwtTokenService.AccessSession(learner, session, java.time.Instant.now().plusSeconds(600)));
+            int before = PROVIDER_CALLS.get();
+            int statusBefore = STATUS_FAILURE_CALLS.get();
+            mockMvc.perform(post("/api/v1/native-companion/pair").header(AuthHeaders.USER_ID, learner).header("Authorization", bearer)
+                    .header("Origin", "https://chanter.example").contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(Map.of("installationId", installation, "approved", true))))
+                    .andExpect(status().isOk());
+            mockMvc.perform(post("/api/v1/native-companion/status-ticket").header(AuthHeaders.USER_ID, learner).header("Authorization", bearer)
+                    .header("Origin", "https://chanter.example").contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(Map.of("installationId", installation))))
+                    .andExpect(status().isOk());
+            var issued = objectMapper.readTree(mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/native-request", channel, question)
+                    .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer).header("Origin", "https://chanter.example")
+                    .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of(
+                            "installationId", installation, "model", "fixture-native", "exportApproved", true))))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            var signed = objectMapper.readTree(java.util.Base64.getUrlDecoder().decode(issued.path("ticket").asText().split("\\.")[0]));
+            assertThat(signed.path("evidenceSha256").isArray()).isTrue();
+            if (revoke) courseResourceCatalogClient.clear();
+            String nativeResultJson = objectMapper.writeValueAsString(Map.of("installationId", installation,
+                    "text", "{\"sourceId\":\"S1\",\"quote\":\"Spring Security uses a filter chain.\"}\n",
+                    "usage", Map.of("inputTokens", 0, "outputTokens", 0)));
+            if (scenario.equals("settlement-unavailable")) org.mockito.Mockito.doThrow(
+                    new org.springframework.dao.TransientDataAccessResourceException("synthetic settlement outage"))
+                    .when(generationLedger).settle(org.mockito.ArgumentMatchers.eq(UUID.fromString(issued.path("requestId").asText())),
+                            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(),
+                            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean());
+            var result = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/native-results/{request}", channel, question, issued.path("requestId").asText())
+                    .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer).header("Origin", "https://chanter.example")
+                    .contentType(MediaType.APPLICATION_JSON).content(nativeResultJson));
+            if (revoke) result.andExpect(status().isForbidden());
+            else result.andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmProvider").value("codex-native"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.executionProvenance").value("CLIENT_REPORTED"));
+            if (scenario.equals("settlement-unavailable")) {
+                String savedId = objectMapper.readTree(result.andReturn().getResponse().getContentAsString()).path("id").asText();
+                mockMvc.perform(get("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer)).andExpect(status().isOk())
+                        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.id").value(savedId));
+            }
+            if (unavailable) {
+                String aggregate = com.chanter.common.events.AcceptedAnswerStatus.KIND + ":" + question;
+                var destination = Map.of("message", java.net.URI.create("http://127.0.0.1:" + PROVIDER.getAddress().getPort() + "/api/v1/internal/events"));
+                STATUS_RESPONSE.set(503);
+                new com.chanter.common.events.OutboxDispatcher(nativeOutbox, objectMapper, destination,
+                        "test-internal-service-token-for-agent").drain();
+                assertThat(STATUS_FAILURE_CALLS.get()).isGreaterThan(statusBefore);
+                assertThat(nativeJdbc.sql("SELECT status || ':' || last_error FROM durable_outbox WHERE aggregate_key=:key")
+                        .param("key", aggregate).query(String.class).single()).isEqualTo("PENDING:HTTP_503");
+                var event = objectMapper.readTree(nativeJdbc.sql("SELECT payload FROM durable_outbox WHERE aggregate_key=:key")
+                        .param("key", aggregate).query(String.class).single());
+                assertThat(event.size()).isEqualTo(5);
+                assertThat(event.path("answerId").asText()).isEqualTo(objectMapper.readTree(result.andReturn().getResponse().getContentAsString()).path("id").asText());
+                assertThat(event.path("questionId").asText()).isEqualTo(question.toString());
+                assertThat(event.path("channelId").asText()).isEqualTo(channel.toString());
+                assertThat(event.path("authorId").asText()).isEqualTo(learner.toString());
+                assertThat(event.path("status").asText()).isEqualTo("AI_ANSWERED");
+                assertThat(nativeJdbc.sql("SELECT outcome FROM native_companion_requests WHERE id=:id")
+                        .param("id", UUID.fromString(issued.path("requestId").asText())).query(String.class).single()).isEqualTo("ACCEPTED");
+                mockMvc.perform(get("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer))
+                        .andExpect(status().isOk());
+                mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/native-results/{request}", channel, question, issued.path("requestId").asText())
+                        .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer).header("Origin", "https://chanter.example")
+                        .contentType(MediaType.APPLICATION_JSON).content(nativeResultJson)).andExpect(status().isConflict());
+                // An abandoned delivery claim is recovered by a new dispatcher against the same durable rows.
+                nativeJdbc.sql("UPDATE durable_outbox SET available_at=:expired WHERE aggregate_key=:key")
+                        .param("expired", java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(1)))
+                        .param("key", aggregate).update();
+                nativeJdbc.sql("UPDATE durable_outbox SET available_at=:later WHERE aggregate_key<>:key AND status='PENDING'")
+                        .param("later", java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(300)))
+                        .param("key", aggregate).update();
+                var abandoned = nativeOutbox.claim().orElseThrow();
+                assertThat(abandoned.event().aggregateKey()).isEqualTo(aggregate);
+                nativeJdbc.sql("UPDATE durable_outbox SET lease_until=:expired WHERE id=:id")
+                        .param("expired", java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(1)))
+                        .param("id", abandoned.event().id()).update();
+                STATUS_RESPONSE.set(204);
+                var restarted = new com.chanter.common.events.DurableOutbox(nativeTemplate,
+                        new org.springframework.transaction.support.TransactionTemplate(nativeTransactions), "agent", java.time.Clock.systemUTC());
+                new com.chanter.common.events.OutboxDispatcher(restarted, objectMapper, destination,
+                        "test-internal-service-token-for-agent").drain();
+                assertThat(nativeJdbc.sql("SELECT status || ':' || payload FROM durable_outbox WHERE id=:id")
+                        .param("id", abandoned.event().id()).query(String.class).single()).isEqualTo("DELIVERED:{}");
+            }
+            assertThat(PROVIDER_CALLS.get()).isEqualTo(before);
+            assertThat(generationLedger.summary(server).unknownUsageCount()).isEqualTo(1);
+            assertThat(generationLedger.summary(server).accountedTokens()).isEqualTo(40960);
+        }
+    }
+
+    @Test
+    void hostedAnswerRemainsSuccessfulDuringStatusOutageAndRetryDoesNotGenerateOrEnqueueAgain() throws Exception {
+        UUID server = UUID.randomUUID(), instructor = UUID.randomUUID(), learner = UUID.randomUUID();
+        UUID channel = UUID.randomUUID(), course = UUID.randomUUID(), resource = UUID.randomUUID(), question = UUID.randomUUID();
+        installAssistant(server, instructor, learner, channel, course, UUID.randomUUID(), resource);
+        channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
+        supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
+        courseResourceCatalogClient.grantViewerAccess(course, learner);
+        courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+        int providerBefore = PROVIDER_CALLS.get();
+        String answerId = null;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            var response = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                    .param("modelId", "fixture").header(AuthHeaders.USER_ID, learner)
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            String returnedId = objectMapper.readTree(response).path("id").asText();
+            if (answerId == null) answerId = returnedId;
+            else assertThat(returnedId).isEqualTo(answerId);
+            if (attempt == 0) {
+                STATUS_RESPONSE.set(503);
+                int statusBefore = STATUS_FAILURE_CALLS.get();
+                new com.chanter.common.events.OutboxDispatcher(nativeOutbox, objectMapper,
+                        Map.of("message", java.net.URI.create("http://127.0.0.1:" + PROVIDER.getAddress().getPort() + "/api/v1/internal/events")),
+                        "test-internal-service-token-for-agent").drain();
+                assertThat(STATUS_FAILURE_CALLS.get()).isGreaterThan(statusBefore);
+            }
+        }
+        assertThat(PROVIDER_CALLS.get() - providerBefore).isEqualTo(1);
+        assertThat(nativeJdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=:key")
+                .param("key", "ACCEPTED_ANSWER:" + question).query(Integer.class).single()).isEqualTo(1);
+        assertThat(nativeJdbc.sql("SELECT status || ':' || last_error FROM durable_outbox WHERE aggregate_key=:key")
+                .param("key", "ACCEPTED_ANSWER:" + question).query(String.class).single()).isEqualTo("PENDING:HTTP_503");
+    }
+
+    @Test
+    void legacyRepairRollbackStillReturnsSavedAnswerAndLaterRepairsOnceWithoutProviderRetry() throws Exception {
+        UUID server = UUID.randomUUID(), instructor = UUID.randomUUID(), learner = UUID.randomUUID();
+        UUID channel = UUID.randomUUID(), course = UUID.randomUUID(), resource = UUID.randomUUID(), question = UUID.randomUUID();
+        installAssistant(server, instructor, learner, channel, course, UUID.randomUUID(), resource);
+        channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
+        supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
+        courseResourceCatalogClient.grantViewerAccess(course, learner);
+        courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+        int providerBefore = PROVIDER_CALLS.get();
+        var initial = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .param("modelId", "fixture").header(AuthHeaders.USER_ID, learner)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String answerId = objectMapper.readTree(initial).path("id").asText();
+        String key = "ACCEPTED_ANSWER:" + question;
+        // Represent an answer saved before atomic outbox integration.
+        nativeJdbc.sql("DELETE FROM durable_outbox WHERE aggregate_key=:key").param("key", key).update();
+        var failRepair = new java.util.concurrent.atomic.AtomicBoolean(true);
+        org.mockito.Mockito.doAnswer(call -> {
+            Object event = call.callRealMethod();
+            if (failRepair.get()) throw new org.springframework.dao.TransientDataAccessResourceException("synthetic repair failure after append");
+            return event;
+        }).when(nativeOutbox).append(org.mockito.ArgumentMatchers.eq("message"), org.mockito.ArgumentMatchers.eq("ACCEPTED_ANSWER"),
+                org.mockito.ArgumentMatchers.eq(key), org.mockito.ArgumentMatchers.anyString());
+        for (int attempt = 0; attempt < 3; attempt++) {
+            var response = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                            .param("modelId", "fixture").header(AuthHeaders.USER_ID, learner)
+                            .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertThat(objectMapper.readTree(response).path("id").asText()).isEqualTo(answerId);
+            assertThat(nativeJdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=:key").param("key", key)
+                    .query(Integer.class).single()).isEqualTo(attempt == 0 ? 0 : 1);
+            failRepair.set(false);
+        }
+        assertThat(PROVIDER_CALLS.get() - providerBefore).isEqualTo(1);
+    }
 
     @Test
     void abandonedProviderAttemptAllowsSourceOnlyRecoveryWithoutAnotherProviderCall() throws Exception {
@@ -101,7 +303,8 @@ class GroundedSupportQuestionSmokeTest {
                         .param("modelId", "source-only")
                         .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmUsed").value(false));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmUsed").value(false))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.executionProvenance").value("NOT_USED"));
         assertThat(PROVIDER_CALLS.get()).isEqualTo(before);
         assertThat(generationLedger.summary(server).requestCount()).isEqualTo(1);
         assertThat(generationLedger.summary(server).unknownUsageCount()).isEqualTo(1);
@@ -132,6 +335,7 @@ class GroundedSupportQuestionSmokeTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), AssistantAnswerResponse.class);
         assertThat(answer.audit().llmUsed()).isTrue();
         assertThat(answer.audit().llmProvider()).isEqualTo("ollama");
+        assertThat(answer.audit().executionProvenance()).isEqualTo("SERVER_OBSERVED");
         assertThat(answer.sources()).hasSize(1);
         // Instructor grant visibility does not require learner enrollment or a personal assistant installation.
         channelAccessClient.grantInstructorView(channel, instructor, course, server, "questions");

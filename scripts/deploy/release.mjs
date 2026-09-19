@@ -66,10 +66,17 @@ export function composeFor(release, config, runtimeDir) {
       networks: ['application'] };
     if (database) {
       services[name].depends_on = { postgres: { condition: 'service_healthy' } };
+      const migrationEnvironment = { ...services[name].environment };
+      if (name === 'agent-service') {
+        // Explicit empty values override env_file; Flyway never needs the native issuer.
+        Object.assign(migrationEnvironment, { CHANTER_NATIVE_COMPANION_ORIGIN: '',
+          CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8: '', CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI: '',
+          CHANTER_NATIVE_COMPANION_MODELS: '' });
+      }
       services[`migrate-${name}`] = { image: release.images[name], pull_policy: 'never', user: '10001:10001',
         command: ['migrate'], profiles: ['migration'], restart: 'no', read_only: true, cap_drop: ['ALL'],
         security_opt: ['no-new-privileges:true'], mem_limit: '512m', cpus: '2.0', tmpfs: ['/tmp:size=64m,mode=1777'],
-        env_file: services[name].env_file, environment: services[name].environment, networks: ['application'] };
+        env_file: services[name].env_file, environment: migrationEnvironment, networks: ['application'] };
     }
   }
   Object.assign(services['media-service'].environment, { CHANTER_MEDIA_STORAGE_BACKEND: 's3',

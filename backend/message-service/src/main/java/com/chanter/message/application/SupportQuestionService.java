@@ -104,6 +104,20 @@ public class SupportQuestionService {
             UUID actorUserId,
             SupportQuestionStatus status
     ) {
+        return applyAssistantStatus(channelId, supportQuestionId, actorUserId, status, false);
+    }
+
+    @Transactional
+    public SupportQuestion reconcileAcceptedAnswerStatus(
+            UUID channelId, UUID supportQuestionId, UUID actorUserId, SupportQuestionStatus status
+    ) {
+        return applyAssistantStatus(channelId, supportQuestionId, actorUserId, status, true);
+    }
+
+    private SupportQuestion applyAssistantStatus(
+            UUID channelId, UUID supportQuestionId, UUID actorUserId, SupportQuestionStatus status,
+            boolean preserveRecordedOutcome
+    ) {
         CourseChannelAccess access = courseChannelAccessClient.requireAccess(channelId, actorUserId);
         if (!access.canPostSupportQuestion()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only enrolled learners can update Support Question status");
@@ -116,12 +130,16 @@ public class SupportQuestionService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Support Question author can record assistant outcomes");
         }
 
-        if (supportQuestion.status() != SupportQuestionStatus.UNANSWERED) {
+        if (supportQuestion.status() != SupportQuestionStatus.UNANSWERED && !preserveRecordedOutcome) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
         }
 
         if (status != SupportQuestionStatus.AI_ANSWERED && status != SupportQuestionStatus.AI_LOW_CONFIDENCE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assistant outcomes must be AI_ANSWERED or AI_LOW_CONFIDENCE");
+        }
+
+        if (supportQuestion.status() != SupportQuestionStatus.UNANSWERED) {
+            return supportQuestion;
         }
 
         boolean updated = repository.updateStatus(
@@ -130,6 +148,10 @@ public class SupportQuestionService {
                 status
         );
         if (!updated) {
+            if (preserveRecordedOutcome) {
+                return repository.findByIdAndChannelId(channelId, supportQuestionId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Support Question not found"));
+            }
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Support Question is no longer unanswered");
         }
 

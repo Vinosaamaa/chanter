@@ -143,8 +143,18 @@ public class GroundedSupportQuestionService {
             if (!answer.channelId().equals(channelId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
             evidenceAuthorization.requireCurrent(channelId, learnerUserId, citations(answer), execution);
             execution.check();
+            if ("UNANSWERED".equals(supportQuestion.status())) {
+                try {
+                    answerPersistenceService.reconcileAnswerStatus(answer);
+                } catch (RuntimeException repairUnavailable) {
+                    // The separate repair transaction has rolled back. A saved, authorized answer is
+                    // still successful; a later authorized read can repair its missing outbox event.
+                    org.slf4j.LoggerFactory.getLogger(GroundedSupportQuestionService.class)
+                            .warn("Saved answer status repair unavailable");
+                }
+            }
             chunks.accept(answer.answerBody());
-            return reconcileExistingAnswer(channelId, supportQuestionId, learnerUserId, answer);
+            return answer;
         }
 
         String selectedModel = modelCatalog.select(modelId, access.courseId());
@@ -156,6 +166,118 @@ public class GroundedSupportQuestionService {
         }
 
         execution.check();
+        GroundingResult groundingResult = retrieveEvidence(channelId, learnerUserId, access, supportQuestion, execution);
+        if (!LlmModelCatalog.SOURCE_ONLY.equals(selection)) {
+            groundingResult = new GroundingResult(groundingResult.answerBody(), groundingResult.confidence(),
+                    groundingResult.citations().stream().map(c -> new SourceCitation(c.resourceId(), c.resourceTitle(),
+                            AiEvidenceAuthorization.plainExcerpt(c.excerpt()))).toList());
+        }
+        List<SourceCitation> initialEvidence = groundingResult.citations();
+        Consumer<LlmExecution> reauthorize = activeExecution -> {
+            activeExecution.check();
+            var current = channelAccessClient.requireAccess(channelId, learnerUserId);
+            if (!current.canPostSupportQuestion() || !access.courseId().equals(current.courseId())
+                    || !access.studyServerId().equals(current.studyServerId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "AI answer access changed");
+            }
+            modelCatalog.select(selection, current.courseId());
+            evidenceAuthorization.requireCurrent(channelId, learnerUserId, initialEvidence, activeExecution);
+        };
+        AgentRuntimeService.OrchestratedAnswer orchestrated = agentRuntimeService.orchestrate(supportQuestion.body(), groundingResult,
+                new AgentRuntimeService.Invocation(access.studyServerId(), supportQuestionId, learnerUserId, selection, reauthorize), execution, chunks);
+        groundingResult = orchestrated.result();
+        execution.check();
+        evidenceAuthorization.requireCurrent(channelId, learnerUserId, groundingResult.citations(), execution);
+
+        InvocationType invocationType = groundingResult.handoffRecommended()
+                ? InvocationType.LOW_CONFIDENCE_HANDOFF
+                : InvocationType.GROUNDED_ANSWER;
+
+        List<StudyAssistantAnswerSource> sources = groundingResult.citations().stream()
+                .map(citation -> new StudyAssistantAnswerSource(
+                        UUID.randomUUID(),
+                        citation.resourceId(),
+                        citation.resourceTitle(),
+                        citation.excerpt()
+                ))
+                .toList();
+
+        StudyAssistantAnswer answer = new StudyAssistantAnswer(
+                UUID.randomUUID(),
+                supportQuestionId,
+                channelId,
+                access.studyServerId(),
+                learnerUserId,
+                supportQuestion.body(),
+                groundingResult.answerBody(),
+                groundingResult.confidence(),
+                groundingResult.handoffRecommended(),
+                sources,
+                clock.instant()
+        );
+
+        return answerPersistenceService.saveAnswer(
+                answer,
+                invocationType,
+                orchestrated.providerId(),
+                orchestrated.modelId(),
+                orchestrated.llmUsed()
+        );
+
+    }
+
+    /** Export preparation shares the exact hosted retrieval and current-evidence checks; it never invokes a provider. */
+    public NativeEvidence prepareNativeEvidence(UUID channelId, UUID questionId, UUID userId, LlmExecution execution) {
+        execution.check();
+        var access = channelAccessClient.requireAccess(channelId, userId);
+        var question = supportQuestionClient.getSupportQuestion(channelId, questionId, userId);
+        requireNativeQuestion(channelId, questionId, userId, access, question);
+        var result = retrieveEvidence(channelId, userId, access, question, execution);
+        var citations = result.citations().stream().map(c -> new SourceCitation(c.resourceId(), c.resourceTitle(),
+                AiEvidenceAuthorization.plainExcerpt(c.excerpt()))).toList();
+        if (citations.isEmpty() || result.confidence() != AnswerConfidence.HIGH)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "No supported evidence is available for native extraction");
+        evidenceAuthorization.requireCurrent(channelId, userId, citations, execution);
+        return new NativeEvidence(access.studyServerId(), access.courseId(), question.body(), citations);
+    }
+
+    public void requireNativeEvidenceCurrent(UUID channelId, UUID questionId, UUID userId, NativeEvidence evidence, LlmExecution execution) {
+        execution.check();
+        var access = channelAccessClient.requireAccess(channelId, userId);
+        var question = supportQuestionClient.getSupportQuestion(channelId, questionId, userId);
+        requireNativeQuestion(channelId, questionId, userId, access, question);
+        if (!access.studyServerId().equals(evidence.studyServerId()) || !access.courseId().equals(evidence.courseId())
+                || !question.body().equals(evidence.question())) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Native question scope changed");
+        evidenceAuthorization.requireCurrent(channelId, userId, evidence.citations(), execution);
+    }
+
+    private void requireNativeQuestion(UUID channelId, UUID questionId, UUID userId,
+            SupportQuestionChannelAccess access, SupportQuestion question) {
+        if (!access.canPostSupportQuestion() || !question.senderUserId().equals(userId))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the enrolled question author can use native extraction");
+        if (!"UNANSWERED".equals(question.status()) || answerRepository.findBySupportQuestionId(questionId).isPresent())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Question already has an answer or is no longer unanswered");
+    }
+
+    public StudyAssistantAnswer acceptNativeAnswer(UUID channelId, UUID questionId, UUID userId, NativeEvidence evidence,
+            GroundingResult result, String model, LlmExecution execution) {
+        requireNativeEvidenceCurrent(channelId, questionId, userId, evidence, execution);
+        evidenceAuthorization.requireCurrent(channelId, userId, result.citations(), execution);
+        var sources = result.citations().stream().map(c -> new StudyAssistantAnswerSource(UUID.randomUUID(),
+                c.resourceId(), c.resourceTitle(), c.excerpt())).toList();
+        var answer = new StudyAssistantAnswer(UUID.randomUUID(), questionId, channelId, evidence.studyServerId(), userId,
+                evidence.question(), result.answerBody(), result.confidence(), result.handoffRecommended(), sources, clock.instant());
+        return answerPersistenceService.saveAnswer(answer,
+                result.handoffRecommended() ? InvocationType.LOW_CONFIDENCE_HANDOFF : InvocationType.GROUNDED_ANSWER,
+                "codex-native", model, true);
+    }
+
+    public record NativeEvidence(UUID studyServerId, UUID courseId, String question, List<SourceCitation> citations) {
+        public NativeEvidence { citations = List.copyOf(citations); }
+    }
+
+    private GroundingResult retrieveEvidence(UUID channelId, UUID learnerUserId, SupportQuestionChannelAccess access,
+            SupportQuestion supportQuestion, LlmExecution execution) {
         Presence presence = studyAssistantService.findPresence(access.studyServerId(), learnerUserId);
         if (!presence.installed()) {
             throw new ResponseStatusException(
@@ -227,67 +349,7 @@ public class GroundedSupportQuestionService {
                 downloadedSources,
                 faqSources
         );
-        if (!LlmModelCatalog.SOURCE_ONLY.equals(selection)) {
-            groundingResult = new GroundingResult(groundingResult.answerBody(), groundingResult.confidence(),
-                    groundingResult.citations().stream().map(c -> new SourceCitation(c.resourceId(), c.resourceTitle(),
-                            AiEvidenceAuthorization.plainExcerpt(c.excerpt()))).toList());
-        }
-        List<SourceCitation> initialEvidence = groundingResult.citations();
-        Consumer<LlmExecution> reauthorize = activeExecution -> {
-            activeExecution.check();
-            var current = channelAccessClient.requireAccess(channelId, learnerUserId);
-            if (!current.canPostSupportQuestion() || !access.courseId().equals(current.courseId())
-                    || !access.studyServerId().equals(current.studyServerId())) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "AI answer access changed");
-            }
-            modelCatalog.select(selection, current.courseId());
-            evidenceAuthorization.requireCurrent(channelId, learnerUserId, initialEvidence, activeExecution);
-        };
-        AgentRuntimeService.OrchestratedAnswer orchestrated = agentRuntimeService.orchestrate(supportQuestion.body(), groundingResult,
-                new AgentRuntimeService.Invocation(access.studyServerId(), supportQuestionId, learnerUserId, selection, reauthorize), execution, chunks);
-        groundingResult = orchestrated.result();
-        execution.check();
-        evidenceAuthorization.requireCurrent(channelId, learnerUserId, groundingResult.citations(), execution);
-
-        InvocationType invocationType = groundingResult.handoffRecommended()
-                ? InvocationType.LOW_CONFIDENCE_HANDOFF
-                : InvocationType.GROUNDED_ANSWER;
-
-        List<StudyAssistantAnswerSource> sources = groundingResult.citations().stream()
-                .map(citation -> new StudyAssistantAnswerSource(
-                        UUID.randomUUID(),
-                        citation.resourceId(),
-                        citation.resourceTitle(),
-                        citation.excerpt()
-                ))
-                .toList();
-
-        StudyAssistantAnswer answer = new StudyAssistantAnswer(
-                UUID.randomUUID(),
-                supportQuestionId,
-                channelId,
-                access.studyServerId(),
-                learnerUserId,
-                supportQuestion.body(),
-                groundingResult.answerBody(),
-                groundingResult.confidence(),
-                groundingResult.handoffRecommended(),
-                sources,
-                clock.instant()
-        );
-
-        StudyAssistantAnswer savedAnswer = answerPersistenceService.saveAnswer(
-                answer,
-                invocationType,
-                orchestrated.providerId(),
-                orchestrated.modelId(),
-                orchestrated.llmUsed()
-        );
-
-        String updatedStatus = statusForConfidence(groundingResult.confidence());
-        supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, updatedStatus);
-
-        return savedAnswer;
+        return groundingResult;
     }
 
     private GroundingResult ground(
@@ -408,32 +470,6 @@ public class GroundedSupportQuestionService {
             boolean helpfulMarked,
             int helpfulCount
     ) {
-    }
-
-    private StudyAssistantAnswer reconcileExistingAnswer(
-            UUID channelId,
-            UUID supportQuestionId,
-            UUID learnerUserId,
-            StudyAssistantAnswer existingAnswer
-    ) {
-        SupportQuestion current = supportQuestionClient.getSupportQuestion(
-                channelId,
-                supportQuestionId,
-                learnerUserId
-        );
-        if ("UNANSWERED".equals(current.status())) {
-            supportQuestionClient.updateStatus(
-                    channelId,
-                    supportQuestionId,
-                    learnerUserId,
-                    statusForConfidence(existingAnswer.confidence())
-            );
-        }
-        return existingAnswer;
-    }
-
-    private static String statusForConfidence(AnswerConfidence confidence) {
-        return confidence == AnswerConfidence.HIGH ? "AI_ANSWERED" : "AI_LOW_CONFIDENCE";
     }
 
     private static String decodeTextContent(byte[] content, String fileName) {

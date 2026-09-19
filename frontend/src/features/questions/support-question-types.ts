@@ -58,6 +58,7 @@ export type AssistantAnswerAudit = {
   llmUsed: boolean
   llmProvider?: string | null
   llmModel?: string | null
+  executionProvenance?: 'CLIENT_REPORTED' | 'SERVER_OBSERVED' | 'NOT_USED'
   createdAt: string
 }
 
