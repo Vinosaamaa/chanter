@@ -28,14 +28,14 @@ export function summarizeBackup(info, now = Date.now()) {
     stale: now - latest.timestamp.stop * 1000 > 30 * 3600000 || now - full.timestamp.stop * 1000 > 8 * 86400000 };
 }
 
-export function backupUnits(stateDir) {
-  if (!/^\/[A-Za-z0-9_./-]+$/.test(stateDir) || stateDir.split('/').includes('..')) {
+export function backupUnits(stateDir, nodeExecutable = '/usr/bin/node') {
+  if ([stateDir, nodeExecutable].some(value => !/^\/[A-Za-z0-9_./-]+$/.test(value) || value.split('/').includes('..'))) {
     throw new Error('Backup timers require an absolute Linux state path without shell or unit substitutions');
   }
   return Object.fromEntries(Object.entries({ full: 'Sun *-*-* 02:00:00 UTC',
     incr: 'Mon..Sat *-*-* 02:00:00 UTC', check: '*-*-* *:00/10:00 UTC' }).flatMap(([type, schedule]) => {
     const name = `chanter-backup-${type}`;
-    return [[`${name}.service`, `[Unit]\nDescription=Chanter database backup ${type}\nAfter=docker.service network-online.target\nWants=network-online.target\n\n[Service]\nType=oneshot\nUMask=0077\nNice=10\nIOSchedulingClass=best-effort\nIOSchedulingPriority=7\nTimeoutStartSec=3h\nExecStart=/usr/bin/node ${stateDir}/backup-runner.mjs ${stateDir} ${type}\n`],
+    return [[`${name}.service`, `[Unit]\nDescription=Chanter database backup ${type}\nAfter=docker.service network-online.target\nWants=network-online.target\n\n[Service]\nType=oneshot\nUMask=0077\nNice=10\nIOSchedulingClass=best-effort\nIOSchedulingPriority=7\nTimeoutStartSec=3h\nExecStart=${nodeExecutable} ${stateDir}/backup-runner.mjs ${stateDir} ${type}\n`],
       [`${name}.timer`, `[Unit]\nDescription=Chanter database backup ${type} schedule\n\n[Timer]\nOnCalendar=${schedule}\nPersistent=true\nRandomizedDelaySec=${type === 'check' ? '30' : '600'}\n\n[Install]\nWantedBy=timers.target\n`]];
   }));
 }

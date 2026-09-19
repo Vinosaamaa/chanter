@@ -18,6 +18,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - name: Validate recovery configuration
         run: |
           node --test scripts/deploy/recovery.test.mjs scripts/deploy/host.test.mjs
@@ -25,7 +28,7 @@ jobs:
           import fs from 'node:fs';
           import { backupUnits } from './scripts/deploy/recovery.mjs';
           fs.mkdirSync('.cache/recovery-units', { recursive: true });
-          for (const [name, value] of Object.entries(backupUnits('/srv/chanter/production'))) {
+          for (const [name, value] of Object.entries(backupUnits('/srv/chanter/production', process.execPath))) {
             fs.writeFileSync(`.cache/recovery-units/${name}`, value);
           }
           JS

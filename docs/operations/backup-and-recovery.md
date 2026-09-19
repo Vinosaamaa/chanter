@@ -31,8 +31,9 @@ owner is running, inspect the private repository, and fix forward.
 
 The examples use `/srv/chanter/production` as the operator-created state directory.
 Run the commands from the extracted, verified release bundle on the Linux host.
-Node 24 must be available at `/usr/bin/node`; keep bundle directories and private
-state owned by the operator and inaccessible to application users.
+Use Node 24 from a stable installation path. Generated units record that actual
+executable; regenerate them when moving the Node installation. Keep bundle
+directories and private state owned by the operator and inaccessible to application users.
 
 ```sh
 node scripts/deploy/host.mjs backup /srv/chanter/production full

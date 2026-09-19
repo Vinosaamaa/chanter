@@ -382,7 +382,7 @@ async function main(args) {
     console.log(JSON.stringify(backupDatabase(path.resolve(first), second ?? 'incr')));
   } else if (command === 'backup-schedule' && first) {
     const state = path.resolve(first);
-    const units = backupUnits(state);
+    const units = backupUnits(state, process.execPath);
     const directory = path.join(state, 'systemd');
     fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
     writePrivateText(path.join(state, 'backup-runner.mjs'), fs.readFileSync(new URL('./backup-runner.mjs', import.meta.url), 'utf8'));
