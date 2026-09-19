@@ -21,7 +21,7 @@ export async function publishAssets(tag, files, io) {
     } else pending.push(file);
   }
   if (pending.length && !release.draft) throw new Error('Cannot add assets to an already published release');
-  for (const file of pending) await io.upload(tag, file);
+  for (const file of pending) await io.upload(release, file);
 }
 
 export function githubReleaseIo(repo, run = execFileSync) {
@@ -38,7 +38,14 @@ export function githubReleaseIo(repo, run = execFileSync) {
       release.assets = readJson(['api', `${endpoint}/assets`, '--paginate', '--slurp']).flat();
       return release;
     },
-    upload: (tag, file) => run('gh', ['release', 'upload', tag, file, '--repo', repo], { stdio: 'inherit' }),
+    upload(release, file) {
+      const current = readJson(['api', `repos/${repo}/releases/${release.id}`]);
+      if (current.id !== release.id || current.tag_name !== release.tag_name) throw new Error('Release identity changed before upload');
+      if (current.draft !== true) throw new Error('Release must remain a draft before upload');
+      const endpoint = `https://uploads.github.com/repos/${repo}/releases/${release.id}/assets?name=${encodeURIComponent(path.basename(file))}`;
+      run('gh', ['api', endpoint, '--method', 'POST', '--input', file, '--header', 'Content-Type: application/octet-stream',
+        '--header', `Content-Length: ${fs.statSync(file).size}`, '--silent'], { stdio: 'inherit' });
+    },
   };
 }
 

@@ -94,3 +94,10 @@ it, including multi-page draft discovery, changed-identity rejection and partial
 upload retry protection. A read-only request against the existing empty draft
 also succeeds. Hosted review and a fresh main-only package run must still prove
 actual upload; this result does not establish provider deployment.
+
+The review follow-up binds uploads to the validated numeric ID and rechecks
+identity/draft state before every file. The operator must not publish or edit the
+draft while packaging runs; the provider has no atomic draft-state condition on
+asset upload. The CLI's real binary transport passes a local HTTP test, and the
+new regression rejects state changes between uploads. All 21 deployment tests
+pass. A new exact-head hosted run and real main-only publication are required.
