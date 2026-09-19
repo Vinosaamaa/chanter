@@ -11,9 +11,9 @@ createdAt: 2026-09-12
 reconstructed: false
 confidence: high
 unknowns: ["Unprovisioned OCI credentials and private bucket policy", "Full 2 OCPU and 12 GB workload capacity with ClamAV", "Provider recovery and browser processing-state acceptance"]
-modules: ["media-service"]
+modules: ["media-service", "agent-service"]
 interfaces: ["course-resource-api", "private-object-storage", "malware-scanner", "resource-chunk-ingestion"]
-seams: ["object-write-and-database-reservation", "scan-and-delete-concurrency", "deployment-schema-epoch"]
+seams: ["object-write-and-database-reservation", "scan-and-delete-concurrency", "deployment-schema-epoch", "live-resource-authorization", "index-deletion-serialization"]
 adapters: ["s3-compatible-object-storage", "local-private-files", "clamav-instream", "postgresql"]
 relatedRecords: []
 decisions: []
@@ -38,7 +38,7 @@ run: null
 
 The previous upload path wrote local bytes and exposed metadata immediately. There was no durable quarantine, real malware gate, failed-write reconciliation or object budget. Moving the same behavior to an object-store URL would preserve those flaws and bypass course authorization on downloads.
 
-The media module now owns a small private-storage interface and a transactional lifecycle repository. Object bytes stay behind the module. Upload reserves bytes and an immutable key before making a network call; a clean scan is required before publication. Each external operation occurs outside database transactions. Completion compares a durable lease identifier and current state so a deletion or newer worker cannot be overwritten by a stale scanner.
+The media module now owns a small private-storage interface and a transactional lifecycle repository. Object bytes stay behind the module. Upload reserves bytes and an immutable key before making a network call; a clean scan is required before publication. Media provider operations occur outside database transactions. Completion compares a durable lease identifier and current state so a deletion or newer worker cannot be overwritten by a stale scanner.
 
 The application has four public statuses, while its internal states distinguish interrupted writes, quarantine, active scan, failure and pending cleanup. This distinction is required for recovery, but object keys and lease states never appear in the API. Idempotency is scoped to uploader plus UUID and binds the complete validated payload. A rejected or deleted retry returns the original identity instead of silently creating a new object.
 
@@ -70,6 +70,8 @@ Older code ignores the new states and cannot be a safe rollback target. Deployme
 
 The local filesystem adapter trusts the operating-system account that owns its private root. Preliminary symlink checks reject static substitutions but do not isolate a hostile process with that account's filesystem authority. Production selects S3.
 
-Remote indexing may continue after a caller timeout and create chunks after deletion. Media completion leases cannot prevent those writes. Strict authorization of currently available, AI-approved resources and durable ingestion/deletion coordination remain production gates under #246/#251.
+Retrieval rechecks the live media catalog for `AVAILABLE`, AI approval, matching course and current viewer permission. This applies to instructor evidence as well as learner evidence, vector results and chunk tools. Catalog failure denies access even when chunks or prior tool scopes remain. Existing pre-provider and pre-publication evidence checks retain this contract for answers and citations.
+
+Agent V8 stores a UUID/boolean deletion marker. Final chunk replacement, nonterminal migration purge and terminal deletion serialize on that resource row. The existing ingestion transaction holds the lock through local embedding persistence; deletion waits for that transaction or wins first and rejects the late replacement. Cascading foreign keys remove embeddings with their chunks and reject stale embedding insertion. Media releases reserved bytes only after successful object and committed agent deletion. Migration purge permits clean re-ingestion of a live ID but cannot revive a deleted ID. No distributed transaction is introduced. Permanent markers contain no resource text; historical metadata count and broader indexing throughput remain #246/#251 concerns.
 
 Local tests exercise the real lifecycle SQL using H2, real filesystem bytes, scanner socket protocol, concurrency and failure injection. A separate native AMD64/ARM64 workflow runs real PostgreSQL, S3Mock and ClamAV, tests EICAR rejection and restarts processes with preserved volumes. S3Mock does not establish OCI IAM behavior. Actual private-provider access, constrained full-stack workload and user-facing browser acceptance remain required before deployment completion.

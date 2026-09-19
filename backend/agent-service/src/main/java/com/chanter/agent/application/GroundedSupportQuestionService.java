@@ -221,6 +221,7 @@ public class GroundedSupportQuestionService {
 
         GroundingResult groundingResult = ground(
                 supportQuestion.body(),
+                access.courseId(), learnerUserId,
                 grantedResourceIds,
                 resourceTitles,
                 downloadedSources,
@@ -291,6 +292,7 @@ public class GroundedSupportQuestionService {
 
     private GroundingResult ground(
             String question,
+            UUID courseId, UUID viewerUserId,
             Set<UUID> grantedResourceIds,
             Map<UUID, String> resourceTitles,
             List<GroundingSource> downloadedSources,
@@ -311,7 +313,7 @@ public class GroundedSupportQuestionService {
             rag = new RagGroundingEngine(0.12);
         }
 
-        List<RankedChunk> ranked = vectorRetrievalService.retrieve(question, grantedResourceIds, retrievalTopK);
+        List<RankedChunk> ranked = vectorRetrievalService.retrieve(question, courseId, viewerUserId, grantedResourceIds, retrievalTopK);
         if (!ranked.isEmpty()) {
             return rag.answer(question, ranked, faqSources, resourceTitles);
         }

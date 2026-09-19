@@ -21,29 +21,40 @@ public class VectorRetrievalService {
     private final ResourceChunkRepository chunkRepository;
     private final ResourceChunkEmbeddingRepository embeddingRepository;
     private final EmbeddingClient embeddingClient;
+    private final CourseResourceCatalogClient resources;
 
     public VectorRetrievalService(
             ResourceChunkRepository chunkRepository,
             ResourceChunkEmbeddingRepository embeddingRepository,
-            EmbeddingClient embeddingClient
+            EmbeddingClient embeddingClient,
+            CourseResourceCatalogClient resources
     ) {
         this.chunkRepository = chunkRepository;
         this.embeddingRepository = embeddingRepository;
         this.embeddingClient = embeddingClient;
+        this.resources = resources;
     }
 
     @Transactional(readOnly = true)
-    public List<RankedChunk> retrieve(String query, Set<UUID> grantedResourceIds, int topK) {
+    public List<RankedChunk> retrieve(String query, UUID courseId, UUID viewerUserId, Set<UUID> grantedResourceIds, int topK) {
+        if (courseId == null || viewerUserId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course and viewer are required for resource retrieval");
+        }
         if (query == null || query.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "query must not be blank");
         }
         if (grantedResourceIds == null || grantedResourceIds.isEmpty()) {
             return List.of();
         }
+        Set<UUID> authorized = new HashSet<>();
+        for (var resource : resources.listAiApprovedCourseResources(courseId, viewerUserId)) {
+            if (resource.aiApproved() && courseId.equals(resource.courseId()) && grantedResourceIds.contains(resource.id())) authorized.add(resource.id());
+        }
+        if (authorized.isEmpty()) return List.of();
         int limit = topK < 1 ? 5 : Math.min(topK, 50);
 
         float[] queryVector = embeddingClient.embed(query);
-        List<ResourceChunkEmbedding> embeddings = embeddingRepository.findByResourceIds(grantedResourceIds);
+        List<ResourceChunkEmbedding> embeddings = embeddingRepository.findByResourceIds(authorized);
         if (embeddings.isEmpty()) {
             return List.of();
         }
@@ -54,9 +65,9 @@ public class VectorRetrievalService {
         }
 
         Map<UUID, ResourceChunk> chunksById = new HashMap<>();
-        for (UUID resourceId : grantedResourceIds) {
+        for (UUID resourceId : authorized) {
             for (ResourceChunk chunk : chunkRepository.findByResourceId(resourceId)) {
-                if (chunkIds.contains(chunk.id())) {
+                if (chunkIds.contains(chunk.id()) && courseId.equals(chunk.courseId()) && resourceId.equals(chunk.resourceId())) {
                     chunksById.put(chunk.id(), chunk);
                 }
             }
@@ -65,7 +76,7 @@ public class VectorRetrievalService {
         List<RankedChunk> ranked = new ArrayList<>();
         for (ResourceChunkEmbedding embedding : embeddings) {
             ResourceChunk chunk = chunksById.get(embedding.chunkId());
-            if (chunk == null) {
+            if (chunk == null || !courseId.equals(embedding.courseId()) || !chunk.resourceId().equals(embedding.resourceId())) {
                 continue;
             }
             double score = EmbeddingCodec.cosineSimilarity(queryVector, embedding.vector());

@@ -99,7 +99,7 @@ public class ResourceWorker {
     private void migrate(ResourceLifecycle.Job job) throws IOException {
         var resource = job.resource();
         // Existing vectors predate the quarantine guarantee. Purge them before rebuilding from a clean scan.
-        ingestion.deleteResourceChunks(resource.id());
+        ingestion.purgeResourceChunks(resource.id());
         try (var upload = validator.validateExisting(legacy.legacyPath(resource.id()), resource.fileName(), resource.contentType())) {
             if (upload.byteSize() != resource.byteSize()) throw new IOException("Legacy metadata does not match stored bytes");
             try { storage.put(job.migrationKey(), upload.path(), upload.sha256()); }

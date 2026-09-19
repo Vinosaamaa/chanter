@@ -39,11 +39,17 @@ class EmbeddingRetrievalSmokeTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired private com.chanter.agent.infra.TestCourseResourceCatalogClient catalog;
+
     @Test
     void ingestEmbedsAndRetrieveRespectsGrants() throws Exception {
         UUID courseId = UUID.randomUUID();
         UUID grantedResourceId = UUID.randomUUID();
         UUID otherResourceId = UUID.randomUUID();
+        UUID viewer = UUID.randomUUID();
+        catalog.grantViewerAccess(courseId, viewer);
+        catalog.registerResource(new com.chanter.agent.application.CourseResourceCatalogClient.CourseResourceSummary(grantedResourceId, courseId, "Homework", "homework.txt", true));
+        catalog.registerResource(new com.chanter.agent.application.CourseResourceCatalogClient.CourseResourceSummary(otherResourceId, courseId, "Weather", "weather.txt", true));
 
         ingest(courseId, grantedResourceId, "homework.txt", """
                 Homework help guide.
@@ -68,6 +74,8 @@ class EmbeddingRetrievalSmokeTest {
 
         Map<String, Object> retrieveBody = new LinkedHashMap<>();
         retrieveBody.put("query", "How do I submit homework before the deadline?");
+        retrieveBody.put("courseId", courseId);
+        retrieveBody.put("viewerUserId", viewer);
         retrieveBody.put("grantedResourceIds", List.of(grantedResourceId));
         retrieveBody.put("topK", 3);
 
@@ -87,6 +95,8 @@ class EmbeddingRetrievalSmokeTest {
 
         Map<String, Object> ungated = new LinkedHashMap<>();
         ungated.put("query", "How do I submit homework before the deadline?");
+        ungated.put("courseId", courseId);
+        ungated.put("viewerUserId", viewer);
         ungated.put("grantedResourceIds", List.of(otherResourceId));
         ungated.put("topK", 3);
 

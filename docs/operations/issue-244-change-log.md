@@ -43,3 +43,9 @@ The next review adds AI approval to demo-resource reuse and preserves explicit H
 The provider is unprovisioned. Native container checks must pass at the final head, followed by #243 integration, actual private bucket permissions/anonymous-denial and recovery tests, processing/failure UI browser evidence, and a measured 2 OCPU/12 GB full-stack workload. ClamAV's 4 GB container guidance cannot be added on top of the earlier 7.625 GiB base caps without reallocation. Schema V2 requires deployment epoch 4, following #319's authentication epoch 3; old code must not be rolled back onto the new lifecycle data.
 
 See [the operator runbook](private-course-resources.md) and [the system review](../engineering/records/architecture-review-chanter-private-resources.md).
+
+## Authorization and terminal deletion correction
+
+The independent review promoted stale AI access and late indexing after deletion to blocking defects. Live metadata now requires current availability, approval, course and viewer permission at vector/tool retrieval and the existing answer-evidence boundaries. Regression tests reproduced the missing status filter, stale tool scope and wrong-course indexed chunk before the fixes.
+
+Agent V8 adds permanent deletion markers and serializes final chunk replacement, purge and deletion. The separate migration purge retains the resource identity without clearing a tombstone. Local tests cover both concurrent orders, purge/re-ingestion, cascading embedding removal and media reservation retention until agent deletion succeeds. The native AMD64/ARM64 workflow also exercises these races on real PostgreSQL and rechecks a persisted marker after database restart. Full final-head CI, security and review remain required.

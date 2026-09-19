@@ -11,6 +11,9 @@ public interface ResourceChunkRepository {
 
     void deleteByResourceId(UUID resourceId);
 
+    /** Purge legacy content without retiring the resource identity. Never clears a deletion marker. */
+    void purgeByResourceId(UUID resourceId);
+
     Optional<ResourceChunk> findById(UUID chunkId);
 
     List<ResourceChunk> findByResourceId(UUID resourceId);

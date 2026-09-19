@@ -132,7 +132,8 @@ class ResourceWorkerSafetyTest {
         var importer = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, Clock.systemUTC(), false, true);
         importer.runOnce();
         assertThat(lifecycle.find(id).orElseThrow().state()).isEqualTo("QUARANTINED");
-        assertThat(ingestion.deleteCalls()).containsExactly(id);
+        assertThat(ingestion.purgeCalls()).containsExactly(id);
+        assertThat(ingestion.deleteCalls()).isEmpty();
         assertThat(ingestion.ingestCalls()).isEmpty();
         assertThat(Files.readAllBytes(original)).isEqualTo(content); notAvailable(id, 409);
         importer.runOnce();
@@ -150,6 +151,23 @@ class ResourceWorkerSafetyTest {
         reconciler.reconcile();
         verify(storage).delete(orphan); verify(storage, never()).delete(resource.storageKey());
         assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
+    }
+
+    @Test void deletionKeepsReservationUntilAgentConfirmsItsTerminalFence() {
+        var resource = upload(UUID.randomUUID()); worker.runOnce();
+        service.deleteCourseResource(resource.id(), teacher);
+        doThrow(new IllegalStateException("agent deletion not confirmed")).when(ingestion).deleteResourceChunks(resource.id());
+        worker.runOnce();
+        assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
+        assertThat(lifecycle.find(resource.id()).orElseThrow().state()).isEqualTo("DELETE_PENDING");
+        doAnswer(call -> {
+            assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
+            return call.callRealMethod();
+        }).when(ingestion).deleteResourceChunks(resource.id());
+        jdbc.sql("UPDATE course_resources SET retry_at=NULL").update(); worker.runOnce();
+        assertThat(service.usage(course, teacher).reservedBytes()).isZero();
+        assertThat(lifecycle.find(resource.id()).orElseThrow().state()).isEqualTo("DELETED");
+        assertThat(ingestion.purgeCalls()).isEmpty();
     }
 
     @Test void requestBudgetFailureIsReportedWhileCleanupKeepsItsReservation() throws Exception {
@@ -172,12 +190,12 @@ class ResourceWorkerSafetyTest {
                 .param("now", java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)).update();
         jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=:size").param("size", content.length).update();
         var importer = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, Clock.systemUTC(), false, true);
-        doThrow(new IllegalStateException("index temporarily unavailable")).when(ingestion).deleteResourceChunks(id);
+        doThrow(new IllegalStateException("index temporarily unavailable")).when(ingestion).purgeResourceChunks(id);
         for (int attempt = 0; attempt < 5; attempt++) {
             jdbc.sql("UPDATE course_resources SET retry_at=NULL").update();
             importer.runOnce();
         }
-        verify(ingestion, times(5)).deleteResourceChunks(id);
+        verify(ingestion, times(5)).purgeResourceChunks(id);
         jdbc.sql("UPDATE course_resources SET retry_at=NULL,updated_at=TIMESTAMP WITH TIME ZONE '2000-01-01 00:00:00Z'").update();
         assertThat(lifecycle.claim(true)).isEmpty();
         assertThat(Files.readAllBytes(original)).isEqualTo(content);
@@ -185,7 +203,7 @@ class ResourceWorkerSafetyTest {
         verify(storage, never()).delete(anyString());
         // An explicit operator retry remains migration work and reuses the reserved migration key.
         jdbc.sql("UPDATE course_resources SET attempts=0").update();
-        doCallRealMethod().when(ingestion).deleteResourceChunks(id);
+        doCallRealMethod().when(ingestion).purgeResourceChunks(id);
         importer.runOnce();
         assertThat(lifecycle.find(id).orElseThrow().state()).isEqualTo("QUARANTINED");
         assertThat(Files.readAllBytes(original)).isEqualTo(content);

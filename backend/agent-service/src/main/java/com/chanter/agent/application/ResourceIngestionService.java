@@ -114,6 +114,12 @@ public class ResourceIngestionService {
         return repository.findByResourceId(resourceId);
     }
 
+    @Transactional
+    public void purgeByResourceId(UUID resourceId) {
+        if (resourceId == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "resourceId is required");
+        repository.purgeByResourceId(resourceId);
+    }
+
     static String sha256Hex(String text) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

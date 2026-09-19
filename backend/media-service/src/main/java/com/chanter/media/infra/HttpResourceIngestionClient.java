@@ -87,4 +87,16 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
         String lower = fileName == null ? "" : fileName.toLowerCase(Locale.ROOT);
         return lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".markdown");
     }
+
+    @Override
+    public void purgeResourceChunks(UUID resourceId) {
+        try {
+            restClient.post()
+                    .uri("/api/v1/internal/resource-chunks/{resourceId}/purge", resourceId)
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, serviceToken)
+                    .retrieve().toBodilessEntity();
+        } catch (RestClientException exception) {
+            throw new IllegalStateException("Resource index purge is unavailable");
+        }
+    }
 }
