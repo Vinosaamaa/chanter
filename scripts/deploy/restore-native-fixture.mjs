@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { imageNames } from './release.mjs';
 import { restoreIsolated } from './restore-isolated.mjs';
 import { verifyConfigurationBackup } from './configuration-backup.mjs';
@@ -55,11 +55,22 @@ if (operation === 'prepare') {
     const receipt = JSON.parse(fs.readFileSync(path.join(state, 'operator-restore/recovery.json')));
     console.error(`Native operator recovery failed during ${receipt.phase}`);
     try {
-      const logs = execFileSync('docker', ['logs', '--tail', '100', receipt.container], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      const capture = spawnSync('docker', ['logs', '--tail', '100', receipt.container],
+        { encoding: 'utf8', timeout: 5000, maxBuffer: 256 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+      const logs = `${capture.stdout ?? ''}\n${capture.stderr ?? ''}`;
       console.error(JSON.stringify({ nativeRecoveryDiagnostics: {
+        captured: capture.status === 0, logBytes: Buffer.byteLength(logs),
         sourceConnectionsHigher: /max_connections.*lower|insufficient parameter settings/s.test(logs),
         missingRecoveryTarget: /recovery ended before configured recovery target was reached/.test(logs),
         permissionFailure: /Permission denied/.test(logs),
+        readOnlyFailure: /Read-only file system/.test(logs),
+        invalidSetting: /unrecognized configuration parameter|invalid value for parameter|invalid input syntax/.test(logs),
+        recoveryComplete: /archive recovery complete|ready to accept connections/.test(logs),
+        missingWal: /unable to find|could not restore|not found in the archive/.test(logs),
+        sharedMemoryFailure: /shared memory|No space left/.test(logs),
+        missingFile: /No such file or directory/.test(logs),
+        authenticationFailure: /authentication failed|no pg_hba.conf entry/.test(logs),
+        fatal: /FATAL:|PANIC:/.test(logs),
       } }));
     } catch { console.error('Native recovery container diagnostics unavailable'); }
     throw error;
