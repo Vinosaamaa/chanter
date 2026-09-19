@@ -22,7 +22,8 @@ public class JdbcSearchIndexRepository {
             INSERT INTO search_index_entries (
                 id, study_server_id, course_id, course_title, document_type,
                 source_id, title, body_text, indexed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
+            WHERE NOT EXISTS (SELECT 1 FROM durable_event_cursor WHERE aggregate_key=?)
             """;
 
     private final JdbcTemplate jdbcTemplate;
@@ -33,7 +34,11 @@ public class JdbcSearchIndexRepository {
 
     @Transactional
     public void replaceStudyServerIndex(UUID studyServerId, List<IndexEntry> entries) {
-        jdbcTemplate.update("DELETE FROM search_index_entries WHERE study_server_id = ?", studyServerId);
+        jdbcTemplate.queryForObject("SELECT id FROM durable_consumer_lock WHERE id=1 FOR UPDATE", Integer.class);
+        jdbcTemplate.update("""
+            DELETE FROM search_index_entries s WHERE study_server_id = ? AND NOT EXISTS
+            (SELECT 1 FROM durable_event_cursor c WHERE c.aggregate_key=CONCAT(s.document_type, ':', CAST(s.source_id AS VARCHAR)))
+            """, studyServerId);
 
         if (entries.isEmpty()) {
             return;
@@ -52,6 +57,7 @@ public class JdbcSearchIndexRepository {
                 preparedStatement.setString(7, entry.title());
                 preparedStatement.setString(8, entry.bodyText());
                 preparedStatement.setTimestamp(9, Timestamp.from(entry.indexedAt()));
+                preparedStatement.setString(10, entry.documentType().name() + ":" + entry.sourceId());
             }
 
             @Override
@@ -65,44 +71,46 @@ public class JdbcSearchIndexRepository {
             UUID studyServerId,
             List<UUID> visibleCourseIds,
             String query,
-            int limit
+            int limit,
+            SearchDocumentType type,
+            UUID courseId,
+            SearchHit after
     ) {
-        if (visibleCourseIds.isEmpty()) {
-            return List.of();
-        }
-
         String trimmedQuery = query.trim();
         if (trimmedQuery.isEmpty()) {
             return List.of();
         }
 
         String pattern = likePattern(trimmedQuery);
-        String placeholders = String.join(",", visibleCourseIds.stream().map(id -> "?").toList());
-        Object[] args = new Object[visibleCourseIds.size() + 4];
-        args[0] = studyServerId;
-        for (int index = 0; index < visibleCourseIds.size(); index++) {
-            args[index + 1] = visibleCourseIds.get(index);
-        }
-        args[visibleCourseIds.size() + 1] = pattern;
-        args[visibleCourseIds.size() + 2] = pattern;
-        args[visibleCourseIds.size() + 3] = limit;
-
-        return jdbcTemplate.query(
-                """
-                SELECT document_type, course_id, course_title, source_id, title, body_text
+        String placeholders = visibleCourseIds.isEmpty() ? "NULL" : String.join(",", visibleCourseIds.stream().map(id -> "?").toList());
+        var args = new java.util.ArrayList<Object>();
+        args.add(studyServerId);
+        args.addAll(visibleCourseIds);
+        args.add(pattern);
+        args.add(pattern);
+        var sql = new StringBuilder("""
+                SELECT document_type, course_id, course_title, source_id, title, body_text, href, channel_id, channel_scope
                 FROM search_index_entries
-                WHERE study_server_id = ?
-                  AND course_id IN (%s)
+                WHERE (study_server_id = ? OR study_server_id IS NULL)
+                  AND (course_id IS NULL OR course_id IN (%s))
                   AND (
                     LOWER(title) LIKE ? ESCAPE '\\'
                     OR LOWER(body_text) LIKE ? ESCAPE '\\'
                   )
-                ORDER BY title
-                LIMIT ?
-                """.formatted(placeholders),
-                (resultSet, rowNum) -> mapHit(resultSet),
-                args
-        );
+                """.formatted(placeholders));
+        if (type != null) { sql.append(" AND document_type=?"); args.add(type.name()); }
+        if (courseId != null) { sql.append(" AND course_id=?"); args.add(courseId); }
+        if (after != null) {
+            sql.append(" AND (title>? OR (title=? AND (document_type>? OR (document_type=? AND source_id>?))))");
+            args.add(after.title());
+            args.add(after.title());
+            args.add(after.documentType().name());
+            args.add(after.documentType().name());
+            args.add(after.sourceId());
+        }
+        sql.append(" ORDER BY title, document_type, source_id LIMIT ?");
+        args.add(limit);
+        return jdbcTemplate.query(sql.toString(), (resultSet, rowNum) -> mapHit(resultSet), args.toArray());
     }
 
     private static String likePattern(String query) {
@@ -118,12 +126,25 @@ public class JdbcSearchIndexRepository {
         String title = resultSet.getString("title");
         return new SearchHit(
                 SearchDocumentType.valueOf(resultSet.getString("document_type")),
-                UUID.fromString(resultSet.getString("course_id")),
+                resultSet.getObject("course_id", UUID.class),
                 resultSet.getString("course_title"),
                 UUID.fromString(resultSet.getString("source_id")),
                 title,
-                snippet(title, bodyText)
+                snippet(title, bodyText), resultSet.getString("href"), resultSet.getObject("channel_id", UUID.class), resultSet.getString("channel_scope")
         );
+    }
+
+    public void apply(com.chanter.common.events.SearchChange change) {
+        jdbcTemplate.update("DELETE FROM search_index_entries WHERE document_type=? AND source_id=?", change.type(), change.sourceId());
+        if (!change.deleted()) jdbcTemplate.update("""
+            INSERT INTO search_index_entries (id, study_server_id, course_id, course_title, document_type, source_id,
+                title, body_text, indexed_at, href, channel_id, channel_scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, UUID.randomUUID(), change.studyServerId(), change.courseId(), "", change.type(), change.sourceId(),
+                truncate(change.title(), 512), truncate(change.body(), 4000), Timestamp.from(Instant.now()), change.href(), change.channelId(), change.channelScope());
+    }
+
+    private static String truncate(String value, int limit) {
+        return value == null ? "" : value.substring(0, Math.min(limit, value.length()));
     }
 
     private String snippet(String title, String bodyText) {

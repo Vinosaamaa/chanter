@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @SpringBootApplication
+@org.springframework.context.annotation.Import(com.chanter.common.events.OutboxConfiguration.class)
 @EnableConfigurationProperties(NotificationServiceClientProperties.class)
 public class MessageServiceApplication {
 

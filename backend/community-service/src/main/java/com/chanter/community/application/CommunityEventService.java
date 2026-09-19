@@ -5,8 +5,6 @@ import com.chanter.community.domain.CommunityEventFilter;
 import com.chanter.community.domain.CommunityEventRsvpStatus;
 import com.chanter.community.domain.CommunityEventStatus;
 import com.chanter.community.domain.CommunityEventVisibility;
-import com.chanter.community.domain.CohortEnrollment;
-import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerMember;
 import java.time.Clock;
@@ -22,8 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CommunityEventService {
-
-    private static final int MAX_FANOUT = 200;
+    private final com.chanter.common.events.SearchEventWriter searchEvents;
 
     private final CommunityEventRepository eventRepository;
     private final StudyServerRepository studyServerRepository;
@@ -36,13 +33,15 @@ public class CommunityEventService {
             StudyServerRepository studyServerRepository,
             CourseRepository courseRepository,
             NotificationClient notificationClient,
-            Clock clock
+            Clock clock,
+            com.chanter.common.events.SearchEventWriter searchEvents
     ) {
         this.eventRepository = eventRepository;
         this.studyServerRepository = studyServerRepository;
         this.courseRepository = courseRepository;
         this.notificationClient = notificationClient;
         this.clock = clock;
+        this.searchEvents = searchEvents;
     }
 
     @Transactional(readOnly = true)
@@ -101,6 +100,7 @@ public class CommunityEventService {
         );
         CommunityEvent saved = eventRepository.save(event);
         notifyMembersOfEvent(saved, actorUserId);
+        publishSearch(saved);
         return saved;
     }
 
@@ -120,6 +120,7 @@ public class CommunityEventService {
             UUID cohortId
     ) {
         requireStudyServerOwner(studyServerId, actorUserId);
+        eventRepository.lockById(eventId);
         CommunityEvent existing = requireEventOnServer(studyServerId, eventId, actorUserId);
         if (existing.cancelled()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cancelled events cannot be edited");
@@ -147,19 +148,25 @@ public class CommunityEventService {
                 existing.interestedCount(),
                 existing.viewerRsvp()
         );
-        return eventRepository.update(updated);
+        CommunityEvent saved = eventRepository.update(updated);
+        publishSearch(saved);
+        notifyMembersOfEvent(saved, actorUserId);
+        return saved;
     }
 
     @Transactional
     public CommunityEvent cancelEvent(UUID studyServerId, UUID eventId, UUID actorUserId) {
         requireStudyServerOwner(studyServerId, actorUserId);
+        eventRepository.lockById(eventId);
         CommunityEvent existing = requireEventOnServer(studyServerId, eventId, actorUserId);
         if (existing.cancelled()) {
             return existing;
         }
         eventRepository.setStatus(eventId, CommunityEventStatus.CANCELLED, clock.instant());
-        return eventRepository.findById(eventId, actorUserId)
+        CommunityEvent cancelled = eventRepository.findById(eventId, actorUserId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+        publishSearch(cancelled);
+        return cancelled;
     }
 
     @Transactional
@@ -240,25 +247,13 @@ public class CommunityEventService {
 
     private void notifyMembersOfEvent(CommunityEvent event, UUID actorUserId) {
         Set<UUID> recipientIds = new LinkedHashSet<>();
-        if (event.visibility() == CommunityEventVisibility.COHORT && event.cohortId() != null) {
-            CohortEnrollmentList enrollments = courseRepository.listCohortEnrollments(
-                    event.cohortId(),
-                    MAX_FANOUT,
-                    0,
-                    null
-            );
-            for (CohortEnrollment enrollment : enrollments.enrollments()) {
-                if (!enrollment.learnerUserId().equals(actorUserId)) {
-                    recipientIds.add(enrollment.learnerUserId());
-                }
-            }
+        if (event.visibility() != CommunityEventVisibility.HUB) {
+            recipientIds.addAll(eventRepository.findScopedNotificationRecipients(event));
+            recipientIds.remove(actorUserId);
         } else {
             for (StudyServerMember member : studyServerRepository.findMembers(event.studyServerId())) {
                 if (!member.userId().equals(actorUserId)) {
                     recipientIds.add(member.userId());
-                }
-                if (recipientIds.size() >= MAX_FANOUT) {
-                    break;
                 }
             }
         }
@@ -287,7 +282,13 @@ public class CommunityEventService {
     }
 
     private void requireViewerCanSee(CommunityEvent event, UUID viewerUserId) {
-        boolean visible = switch (event.visibility()) {
+        if (!viewerCanSee(event, viewerUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Event is not visible to this member");
+        }
+    }
+
+    private boolean viewerCanSee(CommunityEvent event, UUID viewerUserId) {
+        return switch (event.visibility()) {
             case HUB -> true;
             case COURSE -> event.courseId() != null
                     && (courseRepository.isStudyServerOwner(event.studyServerId(), viewerUserId)
@@ -296,9 +297,12 @@ public class CommunityEventService {
                     && (courseRepository.isStudyServerOwner(event.studyServerId(), viewerUserId)
                     || eventRepository.isCohortAccessible(event.cohortId(), viewerUserId));
         };
-        if (!visible) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Event is not visible to this member");
-        }
+    }
+
+    private void publishSearch(CommunityEvent event) {
+        searchEvents.append(new com.chanter.common.events.SearchChange("EVENT", event.id(), event.studyServerId(),
+                event.courseId(), event.cohortId(), null, null, event.title(), event.description(),
+                "/app/servers/" + event.studyServerId() + "/community/events", event.cancelled()));
     }
 
     private CommunityEvent requireEventOnServer(UUID studyServerId, UUID eventId, UUID viewerUserId) {

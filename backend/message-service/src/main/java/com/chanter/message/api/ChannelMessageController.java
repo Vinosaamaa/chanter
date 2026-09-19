@@ -32,6 +32,18 @@ public class ChannelMessageController {
         this.channelMessageService = channelMessageService;
     }
 
+    @GetMapping("/course-channels/{channelId}/messages/{messageId}")
+    public ChannelMessageResponse getCourseMessage(@PathVariable UUID channelId, @PathVariable UUID messageId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewer) {
+        return ChannelMessageResponse.from(channelMessageService.getMessage(channelId, messageId, viewer, ChannelScope.COURSE));
+    }
+
+    @GetMapping("/study-server-channels/{channelId}/messages/{messageId}")
+    public ChannelMessageResponse getServerMessage(@PathVariable UUID channelId, @PathVariable UUID messageId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewer) {
+        return ChannelMessageResponse.from(channelMessageService.getMessage(channelId, messageId, viewer, ChannelScope.STUDY_SERVER));
+    }
+
     @GetMapping("/study-server-channels/{channelId}/messages")
     public ChannelMessageListResponse listStudyServerChannelMessages(
             @PathVariable UUID channelId,

@@ -49,6 +49,7 @@ public class HttpMediaCatalogClient implements MediaCatalogClient {
             }
 
             return response.courseResources().stream()
+                    .filter(resource -> "AVAILABLE".equals(resource.status()))
                     .map(resource -> new CourseResourceSummary(
                             resource.id(),
                             resource.courseId(),
@@ -76,6 +77,6 @@ public class HttpMediaCatalogClient implements MediaCatalogClient {
     private record CourseResourceListResponse(List<CourseResourceResponse> courseResources) {
     }
 
-    private record CourseResourceResponse(UUID id, UUID courseId, String title, String fileName) {
+    private record CourseResourceResponse(UUID id, UUID courseId, String title, String fileName, String status) {
     }
 }

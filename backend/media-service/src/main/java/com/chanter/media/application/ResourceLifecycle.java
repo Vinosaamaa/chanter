@@ -27,14 +27,17 @@ public class ResourceLifecycle {
     private final long byteLimit;
     private final int requestLimit;
     private final int cleanupReserve;
+    private final com.chanter.common.events.SearchEventWriter searchEvents;
 
     public ResourceLifecycle(JdbcClient jdbc, Clock clock,
             @Value("${chanter.media.byte-limit:8000000000}") long byteLimit,
             @Value("${chanter.media.request-limit:40000}") int requestLimit,
-            @Value("${chanter.media.cleanup-request-reserve:4000}") int cleanupReserve) {
+            @Value("${chanter.media.cleanup-request-reserve:4000}") int cleanupReserve,
+            com.chanter.common.events.SearchEventWriter searchEvents) {
         if (byteLimit < 1 || byteLimit > 8_000_000_000L || requestLimit < 1 || requestLimit > 40_000
                 || cleanupReserve < 1 || cleanupReserve >= requestLimit) throw new IllegalArgumentException("Invalid free storage budget");
         this.jdbc = jdbc; this.clock = clock; this.byteLimit = byteLimit; this.requestLimit = requestLimit; this.cleanupReserve = cleanupReserve;
+        this.searchEvents = searchEvents;
     }
 
     @Transactional
@@ -114,8 +117,9 @@ public class ResourceLifecycle {
 
     @Transactional
     public void requestDelete(UUID id) {
-        jdbc.sql("UPDATE course_resources SET state='DELETE_PENDING', updated_at=:now, retry_at=NULL WHERE id=:id AND state<>'DELETED'")
+        int changed = jdbc.sql("UPDATE course_resources SET state='DELETE_PENDING', updated_at=:now, retry_at=NULL WHERE id=:id AND state NOT IN ('DELETED','DELETE_PENDING')")
                 .param("now", now()).param("id", id).update();
+        if (changed == 1) publishSearch(id, true);
     }
 
     @Transactional
@@ -174,6 +178,7 @@ public class ResourceLifecycle {
                 .param("retry", state.equals("SCAN_FAILED") ? time(clock.instant().plusSeconds(60)) : null)
                 .param("id", id).param("lease", lease).update();
         if (changed == 0) releaseLease(id, lease);
+        if (changed == 1 && state.equals("AVAILABLE")) publishSearch(id, false);
         return changed == 1;
     }
 
@@ -228,6 +233,11 @@ public class ResourceLifecycle {
     }
 
     private OffsetDateTime now() { return time(clock.instant()); }
+    private void publishSearch(UUID id, boolean deleted) {
+        CourseResource resource = find(id).orElseThrow();
+        searchEvents.append(new com.chanter.common.events.SearchChange("RESOURCE", id, null, resource.courseId(),
+                null, null, null, resource.title(), resource.fileName(), null, deleted));
+    }
     private static OffsetDateTime time(Instant instant) { return instant.atOffset(ZoneOffset.UTC); }
     private static CourseResource map(ResultSet rs, int row) throws SQLException {
         return new CourseResource(rs.getObject("id", UUID.class), rs.getObject("course_id", UUID.class), rs.getString("title"),

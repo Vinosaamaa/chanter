@@ -1,4 +1,5 @@
 import { type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 
 import { expect, expectNoHorizontalOverflow, test } from './release-test'
 
@@ -196,6 +197,32 @@ test.describe('Product critical paths @product', () => {
     await page.goto('/app/friends')
     await expect(page.getByRole('heading', { level: 1, name: 'Friends' })).toBeVisible()
     await expect(page.getByText('Loading friends…')).toHaveCount(0, { timeout: 15_000 })
+  })
+
+  test('restarted consumers produce persistent searchable announcements and Inbox items', async ({ page }, testInfo) => {
+    const proof = JSON.parse(readFileSync('../.product/durable-events-proof.json', 'utf8')) as { serverId: string; title: string }
+    await openAndSignIn(page, memberEmail)
+    await expect(page).toHaveURL(/\/app\//, { timeout: 30_000 })
+    await page.goto('/app/inbox')
+    await expect(page.locator('.inbox-thread-list').getByText(proof.title, { exact: true })).toBeVisible({ timeout: 15_000 })
+    await page.reload()
+    await expect(page.locator('.inbox-thread-list').getByText(proof.title, { exact: true })).toBeVisible({ timeout: 15_000 })
+    await page.goto(`/app/servers/${proof.serverId}/community/announcements`)
+    await expect(page.getByRole('heading', { name: proof.title, exact: true })).toBeVisible({ timeout: 15_000 })
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.keyboard.press('Control+k')
+      const dialog = page.getByRole('dialog', { name: 'Global search' })
+      await expect(dialog).toBeVisible()
+      await dialog.getByRole('textbox').fill(proof.title)
+      await expect(dialog.getByText(proof.title, { exact: true })).toBeVisible({ timeout: 15_000 })
+      await expect(dialog.getByRole('button', { name: 'Refresh index' })).toHaveCount(0)
+      await expectNoHorizontalOverflow(page)
+      await testInfo.attach(`durable-search-${width}`, { body: await page.screenshot(), contentType: 'image/png' })
+      await dialog.getByText(proof.title, { exact: true }).click()
+      await expect(dialog).toHaveCount(0)
+      await expect(page).toHaveURL(new RegExp(`/app/servers/${proof.serverId}/community/announcements`))
+    }
   })
 
   test('signed-in home remains content-ready without horizontal overflow @viewport', async ({ page }) => {

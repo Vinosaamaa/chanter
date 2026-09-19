@@ -12,6 +12,8 @@ import java.util.UUID;
 
 public interface CommunityEventRepository {
 
+    void lockById(UUID id);
+
     CommunityEvent save(CommunityEvent event);
 
     CommunityEvent update(CommunityEvent event);
@@ -32,6 +34,8 @@ public interface CommunityEventRepository {
     boolean isCourseAccessible(UUID courseId, UUID userId);
 
     boolean isCohortAccessible(UUID cohortId, UUID userId);
+
+    List<UUID> findScopedNotificationRecipients(CommunityEvent event);
 
     boolean courseBelongsToStudyServer(UUID courseId, UUID studyServerId);
 

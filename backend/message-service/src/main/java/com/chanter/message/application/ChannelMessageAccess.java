@@ -7,6 +7,11 @@ public record ChannelMessageAccess(
         UUID channelId,
         ChannelScope channelScope,
         boolean canReadMessages,
-        boolean canPostMessages
+        boolean canPostMessages,
+        UUID studyServerId,
+        UUID courseId
 ) {
+    public ChannelMessageAccess(UUID channelId, ChannelScope scope, boolean canRead, boolean canPost) {
+        this(channelId, scope, canRead, canPost, null, null);
+    }
 }

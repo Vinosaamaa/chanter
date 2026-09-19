@@ -17,7 +17,8 @@ public record GlobalSearchResponse(List<SearchHitResponse> results) {
             String courseTitle,
             UUID sourceId,
             String title,
-            String snippet
+            String snippet,
+            String href
     ) {
         static SearchHitResponse from(SearchHit hit) {
             return new SearchHitResponse(
@@ -26,7 +27,8 @@ public record GlobalSearchResponse(List<SearchHitResponse> results) {
                     hit.courseTitle(),
                     hit.sourceId(),
                     hit.title(),
-                    hit.snippet()
+                    hit.snippet(),
+                    hit.href()
             );
         }
     }

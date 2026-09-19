@@ -10,6 +10,11 @@ import org.springframework.stereotype.Component;
 @Component
 @Profile("test")
 public class TestNotificationClient implements NotificationClient {
+    private final DurableNotificationClient delegate;
+    public TestNotificationClient(com.chanter.common.events.NotificationEventWriter writer) {
+        this.delegate = new DurableNotificationClient(writer);
+    }
+
 
     public record CreateCall(
             UUID userId,
@@ -44,6 +49,7 @@ public class TestNotificationClient implements NotificationClient {
             UUID cohortId,
             UUID channelId
     ) {
+        delegate.createNotification(userId, kind, title, bodyPreview, courseLabel, href, sourceType, sourceId, studyServerId, courseId, cohortId, channelId);
         calls.add(new CreateCall(
                 userId,
                 kind,

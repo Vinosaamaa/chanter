@@ -2,5 +2,8 @@ package com.chanter.search.domain;
 
 public enum SearchDocumentType {
     RESOURCE,
-    FAQ
+    FAQ,
+    MESSAGE,
+    EVENT,
+    ANNOUNCEMENT
 }

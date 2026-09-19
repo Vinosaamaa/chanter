@@ -20,15 +20,18 @@ public class ChannelMessageService {
     private final ChannelMessageRepository repository;
     private final ChannelMessageAccessClient accessClient;
     private final Clock clock;
+    private final com.chanter.common.events.SearchEventWriter searchEvents;
 
     public ChannelMessageService(
             ChannelMessageRepository repository,
             ChannelMessageAccessClient accessClient,
-            Clock clock
+            Clock clock,
+            com.chanter.common.events.SearchEventWriter searchEvents
     ) {
         this.repository = repository;
         this.accessClient = accessClient;
         this.clock = clock;
+        this.searchEvents = searchEvents;
     }
 
     public List<ChannelMessage> listMessages(
@@ -50,6 +53,7 @@ public class ChannelMessageService {
         return repository.listByChannelSince(channelId, since, afterMessageId, MAX_PAGE_SIZE);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public ChannelMessage postMessage(
             UUID channelId,
             UUID senderUserId,
@@ -66,12 +70,24 @@ public class ChannelMessageService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Channel post access denied");
         }
 
-        return repository.save(new ChannelMessage(
+        ChannelMessage saved = repository.save(new ChannelMessage(
                 UUID.randomUUID(),
                 channelId,
                 senderUserId,
                 trimmedBody,
                 clock.instant().truncatedTo(ChronoUnit.MICROS)
         ));
+        searchEvents.append(new com.chanter.common.events.SearchChange("MESSAGE", saved.id(), access.studyServerId(),
+                access.courseId(), null, channelId, channelScope.name(), "Channel message", saved.body(),
+                null, false));
+        return saved;
+    }
+
+    public ChannelMessage getMessage(UUID channelId, UUID messageId, UUID viewer, ChannelScope scope) {
+        if (!accessClient.requireAccess(channelId, viewer, scope).canReadMessages()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Channel read access denied");
+        }
+        return repository.findByIdAndChannelId(messageId, channelId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message not found"));
     }
 }

@@ -20,10 +20,12 @@ public class NotificationService {
 
     private final NotificationRepository repository;
     private final Clock clock;
+    private final NotificationVisibility visibility;
 
-    public NotificationService(NotificationRepository repository, Clock clock) {
+    public NotificationService(NotificationRepository repository, Clock clock, NotificationVisibility visibility) {
         this.repository = repository;
         this.clock = clock;
+        this.visibility = visibility;
     }
 
     @Transactional
@@ -55,22 +57,41 @@ public class NotificationService {
         return repository.upsert(notification);
     }
 
-    @Transactional(readOnly = true)
     public List<Notification> list(
             UUID userId,
             NotificationListFilter filter,
             NotificationListStatus status
     ) {
-        return repository.findForUser(userId, filter, status, DEFAULT_LIST_LIMIT);
+        var visible = new java.util.ArrayList<Notification>();
+        var access = visibilityCache();
+        Notification before = null;
+        while (visible.size() < DEFAULT_LIST_LIMIT) {
+            var page = repository.findForUser(userId, filter, status, DEFAULT_LIST_LIMIT, before, false);
+            for (var notification : page) {
+                if (canView(notification, access)) visible.add(notification);
+                if (visible.size() == DEFAULT_LIST_LIMIT) break;
+            }
+            if (page.size() < DEFAULT_LIST_LIMIT) break;
+            before = page.getLast();
+        }
+        return List.copyOf(visible);
     }
 
-    @Transactional(readOnly = true)
     public long unreadCount(UUID userId) {
-        return repository.countUnread(userId);
+        long count = 0;
+        var access = visibilityCache();
+        Notification before = null;
+        while (true) {
+            var page = repository.findForUser(userId, NotificationListFilter.ALL, NotificationListStatus.OPEN,
+                    DEFAULT_LIST_LIMIT, before, true);
+            count += page.stream().filter(notification -> canView(notification, access)).count();
+            if (page.size() < DEFAULT_LIST_LIMIT) return count;
+            before = page.getLast();
+        }
     }
 
-    @Transactional
     public Notification markRead(UUID notificationId, UUID userId) {
+        requireVisible(notificationId, userId);
         if (!repository.markRead(notificationId, userId, clock.instant())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found");
         }
@@ -78,8 +99,8 @@ public class NotificationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));
     }
 
-    @Transactional
     public Notification markDone(UUID notificationId, UUID userId) {
+        requireVisible(notificationId, userId);
         if (!repository.markDone(notificationId, userId, clock.instant())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found");
         }
@@ -94,4 +115,24 @@ public class NotificationService {
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
+
+    private void requireVisible(UUID id, UUID userId) {
+        Notification notification = repository.findByIdForUser(id, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));
+        if (!visibility.canView(notification)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found");
+    }
+
+    private boolean canView(Notification notification, java.util.Map<SourceScope, Boolean> access) {
+        var source = new SourceScope(notification.sourceType(), notification.sourceId(), notification.studyServerId(),
+                notification.courseId(), notification.cohortId(), notification.channelId());
+        return access.computeIfAbsent(source, ignored -> visibility.canView(notification));
+    }
+    private static java.util.Map<SourceScope, Boolean> visibilityCache() {
+        return new java.util.LinkedHashMap<>(256, 0.75f, true) {
+            @Override protected boolean removeEldestEntry(java.util.Map.Entry<SourceScope, Boolean> entry) {
+                return size() > 256;
+            }
+        };
+    }
+    private record SourceScope(String type, UUID id, UUID server, UUID course, UUID cohort, UUID channel) { }
 }

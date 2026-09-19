@@ -97,6 +97,7 @@ public class SupportQuestionService {
         return supportQuestion;
     }
 
+    @Transactional
     public SupportQuestion updateSupportQuestionStatus(
             UUID channelId,
             UUID supportQuestionId,

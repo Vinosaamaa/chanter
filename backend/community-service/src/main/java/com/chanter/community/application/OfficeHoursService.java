@@ -369,17 +369,13 @@ public class OfficeHoursService {
             UUID studyServerId,
             UUID instructorUserId
     ) {
-        CohortEnrollmentList enrollments = courseRepository.listCohortEnrollments(
-                session.cohortId(),
-                MAX_FANOUT,
-                0,
-                null
-        );
         Set<UUID> recipientIds = new LinkedHashSet<>();
-        for (CohortEnrollment enrollment : enrollments.enrollments()) {
-            if (!enrollment.learnerUserId().equals(instructorUserId)) {
-                recipientIds.add(enrollment.learnerUserId());
+        for (int offset = 0; ; offset += MAX_FANOUT) {
+            CohortEnrollmentList enrollments = courseRepository.listCohortEnrollments(session.cohortId(), MAX_FANOUT, offset, null);
+            for (CohortEnrollment enrollment : enrollments.enrollments()) {
+                if (!enrollment.learnerUserId().equals(instructorUserId)) recipientIds.add(enrollment.learnerUserId());
             }
+            if (enrollments.enrollments().size() < MAX_FANOUT) break;
         }
         UUID courseId = courseRepository.findCourseIdByCohortId(session.cohortId()).orElse(null);
         String href = courseId == null
