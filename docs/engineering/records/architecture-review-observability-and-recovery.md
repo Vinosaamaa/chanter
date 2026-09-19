@@ -54,8 +54,14 @@ unverified until measured in an actual provider drill.
 The [design](../../architecture/observability-and-recovery.md) owns the detailed
 policy. Native encrypted database restore, real privacy-filtered agent export,
 receiver outage and instrumented release staging pass on AMD64 and ARM64.
-Matching encrypted configuration protection is implemented with pinned restic;
-its current native gate remains pending. Application consistency, full alerting,
-object recovery and actual provider verification remain pending in this proposed
-record. Publication eligibility means this record
+Matching encrypted configuration protection uses pinned restic. The real operator
+restore now passes on both architectures after converting its timestamp to an
+explicit numeric UTC offset. It restores relational/vector markers to the selected
+time and detaches networking without authorizing public cutover. Private metric
+export preserves aggregate counts and bounded runtime gauge dimensions; native
+tests verify canary removal and receiver outage. Application consistency/object
+recovery/current deletion authority remain in #332; complete operational coverage,
+error tracking and tested alerting remain in #331. This split removes a dependency
+cycle between runtime foundations, retrieval and account deletion without waiving
+any launch gate. Actual provider verification remains pending. Publication eligibility means this record
 is public-safe, not that the product is ready to launch.

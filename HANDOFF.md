@@ -55,7 +55,7 @@ Bootstrap (**#11**) through **#24** (SaaS plan limits) are **merged** on `main`.
 
 **New-chat handoff:** [`docs/operations/new-chat-handoff.md`](docs/operations/new-chat-handoff.md)
 
-**Current owner direction and execution:** [`launch-execution-status.md`](docs/operations/launch-execution-status.md) tracks the free-resource constraint, configurable AI providers, and the full responsive UI reconstruction requested under #254. #242 account security is integrating in PR #312; #243 deployment packaging and the independent #254 visual rebuild are active in isolated lanes. No public deployment is claimed.
+**Current owner direction and execution:** [`launch-execution-status.md`](docs/operations/launch-execution-status.md) tracks the free-resource constraint, configurable AI providers and modern responsive UI. Account security, deployment packaging, private resources, durable events, ingestion, native companion, edge controls and the initial UI reconstruction are merged. Retrieval #247, moderation #249 and lifecycle #251 remain active. PR329 supplies operational foundations; #331 and #332 track remaining monitoring and complete recovery. All workers use Astra High at normal speed. No public deployment is claimed.
 
 **Active phase:** [#107 Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107). Issues [#238](https://github.com/Vinosaamaa/chanter/issues/238) through [#241](https://github.com/Vinosaamaa/chanter/issues/241) are complete. Start [#242](https://github.com/Vinosaamaa/chanter/issues/242), then continue through [#255](https://github.com/Vinosaamaa/chanter/issues/255) in [`product-readiness-issue-breakdown.md`](docs/issues/product-readiness-issue-breakdown.md) dependency order.
 

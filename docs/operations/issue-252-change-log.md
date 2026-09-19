@@ -141,3 +141,13 @@ Fresh native proof is required before accepting the fix. Review also closed thre
 gaps: tracing headers are removed before all public handlers including LiveKit,
 the transient recovery environment file is removed on both success and failure,
 and backup health requires a snapshot matching the currently accepted release.
+
+The corrected operator restore passes natively on AMD64 and ARM64, including
+encrypted configuration identity, relational/vector data, exclusion of later
+commits, source preservation and detached networking. Metric privacy also passes
+on both architectures. Complete application recovery and external provider proof
+are still required. To break the #247/#251 dependency cycle, #331 now owns remaining
+business metrics/error tracking/tested alerts and #332 owns object protection,
+current deletion-journal replication and full application restore. Parent #252
+stays open through those children and provider acceptance; PR329 is the runtime,
+private telemetry and database/configuration recovery foundation.

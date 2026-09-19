@@ -153,6 +153,8 @@ confirms archive writes remain disabled.
 `recovery.json` records owned resource names, the safe operation phase and pending
 checks. A failure retains the directory and volumes and stops only a container
 whose ownership label matches this attempt. Do not rerun against that directory.
+The transient `database-recovery.env` copy is removed on success and failure;
+the original bootstrap file and container metadata remain private operator data.
 Inspect the named resources privately and use a new reviewed destination for a
 later attempt. The native fixture tests this same operator command with encrypted
 local repositories at the storage boundary; external S3 behavior remains a
@@ -163,3 +165,7 @@ allows public cutover. Application consistency, matching object bytes, the
 current terminal-deletion journal, invalidation of restored sessions/native
 requests and operator review remain mandatory. Do not connect application services
 or expose the restored database while any of these checks is incomplete.
+
+Remaining application recovery and object/journal retention are owned by #332.
+Operational alert delivery and error tracking are owned by #331. Both remain
+mandatory children of #252 before public launch.

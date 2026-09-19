@@ -1,6 +1,6 @@
 # Chanter launch execution status
 
-Reviewed 2026-09-18 against accepted main `5d3b154821620e877d7b417a0ff93635efdb3331`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
+Reviewed 2026-09-19 against accepted main `935f6f849ae72c3682ed26d033aa543a9be0b4d8`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
 
 Chanter has substantial local-beta product code. It has no verified public release. The previous audit's DNS and provider observations are historical; this review does not claim that those external systems have been rechecked.
 
@@ -23,8 +23,8 @@ signup is the owner's pending identity-verification step; no credentials or
 provider account are fabricated, and paid provisioning remains disabled.
 
 The accepted UI reconstruction is in PR314 and answer controls in PR322.
-Document ingestion is in draft PR325, native subscription support in draft PR324,
-and public-edge controls in draft PR328. All workers are configured as Astra High
+Document ingestion PR325, native subscription support PR324 and public-edge
+controls PR328 are merged with passing merged-main checks. All workers are configured as Astra High
 without a fast-mode override. Their issue branches and worktrees are preserved.
 
 The open dependency-update PRs and the older environment PR remain separate work. They have not been merged merely because individual test jobs passed. Dependency updates still need exact-head review and Engineering evidence.
@@ -37,22 +37,29 @@ The open dependency-update PRs and the older environment PR remain separate work
 | #243 | Reproducible staging and production with rollback | PR315 and repair326 merged; real dual-architecture package upload passed; account/provisioning/public deployment remain |
 | #244 | Durable private resource storage and quarantine | PR318 merged; native scanning passed; real private bucket and off-host restore proof remain |
 | #245 | Durable notifications and search indexing | PR327 merged; main CI, real PostgreSQL and consumer-restart journeys passed; production delivery proof remains |
-| #246 | Truthful supported resource ingestion | Draft325 parses supported documents and exposes truthful status; integrating durable jobs with accepted245 |
-| #247 | Authorized production vector retrieval | Open implementation work after ingestion; current hashing fallback is not production semantic retrieval |
+| #246 | Truthful supported resource ingestion | PR325 merged; real supported parsers and durable ingestion validated; provider/final release proof remains |
+| #247 | Authorized production vector retrieval | Draft330 implements pinned ONNX embeddings and scoped pgvector; dual-architecture load tests pass at 100,000 chunks; final concurrency, runtime union and release proof remain |
 | #248 | Evaluated AI safety, usage and cost accounting | PR317/322 merged provider adapters, catalog, accounting and answer controls; final retrieval/evaluations and configured-provider proof remain |
-| #249 | Administration, reports and moderation | Scoped implementation started after245; privileged access, evidence and live enforcement remain required |
+| #249 | Administration, reports and moderation | Active branch implements step-up operator access, reports/appeals and live restrictions; complete database-driven media and responsive UI proof remains |
 | #250 | Truthful free-beta mode or real paid billing | PR323 merged truthful free-beta mode and limits; final deployed accounting proof remains; paid billing is outside initial free beta |
-| #251 | Export, deletion, retention and accurate policy pages | Open implementation work, including new durable data and moderation records |
-| #252 | Monitoring, alerts, backups and proven restore | Open implementation and provider drills; real deployment does not yet exist |
-| #253 | Trusted edge, proxy handling and abuse limits | Draft328 implements shared admission, request bounds and accessible optional proof; final hosted/review/provider gates remain |
+| #251 | Export, deletion, retention and accurate policy pages | Active branch has bounded source exports, durable transport and terminal journal/checkpoint tests; public export/deletion and restore reapply are still underway |
+| #252 | Monitoring, alerts, backups and proven restore | Draft329 supplies private telemetry and encrypted database/configuration recovery; #331 owns remaining operational alerts and #332 complete application recovery; all remain launch gates |
+| #253 | Trusted edge, proxy handling and abuse limits | PR328 merged with shared admission and request bounds; actual public proxy/provider proof remains |
 | #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; new capability integration and final whole-product/mobile/voice checks remain |
 | #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |
 
-Native subscription support is tracked separately in #316. Its draft324 has
-verified Windows/Linux packaging and local companion transport. It is integrating
-durable saved-answer status delivery after245 and must rebase after246 migrations.
+Native subscription support is tracked separately in #316. Merged PR324 has
+verified Windows/Linux packaging, exact-origin pairing, isolated provider execution
+and durable saved-answer status delivery. Its accepted release uses schema epoch7.
 No actual provider login or subscription inference has been performed. API-based
 provider choice remains independent of this optional desktop capability.
+
+The #252 implementation is split at the dependency boundary. PR329's database,
+configuration and telemetry foundation enables #247. Complete application restore
+then consumes #251's current deletion journal in #332. #331 completes business
+metrics, error tracking and actual alert delivery. This avoids making retrieval
+wait for deletion work that itself follows retrieval. Parent #252 stays open;
+neither foundation acceptance nor a database-only restore authorizes public launch.
 
 The [ordered breakdown](../issues/product-readiness-issue-breakdown.md) defines dependencies and acceptance. This table summarizes that program; it does not create a second issue queue.
 
