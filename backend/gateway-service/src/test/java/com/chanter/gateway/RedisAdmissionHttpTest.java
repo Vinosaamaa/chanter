@@ -14,16 +14,18 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.http.client.ReactorResourceFactory;
 import reactor.core.publisher.Flux;
 
 /** Hosted CI supplies an isolated real Redis. Local hermetic runs explicitly skip this external dependency. */
@@ -54,10 +56,10 @@ class RedisAdmissionHttpTest {
         if (upstream != null) upstream.stop(0);
     }
 
-    @Test void twoActualGatewaysShareRegistrationBudgetDespiteSpoofedAddresses() {
-        var replies = IntStream.range(0, 16).mapToObj(index -> http.sendAsync(request(index % 2 == 0 ? first : second,
-                "/api/v1/auth/register").header("X-Forwarded-For", "198.51.100." + index).build(), HttpResponse.BodyHandlers.ofString())).toList();
-        var results = replies.stream().map(CompletableFuture::join).toList();
+    @Test void twoActualGatewaysShareRegistrationBudgetDespiteSpoofedAddresses() throws Exception {
+        var results = new ArrayList<HttpResponse<String>>();
+        for (int index = 0; index < 16; index++) results.add(http.send(request(index % 2 == 0 ? first : second,
+                "/api/v1/auth/register").header("X-Forwarded-For", "198.51.100." + index).build(), HttpResponse.BodyHandlers.ofString()));
         assertThat(results.stream().filter(reply -> reply.statusCode() == 204).count()).isEqualTo(12);
         assertThat(results.stream().filter(reply -> reply.statusCode() == 429).count()).isEqualTo(4);
         results.stream().filter(reply -> reply.statusCode() == 429).forEach(reply -> {
@@ -66,12 +68,12 @@ class RedisAdmissionHttpTest {
         });
     }
 
-    @Test void tenantRotationAndMultipleGatewaysCannotResetTheVerifiedUserAiBudget() {
+    @Test void tenantRotationAndMultipleGatewaysCannotResetTheVerifiedUserAiBudget() throws Exception {
         String token = new JwtTokenService(JWT_SECRET, 900).createAccessToken(UUID.randomUUID());
-        var replies = IntStream.range(0, 25).mapToObj(index -> http.sendAsync(request(index % 2 == 0 ? first : second,
+        var results = new ArrayList<HttpResponse<String>>();
+        for (int index = 0; index < 25; index++) results.add(http.send(request(index % 2 == 0 ? first : second,
                 "/api/v1/study-servers/" + UUID.randomUUID() + "/study-assistant")
-                .header("Authorization", "Bearer " + token).build(), HttpResponse.BodyHandlers.ofString())).toList();
-        var results = replies.stream().map(CompletableFuture::join).toList();
+                .header("Authorization", "Bearer " + token).build(), HttpResponse.BodyHandlers.ofString()));
         assertThat(results.stream().filter(reply -> reply.statusCode() == 204).count()).isEqualTo(20);
         assertThat(results.stream().filter(reply -> reply.statusCode() == 429).count()).isEqualTo(5);
     }
@@ -104,11 +106,21 @@ class RedisAdmissionHttpTest {
 
     private static ConfigurableApplicationContext gateway(int redisPort) {
         String backend = "http://127.0.0.1:" + upstream.getAddress().getPort();
-        return SpringApplication.run(GatewayServiceApplication.class, "--server.port=0", "--spring.main.banner-mode=off",
+        return new SpringApplication(GatewayServiceApplication.class, IsolatedReactorResources.class).run("--server.port=0", "--spring.main.banner-mode=off",
                 "--chanter.jwt.secret=" + JWT_SECRET, "--chanter.edge.limits-enabled=true", "--chanter.edge.key-secret=" + KEY_SECRET,
                 "--spring.data.redis.host=127.0.0.1", "--spring.data.redis.port=" + redisPort,
                 "--spring.data.redis.password=", "--AUTH_SERVICE_URL=" + backend, "--AGENT_SERVICE_URL=" + backend,
                 "--management.endpoint.health.probes.enabled=true", "--logging.level.root=WARN");
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class IsolatedReactorResources {
+        @Bean ReactorResourceFactory reactorResourceFactory() {
+            var resources = new ReactorResourceFactory();
+            // Closing the outage fixture must not stop the other two live gateways.
+            resources.setUseGlobalResources(false);
+            return resources;
+        }
     }
 
     private static HttpRequest.Builder request(ConfigurableApplicationContext context, String path) {

@@ -33,7 +33,8 @@ export function initialize(stateDir, config) {
     const values = { CHANTER_JWT_SECRET: jwt };
     if (name !== 'gateway-service') values.CHANTER_INTERNAL_SERVICE_TOKEN = internal;
     if (db[name]) values.POSTGRES_PASSWORD = db[name];
-    if (name === 'realtime-service') values.REDIS_PASSWORD = redis;
+    if (['realtime-service', 'gateway-service'].includes(name)) values.REDIS_PASSWORD = redis;
+    if (name === 'gateway-service') values.CHANTER_EDGE_KEY_SECRET = secret();
     if (['community-service', 'message-service', 'realtime-service'].includes(name)) {
       values.LIVEKIT_API_KEY = mediaKey; values.LIVEKIT_API_SECRET = mediaSecret;
     }
@@ -75,7 +76,8 @@ export function validateRuntime(stateDir) {
       : name === 'redis' ? ['REDIS_PASSWORD'] : name === 'livekit' ? ['LIVEKIT_KEYS']
       : ['CHANTER_JWT_SECRET', ...(name === 'gateway-service' ? [] : ['CHANTER_INTERNAL_SERVICE_TOKEN']),
         ...(databaseModules.includes(name) ? ['POSTGRES_PASSWORD'] : []),
-        ...(name === 'realtime-service' ? ['REDIS_PASSWORD'] : []),
+        ...(['realtime-service', 'gateway-service'].includes(name) ? ['REDIS_PASSWORD'] : []),
+        ...(name === 'gateway-service' ? ['CHANTER_EDGE_KEY_SECRET'] : []),
         ...(name === 'community-service' ? ['CHANTER_BETA_MODE', 'CHANTER_BETA_ASSISTANT_RUN_LIMIT'] : []),
         ...(name === 'media-service' ? ['CHANTER_S3_ENDPOINT', 'CHANTER_S3_REGION', 'CHANTER_S3_BUCKET',
           'CHANTER_S3_ACCESS_KEY', 'CHANTER_S3_SECRET_KEY'] : []),
@@ -97,7 +99,7 @@ export function validateRuntime(stateDir) {
         || Number(env.CHANTER_BETA_ASSISTANT_RUN_LIMIT) > 1000)) {
       throw new Error('Free beta requires a lifetime assistant limit between 1 and 1000');
     }
-    for (const key of ['CHANTER_JWT_SECRET', 'CHANTER_INTERNAL_SERVICE_TOKEN', 'POSTGRES_PASSWORD', 'REDIS_PASSWORD', 'LIVEKIT_API_SECRET']) {
+    for (const key of ['CHANTER_JWT_SECRET', 'CHANTER_INTERNAL_SERVICE_TOKEN', 'POSTGRES_PASSWORD', 'REDIS_PASSWORD', 'LIVEKIT_API_SECRET', 'CHANTER_EDGE_KEY_SECRET']) {
       if (key in env && env[key].length < 32) throw new Error(`Runtime credential too short: ${key}`);
     }
   }

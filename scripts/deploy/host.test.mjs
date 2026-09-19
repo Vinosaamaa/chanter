@@ -30,6 +30,10 @@ test('initialization isolates credentials and refuses to overwrite existing or p
   const media = readEnv(path.join(state, 'runtime/media-service.env'));
   assert.equal(gateway.CHANTER_JWT_SECRET, auth.CHANTER_JWT_SECRET);
   assert.equal(gateway.POSTGRES_PASSWORD, undefined);
+  assert.equal(gateway.REDIS_PASSWORD, readEnv(path.join(state, 'runtime/redis.env')).REDIS_PASSWORD);
+  assert.ok(gateway.CHANTER_EDGE_KEY_SECRET.length >= 32);
+  assert.notEqual(gateway.CHANTER_EDGE_KEY_SECRET, gateway.CHANTER_JWT_SECRET);
+  assert.equal(gateway.CHANTER_INTERNAL_SERVICE_TOKEN, undefined);
   assert.equal(media.CHANTER_SMTP_PASSWORD, undefined);
   assert.notEqual(media.POSTGRES_PASSWORD, auth.POSTGRES_PASSWORD);
   const config = JSON.parse(fs.readFileSync(path.join(state, 'config.json')));

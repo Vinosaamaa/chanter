@@ -32,6 +32,7 @@ export function validateConfig(config) {
 
 export function composeFor(release, config, runtimeDir) {
   validateRelease(release); validateConfig(config);
+  const edgePrefix = config.environment === 'production' ? '172.30.46' : '172.30.45';
   const common = { restart: 'unless-stopped', init: true, read_only: true, cap_drop: ['ALL'],
     security_opt: ['no-new-privileges:true'], stop_grace_period: '35s', cpus: '2.0',
     logging: { driver: 'json-file', options: { 'max-size': '10m', 'max-file': '3' } } };
@@ -84,6 +85,12 @@ export function composeFor(release, config, runtimeDir) {
     healthcheck: { test: ['CMD-SHELL', "printf 'zPING\\000' | nc -w 3 -U /run/clamav/clamd.sock | tr -d '\\000' | grep -qx PONG"],
       interval: '10s', timeout: '5s', retries: 60, start_period: '60s' }, networks: ['application'] };
   services['realtime-service'].depends_on = { redis: { condition: 'service_healthy' } };
+  const gateway = services['gateway-service'];
+  Object.assign(gateway.environment, { CHANTER_EDGE_LIMITS_ENABLED: 'true',
+    CHANTER_TRUSTED_PROXY_ADDRESSES: `${edgePrefix}.2`, CHANTER_EDGE_PUBLIC_ORIGIN: `https://${config.hostname}`,
+    MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE: 'readinessState,redis' });
+  gateway.depends_on = { redis: { condition: 'service_healthy' } };
+  gateway.networks = { application: {}, edge: { ipv4_address: `${edgePrefix}.3` } };
   services.postgres = { ...common, image: release.images.postgres, pull_policy: 'never', user: '70:70',
     mem_limit: '768m', read_only: true, env_file: [{ path: path.join(runtimeDir, 'postgres.env'), format: 'raw' }],
     command: ['postgres', '-c', 'max_connections=80', '-c', 'shared_buffers=192MB', '-c', 'work_mem=2MB', '-c', 'log_statement=none'],
@@ -99,13 +106,14 @@ export function composeFor(release, config, runtimeDir) {
   services.livekit = { ...common, image: release.images.livekit, pull_policy: 'never', user: '10001:10001', mem_limit: '256m',
     env_file: [{ path: path.join(runtimeDir, 'livekit.env'), format: 'raw' }], command: ['--config', '/etc/livekit.yaml', '--node-ip', config.publicIp],
     volumes: ['./livekit.yaml:/etc/livekit.yaml:ro'], tmpfs: ['/tmp:size=16m,mode=1777'],
-    ports: ['7881:7881/tcp', '7882:7882/udp'], networks: ['application'] };
+    ports: ['7881:7881/tcp', '7882:7882/udp'], networks: ['application', 'edge'] };
   services.frontend = { ...common, image: release.images.frontend, pull_policy: 'never', user: '10001:10001', mem_limit: '128m',
     environment: { CHANTER_HOSTNAME: config.hostname }, volumes: ['caddy-data:/data', 'caddy-config:/config'],
     ports: ['80:8080', '443:8443'], tmpfs: ['/tmp:size=16m,mode=1777'],
     healthcheck: { test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:2019/config/'], interval: '15s', timeout: '5s', retries: 10 },
-    networks: ['application'] };
-  return { name: `chanter-${config.environment}`, services, networks: { application: {} },
+    networks: { edge: { ipv4_address: `${edgePrefix}.2` } } };
+  return { name: `chanter-${config.environment}`, services, networks: { application: {},
+    edge: { ipam: { config: [{ subnet: `${edgePrefix}.0/28` }] } } },
     volumes: Object.fromEntries(['postgres', 'redis', 'resources', 'media-spool', 'scanner-signatures', 'scanner-socket',
       'caddy-data', 'caddy-config'].map(name => [name, {}])) };
 }
