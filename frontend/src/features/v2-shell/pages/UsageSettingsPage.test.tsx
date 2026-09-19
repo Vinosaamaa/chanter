@@ -64,4 +64,12 @@ describe('UsageSettingsPage', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(screen.queryByText(/0 of/)).not.toBeInTheDocument()
   })
+
+  it('shows an access-loading failure rather than treating the owner as unauthorized', async () => {
+    mocks.servers.mockReturnValue({ isLoading: false, isError: true, data: undefined })
+    renderUsage()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load Study Server access')
+    expect(screen.queryByText('Home redirected')).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
 })

@@ -52,4 +52,3 @@ export type StudyServerDetails = {
   }
   planTier: string
 }
-

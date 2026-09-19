@@ -11,6 +11,13 @@ export function UsageSettingsPage() {
   if (servers.isLoading || sidebar.isLoading) {
     return <section className="v2-workspace-page course-workspace-state" role="status"><p>Loading usage…</p></section>
   }
+  if (servers.isError || sidebar.isError) {
+    return <section className="v2-workspace-page course-workspace-state">
+      <h1>Usage</h1>
+      <p role="alert">Unable to load Study Server access. Reload the page to try again.</p>
+      <Link to="/app/home">Back to Home</Link>
+    </section>
+  }
   const ownedServers = servers.data?.filter(server => server.owner) ?? []
   if (!sidebar.showBillingNav || !ownedServers.length) return <Navigate to="/app/home" replace />
   return <OwnerUsagePage servers={ownedServers} />

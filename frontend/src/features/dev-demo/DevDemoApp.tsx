@@ -715,7 +715,7 @@ function App() {
         const errorBody = await response.text()
         if (response.status === 429) {
           throw new Error(
-            errorBody || 'AI Study Assistant quota exhausted. Upgrade the Study Server SaaS Plan to continue.',
+            errorBody || 'AI Study Assistant quota exhausted. Course resources and instructor support remain available.',
           )
         }
         throw new Error(`Assistant answer failed with ${response.status}`)
