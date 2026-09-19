@@ -7,4 +7,8 @@ public interface EmbeddingClient {
     int dimensions();
 
     float[] embed(String text);
+
+    default com.chanter.agent.domain.EmbeddingModel metadata() {
+        return new com.chanter.agent.domain.EmbeddingModel(modelId(), "test", modelId(), "test-v1", dimensions());
+    }
 }

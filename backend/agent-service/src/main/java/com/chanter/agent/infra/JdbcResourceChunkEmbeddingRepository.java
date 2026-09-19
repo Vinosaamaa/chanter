@@ -16,9 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class JdbcResourceChunkEmbeddingRepository implements ResourceChunkEmbeddingRepository {
 
     private final JdbcClient jdbcClient;
+    private final boolean postgres;
 
-    public JdbcResourceChunkEmbeddingRepository(JdbcClient jdbcClient) {
+    public JdbcResourceChunkEmbeddingRepository(JdbcClient jdbcClient, javax.sql.DataSource dataSource) throws java.sql.SQLException {
         this.jdbcClient = jdbcClient;
+        try(var connection=dataSource.getConnection()) { postgres=connection.getMetaData().getDatabaseProductName().equals("PostgreSQL"); }
     }
 
     @Override
@@ -27,7 +29,19 @@ public class JdbcResourceChunkEmbeddingRepository implements ResourceChunkEmbedd
         jdbcClient.sql("DELETE FROM resource_chunk_embeddings WHERE resource_id = :resourceId")
                 .param("resourceId", resourceId)
                 .update();
+        insert(embeddings);
+    }
 
+    @Override @Transactional
+    public void replaceModelsForResource(UUID resourceId, List<ResourceChunkEmbedding> embeddings) {
+        for(String model:embeddings.stream().map(ResourceChunkEmbedding::modelId).distinct().toList()) {
+            jdbcClient.sql("DELETE FROM resource_chunk_embeddings WHERE resource_id=:resource AND model_id=:model")
+                    .param("resource",resourceId).param("model",model).update();
+        }
+        insert(embeddings);
+    }
+
+    private void insert(List<ResourceChunkEmbedding> embeddings) {
         for (ResourceChunkEmbedding embedding : embeddings) {
             jdbcClient.sql("""
                             INSERT INTO resource_chunk_embeddings (
@@ -44,16 +58,16 @@ public class JdbcResourceChunkEmbeddingRepository implements ResourceChunkEmbedd
                                 :courseId,
                                 :modelId,
                                 :dimensions,
-                                :embedding,
+                                %s,
                                 :createdAt
                             )
-                            """)
+                            """.formatted(postgres ? "CAST(:embedding AS public.vector)" : ":embedding"))
                     .param("chunkId", embedding.chunkId())
                     .param("resourceId", embedding.resourceId())
                     .param("courseId", embedding.courseId())
                     .param("modelId", embedding.modelId())
                     .param("dimensions", embedding.dimensions())
-                    .param("embedding", EmbeddingCodec.toBytes(embedding.vector()))
+                    .param("embedding", VectorValue.encode(embedding.vector(), embedding.dimensions()))
                     .param("createdAt", Timestamp.from(embedding.createdAt()))
                     .update();
         }
@@ -85,7 +99,7 @@ public class JdbcResourceChunkEmbeddingRepository implements ResourceChunkEmbedd
 
     private ResourceChunkEmbedding mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         int dimensions = rs.getInt("dimensions");
-        byte[] bytes = rs.getBytes("embedding");
+        String value = rs.getString("embedding");
         Timestamp createdAt = rs.getTimestamp("created_at");
         Instant instant = createdAt == null ? Instant.EPOCH : createdAt.toInstant();
         return new ResourceChunkEmbedding(
@@ -94,7 +108,7 @@ public class JdbcResourceChunkEmbeddingRepository implements ResourceChunkEmbedd
                 rs.getObject("course_id", UUID.class),
                 rs.getString("model_id"),
                 dimensions,
-                EmbeddingCodec.fromBytes(bytes, dimensions),
+                VectorValue.decode(value),
                 instant
         );
     }

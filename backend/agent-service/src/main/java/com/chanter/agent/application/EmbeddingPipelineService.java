@@ -17,15 +17,17 @@ public class EmbeddingPipelineService {
     private final ResourceIndexStore indexStore;
     private final EmbeddingClient embeddingClient;
     private final Clock clock;
+    private final EmbeddingVersionStore versions;
 
     public EmbeddingPipelineService(
             ResourceIndexStore indexStore,
             EmbeddingClient embeddingClient,
-            Clock clock
+            Clock clock, EmbeddingVersionStore versions
     ) {
         this.indexStore = indexStore;
         this.embeddingClient = embeddingClient;
         this.clock = clock;
+        this.versions = versions;
     }
 
     public EmbedResult embedResource(UUID resourceId) {
@@ -39,6 +41,7 @@ public class EmbeddingPipelineService {
     }
 
     public List<ResourceChunkEmbedding> prepare(List<ResourceChunk> chunks) {
+        versions.initializeDefault(embeddingClient.metadata());
         var createdAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
         List<ResourceChunkEmbedding> embeddings = new ArrayList<>(chunks.size());
         for (ResourceChunk chunk : chunks) {

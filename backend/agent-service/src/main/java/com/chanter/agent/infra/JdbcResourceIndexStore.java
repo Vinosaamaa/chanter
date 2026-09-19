@@ -87,7 +87,7 @@ public class JdbcResourceIndexStore implements ResourceIndexStore {
         var currentIds = chunks.findByResourceId(resourceId).stream().map(ResourceChunk::id).toList();
         var snapshotIds = snapshot.chunks().stream().map(ResourceChunk::id).toList();
         if (!currentIds.equals(snapshotIds)) throw conflict("Resource chunks changed during embedding");
-        embeddings.replaceAllForResource(resourceId, prepared);
+        embeddings.replaceModelsForResource(resourceId, prepared);
     }
 
     private void requireCurrent(UUID resourceId, long generation) {

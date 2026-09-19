@@ -13,7 +13,13 @@ public interface CourseResourceCatalogClient {
             UUID courseId,
             String title,
             String fileName,
-            boolean aiApproved
+            boolean aiApproved,
+            UUID studyServerId,
+            UUID cohortId,
+            String sourceSha256
     ) {
+        public CourseResourceSummary(UUID id,UUID courseId,String title,String fileName,boolean aiApproved) {
+            this(id,courseId,title,fileName,aiApproved,null,null,null);
+        }
     }
 }

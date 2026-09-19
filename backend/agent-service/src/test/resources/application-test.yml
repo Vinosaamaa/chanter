@@ -5,6 +5,8 @@ spring:
     password:
   flyway:
     enabled: true
+    placeholders:
+      testVectorDatabase: true
 
 chanter:
   events:

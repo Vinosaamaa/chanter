@@ -1,0 +1,49 @@
+name: Scoped semantic retrieval
+on:
+  pull_request:
+    paths: ['backend/agent-service/**', 'infra/vector/**', 'scripts/vector/**', '.github/workflows/vector-retrieval.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vector-retrieval-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-vector:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      VECTOR_INTEGRATION: 'true'
+      CHANTER_TEST_MODEL_DIR: ${{ github.workspace }}/.cache/models/minilm
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '21.0.12+8.0.LTS'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.19.0'
+      - name: Build pinned pgvector and initialize an owned database
+        run: |
+          set -euo pipefail
+          image=$(node -p 'JSON.parse(require("fs").readFileSync("infra/production/runtime-lock.json")).postgres')
+          docker build -f infra/vector/Dockerfile --build-arg "POSTGRES_IMAGE=$image" -t chanter-vector-test .
+          docker run -d --name chanter-vector-test --cpus 2 --memory 896m -p 127.0.0.1:5547:5432 \
+            -e POSTGRES_USER=vector_test -e POSTGRES_PASSWORD=vector-test-only-password -e POSTGRES_DB=vector_test chanter-vector-test
+          for attempt in $(seq 1 40); do
+            if docker exec chanter-vector-test pg_isready -U vector_test; then break; fi
+            sleep 2
+          done
+          docker exec chanter-vector-test psql -U vector_test -d vector_test -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector WITH SCHEMA public'
+      - name: Verify pinned model assets
+        run: node scripts/vector/download-model.mjs "$CHANTER_TEST_MODEL_DIR"
+      - name: Test native model and PostgreSQL authorization and migration contracts
+        run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service -am test -Dtest=OnnxEmbeddingClientTest,PostgresScopedVectorSearchTest,PostgresEmbeddingVersionStoreTest -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Remove owned test database
+        if: always()
+        run: docker rm -f chanter-vector-test || true

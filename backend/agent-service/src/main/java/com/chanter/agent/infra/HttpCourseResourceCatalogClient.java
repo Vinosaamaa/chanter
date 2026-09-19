@@ -72,7 +72,7 @@ public class HttpCourseResourceCatalogClient implements CourseResourceCatalogCli
                             resource.courseId(),
                             resource.title(),
                             resource.fileName(),
-                            resource.aiApproved()
+                            resource.aiApproved(), resource.studyServerId(), resource.cohortId(), resource.sha256()
                     ))
                     .toList();
         } catch (HttpClientErrorException.NotFound exception) {
@@ -102,7 +102,10 @@ public class HttpCourseResourceCatalogClient implements CourseResourceCatalogCli
             String fileName,
             boolean aiApproved,
             String status,
-            String ingestionStatus
+            String ingestionStatus,
+            UUID studyServerId,
+            UUID cohortId,
+            String sha256
     ) {
     }
 }

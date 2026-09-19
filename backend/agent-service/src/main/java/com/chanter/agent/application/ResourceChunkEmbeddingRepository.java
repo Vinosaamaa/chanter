@@ -9,6 +9,8 @@ public interface ResourceChunkEmbeddingRepository {
 
     void replaceAllForResource(UUID resourceId, List<ResourceChunkEmbedding> embeddings);
 
+    void replaceModelsForResource(UUID resourceId, List<ResourceChunkEmbedding> embeddings);
+
     void deleteByResourceId(UUID resourceId);
 
     List<ResourceChunkEmbedding> findByResourceIds(Collection<UUID> resourceIds);
