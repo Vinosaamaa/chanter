@@ -25,6 +25,7 @@ public final class ExportSnapshotStore {
     public static final long MAX_SNAPSHOT_BYTES = 256L * 1024 * 1024;
     public static final long MAX_RETAINED_BYTES = 1024L * 1024 * 1024;
     public static final Duration RETENTION = Duration.ofHours(24);
+    public static final Duration CAPTURE_BUDGET = Duration.ofMinutes(5);
     public static final String SCHEMA = """
         CREATE TABLE data_export_lock (id INT PRIMARY KEY);
         INSERT INTO data_export_lock VALUES (1);
@@ -39,8 +40,13 @@ public final class ExportSnapshotStore {
             snapshot_id UUID NOT NULL REFERENCES data_export_snapshots(id) ON DELETE CASCADE,
             ordinal INT NOT NULL, entry_path VARCHAR(120) NOT NULL, media_type VARCHAR(100) NOT NULL,
             byte_size BIGINT NOT NULL DEFAULT 0, page_count INT NOT NULL DEFAULT 0, sha256 VARCHAR(64),
-            access_kind VARCHAR(24), access_id UUID,
             PRIMARY KEY(snapshot_id, ordinal), UNIQUE(snapshot_id, entry_path)
+        );
+        CREATE TABLE data_export_entry_scopes (
+            snapshot_id UUID NOT NULL, entry_ordinal INT NOT NULL, access_kind VARCHAR(24) NOT NULL, access_id UUID NOT NULL,
+            expected_digest VARCHAR(64),
+            PRIMARY KEY(snapshot_id,entry_ordinal,access_kind,access_id),
+            FOREIGN KEY(snapshot_id,entry_ordinal) REFERENCES data_export_entries(snapshot_id,ordinal) ON DELETE CASCADE
         );
         CREATE TABLE data_export_pages (
             snapshot_id UUID NOT NULL, entry_ordinal INT NOT NULL, ordinal INT NOT NULL, payload BYTEA NOT NULL,
@@ -88,6 +94,7 @@ public final class ExportSnapshotStore {
             var writer = new Capture(request.jobId(), retained);
             try { projection.write(writer); }
             catch (IOException failure) { throw new ExportFailure("EXPORT_SOURCE_UNAVAILABLE", failure); }
+            writer.checkBudget(); request.validate(clock.instant());
             jdbc.update("UPDATE data_export_snapshots SET status='READY',byte_size=? WHERE id=?", writer.totalBytes, request.jobId());
             return manifest(request.jobId(), request.accountId());
         });
@@ -117,11 +124,12 @@ public final class ExportSnapshotStore {
     /** Private source controllers use this around every retained read; a receipt is not current content authorization. */
     public void requireAccess(UUID jobId, UUID accountId, Integer entry, ExportSnapshotAccess access) {
         requireReadable(jobId, accountId);
-        String sql = "SELECT DISTINCT access_kind,access_id FROM data_export_entries WHERE snapshot_id=? AND access_kind IS NOT NULL";
+        String sql = "SELECT DISTINCT access_kind,access_id,expected_digest FROM data_export_entry_scopes WHERE snapshot_id=?";
         Object[] parameters = entry == null ? new Object[]{jobId} : new Object[]{jobId, entry};
-        if (entry != null) sql += " AND ordinal=?";
-        var scopes = jdbc.query(sql, (rs, row) -> new AccessScope(rs.getString(1), rs.getObject(2, UUID.class)), parameters);
-        for (AccessScope scope : scopes) access.require(accountId, scope.kind(), scope.id());
+        if (entry != null) sql += " AND entry_ordinal=?";
+        var scopes = jdbc.query(sql, (rs, row) -> new AccessScope(rs.getString(1), rs.getObject(2, UUID.class), rs.getString(3)), parameters);
+        for (int start = 0; start < scopes.size(); start += 100)
+            access.requireAll(accountId, scopes.subList(start, Math.min(start + 100, scopes.size())));
     }
 
     /** Preserve cancellation authority until the expired request cannot be replayed. */
@@ -176,23 +184,34 @@ public final class ExportSnapshotStore {
     public final class Capture {
         private final UUID jobId;
         private final long retainedBytes;
+        private final Instant deadline;
         private int nextEntry;
+        private int scopeCount;
         private long totalBytes;
-        private Capture(UUID jobId, long retainedBytes) { this.jobId = jobId; this.retainedBytes = retainedBytes; }
+        private Capture(UUID jobId, long retainedBytes) {
+            this.jobId = jobId; this.retainedBytes = retainedBytes; this.deadline = clock.instant().plus(CAPTURE_BUDGET);
+        }
+        public void checkBudget() {
+            if (!clock.instant().isBefore(deadline)) throw new ExportFailure("EXPORT_CAPTURE_TIME_LIMIT", null);
+        }
 
         public void jsonLines(String section, JsonProjection projection) throws IOException {
             if (section == null || !section.matches("[a-z][a-z0-9_-]{0,39}")) throw new IllegalArgumentException("Invalid export section");
-            jsonLinesAt(section + ".jsonl", null, projection);
+            jsonLinesAt(section + ".jsonl", List.of(), projection);
         }
 
         public void protectedJsonLines(String group, UUID entryId, AccessScope access, JsonProjection projection) throws IOException {
-            if (!java.util.Set.of("conversations", "answers", "notifications").contains(group) || entryId == null || access == null)
+            protectedJsonLines(group, entryId, List.of(access), projection);
+        }
+        public void protectedJsonLines(String group, UUID entryId, List<AccessScope> access, JsonProjection projection) throws IOException {
+            if (!java.util.Set.of("conversations", "answers", "notifications").contains(group) || entryId == null || access == null || access.isEmpty() || access.size() > 100)
                 throw new IllegalArgumentException("Invalid protected export entry");
-            access.validate();
+            access = List.copyOf(access);
+            access.forEach(AccessScope::validate);
             jsonLinesAt(group + "/" + entryId + ".jsonl", access, projection);
         }
 
-        private void jsonLinesAt(String path, AccessScope access, JsonProjection projection) throws IOException {
+        private void jsonLinesAt(String path, List<AccessScope> access, JsonProjection projection) throws IOException {
             try (var output = new PageOutput(path, "application/x-ndjson", access)) {
                 projection.write(value -> {
                     byte[] bytes = mapper.writeValueAsBytes(value);
@@ -204,7 +223,7 @@ public final class ExportSnapshotStore {
 
         public void file(UUID resourceId, InputStream input) throws IOException {
             if (resourceId == null || input == null) throw new IllegalArgumentException("Invalid export file");
-            try (var output = new PageOutput("files/" + resourceId + "/content", "application/octet-stream", new AccessScope("RESOURCE", resourceId))) {
+            try (var output = new PageOutput("files/" + resourceId + "/content", "application/octet-stream", List.of(new AccessScope("RESOURCE", resourceId)))) {
                 byte[] buffer = new byte[PAGE_BYTES];
                 int count;
                 while ((count = input.read(buffer)) != -1) if (count > 0) output.write(buffer, 0, count);
@@ -218,14 +237,18 @@ public final class ExportSnapshotStore {
             private long size;
             private int pages;
             private boolean closed;
-            PageOutput(String entryPath, String mediaType, AccessScope access) {
+            PageOutput(String entryPath, String mediaType, List<AccessScope> access) {
+                checkBudget();
                 if (nextEntry >= 10_000) throw new ExportFailure("EXPORT_ENTRY_LIMIT", null);
+                if (scopeCount + access.size() > 10_000) throw new ExportFailure("EXPORT_PROTECTED_ITEM_LIMIT", null);
+                scopeCount += access.size();
                 ordinal = nextEntry++;
-                jdbc.update("INSERT INTO data_export_entries(snapshot_id,ordinal,entry_path,media_type,access_kind,access_id) VALUES (?,?,?,?,?,?)",
-                        jobId, ordinal, entryPath, mediaType, access == null ? null : access.kind(), access == null ? null : access.id());
+                jdbc.update("INSERT INTO data_export_entries(snapshot_id,ordinal,entry_path,media_type) VALUES (?,?,?,?)", jobId, ordinal, entryPath, mediaType);
+                for (AccessScope scope : access) jdbc.update("INSERT INTO data_export_entry_scopes VALUES (?,?,?,?,?)", jobId, ordinal, scope.kind(), scope.id(), scope.expectedDigest());
             }
             @Override public void write(int value) { write(new byte[]{(byte) value}, 0, 1); }
             @Override public void write(byte[] bytes, int offset, int length) {
+                checkBudget();
                 java.util.Objects.checkFromIndexSize(offset, length, bytes.length);
                 if (closed) throw new IllegalStateException("Closed export entry");
                 if (length > MAX_SNAPSHOT_BYTES - totalBytes || length > MAX_RETAINED_BYTES - retainedBytes - totalBytes)
@@ -246,8 +269,10 @@ public final class ExportSnapshotStore {
                 if (closed) return;
                 closed = true;
                 if (buffer.size() > 0) flushPage();
-                jdbc.update("UPDATE data_export_entries SET byte_size=?,page_count=?,sha256=? WHERE snapshot_id=? AND ordinal=?",
-                        size, pages, HexFormat.of().formatHex(digest.digest()), jobId, ordinal);
+                String hash = HexFormat.of().formatHex(digest.digest());
+                jdbc.update("UPDATE data_export_entries SET byte_size=?,page_count=?,sha256=? WHERE snapshot_id=? AND ordinal=?", size, pages, hash, jobId, ordinal);
+                jdbc.update("UPDATE data_export_entry_scopes SET expected_digest=? WHERE snapshot_id=? AND entry_ordinal=? AND access_kind='RESOURCE' AND expected_digest IS NULL",
+                        hash, jobId, ordinal);
             }
         }
     }
@@ -265,12 +290,14 @@ public final class ExportSnapshotStore {
         }
     }
     public record Entry(int ordinal, String path, String mediaType, long bytes, int pageCount, String sha256) { }
-    public record AccessScope(String kind, UUID id) {
-        public AccessScope { validate(kind, id); }
-        public void validate() { validate(kind, id); }
-        private static void validate(String kind, UUID id) {
-            if (kind == null || !java.util.Set.of("DM_PEER", "RESOURCE", "AI_ANSWER", "NOTIFICATION").contains(kind) || id == null)
+    public record AccessScope(String kind, UUID id, String expectedDigest) {
+        public AccessScope(String kind, UUID id) { this(kind, id, null); }
+        public AccessScope { validate(kind, id, expectedDigest); }
+        public void validate() { validate(kind, id, expectedDigest); }
+        private static void validate(String kind, UUID id, String expectedDigest) {
+            if (kind == null || !java.util.Set.of("DM_PEER", "DM_MESSAGE", "RESOURCE", "AI_ANSWER", "NOTIFICATION").contains(kind) || id == null)
                 throw new IllegalArgumentException("Invalid export access scope");
+            if (expectedDigest != null && !expectedDigest.matches("[a-f0-9]{64}")) throw new IllegalArgumentException("Invalid export scope digest");
         }
     }
     public record Manifest(int schemaVersion, String source, UUID jobId, UUID accountId, Instant capturedAt, Instant expiresAt, List<Entry> entries) {

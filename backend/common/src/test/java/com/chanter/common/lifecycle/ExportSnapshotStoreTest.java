@@ -169,14 +169,15 @@ class ExportSnapshotStoreTest {
         store.requireAccess(request.jobId(), owner, 0, ExportSnapshotAccess.denyProtected());
         assertStatus(503, () -> store.requireAccess(request.jobId(), owner, null, ExportSnapshotAccess.denyProtected()));
         var checked = new java.util.ArrayList<String>();
-        ExportSnapshotAccess granted = (account, kind, target) -> {
-            assertThat(account).isEqualTo(owner); checked.add(kind + ":" + target);
+        ExportSnapshotAccess granted = (account, scope) -> {
+            assertThat(account).isEqualTo(owner); checked.add(scope.kind() + ":" + scope.id());
+            if (scope.kind().equals("RESOURCE")) assertThat(scope.expectedDigest()).isEqualTo(manifest.entries().get(2).sha256());
         };
         store.requireAccess(request.jobId(), owner, 1, granted);
         assertThat(checked).containsExactly("DM_PEER:" + peer);
         checked.clear(); store.requireAccess(request.jobId(), owner, 2, granted);
         assertThat(checked).containsExactly("RESOURCE:" + resource);
-        ExportSnapshotAccess revoked = (account, kind, target) -> { throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "CURRENT_ACCESS_REVOKED"); };
+        ExportSnapshotAccess revoked = (account, scope) -> { throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "CURRENT_ACCESS_REVOKED"); };
         assertStatus(403, () -> store.requireAccess(request.jobId(), owner, 1, revoked));
         assertStatus(403, () -> store.requireAccess(request.jobId(), owner, null, revoked));
         assertStatus(404, () -> store.requireAccess(request.jobId(), UUID.randomUUID(), 1, granted));

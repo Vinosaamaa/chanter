@@ -37,6 +37,10 @@ Download uses fixed private source URLs, bounded manifest/page reads, a three-se
 
 Received conversations, available file bytes, notifications containing source content, and saved AI answers use generated entries bound to an owning access scope. The source checks its current conversation/resource/answer permission before and after reading a retained page. A protected entry has no permissive fallback when its owning access checker is unavailable. Revocation after capture makes that archive unavailable; a new export can explain the now-omitted content. Authored records and personal metadata have explicit separate projections so a peer's content never enters an unprotected section.
 
+Protected chunks bind at most one hundred exact source IDs each, with at most ten thousand protected items per snapshot. Current source checks receive batches of at most one hundred IDs. Saved answer and received-content scopes also bind an expected content digest so a later redaction cannot leave older text reachable through an otherwise still-authorized record ID. File scopes bind the verified file digest. The source capture checks a five-minute work budget between bounded operations and before committing; its owning network calls must retain their own timeouts. Limits produce an explicit failure rather than silently truncating the archive.
+
+The final schema integration follows foundation #252 epoch 7, retrieval #247 epoch 8, moderation #249 epoch 9, then lifecycle #251 epoch 10. Intermediate migration gaps exist only in isolated development tests. The final branch must contain the accepted earlier migrations before release; out-of-order Flyway execution is not a fallback.
+
 ## Deletion and preservation
 
 A terminal account or Study Server marker closes access before fan-out. Each participant retains that authority while cleanup progresses, rejecting delayed events and writes that would recreate data. The coordinator stores service-specific progress, safe error codes, preservation holds, and the revision needed for off-host recovery. Human confirmation explains irreversible steps; no undeclared grace period or restoration promise is implied.
