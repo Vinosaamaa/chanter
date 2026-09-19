@@ -42,6 +42,7 @@ class GlobalSearchSmokeTest {
 
     @Autowired private com.fasterxml.jackson.databind.ObjectMapper mapper;
     @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired private com.chanter.search.infra.JdbcSearchIndexRepository index;
     @MockitoBean private com.chanter.search.application.SearchSourceClient sourceClient;
 
     @MockitoBean
@@ -120,6 +121,32 @@ class GlobalSearchSmokeTest {
                         "How do I submit homework?",
                         "Upload your homework in the resources channel."
                 )));
+    }
+
+    @Test
+    void hiddenCandidatesDoNotHideLaterVisibleSearchResults() throws Exception {
+        for (int row = 0; row < 51; row++) {
+            index.apply(new com.chanter.common.events.SearchChange("RESOURCE", row == 50 ? RESOURCE_ID : new UUID(0, row),
+                    STUDY_SERVER_ID, COURSE_ID, null, null, null, "Pagination", "Page proof", "/app/resource", false));
+        }
+        mockMvc.perform(get("/api/v1/study-servers/{id}/search", STUDY_SERVER_ID).param("q", "Pagination")
+                .header(AuthHeaders.USER_ID, LEARNER_ID).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.results.length()").value(1))
+                .andExpect(jsonPath("$.results[0].sourceId").value(RESOURCE_ID.toString()));
+    }
+
+    @Test
+    void typeFilterAppliesBeforeTheResultLimit() throws Exception {
+        for (int row = 0; row < 31; row++) {
+            index.apply(new com.chanter.common.events.SearchChange(row == 30 ? "EVENT" : "ANNOUNCEMENT", UUID.randomUUID(),
+                    STUDY_SERVER_ID, null, null, null, null, "Filter " + String.format("%03d", row), "Filter proof", "/app/community", false));
+        }
+        when(sourceClient.currentVisibleHit(org.mockito.ArgumentMatchers.any(), eq(STUDY_SERVER_ID), eq(LEARNER_ID)))
+                .thenAnswer(call -> java.util.Optional.of(call.getArgument(0)));
+        mockMvc.perform(get("/api/v1/study-servers/{id}/search", STUDY_SERVER_ID).param("q", "Filter").param("type", "EVENT")
+                .header(AuthHeaders.USER_ID, LEARNER_ID).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.results.length()").value(1))
+                .andExpect(jsonPath("$.results[0].documentType").value("EVENT"));
     }
 
     @Test

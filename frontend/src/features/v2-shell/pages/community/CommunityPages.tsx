@@ -329,7 +329,10 @@ export function CommunityLoungePage() {
   const canPostMessages = messageAccess.data?.canPostMessages === true
   const connected = conversation.connectionStatus === 'connected'
   const [draft, setDraft] = useState('')
-  const selectChannel = (id: string) => { setSearchParams({ channel: id }, { replace: true }); setDraft('') }
+  const selectChannel = (id: string) => {
+    setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('channel', id); return next }, { replace: true })
+    setDraft('')
+  }
   const submit = (event: FormEvent) => {
     event.preventDefault()
     const submitted = draft.trim()

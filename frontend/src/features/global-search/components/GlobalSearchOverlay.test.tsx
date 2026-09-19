@@ -72,7 +72,7 @@ describe('GlobalSearchOverlay v2', () => {
 
     expect(await screen.findByText('Recursion notes')).toBeInTheDocument()
     expect(screen.queryByText('Private recursion notes')).not.toBeInTheDocument()
-    expect(searchApi.searchStudyServer).toHaveBeenCalledWith('server-real', 'recursion')
+    expect(searchApi.searchStudyServer).toHaveBeenCalledWith('server-real', 'recursion', { courseId: 'course-real', documentType: undefined })
 
     await user.click(screen.getByText('Recursion notes'))
     await waitFor(() => {
@@ -97,6 +97,9 @@ describe('GlobalSearchOverlay v2', () => {
     expect(await screen.findByText('Welcome week')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Refresh index' })).not.toBeInTheDocument()
     await user.selectOptions(screen.getByRole('combobox', { name: 'Content' }), 'ANNOUNCEMENT')
+    await waitFor(() => expect(searchApi.searchStudyServer).toHaveBeenLastCalledWith('server-real', 'welcome', {
+      documentType: 'ANNOUNCEMENT', courseId: undefined,
+    }))
     await user.click(screen.getByText('Welcome week'))
     expect(screen.getByTestId('search-location')).toHaveTextContent('/app/servers/server-real/community/announcements')
   })

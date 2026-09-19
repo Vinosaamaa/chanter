@@ -71,7 +71,10 @@ public class JdbcSearchIndexRepository {
             UUID studyServerId,
             List<UUID> visibleCourseIds,
             String query,
-            int limit
+            int limit,
+            SearchDocumentType type,
+            UUID courseId,
+            SearchHit after
     ) {
         String trimmedQuery = query.trim();
         if (trimmedQuery.isEmpty()) {
@@ -80,17 +83,12 @@ public class JdbcSearchIndexRepository {
 
         String pattern = likePattern(trimmedQuery);
         String placeholders = visibleCourseIds.isEmpty() ? "NULL" : String.join(",", visibleCourseIds.stream().map(id -> "?").toList());
-        Object[] args = new Object[visibleCourseIds.size() + 4];
-        args[0] = studyServerId;
-        for (int index = 0; index < visibleCourseIds.size(); index++) {
-            args[index + 1] = visibleCourseIds.get(index);
-        }
-        args[visibleCourseIds.size() + 1] = pattern;
-        args[visibleCourseIds.size() + 2] = pattern;
-        args[visibleCourseIds.size() + 3] = limit;
-
-        return jdbcTemplate.query(
-                """
+        var args = new java.util.ArrayList<Object>();
+        args.add(studyServerId);
+        args.addAll(visibleCourseIds);
+        args.add(pattern);
+        args.add(pattern);
+        var sql = new StringBuilder("""
                 SELECT document_type, course_id, course_title, source_id, title, body_text, href, channel_id, channel_scope
                 FROM search_index_entries
                 WHERE (study_server_id = ? OR study_server_id IS NULL)
@@ -99,12 +97,20 @@ public class JdbcSearchIndexRepository {
                     LOWER(title) LIKE ? ESCAPE '\\'
                     OR LOWER(body_text) LIKE ? ESCAPE '\\'
                   )
-                ORDER BY title
-                LIMIT ?
-                """.formatted(placeholders),
-                (resultSet, rowNum) -> mapHit(resultSet),
-                args
-        );
+                """.formatted(placeholders));
+        if (type != null) { sql.append(" AND document_type=?"); args.add(type.name()); }
+        if (courseId != null) { sql.append(" AND course_id=?"); args.add(courseId); }
+        if (after != null) {
+            sql.append(" AND (title>? OR (title=? AND (document_type>? OR (document_type=? AND source_id>?))))");
+            args.add(after.title());
+            args.add(after.title());
+            args.add(after.documentType().name());
+            args.add(after.documentType().name());
+            args.add(after.sourceId());
+        }
+        sql.append(" ORDER BY title, document_type, source_id LIMIT ?");
+        args.add(limit);
+        return jdbcTemplate.query(sql.toString(), (resultSet, rowNum) -> mapHit(resultSet), args.toArray());
     }
 
     private static String likePattern(String query) {

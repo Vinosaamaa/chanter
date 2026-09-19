@@ -11,3 +11,4 @@ CREATE TABLE durable_event_cursor (
     processed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (producer, aggregate_key)
 );
+CREATE INDEX idx_search_cursor_aggregate ON durable_event_cursor(aggregate_key);

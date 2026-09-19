@@ -63,7 +63,7 @@ public class NotificationService {
             NotificationListStatus status
     ) {
         var visible = new java.util.ArrayList<Notification>();
-        var access = new java.util.HashMap<SourceScope, Boolean>();
+        var access = visibilityCache();
         Notification before = null;
         while (visible.size() < DEFAULT_LIST_LIMIT) {
             var page = repository.findForUser(userId, filter, status, DEFAULT_LIST_LIMIT, before, false);
@@ -79,7 +79,7 @@ public class NotificationService {
 
     public long unreadCount(UUID userId) {
         long count = 0;
-        var access = new java.util.HashMap<SourceScope, Boolean>();
+        var access = visibilityCache();
         Notification before = null;
         while (true) {
             var page = repository.findForUser(userId, NotificationListFilter.ALL, NotificationListStatus.OPEN,
@@ -126,6 +126,13 @@ public class NotificationService {
         var source = new SourceScope(notification.sourceType(), notification.sourceId(), notification.studyServerId(),
                 notification.courseId(), notification.cohortId(), notification.channelId());
         return access.computeIfAbsent(source, ignored -> visibility.canView(notification));
+    }
+    private static java.util.Map<SourceScope, Boolean> visibilityCache() {
+        return new java.util.LinkedHashMap<>(256, 0.75f, true) {
+            @Override protected boolean removeEldestEntry(java.util.Map.Entry<SourceScope, Boolean> entry) {
+                return size() > 256;
+            }
+        };
     }
     private record SourceScope(String type, UUID id, UUID server, UUID course, UUID cohort, UUID channel) { }
 }

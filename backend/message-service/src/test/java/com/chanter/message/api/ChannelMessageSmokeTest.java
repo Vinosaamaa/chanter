@@ -42,6 +42,9 @@ class ChannelMessageSmokeTest {
     @Autowired
     private ChannelMessageRepository channelMessageRepository;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     @BeforeEach
     void setUp() {
         channelMessageAccessClient.clear();
@@ -51,7 +54,9 @@ class ChannelMessageSmokeTest {
     void learnerCanPostAndListCourseChannelMessages() throws Exception {
         UUID channelId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
-        channelMessageAccessClient.grant(channelId, learnerUserId, ChannelScope.COURSE);
+        UUID serverId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        channelMessageAccessClient.grant(channelId, learnerUserId, ChannelScope.COURSE, serverId, courseId);
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/course-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
@@ -69,6 +74,11 @@ class ChannelMessageSmokeTest {
         assertThat(created.channelId()).isEqualTo(channelId);
         assertThat(created.senderUserId()).isEqualTo(learnerUserId);
         assertThat(created.body()).isEqualTo("Hello from #questions");
+        var event = objectMapper.readTree(jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE aggregate_key=?",
+                String.class, "MESSAGE:" + created.id()));
+        assertThat(event.get("studyServerId").asText()).isEqualTo(serverId.toString());
+        assertThat(event.get("courseId").asText()).isEqualTo(courseId.toString());
+        assertThat(event.get("channelId").asText()).isEqualTo(channelId.toString());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/course-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, learnerUserId.toString())
@@ -101,7 +111,7 @@ class ChannelMessageSmokeTest {
     void ownerCanPostAndListStudyServerChannelMessages() throws Exception {
         UUID channelId = UUID.randomUUID();
         UUID ownerUserId = UUID.randomUUID();
-        channelMessageAccessClient.grant(channelId, ownerUserId, ChannelScope.STUDY_SERVER);
+        channelMessageAccessClient.grant(channelId, ownerUserId, ChannelScope.STUDY_SERVER, UUID.randomUUID(), null);
 
         MvcResult postResult = mockMvc.perform(post("/api/v1/study-server-channels/{channelId}/messages", channelId)
                         .header(AuthHeaders.USER_ID, ownerUserId.toString())
@@ -151,7 +161,7 @@ class ChannelMessageSmokeTest {
     void courseChannelMessagesCanResumeAfterCursor() throws Exception {
         UUID channelId = UUID.randomUUID();
         UUID learnerUserId = UUID.randomUUID();
-        channelMessageAccessClient.grant(channelId, learnerUserId, ChannelScope.COURSE);
+        channelMessageAccessClient.grant(channelId, learnerUserId, ChannelScope.COURSE, UUID.randomUUID(), UUID.randomUUID());
 
         Instant firstCreatedAt = Instant.parse("2026-01-01T00:00:00Z");
         ChannelMessage first = channelMessageRepository.save(new ChannelMessage(

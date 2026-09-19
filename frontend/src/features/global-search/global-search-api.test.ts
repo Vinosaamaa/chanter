@@ -33,4 +33,10 @@ describe('global-search-api', () => {
     })
     expect(result.indexedDocuments).toBe(3)
   })
+
+  it('sends type and Course filters before the server result limit', async () => {
+    mockedApiFetch.mockResolvedValue({ results: [] })
+    await searchStudyServer('server-1', 'study', { documentType: 'EVENT', courseId: 'course-1' })
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/study-servers/server-1/search?q=study&type=EVENT&courseId=course-1')
+  })
 })

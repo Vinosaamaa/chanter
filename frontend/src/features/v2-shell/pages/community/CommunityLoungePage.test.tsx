@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { CommunityLoungePage } from './CommunityPages'
 
 const state = vi.hoisted(() => ({ messages: [] as { id: string; senderUserId: string; body: string; createdAt: string }[] }))
@@ -13,6 +13,17 @@ vi.mock('../../../friends/friends-api', () => ({ fetchPublicProfiles: async () =
 afterEach(cleanup)
 beforeEach(() => { state.messages = [] })
 const mount = () => render(<MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><CommunityLoungePage /></QueryClientProvider></MemoryRouter>)
+
+function Location() { return <output data-testid="location">{useLocation().search}</output> }
+
+it('preserves unrelated query parameters when selecting a channel', async () => {
+  render(<MemoryRouter initialEntries={['/?from=search']}><QueryClientProvider client={new QueryClient()}>
+    <CommunityLoungePage /><Location />
+  </QueryClientProvider></MemoryRouter>)
+  await screen.findByText('No messages yet. Start the conversation.')
+  fireEvent.click(screen.getByRole('button', { name: 'lounge' }))
+  expect(screen.getByTestId('location')).toHaveTextContent('?from=search&channel=lounge')
+})
 
 it('shows an honest empty conversation without sample people or unsupported controls', async () => {
   mount()

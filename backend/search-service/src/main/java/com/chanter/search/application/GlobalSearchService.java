@@ -91,7 +91,7 @@ public class GlobalSearchService {
         return entries.size();
     }
 
-    public List<SearchHit> search(UUID studyServerId, UUID viewerUserId, String query) {
+    public List<SearchHit> search(UUID studyServerId, UUID viewerUserId, String query, SearchDocumentType type, UUID courseFilter) {
         CommunityNavigationClient.StudyServerNavigation navigation =
                 communityNavigationClient.fetchNavigation(studyServerId, viewerUserId);
 
@@ -99,28 +99,28 @@ public class GlobalSearchService {
                 .map(CommunityNavigationClient.CourseSummary::id)
                 .toList();
 
-        List<SearchHit> candidates = searchIndexRepository.search(
-                studyServerId,
-                visibleCourseIds,
-                query,
-                DEFAULT_RESULT_LIMIT
-        );
-
-        if (candidates.isEmpty()) {
-            return candidates;
-        }
-
         Map<UUID, Set<UUID>> visibleResourceIdsByCourse = new HashMap<>();
         Map<UUID, Set<UUID>> visibleFaqIdsByCourse = new HashMap<>();
-
-        return candidates.stream()
-                .flatMap(hit -> {
-                    if (hit.documentType() == SearchDocumentType.RESOURCE || hit.documentType() == SearchDocumentType.FAQ) {
-                        return isVisibleToViewer(hit, viewerUserId, visibleResourceIdsByCourse, visibleFaqIdsByCourse)
-                                ? java.util.stream.Stream.of(hit) : java.util.stream.Stream.<SearchHit>empty();
+        Map<String, SearchHit> visible = new java.util.LinkedHashMap<>();
+        SearchHit after = null;
+        while (visible.size() < DEFAULT_RESULT_LIMIT) {
+            List<SearchHit> candidates = searchIndexRepository.search(studyServerId, visibleCourseIds, query,
+                    DEFAULT_RESULT_LIMIT, type, courseFilter, after);
+            for (SearchHit hit : candidates) {
+                if (hit.documentType() == SearchDocumentType.RESOURCE || hit.documentType() == SearchDocumentType.FAQ) {
+                    if (isVisibleToViewer(hit, viewerUserId, visibleResourceIdsByCourse, visibleFaqIdsByCourse)) {
+                        visible.put(hit.documentType() + ":" + hit.sourceId(), hit);
                     }
-                    return sourceClient.currentVisibleHit(hit, studyServerId, viewerUserId).stream();
-                })
+                } else {
+                    sourceClient.currentVisibleHit(hit, studyServerId, viewerUserId).ifPresent(current ->
+                            visible.put(current.documentType() + ":" + current.sourceId(), current));
+                }
+                if (visible.size() == DEFAULT_RESULT_LIMIT) break;
+            }
+            if (candidates.size() < DEFAULT_RESULT_LIMIT) break;
+            after = candidates.getLast();
+        }
+        return visible.values().stream()
                 .map(hit -> new SearchHit(hit.documentType(), hit.courseId(), hit.courseId() == null ? navigation.studyServerName()
                         : navigation.courses().stream().filter(course -> course.id().equals(hit.courseId())).map(CommunityNavigationClient.CourseSummary::title).findFirst().orElse("Course"),
                         hit.sourceId(), hit.title(), hit.snippet(), hit.href(), hit.channelId(), hit.channelScope()))

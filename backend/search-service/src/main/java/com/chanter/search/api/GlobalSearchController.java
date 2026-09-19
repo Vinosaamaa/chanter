@@ -26,9 +26,11 @@ public class GlobalSearchController {
     public GlobalSearchResponse search(
             @PathVariable UUID studyServerId,
             @RequestParam String q,
+            @RequestParam(required = false) com.chanter.search.domain.SearchDocumentType type,
+            @RequestParam(required = false) UUID courseId,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
-        return GlobalSearchResponse.from(globalSearchService.search(studyServerId, viewerUserId, q));
+        return GlobalSearchResponse.from(globalSearchService.search(studyServerId, viewerUserId, q, type, courseId));
     }
 
     @PostMapping("/search/reindex")

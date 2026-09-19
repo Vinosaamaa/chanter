@@ -97,6 +97,14 @@ function GlobalSearchOverlayPanel({
     }
   }
 
+  const courseIds = useMemo(
+    () => new Set((navigationQuery.data?.courses ?? []).map((course) => course.id)),
+    [navigationQuery.data?.courses],
+  )
+  const activeCourseFilter = variant === 'v2' && routeCourseId
+    ? routeCourseId
+    : courseFilter !== 'all' && !courseIds.has(courseFilter) ? 'all' : courseFilter
+
   useEffect(() => {
     if (!serverId || trimmedQuery.length < 2) {
       return
@@ -105,7 +113,10 @@ function GlobalSearchOverlayPanel({
     let cancelled = false
     let handle: number
     const refresh = () => {
-      void searchStudyServer(serverId, trimmedQuery)
+      void searchStudyServer(serverId, trimmedQuery, {
+        documentType: contentTypeFilter === 'all' ? undefined : contentTypeFilter,
+        courseId: activeCourseFilter === 'all' ? undefined : activeCourseFilter,
+      })
         .then((response) => {
           if (!cancelled) {
             setResults(response.results)
@@ -131,15 +142,7 @@ function GlobalSearchOverlayPanel({
       cancelled = true
       window.clearTimeout(handle)
     }
-  }, [trimmedQuery, serverId])
-
-  const courseIds = useMemo(
-    () => new Set((navigationQuery.data?.courses ?? []).map((course) => course.id)),
-    [navigationQuery.data?.courses],
-  )
-  const activeCourseFilter = variant === 'v2' && routeCourseId
-    ? routeCourseId
-    : courseFilter !== 'all' && !courseIds.has(courseFilter) ? 'all' : courseFilter
+  }, [trimmedQuery, serverId, contentTypeFilter, activeCourseFilter])
 
   const groupedResults = useMemo(() => {
     const base = (serverId && trimmedQuery.length >= 2 ? results : []).filter((hit) => {
@@ -207,7 +210,7 @@ function GlobalSearchOverlayPanel({
           <FilterSelect
             label="Course"
             value={activeCourseFilter}
-            onChange={setCourseFilter}
+            onChange={value => { setCourseFilter(value); setResults([]); setIsSearching(trimmedQuery.length >= 2) }}
             disabled={variant === 'v2' && Boolean(routeCourseId)}
             options={[
               { value: 'all', label: 'Entire Study Server' },
@@ -220,7 +223,7 @@ function GlobalSearchOverlayPanel({
           <FilterSelect
             label="Content"
             value={contentTypeFilter}
-            onChange={(value) => setContentTypeFilter(value as ContentTypeFilter)}
+            onChange={value => { setContentTypeFilter(value as ContentTypeFilter); setResults([]); setIsSearching(trimmedQuery.length >= 2) }}
             options={[
               { value: 'all', label: 'All types' },
               { value: 'RESOURCE', label: 'Resources' },
