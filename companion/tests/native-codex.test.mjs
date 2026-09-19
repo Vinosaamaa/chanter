@@ -18,7 +18,7 @@ async function setup() {
   requireSupportedVersion(execFileSync(executable, ['--version'], { encoding: 'utf8', windowsHide: true }));
   await mkdir('.cache/companion-native', { recursive: true });
   const state = await mkdtemp(path.resolve('.cache/companion-native/run-'));
-  for (const name of ['empty', 'provider', 'home', 'tmp']) await mkdir(path.join(state, name));
+  for (const name of ['empty', 'provider', 'home', 'tmp', 'sqlite', 'log']) await mkdir(path.join(state, name));
   const plan = codexLaunchPlan({ state, workspace: path.join(state, 'empty') });
   return { state, plan };
 }

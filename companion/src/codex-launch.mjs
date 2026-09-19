@@ -15,17 +15,19 @@ export function requireSupportedVersion(output) {
 }
 
 /** Called only with native installation paths, never values accepted from a website. */
-export function codexLaunchPlan({ state, workspace, environment = process.env }) {
+export function codexLaunchPlan({ state, workspace, providerHome = path.join(state, 'provider'), environment = process.env }) {
   if (!path.isAbsolute(state) || !path.isAbsolute(workspace)
-      || path.relative(state, workspace) !== 'empty') throw new CompanionError('INVALID_NATIVE_WORKSPACE');
+      || !path.isAbsolute(providerHome) || path.relative(state, workspace) !== 'empty') throw new CompanionError('INVALID_NATIVE_WORKSPACE');
   const env = {};
   for (const key of ['SystemRoot', 'WINDIR']) if (environment[key]) env[key] = environment[key];
   Object.assign(env, {
-    CODEX_HOME: path.join(state, 'provider'), HOME: path.join(state, 'home'),
+    CODEX_HOME: providerHome, CODEX_SQLITE_HOME: path.join(state, 'sqlite'), HOME: path.join(state, 'home'),
     USERPROFILE: path.join(state, 'home'), TMP: path.join(state, 'tmp'), TEMP: path.join(state, 'tmp'),
   });
   const config = [
     'approval_policy="never"', 'approvals_reviewer="user"',
+    'cli_auth_credentials_store="file"', 'model_provider="openai"',
+    `sqlite_home=${JSON.stringify(path.join(state, 'sqlite'))}`, `log_dir=${JSON.stringify(path.join(state, 'log'))}`,
     'default_permissions="chanter-study"',
     'permissions.chanter-study.filesystem={":root"="deny",":minimal"="read"}',
     'permissions.chanter-study.network.enabled=false',

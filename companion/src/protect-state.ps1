@@ -11,7 +11,7 @@ try {
         [System.IO.Directory]::CreateDirectory($StatePath, $security) | Out-Null
     }
     $items = @((Get-Item -LiteralPath $StatePath -Force))
-    $items += @(Get-ChildItem -LiteralPath $StatePath -Force | Where-Object { $_.Name -like 'state.sqlite*' })
+    $items += @(Get-ChildItem -LiteralPath $StatePath -Force | Where-Object { $_.Name -like 'state.sqlite*' -or $_.Name -in @('configuration.json', 'app', 'provider', 'runs', 'start.ps1') })
     foreach ($item in $items) {
         if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { throw 'Unsafe state' }
         $acl = $item.GetAccessControl()

@@ -23,6 +23,7 @@ test('launch uses a separate provider home and does not inherit tokens, proxies,
   assert.equal(plan.options.cwd, workspace);
   assert.deepEqual(plan.options.env, {
     SystemRoot: 'C:\\Windows', CODEX_HOME: path.join(state, 'provider'),
+    CODEX_SQLITE_HOME: path.join(state, 'sqlite'),
     HOME: path.join(state, 'home'), USERPROFILE: path.join(state, 'home'),
     TMP: path.join(state, 'tmp'), TEMP: path.join(state, 'tmp'),
   });

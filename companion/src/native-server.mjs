@@ -7,6 +7,7 @@ export async function startNativeServer({ state, origin, publicKey, approve, tra
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new CompanionError('INVALID_NATIVE_CONFIGURATION');
   let gate, host;
   const controllers = new Set();
+  const shutdown = new AbortController();
   const server = createServer({ headersTimeout: 5000, requestTimeout: 5000, keepAliveTimeout: 1000 }, (req, res) => {
     void handle(req, res).catch(() => res.destroy());
   });
@@ -95,8 +96,9 @@ export async function startNativeServer({ state, origin, publicKey, approve, tra
   return {
     port: server.address().port,
     // Native UI calls this directly. It is deliberately absent from the HTTP routes.
-    pair: (ticket) => gate.pair(ticket),
+    pair: (ticket) => gate.pair(ticket, { signal: shutdown.signal }),
     async close() {
+      shutdown.abort();
       for (const controller of controllers) controller.abort();
       server.closeAllConnections();
       await new Promise((resolve) => server.close(resolve));

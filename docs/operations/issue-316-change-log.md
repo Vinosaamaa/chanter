@@ -1,6 +1,6 @@
 # Issue 316 implementation record
 
-Status: native boundary in progress, not an installed or released companion. No PR is published yet. Branch baseline is `db480a3cefb5f30ad109157590064ba0f952abb9`; #319 is accepted at `8af576c58579320da9ad92d55335830715bdf8eb` and backend integration still waits for #244. See [design](issue-316-design.md) and [system review](issue-316-system-review.md).
+Status: independent native developer package in progress, not a signed or released companion. Accepted rebase baseline is `798eb16cd1f505b6378ff6241cd3c16a430e74ff`; backend integration still waits for #244. See [operator instructions](../../companion/README.md), [design](issue-316-design.md), and [system review](issue-316-system-review.md).
 
 ## Implemented slice
 
@@ -36,6 +36,16 @@ The missing method and changed completed-answer tests failed before their implem
 
 The resumed local suite passes 43 tests with no failures or skips, including eight native Codex tests. `git diff --check` also passes. A dedicated Windows/Linux workflow runs the Node 24 boundary suite without downloading or authenticating a provider binary; its native tests explicitly skip unless a compatible binary is supplied. That workflow has not run on a hosted PR yet, and no cross-platform native entitlement or isolation claim follows from it.
 
+## Native operator package and retention
+
+The unsigned `0.1.0-dev` source installer verifies the selected unmodified Codex version, installs a fixed program-file list and public deployment configuration into a private directory, and produces a visible-terminal launcher. It does not alter PATH, register background startup, import authentication, or run a login. Installation inside a Git workspace writes a private-state ignore file. Setup status distinguishes installation/version checks from live account/listener checks. Existing installations are preserved. Windows is the verified native platform; other native platforms fail closed.
+
+The native terminal displays signed pairing/request details with control characters escaped. A random typed challenge, not a browser response or redirected pipe, grants approval. Expiry clears the challenge. Explicit operator commands own provider device login, cancellation, logout, pairing revocation, status, restart, and stop. A failed stop/restart race test led to serialized lifecycle operations. No real login was invoked during development.
+
+Each provider operation now uses a fresh empty workspace, home, temporary directory, SQLite directory, and log directory. The separate provider-owned authentication home persists. Process exit is verified before deleting the exact owned runtime directory and temporary executable wrappers. Recovery removes an owned orphan only when its recorded controller and provider processes are both absent; linked, live, unknown, or unremovable state blocks execution. Authentication files are never opened, copied, or deleted by Chanter. Source-only/unknown completion claims remain durable.
+
+The local suite passes 53 tests, including nine native cases with unmodified Codex 0.153.4. A real installed package was run in an interactive terminal: status reported signed-out, restart succeeded, stop exited cleanly, and the owned run directory was empty afterward. Native tests also prove that operational SQLite files are absent from the persistent provider home and that a synthetic provider-owned marker survives cleanup. This is local Windows/protocol evidence, not eligible-account inference or signed-release proof.
+
 ## Remaining owning-issue work
 
-The native launch entrypoint, signed installers, backend signing/reservations/export approval/result acceptance, signing-key provisioning, local approval UI and session-revocation wiring, operational database retention audit, and consenting eligible-account end-to-end verification remain required. #321 owns the existing hosted-provider selector/error UI; it does not deliver #316. Claude remains a separate native adapter within this owning issue's acceptance criteria. Full retrieval and grounded study explanation still depend on #247/evaluation. No public service, provider login, copied credential, or paid inference was used in this work.
+Signed installers, backend signing/reservations/export approval/result acceptance, signing-key provisioning, hosted pairing UI and live session-revocation wiring, final durable-claim retention policy, and consenting eligible-account end-to-end verification remain required. #321 owns the existing hosted-provider selector/error UI; it does not deliver #316. Claude remains a separate native adapter within this owning issue's acceptance criteria. Full retrieval and grounded study explanation still depend on #247/evaluation. No public service, provider login, copied credential, or paid inference was used in this work.

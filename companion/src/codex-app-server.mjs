@@ -93,6 +93,25 @@ export class CodexAppServer {
     this.#loginId = null;
   }
 
+  async logout() {
+    this.#requireInitialized();
+    await this.#request('account/logout', {});
+    this.#loginId = null;
+  }
+
+  async stop() {
+    if (this.#exited) return;
+    const exited = new Promise((resolve) => this.#child.once('exit', resolve));
+    this.close();
+    if (this.#exited || !this.#child.pid) return;
+    let timer;
+    try {
+      await Promise.race([exited, new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new CompanionError('PROVIDER_SHUTDOWN_FAILED')), 2500);
+      })]);
+    } finally { clearTimeout(timer); }
+  }
+
   /** Native transport only. Caller must verify capability, consume it durably, and obtain local approval first. */
   async studyTurn(request, { signal, onDelta = () => {} } = {}) {
     this.#requireInitialized();

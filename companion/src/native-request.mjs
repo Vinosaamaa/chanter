@@ -23,10 +23,10 @@ export class NativeRequestGate {
   }
 
   /** Invoke from native user action after displaying the backend-signed pairing identity. */
-  async pair(ticket) {
+  async pair(ticket, { signal } = {}) {
     return this.#exclusive(async () => {
       const payload = this.#read(ticket, 'pair');
-      if (await this.#approval(payload, { kind: 'pair', origin: payload.origin, userId: payload.userId }) !== true) {
+      if (await this.#approval(payload, { kind: 'pair', origin: payload.origin, userId: payload.userId }, signal) !== true) {
         throw new CompanionError('NATIVE_APPROVAL_REQUIRED');
       }
       this.#requireCurrent(payload);
@@ -95,14 +95,15 @@ export class NativeRequestGate {
 
   async #approval(payload, summary, signal) {
     if (signal?.aborted) throw new CompanionError('STUDY_CANCELLED');
+    const approval = new AbortController();
     let timer, abort;
     const stopped = new Promise((_, reject) => {
       timer = setTimeout(() => reject(new CompanionError('INVALID_CAPABILITY')), Math.max(0, payload.expiresAt - Date.now()));
-      abort = () => reject(new CompanionError('STUDY_CANCELLED'));
+      abort = () => { approval.abort(); reject(new CompanionError('STUDY_CANCELLED')); };
       signal?.addEventListener('abort', abort, { once: true });
     });
-    try { return await Promise.race([stopped, Promise.resolve().then(() => this.#approve(Object.freeze(summary), { signal }))]); }
-    finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+    try { return await Promise.race([stopped, Promise.resolve().then(() => this.#approve(Object.freeze(summary), { signal: approval.signal }))]); }
+    finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); approval.abort(); }
   }
 
   async #exclusive(action) {
