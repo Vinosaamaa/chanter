@@ -31,7 +31,7 @@ public class ModerationDirectory {
                   OR LOWER(email)=? OR CAST(id AS VARCHAR)=? ORDER BY display_name,id LIMIT 50 OFFSET ?
                 """,(rs,row)->new ModerationDirectoryItem("USER",rs.getObject(1,UUID.class),rs.getString(2)),
                 "%"+query.strip().toLowerCase(Locale.ROOT).replace("!","!!").replace("%","!%").replace("_","!_")+"%",
-                query.strip().toLowerCase(Locale.ROOT),query.strip(),offset) : sources.searchStudyServers(query,offset);
+                query.strip().toLowerCase(Locale.ROOT),query.strip().toLowerCase(Locale.ROOT),offset) : sources.searchStudyServers(query,offset);
         audit.append(operator.userId(),"MODERATION_DIRECTORY_READ",type,reason,correlation,"",Integer.toString(result.size()));
         return result;
     }

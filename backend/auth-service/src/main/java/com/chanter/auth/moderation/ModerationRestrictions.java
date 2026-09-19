@@ -30,6 +30,25 @@ public class ModerationRestrictions {
                 """, Boolean.class, type, target, at.atOffset(ZoneOffset.UTC), at.atOffset(ZoneOffset.UTC)));
     }
 
+    /** One indexed lookup for a source page; type and ID remain an inseparable pair. */
+    public Set<com.chanter.common.auth.ModerationAccess.Target> restrictedSources(
+            List<com.chanter.common.auth.ModerationAccess.Target> targets,Instant at) {
+        if(targets==null || targets.size()>100) throw new IllegalArgumentException("At most 100 sources are allowed");
+        if(targets.isEmpty()) return Set.of();
+        var arguments=new java.util.ArrayList<Object>();
+        arguments.add(at.atOffset(ZoneOffset.UTC)); arguments.add(at.atOffset(ZoneOffset.UTC));
+        var predicates=new java.util.ArrayList<String>();
+        for(var target:targets) {
+            requireType(target.type());
+            predicates.add("(target_type=? AND target_id=?)");
+            arguments.add(target.type()); arguments.add(target.id());
+        }
+        String sql="SELECT DISTINCT target_type,target_id FROM moderation_restrictions WHERE starts_at<=? AND expires_at>? AND revoked_at IS NULL AND ("
+                +String.join(" OR ",predicates)+")";
+        return Set.copyOf(jdbc.query(sql,(rs,row)->new com.chanter.common.auth.ModerationAccess.Target(
+                rs.getString(1),rs.getObject(2,UUID.class)),arguments.toArray()));
+    }
+
     public void requireActiveAccount(UUID user) {
         if (!Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM auth_users WHERE id=?)", Boolean.class, user)))
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account not found");

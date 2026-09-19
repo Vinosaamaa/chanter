@@ -18,6 +18,30 @@ class ModerationAppealsTest {
     @Autowired ModerationAppeals appeals;
     @org.springframework.test.context.bean.override.mockito.MockitoBean OperatorAccess operators;
 
+    @Test void concurrentValidLinksCannotCreateTwoPendingAppeals() throws Exception {
+        Fixture owner=fixture(true);
+        appeals.request(owner.email(),owner.restriction());
+        appeals.request(owner.email(),owner.restriction());
+        var tokens=jdbc.queryForList("SELECT body_text FROM auth_email_outbox WHERE recipient=?",String.class,owner.email())
+                .stream().map(body -> body.split("#token=",2)[1].strip()).toList();
+        assertThat(tokens).hasSize(2);
+        var start=new java.util.concurrent.CountDownLatch(1);
+        try(var executor=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var tasks=tokens.stream().map(token -> executor.submit(() -> {
+                start.await();
+                try { appeals.submit(token,"Review this restriction",UUID.randomUUID()); return true; }
+                catch(ResponseStatusException duplicate) { return false; }
+            })).toList();
+            start.countDown();
+            int accepted=0;
+            for(var task:tasks) if(task.get(10,java.util.concurrent.TimeUnit.SECONDS)) accepted++;
+            assertThat(accepted).isEqualTo(1);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_appeals WHERE restriction_id=? AND status='PENDING'",Integer.class,owner.restriction())).isEqualTo(1);
+        appeals.request(owner.email(),owner.restriction());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM auth_email_outbox WHERE recipient=?",Integer.class,owner.email())).isEqualTo(2);
+    }
+
     @Test void administratorCanReverseAnAppealWithAtomicRestrictionAuditAndNotice() {
         Fixture owner=fixture(true); UUID operator=fixture(true).user();
         jdbc.update("INSERT INTO platform_operators(user_id,role,granted_at) VALUES(?,'ADMIN',CURRENT_TIMESTAMP)",operator);
@@ -63,6 +87,8 @@ class ModerationAppealsTest {
         jdbc.update("UPDATE moderation_appeal_tokens SET expires_at=DATEADD('SECOND',-1,CURRENT_TIMESTAMP) WHERE token_hash=?",OperatorAccess.hash(token));
         assertThatThrownBy(() -> appeals.submit(token,"Review expired link",UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_appeals WHERE restriction_id=?",Integer.class,owner.restriction())).isZero();
+        appeals.request(owner.email(),owner.restriction());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_appeal_tokens WHERE token_hash=?",Integer.class,OperatorAccess.hash(token))).isZero();
     }
 
     private String sentToken(String recipient) {

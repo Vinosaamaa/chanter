@@ -57,6 +57,6 @@ public class InternalReportEvidenceController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid directory query");
         String pattern="%"+query.strip().toLowerCase(java.util.Locale.ROOT).replace("!","!!").replace("%","!%").replace("_","!_")+"%";
         return jdbc.query("SELECT id,name FROM study_servers WHERE LOWER(name) LIKE ? ESCAPE '!' OR CAST(id AS VARCHAR)=? ORDER BY name,id LIMIT 50 OFFSET ?",
-                (rs,row)->new com.chanter.common.auth.ModerationDirectoryItem("STUDY_SERVER",rs.getObject(1,UUID.class),rs.getString(2)),pattern,query.strip(),offset);
+                (rs,row)->new com.chanter.common.auth.ModerationDirectoryItem("STUDY_SERVER",rs.getObject(1,UUID.class),rs.getString(2)),pattern,query.strip().toLowerCase(java.util.Locale.ROOT),offset);
     }
 }

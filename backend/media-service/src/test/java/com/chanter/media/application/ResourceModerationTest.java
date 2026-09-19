@@ -72,6 +72,8 @@ class ResourceModerationTest {
         }).when(moderation).requireAllowed(nullable(UUID.class),anyList());
         assertThat(service.listCourseResources(course,learner)).extracting(CourseResource::id).containsExactly(visible.id());
         assertThatThrownBy(() -> service.getCourseResource(restricted.id(),learner)).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> service.deleteCourseResource(restricted.id(),teacher)).isInstanceOf(ResponseStatusException.class);
+        assertThat(lifecycle.find(restricted.id()).orElseThrow().state()).isEqualTo("AVAILABLE");
         assertThatThrownBy(() -> { try(var ignored=service.downloadCourseResource(restricted.id(),learner).content()) { } }).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> { try(var ignored=service.downloadForIngestion(restricted.id(),course,restricted.sha256()).content()) { } }).isInstanceOf(ResponseStatusException.class);
         verify(storage,never()).open(restricted.storageKey());

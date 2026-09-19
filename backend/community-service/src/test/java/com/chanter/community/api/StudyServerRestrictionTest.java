@@ -32,6 +32,14 @@ class StudyServerRestrictionTest {
     @Autowired MockMvc mvc;
     @MockitoBean ModerationAccess moderation;
 
+    @Test void directoryFindsAnUppercaseServerReference() throws Exception {
+        var server=servers.createStudyServer("Reference search school","",StudyServerType.SCHOOL,List.of(),UUID.randomUUID());
+        mvc.perform(get("/internal/v1/moderation/directory").param("query",server.id().toString().toUpperCase(Locale.ROOT))
+                .header("X-Chanter-Internal-Service-Token","test-internal-service-token-for-community"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].id").value(server.id().toString()));
+    }
+
     @Test void currentRestrictionBlocksEveryScopeAliasAndRestorationWorks() throws Exception {
         UUID user=UUID.randomUUID();
         var server=servers.createStudyServer("Restricted school","",StudyServerType.SCHOOL,List.of(),user);

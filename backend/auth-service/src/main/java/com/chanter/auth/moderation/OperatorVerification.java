@@ -50,7 +50,6 @@ public class OperatorVerification {
     public Enrollment enroll(String authorization, String password, UUID correlation) {
         var operator = access.requireRole(authorization);
         FactorRow row = lock(operator.userId());
-        access.requireRole(authorization);
         attempt(operator.userId(), row);
         requirePassword(operator.userId(), password);
         if (row.confirmed()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Operator factor already enrolled");
@@ -69,7 +68,6 @@ public class OperatorVerification {
     public Verified verify(String authorization, String password, String code, boolean confirmation, UUID correlation) {
         var operator = access.requireRole(authorization);
         FactorRow row = lock(operator.userId());
-        access.requireRole(authorization);
         attempt(operator.userId(), row);
         requirePassword(operator.userId(), password);
         if (row.encrypted() == null || (!confirmation && !row.confirmed())) throw invalidCode();

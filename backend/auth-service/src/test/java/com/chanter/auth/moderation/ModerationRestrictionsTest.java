@@ -55,8 +55,14 @@ class ModerationRestrictionsTest {
                 VALUES(?,?,'USER',?,?,'Account abuse',?,?)
                 """, id, report, user, UUID.randomUUID(), OffsetDateTime.now().minusMinutes(1), OffsetDateTime.now().plusHours(1));
         assertThat(restrictions.isRestricted("USER", user, Instant.now())).isTrue();
+        var exact=new com.chanter.common.auth.ModerationAccess.Target("USER",user);
+        var otherType=new com.chanter.common.auth.ModerationAccess.Target("MESSAGE",user);
+        var batch=java.util.List.of(exact,otherType,new com.chanter.common.auth.ModerationAccess.Target("USER",UUID.randomUUID()));
+        assertThat(restrictions.restrictedSources(batch,Instant.now())).containsExactly(exact);
+        assertThat(restrictions.restrictedSources(batch,Instant.now().plusSeconds(7200))).isEmpty();
         assertThat(restrictions.isRestricted("USER", user, Instant.now().plusSeconds(7200))).isFalse();
         jdbc.update("UPDATE moderation_restrictions SET revoked_at=CURRENT_TIMESTAMP WHERE id=?", id);
+        assertThat(restrictions.restrictedSources(batch,Instant.now())).isEmpty();
         assertThat(restrictions.isRestricted("USER", user, Instant.now())).isFalse();
         assertThat(jdbc.queryForObject("SELECT reason FROM moderation_restrictions WHERE id=?", String.class, id)).isEqualTo("Account abuse");
     }

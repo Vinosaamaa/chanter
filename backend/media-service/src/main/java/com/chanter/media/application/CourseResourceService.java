@@ -89,6 +89,7 @@ public class CourseResourceService {
     public void deleteCourseResource(UUID id, UUID user) {
         var resource = lifecycle.find(id).orElseThrow(CourseResourceService::missing);
         requireUpload(resource.courseId(), user);
+        requireSource(resource, user);
         lifecycle.requestDelete(id);
     }
 

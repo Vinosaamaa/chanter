@@ -48,6 +48,14 @@ public class ModerationAppeals {
     public void request(String address, UUID restriction) {
         var user = users.findByEmail(address.strip().toLowerCase(Locale.ROOT)).orElse(null);
         if (user == null || !user.emailVerified() || !ownsRestriction(user.id(), restriction)) return;
+        jdbc.update("""
+                DELETE FROM moderation_appeal_tokens WHERE token_hash IN (
+                    SELECT token_hash FROM moderation_appeal_tokens WHERE expires_at<=CURRENT_TIMESTAMP
+                    ORDER BY expires_at,token_hash LIMIT 100
+                )
+                """);
+        lockRestriction(restriction);
+        if (pending(restriction)) return;
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -73,6 +81,10 @@ public class ModerationAppeals {
                 OperatorAccess.hash(token)).stream().findFirst().orElseThrow(ModerationAppeals::invalid);
         if (credential.consumed() != null || !credential.expires().isAfter(now)
                 || !ownsRestriction(credential.user(), credential.restriction())) throw invalid();
+        // Distinct still-valid links share one restriction lock, so they cannot open competing cases.
+        lockRestriction(credential.restriction());
+        if (pending(credential.restriction())) throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "An appeal for this restriction is already awaiting review");
         jdbc.update("UPDATE moderation_appeal_tokens SET consumed_at=? WHERE token_hash=?",
                 now.atOffset(ZoneOffset.UTC), OperatorAccess.hash(token));
         UUID appeal = UUID.randomUUID();
@@ -96,6 +108,16 @@ public class ModerationAppeals {
                         throw new IllegalStateException("Unable to verify preserved restriction ownership", invalid);
                     }
                 }, restriction).stream().findFirst().orElse(false);
+    }
+
+    private void lockRestriction(UUID restriction) {
+        jdbc.queryForObject("SELECT id FROM moderation_restrictions WHERE id=? FOR UPDATE",UUID.class,restriction);
+    }
+
+    private boolean pending(UUID restriction) {
+        return Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT EXISTS(SELECT 1 FROM moderation_appeals WHERE restriction_id=? AND status='PENDING')",
+                Boolean.class,restriction));
     }
 
     @Transactional

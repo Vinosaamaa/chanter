@@ -171,7 +171,7 @@ public class SocialRealtimeHub {
                 .thenMany(Flux.merge(
                 deliverToUser(message.senderUserId(), message, clientMessageId),
                 deliverToUser(message.recipientUserId(), message, clientMessageId)
-        )).onErrorResume(error -> Mono.empty()).then();
+        )).onErrorResume(SocialRealtimeHub::isAccessDenial, error -> Mono.empty()).then();
     }
 
     public Mono<Void> deliverEventToUser(UUID userId, Map<String, Object> payload) {
@@ -183,7 +183,7 @@ public class SocialRealtimeHub {
         return Mono.fromRunnable(() -> moderation.requireAccount(userId)).subscribeOn(Schedulers.boundedElastic())
                 .thenMany(Flux.fromIterable(sessions))
                 .flatMap(session -> sendJson(session, payload),4)
-                .onErrorResume(error -> Mono.empty())
+                .onErrorResume(SocialRealtimeHub::isAccessDenial, error -> Mono.empty())
                 .then();
     }
 
@@ -199,6 +199,11 @@ public class SocialRealtimeHub {
                 .collectList().timeout(java.time.Duration.ofSeconds(4))
                 .onErrorReturn(List.of())
                 .flatMap(online -> sendJson(session,Map.of("type","presence_snapshot","onlineUserIds",online)));
+    }
+
+    private static boolean isAccessDenial(Throwable failure) {
+        return failure instanceof org.springframework.web.server.ResponseStatusException status
+                && java.util.Set.of(401,403,404).contains(status.getStatusCode().value());
     }
 
     private Mono<Void> notifyFriendsPresence(UUID userId, String status) {
@@ -256,8 +261,7 @@ public class SocialRealtimeHub {
     private Mono<Void> sendJson(WebSocketSession session, Map<String, Object> payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);
-            return session.send(Mono.just(session.textMessage(json)))
-                    .onErrorResume(error -> Mono.empty());
+            return session.send(Mono.just(session.textMessage(json)));
         } catch (JsonProcessingException exception) {
             return Mono.error(exception);
         }
