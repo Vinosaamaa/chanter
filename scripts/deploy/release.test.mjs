@@ -28,8 +28,27 @@ test('native agent receives private auth and message routes without enabling or 
   assert.equal(agent.environment.AUTH_SERVICE_URL, 'http://auth-service:8080');
   assert.equal(agent.environment.MESSAGE_SERVICE_URL, 'http://message-service:8080');
   assert.equal(agent.env_file[0].path, path.join('/srv/chanter/staging/runtime', 'agent-service.env'));
-  for (const service of Object.values(stage.services)) {
+  for (const [name, service] of Object.entries(stage.services)) {
+    if (name === 'migrate-agent-service') continue;
     assert.ok(!Object.keys(service.environment ?? {}).some(key => key.startsWith('CHANTER_NATIVE_COMPANION_')));
+  }
+});
+
+test('native migrator overrides every issuer env_file value without clearing the agent runtime', () => {
+  const stage = composeFor(release(), config, '/srv/chanter/staging/runtime');
+  const agent = stage.services['agent-service'];
+  const migrator = stage.services['migrate-agent-service'];
+  const configured = { CHANTER_NATIVE_COMPANION_ORIGIN: 'https://staging.chanter.example',
+    CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8: 'synthetic-private-key',
+    CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI: 'synthetic-public-key', CHANTER_NATIVE_COMPANION_MODELS: 'example-model' };
+  assert.deepEqual(migrator.env_file, agent.env_file);
+  assert.notEqual(migrator.environment, agent.environment);
+  const runtimeEnvironment = { ...configured, ...agent.environment };
+  const migrationEnvironment = { ...configured, ...migrator.environment };
+  for (const [key, value] of Object.entries(configured)) {
+    assert.equal(runtimeEnvironment[key], value);
+    assert.equal(migrationEnvironment[key], '');
+    assert.equal(Object.hasOwn(agent.environment, key), false);
   }
 });
 

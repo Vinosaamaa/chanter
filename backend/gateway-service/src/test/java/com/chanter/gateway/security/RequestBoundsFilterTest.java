@@ -11,6 +11,7 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 class RequestBoundsFilterTest {
     @Test void sharedNetworkAllowsSignupRacesButKeepsABoundedActiveLimit() {
@@ -44,17 +45,30 @@ class RequestBoundsFilterTest {
         assertThat(chunked.getResponse().getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
     }
 
-    @Test void slowBodiesExpireAndCancellationReleasesCapacity() {
+    @Test void slowBodiesExpireWithoutForwarding() {
         var filter = new RequestBoundsFilter(16, 32, 1, Duration.ofMillis(40));
         var slow = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/login").body(Flux.never()));
-        filter.filter(slow, next -> Mono.error(new AssertionError("Incomplete body reached backend"))).block(Duration.ofSeconds(2));
+        StepVerifier.withVirtualTime(() -> filter.filter(slow,
+                next -> Mono.error(new AssertionError("Incomplete body reached backend"))))
+                .thenAwait(Duration.ofMillis(40)).verifyComplete();
         assertThat(slow.getResponse().getStatusCode()).isEqualTo(HttpStatus.REQUEST_TIMEOUT);
+    }
+
+    @Test void cancellationReleasesCapacityForTheNextRequest() {
+        var filter = new RequestBoundsFilter(16, 32, 1, Duration.ofMinutes(1));
         var held = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/login").body("{}"));
-        var pending = filter.filter(held, next -> Mono.never()).subscribe();
+        var forwarded = new AtomicBoolean();
+        var cancelled = new AtomicBoolean();
+        var pending = filter.filter(held, next -> {
+            forwarded.set(true);
+            return Mono.<Void>never().doOnCancel(() -> cancelled.set(true));
+        }).subscribe();
+        assertThat(forwarded).isTrue();
         var saturated = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/login").body("{}"));
         filter.filter(saturated, next -> Mono.error(new AssertionError("Capacity exceeded"))).block();
         assertThat(saturated.getResponse().getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         pending.dispose();
+        assertThat(cancelled).isTrue();
         var accepted = new AtomicBoolean();
         var retried = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/login").body("{}"));
         filter.filter(retried, next -> { accepted.set(true); return Mono.empty(); }).block();
