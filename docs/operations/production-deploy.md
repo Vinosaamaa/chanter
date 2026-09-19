@@ -29,6 +29,14 @@ Staging and production have separate Compose projects, volumes and secrets, but 
 
 `infra/production/runtime-lock.json` pins multi-architecture upstream image digests. Application images contain the exact compiled commit, run as UID 10001, expose readiness, use a read-only root filesystem and allow 35 seconds for shutdown. The React bundle is served by Caddy. No JVM, Node build, dependency download or source checkout is required on the production host.
 
+Caddy 2.11.4 is rebuilt with the locked Go 1.27.1 toolchain and patched module
+graph in `infra/production/frontend/caddy`; its upstream release binary failed
+the vulnerability gate even inside the refreshed Alpine image. The PostgreSQL
+derivative removes the unused `gosu` privilege-switching helper and starts as
+UID 70. Redis and LiveKit use refreshed upstream digests. These are scanned as
+the final runtime images, with no advisory exceptions. Never restore the old
+binary or helper solely to match an upstream image byte for byte.
+
 The `Release package` workflow validates both AMD64 and ARM64 on pull requests. It runs backend and frontend checks, builds images, scans all runtime images for high/critical vulnerabilities and secrets, then starts an empty ephemeral staging environment. It runs migrations twice, checks PostgreSQL-specific indexes, readiness, HTTPS routing, the frontend, anonymous auth bootstrap and rejected foreign origins. A scanner or staging failure blocks packaging; do not silence a finding merely to publish.
 
 Manually dispatch the workflow from merged `main` only after the normal `CI` workflow is green at that exact commit. Only that job receives release-write permission. It creates a draft GitHub Release named `deploy-<40-character-commit>` with one archive and SHA-256 file per architecture. Review the exact build, scan and staging runs before publishing the draft. No production credentials enter GitHub Actions. Each archive must be smaller than 2 GB; GitHub documents a 2 GiB per-file release limit and no total release-size or bandwidth limit. See [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).

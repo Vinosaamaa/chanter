@@ -23,9 +23,12 @@ for module in "${modules[@]}"; do
     --tag "chanter-$module:$commit" .
 done
 docker build --platform "linux/$architecture" --file infra/production/frontend/Dockerfile \
-  --build-arg "CADDY_IMAGE=$(locked caddy)" --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" \
+  --build-arg "CADDY_IMAGE=$(locked caddy)" --build-arg "GO_IMAGE=$(locked go)" --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" \
   --label "org.opencontainers.image.revision=$commit" --tag "chanter-frontend:$commit" .
-for dependency in postgres redis livekit; do
+docker build --platform "linux/$architecture" --file infra/production/postgres/Dockerfile \
+  --build-arg "POSTGRES_IMAGE=$(locked postgres)" --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" \
+  --label "org.opencontainers.image.revision=$commit" --tag "chanter-postgres:$commit" .
+for dependency in redis livekit; do
   docker pull --platform "linux/$architecture" "$(locked "$dependency")"
   docker tag "$(locked "$dependency")" "chanter-$dependency:$commit"
 done

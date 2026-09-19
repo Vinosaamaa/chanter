@@ -45,11 +45,13 @@ done
 "${compose[@]}" up -d --no-deps livekit
 "${compose[@]}" up -d --no-deps --wait --wait-timeout 180 frontend
 test "$("${compose[@]}" exec -T postgres stat -c '%u:%g' /var/lib/postgresql/data)" = '70:70'
+"${compose[@]}" exec -T postgres sh -c 'test "$(id -u)" = 70 && test ! -e /usr/local/bin/gosu'
 test "$("${compose[@]}" exec -T redis stat -c '%u:%g' /data)" = '999:1000'
 test "$("${compose[@]}" exec -T media-service stat -c '%u:%g' /app/resources)" = '10001:10001'
 test "$("${compose[@]}" exec -T frontend stat -c '%u:%g' /data/caddy)" = '10001:10001'
 "${compose[@]}" exec -T media-service sh -c 'test -w /app/resources && test "$(id -u)" = 10001'
 "${compose[@]}" exec -T frontend sh -c 'test -w /data/caddy && test -w /config/caddy && test "$(id -u)" = 10001'
+"${compose[@]}" exec -T frontend caddy version | grep -q '^v2.11.4'
 "${compose[@]}" exec -T gateway-service java -cp /app/helpers Probe http://livekit:7880
 "${compose[@]}" cp frontend:/data/caddy/pki/authorities/local/root.crt "$state/root.crt"
 printf '127.0.0.1 staging.chanter.test\n' | sudo tee -a /etc/hosts >/dev/null

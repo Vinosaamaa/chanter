@@ -43,3 +43,20 @@ Review added native volume ownership/write checks, per-service boot timings, con
 The initial native release built the application images and then failed security scanning: the original Spring Boot 3.4.1 application package contained 33 high/critical findings. PR #320 is now merged with the supported-framework repair and complete nested-library scan. No advisory was suppressed. This deployment branch has been rebased onto that repair; native image and staging verification must run again against the integrated candidate before it can be accepted.
 
 The new password encoder creates versioned PBKDF2 hashes, which the previous application cannot verify. The release policy therefore advances to epoch 3 before any such data is written. This incompatibility exists without a database-column change. The later media quarantine migration must use epoch 4. Rebase onto merged UI and AI foundations preserved the exact release scripts and combined the existing LF rules with the Engineering schema rules from PR #313.
+
+## Runtime image repair, September 18
+
+The next native release attempt passed the ten Java image scans, then found
+HIGH findings in the pinned Caddy image. Remote scans also identified outdated
+Redis/PostgreSQL operating-system packages, PostgreSQL's unused `gosu` helper,
+and LiveKit dependencies. Fresh upstream digests remove the operating-system
+findings; LiveKit 1.13.7 also passes its binary scan.
+
+The refreshed official Caddy image still includes the original vulnerable
+release binary. Build the same Caddy 2.11.4 with the official main entry point,
+locked patched modules and Go 1.27.1. Retain its upstream license and checksum
+provenance. Remove PostgreSQL's unused root privilege-switching helper because
+the deployment already starts the database as UID 70. Extend native smoke
+verification to require the expected Caddy version and unprivileged PostgreSQL
+without that helper. No advisory was suppressed. Full final-image scans and
+native staging remain required before accepting this candidate.

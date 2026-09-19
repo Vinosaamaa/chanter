@@ -44,6 +44,15 @@ The running containers have a combined 7,808 MiB memory cap. Staging and product
 
 Pinned multi-architecture upstream digests feed architecture-specific image builds. A reviewed GitHub release delivers an offline image archive, checksum, exact image-ID manifest and host scripts. Only a manual merged-main workflow with successful exact-commit CI can write the draft release. Pull-request builds have read-only permissions. Every image is scanned and started in ephemeral staging before publication; no production credentials enter CI.
 
+An upstream tag is not proof that its embedded dependencies are maintained.
+Native scans reproduced vulnerable Go dependencies in the Caddy release binary
+and PostgreSQL's unused privilege helper after operating-system refreshes.
+Rebuild the same Caddy version using the upstream entry point, a pinned Go
+toolchain and checked-in module checksums. Remove the database helper because
+the runtime starts directly as its unprivileged account. This adds a small
+maintained Caddy module lock; complete runtime scans and actual native startup
+remain mandatory for every subsequent refresh.
+
 Private per-service environment files are generated on the host. Compose's raw file format preserves provider-password punctuation. Initialization refuses partial or existing state, validation rejects missing values, and the gateway receives no database or SMTP credential. The release manifest and Docker image IDs are public configuration; runtime files and host state are private operator data.
 
 Caddy serves frontend and API on one HTTPS origin. It strips client identity/internal-service headers, controls cache and security headers, and supplies the exact origin required by #242. Actual DNS, certificate issuance, sender identity, external media reachability and any optional Cloudflare edge controls require provider evidence before public enrollment.

@@ -1,8 +1,14 @@
 ARG CADDY_IMAGE
+ARG GO_IMAGE
+FROM ${GO_IMAGE} AS build
+WORKDIR /src
+COPY infra/production/frontend/caddy/ ./
+RUN CGO_ENABLED=0 GOTOOLCHAIN=local go build -mod=readonly -trimpath -ldflags='-s -w' -o /caddy .
+
 FROM ${CADDY_IMAGE}
-# The upstream binary carries a bind capability. Remove it because this image
-# uses unprivileged ports and the runtime drops every Linux capability.
-RUN setcap -r /usr/bin/caddy && mkdir -p /srv /data/caddy /config/caddy && chown -R 10001:10001 /srv /data /config
+# Build from locked patched dependencies, without privileged-port capabilities.
+RUN rm /usr/bin/caddy && mkdir -p /srv /data/caddy /config/caddy && chown -R 10001:10001 /srv /data /config
+COPY --from=build /caddy /usr/bin/caddy
 COPY --chown=10001:10001 frontend/dist/ /srv/
 COPY infra/production/frontend/Caddyfile /etc/caddy/Caddyfile
 USER 10001:10001
