@@ -3,10 +3,36 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { publishAssets } from './publish-assets.mjs';
+import { publishAssets, githubReleaseIo } from './publish-assets.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
 fs.mkdirSync(scratch, { recursive: true });
+
+test('draft discovery uses the release ID and includes assets beyond the first page', () => {
+  const calls = [];
+  const tag = 'deploy-' + 'a'.repeat(40);
+  const io = githubReleaseIo('example/chanter', (command, args) => {
+    calls.push([command, ...args]);
+    if (args[0] === 'release') return JSON.stringify({ databaseId: 123 });
+    if (args[1] === 'repos/example/chanter/releases/123') return JSON.stringify({ id: 123, tag_name: tag, draft: true });
+    if (args[1] === 'repos/example/chanter/releases/123/assets') return JSON.stringify([[{ name: 'first' }], [{ name: 'second' }]]);
+    throw new Error('Unexpected GitHub request');
+  });
+  assert.deepEqual(io.readRelease(tag), { id: 123, tag_name: tag, draft: true, assets: [{ name: 'first' }, { name: 'second' }] });
+  assert.deepEqual(calls, [
+    ['gh', 'release', 'view', tag, '--repo', 'example/chanter', '--json', 'databaseId'],
+    ['gh', 'api', 'repos/example/chanter/releases/123'],
+    ['gh', 'api', 'repos/example/chanter/releases/123/assets', '--paginate', '--slurp'],
+  ]);
+});
+
+test('release discovery fails closed when its returned identity changes', () => {
+  const tag = 'deploy-' + 'a'.repeat(40);
+  for (const identity of [{ id: 123, tag_name: 'another-tag' }, { id: 124, tag_name: tag }]) {
+    const io = githubReleaseIo('example/chanter', (_command, args) => JSON.stringify(args[0] === 'release' ? { databaseId: 123 } : identity));
+    assert.throws(() => io.readRelease(tag), /identity/);
+  }
+});
 
 test('a partial release retry preserves identical uploaded assets and uploads only missing files', async t => {
   const root = fs.mkdtempSync(path.join(scratch, 'assets-'));
