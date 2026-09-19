@@ -41,6 +41,7 @@ async function removeVerifiedTree(root, directory) {
 }
 
 export async function createRun(root, installationId) {
+  let created;
   try {
     const runs = path.join(root, 'runs');
     try { await mkdir(runs, { mode: 0o700 }); await ownCreatedEntry(root, 'runs'); }
@@ -48,11 +49,17 @@ export async function createRun(root, installationId) {
     await directoryAt(root, runs);
     const directory = path.join(runs, randomUUID());
     await mkdir(directory, { mode: 0o700 });
+    created = directory;
     const owner = { version: 1, installationId, controllerPid: process.pid, providerPid: 0 };
     await writeFile(path.join(directory, '.owner.json'), JSON.stringify(owner), { flag: 'wx', mode: 0o600 });
     for (const name of ['empty', 'sqlite', 'log', 'home', 'tmp']) await mkdir(path.join(directory, name), { mode: 0o700 });
     return { directory, owner };
-  } catch { throw blocked(); }
+  } catch {
+    // No provider can have started before this function returns. Clean only the
+    // directory exclusively created by this call; ambiguous cleanup stays blocked.
+    if (created) { try { await removeVerifiedTree(root, created); } catch { /* Preserve for operator review. */ } }
+    throw blocked();
+  }
 }
 
 /** Record null before spawn so a crash in the spawn/record gap requires operator review. */

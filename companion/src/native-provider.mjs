@@ -95,6 +95,7 @@ export class NativeProvider {
       await active.client.initialize();
       return await operation(active.client, controller.signal);
     } catch (error) {
+      if (error instanceof CompanionError && error.code === 'NATIVE_RETENTION_BLOCKED') this.#blocked = true;
       throw error instanceof CompanionError ? error : new CompanionError('PROVIDER_UNAVAILABLE');
     } finally {
       clearTimeout(timer); signal?.removeEventListener('abort', abort);
