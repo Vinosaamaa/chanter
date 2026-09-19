@@ -201,6 +201,14 @@ while ((SECONDS < RESOURCE_DEADLINE)); do
     echo "error: demo resource did not pass scanning ($RESOURCE_STATE)" >&2
     exit 1
   fi
+  if [[ "$RESOURCE_STATE" == "AVAILABLE" ]]; then
+    case "$RESOURCE_PREPARATION" in
+      FAILED|EMPTY|OCR_REQUIRED|ENCRYPTED|MALFORMED|UNSUPPORTED|LIMIT_EXCEEDED|NONE)
+        echo "error: demo resource cannot provide Study Assistant evidence ($RESOURCE_PREPARATION)" >&2
+        exit 1
+        ;;
+    esac
+  fi
   if [[ "$RESOURCE_STATE" == "AVAILABLE" && "$RESOURCE_PREPARATION" == "READY" ]]; then
     if CHUNK_COUNT=$(curl -sf --max-time 10 \
       "${AGENT_SERVICE_URL:-http://localhost:${AGENT_PORT:-8085}}/api/v1/internal/resource-chunks/$RESOURCE_ID" \

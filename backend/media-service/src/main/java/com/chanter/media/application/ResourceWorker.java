@@ -55,7 +55,8 @@ public class ResourceWorker {
                 if (job.operation().equals("DELETE")) lifecycle.retryJob(job.resource().id(), job.leaseId());
                 else if (job.operation().equals("INDEX")) {
                     if (failure instanceof org.springframework.web.server.ResponseStatusException status
-                            && java.util.Set.of(403, 404).contains(status.getStatusCode().value())) {
+                            && status.getStatusCode().is4xxClientError()
+                            && !java.util.Set.of(408, 429).contains(status.getStatusCode().value())) {
                         lifecycle.finishIndex(job.resource().id(), job.leaseId(), false);
                     } else lifecycle.retryJob(job.resource().id(), job.leaseId());
                 }

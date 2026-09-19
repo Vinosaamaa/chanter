@@ -31,7 +31,7 @@ class ResourceWorkerSafetyTest {
     @Autowired ResourceWorker worker;
     @Autowired ResourceLifecycle lifecycle;
     @Autowired JdbcClient jdbc;
-    @Autowired TestCourseResourceAccessClient access;
+    @MockitoSpyBean TestCourseResourceAccessClient access;
     @MockitoSpyBean TestResourceIngestionClient ingestion;
     @Autowired LocalCourseResourceStorage legacy;
     @Autowired UploadValidator validator;
@@ -334,5 +334,23 @@ class ResourceWorkerSafetyTest {
         worker.runOnce();
         assertThat(lifecycle.find(resource.id()).orElseThrow().ingestionStatus()).isEqualTo("FAILED");
         assertThat(lifecycle.claim(false)).isEmpty();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {400, 401, 403, 404, 408, 410, 422, 429, 503})
+    void legacyScopeSeparatesPermanentFailuresFromRetryableResponses(int status) {
+        var resource = upload(UUID.randomUUID()); worker.runOnce();
+        jdbc.sql("UPDATE course_resources SET study_server_id=NULL,ingestion_event_id=NULL,ingestion_status='PENDING' WHERE id=:id")
+                .param("id", resource.id()).update();
+        doThrow(new ResponseStatusException(org.springframework.http.HttpStatusCode.valueOf(status)))
+                .when(access).requireStudyServerId(course);
+        worker.runOnce();
+        boolean retryable = status == 408 || status == 429 || status >= 500;
+        assertThat(lifecycle.find(resource.id()).orElseThrow().ingestionStatus())
+                .isEqualTo(retryable ? "PROCESSING" : "FAILED");
+        if (retryable) {
+            jdbc.sql("UPDATE course_resources SET retry_at=NULL WHERE id=:id").param("id", resource.id()).update();
+            assertThat(lifecycle.claim(false)).isPresent();
+        } else assertThat(lifecycle.claim(false)).isEmpty();
     }
 }

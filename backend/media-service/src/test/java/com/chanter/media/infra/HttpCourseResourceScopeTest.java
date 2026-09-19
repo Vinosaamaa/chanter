@@ -18,7 +18,7 @@ class HttpCourseResourceScopeTest {
         server.start();
         try {
             var client = new HttpCourseResourceAccessClient("http://127.0.0.1:" + server.getAddress().getPort(), 2, 2, "test-internal-service-token-for-media");
-            for (int status : new int[]{403, 404, 503}) {
+            for (int status : new int[]{400, 401, 403, 404, 408, 410, 422, 429, 503}) {
                 code.set(status);
                 assertThatThrownBy(() -> client.requireStudyServerId(UUID.randomUUID()))
                         .isInstanceOfSatisfying(ResponseStatusException.class, failure -> assertThat(failure.getStatusCode().value()).isEqualTo(status));

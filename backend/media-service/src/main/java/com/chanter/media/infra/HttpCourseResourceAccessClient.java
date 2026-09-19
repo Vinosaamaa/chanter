@@ -88,10 +88,8 @@ public class HttpCourseResourceAccessClient implements CourseResourceAccessClien
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Community Service returned invalid resource scope");
             }
             return scope.studyServerId();
-        } catch (HttpClientErrorException.NotFound missing) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found");
-        } catch (HttpClientErrorException.Forbidden denied) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Course scope is unavailable to this service");
+        } catch (HttpClientErrorException rejected) {
+            throw new ResponseStatusException(rejected.getStatusCode(), "Course scope request was rejected");
         } catch (RestClientException unavailable) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Course scope is unavailable");
         }

@@ -8,11 +8,13 @@ const release = () => ({ version: 1, commit: 'a'.repeat(40), architecture: 'arm6
   images: Object.fromEntries(imageNames.map(name => [name, hash('b')])) });
 const config = { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' };
 
-test('resource generation writers require epoch 6 and cannot fall back to epoch 5', async () => {
+test('resource release policy stamps epoch 6 and blocks downgrade to epoch 5', async () => {
   const policy = JSON.parse(readFileSync(new URL('../../infra/production/release-policy.json', import.meta.url), 'utf8'));
   assert.equal(policy.schemaEpoch, 6);
   const current = { ...release(), schemaEpoch: policy.schemaEpoch };
   const previous = { ...release(), commit: 'c'.repeat(40), schemaEpoch: 5 };
+  // A matching historical bundle remains valid in an empty environment.
+  assert.doesNotThrow(() => planDeployment(previous, null));
   const actions = [];
   await assert.rejects(executeDeployment(previous, current, async action => actions.push(action)), /schema epoch/);
   assert.deepEqual(actions, []);
