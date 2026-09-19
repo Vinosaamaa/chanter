@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../../../stores/auth-store'
 import type { CourseResource } from '../../resources/course-resource-types'
 import {
+  downloadCourseResourceContent,
   fetchCourseResourceAccess,
   listCourseResources,
   uploadCourseResource,
@@ -36,6 +37,8 @@ describe('useCourseResourcesChannel', () => {
 
   afterEach(() => {
     cleanup()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
     vi.useRealTimers()
     useAuthStore.getState().clearSession()
   })
@@ -234,6 +237,52 @@ describe('useCourseResourcesChannel', () => {
     expect(result.current.resources).toEqual([])
     expect(result.current.uploadSuccess).toBeNull()
     expect(result.current.isUploading).toBe(false)
+  })
+
+  it.each(['downloadResource', 'previewResource'] as const)('ignores an old %s failure while the new course is downloading', async (method) => {
+    const old = resource({ status: 'AVAILABLE' })
+    const next = resource({ id: 'next', courseId: 'course-2', status: 'AVAILABLE' })
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValue({ courseResources: [old] })
+    let rejectOld!: (reason: Error) => void
+    let rejectNext!: (reason: Error) => void
+    vi.mocked(downloadCourseResourceContent)
+      .mockReturnValueOnce(new Promise((_, reject) => { rejectOld = reject }))
+      .mockReturnValueOnce(new Promise((_, reject) => { rejectNext = reject }))
+    const { result, rerender } = renderHook(({ courseId }) => useCourseResourcesChannel(courseId), { initialProps: { courseId: 'course-1' } })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    let first!: Promise<void>
+    act(() => { first = result.current[method](old) })
+    mockedListResources.mockResolvedValue({ courseResources: [next] })
+    rerender({ courseId: 'course-2' })
+    await waitFor(() => expect(result.current.canView).toBe(true))
+    let second!: Promise<void>
+    act(() => { second = result.current[method](next) })
+    await act(async () => { rejectOld(new Error('Old course failure')); await first })
+    expect(result.current.error).toBeNull()
+    expect(result.current.downloadingResourceId).toBe(next.id)
+    await act(async () => { rejectNext(new Error('Current failure')); await second })
+    expect(result.current.error).toBe('Current failure')
+  })
+
+  it.each(['downloadResource', 'previewResource'] as const)('does not expose an old %s response after logout', async (method) => {
+    const available = resource({ status: 'AVAILABLE' })
+    const createUrl = vi.fn(() => 'blob:fixture')
+    vi.stubGlobal('URL', class extends URL { static createObjectURL = createUrl; static revokeObjectURL = vi.fn() })
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValue({ courseResources: [available] })
+    let finish!: (value: Blob) => void
+    vi.mocked(downloadCourseResourceContent).mockReturnValue(new Promise((resolve) => { finish = resolve }))
+    const { result } = renderHook(() => useCourseResourcesChannel('course-1'))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    let transfer!: Promise<void>
+    act(() => { transfer = result.current[method](available) })
+    act(() => useAuthStore.getState().clearSession())
+    await act(async () => { finish(new Blob(['private source'])); await transfer })
+    expect(createUrl).not.toHaveBeenCalled()
+    expect(open).not.toHaveBeenCalled()
+    expect(result.current.error).toBeNull()
   })
 
   it('clears prior course access and resources when the next course request fails', async () => {

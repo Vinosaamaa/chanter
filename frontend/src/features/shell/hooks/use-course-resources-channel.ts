@@ -232,15 +232,17 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
 
   const downloadResource = useCallback(
     async (resource: CourseResource) => {
-      if (!userId || !canView) {
+      if (!requestKey || !userId || !canView || resource.courseId !== courseId) {
         return
       }
 
       setDownloadingResourceId(resource.id)
       setError(null)
+      const viewGeneration = viewGenerationRef.current
 
       try {
         const blob = await downloadCourseResourceContent(resource.id)
+        if (activeRequestKeyRef.current !== requestKey || viewGenerationRef.current !== viewGeneration) return
         const url = URL.createObjectURL(blob)
         const anchor = document.createElement('a')
         anchor.href = url
@@ -251,17 +253,17 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
         anchor.remove()
         window.setTimeout(() => URL.revokeObjectURL(url), 0)
       } catch (caught) {
-        setError(resourceAccessDeniedMessage(caught))
+        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setError(resourceAccessDeniedMessage(caught))
       } finally {
-        setDownloadingResourceId(null)
+        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setDownloadingResourceId(null)
       }
     },
-    [canView, userId],
+    [canView, courseId, requestKey, userId],
   )
 
   const previewResource = useCallback(
     async (resource: CourseResource) => {
-      if (!userId || !canView) {
+      if (!requestKey || !userId || !canView || resource.courseId !== courseId) {
         return
       }
 
@@ -272,9 +274,11 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
 
       setDownloadingResourceId(resource.id)
       setError(null)
+      const viewGeneration = viewGenerationRef.current
 
       try {
         const blob = await downloadCourseResourceContent(resource.id)
+        if (activeRequestKeyRef.current !== requestKey || viewGenerationRef.current !== viewGeneration) return
         if (previewUrlRef.current) {
           URL.revokeObjectURL(previewUrlRef.current)
         }
@@ -282,12 +286,12 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
         previewUrlRef.current = url
         window.open(url, '_blank', 'noopener,noreferrer')
       } catch (caught) {
-        setError(resourceAccessDeniedMessage(caught))
+        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setError(resourceAccessDeniedMessage(caught))
       } finally {
-        setDownloadingResourceId(null)
+        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setDownloadingResourceId(null)
       }
     },
-    [canView, userId],
+    [canView, courseId, requestKey, userId],
   )
 
   return {

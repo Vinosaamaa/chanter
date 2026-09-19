@@ -12,6 +12,8 @@ The follow-up review's transient polling failure and return-to-the-same-course f
 
 The logout-state finding is accepted ([review comment](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051918567)). The hook previously returned retained resources when its course/user request key became null. A pending-response test now verifies immediate empty resource/access state, cancellation of the old response and no further polling after logout. The hook clears state on missing identity and requires a nonnull key before polling or retrying.
 
+The pending download/preview finding is accepted ([review comment](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051930882)). Those operations now use the same visit generation as uploads/retries. Tests cover an old failure arriving while a new course is downloading and successful old responses arriving after logout; neither can change current state or create a blob URL/open a preview.
+
 The custom suggestions concern bounded-buffer/SQL efficiency, shared validation and presentation refactors. The current 10 MiB source and 2M-character output caps bound the parser draft; the durable-event integration will remove the production Base64 delivery path. Query batching and shared Office validation are not claimed as completed. Neither suggestion changes the required live authorization or generation/deletion fences.
 
 The draft remains open for accepted durable-event integration, source-scope metadata and final system review. No security finding is waived or suppressed.
