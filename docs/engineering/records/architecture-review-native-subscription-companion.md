@@ -28,7 +28,7 @@ verification: {"state":"verified", "evidenceRefs":["test:companion/tests/codex-a
 visibility: public-safe
 publicationEligibility: eligible
 issue: 316
-pr: null
+pr: 324
 release: null
 run: null
 ---
