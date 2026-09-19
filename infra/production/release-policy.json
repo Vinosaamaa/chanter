@@ -1,0 +1,4 @@
+{
+  "schemaEpoch": 4,
+  "reason": "Issue 244 media V2 introduces private resource lifecycle state and agent V8 terminal indexing deletion markers. Older binaries bypass these boundaries. Epoch 3 already required versioned PBKDF2 hashes and epoch 2 durable session linkage. Restore media and agent databases together with the private object namespace; rollback never reverses SQL or changes persistence images."
+}

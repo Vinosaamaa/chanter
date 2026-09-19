@@ -1,0 +1,57 @@
+{
+	http_port 8080
+	https_port 8443
+	log {
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					delete access_token
+					delete token
+					delete code
+					delete state
+				}
+			}
+		}
+	}
+}
+
+{$CHANTER_HOSTNAME} {
+	# Only the ephemeral CI overlay sets this to "tls internal".
+	{$CHANTER_TLS_DIRECTIVE}
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), microphone=(self), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' wss://{$CHANTER_HOSTNAME}; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+		-Server
+	}
+	handle /api/* {
+		header Cache-Control no-store
+		reverse_proxy gateway-service:8080 {
+			header_up -Forwarded
+			header_up -X-User-Id
+			header_up -X-Internal-Service-Token
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {host}
+		}
+	}
+	handle_path /livekit/* {
+		reverse_proxy livekit:7880
+	}
+	handle /assets/* {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+	handle {
+		root * /srv
+		header Cache-Control no-cache
+		try_files {path} /index.html
+		file_server
+	}
+}
