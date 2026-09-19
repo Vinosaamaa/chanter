@@ -25,6 +25,10 @@ public class NativeCompanionService {
     private final AiGenerationLedger ledger;
     private final NativeRequestRepository requests;
     private static final ObjectMapper JSON = new ObjectMapper();
+    // Fixed accounting policy for an unmeasured desktop attempt. These are not byte conversions,
+    // observed usage, or bounds on provider reasoning/tool overhead.
+    private static final int RESERVED_INPUT_TOKENS = 32768;
+    private static final int RESERVED_OUTPUT_TOKENS = 8192;
     public NativeCompanionService(NativeCapabilitySigner signer, NativeSessionClient sessions, GroundedSupportQuestionService questions,
             GroundedAnswerValidator validator, AiGenerationLedger ledger, NativeRequestRepository requests) {
         this.signer = signer; this.sessions = sessions; this.questions = questions; this.validator = validator; this.ledger = ledger; this.requests = requests;
@@ -115,8 +119,8 @@ public class NativeCompanionService {
     }
     private static boolean invalidUsage(Integer value) { return value != null && (value < 0 || value > 1_000_000); }
     private static Model definition(String model) {
-        return new Model("Native client", "codex-native", model, null, null, NativeCapabilitySigner.MAX_INPUT_BYTES,
-                NativeCapabilitySigner.MAX_OUTPUT_BYTES, Duration.ofMillis(NativeCapabilitySigner.DEADLINE_MS), Set.of(), null);
+        return new Model("Native client", "codex-native", model, null, null, RESERVED_INPUT_TOKENS,
+                RESERVED_OUTPUT_TOKENS, Duration.ofMillis(NativeCapabilitySigner.DEADLINE_MS), Set.of(), null);
     }
     private static String encode(NativeEvidence evidence) {
         try { return JSON.writeValueAsString(evidence); }

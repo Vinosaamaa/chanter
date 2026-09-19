@@ -58,6 +58,8 @@ If this optional legacy repair transaction fails, it rolls back without hiding t
 
 Saved-answer audit responses expose executionProvenance explicitly: CLIENT_REPORTED for native execution, SERVER_OBSERVED for a response received through the configured server provider, and NOT_USED for source-only answers. SERVER_OBSERVED is an observation by this service, not external cryptographic attestation. The existing llmUsed field alone does not establish execution provenance. The native answer UI states “Reported by your desktop app. Token usage unavailable.” in the existing audit text area, retaining its typography, color, and responsive layout.
 
+Native accounting reserves a fixed 40,960 tokens per unmeasured attempt, split as 32,768 input and 8,192 output policy amounts. These amounts are independent of transport byte limits. They neither measure provider consumption nor bound hidden reasoning/tool overhead. Client reports cannot reduce this reservation; accounting and execution provenance remain explicitly unverified.
+
 ## Isolation gate
 
 The provider process starts in an empty directory with an explicit environment allowlist, separate provider home, strict configuration, no inherited MCP servers, apps, hooks, plugins, host skills, memories, browser/computer tools, shell, code execution, image access, web search, or subagents. Use supported controls and inspect the effective response; do not rely on prompt instructions. The available experimental `environments: []` field disables environment access according to the generated 0.153.4 protocol schema, but must be exercised before treating it as a security boundary. Permission profiles can further deny filesystem/network access to tools while leaving provider-owned authentication intact.

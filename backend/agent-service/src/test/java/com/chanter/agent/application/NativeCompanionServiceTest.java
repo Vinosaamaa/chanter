@@ -79,7 +79,7 @@ class NativeCompanionServiceTest {
         var issued = issue();
         assertThat(issued.prompt()).contains(QUOTE);
         assertThat(accept(issued.requestId(), RESULT)).isEqualTo(saved);
-        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(NativeCapabilitySigner.MAX_INPUT_BYTES + NativeCapabilitySigner.MAX_OUTPUT_BYTES);
+        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(40960);
         assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
         var receipt = jdbc.sql("SELECT outcome,client_input_tokens,provenance,evidence_json FROM native_companion_requests WHERE id=:id")
                 .param("id", issued.requestId()).query().singleRow();
@@ -171,7 +171,7 @@ class NativeCompanionServiceTest {
         doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(questions).requireNativeEvidenceCurrent(any(), any(), any(), any(), any());
         assertThatThrownBy(() -> accept(issued.requestId(), RESULT)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
         verify(questions, never()).acceptNativeAnswer(any(), any(), any(), any(), any(), any(), any());
-        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(NativeCapabilitySigner.MAX_INPUT_BYTES + NativeCapabilitySigner.MAX_OUTPUT_BYTES);
+        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(40960);
     }
     @Test void concurrentNativeIssuanceUsesTheSharedOneAttemptReservation() throws Exception {
         var start = new CountDownLatch(1);
