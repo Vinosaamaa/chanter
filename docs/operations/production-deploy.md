@@ -92,6 +92,14 @@ node COMMIT/scripts/deploy/host.mjs init /srv/chanter/production production app.
 
 Initialization generates independent random database passwords, JWT signing material, an internal service credential, Redis and LiveKit credentials. Every service receives only its required credentials in a private mode-0600 file under a mode-0700 environment directory. The gateway receives no database, SMTP or internal service credential. Initialization refuses existing or partial state to avoid replacing live database passwords. Back up this private state through the separately reviewed recovery process.
 
+The community service's runtime file sets `CHANTER_BETA_MODE=free_beta` and
+`CHANTER_BETA_ASSISTANT_RUN_LIMIT=1000`. The operator may lower the lifetime
+assistant-run limit to an integer between 1 and 1000. Deployment rejects paid
+modes, blank limits and values outside that range. This setting implements the
+free-beta policy from #250; it does not create a billing provider or a monthly
+reset. Existing private runtime files must add these two settings before using
+the updated deployment script.
+
 Edit `/srv/chanter/production/runtime/auth-service.env` locally with the approved free SMTP account: `CHANTER_EMAIL_FROM`, `CHANTER_SMTP_HOST`, `CHANTER_SMTP_PORT`, `CHANTER_SMTP_USERNAME`, `CHANTER_SMTP_PASSWORD`, and `CHANTER_SMTP_TLS_MODE` (`starttls` or `implicit`). Blank values or missing credentials block deployment. Obtain a verified sending identity and test actual inbox delivery without enabling billing. An SMTP endpoint must be available without a payment-based upgrade; account selection and real verification/reset delivery remain an external checkpoint. Port 587 with verified TLS avoids the usual outbound port-25 restriction.
 
 Files contain literal `KEY=value` lines, without shell quotes or interpolation. Compose **2.30 or newer** is required for `env_file: format: raw`; dollar signs and punctuation in provider passwords are preserved. Never source these files in a shell, print `docker inspect`, print an expanded `docker compose config`, enable shell tracing, or paste runtime logs containing personal data into an issue. Use `config --quiet` for validation. Docker administrators can read container environments; this is an operator trust boundary, not a secret vault. See [Docker's raw environment-file format](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/).

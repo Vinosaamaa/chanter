@@ -60,3 +60,10 @@ the deployment already starts the database as UID 70. Extend native smoke
 verification to require the expected Caddy version and unprivileged PostgreSQL
 without that helper. No advisory was suppressed. Full final-image scans and
 native staging remain required before accepting this candidate.
+
+The free-beta integration writes explicit operator policy into the community
+service environment and rejects invalid or paid settings before deployment.
+The new initialization/validation regression failed with the settings absent,
+then passed for the default, a lower limit and all rejected boundaries. All
+11 deployment tests pass. Backend enforcement and the Usage screen are owned
+by #250 and must be merged into the final release candidate.

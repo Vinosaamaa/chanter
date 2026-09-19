@@ -39,6 +39,8 @@ export function initialize(stateDir, config) {
     }
     if (name === 'auth-service') Object.assign(values, { CHANTER_EMAIL_FROM: '', CHANTER_SMTP_HOST: '',
       CHANTER_SMTP_PORT: '587', CHANTER_SMTP_USERNAME: '', CHANTER_SMTP_PASSWORD: '', CHANTER_SMTP_TLS_MODE: 'starttls' });
+    if (name === 'community-service') Object.assign(values, {
+      CHANTER_BETA_MODE: 'free_beta', CHANTER_BETA_ASSISTANT_RUN_LIMIT: '1000' });
     save(name, values);
   }
   save('postgres', { POSTGRES_USER: 'chanter_admin', POSTGRES_DB: 'postgres', POSTGRES_PASSWORD: secret(),
@@ -72,12 +74,18 @@ export function validateRuntime(stateDir) {
       : ['CHANTER_JWT_SECRET', ...(name === 'gateway-service' ? [] : ['CHANTER_INTERNAL_SERVICE_TOKEN']),
         ...(databaseModules.includes(name) ? ['POSTGRES_PASSWORD'] : []),
         ...(name === 'realtime-service' ? ['REDIS_PASSWORD'] : []),
+        ...(name === 'community-service' ? ['CHANTER_BETA_MODE', 'CHANTER_BETA_ASSISTANT_RUN_LIMIT'] : []),
         ...(['community-service', 'message-service', 'realtime-service'].includes(name) ? ['LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET'] : []),
         ...(name === 'auth-service' ? ['CHANTER_EMAIL_FROM', 'CHANTER_SMTP_HOST', 'CHANTER_SMTP_PORT',
           'CHANTER_SMTP_USERNAME', 'CHANTER_SMTP_PASSWORD', 'CHANTER_SMTP_TLS_MODE'] : [])];
     for (const key of required) if (!env[key]) throw new Error(`Configure ${key} in ${name}.env`);
     for (const [key, value] of Object.entries(env)) if (!value) throw new Error(`Configure ${key} in ${name}.env`);
     if (name === 'auth-service' && !['starttls', 'implicit'].includes(env.CHANTER_SMTP_TLS_MODE)) throw new Error('SMTP requires verified TLS');
+    if (name === 'community-service' && (env.CHANTER_BETA_MODE !== 'free_beta'
+        || !/^[1-9]\d{0,3}$/.test(env.CHANTER_BETA_ASSISTANT_RUN_LIMIT)
+        || Number(env.CHANTER_BETA_ASSISTANT_RUN_LIMIT) > 1000)) {
+      throw new Error('Free beta requires a lifetime assistant limit between 1 and 1000');
+    }
     for (const key of ['CHANTER_JWT_SECRET', 'CHANTER_INTERNAL_SERVICE_TOKEN', 'POSTGRES_PASSWORD', 'REDIS_PASSWORD', 'LIVEKIT_API_SECRET']) {
       if (key in env && env[key].length < 32) throw new Error(`Runtime credential too short: ${key}`);
     }

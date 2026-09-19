@@ -41,6 +41,22 @@ test('runtime validation requires all credentials and preserves literal SMTP pun
   assert.throws(() => validateRuntime(state), /CHANTER_JWT_SECRET/);
 });
 
+test('operator beta policy is explicit and rejects paid modes or unbounded assistant usage', () => {
+  const { state } = fixture();
+  const file = path.join(state, 'runtime/community-service.env');
+  const defaults = fs.readFileSync(file, 'utf8');
+  assert.equal(readEnv(file).CHANTER_BETA_MODE, 'free_beta');
+  assert.equal(readEnv(file).CHANTER_BETA_ASSISTANT_RUN_LIMIT, '1000');
+  for (const [key, value] of [['CHANTER_BETA_MODE', 'paid'],
+    ['CHANTER_BETA_ASSISTANT_RUN_LIMIT', '0'], ['CHANTER_BETA_ASSISTANT_RUN_LIMIT', '1001'],
+    ['CHANTER_BETA_ASSISTANT_RUN_LIMIT', '1.5'], ['CHANTER_BETA_ASSISTANT_RUN_LIMIT', '']]) {
+    fs.writeFileSync(file, defaults.replace(new RegExp(`^${key}=.*$`, 'm'), `${key}=${value}`));
+    assert.throws(() => validateRuntime(state), /beta|BETA/);
+  }
+  fs.writeFileSync(file, defaults.replace('CHANTER_BETA_ASSISTANT_RUN_LIMIT=1000', 'CHANTER_BETA_ASSISTANT_RUN_LIMIT=17'));
+  assert.doesNotThrow(() => validateRuntime(state));
+});
+
 test('a failed first deployment can be stopped without deleting its volumes or losing failure state', () => {
   const { root, state } = fixture();
   const bundle = path.join(root, 'bundle');
