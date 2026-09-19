@@ -33,7 +33,9 @@ public class AccountExportConfiguration {
     }
     @Bean AccountExportJobs accountExportJobs(JdbcTemplate jdbc, PlatformTransactionManager transactions, LifecycleSessionAccess access,
             ExportSnapshotStore snapshots, AuthAccountExport projection, DurableOutbox outbox, AccountExportProtocol protocol) {
-        return new AccountExportJobs(jdbc, new TransactionTemplate(transactions), access, snapshots, projection, outbox, protocol, Clock.systemUTC());
+        var tx = new TransactionTemplate(transactions);
+        tx.setTimeout(5);
+        return new AccountExportJobs(jdbc, tx, access, snapshots, projection, outbox, protocol, Clock.systemUTC());
     }
     @Bean HistoryExpiry lifecycleHistoryExpiry(AccountExportJobs jobs) { return new HistoryExpiry(jobs); }
     static final class HistoryExpiry {

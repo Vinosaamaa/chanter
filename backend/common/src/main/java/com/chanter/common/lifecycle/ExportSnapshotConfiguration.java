@@ -15,9 +15,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 @Import({OutboxConfiguration.class, ExportSnapshotController.class})
 public class ExportSnapshotConfiguration {
+    @Bean(destroyMethod="close") ExportSourceExecution exportSourceExecution(PlatformTransactionManager transactions) {
+        return new ExportSourceExecution(transactions);
+    }
     @Bean ExportSnapshotStore exportSnapshotStore(JdbcTemplate jdbc, PlatformTransactionManager transactions, ObjectMapper mapper,
             @Value("${spring.application.name}") String serviceName) {
-        return new ExportSnapshotStore(jdbc, new TransactionTemplate(transactions), mapper, Clock.systemUTC(), serviceName.replace("-service", ""));
+        var tx = new TransactionTemplate(transactions);
+        tx.setTimeout((int) ExportSourceExecution.CAPTURE_LIMIT.toSeconds());
+        return new ExportSnapshotStore(jdbc, tx, mapper, Clock.systemUTC(), serviceName.replace("-service", ""));
     }
     @Bean AccountExportProtocol accountExportProtocol(ObjectMapper mapper) { return new AccountExportProtocol(mapper); }
     @Bean ExportExpiry exportExpiry(ExportSnapshotStore snapshots) { return new ExportExpiry(snapshots); }

@@ -4,7 +4,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowCallbackHandler;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 
 /** Streams source-defined SELECT projections without retaining an account-sized result list. */
 public final class JdbcExportRows {
@@ -12,12 +13,17 @@ public final class JdbcExportRows {
 
     public static void write(JdbcTemplate jdbc, ExportSnapshotStore.Capture output, String section, String sql, Object... parameters) throws IOException {
         try {
-            output.jsonLines(section, rows -> jdbc.query(connection -> {
-                var statement = connection.prepareStatement(sql);
+            output.jsonLines(section, rows -> jdbc.execute((ConnectionCallback<Void>) connection -> {
+              try (var statement = connection.prepareStatement(sql)) {
+                ExportSourceExecution.check();
+                DataSourceUtils.applyTransactionTimeout(statement, jdbc.getDataSource());
+                int remaining = statement.getQueryTimeout();
+                statement.setQueryTimeout(remaining > 0 ? Math.min(3, remaining) : 3);
                 statement.setFetchSize(128);
                 for (int index = 0; index < parameters.length; index++) statement.setObject(index + 1, parameters[index]);
-                return statement;
-            }, (RowCallbackHandler) result -> {
+                try (var result = statement.executeQuery()) {
+                  while (result.next()) {
+                ExportSourceExecution.check();
                 var data = new LinkedHashMap<String, Object>();
                 var metadata = result.getMetaData();
                 for (int index = 1; index <= metadata.getColumnCount(); index++) {
@@ -30,6 +36,10 @@ public final class JdbcExportRows {
                 }
                 try { rows.add(data); }
                 catch (IOException failure) { throw new UncheckedIOException(failure); }
+                  }
+                }
+                return null;
+              }
             }));
         } catch (UncheckedIOException failure) { throw failure.getCause(); }
     }

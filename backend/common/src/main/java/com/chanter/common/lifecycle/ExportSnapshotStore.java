@@ -25,7 +25,7 @@ public final class ExportSnapshotStore {
     public static final long MAX_SNAPSHOT_BYTES = 256L * 1024 * 1024;
     public static final long MAX_RETAINED_BYTES = 1024L * 1024 * 1024;
     public static final Duration RETENTION = Duration.ofHours(24);
-    public static final Duration CAPTURE_BUDGET = Duration.ofMinutes(5);
+    public static final Duration CAPTURE_BUDGET = ExportSourceExecution.CAPTURE_LIMIT;
     public static final String SCHEMA = """
         CREATE TABLE data_export_lock (id INT PRIMARY KEY);
         INSERT INTO data_export_lock VALUES (1);
@@ -128,8 +128,11 @@ public final class ExportSnapshotStore {
         Object[] parameters = entry == null ? new Object[]{jobId} : new Object[]{jobId, entry};
         if (entry != null) sql += " AND entry_ordinal=?";
         var scopes = jdbc.query(sql, (rs, row) -> new AccessScope(rs.getString(1), rs.getObject(2, UUID.class), rs.getString(3)), parameters);
-        for (int start = 0; start < scopes.size(); start += 100)
+        for (int start = 0; start < scopes.size(); start += 100) {
+            ExportSourceExecution.check();
             access.requireAll(accountId, scopes.subList(start, Math.min(start + 100, scopes.size())));
+        }
+        ExportSourceExecution.check();
     }
 
     /** Preserve cancellation authority until the expired request cannot be replayed. */
@@ -192,6 +195,7 @@ public final class ExportSnapshotStore {
             this.jobId = jobId; this.retainedBytes = retainedBytes; this.deadline = clock.instant().plus(CAPTURE_BUDGET);
         }
         public void checkBudget() {
+            ExportSourceExecution.check();
             if (!clock.instant().isBefore(deadline)) throw new ExportFailure("EXPORT_CAPTURE_TIME_LIMIT", null);
         }
 

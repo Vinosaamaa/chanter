@@ -9,7 +9,7 @@ import org.springframework.web.server.ResponseStatusException;
 public interface ExportSnapshotAccess {
     void require(UUID accountId, ExportSnapshotStore.AccessScope scope);
     default void requireAll(UUID accountId, java.util.List<ExportSnapshotStore.AccessScope> scopes) {
-        for (var scope : scopes) require(accountId, scope);
+        for (var scope : scopes) { ExportSourceExecution.check(); require(accountId, scope); }
     }
     static ExportSnapshotAccess denyProtected() {
         return (account, scope) -> { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "EXPORT_ACCESS_CHECK_UNAVAILABLE"); };
