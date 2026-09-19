@@ -30,6 +30,7 @@ class ResourceRetrievalAuthorizationTest {
     private HttpCourseResourceCatalogClient catalog;
     private VectorRetrievalService retrieval;
     private String status = "AVAILABLE";
+    private String ingestionStatus = "READY";
     private boolean approved = true;
     private UUID metadataCourse = course;
     private int mediaStatus = 200;
@@ -39,7 +40,7 @@ class ResourceRetrievalAuthorizationTest {
         media.createContext("/", exchange -> {
             int code = viewer.toString().equals(exchange.getRequestHeaders().getFirst(AuthHeaders.USER_ID)) ? mediaStatus : 403;
             var rows = status.equals("MISSING") ? List.of() : List.of(Map.of("id", resource, "courseId", metadataCourse,
-                    "title", "Guide", "fileName", "guide.md", "status", status, "aiApproved", approved));
+                    "title", "Guide", "fileName", "guide.md", "status", status, "aiApproved", approved, "ingestionStatus", ingestionStatus));
             byte[] body = new ObjectMapper().writeValueAsBytes(Map.of("courseResources", rows));
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(code, body.length);
@@ -73,6 +74,13 @@ class ResourceRetrievalAuthorizationTest {
         metadataCourse = course;
         assertThat(retrieval.retrieve("question", course, UUID.randomUUID(), Set.of(resource), 5)).isEmpty();
         verifyNoInteractions(embeddingClient, chunks, embeddings);
+    }
+
+    @ParameterizedTest @ValueSource(strings = {"PENDING", "PROCESSING", "FAILED", "OCR_REQUIRED", "ENCRYPTED", "MALFORMED", "UNSUPPORTED", "EMPTY", "LIMIT_EXCEEDED", "UNKNOWN"})
+    void staleChunksCannotBeRetrievedWhileCurrentExtractionIsNotReady(String nextStatus) {
+        assertThat(retrieval.retrieve("question", course, viewer, Set.of(resource), 5)).hasSize(1);
+        ingestionStatus = nextStatus;
+        assertThat(retrieval.retrieve("question", course, viewer, Set.of(resource), 5)).isEmpty();
     }
 
     @Test void mediaFailureDoesNotFallBackToStaleChunks() {

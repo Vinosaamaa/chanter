@@ -55,6 +55,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<CourseResourceFilter>('all')
   const previewUrlRef = useRef<string | null>(null)
+  const resourceRevisionRef = useRef(0)
 
   const requestKey = courseId && userId ? `${courseId}:${userId}` : null
   const isLoading = requestKey !== null && loadedKey !== requestKey
@@ -81,6 +82,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       setError(null)
       setAccessDenied(false)
       setUploadSuccess(null)
+      setIsUploading(false)
       setRetryingResourceId(null)
       setCanUpload(false)
       setCanView(false)
@@ -131,14 +133,15 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
   }, [courseId, requestKey, userId])
 
   useEffect(() => {
-    if (!canView || isLoading || !resources.some((r) => r.status === 'PROCESSING'
+    if (!canView || isLoading || isUploading || retryingResourceId || !resources.some((r) => r.status === 'PROCESSING'
       || (r.aiApproved && ['PENDING', 'PROCESSING'].includes(r.ingestionStatus ?? '')))) return
     let cancelled = false
     const timer = window.setTimeout(() => {
+      const revision = resourceRevisionRef.current
       void listCourseResources(courseId).then((list) => {
-        if (!cancelled && activeRequestKeyRef.current === requestKey) setResources(list.courseResources)
+        if (!cancelled && activeRequestKeyRef.current === requestKey && resourceRevisionRef.current === revision) setResources(list.courseResources)
       }).catch((caught: unknown) => {
-        if (cancelled || activeRequestKeyRef.current !== requestKey) return
+        if (cancelled || activeRequestKeyRef.current !== requestKey || resourceRevisionRef.current !== revision) return
         setError(resourceAccessDeniedMessage(caught))
         if (caught instanceof ApiError && [403, 404].includes(caught.status)) {
           setCanView(false)
@@ -148,11 +151,12 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       })
     }, 5000)
     return () => { cancelled = true; window.clearTimeout(timer) }
-  }, [canView, courseId, isLoading, requestKey, resources])
+  }, [canView, courseId, isLoading, isUploading, requestKey, resources, retryingResourceId])
 
   const retryIngestion = useCallback(async (resource: CourseResource) => {
     if (!canUpload || resource.courseId !== courseId || resource.status !== 'AVAILABLE'
       || !resource.aiApproved || resource.ingestionStatus !== 'FAILED' || retryingResourceId) return
+    resourceRevisionRef.current += 1
     setRetryingResourceId(resource.id)
     setError(null)
     try {
@@ -186,11 +190,13 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       }
 
       setIsUploading(true)
+      resourceRevisionRef.current += 1
       setError(null)
       setUploadSuccess(null)
 
       try {
         const created = await uploadCourseResource(courseId, file, options)
+        if (activeRequestKeyRef.current !== requestKey) return false
         setResources((current) => {
           if (current.some((resource) => resource.id === created.id)) {
             return current
@@ -200,13 +206,13 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
         setUploadSuccess(`Uploaded ${created.title}.`)
         return true
       } catch (caught) {
-        setError(resourceAccessDeniedMessage(caught))
+        if (activeRequestKeyRef.current === requestKey) setError(resourceAccessDeniedMessage(caught))
         return false
       } finally {
-        setIsUploading(false)
+        if (activeRequestKeyRef.current === requestKey) setIsUploading(false)
       }
     },
-    [canUpload, courseId, userId],
+    [canUpload, courseId, requestKey, userId],
   )
 
   const downloadResource = useCallback(

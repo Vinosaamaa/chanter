@@ -4,4 +4,10 @@ The completed review of the initial parser draft identified one production integ
 
 Independent integration review also found that current-source fallback could otherwise treat an available, approved file as evidence while its AI preparation was pending or failed. The live media catalog now additionally requires READY. The HTTP fixture rejects every unready/missing/unknown outcome, including instructor requests. Source content and viewer permission are still checked again before AI execution/publication.
 
-The draft remains open for accepted durable-event integration, source-scope metadata and final browser/system review. No security finding is waived or suppressed.
+The next completed review found a same-course polling/retry race ([review comment](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051857140)). A deferred-response test reproduced an old FAILED list replacing a newly queued retry in the same render batch. Resource mutations now invalidate prior polling responses and suspend polling until the mutation finishes. Upload responses also respect course navigation. Hook tests explicitly clean up their mounted views and timers.
+
+The migration-order finding ([review comment](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051857580)) is accepted and remains an integration blocker: media V4 must follow accepted #245 V3. The final branch will contain both through rebase, without enabling Flyway out-of-order. This draft must not be deployed first.
+
+The custom suggestions concern bounded-buffer/SQL efficiency, shared validation and presentation refactors. The current 10 MiB source and 2M-character output caps bound the parser draft; the durable-event integration will remove the production Base64 delivery path. Query batching and shared Office validation are not claimed as completed. Neither suggestion changes the required live authorization or generation/deletion fences.
+
+The draft remains open for accepted durable-event integration, source-scope metadata and final system review. No security finding is waived or suppressed.

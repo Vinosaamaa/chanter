@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAuthStore } from '../../../stores/auth-store'
@@ -27,7 +27,7 @@ const mockedUploadResource = vi.mocked(uploadCourseResource)
 
 describe('useCourseResourcesChannel', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     useAuthStore.setState({
       accessToken: 'access-token',
       user: { id: 'owner-1', email: 'owner@example.com', displayName: 'Owner' },
@@ -35,6 +35,7 @@ describe('useCourseResourcesChannel', () => {
   })
 
   afterEach(() => {
+    cleanup()
     vi.useRealTimers()
     useAuthStore.getState().clearSession()
   })
@@ -74,6 +75,32 @@ describe('useCourseResourcesChannel', () => {
     await act(async () => { finish({ ...failed, ingestionStatus: 'PENDING' }); await retry })
     expect(result.current.resources).toEqual([next])
     expect(result.current.retryingResourceId).toBeNull()
+  })
+
+  it('does not let a stale same-course poll overwrite a completed retry', async () => {
+    const failed = resource({ aiApproved: true, status: 'AVAILABLE', ingestionStatus: 'FAILED' })
+    const processing = resource({ id: 'processing', aiApproved: true, status: 'AVAILABLE', ingestionStatus: 'PROCESSING' })
+    const queued = { ...failed, ingestionStatus: 'PENDING' as const }
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValueOnce({ courseResources: [failed, processing] })
+    let finishPoll!: (value: { courseResources: CourseResource[] }) => void
+    mockedListResources.mockReturnValueOnce(new Promise((resolve) => { finishPoll = resolve }))
+    let finishRetry!: (value: CourseResource) => void
+    vi.mocked(retryCourseResourceIngestion).mockReturnValue(new Promise((resolve) => { finishRetry = resolve }))
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useCourseResourcesChannel('course-1'))
+    await act(async () => { await Promise.resolve() })
+    expect(result.current.isLoading).toBe(false)
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+    expect(mockedListResources).toHaveBeenCalledTimes(2)
+    let retry!: Promise<void>
+    act(() => { retry = result.current.retryIngestion(failed) })
+    await act(async () => {
+      finishRetry(queued)
+      finishPoll({ courseResources: [failed, processing] })
+      await retry
+    })
+    expect(result.current.resources).toEqual([queued, processing])
   })
 
   it('loads durable resources, applies live filters, and keeps successful uploads', async () => {
@@ -129,6 +156,23 @@ describe('useCourseResourcesChannel', () => {
       aiApproved: true,
     })
     expect(result.current.resources[0]).toEqual(uploaded)
+  })
+
+  it('ignores an upload response after course navigation', async () => {
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValue({ courseResources: [] })
+    let finishUpload!: (value: CourseResource) => void
+    mockedUploadResource.mockReturnValue(new Promise((resolve) => { finishUpload = resolve }))
+    const { result, rerender } = renderHook(({ courseId }) => useCourseResourcesChannel(courseId), { initialProps: { courseId: 'course-1' } })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    let upload!: Promise<boolean>
+    act(() => { upload = result.current.uploadResource(new File(['notes'], 'notes.txt'), { aiApproved: true }) })
+    rerender({ courseId: 'course-2' })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await act(async () => { finishUpload(resource({})); expect(await upload).toBe(false) })
+    expect(result.current.resources).toEqual([])
+    expect(result.current.uploadSuccess).toBeNull()
+    expect(result.current.isUploading).toBe(false)
   })
 
   it('clears prior course access and resources when the next course request fails', async () => {

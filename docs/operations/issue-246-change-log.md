@@ -37,3 +37,9 @@ npm test -- --maxWorkers=1 --run src/features/v2-shell/pages/course/CourseResour
 ```
 
 The initial independent parser draft also passed native AMD64/ARM64 PostgreSQL/scanner/restart verification and the packaged-Java security scan. Its backend/frontend/product E2E jobs passed; the receipt title mismatch was corrected and the exact-head Engineering policy subsequently passed. These observations do not substitute for gates on the final integrated head.
+
+## Review follow-up
+
+A same-course polling response race was reproduced with deferred promises and fixed by invalidating older list responses at mutation start. Navigation also discards a late upload result. The backend integration gate exposed older authorization fixtures without the newly required READY field; those fixtures now declare READY and explicitly test stale vectors against all unready extraction outcomes. Full media+agent verification passes with the fail-closed catalog unchanged.
+
+The real resource component was inspected in the dedicated browser at desktop width and an emulated 390-pixel viewport using labeled synthetic fixtures. Retry visibly moved FAILED to queued then READY; checking files retained disabled downloads; OCR/unsupported descriptions and the upload dialog remained readable without horizontal page overflow. These are component presentation/interaction observations, not a live-stack ingestion claim. Final durable-event system acceptance remains pending #245.
