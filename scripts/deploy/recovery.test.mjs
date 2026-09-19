@@ -24,7 +24,7 @@ test('backup timer commands reject shell and systemd substitutions in operator p
 test('backup status rejects failures and marks overdue chains without copying provider metadata', () => {
   const now = Date.parse('2026-09-19T00:00:00Z');
   const complete = { error: false, type: 'full', label: '20260918-000000F', timestamp: { stop: now / 1000 - 3600 },
-    database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64) } };
+    database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64), release: 'a'.repeat(40) } };
   const info = [{ name: 'chanter', status: { code: 0 }, db: [{ id: 1, 'repo-key': 1 }], backup: [complete], secret: 'do-not-copy' }];
   assert.equal(summarizeBackup(info, now).stale, false);
   assert.equal(JSON.stringify(summarizeBackup(info, now)).includes('do-not-copy'), false);
@@ -51,7 +51,7 @@ test('failed first migrations prevent an older writer even without a successful 
 test('incremental health follows its own full and every referenced dependency', () => {
   const now = Date.parse('2026-09-19T00:00:00Z');
   const full = { type: 'full', error: false, label: '20260917-000000F', timestamp: { stop: now / 1000 - 86400 },
-    database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64) } };
+    database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64), release: 'a'.repeat(40) } };
   const intermediate = { ...full, type: 'incr', label: full.label + '_20260917-120000I',
     timestamp: { stop: now / 1000 - 43200 }, reference: [full.label], prior: full.label };
   const latest = { ...intermediate, label: full.label + '_20260918-120000I',

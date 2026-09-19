@@ -72,7 +72,8 @@ JS
 config_snapshot="$(node -e 'const rows=require("fs").readFileSync(process.argv[1],"utf8").trim().split("\n").map(JSON.parse); process.stdout.write(rows.find(r=>r.message_type==="summary").snapshot_id)' "$state/configuration-backup.jsonl")"
 "${compose[@]}" exec -T postgres pgbackrest stanza-create
 "${compose[@]}" exec -T postgres pgbackrest check
-"${compose[@]}" exec -T postgres pgbackrest --type=incr "--annotation=config-snapshot=$config_snapshot" backup
+backup_release="$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1])).commit' "$bundle/release.json")"
+"${compose[@]}" exec -T postgres pgbackrest --type=incr "--annotation=release=$backup_release" "--annotation=config-snapshot=$config_snapshot" backup
 "${compose[@]}" exec -T postgres psql -v ON_ERROR_STOP=1 -U chanter_admin -d chanter_agent \
   -c 'CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public'
 test "$("${compose[@]}" exec -T postgres psql -U chanter_admin -d chanter_agent -Atc "SELECT rolsuper FROM pg_roles WHERE rolname='chanter_agent'")" = f

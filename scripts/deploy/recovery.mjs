@@ -19,7 +19,8 @@ export function summarizeBackup(info, now = Date.now()) {
     && /^[0-9]{8}-[0-9]{6}F(?:_[0-9]{8}-[0-9]{6}[DI])?$/.test(value.label ?? '')
     && Number.isSafeInteger(value.timestamp?.stop) && value.timestamp.stop > 0
     && value.timestamp.stop * 1000 <= now + 300000);
-  const latest = backups.reduce((found, item) => !found || item.timestamp.stop > found.timestamp.stop ? item : found, null);
+  const latest = backups.reduce((found, item) => !found || item.timestamp.stop > found.timestamp.stop
+    || (item.timestamp.stop === found.timestamp.stop && item.label > found.label) ? item : found, null);
   const fullLabel = latest?.label.split('_')[0];
   const full = backups.find(item => item.type === 'full' && item.label === fullLabel);
   if (!latest || !full) throw new Error('No complete recoverable backup chain is available');
@@ -44,8 +45,10 @@ export function summarizeBackup(info, now = Date.now()) {
   }
   const configSnapshot = latest.annotation?.['config-snapshot'];
   if (!/^[a-f0-9]{8,64}$/.test(configSnapshot ?? '')) throw new Error('Database backup has no matching configuration snapshot');
+  const backupRelease = latest.annotation?.release;
+  if (!/^[a-f0-9]{40}$/.test(backupRelease ?? '')) throw new Error('Database backup has no valid release identity');
   return { label: latest.label, type: latest.type, completedAt: new Date(latest.timestamp.stop * 1000).toISOString(),
-    configSnapshot,
+    configSnapshot, backupRelease,
     fullCompletedAt: new Date(full.timestamp.stop * 1000).toISOString(),
     stale: now - latest.timestamp.stop * 1000 > 30 * 3600000 || now - full.timestamp.stop * 1000 > 8 * 86400000 };
 }

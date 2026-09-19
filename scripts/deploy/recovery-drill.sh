@@ -14,6 +14,27 @@ restore_volume="$project-restored-data"
 wrong_volume="$project-wrong-key-data"
 cleanup() {
   docker rm -f "$source" "$restored" >/dev/null 2>&1 || true
+  node --input-type=module - "$state/operator-restore/recovery.json" <<'JS'
+import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+const file = process.argv[2];
+if (fs.existsSync(file)) {
+  const receipt = JSON.parse(fs.readFileSync(file));
+  if (!/^chanter-recovery-[a-f0-9-]{36}$/.test(receipt.container)
+      || receipt.volume !== receipt.container + '-data' || receipt.network !== receipt.container + '-network') throw new Error('Invalid fixture ownership');
+  for (const [kind, name, format, remove] of [
+    ['container', receipt.container, '{{ index .Config.Labels "chanter.recovery" }}', ['rm', '-f']],
+    ['volume', receipt.volume, '{{ index .Labels "chanter.recovery" }}', ['volume', 'rm']],
+    ['network', receipt.network, '{{ index .Labels "chanter.recovery" }}', ['network', 'rm']],
+  ]) {
+    try {
+      const owner = execFileSync('docker', [kind, 'inspect', '--format', format, name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+      if (owner !== receipt.container) throw new Error('Refusing foreign fixture cleanup');
+      execFileSync('docker', [...remove, name], { stdio: 'ignore' });
+    } catch (error) { if (!error.status) throw error; }
+  }
+}
+JS
   docker volume rm "$source_volume" "$restore_volume" "$wrong_volume" "$repo" >/dev/null 2>&1 || true
   node --input-type=module - "$root/.cache/recovery-drill" "$state" <<'JS'
 import fs from 'node:fs';
@@ -31,9 +52,7 @@ umask 077
 export RESTIC_REPOSITORY="$state/configuration-repository"
 export RESTIC_PASSWORD="$(openssl rand -hex 32)"
 "$restic" --no-cache init >/dev/null
-printf '%s' '{"version":1,"fixture":"private-recovery-canary"}' | \
-  "$restic" --no-cache backup --stdin --stdin-filename configuration.json --host chanter-drill --json > "$state/configuration-backup.jsonl"
-config_snapshot="$(node -e 'const rows=require("fs").readFileSync(process.argv[1],"utf8").trim().split("\n").map(JSON.parse); process.stdout.write(rows.find(r=>r.message_type==="summary").snapshot_id)' "$state/configuration-backup.jsonl")"
+config_snapshot="$(node scripts/deploy/restore-native-fixture.mjs prepare "$state" "$image" "$restic")"
 if RESTIC_PASSWORD=wrong-fixture-password "$restic" --no-cache dump "$config_snapshot" configuration.json > "$state/wrong-config-key.log" 2>&1; then
   echo 'Configuration restore unexpectedly accepted the wrong key.' >&2; exit 1
 fi
@@ -66,7 +85,7 @@ psql_source "CREATE EXTENSION vector; CREATE TABLE vector_marker (embedding vect
 psql_source 'CREATE TABLE recovery_marker (id integer PRIMARY KEY); INSERT INTO recovery_marker VALUES (1);' >/dev/null
 docker exec "$source" pgbackrest stanza-create
 docker exec "$source" pgbackrest check
-docker exec "$source" pgbackrest --type=full "--annotation=config-snapshot=$config_snapshot" backup
+docker exec "$source" pgbackrest --type=full --annotation=release=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "--annotation=config-snapshot=$config_snapshot" backup
 docker exec "$source" pgbackrest --output=json info > "$state/backup-info.json"
 node --input-type=module - "$state/backup-info.json" <<'JS'
 import fs from 'node:fs';
@@ -77,6 +96,7 @@ JS
 psql_source 'INSERT INTO recovery_marker VALUES (2)' >/dev/null
 # Separate commands commit marker 2 before the recovery point is written.
 psql_source "SELECT pg_create_restore_point('chanter_drill_target')" >/dev/null
+target_time="$(node -p 'new Date().toISOString()')"
 psql_source 'INSERT INTO recovery_marker VALUES (3)' >/dev/null
 psql_source 'SELECT pg_switch_wal()' >/dev/null
 docker exec "$source" pgbackrest check
@@ -106,6 +126,6 @@ test "$actual" = '1,2' || { echo 'Point-in-time restore included the wrong commi
 test "$(psql_source 'SELECT count(*) FROM recovery_marker')" = 3
 test "$(docker exec "$restored" psql -U chanter_admin -d postgres -Atc 'SHOW archive_mode')" = off
 test "$(docker exec "$restored" psql -U chanter_admin -d postgres -Atc 'SELECT embedding::text FROM vector_marker')" = '[1,2,3]'
-test "$("$restic" --no-cache dump "$config_snapshot" configuration.json)" = '{"version":1,"fixture":"private-recovery-canary"}'
+node scripts/deploy/restore-native-fixture.mjs exercise "$state" "$image" "$restic" "$repo" "$target_time"
 echo "Encrypted isolated PostgreSQL restore passed; fixture recovery took $(($(date +%s) - started)) seconds."
 echo 'This local repository drill does not establish production off-host RPO or RTO.'

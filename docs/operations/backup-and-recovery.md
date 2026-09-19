@@ -125,3 +125,41 @@ This fixture does not contact production, prove object recovery, measure a real
 operator recovery time or authorize replacing a live volume. Preserve production
 and partial restore state until a reviewed recovery procedure names the empty
 destination, backup/configuration versions, permissions and deletion reconciliation.
+
+## Restore onto a separate operator host
+
+Use the verified release bundle named in the selected backup's `release`
+annotation. Verify `images.sha256` before loading `images.tar` with Docker. The
+command requires that immutable PostgreSQL image to be present; it does not pull
+an arbitrary image or select an existing volume. Supply the offline bootstrap
+backup settings as a private environment file, including both encryption keys.
+
+```sh
+sha256sum --check images.sha256
+docker load --input images.tar
+node scripts/deploy/restore-isolated.mjs "$PWD" /srv/recovery/bootstrap.env \
+  /srv/recovery/attempt-01 production BACKUP_LABEL 2026-09-19T00:00:00.000Z
+```
+
+Replace the label and timestamp with reviewed values from the repository. The
+target must be after the selected backup completed. The command refuses an
+existing destination or a host running a Chanter staging/production environment.
+It validates the selected dependency chain and decrypts its exact configuration,
+checking the release identity, before creating a fresh named volume and network.
+PostgreSQL listens only on its Unix socket. No port is published. WAL replay can
+read the repository; after promotion the command disconnects networking and
+confirms archive writes remain disabled.
+
+`recovery.json` records owned resource names, the safe operation phase and pending
+checks. A failure retains the directory and volumes and stops only a container
+whose ownership label matches this attempt. Do not rerun against that directory.
+Inspect the named resources privately and use a new reviewed destination for a
+later attempt. The native fixture tests this same operator command with encrypted
+local repositories at the storage boundary; external S3 behavior remains a
+separate provider gate.
+
+`database-restored-isolated` means only that database replay completed. It never
+allows public cutover. Application consistency, matching object bytes, the
+current terminal-deletion journal, invalidation of restored sessions/native
+requests and operator review remain mandatory. Do not connect application services
+or expose the restored database while any of these checks is incomplete.

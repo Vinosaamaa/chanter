@@ -4,6 +4,7 @@ on:
     paths:
       - 'infra/production/postgres/**'
       - 'scripts/deploy/recovery*'
+      - 'scripts/deploy/restore-*'
       - 'scripts/deploy/configuration-backup*'
       - 'scripts/deploy/download-backup-tool.sh'
       - 'infra/production/tool-lock.json'
@@ -28,7 +29,7 @@ jobs:
           node-version: '24'
       - name: Validate recovery configuration
         run: |
-          node --test scripts/deploy/recovery.test.mjs scripts/deploy/configuration-backup.test.mjs scripts/deploy/host.test.mjs
+          node --test scripts/deploy/recovery.test.mjs scripts/deploy/configuration-backup.test.mjs scripts/deploy/host.test.mjs scripts/deploy/restore-isolated.test.mjs
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import { backupUnits } from './scripts/deploy/recovery.mjs';

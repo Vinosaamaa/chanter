@@ -104,3 +104,14 @@ release smoke: pgBackRest promotes the requested incremental to a full when no
 prior full exists. Its claimed missing libcurl dependency is likewise inconsistent
 with the pinned native build and executable startup; pgBackRest uses its own HTTP
 implementation. Actual S3-provider proof remains pending independently.
+
+The operator restore command now selects an existing dependency chain and exact
+configuration/release pair, rejects existing destinations and active application
+hosts, creates a new private volume/network, and runs PostgreSQL without a TCP
+listener. It detaches repository networking after WAL replay. Failure preserves
+owned state with a safe phase; no public-cutover receipt is ever issued. Focused
+tests pass; the expanded native fixture exercises the same operator code against
+real encrypted local database/configuration repositories and remains pending.
+Backup/configuration release mismatches now fail verification. Repeated claims
+that pgBackRest cannot promote an initial incremental were checked against pinned
+source and actual fresh release runs; both establish automatic full-backup fallback.

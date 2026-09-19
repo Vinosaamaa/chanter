@@ -326,7 +326,8 @@ export async function deploy(bundleDir, stateDir, rollback = false) {
           prepared.config.environment, configurationSnapshot(stateDir, target));
         compose(['exec', '-T', 'postgres', 'pgbackrest', 'stanza-create']);
         compose(['exec', '-T', 'postgres', 'pgbackrest', 'check']);
-        compose(['exec', '-T', 'postgres', 'pgbackrest', '--type=incr', `--annotation=config-snapshot=${configBackup.snapshotId}`, 'backup']);
+        compose(['exec', '-T', 'postgres', 'pgbackrest', '--type=incr', `--annotation=release=${target.commit}`,
+          `--annotation=config-snapshot=${configBackup.snapshotId}`, 'backup']);
       }
       else if (operation === 'migrate') {
         // Persist before the first SQL attempt. A crash must not turn partially migrated
@@ -415,7 +416,7 @@ export function backupDatabase(stateDir, type = 'incr', run = docker, saveConfig
       ...summarizeBackup(JSON.parse(execute(['--output=json', 'info']))) };
     if (receipt.stale) throw new Error('Backup chain is stale');
     verifyConfiguration(current.bundleDir, readEnv(path.join(stateDir, 'runtime/backup.env')),
-      config.environment, receipt.configSnapshot);
+      config.environment, receipt.configSnapshot, receipt.backupRelease);
     writeJson(path.join(stateDir, 'backup-status.json'), receipt);
     return receipt;
   } catch {

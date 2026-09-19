@@ -63,13 +63,14 @@ test('backup refuses corrupted tools, oversized state and invalid release before
 
 test('recovery checks decrypt the exact database-linked snapshot without returning secrets', t => {
   const directory = fixture(t);
-  const result = verifyConfigurationBackup(directory, settings, 'staging', 'abcdef12', (_, args) => {
+  const result = verifyConfigurationBackup(directory, settings, 'staging', 'abcdef12', snapshot.release.commit, (_, args) => {
     assert.deepEqual(args, ['--no-cache', 'dump', 'abcdef12', 'configuration.json']);
     return JSON.stringify(snapshot);
   });
   assert.deepEqual(result, { snapshotId: 'abcdef12', release: snapshot.release.commit });
-  assert.throws(() => verifyConfigurationBackup(directory, settings, 'staging', '--latest', () => assert.fail()), /reference/);
-  for (const output of ['private-error', JSON.stringify({ ...snapshot, config: { environment: 'production' } })]) {
-    assert.throws(() => verifyConfigurationBackup(directory, settings, 'staging', 'abcdef12', () => output), /recovery verification failed/);
+  assert.throws(() => verifyConfigurationBackup(directory, settings, 'staging', '--latest', snapshot.release.commit, () => assert.fail()), /reference/);
+  for (const output of ['private-error', JSON.stringify({ ...snapshot, config: { environment: 'production' } }),
+    JSON.stringify({ ...snapshot, release: { commit: 'b'.repeat(40) } })]) {
+    assert.throws(() => verifyConfigurationBackup(directory, settings, 'staging', 'abcdef12', snapshot.release.commit, () => output), /recovery verification failed/);
   }
 });

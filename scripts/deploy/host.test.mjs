@@ -248,12 +248,12 @@ test('scheduled backup verifies real completion, shares the deployment lock and 
   const run = args => {
     calls.push(args);
     return JSON.stringify([{ name: 'chanter', status: { code: 0 }, db: [{ id: 1, 'repo-key': 1 }],
-      backup: [{ type: 'full', error: false, database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64) },
+      backup: [{ type: 'full', error: false, database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64), release: release.commit },
       label: '20260918-000000F', timestamp: { stop: Math.floor(Date.now() / 1000) } }] }]);
   };
   const save = () => ({ snapshotId: 'c'.repeat(64) });
   const verified = [];
-  const verify = (...args) => verified.push(args.at(-1));
+  const verify = (...args) => verified.push(args[3]);
   assert.equal(backupDatabase(state, 'full', run, save, verify).status, 'ok');
   assert.deepEqual(verified, ['c'.repeat(64)]);
   assert.throws(() => backupDatabase(state, 'check', run, save, () => { throw new Error('private-config-secret'); }), /verification failed/);
