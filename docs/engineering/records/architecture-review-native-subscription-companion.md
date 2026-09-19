@@ -10,8 +10,8 @@ capabilityIds: ["chanter-ai-study-assistant-runtime"]
 createdAt: 2026-09-12
 reconstructed: false
 confidence: medium
-unknowns: ["Eligible-account subscription inference is unverified.", "Backend capability issuance/acceptance, installer signing, live session revocation, and final claim retention remain incomplete.", "Native isolation is exercised on Windows CLI 0.153.4 only."]
-modules: ["native-companion"]
+unknowns: ["Eligible-account subscription inference is unverified.", "Production key provisioning/rotation and final claim retention remain incomplete; package is OS-unsigned.", "Native isolation is exercised on Windows CLI 0.153.4 only."]
+modules: ["native-companion", "agent-service", "auth-service", "common", "gateway-service", "frontend"]
 interfaces: ["companion/src/codex-app-server.mjs", "companion/src/codex-launch.mjs", "companion/src/native-request.mjs", "companion/src/native-server.mjs", "companion/src/native-state.mjs"]
 seams: ["native-ui-to-provider-managed-auth", "restricted-stdio-to-provider-runtime", "backend-evidence-to-local-capability"]
 adapters: ["companion/src/codex-app-server.mjs"]

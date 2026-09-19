@@ -3,10 +3,10 @@ name: Native companion boundary
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['companion/**', '.github/workflows/native-companion.yml']
+    paths: ['companion/**', 'backend/**', 'frontend/**', '.github/workflows/native-companion.yml']
   push:
     branches: [main]
-    paths: ['companion/**', '.github/workflows/native-companion.yml']
+    paths: ['companion/**', 'backend/**', 'frontend/**', '.github/workflows/native-companion.yml']
 
 permissions:
   contents: read
