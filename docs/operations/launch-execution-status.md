@@ -1,6 +1,6 @@
 # Chanter launch execution status
 
-Reviewed 2026-09-19 against accepted main `935f6f849ae72c3682ed26d033aa543a9be0b4d8`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
+Reviewed 2026-09-19 against accepted main `2dc1d2d6cf010e782043f42353412019f0f404bd`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
 
 Chanter has substantial local-beta product code. It has no verified public release. The previous audit's DNS and provider observations are historical; this review does not claim that those external systems have been rechecked.
 
@@ -26,6 +26,9 @@ The accepted UI reconstruction is in PR314 and answer controls in PR322.
 Document ingestion PR325, native subscription support PR324 and public-edge
 controls PR328 are merged with passing merged-main checks. All workers are configured as Astra High
 without a fast-mode override. Their issue branches and worktrees are preserved.
+PR329's private telemetry and database/configuration recovery foundation is also
+merged, with passing full application and native release checks plus merged-main
+verification. #331 now owns operational monitoring in a separate worktree.
 
 The open dependency-update PRs and the older environment PR remain separate work. They have not been merged merely because individual test jobs passed. Dependency updates still need exact-head review and Engineering evidence.
 
@@ -38,12 +41,12 @@ The open dependency-update PRs and the older environment PR remain separate work
 | #244 | Durable private resource storage and quarantine | PR318 merged; native scanning passed; real private bucket and off-host restore proof remain |
 | #245 | Durable notifications and search indexing | PR327 merged; main CI, real PostgreSQL and consumer-restart journeys passed; production delivery proof remains |
 | #246 | Truthful supported resource ingestion | PR325 merged; real supported parsers and durable ingestion validated; provider/final release proof remains |
-| #247 | Authorized production vector retrieval | Draft330 implements pinned ONNX embeddings and scoped pgvector; dual-architecture load tests pass at 100,000 chunks; final concurrency, runtime union and release proof remain |
+| #247 | Authorized production vector retrieval | Draft330 has a combined packaged 100,000-chunk proof with real private telemetry on both architectures within 640 MiB; final exact-head application/release checks remain |
 | #248 | Evaluated AI safety, usage and cost accounting | PR317/322 merged provider adapters, catalog, accounting and answer controls; final retrieval/evaluations and configured-provider proof remain |
-| #249 | Administration, reports and moderation | Active branch implements step-up operator access, reports/appeals and live restrictions; complete database-driven media and responsive UI proof remains |
+| #249 | Administration, reports and moderation | Draft333 implements step-up operator access, reports/appeals and live restrictions; source-contract fixes and complete database-driven media/responsive UI proof remain |
 | #250 | Truthful free-beta mode or real paid billing | PR323 merged truthful free-beta mode and limits; final deployed accounting proof remains; paid billing is outside initial free beta |
 | #251 | Export, deletion, retention and accurate policy pages | Active branch has bounded source exports, durable transport and terminal journal/checkpoint tests; public export/deletion and restore reapply are still underway |
-| #252 | Monitoring, alerts, backups and proven restore | Draft329 supplies private telemetry and encrypted database/configuration recovery; #331 owns remaining operational alerts and #332 complete application recovery; all remain launch gates |
+| #252 | Monitoring, alerts, backups and proven restore | PR329 merged private telemetry and proven native database/configuration recovery; #331 is adding application metrics and operational alerts, and #332 owns complete application recovery; all remain launch gates |
 | #253 | Trusted edge, proxy handling and abuse limits | PR328 merged with shared admission and request bounds; actual public proxy/provider proof remains |
 | #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; new capability integration and final whole-product/mobile/voice checks remain |
 | #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |

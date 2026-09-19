@@ -17,7 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
 @EnableScheduling
-@Import(OutboxOperations.class)
+@Import({OutboxOperations.class, OutboxMetrics.class})
 public class OutboxConfiguration {
     // Keep Spring's unqualified lifecycle jobs off the network-delivery scheduler.
     @Bean

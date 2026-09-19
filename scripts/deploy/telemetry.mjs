@@ -12,6 +12,7 @@ export function telemetryEnvironment(settings) {
   }
   return { CHANTER_TELEMETRY_ENABLED: 'true', OTEL_TRACES_EXPORTER: 'otlp', OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
     OTEL_METRICS_EXPORTER: 'otlp', OTEL_METRIC_EXPORT_INTERVAL: '60000',
+    OTEL_INSTRUMENTATION_MICROMETER_ENABLED: 'true',
     OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: endpoint.slice(0, -'traces'.length) + 'metrics',
     OTEL_EXPORTER_OTLP_METRICS_HEADERS: `Authorization=${encodeURIComponent(authorization)}`,
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: endpoint, OTEL_EXPORTER_OTLP_TRACES_HEADERS: `Authorization=${encodeURIComponent(authorization)}`,
