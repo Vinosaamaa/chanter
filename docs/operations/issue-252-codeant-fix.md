@@ -27,3 +27,14 @@ Non-actionable findings checked against owning evidence:
   program itself; an additional self-verifier would not establish a new trust root.
 
 No provider acceptance or public recovery is inferred from these dispositions.
+
+The final full review identified missing unknowns and narrow evidence references
+in the Engineering metadata. Those now name #331/#332 and actual provider gaps,
+and link the successful native operator-restore and decoded telemetry/outage
+proof. Its claim that `setName("*")` matches only a literal asterisk is false:
+the pinned SDK 1.65.0
+[selector contract](https://github.com/open-telemetry/opentelemetry-java/blob/v1.65.0/sdk/metrics/src/main/java/io/opentelemetry/sdk/metrics/InstrumentSelectorBuilder.java)
+defines wildcard matching. Actual native export retains the known instrument
+with all 600 samples after private dimension removal. The repeated initial
+incremental-backup finding is covered by the pinned-source and fresh-staging
+evidence above; it does not justify a behavior change.

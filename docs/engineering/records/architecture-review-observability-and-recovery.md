@@ -10,7 +10,7 @@ capabilityIds: ["production-deployment"]
 createdAt: 2026-09-18
 reconstructed: false
 confidence: high
-unknowns: ["Native encrypted restore and application consistency proof", "Completed telemetry and alert implementation", "Actual provider configuration, alert receipt and off-host recovery measurements"]
+unknowns: ["Complete application consistency and object recovery in #332", "Operational coverage and tested alerts in #331", "Actual provider configuration, alert receipt and off-host recovery measurements"]
 modules: ["production-runtime", "shared-observability"]
 interfaces: ["private-telemetry-export", "encrypted-backup-repository", "isolated-restore"]
 seams: ["service-to-telemetry-provider", "postgres-to-backup-repository", "restore-to-public-cutover"]
@@ -24,7 +24,7 @@ amends: []
 supersedes: []
 learningRefs: []
 sources: [{"label":"Production observability and recovery", "url":"https://github.com/Vinosaamaa/chanter/issues/252", "kind":"issue"}]
-verification: {"state":"verified", "evidenceRefs":["scripts/deploy/recovery.test.mjs"]}
+verification: {"state":"verified", "evidenceRefs":["scripts/deploy/recovery.test.mjs", "scripts/deploy/restore-isolated.test.mjs", "https://github.com/Vinosaamaa/chanter/actions/runs/35423912478", "https://github.com/Vinosaamaa/chanter/actions/runs/35423912442"]}
 visibility: public-safe
 publicationEligibility: eligible
 issue: 252
