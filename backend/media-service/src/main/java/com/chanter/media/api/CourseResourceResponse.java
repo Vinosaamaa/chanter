@@ -17,7 +17,9 @@ public record CourseResourceResponse(
         String status,
         String sha256,
         String ingestionStatus,
-        java.util.Set<String> ingestionSignals
+        java.util.Set<String> ingestionSignals,
+        UUID studyServerId,
+        UUID cohortId
 ) {
 
     public static CourseResourceResponse from(CourseResource courseResource) {
@@ -32,7 +34,8 @@ public record CourseResourceResponse(
                 courseResource.uploadedByUserId(),
                 courseResource.createdAt(),
                 courseResource.publicStatus(),
-                courseResource.sha256(), courseResource.ingestionStatus(), courseResource.ingestionSignals()
+                courseResource.sha256(), courseResource.ingestionStatus(), courseResource.ingestionSignals(),
+                courseResource.studyServerId(), null
         );
     }
 }

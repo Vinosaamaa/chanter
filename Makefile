@@ -82,7 +82,8 @@ backend-media:
 
 backend-agent:
 	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests
-	$(JAVA21) $(MAVEN_BACKEND) -B -q -pl agent-service spring-boot:run
+	@if [ "$${CHANTER_EMBEDDINGS_PROVIDER:-onnx}" = onnx ]; then node scripts/vector/download-model.mjs "$${CHANTER_EMBEDDINGS_MODEL_DIRECTORY:-$(CURDIR)/.cache/models/minilm}"; fi
+	CHANTER_EMBEDDINGS_MODEL_DIRECTORY="$${CHANTER_EMBEDDINGS_MODEL_DIRECTORY:-$(CURDIR)/.cache/models/minilm}" $(JAVA21) $(MAVEN_BACKEND) -B -q -pl agent-service spring-boot:run
 
 backend-analytics:
 	$(JAVA21) $(MAVEN_BACKEND) -B -q install -DskipTests

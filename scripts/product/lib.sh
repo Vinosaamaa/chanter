@@ -421,6 +421,8 @@ product_ensure_databases() {
       fi
     fi
   done < <(product_postgres_databases)
+  docker exec chanter-postgres psql -U "$postgres_user" -d chanter_agent -v ON_ERROR_STOP=1 \
+    -c 'CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public' >/dev/null
 }
 
 product_prepare_infrastructure() {
@@ -434,7 +436,7 @@ product_prepare_infrastructure() {
     mail_services+=(mailpit)
   fi
   docker compose -f "$compose_file" --env-file "$root/.env" --profile product stop realtime-service >/dev/null 2>&1 || true
-  docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --wait --wait-timeout 600 \
+  docker compose -f "$compose_file" --env-file "$root/.env" --profile product up -d --build --wait --wait-timeout 600 \
     postgres redis livekit clamav "${mail_services[@]}"
   python3 "$root/scripts/media/wait-dependencies.py" --scanner-only
   product_ensure_databases
@@ -446,6 +448,7 @@ product_build_backend() {
   root="$(product_repo_root)"
   echo "Building backend modules (skip tests)..."
   (cd "$root/backend" && mvn -B -q install -DskipTests)
+  node "$root/scripts/vector/download-model.mjs" "$root/.cache/models/minilm"
 }
 
 product_start_java_module() {
@@ -457,6 +460,9 @@ product_start_java_module() {
   pid_file="$(product_pids_dir)/${module}.pid"
   log_file="$(product_logs_dir)/${module}.log"
   port="$(product_module_port "$module")"
+  if [ "$module" = agent-service ]; then
+    export CHANTER_EMBEDDINGS_MODEL_DIRECTORY="${CHANTER_EMBEDDINGS_MODEL_DIRECTORY:-$root/.cache/models/minilm}"
+  fi
 
   if product_is_port_listening "$port"; then
     echo "already running: $module (port $port)"

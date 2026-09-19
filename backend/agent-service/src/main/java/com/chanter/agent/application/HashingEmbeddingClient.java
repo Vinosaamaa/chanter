@@ -8,11 +8,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * Deterministic local embedder for CI and default local product stacks.
- * Uses a hashing / bag-of-words projection into a fixed unit vector — not a neural model.
- * Swap to {@code chanter.embeddings.provider=ollama} for real local embeddings.
+ * Deterministic test-profile fixture. Production configuration rejects this provider.
  */
 @Component
+@org.springframework.context.annotation.Profile("test")
 @ConditionalOnProperty(name = "chanter.embeddings.provider", havingValue = "hashing", matchIfMissing = true)
 public class HashingEmbeddingClient implements EmbeddingClient {
 
@@ -39,6 +38,9 @@ public class HashingEmbeddingClient implements EmbeddingClient {
     @Override
     public int dimensions() {
         return dimensions;
+    }
+    @Override public com.chanter.agent.domain.EmbeddingModel metadata() {
+        return new com.chanter.agent.domain.EmbeddingModel(modelId(),"test",modelId(),"hashing-fixture-v1",dimensions());
     }
 
     @Override

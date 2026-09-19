@@ -24,8 +24,11 @@ import org.springframework.web.server.ResponseStatusException;
 class ResourceRetrievalAuthorizationTest {
     private final UUID course = UUID.randomUUID(), viewer = UUID.randomUUID(), resource = UUID.randomUUID(), chunk = UUID.randomUUID();
     private final ResourceChunkRepository chunks = mock(ResourceChunkRepository.class);
-    private final ResourceChunkEmbeddingRepository embeddings = mock(ResourceChunkEmbeddingRepository.class);
+    private final com.chanter.agent.infra.JdbcVectorSearch embeddings = mock(com.chanter.agent.infra.JdbcVectorSearch.class);
     private final EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    private final EmbeddingModelRouter modelRouter = mock(EmbeddingModelRouter.class);
+    private final UUID server = UUID.randomUUID();
+    private final String sourceHash = "a".repeat(64);
     private HttpServer media;
     private HttpCourseResourceCatalogClient catalog;
     private VectorRetrievalService retrieval;
@@ -40,7 +43,8 @@ class ResourceRetrievalAuthorizationTest {
         media.createContext("/", exchange -> {
             int code = viewer.toString().equals(exchange.getRequestHeaders().getFirst(AuthHeaders.USER_ID)) ? mediaStatus : 403;
             var rows = status.equals("MISSING") ? List.of() : List.of(Map.of("id", resource, "courseId", metadataCourse,
-                    "title", "Guide", "fileName", "guide.md", "status", status, "aiApproved", approved, "ingestionStatus", ingestionStatus));
+                    "title", "Guide", "fileName", "guide.md", "status", status, "aiApproved", approved, "ingestionStatus", ingestionStatus,
+                    "studyServerId", server, "sha256", sourceHash));
             byte[] body = new ObjectMapper().writeValueAsBytes(Map.of("courseResources", rows));
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(code, body.length);
@@ -48,11 +52,13 @@ class ResourceRetrievalAuthorizationTest {
         });
         media.start();
         catalog = new HttpCourseResourceCatalogClient("http://127.0.0.1:" + media.getAddress().getPort(), 1, 1, "test-internal-service-token-for-agent");
-        retrieval = new VectorRetrievalService(chunks, embeddings, embeddingClient, catalog);
+        retrieval = new VectorRetrievalService(embeddings, modelRouter, catalog, 0.35);
         // Persisted/injected vectors survive the metadata transition, as a late indexing request can.
-        when(embeddingClient.embed("question")).thenReturn(new float[]{1, 0});
-        when(embeddings.findByResourceIds(Set.of(resource))).thenReturn(List.of(
-                new ResourceChunkEmbedding(chunk, resource, course, "fixture", 2, new float[]{1, 0}, Instant.now())));
+        when(modelRouter.pinned()).thenReturn(embeddingClient);
+        when(embeddingClient.metadata()).thenReturn(new EmbeddingModel("fixture", "test", "fixture", "v1", 8));
+        when(embeddingClient.embed("question")).thenReturn(new float[]{1, 0, 0, 0, 0, 0, 0, 0});
+        when(embeddings.nearest(any(), eq(course), anyList(), any(), eq(5), eq(0.35))).thenReturn(List.of(
+                new VectorRetrievalService.RankedChunk(chunk, resource, course, 0, 0, 14, "stale evidence", "guide.md", 1, "fixture")));
         when(chunks.findByResourceId(resource)).thenReturn(List.of(
                 new ResourceChunk(chunk, resource, course, 0, 0, 14, "stale evidence", "hash", "guide.md", Instant.now())));
     }
@@ -88,11 +94,36 @@ class ResourceRetrievalAuthorizationTest {
         assertThatThrownBy(() -> retrieval.retrieve("question", course, viewer, Set.of(resource), 5)).isInstanceOf(ResponseStatusException.class);
         verifyNoInteractions(embeddingClient, chunks, embeddings);
     }
+    @Test void tokenlessQueryHasNoSemanticEvidence() {
+        assertThat(retrieval.retrieve("?! ...",course,viewer,Set.of(resource),5)).isEmpty();
+        verifyNoInteractions(embeddingClient,embeddings);
+    }
+    @ParameterizedTest @ValueSource(doubles={-0.1,1.1,Double.NaN,Double.POSITIVE_INFINITY})
+    void invalidSimilarityThresholdIsRejectedAtStartup(double score) {
+        assertThatThrownBy(()->new VectorRetrievalService(embeddings,mock(EmbeddingModelRouter.class),catalog,score))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+    @ParameterizedTest @ValueSource(booleans={false,true})
+    void providerAndStoreOutagesHaveADistinctSafeOutcome(boolean storeFailed) {
+        if(storeFailed) when(embeddings.nearest(any(),eq(course),anyList(),any(),eq(5),eq(0.35)))
+                .thenThrow(new org.springframework.dao.TransientDataAccessResourceException("fixture outage"));
+        else when(embeddingClient.embed("question")).thenThrow(new IllegalStateException("fixture outage"));
+        assertThatThrownBy(()->retrieval.retrieve("question",course,viewer,Set.of(resource),5))
+                .isInstanceOf(SemanticRetrievalUnavailableException.class);
+        if(!storeFailed) verifyNoInteractions(embeddings);
+    }
+    @Test void cancelledProviderDoesNotBecomeAHandoffResult() {
+        when(embeddingClient.embed("question")).thenThrow(new java.util.concurrent.CancellationException("cancelled"));
+        assertThatThrownBy(()->retrieval.retrieve("question",course,viewer,Set.of(resource),5))
+                .isInstanceOf(java.util.concurrent.CancellationException.class);
+        verifyNoInteractions(embeddings);
+    }
 
-    @Test void chunkCourseMustMatchLiveResourceCourse() {
-        when(chunks.findByResourceId(resource)).thenReturn(List.of(
-                new ResourceChunk(chunk, resource, UUID.randomUUID(), 0, 0, 14, "wrong course", "hash", "guide.md", Instant.now())));
-        assertThat(retrieval.retrieve("question", course, viewer, Set.of(resource), 5)).isEmpty();
+    @Test void datastoreReceivesTheLiveAuthorizedScopeAndSourceVersion() {
+        assertThat(retrieval.retrieve("question", course, viewer, Set.of(resource), 5)).hasSize(1);
+        verify(embeddings).nearest(any(), eq(course), eq(List.of(new com.chanter.agent.infra.JdbcVectorSearch.AuthorizedResource(
+                resource, server, null, sourceHash))), any(), eq(5), eq(0.35));
+        verifyNoInteractions(chunks);
     }
 
     @ParameterizedTest @ValueSource(strings = {"PROCESSING", "REJECTED", "FAILED", "DELETED", "MISSING", "UNAPPROVED", "OTHER_COURSE", "MEDIA_FAILED"})

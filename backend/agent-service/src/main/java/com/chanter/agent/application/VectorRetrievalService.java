@@ -1,105 +1,54 @@
 package com.chanter.agent.application;
 
-import com.chanter.agent.domain.ResourceChunk;
-import com.chanter.agent.domain.ResourceChunkEmbedding;
+import com.chanter.agent.infra.JdbcVectorSearch;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class VectorRetrievalService {
-
-    private final ResourceChunkRepository chunkRepository;
-    private final ResourceChunkEmbeddingRepository embeddingRepository;
-    private final EmbeddingClient embeddingClient;
+    private final JdbcVectorSearch search;
+    private final EmbeddingModelRouter models;
     private final CourseResourceCatalogClient resources;
+    private final double minimumScore;
 
-    public VectorRetrievalService(
-            ResourceChunkRepository chunkRepository,
-            ResourceChunkEmbeddingRepository embeddingRepository,
-            EmbeddingClient embeddingClient,
-            CourseResourceCatalogClient resources
-    ) {
-        this.chunkRepository = chunkRepository;
-        this.embeddingRepository = embeddingRepository;
-        this.embeddingClient = embeddingClient;
-        this.resources = resources;
+    public VectorRetrievalService(JdbcVectorSearch search, EmbeddingModelRouter models,
+            CourseResourceCatalogClient resources,
+            @Value("${chanter.grounding.min-retrieval-score:0.35}") double minimumScore) {
+        if(!Double.isFinite(minimumScore) || minimumScore<0 || minimumScore>1)
+            throw new IllegalArgumentException("Semantic similarity threshold must be between zero and one");
+        this.search=search; this.models=models; this.resources=resources; this.minimumScore=minimumScore;
     }
 
-    @Transactional(readOnly = true)
     public List<RankedChunk> retrieve(String query, UUID courseId, UUID viewerUserId, Set<UUID> grantedResourceIds, int topK) {
-        if (courseId == null || viewerUserId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course and viewer are required for resource retrieval");
+        if(courseId==null || viewerUserId==null || query==null || query.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Course, viewer and query are required");
         }
-        if (query == null || query.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "query must not be blank");
+        if(grantedResourceIds==null || grantedResourceIds.isEmpty()) return List.of();
+        if(query.codePoints().noneMatch(Character::isLetterOrDigit)) return List.of();
+        var authorized=new ArrayList<JdbcVectorSearch.AuthorizedResource>();
+        for(var resource:resources.listAiApprovedCourseResources(courseId,viewerUserId)) {
+            if(!resource.aiApproved() || !courseId.equals(resource.courseId()) || !grantedResourceIds.contains(resource.id())) continue;
+            // Unknown/missing source metadata never expands authorization.
+            if(resource.studyServerId()==null || resource.sourceSha256()==null || !resource.sourceSha256().matches("[a-f0-9]{64}")) continue;
+            authorized.add(new JdbcVectorSearch.AuthorizedResource(resource.id(),resource.studyServerId(),resource.cohortId(),resource.sourceSha256()));
         }
-        if (grantedResourceIds == null || grantedResourceIds.isEmpty()) {
-            return List.of();
-        }
-        Set<UUID> authorized = new HashSet<>();
-        for (var resource : resources.listAiApprovedCourseResources(courseId, viewerUserId)) {
-            if (resource.aiApproved() && courseId.equals(resource.courseId()) && grantedResourceIds.contains(resource.id())) authorized.add(resource.id());
-        }
-        if (authorized.isEmpty()) return List.of();
-        int limit = topK < 1 ? 5 : Math.min(topK, 50);
-
-        float[] queryVector = embeddingClient.embed(query);
-        List<ResourceChunkEmbedding> embeddings = embeddingRepository.findByResourceIds(authorized);
-        if (embeddings.isEmpty()) {
-            return List.of();
-        }
-
-        Set<UUID> chunkIds = new HashSet<>();
-        for (ResourceChunkEmbedding embedding : embeddings) {
-            chunkIds.add(embedding.chunkId());
-        }
-
-        Map<UUID, ResourceChunk> chunksById = new HashMap<>();
-        for (UUID resourceId : authorized) {
-            for (ResourceChunk chunk : chunkRepository.findByResourceId(resourceId)) {
-                if (chunkIds.contains(chunk.id()) && courseId.equals(chunk.courseId()) && resourceId.equals(chunk.resourceId())) {
-                    chunksById.put(chunk.id(), chunk);
-                }
-            }
-        }
-
-        List<RankedChunk> ranked = new ArrayList<>();
-        for (ResourceChunkEmbedding embedding : embeddings) {
-            ResourceChunk chunk = chunksById.get(embedding.chunkId());
-            if (chunk == null || !courseId.equals(embedding.courseId()) || !chunk.resourceId().equals(embedding.resourceId())) {
-                continue;
-            }
-            double score = EmbeddingCodec.cosineSimilarity(queryVector, embedding.vector());
-            ranked.add(new RankedChunk(
-                    chunk.id(),
-                    chunk.resourceId(),
-                    chunk.courseId(),
-                    chunk.chunkIndex(),
-                    chunk.startOffset(),
-                    chunk.endOffset(),
-                    chunk.contentText(),
-                    chunk.fileName(),
-                    score,
-                    embedding.modelId(), chunk.locatorKind(), chunk.locatorNumber(), chunk.locatorLabel(),
-                    chunk.sourceSha256(), chunk.parserVersion(), chunk.extractionSignals(), chunk.sourceScope()
-            ));
-        }
-
-        ranked.sort(Comparator.comparingDouble(RankedChunk::score).reversed());
-        if (ranked.size() > limit) {
-            return List.copyOf(ranked.subList(0, limit));
-        }
-        return List.copyOf(ranked);
+        if(authorized.isEmpty()) return List.of();
+        try {
+            var client=models.pinned();
+            var model=client.metadata();
+            float[] vector;
+            try { vector=client.embed(query); }
+            catch(java.util.concurrent.CancellationException cancelled) { throw cancelled; }
+            catch(IllegalStateException unavailable) { throw new SemanticRetrievalUnavailableException(); }
+            if(java.util.stream.IntStream.range(0,vector.length).allMatch(i->vector[i]==0)) return List.of();
+            return search.nearest(model,courseId,authorized,vector,topK<1?5:Math.min(topK,50),minimumScore);
+        } catch(org.springframework.dao.DataAccessException unavailable) { throw new SemanticRetrievalUnavailableException(); }
     }
 
     public record RankedChunk(

@@ -17,7 +17,7 @@ class ResourceDocumentIngestionTest {
     @Autowired ResourceIngestionService ingestion;
     @Autowired ResourceChunkRepository chunks;
     @Autowired JdbcClient jdbc;
-    @MockitoSpyBean EmbeddingClient embeddingClient;
+    @MockitoSpyBean HashingEmbeddingClient embeddingClient;
 
     @Test void pdfPagesRemainSeparateWithDurableSourceAndLocatorMetadata() throws Exception {
         UUID resource = UUID.randomUUID(), course = UUID.randomUUID();

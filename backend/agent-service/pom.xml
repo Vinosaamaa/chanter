@@ -15,6 +15,21 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>1.30.0</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.djl.huggingface</groupId>
+            <artifactId>tokenizers</artifactId>
+            <version>0.38.0</version>
+            <!-- This adapter uses only the packaged tokenizer JNI and JSON support. -->
+            <exclusions>
+                <exclusion><groupId>net.java.dev.jna</groupId><artifactId>jna</artifactId></exclusion>
+                <exclusion><groupId>org.apache.commons</groupId><artifactId>commons-compress</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>3.0.8</version>

@@ -15,9 +15,13 @@ mapfile -t modules < <(node --input-type=module -e 'import {modules} from "./scr
 test -f backend/auth-service/src/main/resources/db/migration/V3__durable_browser_sessions.sql || {
   echo 'The secure browser-session release from #242 must be integrated first.' >&2; exit 1;
 }
+node scripts/vector/download-model.mjs backend/agent-service/target/embedding-model
 for module in "${modules[@]}"; do
+  model_source=infra/production/java
+  if [ "$module" = agent-service ]; then model_source=backend/agent-service/target/embedding-model; fi
   docker build --platform "linux/$architecture" --file infra/production/java/Dockerfile \
     --build-arg "MODULE=$module" --build-arg "JDK_IMAGE=$(locked jdk)" --build-arg "JRE_IMAGE=$(locked jre)" \
+    --build-arg "MODEL_ASSET_SOURCE=$model_source" \
     --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" \
     --label "org.opencontainers.image.revision=$commit" \
     --label 'org.opencontainers.image.source=https://github.com/Vinosaamaa/chanter' \

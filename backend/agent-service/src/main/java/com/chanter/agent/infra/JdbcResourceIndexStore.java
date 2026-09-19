@@ -20,10 +20,12 @@ public class JdbcResourceIndexStore implements ResourceIndexStore {
     private final JdbcClient jdbc;
     private final ResourceChunkRepository chunks;
     private final ResourceChunkEmbeddingRepository embeddings;
+    private final com.chanter.agent.application.EmbeddingVersionStore versions;
 
     public JdbcResourceIndexStore(JdbcClient jdbc, ResourceChunkRepository chunks,
-            ResourceChunkEmbeddingRepository embeddings) {
+            ResourceChunkEmbeddingRepository embeddings, com.chanter.agent.application.EmbeddingVersionStore versions) {
         this.jdbc = jdbc; this.chunks = chunks; this.embeddings = embeddings;
+        this.versions = versions;
     }
 
     @Override @Transactional
@@ -65,6 +67,7 @@ public class JdbcResourceIndexStore implements ResourceIndexStore {
     public void complete(UUID resourceId, long generation, List<ResourceChunk> prepared,
             List<ResourceChunkEmbedding> vectors, String status, Set<String> signals) {
         requireCurrent(resourceId, generation);
+        requireModelVersions(vectors, !prepared.isEmpty());
         chunks.replaceAllForResource(resourceId, prepared);
         embeddings.replaceAllForResource(resourceId, vectors);
         jdbc.sql("UPDATE resource_index_lifecycle SET status=:status, signals=:signals,job_lease_id=NULL,job_lease_until=NULL,job_retry_at=NULL WHERE resource_id=:id")
@@ -87,7 +90,16 @@ public class JdbcResourceIndexStore implements ResourceIndexStore {
         var currentIds = chunks.findByResourceId(resourceId).stream().map(ResourceChunk::id).toList();
         var snapshotIds = snapshot.chunks().stream().map(ResourceChunk::id).toList();
         if (!currentIds.equals(snapshotIds)) throw conflict("Resource chunks changed during embedding");
-        embeddings.replaceAllForResource(resourceId, prepared);
+        requireModelVersions(prepared, false);
+        embeddings.replaceModelsForResource(resourceId, prepared);
+    }
+
+    private void requireModelVersions(List<ResourceChunkEmbedding> prepared, boolean requireActive) {
+        versions.lock();
+        var modelIds=prepared.stream().map(ResourceChunkEmbedding::modelId).collect(java.util.stream.Collectors.toSet());
+        if(!versions.writableIds().containsAll(modelIds) || requireActive && !modelIds.contains(versions.active().id())) {
+            throw conflict("Embedding model changed during preparation");
+        }
     }
 
     private void requireCurrent(UUID resourceId, long generation) {

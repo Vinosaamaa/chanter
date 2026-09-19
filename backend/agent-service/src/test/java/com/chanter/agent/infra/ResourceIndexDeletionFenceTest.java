@@ -33,7 +33,7 @@ class ResourceIndexDeletionFenceTest {
     @Autowired JdbcClient jdbc;
     @Autowired PlatformTransactionManager transactions;
     @Autowired EmbeddingPipelineService embeddings;
-    @MockitoSpyBean EmbeddingClient embeddingClient;
+    @MockitoSpyBean com.chanter.agent.application.HashingEmbeddingClient embeddingClient;
     @Autowired com.chanter.agent.application.ResourceIngestionJobs jobs;
     @Autowired org.springframework.jdbc.core.JdbcTemplate template;
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;

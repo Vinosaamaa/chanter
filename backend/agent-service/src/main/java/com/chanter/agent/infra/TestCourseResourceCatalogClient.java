@@ -19,6 +19,7 @@ public class TestCourseResourceCatalogClient implements CourseResourceCatalogCli
     private final Map<UUID, Set<UUID>> allowedViewerIdsByCourse = new HashMap<>();
 
     public void registerResource(CourseResourceSummary resource) {
+        resources.removeIf(existing->existing.id().equals(resource.id()));
         resources.add(resource);
     }
 

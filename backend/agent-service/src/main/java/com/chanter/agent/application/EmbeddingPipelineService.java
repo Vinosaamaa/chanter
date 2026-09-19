@@ -15,12 +15,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class EmbeddingPipelineService {
 
     private final ResourceIndexStore indexStore;
-    private final EmbeddingClient embeddingClient;
+    private final EmbeddingModelRouter embeddingClient;
     private final Clock clock;
 
     public EmbeddingPipelineService(
             ResourceIndexStore indexStore,
-            EmbeddingClient embeddingClient,
+            EmbeddingModelRouter embeddingClient,
             Clock clock
     ) {
         this.indexStore = indexStore;
@@ -33,22 +33,29 @@ public class EmbeddingPipelineService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "resourceId is required");
         }
         var snapshot = indexStore.snapshot(resourceId);
-        var prepared = prepare(snapshot.chunks());
+        var selected = embeddingClient.pinned();
+        var prepared = prepareWith(selected, snapshot.chunks());
         indexStore.completeBackfill(resourceId, snapshot, prepared);
-        return new EmbedResult(resourceId, prepared.size(), embeddingClient.modelId());
+        return new EmbedResult(resourceId, prepared.size(), selected.modelId());
     }
 
     public List<ResourceChunkEmbedding> prepare(List<ResourceChunk> chunks) {
+        return prepareWith(embeddingClient.pinned(),chunks);
+    }
+    public List<ResourceChunkEmbedding> prepareFor(String modelId,List<ResourceChunk> chunks) {
+        return prepareWith(embeddingClient.client(modelId),chunks);
+    }
+    private List<ResourceChunkEmbedding> prepareWith(EmbeddingClient selected,List<ResourceChunk> chunks) {
         var createdAt = clock.instant().truncatedTo(ChronoUnit.MICROS);
         List<ResourceChunkEmbedding> embeddings = new ArrayList<>(chunks.size());
         for (ResourceChunk chunk : chunks) {
-            float[] vector = embeddingClient.embed(chunk.contentText());
+            float[] vector = selected.embed(chunk.contentText());
             embeddings.add(new ResourceChunkEmbedding(
                     chunk.id(),
                     chunk.resourceId(),
                     chunk.courseId(),
-                    embeddingClient.modelId(),
-                    embeddingClient.dimensions(),
+                    selected.modelId(),
+                    selected.dimensions(),
                     vector,
                     createdAt
             ));

@@ -69,13 +69,6 @@ public class RagGroundingEngine {
         return lowConfidenceResult();
     }
 
-    /**
-     * When vector store is empty, score downloaded resource text with the keyword engine.
-     */
-    public GroundingResult answerWithKeywordFallback(String question, List<GroundingSource> sources) {
-        return keywordFallback.answer(question, sources);
-    }
-
     private static String excerptWithOffsets(RankedChunk chunk) {
         String body = truncate(chunk.contentText(), 240);
         return "[offsets " + chunk.startOffset() + "-" + chunk.endOffset() + "] " + body;

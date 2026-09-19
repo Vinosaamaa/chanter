@@ -90,8 +90,8 @@ indexes="$("${compose[@]}" exec -T postgres psql -U chanter_admin -d chanter_mes
   "SELECT count(*) FROM pg_indexes WHERE indexname IN ('uq_friend_requests_pending_pair', 'uq_ta_queue_open_support_question')")"
 test "$indexes" = 2 || { echo 'PostgreSQL-specific migrations did not complete.' >&2; exit 1; }
 native_history="$("${compose[@]}" exec -T postgres psql -U chanter_admin -d chanter_agent -Atc \
-  "SELECT string_agg(version, ',' ORDER BY installed_rank) FROM flyway_schema_history WHERE version IN ('9','10','11','12') AND success")"
-test "$native_history" = '9,10,11,12' || { echo 'Extraction and native migrations did not complete in order.' >&2; exit 1; }
+  "SELECT string_agg(version, ',' ORDER BY installed_rank) FROM flyway_schema_history WHERE version IN ('9','10','11','12','13') AND success")"
+test "$native_history" = '9,10,11,12,13' || { echo 'Extraction, native and semantic vector migrations did not complete in order.' >&2; exit 1; }
 native_message="$("${compose[@]}" exec -T postgres psql -U chanter_admin -d chanter_message -Atc \
   "SELECT count(*) FROM flyway_schema_history WHERE version='10' AND success")"
 test "$native_message" = 1 || { echo 'Accepted-answer consumer migration did not complete exactly once.' >&2; exit 1; }

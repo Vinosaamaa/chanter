@@ -7,4 +7,6 @@ public interface EmbeddingClient {
     int dimensions();
 
     float[] embed(String text);
+
+    com.chanter.agent.domain.EmbeddingModel metadata();
 }

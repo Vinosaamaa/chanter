@@ -61,12 +61,15 @@ export function composeFor(release, config, runtimeDir) {
         POSTGRES_DB: `chanter_${name.replace('-service', '')}`, REDIS_HOST: 'redis', REDIS_PORT: '6379',
         CHANTER_PUBLIC_BASE_URL: `https://${config.hostname}`, CHANTER_CORS_ORIGINS: `https://${config.hostname}`,
         CHANTER_AUTH_REQUIRE_EMAIL_VERIFICATION: 'true', CHANTER_EMAIL_PROVIDER: 'smtp', CHANTER_EMAIL_LOCAL_SINK: 'false',
-        CHANTER_LLM_ENABLED: 'false', CHANTER_EMBEDDINGS_PROVIDER: 'hashing',
+        CHANTER_LLM_ENABLED: 'false',
         LIVEKIT_URL: `wss://${config.hostname}/livekit`, LIVEKIT_HTTP_URL: 'http://livekit:7880',
         COURSE_RESOURCE_STORAGE_DIR: '/app/resources' },
       healthcheck: { test: ['CMD', 'java', '-cp', '/app/helpers', 'Probe', 'http://127.0.0.1:8080/actuator/health/readiness'],
         interval: '30s', timeout: '8s', retries: 3, start_period: '120s' },
       networks: ['application'] };
+    if (name === 'agent-service') {
+      services[name].environment.CHANTER_EMBEDDINGS_MODEL_DIRECTORY = '/app/models/minilm';
+    }
     if (database) {
       services[name].depends_on = { postgres: { condition: 'service_healthy' } };
       const migrationEnvironment = { ...services[name].environment };

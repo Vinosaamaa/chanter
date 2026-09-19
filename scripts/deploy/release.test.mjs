@@ -9,17 +9,30 @@ const release = () => ({ version: 1, commit: 'a'.repeat(40), architecture: 'arm6
   images: Object.fromEntries(imageNames.map(name => [name, hash('b')])) });
 const config = { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' };
 
-test('native answer release policy stamps epoch 7 and blocks downgrade to epoch 6', async () => {
+test('semantic vector release policy stamps epoch 8 and blocks downgrade to epoch 7', async () => {
   const policy = JSON.parse(readFileSync(new URL('../../infra/production/release-policy.json', import.meta.url), 'utf8'));
-  assert.equal(policy.schemaEpoch, 7);
+  assert.equal(policy.schemaEpoch, 8);
   const current = { ...release(), schemaEpoch: policy.schemaEpoch };
-  const previous = { ...release(), commit: 'c'.repeat(40), schemaEpoch: 6 };
+  const previous = { ...release(), commit: 'c'.repeat(40), schemaEpoch: 7 };
   // A matching historical bundle remains valid in an empty environment.
   assert.doesNotThrow(() => planDeployment(previous, null));
   const actions = [];
   await assert.rejects(executeDeployment(previous, current, async action => actions.push(action)), /schema epoch/);
   assert.deepEqual(actions, []);
   assert.throws(() => planDeployment(previous, current, true), /schema epoch/);
+});
+
+test('agent uses its packaged semantic model without overriding explicit provider configuration', () => {
+  const stage = composeFor(release(), config, '/srv/chanter/staging/runtime');
+  const agent = stage.services['agent-service'];
+  assert.equal(agent.environment.CHANTER_EMBEDDINGS_MODEL_DIRECTORY, '/app/models/minilm');
+  assert.equal(agent.mem_limit, '640m');
+  for (const service of Object.values(stage.services)) {
+    assert.equal(Object.hasOwn(service.environment ?? {}, 'CHANTER_EMBEDDINGS_PROVIDER'), false);
+  }
+  const configured = { CHANTER_EMBEDDINGS_PROVIDER: 'api', ...agent.environment };
+  assert.equal(configured.CHANTER_EMBEDDINGS_PROVIDER, 'api');
+  assert.equal(stage.services['media-service'].environment.CHANTER_EMBEDDINGS_MODEL_DIRECTORY, undefined);
 });
 
 test('native agent receives private auth and message routes without enabling or copying signer configuration', () => {
