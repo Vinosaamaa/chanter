@@ -12,7 +12,8 @@ public final class Probe {
             var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
             var response = client.send(request, HttpResponse.BodyHandlers.ofString());
             boolean up = response.statusCode() == 200 && (!args[0].contains("/actuator/")
-                    || response.body().matches("(?s).*\"status\"\\s*:\\s*\"UP\".*"));
+                    // Deployment config hides components; accept only the compact root status.
+                    || response.body().matches("\\s*\\{\\s*\"status\"\\s*:\\s*\"UP\"\\s*}\\s*"));
             if (!up) System.exit(1);
         } catch (Exception ignored) {
             System.exit(1);

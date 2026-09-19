@@ -99,7 +99,11 @@ jobs:
           test "$count" -gt 0 || { echo 'Exact-commit CI must finish first.' >&2; exit 1; }
           asset="chanter-$GITHUB_SHA-$ARCHITECTURE.tar.gz"
           tar --sort=name --mtime="@$(git show -s --format=%ct HEAD)" --owner=0 --group=0 --numeric-owner \
-            -czf ".cache/$asset" -C ".cache/release/$ARCHITECTURE" .
+            -czf ".cache/$asset" -C ".cache/release/$ARCHITECTURE" \
+            release.json images.tar images.sha256 \
+            infra/production/postgres-init.sh infra/production/livekit.yaml \
+            infra/production/runtime-lock.json infra/production/release-policy.json \
+            scripts/deploy/host.mjs scripts/deploy/release.mjs
           test "$(stat -c %s ".cache/$asset")" -lt 2000000000 || { echo 'Release asset exceeds the free delivery limit.' >&2; exit 1; }
           (cd .cache && sha256sum "$asset" > "$asset.sha256")
           tag="deploy-$GITHUB_SHA"

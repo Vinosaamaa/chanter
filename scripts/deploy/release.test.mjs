@@ -69,6 +69,23 @@ test('rollback rejects changed schema epochs and persistence images', () => {
   assert.throws(() => planDeployment(before, after, true), /persistence/);
 });
 
+test('normal deployment cannot downgrade a recorded schema epoch', async () => {
+  const before = release(); before.schemaEpoch = 4;
+  const older = release(); older.commit = 'd'.repeat(40); older.schemaEpoch = 3;
+  const steps = [];
+  await assert.rejects(executeDeployment(older, before, async operation => steps.push(operation)), /schema epoch/);
+  assert.deepEqual(steps, []);
+});
+
+test('missing recovery artifacts reject deployment before stopping ingress', async () => {
+  const steps = [];
+  await assert.rejects(executeDeployment(release(), release(), async operation => {
+    steps.push(operation);
+    if (operation === 'verify-recovery') throw new Error('Previous bundle is incomplete');
+  }), /incomplete/);
+  assert.deepEqual(steps, ['verify-images', 'verify-recovery']);
+});
+
 test('failed public health restores the prior compatible release and never records the failed release', async () => {
   const before = release(); const after = release(); after.commit = 'c'.repeat(40);
   const steps = [];

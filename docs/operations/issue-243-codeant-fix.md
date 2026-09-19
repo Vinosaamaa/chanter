@@ -82,3 +82,25 @@ and the public runbook retain the separate production gates.
   databases twice on both architectures. Flyway's missing-location behavior
   does not match the reported failure. The same native proof remains required
   on the final candidate.
+# Private-media integration review
+
+The full review completed at `49209c8`. The health probe accepted a nested
+`UP` inside an overall `DOWN` response. A real HTTP/Java regression reproduced
+the false success; the probe now accepts only the compact root `UP` response
+configured by the deployment. LiveKit still uses its HTTP status contract.
+
+Normal deployment could accept a lower epoch even though explicit rollback
+rejected it. A regression reproduced the bypass. Planning now rejects any
+downgrade from the recorded epoch before host mutation. A fresh host has no
+stored schema; the reviewed release remains the trust source for its manifest.
+
+Recovery now renders and checks the recorded fallback's files and images
+before stopping ingress. Missing artifacts fail preflight while the current
+application remains running. External deletion after preflight cannot be
+prevented; runtime failures still close ingress and report required recovery.
+
+The release archive now enumerates its nine allowed files instead of recursively
+archiving a reused build directory. Unexpected leftovers are excluded without
+deleting operator data. Scanner tests also connect as the media UID and reject
+an unrelated UID. Seventeen local deployment tests and Actionlint pass. These
+changes require fresh exact-head native checks before acceptance.

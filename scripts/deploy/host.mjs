@@ -188,6 +188,11 @@ export async function deploy(bundleDir, stateDir, rollback = false) {
       if (operation === 'verify-images') {
         for (const id of new Set(Object.values(target.images))) docker(['image', 'inspect', id], true);
         compose(['config', '--quiet']);
+      } else if (operation === 'verify-recovery') {
+        // Prove the recorded fallback still exists before interrupting the running application.
+        const prior = render(current.bundleDir, stateDir);
+        for (const id of new Set(Object.values(prior.release.images))) docker(['image', 'inspect', id], true);
+        docker(['compose', '-f', prior.file, 'config', '--quiet']);
       } else if (operation === 'stop-ingress') {
         // Reserve the host before the first mutation, including a partially failed first deployment.
         writeJson(activeFile, { environment: prepared.config.environment, stateDir, bundleDir: source });

@@ -113,13 +113,14 @@ export function composeFor(release, config, runtimeDir) {
 export function planDeployment(next, current, rollback = false) {
   validateRelease(next);
   if (current) validateRelease(current);
+  if (current && next.schemaEpoch < current.schemaEpoch) throw new Error('Deployment cannot downgrade the recorded schema epoch; fix forward');
   if (rollback) {
     if (!current || next.schemaEpoch !== current.schemaEpoch) throw new Error('Rollback requires the same reviewed schema epoch; fix forward');
     if (['postgres', 'redis'].some(name => next.images[name] !== current.images[name])) {
       throw new Error('Rollback cannot change persistence images; fix forward');
     }
   }
-  return ['verify-images', 'stop-ingress', 'stop-applications', 'start-persistence',
+  return ['verify-images', ...(current ? ['verify-recovery'] : []), 'stop-ingress', 'stop-applications', 'start-persistence',
     ...(rollback ? [] : ['migrate']), 'start-applications', 'start-ingress', 'verify-public-health', 'record-current'];
 }
 

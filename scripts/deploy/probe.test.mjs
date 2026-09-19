@@ -15,6 +15,7 @@ test('the actual container health helper rejects unhealthy and missing endpoints
   const server = http.createServer((req, res) => {
     if (req.url === '/actuator/health/readiness') res.end('{"status":"UP"}');
     else if (req.url === '/actuator/health/down') res.end('{"status":"DOWN"}');
+    else if (req.url === '/actuator/health/nested') res.end('{"status":"DOWN","components":{"db":{"status":"UP"}}}');
     else { res.statusCode = 503; res.end('unavailable'); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -23,6 +24,7 @@ test('the actual container health helper rejects unhealthy and missing endpoints
     const probe = suffix => run(tool('java'), ['-cp', output, 'Probe', base + suffix]);
     await assert.doesNotReject(probe('/actuator/health/readiness'));
     await assert.rejects(probe('/actuator/health/down'), { code: 1 });
+    await assert.rejects(probe('/actuator/health/nested'), { code: 1 });
     await assert.rejects(probe('/missing'), { code: 1 });
   } finally { await new Promise(resolve => server.close(resolve)); }
 });

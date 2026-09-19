@@ -11,7 +11,7 @@ compose = ["docker", "compose", "--project-name", sys.argv[1], "-f", sys.argv[2]
 
 
 def command(payload):
-    result = subprocess.run(compose + ["exec", "-T", "clamav", "nc", "-w", "25", "-U", "/run/clamav/clamd.sock"],
+    result = subprocess.run(compose + ["exec", "-T", "--user", "10001:10001", "clamav", "nc", "-w", "25", "-U", "/run/clamav/clamd.sock"],
                             input=payload, capture_output=True, timeout=35, check=True)
     return result.stdout.rstrip(b"\0\r\n")
 
@@ -45,6 +45,10 @@ subprocess.run(compose + ["exec", "-T", "clamav", "sh", "-c",
     'test "$(id -u)" = 10002 && test "$(stat -c %a /var/lib/clamav)" = 700 '
     '&& test "$(stat -c %u:%g:%a /run/clamav)" = 10002:10001:2770 '
     '&& test "$(stat -c %a /run/clamav/clamd.sock)" = 660'], check=True)
+outsider = subprocess.run(compose + ["exec", "-T", "--user", "10003:10003", "clamav", "nc", "-w", "3", "-U", "/run/clamav/clamd.sock"],
+                          input=b"zPING\0", capture_output=True, timeout=10)
+if outsider.returncode == 0 or b"PONG" in outsider.stdout:
+    raise RuntimeError("Unrelated container identity can access the scanner socket")
 verify()
 subprocess.run(compose + ["restart", "clamav"], check=True)
 subprocess.run(compose + ["up", "-d", "--no-deps", "--wait", "--wait-timeout", "600", "clamav"], check=True)
