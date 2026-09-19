@@ -68,11 +68,11 @@ class RedisAdmissionHttpTest {
         });
     }
 
-    @Test void tenantRotationAndMultipleGatewaysCannotResetTheVerifiedUserAiBudget() throws Exception {
+    @Test void courseRotationAndMultipleGatewaysCannotResetTheVerifiedUserAiBudget() throws Exception {
         String token = new JwtTokenService(JWT_SECRET, 900).createAccessToken(UUID.randomUUID());
         var results = new ArrayList<HttpResponse<String>>();
         for (int index = 0; index < 25; index++) results.add(http.send(request(index % 2 == 0 ? first : second,
-                "/api/v1/study-servers/" + UUID.randomUUID() + "/study-assistant")
+                "/api/v1/course-channels/" + UUID.randomUUID() + "/support-questions/" + UUID.randomUUID() + "/assistant-answer")
                 .header("Authorization", "Bearer " + token).build(), HttpResponse.BodyHandlers.ofString()));
         assertThat(results.stream().filter(reply -> reply.statusCode() == 204).count()).isEqualTo(20);
         assertThat(results.stream().filter(reply -> reply.statusCode() == 429).count()).isEqualTo(5);

@@ -76,11 +76,24 @@ class ProxyBoundaryHttpTest {
     }
 
     @Test void matrixParametersCannotSelectADifferentPolicyThanTheBackendRoute() throws Exception {
-        for (String suffix : new String[]{";review=1", "%3breview=1"}) {
-            var response = HttpClient.newHttpClient().send(request("/api/v1/auth/register" + suffix)
+        for (String path : new String[]{"/api/v1/auth/register;review=1", "/api/v1/auth/register%3breview=1", "/api/v1/auth/%72egister", "/%61pi/v1/auth/register"}) {
+            var response = HttpClient.newHttpClient().send(request(path)
                     .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.discarding());
             assertThat(response.statusCode()).isEqualTo(400);
         }
+    }
+
+    @Test void moderationUsesAuthServiceOnlyAfterAuthenticationAndNeverExposesInternalRoutes() throws Exception {
+        String token = new JwtTokenService("chanter-test-jwt-secret-32bytes-min!!", 900).createAccessToken(UUID.randomUUID());
+        for (String path : new String[]{"/api/v1/moderation/reports", "/api/v1/platform-admin/cases"}) {
+            var anonymous = HttpClient.newHttpClient().send(request(path).GET().build(), HttpResponse.BodyHandlers.discarding());
+            assertThat(anonymous.statusCode()).isEqualTo(401);
+            var authenticated = HttpClient.newHttpClient().send(request(path).header("Authorization", "Bearer " + token).GET().build(), HttpResponse.BodyHandlers.discarding());
+            assertThat(authenticated.statusCode()).isEqualTo(200);
+        }
+        var internal = HttpClient.newHttpClient().send(request("/api/v1/internal/moderation/cases")
+                .header("Authorization", "Bearer " + token).GET().build(), HttpResponse.BodyHandlers.discarding());
+        assertThat(internal.statusCode()).isEqualTo(404);
     }
 
     private void assertSanitized() {

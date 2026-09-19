@@ -35,6 +35,7 @@ public final class TrustedClientIdentity {
     }
 
     private static String address(byte[] bytes) {
+        // The JDK also collapses IPv4-mapped 16-byte addresses into the canonical IPv4 form.
         try { return InetAddress.getByAddress(bytes).getHostAddress(); }
         catch (UnknownHostException invalid) { throw new IllegalArgumentException("Invalid IP address"); }
     }

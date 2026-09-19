@@ -37,7 +37,8 @@ public final class ProxyBoundaryFilter implements WebFilter, Ordered {
         exchange.getAttributes().put(REQUEST_ID_ATTRIBUTE, requestId);
         exchange.getResponse().getHeaders().set("X-Request-Id", requestId);
         String rawPath = exchange.getRequest().getURI().getRawPath().toLowerCase(Locale.ROOT);
-        if (rawPath.contains(";") || rawPath.contains("%3b")) {
+        // Public paths contain literal route names and opaque IDs. Query/body text may remain encoded.
+        if (rawPath.contains(";") || rawPath.contains("%")) {
             exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
             exchange.getResponse().getHeaders().setCacheControl("no-store");
             return exchange.getResponse().setComplete();

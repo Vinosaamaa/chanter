@@ -1,3 +1,1 @@
-.auth-verification p { margin: 0; }
-.auth-verification button { min-height: 44px; padding: 8px 0; color: #2458d3; text-decoration: underline; cursor: pointer; }
-
+.auth-verification :is(p, .auth-back) { margin: 0; }

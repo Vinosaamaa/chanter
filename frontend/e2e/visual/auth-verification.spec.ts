@@ -31,6 +31,7 @@ for (const width of [320, 390, 1280]) {
     expect((await signupRequest).headers()['x-chanter-verification-method']).toBe('email')
     await expect(page.getByText('Check your email for a verification link.')).toBeVisible()
     await page.getByRole('link', { name: 'Forgot password?' }).click()
+    await expect(page.getByRole('heading', { name: 'Forgot password', exact: true })).toBeVisible()
     await page.getByLabel('Email', { exact: true }).fill('learner@example.test')
     await page.getByRole('button', { name: 'Use email verification instead' }).click()
     const recoveryRequest = page.waitForRequest(request => request.url().endsWith('/auth/forgot-password'))

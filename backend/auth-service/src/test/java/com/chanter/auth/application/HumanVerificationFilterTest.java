@@ -14,8 +14,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 class HumanVerificationFilterTest {
     @Test void routeMatrixParametersCannotBypassVerification() throws Exception {
         var filter = new HumanVerificationFilter(new TurnstileVerification("public-key", "fixture-secret", "https://study.example", true));
-        for (String suffix : new String[]{";review=1", "%3Breview=1"}) {
-            var request = new MockHttpServletRequest("POST", "/api/v1/auth/register" + suffix);
+        for (String path : new String[]{"/api/v1/auth/register;review=1", "/api/v1/auth/register%3Breview=1", "/api/v1/auth/%72egister", "/%61pi/v1/auth/register"}) {
+            var request = new MockHttpServletRequest("POST", path);
             var response = new MockHttpServletResponse();
             filter.doFilter(request, response, (req, res) -> { throw new AssertionError("Ambiguous route reached registration"); });
             assertThat(response.getStatus()).isEqualTo(400);

@@ -20,6 +20,8 @@ class RequestBudgetPolicyTest {
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/study-server-invitations")).isEqualTo(RequestBudgetPolicy.SENSITIVE);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/direct-messages/abc/messages")).isEqualTo(RequestBudgetPolicy.MESSAGE);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.DELETE, "/api/v1/admin/users/abc")).isEqualTo(RequestBudgetPolicy.SENSITIVE);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.GET, "/api/v1/platform-admin/cases")).isEqualTo(RequestBudgetPolicy.SENSITIVE);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/moderation/reports")).isEqualTo(RequestBudgetPolicy.SENSITIVE);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/new-future-write")).isEqualTo(RequestBudgetPolicy.WRITE);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.GET, "/api/v1/me/home-summary")).isEqualTo(RequestBudgetPolicy.READ);
     }

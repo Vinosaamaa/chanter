@@ -94,7 +94,7 @@ export function HumanVerificationControl({ action, onChange }: {
       <div ref={container} className="auth-verification-widget" />
       <p className="auth-lede" aria-live="polite">{unavailable ? 'Verification could not load. You can continue by email.'
         : options ? 'Complete the check, or continue by email.' : 'Checking verification options…'}</p>
-      <button className="auth-verification-alternative" type="button" onClick={() => {
+      <button className="auth-back" type="button" onClick={() => {
         setEmailAlternative(true)
         onChange({ method: 'email' })
       }}>Use email verification instead</button>

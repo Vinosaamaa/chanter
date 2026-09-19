@@ -106,8 +106,9 @@ retries the rejected operation. The recovery exception remains capped at sixty
 requests per process per minute. Real Redis tests cover two gateways, atomic
 concurrency, expiry, spoofed identities, tenant rotation and an unavailable store.
 
-Matrix-parameter path suffixes, literal or encoded semicolons, are rejected
-before route/policy matching and independently at auth. This prevents Spring's
+Public route names and opaque IDs require literal path segments. Matrix parameters
+and percent-encoded paths are rejected before route/policy matching and independently
+at auth; encoded query parameters and request bodies remain supported. This prevents Spring's
 route normalization from selecting a less protected budget or bypassing proof.
 Every gateway request receives a fresh correlation ID forwarded to the service
 and returned to the browser; a caller-supplied ID cannot replace it.

@@ -23,6 +23,7 @@ public enum RequestBudgetPolicy {
         if (path.startsWith("/api/v1/auth/")) return AUTH;
         if (path.startsWith("/api/v1/realtime/")) return RECONNECT;
         boolean read = HttpMethod.GET.equals(method) || HttpMethod.HEAD.equals(method) || HttpMethod.OPTIONS.equals(method);
+        if (segment(path, "platform-admin") || (!read && segment(path, "moderation"))) return SENSITIVE;
         if (HttpMethod.POST.equals(method) && (path.endsWith("/assistant-answer") || path.endsWith("/assistant-answer/stream")
                 || path.endsWith("/native-request") || segment(path, "native-results") || segment(path, "native-companion"))) return AI;
         if (segment(path, "search")) return SEARCH;

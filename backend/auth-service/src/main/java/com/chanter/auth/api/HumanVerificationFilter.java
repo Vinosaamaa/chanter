@@ -21,7 +21,7 @@ public final class HumanVerificationFilter extends OncePerRequestFilter {
             throws IOException, ServletException {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         // Spring route matching ignores matrix parameters; policy matching must never disagree with it.
-        if (path.contains(";") || path.toLowerCase(java.util.Locale.ROOT).contains("%3b")) {
+        if (path.contains(";") || path.contains("%")) {
             response.setStatus(400);
             response.setHeader("Cache-Control", "no-store");
             return;
