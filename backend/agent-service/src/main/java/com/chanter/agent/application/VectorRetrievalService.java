@@ -20,6 +20,8 @@ public class VectorRetrievalService {
     public VectorRetrievalService(JdbcVectorSearch search, EmbeddingModelRouter models,
             CourseResourceCatalogClient resources,
             @Value("${chanter.grounding.min-retrieval-score:0.35}") double minimumScore) {
+        if(!Double.isFinite(minimumScore) || minimumScore<0 || minimumScore>1)
+            throw new IllegalArgumentException("Semantic similarity threshold must be between zero and one");
         this.search=search; this.models=models; this.resources=resources; this.minimumScore=minimumScore;
     }
 

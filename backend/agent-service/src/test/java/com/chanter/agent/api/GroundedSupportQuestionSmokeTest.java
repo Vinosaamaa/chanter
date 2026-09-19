@@ -64,6 +64,8 @@ class GroundedSupportQuestionSmokeTest {
         assertThat(response.confidence()).isEqualTo("LOW");
         assertThat(response.handoffRecommended()).isTrue();
         assertThat(response.sources()).isEmpty();
+        org.mockito.Mockito.verify(vectorRetrieval).retrieve(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.eq(course),
+                org.mockito.ArgumentMatchers.eq(learner),org.mockito.ArgumentMatchers.anySet(),org.mockito.ArgumentMatchers.anyInt());
     }
 
     @org.junit.jupiter.params.ParameterizedTest

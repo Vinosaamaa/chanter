@@ -98,11 +98,19 @@ class ResourceRetrievalAuthorizationTest {
         assertThat(retrieval.retrieve("?! ...",course,viewer,Set.of(resource),5)).isEmpty();
         verifyNoInteractions(embeddingClient,embeddings);
     }
-    @Test void providerAndStoreOutagesHaveADistinctSafeOutcome() {
-        when(embeddingClient.embed("question")).thenThrow(new IllegalStateException("fixture outage"));
+    @ParameterizedTest @ValueSource(doubles={-0.1,1.1,Double.NaN,Double.POSITIVE_INFINITY})
+    void invalidSimilarityThresholdIsRejectedAtStartup(double score) {
+        assertThatThrownBy(()->new VectorRetrievalService(embeddings,mock(EmbeddingModelRouter.class),catalog,score))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+    @ParameterizedTest @ValueSource(booleans={false,true})
+    void providerAndStoreOutagesHaveADistinctSafeOutcome(boolean storeFailed) {
+        if(storeFailed) when(embeddings.nearest(any(),eq(course),anyList(),any(),eq(5),eq(0.35)))
+                .thenThrow(new org.springframework.dao.TransientDataAccessResourceException("fixture outage"));
+        else when(embeddingClient.embed("question")).thenThrow(new IllegalStateException("fixture outage"));
         assertThatThrownBy(()->retrieval.retrieve("question",course,viewer,Set.of(resource),5))
                 .isInstanceOf(SemanticRetrievalUnavailableException.class);
-        verifyNoInteractions(embeddings);
+        if(!storeFailed) verifyNoInteractions(embeddings);
     }
     @Test void cancelledProviderDoesNotBecomeAHandoffResult() {
         when(embeddingClient.embed("question")).thenThrow(new java.util.concurrent.CancellationException("cancelled"));

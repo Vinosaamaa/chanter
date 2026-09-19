@@ -23,7 +23,6 @@ class GroundedSupportQuestionCancellationTest {
         var access = mock(SupportQuestionChannelAccessClient.class);
         var questions = mock(SupportQuestionClient.class);
         var resources = mock(CourseResourceCatalogClient.class);
-        var content = mock(CourseResourceContentClient.class);
         var faqs = mock(ApprovedFaqClient.class);
         var runtime = mock(AgentRuntimeService.class);
         var catalog = mock(LlmModelCatalog.class);
@@ -54,7 +53,6 @@ class GroundedSupportQuestionCancellationTest {
             });
             assertThatThrownBy(() -> service.answerSupportQuestion(channel, question, user, "source-only", null, execution, ignored -> {}))
                     .isInstanceOf(LlmProviderException.class).hasMessageContaining("cancelled");
-            verify(content, never()).downloadContent(second, user);
             verifyNoInteractions(retrieval, faqs, runtime);
         }
     }
