@@ -27,6 +27,10 @@ public class HttpSocialFriendsClient implements SocialFriendsClient {
     ) {
         this.webClient = WebClient.builder()
                 .baseUrl(messageServiceBaseUrl)
+                .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(
+                        reactor.netty.http.client.HttpClient.create()
+                                .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS,2000)
+                                .responseTimeout(java.time.Duration.ofSeconds(3))))
                 .build();
         this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }

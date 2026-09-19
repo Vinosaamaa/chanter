@@ -1,6 +1,9 @@
 package com.chanter.media.application;
 
 import com.chanter.media.domain.CourseResource;
+import com.chanter.common.auth.ModerationAccess;
+import com.chanter.common.auth.ModerationAccess.Target;
+import com.chanter.common.auth.ReportEvidence;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,11 +26,13 @@ public class CourseResourceService {
     private final PrivateResourceStorage storage;
     private final UploadValidator validator;
     private final Clock clock;
+    private final ModerationAccess moderation;
     private final Semaphore transfers = new Semaphore(2);
 
     public CourseResourceService(ResourceLifecycle lifecycle, CourseResourceAccessClient accessClient,
-            PrivateResourceStorage storage, UploadValidator validator, Clock clock) {
+            PrivateResourceStorage storage, UploadValidator validator, Clock clock, ModerationAccess moderation) {
         this.lifecycle = lifecycle; this.accessClient = accessClient; this.storage = storage; this.validator = validator; this.clock = clock;
+        this.moderation = moderation;
     }
 
     public CourseResource uploadCourseResource(UUID courseId, UUID userId, String title, boolean aiApproved,
@@ -63,19 +68,28 @@ public class CourseResourceService {
 
     public List<CourseResource> listCourseResources(UUID course, UUID user) {
         var access = requireView(course, user);
-        return lifecycle.list(course, access.canUploadCourseResource());
+        var resources = lifecycle.list(course, access.canUploadCourseResource());
+        var visible = new java.util.ArrayList<CourseResource>();
+        for (int offset = 0; offset < resources.size(); offset += 100) {
+            var page = resources.subList(offset, Math.min(offset + 100, resources.size()));
+            var allowed = moderation.allowedSources(user, page.stream().map(resource -> new Target("RESOURCE", resource.id())).toList());
+            page.stream().filter(resource -> allowed.contains(new Target("RESOURCE", resource.id()))).forEach(visible::add);
+        }
+        return List.copyOf(visible);
     }
 
     public CourseResource getCourseResource(UUID id, UUID user) {
         var resource = existing(id);
         var access = requireView(resource.courseId(), user);
         if (!access.canUploadCourseResource() && !resource.state().equals("AVAILABLE")) throw missing();
+        requireSource(resource, user);
         return resource;
     }
 
     public void deleteCourseResource(UUID id, UUID user) {
         var resource = lifecycle.find(id).orElseThrow(CourseResourceService::missing);
         requireUpload(resource.courseId(), user);
+        requireSource(resource, user);
         lifecycle.requestDelete(id);
     }
 
@@ -87,6 +101,7 @@ public class CourseResourceService {
     public CourseResource retryIngestion(UUID id, UUID user) {
         var resource = existing(id);
         requireUpload(resource.courseId(), user);
+        requireSource(resource, user);
         lifecycle.retryIndex(id);
         return existing(id);
     }
@@ -94,12 +109,18 @@ public class CourseResourceService {
     public StoredCourseResourceContent downloadCourseResource(UUID id, UUID user) {
         var resource = existing(id);
         requireView(resource.courseId(), user);
-        return download(resource, current -> true);
+        requireSource(resource, user);
+        return download(resource, current -> {
+            requireView(current.courseId(), user);
+            requireSource(current, user);
+            return true;
+        });
     }
 
     public CourseResource setAiApproved(UUID id, UUID user, boolean approved) {
         var resource = existing(id);
         requireUpload(resource.courseId(), user);
+        requireSource(resource, user);
         lifecycle.setAiApproved(id, approved);
         return existing(id);
     }
@@ -109,7 +130,34 @@ public class CourseResourceService {
         java.util.function.Predicate<CourseResource> matches = current -> current.aiApproved()
                 && current.courseId().equals(course) && current.sha256().equals(sha256);
         if (!matches.test(resource)) throw missing();
-        return download(resource, matches);
+        requireSource(resource, null);
+        return download(resource, current -> {
+            if (!matches.test(current)) return false;
+            requireSource(current, null);
+            return true;
+        });
+    }
+
+    /** Preserve metadata evidence for a current course viewer even if the source is quarantined. */
+    public ReportEvidence reportEvidence(UUID id, UUID user) {
+        var resource = existing(id);
+        CourseResourceAccess access;
+        try { access = accessClient.requireAccess(resource.courseId(), user); }
+        catch (ResponseStatusException denied) {
+            if (denied.getStatusCode().value() == 403 || denied.getStatusCode().value() == 404) throw missing();
+            throw denied;
+        }
+        if (!access.canViewCourseResources() || (!access.canUploadCourseResource() && !resource.state().equals("AVAILABLE"))) throw missing();
+        return new ReportEvidence("RESOURCE", id, resource.uploadedByUserId(), studyServer(resource), resource.courseId(), null,
+                resource.title(), resource.fileName(), resource.sha256());
+    }
+
+    private UUID studyServer(CourseResource resource) {
+        return resource.studyServerId() == null ? accessClient.requireStudyServerId(resource.courseId()) : resource.studyServerId();
+    }
+
+    private void requireSource(CourseResource resource, UUID user) {
+        moderation.requireAllowed(user, List.of(new Target("STUDY_SERVER", studyServer(resource)), new Target("RESOURCE", resource.id())));
     }
 
     private StoredCourseResourceContent download(CourseResource resource,
@@ -151,10 +199,12 @@ public class CourseResourceService {
     private CourseResourceAccess requireView(UUID course, UUID user) {
         var access = accessClient.requireAccess(course, user);
         if (!access.canViewCourseResources()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Course Resource access requires enrollment or Instructor role");
+        moderation.requireAllowed(user, List.of(new Target("STUDY_SERVER", accessClient.requireStudyServerId(course))));
         return access;
     }
     private void requireUpload(UUID course, UUID user) {
         if (!accessClient.requireAccess(course, user).canUploadCourseResource()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Course Instructors can manage Course Resources");
+        moderation.requireAllowed(user, List.of(new Target("STUDY_SERVER", accessClient.requireStudyServerId(course))));
     }
     private void acquire() {
         if (!transfers.tryAcquire()) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Course Resource transfers are busy; retry later");

@@ -95,6 +95,9 @@ class CourseChannelManagementSmokeTest {
         JsonNode navigation = objectMapper.readTree(navigationResult.getResponse().getContentAsString());
         assertThat(navigation.get("courses").get(0).get("channels").toString())
                 .contains(channelId.toString(), "study-group", course.cohortId().toString());
+        mockMvc.perform(get("/api/v1/course-channels/{channelId}/channel-message-access",channelId).with(asUser(learnerUserId)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.studyServerId").value(course.studyServerId().toString()))
+                .andExpect(jsonPath("$.canPostMessages").value(true));
     }
 
     @Test

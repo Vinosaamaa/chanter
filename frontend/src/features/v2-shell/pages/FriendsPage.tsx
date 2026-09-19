@@ -19,6 +19,7 @@ import { useFriendRelationships } from '../../friends/hooks/use-friend-relations
 import { useFriendsHub } from '../../friends/hooks/use-friends-hub'
 import type { FriendRequest } from '../../friends/types'
 import { V2Avatar } from '../components/V2Avatar'
+import { ReportLink } from '../../moderation/ReportLink'
 
 type FriendsTab = 'friends' | 'pending'
 type AvatarTone = 'blue' | 'purple' | 'amber' | 'green'
@@ -132,6 +133,7 @@ export function FriendsPage() {
               />
               <div>
                 <h2>{active.name}</h2>
+                <ReportLink type="USER" id={active.id} label="Report account" />
                 <p className={active.online ? undefined : 'offline'}>
                   {active.online ? 'Online' : 'Offline'}
                 </p>
@@ -177,6 +179,7 @@ export function FriendsPage() {
                           {formatTime(message.sentAt)}
                           {own ? <CheckCheck /> : null}
                         </time>
+                        {!own && <ReportLink type="DM" id={message.id} label="Report message" />}
                       </div>
                     </article>
                   )

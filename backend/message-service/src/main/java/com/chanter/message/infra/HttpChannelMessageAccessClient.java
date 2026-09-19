@@ -114,7 +114,7 @@ public class HttpChannelMessageAccessClient implements ChannelMessageAccessClien
                 channelId,
                 channelScope,
                 response.canReadMessages(),
-                response.canPostMessages(), null, response.courseId()
+                response.canPostMessages(), response.studyServerId(), response.courseId()
         );
     }
 
@@ -130,6 +130,7 @@ public class HttpChannelMessageAccessClient implements ChannelMessageAccessClien
     private record CourseAccessResponse(
             UUID channelId,
             UUID courseId,
+            UUID studyServerId,
             String channelName,
             boolean canReadMessages,
             boolean canPostMessages

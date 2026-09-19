@@ -1,6 +1,9 @@
 package com.chanter.realtime.websocket;
 
 import com.chanter.realtime.application.PersistedChannelMessage;
+import com.chanter.realtime.application.ChannelSubscriptionAuthorizer;
+import com.chanter.common.auth.ModerationAccess;
+import com.chanter.common.auth.ModerationAccess.Target;
 import com.chanter.realtime.domain.RealtimeChannelScope;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,11 +20,15 @@ import reactor.core.publisher.Mono;
 public class RealtimeSubscriptionHub {
 
     private final ObjectMapper objectMapper;
+    private final ChannelSubscriptionAuthorizer authorizer;
+    private final ModerationAccess moderation;
     private final Map<UUID, Set<Subscription>> subscriptionsByChannel = new ConcurrentHashMap<>();
     private final Map<String, SubscriptionState> subscriptionsBySession = new ConcurrentHashMap<>();
 
-    public RealtimeSubscriptionHub(ObjectMapper objectMapper) {
+    public RealtimeSubscriptionHub(ObjectMapper objectMapper, ChannelSubscriptionAuthorizer authorizer, ModerationAccess moderation) {
         this.objectMapper = objectMapper;
+        this.authorizer = authorizer;
+        this.moderation = moderation;
     }
 
     public void subscribe(WebSocketSession session, UUID userId, UUID channelId, RealtimeChannelScope channelScope) {
@@ -69,14 +76,21 @@ public class RealtimeSubscriptionHub {
             return Mono.error(exception);
         }
 
-        return Flux.fromIterable(channelSubscriptions)
-                .flatMap(subscription -> subscription.session().send(
+        return Mono.fromRunnable(() -> moderation.requireAllowed(null, java.util.List.of(new Target("MESSAGE",message.id()))))
+                .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                .thenMany(Flux.fromIterable(channelSubscriptions))
+                .filter(subscription -> subscription.channelScope()==channelScope)
+                .flatMap(subscription -> Mono.fromRunnable(() -> authorizer.requireSubscribeAccess(
+                                subscription.channelId(),subscription.userId(),subscription.channelScope()))
+                        .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                        .then(Mono.defer(() -> subscription.session().send(
                                 Mono.just(subscription.session().textMessage(payload))
-                        )
+                        )))
                         .onErrorResume(error -> {
                             removeSubscription(subscription);
                             return Mono.empty();
-                        }))
+                        }), 4)
+                .onErrorResume(error -> Mono.empty())
                 .then();
     }
 

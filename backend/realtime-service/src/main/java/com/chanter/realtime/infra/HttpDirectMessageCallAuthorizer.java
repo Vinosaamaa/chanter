@@ -9,6 +9,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import reactor.netty.http.client.HttpClient;
+import io.netty.channel.ChannelOption;
+import java.time.Duration;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
@@ -17,18 +21,25 @@ import reactor.core.publisher.Mono;
 public class HttpDirectMessageCallAuthorizer implements DirectMessageCallAuthorizer {
 
     private final WebClient webClient;
+    private final java.util.concurrent.Semaphore inFlight = new java.util.concurrent.Semaphore(32);
 
     public HttpDirectMessageCallAuthorizer(
-            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl
+            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl,
+            @Value("${chanter.internal-service-token}") String serviceToken
     ) {
         this.webClient = WebClient.builder()
                 .baseUrl(messageServiceBaseUrl)
+                .defaultHeader(AuthHeaders.INTERNAL_SERVICE_TOKEN, serviceToken)
+                .clientConnector(new ReactorClientHttpConnector(HttpClient.create()
+                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000).responseTimeout(Duration.ofSeconds(3))))
                 .build();
     }
 
     @Override
     public Mono<Void> requireCallAccess(UUID callerUserId, UUID calleeUserId) {
-        return webClient.get()
+        return Mono.defer(() -> {
+            if(!inFlight.tryAcquire()) return Mono.error(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Current pair access is busy"));
+            return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/v1/direct-message-calls/eligibility")
                         .queryParam("peerUserId", calleeUserId.toString())
@@ -41,6 +52,7 @@ public class HttpDirectMessageCallAuthorizer implements DirectMessageCallAuthori
                         HttpStatus.valueOf(exception.getStatusCode().value()),
                         exception.getResponseBodyAsString(),
                         exception
-                ));
+                )).doFinally(signal -> inFlight.release());
+        });
     }
 }

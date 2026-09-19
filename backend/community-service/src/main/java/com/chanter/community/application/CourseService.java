@@ -826,6 +826,8 @@ public class CourseService {
         return new CourseChannelMessageAccess(
                 channel.id(),
                 channel.courseId(),
+                courseRepository.findStudyServerIdByCourseId(channel.courseId()).orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND,"Course not found")),
                 channel.name(),
                 true,
                 canPostCourseChannelMessages(channel, userId)

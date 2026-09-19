@@ -6,6 +6,10 @@ import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.common.auth.InvalidJwtException;
 import com.chanter.common.auth.JwtTokenService;
 import com.chanter.common.auth.RequestIdentity;
+import com.chanter.common.auth.ModerationAccess;
+import com.chanter.common.auth.ModerationAccessConfiguration;
+import org.springframework.context.annotation.Import;
+import org.springframework.web.server.ResponseStatusException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,17 +26,21 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
+@Import(ModerationAccessConfiguration.class)
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AuthenticatedUserFilter extends OncePerRequestFilter {
 
     private final JwtTokenService jwtTokenService;
+    private final ModerationAccess moderation;
     private final byte[] internalServiceToken;
 
     public AuthenticatedUserFilter(
             JwtTokenService jwtTokenService,
+            ModerationAccess moderation,
             @Value("${chanter.internal-service-token}") String internalServiceToken
     ) {
         this.jwtTokenService = jwtTokenService;
+        this.moderation = moderation;
         this.internalServiceToken = InternalServiceTokens.requireBytes(internalServiceToken);
     }
 
@@ -56,9 +64,12 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
                     jwtTokenService
             );
             request.setAttribute(AuthRequestAttributes.USER_ID, userId);
+            moderation.requireAccount(userId);
             filterChain.doFilter(new UserIdInjectingWrapper(request, userId), response);
         } catch (InvalidJwtException | IllegalArgumentException exception) {
             response.sendError(HttpStatus.UNAUTHORIZED.value(), "Authentication required");
+        } catch (ResponseStatusException denied) {
+            response.sendError(denied.getStatusCode().value(), denied.getReason());
         }
     }
 

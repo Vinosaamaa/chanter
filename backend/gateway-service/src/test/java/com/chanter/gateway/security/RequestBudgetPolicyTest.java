@@ -10,6 +10,8 @@ class RequestBudgetPolicyTest {
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/auth/register")).isEqualTo(RequestBudgetPolicy.REGISTRATION);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/auth/forgot-password")).isEqualTo(RequestBudgetPolicy.RECOVERY);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/auth/logout")).isEqualTo(RequestBudgetPolicy.LOGOUT);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/auth/moderation-appeals/request")).isEqualTo(RequestBudgetPolicy.SENSITIVE);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/auth/moderation-appeals")).isEqualTo(RequestBudgetPolicy.SENSITIVE);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.GET, "/api/v1/realtime/connect")).isEqualTo(RequestBudgetPolicy.RECONNECT);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/course-channels/abc/support-questions/def/assistant-answer")).isEqualTo(RequestBudgetPolicy.AI);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/course-channels/abc/support-questions/def/native-request")).isEqualTo(RequestBudgetPolicy.AI);

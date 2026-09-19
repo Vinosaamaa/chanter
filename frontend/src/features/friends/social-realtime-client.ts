@@ -66,6 +66,7 @@ export class SocialRealtimeClient {
   private opening = false
   private pendingDirectMessage: PendingDirectMessage | null = null
   private readonly options: SocialRealtimeClientOptions
+  private onlineUsers = new Set<string>()
 
   constructor(options: SocialRealtimeClientOptions) {
     this.options = options
@@ -79,6 +80,7 @@ export class SocialRealtimeClient {
 
   disconnect(): void {
     this.stopped = true
+    this.replacePresence([])
     this.clearReconnectTimer()
     this.rejectPendingDirectMessage(new Error('Social realtime connection closed'))
     const socket = this.socket
@@ -203,7 +205,13 @@ export class SocialRealtimeClient {
             return
           }
           if (frame.type === 'presence_changed') {
+            if (frame.status === 'online') this.onlineUsers.add(frame.userId)
+            else this.onlineUsers.delete(frame.userId)
             this.options.onPresenceChange(frame.userId, frame.status)
+            return
+          }
+          if (frame.type === 'presence_snapshot') {
+            this.replacePresence(frame.onlineUserIds)
             return
           }
           if (
@@ -227,6 +235,7 @@ export class SocialRealtimeClient {
       }
 
       socket.onclose = () => {
+        this.replacePresence([])
         this.socket = null
         this.rejectPendingDirectMessage(new Error('Social realtime connection closed'))
         if (this.stopped) {
@@ -245,6 +254,14 @@ export class SocialRealtimeClient {
     } finally {
       this.opening = false
     }
+  }
+
+  private replacePresence(online: string[]): void {
+    if (!Array.isArray(online) || online.length > 1000 || online.some(id => typeof id !== 'string')) throw new Error('Invalid presence snapshot')
+    const current = new Set(online)
+    for (const id of this.onlineUsers) if (!current.has(id)) this.options.onPresenceChange(id, 'offline')
+    for (const id of current) if (!this.onlineUsers.has(id)) this.options.onPresenceChange(id, 'online')
+    this.onlineUsers = current
   }
 
   private scheduleReconnect(): void {

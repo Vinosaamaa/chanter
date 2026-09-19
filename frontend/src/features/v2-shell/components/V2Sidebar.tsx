@@ -247,6 +247,7 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
               setAccountOpen(false)
               setSessionsOpen(true)
             }}><ShieldCheck />Sessions and devices</button>
+            <Link role="menuitem" to="/app/safety" onClick={() => { setAccountOpen(false); onCloseMenu() }}><ShieldCheck />Safety and reports</Link>
             {data.showBillingNav ? (
               <Link
                 role="menuitem"

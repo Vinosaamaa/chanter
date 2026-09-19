@@ -58,6 +58,7 @@ export type DirectMessageListResponse = {
 export type FriendPresenceStatus = 'online' | 'offline'
 
 export type SocialRealtimeMessage =
+  | { type: 'presence_snapshot'; onlineUserIds: string[] }
   | {
       type: 'social_subscribed'
     }
