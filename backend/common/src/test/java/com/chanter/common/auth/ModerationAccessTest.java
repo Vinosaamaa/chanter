@@ -9,11 +9,35 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 class ModerationAccessTest {
+    @Test void aBatchFiltersOnlyNamedRestrictedSourcesAndRejectsAnUnrelatedReply() throws Exception {
+        var visible=new ModerationAccess.Target("RESOURCE",UUID.randomUUID());
+        var restricted=new ModerationAccess.Target("RESOURCE",UUID.randomUUID());
+        ObjectMapper mapper=new ObjectMapper();
+        AtomicReference<String> payload=new AtomicReference<>(mapper.writeValueAsString(
+                java.util.Map.of("allowed",true,"restricted",List.of(restricted))));
+        HttpServer server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/internal/v1/moderation/sources",exchange -> {
+            byte[] body=payload.get().getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200,body.length); exchange.getResponseBody().write(body); exchange.close();
+        });
+        server.start();
+        try {
+            var access=new ModerationAccess(URI.create("http://127.0.0.1:"+server.getAddress().getPort()),"test-token",mapper);
+            assertThat(access.allowedSources(UUID.randomUUID(),List.of(visible,restricted))).containsExactly(visible);
+            payload.set(mapper.writeValueAsString(java.util.Map.of("allowed",true,"restricted",
+                    List.of(new ModerationAccess.Target("RESOURCE",UUID.randomUUID())))));
+            assertThatThrownBy(() -> access.allowedSources(UUID.randomUUID(),List.of(visible,restricted)))
+                    .isInstanceOf(ResponseStatusException.class);
+        } finally { server.stop(0); }
+    }
+
     @Test void currentStatusIsCheckedEveryTimeAndOutageFailsClosed() throws Exception {
         AtomicInteger status = new AtomicInteger(200);
         AtomicInteger calls = new AtomicInteger();

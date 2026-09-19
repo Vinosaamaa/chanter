@@ -62,6 +62,21 @@ jobs:
           -pl gateway-service -am -Dtest=RedisAdmissionHttpTest -Dsurefire.failIfNoSpecifiedTests=false test
         env:
           CHANTER_TEST_REDIS_PORT: ${{ job.services.admission-redis.ports['6379'] }}
+      - name: Verify active media removal and reconnect denial through real signaling
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools="$RUNNER_TEMP/chanter-media-proof"
+          mkdir -p "$tools"
+          curl --fail --location --retry 2 --max-time 120 https://github.com/livekit/livekit/releases/download/v1.13.7/livekit_1.13.7_linux_amd64.tar.gz -o "$tools/livekit.tar.gz"
+          echo "6634aeeb2fb1366b6723708ae4320b9d5408106a4c63457c5e845ae3979c90e2  $tools/livekit.tar.gz" | sha256sum --check
+          curl --fail --location --retry 2 --max-time 120 https://github.com/caddyserver/caddy/releases/download/v2.11.4/caddy_2.11.4_linux_amd64.tar.gz -o "$tools/caddy.tar.gz"
+          echo "8220d1f013b6f27510247b2360c9e0ca9f018feebd82515f07635318b34ff9777ccc8fd0b6e6f2486ce3a33fe389fbb7db12d05baa474f4587509fb4f5ebf1c9  $tools/caddy.tar.gz" | sha512sum --check
+          tar -xzf "$tools/livekit.tar.gz" -C "$tools" livekit-server
+          tar -xzf "$tools/caddy.tar.gz" -C "$tools" caddy
+          LIVEKIT_TEST_BINARY="$tools/livekit-server" CADDY_TEST_BINARY="$tools/caddy" \
+            scripts/java21.sh mvn -B -q -s backend/.mvn/settings.xml -f backend/pom.xml \
+            -pl community-service -am -Dtest=LiveKitSignalingRevocationTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Product stack script tests
         run: make product-test
       - name: Validate product Docker Compose profile

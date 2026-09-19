@@ -46,5 +46,18 @@ public class InternalModerationController {
     }
 
     record AccessRequest(UUID userId, @NotNull @Size(max=100) List<@Valid Target> targets) { }
+    @PostMapping("/internal/v1/moderation/sources")
+    Map<String, Object> sources(@RequestHeader(value=AuthHeaders.INTERNAL_SERVICE_TOKEN,required=false) String presented,
+            @Valid @RequestBody AccessRequest request) {
+        if (!MessageDigest.isEqual(token, (presented == null ? "" : presented).getBytes(StandardCharsets.UTF_8)))
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Internal service authentication required");
+        if (request.userId() == null && request.targets().isEmpty())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An account or source is required");
+        if (request.userId() != null) restrictions.requireActiveAccount(request.userId());
+        Instant now = Instant.now();
+        var blocked = request.targets().stream().filter(target -> restrictions.isRestricted(target.type(), target.id(), now)).toList();
+        return Map.of("allowed", true, "restricted", blocked);
+    }
+
     record Target(@NotBlank String type, @NotNull UUID id) { }
 }

@@ -14,12 +14,14 @@ Suspension is checked when auth accepts an access token, refreshes a session or 
 
 Remote checks have bounded deadlines and concurrency, with no positive authorization cache. Failure prevents the protected action. Auth is consequently an explicit availability dependency for protected product requests; health probes remain independent. Isolated service tests use synthetic-user authorization only in the test profile. A real product-stack journey is still required.
 
+The active-media implementation now validates current room authority at the signaling proxy and reconciles existing participants through bounded LiveKit server calls. The real native Caddy/LiveKit regression passed for connection, server removal, transport closure and denial of reconnect with the same unexpired token. It uses controlled authority changes, so it does not yet prove database suspension or published audio revocation. CI repeats that transport proof with checksum-pinned Linux binaries. Production wiring and full audio evidence remain outstanding.
+
 PostgreSQL triggers reject audit and internal-note updates, deletion and truncation. The added PostgreSQL regression must run against the real database; an H2 pass cannot establish this protection. Database administrators who can remove triggers remain outside the application immutability guarantee. Retention and legal policy are coordinated with #251.
 
 ## Remaining acceptance work
 
-- Resource evidence and cross-service content restriction checks. DM/message and current-member Study Server report evidence now have focused authorization tests.
-- Complete block/unblock races, current presence and call behavior.
+- Resource evidence now has current-scope tests and excludes private storage identifiers. Public and worker downloads reject restrictions imposed during the provider read. Broader cross-service source checks remain in progress.
+- Block/unblock and message-write serialization now pass focused concurrent tests; current presence delivery and complete active-call state remain to verify.
 - Operator appeal resolution and broader action/notification proof. Case-scoped restriction/reinstatement and verified-email submission now have focused tests, including wrong ownership, expiry, replay and independent account/IP limits.
 - Live quarantine and Study Server restrictions on public, search, media and ingestion access.
 - Operator/user UI, desktop and phone interaction/pixel checks, full product restart journeys.

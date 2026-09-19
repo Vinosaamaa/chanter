@@ -9,6 +9,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import reactor.netty.http.client.HttpClient;
+import io.netty.channel.ChannelOption;
+import java.time.Duration;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
@@ -19,10 +23,14 @@ public class HttpDirectMessageCallAuthorizer implements DirectMessageCallAuthori
     private final WebClient webClient;
 
     public HttpDirectMessageCallAuthorizer(
-            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl
+            @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl,
+            @Value("${chanter.internal-service-token}") String serviceToken
     ) {
         this.webClient = WebClient.builder()
                 .baseUrl(messageServiceBaseUrl)
+                .defaultHeader(AuthHeaders.INTERNAL_SERVICE_TOKEN, serviceToken)
+                .clientConnector(new ReactorClientHttpConnector(HttpClient.create()
+                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000).responseTimeout(Duration.ofSeconds(3))))
                 .build();
     }
 

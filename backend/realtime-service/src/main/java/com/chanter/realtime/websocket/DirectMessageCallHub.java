@@ -99,8 +99,10 @@ public class DirectMessageCallHub {
     }
 
     public Mono<Void> accept(UUID calleeUserId, UUID callId) {
-        return Mono.fromCallable(() -> callStore.activateIfRinging(callId, calleeUserId)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Call is not ringing")))
+        return Mono.fromCallable(() -> resolveRingingCall(callId, calleeUserId))
+                .flatMap(call -> callAuthorizer.requireCallAccess(call.callerUserId(), call.calleeUserId())
+                        .then(Mono.fromCallable(() -> callStore.activateIfRinging(callId, calleeUserId)
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Call is not ringing")))))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(call -> {
                     log.info("DM call accepted callId={}", callId);
@@ -149,12 +151,23 @@ public class DirectMessageCallHub {
                     return call;
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(call -> mediaTokenClient.issueForCall(
+                .flatMap(call -> requireActiveMediaAccess(userId, callId).then(mediaTokenClient.issueForCall(
                         callId,
                         userId,
                         call.callerUserId(),
                         call.calleeUserId()
-                ));
+                )));
+    }
+
+    public Mono<Void> requireActiveMediaAccess(UUID userId, UUID callId) {
+        return Mono.fromCallable(() -> {
+                    DirectMessageCall call = resolveAnyCall(callId, userId);
+                    if (call.status() != DirectMessageCallStatus.ACTIVE) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Call is not active");
+                    }
+                    return call;
+                }).subscribeOn(Schedulers.boundedElastic())
+                .flatMap(call -> callAuthorizer.requireCallAccess(call.callerUserId(), call.calleeUserId()));
     }
 
     private Mono<Void> endCall(UUID userId, UUID callId, String reason) {
