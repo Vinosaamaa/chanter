@@ -31,7 +31,7 @@ chanter:
     models: ${CHANTER_NATIVE_COMPANION_MODELS:}
   grounding:
     engine: ${CHANTER_GROUNDING_ENGINE:rag}
-    min-retrieval-score: ${CHANTER_GROUNDING_MIN_SCORE:0.12}
+    min-retrieval-score: ${CHANTER_GROUNDING_MIN_SCORE:0.35}
     retrieval-top-k: ${CHANTER_GROUNDING_TOP_K:5}
   llm:
     enabled: ${CHANTER_LLM_ENABLED:false}
@@ -39,7 +39,9 @@ chanter:
     daily-token-limit: ${CHANTER_LLM_DAILY_TOKEN_LIMIT:100000}
     # Explicit model definitions belong in deployment configuration; no hosted provider or model is enabled by default.
   embeddings:
-    provider: ${CHANTER_EMBEDDINGS_PROVIDER:hashing}
+    provider: ${CHANTER_EMBEDDINGS_PROVIDER:onnx}
+    model-directory: ${CHANTER_EMBEDDINGS_MODEL_DIRECTORY:.cache/models/minilm}
+    default-model: ${CHANTER_EMBEDDINGS_DEFAULT_MODEL:}
     dimensions: ${CHANTER_EMBEDDINGS_DIMENSIONS:384}
     ollama:
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}

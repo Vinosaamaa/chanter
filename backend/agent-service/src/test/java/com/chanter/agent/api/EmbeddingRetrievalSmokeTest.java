@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest(properties = {
         "chanter.internal-service-token=test-internal-service-token-for-agent",
         "chanter.embeddings.provider=hashing",
+        "spring.datasource.url=jdbc:h2:mem:embedding-retrieval;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
         "chanter.embeddings.dimensions=64"
 })
 @AutoConfigureMockMvc
@@ -40,6 +41,7 @@ class EmbeddingRetrievalSmokeTest {
     private ObjectMapper objectMapper;
 
     @Autowired private com.chanter.agent.infra.TestCourseResourceCatalogClient catalog;
+    @Autowired private org.springframework.jdbc.core.simple.JdbcClient jdbc;
 
     @Test
     void ingestEmbedsAndRetrieveRespectsGrants() throws Exception {
@@ -124,5 +126,11 @@ class EmbeddingRetrievalSmokeTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(body)))
                 .andExpect(status().isCreated());
+        UUID server=UUID.randomUUID();
+        String sha=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
+        jdbc.sql("UPDATE resource_index_lifecycle SET study_server_id=:server WHERE resource_id=:id")
+                .param("server",server).param("id",resourceId).update();
+        catalog.registerResource(new com.chanter.agent.application.CourseResourceCatalogClient.CourseResourceSummary(
+                resourceId,courseId,fileName,fileName,true,server,null,sha));
     }
 }

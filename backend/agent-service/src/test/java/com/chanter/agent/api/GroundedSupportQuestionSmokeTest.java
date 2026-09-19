@@ -39,6 +39,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class GroundedSupportQuestionSmokeTest {
+    @Autowired private org.springframework.jdbc.core.simple.JdbcClient jdbcClient;
 
     private static final com.sun.net.httpserver.HttpServer PROVIDER = fixtureProvider();
     private static final java.util.concurrent.atomic.AtomicInteger PROVIDER_CALLS = new java.util.concurrent.atomic.AtomicInteger();
@@ -461,6 +462,11 @@ class GroundedSupportQuestionSmokeTest {
                 """.getBytes(StandardCharsets.UTF_8);
         courseResourceContentClient.registerContent(courseResourceId, guideBytes);
         resourceIngestionService.ingest(courseId, courseResourceId, "spring-security-guide.md", guideBytes);
+        jdbcClient.sql("UPDATE resource_index_lifecycle SET study_server_id=:server WHERE resource_id=:id")
+                .param("server",studyServerId).param("id",courseResourceId).update();
+        courseResourceCatalogClient.registerResource(new CourseResourceSummary(courseResourceId,courseId,
+                "Spring Security Guide","spring-security-guide.md",true,studyServerId,null,
+                java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(guideBytes))));
 
         MvcResult result = mockMvc.perform(post(
                         "/api/v1/course-channels/{channelId}/support-questions/{supportQuestionId}/assistant-answer",

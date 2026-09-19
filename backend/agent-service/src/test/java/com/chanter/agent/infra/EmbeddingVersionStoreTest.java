@@ -29,6 +29,9 @@ class EmbeddingVersionStoreTest {
         jdbc.sql("UPDATE embedding_control SET candidate_model_id=NULL,previous_model_id=NULL").update();
         course=UUID.randomUUID(); resource=UUID.randomUUID();
     }
+    @org.junit.jupiter.api.AfterEach void clearCandidate() {
+        jdbc.sql("UPDATE embedding_control SET candidate_model_id=NULL,previous_model_id=NULL").update();
+    }
 
     @Test void candidateActivationNeedsFullCoverageAndBackfillPreservesPreviousVectors() {
         ingestion.ingest(course,resource,"notes.txt","A current source document.".getBytes());

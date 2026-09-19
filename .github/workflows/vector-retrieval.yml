@@ -43,7 +43,7 @@ jobs:
       - name: Verify pinned model assets
         run: node scripts/vector/download-model.mjs "$CHANTER_TEST_MODEL_DIR"
       - name: Test native model and PostgreSQL authorization and migration contracts
-        run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service -am test -Dtest=OnnxEmbeddingClientTest,PostgresScopedVectorSearchTest,PostgresEmbeddingVersionStoreTest -Dsurefire.failIfNoSpecifiedTests=false
+        run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service -am test -Dtest=OnnxEmbeddingClientTest,PostgresScopedVectorSearchTest,PostgresEmbeddingVersionStoreTest,PostgresEmbeddingRebuildJobsTest -Dsurefire.failIfNoSpecifiedTests=false
       - name: Remove owned test database
         if: always()
         run: docker rm -f chanter-vector-test || true

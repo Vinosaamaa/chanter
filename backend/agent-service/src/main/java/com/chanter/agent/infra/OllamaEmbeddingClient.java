@@ -57,6 +57,9 @@ public class OllamaEmbeddingClient implements EmbeddingClient {
     public int dimensions() {
         return dimensions;
     }
+    @Override public com.chanter.agent.domain.EmbeddingModel metadata() {
+        return new com.chanter.agent.domain.EmbeddingModel(modelId(),"ollama",model,"legacy-unversioned",dimensions());
+    }
 
     @Override
     public float[] embed(String text) {

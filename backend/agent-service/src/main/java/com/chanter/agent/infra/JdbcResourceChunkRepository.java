@@ -85,7 +85,7 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
         lockResource(resourceId);
         jdbcClient.sql("""
                 UPDATE resource_index_lifecycle SET deleted=TRUE, generation=generation+1, status='DELETED',
-                    course_id=NULL, study_server_id=NULL, source_sha256=NULL, parser_version=NULL, file_name=NULL, signals='',
+                    course_id=NULL, study_server_id=NULL, cohort_id=NULL, source_sha256=NULL, parser_version=NULL, file_name=NULL, signals='',
                     source_event_id=NULL,source_revision=0,job_attempts=0,job_lease_id=NULL,job_lease_until=NULL,job_retry_at=NULL
                 WHERE resource_id=:resourceId
                 """)
@@ -103,6 +103,8 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     }
 
     private void clearChunks(UUID resourceId) {
+        jdbcClient.sql("DELETE FROM embedding_rebuild_jobs WHERE resource_id=:resourceId")
+                .param("resourceId", resourceId).update();
         jdbcClient.sql("DELETE FROM resource_chunks WHERE resource_id = :resourceId")
                 .param("resourceId", resourceId)
                 .update();

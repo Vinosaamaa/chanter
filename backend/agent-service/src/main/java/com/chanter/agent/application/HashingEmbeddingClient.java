@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
  * Swap to {@code chanter.embeddings.provider=ollama} for real local embeddings.
  */
 @Component
+@org.springframework.context.annotation.Profile("test")
 @ConditionalOnProperty(name = "chanter.embeddings.provider", havingValue = "hashing", matchIfMissing = true)
 public class HashingEmbeddingClient implements EmbeddingClient {
 
@@ -39,6 +40,9 @@ public class HashingEmbeddingClient implements EmbeddingClient {
     @Override
     public int dimensions() {
         return dimensions;
+    }
+    @Override public com.chanter.agent.domain.EmbeddingModel metadata() {
+        return new com.chanter.agent.domain.EmbeddingModel(modelId(),"test",modelId(),"hashing-fixture-v1",dimensions());
     }
 
     @Override
