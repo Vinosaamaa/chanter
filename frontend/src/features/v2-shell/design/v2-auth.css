@@ -97,7 +97,7 @@
 .auth-terms a, .auth-back { color: #2458d3; }
 .auth-terms a { display: inline-flex; align-items: center; min-height: 44px; }
 .auth-back { display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 20px; font-size: 14px; }
-.v2-auth-page.compact-auth { display: grid; place-items: center; background: #f3f6fa; padding: 32px 20px; }
+.v2-auth-page.compact-auth { display: grid; grid-template-columns: minmax(0,1fr); place-items: center; background: #f3f6fa; padding: 32px 20px; }
 .v2-auth-panel.solo { display: block; width: 100%; max-width: 500px; padding: 44px; background: white; border: 1px solid #dce3ec; border-radius: 12px; }
 .solo .v2-auth-brand { margin-bottom: 48px; }
 .solo .auth-lede { margin-bottom: 28px; }

@@ -52,3 +52,22 @@ auth. All platform-admin traffic and moderation mutations use SENSITIVE budgets;
 actual operator role, step-up, evidence and enforcement remain249 responsibilities.
 Internal moderation paths have no public route. Gateway HTTP tests verify this
 boundary independently of the future service handlers.
+
+The next hosted browser run exposed an existing compact-auth layout defect:
+its single form inherited the two-column sign-in grid, leaving a zero-width first
+column on mobile. Compact recovery/reset/verification pages now explicitly use
+one flexible column. The browser check retains visible-heading, usable-form and
+no-horizontal-overflow assertions at 320, 390 and 1280 pixels in three engines.
+The independent public smoke suite also declares disabled verification options
+instead of inadvertently contacting an absent Java backend. Rollback prose now
+distinguishes historical epochs from the current epoch5 compatibility rule.
+
+The exact fab2cff checkpoint passed both native staging architectures, all
+backend/Redis checks, packaged Java security and signed-in product journeys.
+Public smoke and mobile recovery failures above still prevented acceptance.
+The receipt's publication eligibility describes public-safe Engineering content,
+not production readiness; its linked proposed review explicitly records pending
+rollout/provider checks. Unset publicOrigin is supported only for local operation;
+production supplies the validated origin and never trusts caller scheme/host.
+Remaining style/performance suggestions do not justify replacing the bounded
+verification or admission mechanisms during this acceptance pass.
