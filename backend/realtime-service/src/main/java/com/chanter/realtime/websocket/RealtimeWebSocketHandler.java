@@ -4,6 +4,10 @@ import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.InvalidJwtException;
 import com.chanter.common.auth.JwtTokenService;
 import com.chanter.common.auth.WebSocketJwtProtocols;
+import com.chanter.common.auth.ModerationAccess;
+import com.chanter.common.auth.ModerationAccessConfiguration;
+import org.springframework.context.annotation.Import;
+import java.time.Duration;
 import com.chanter.realtime.application.ChannelMessageClient;
 import com.chanter.realtime.application.ChannelSubscriptionAuthorizer;
 import com.chanter.realtime.application.PersistedChannelMessage;
@@ -27,14 +31,17 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 
 @Component
+@Import(ModerationAccessConfiguration.class)
 public class RealtimeWebSocketHandler implements WebSocketHandler {
 
     private static final Logger log = LoggerFactory.getLogger(RealtimeWebSocketHandler.class);
 
     private final JwtTokenService jwtTokenService;
+    private final ModerationAccess moderation;
     private final ChannelSubscriptionAuthorizer subscriptionAuthorizer;
     private final ChannelMessageClient channelMessageClient;
     private final RealtimeSubscriptionHub subscriptionHub;
@@ -46,6 +53,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
 
     public RealtimeWebSocketHandler(
             JwtTokenService jwtTokenService,
+            ModerationAccess moderation,
             ChannelSubscriptionAuthorizer subscriptionAuthorizer,
             ChannelMessageClient channelMessageClient,
             RealtimeSubscriptionHub subscriptionHub,
@@ -56,6 +64,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
             ObjectMapper objectMapper
     ) {
         this.jwtTokenService = jwtTokenService;
+        this.moderation = moderation;
         this.subscriptionAuthorizer = subscriptionAuthorizer;
         this.channelMessageClient = channelMessageClient;
         this.subscriptionHub = subscriptionHub;
@@ -80,7 +89,8 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
 
         return Mono.usingWhen(
                 Mono.just(session),
-                activeSession -> Mono.defer(() -> socialRealtimeHub.connect(activeSession, userId)
+                activeSession -> currentAccess(activeSession, userId)
+                        .then(Mono.defer(() -> socialRealtimeHub.connect(activeSession, userId)
                                 .then(sendInitialFriendPresence(activeSession, userId).onErrorResume(error -> {
                                     log.warn(
                                             "Initial friend presence snapshot unavailable for user {}",
@@ -88,12 +98,10 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                                             error
                                     );
                                     return Mono.empty();
-                                })))
+                                }))))
                         .subscribeOn(Schedulers.boundedElastic())
-                        .thenMany(activeSession.receive()
-                                .map(WebSocketMessage::getPayloadAsText)
-                                .concatMap(payload -> handleClientFrame(activeSession, userId, payload)))
-                        .then(),
+                        .then(Mono.defer(() -> receiveWithAccessChecks(activeSession, userId)))
+                        .onErrorResume(ResponseStatusException.class, denied -> Mono.empty()),
                 activeSession -> socialRealtimeHub.disconnect(activeSession)
                         .onErrorResume(error -> {
                             log.warn("Social disconnect cleanup failed for session {}", activeSession.getId(), error);
@@ -101,6 +109,30 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                         })
                         .then(Mono.fromRunnable(() -> subscriptionHub.unsubscribeAll(activeSession)))
         );
+    }
+
+    private Mono<Void> receiveWithAccessChecks(WebSocketSession session, UUID userId) {
+        Sinks.One<Void> receiveFinished = Sinks.one();
+        Mono<Void> receive = session.receive()
+                .map(WebSocketMessage::getPayloadAsText)
+                .concatMap(payload -> currentAccess(session, userId)
+                        .then(Mono.defer(() -> handleClientFrame(session, userId, payload))), 1)
+                .then()
+                .doFinally(signal -> receiveFinished.tryEmitEmpty());
+        Mono<Void> accessChecks = Flux.interval(Duration.ofSeconds(5))
+                // Stop future checks when receive ends, while allowing a pending close frame to flush.
+                .takeUntilOther(receiveFinished.asMono())
+                .concatMap(tick -> currentAccess(session, userId), 1)
+                .then();
+        return Mono.whenDelayError(receive, accessChecks);
+    }
+
+    private Mono<Void> currentAccess(WebSocketSession session, UUID user) {
+        return Mono.fromRunnable(() -> moderation.requireAccount(user)).subscribeOn(Schedulers.boundedElastic()).then()
+                // Send the close frame before cancelling receive; cancellation alone loses the policy status.
+                .onErrorResume(ResponseStatusException.class, denied -> session
+                        .close(CloseStatus.POLICY_VIOLATION.withReason("Current access is unavailable"))
+                        .then(Mono.error(denied)));
     }
 
     private Mono<Void> handleClientFrame(WebSocketSession session, UUID userId, String payload) {

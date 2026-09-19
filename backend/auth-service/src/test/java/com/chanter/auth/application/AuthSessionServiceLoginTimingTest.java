@@ -45,6 +45,7 @@ class AuthSessionServiceLoginTimingTest {
                         900L
                 ),
                 productionAuthService,
+                mock(com.chanter.auth.moderation.ModerationRestrictions.class),
                 Duration.ofDays(7),
                 false
         );
