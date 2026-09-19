@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render } from './host.mjs';
+import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render, configurationSnapshot } from './host.mjs';
 import { imageNames } from './release.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
@@ -130,6 +130,7 @@ test('backup credentials remain separate and require configuration before deploy
   const auth = readEnv(path.join(state, 'runtime/auth-service.env'));
   assert.ok(backup.CHANTER_BACKUP_CIPHER_PASS.length >= 32);
   assert.notEqual(backup.CHANTER_BACKUP_CIPHER_PASS, auth.CHANTER_JWT_SECRET);
+  assert.notEqual(backup.CHANTER_CONFIG_BACKUP_PASSWORD, backup.CHANTER_BACKUP_CIPHER_PASS);
   assert.equal(auth.CHANTER_BACKUP_CIPHER_PASS, undefined);
   const configured = fs.readFileSync(file, 'utf8');
   fs.writeFileSync(file, configured.replace(/^CHANTER_BACKUP_S3_ACCESS_KEY=.*$/m, 'CHANTER_BACKUP_S3_ACCESS_KEY=fixture-only'));
@@ -218,10 +219,20 @@ test('scheduled backup verifies real completion, shares the deployment lock and 
   const run = args => {
     calls.push(args);
     return JSON.stringify([{ name: 'chanter', status: { code: 0 }, db: [{ id: 1, 'repo-key': 1 }],
-      backup: [{ type: 'full', error: false, database: { id: 1, 'repo-key': 1 },
+      backup: [{ type: 'full', error: false, database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64) },
       label: '20260918-000000F', timestamp: { stop: Math.floor(Date.now() / 1000) } }] }]);
   };
-  assert.equal(backupDatabase(state, 'full', run).status, 'ok');
+  const save = () => ({ snapshotId: 'c'.repeat(64) });
+  const verified = [];
+  const verify = (...args) => verified.push(args.at(-1));
+  assert.equal(backupDatabase(state, 'full', run, save, verify).status, 'ok');
+  assert.deepEqual(verified, ['c'.repeat(64)]);
+  assert.throws(() => backupDatabase(state, 'check', run, save, () => { throw new Error('private-config-secret'); }), /verification failed/);
+  assert.equal(fs.readFileSync(path.join(state, 'backup-status.json'), 'utf8').includes('private-config-secret'), false);
+  calls.splice(3);
+  const snapshot = configurationSnapshot(state, release);
+  assert.equal(snapshot.runtime.backup, undefined);
+  assert.equal(JSON.stringify(snapshot).includes(readEnv(path.join(state, 'runtime/backup.env')).CHANTER_CONFIG_BACKUP_PASSWORD), false);
   assert.deepEqual(calls.map(args => args.at(-1)), ['check', 'backup', 'info']);
   assert.equal(calls.some(args => args.includes('--type=full')), true);
   assert.equal(fs.readFileSync(prepared.file, 'utf8'), renderedBefore);

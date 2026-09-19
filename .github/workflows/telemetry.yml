@@ -3,9 +3,16 @@ on:
   pull_request:
     paths:
       - 'backend/telemetry/**'
+      - 'backend/pom.xml'
+      - 'backend/common/pom.xml'
       - 'backend/common/src/**/telemetry/**'
       - 'infra/production/java/**'
+      - 'infra/production/runtime-lock.json'
       - 'scripts/deploy/telemetry*'
+      - 'scripts/deploy/host*'
+      - 'scripts/deploy/release*'
+      - 'scripts/deploy/build-release.sh'
+      - 'scripts/deploy/smoke-release.sh'
       - '.github/workflows/telemetry.yml'
   workflow_dispatch:
 permissions:

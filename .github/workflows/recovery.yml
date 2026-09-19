@@ -4,6 +4,11 @@ on:
     paths:
       - 'infra/production/postgres/**'
       - 'scripts/deploy/recovery*'
+      - 'scripts/deploy/configuration-backup*'
+      - 'scripts/deploy/download-backup-tool.sh'
+      - 'infra/production/tool-lock.json'
+      - 'infra/production/runtime-lock.json'
+      - 'scripts/deploy/host*'
       - '.github/workflows/recovery.yml'
   workflow_dispatch:
 permissions:
@@ -23,7 +28,7 @@ jobs:
           node-version: '24'
       - name: Validate recovery configuration
         run: |
-          node --test scripts/deploy/recovery.test.mjs scripts/deploy/host.test.mjs
+          node --test scripts/deploy/recovery.test.mjs scripts/deploy/configuration-backup.test.mjs scripts/deploy/host.test.mjs
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import { backupUnits } from './scripts/deploy/recovery.mjs';
@@ -37,5 +42,9 @@ jobs:
         run: |
           base=$(node -p 'JSON.parse(require("fs").readFileSync("infra/production/runtime-lock.json")).postgres')
           docker build --file infra/production/postgres/Dockerfile --build-arg "POSTGRES_IMAGE=$base" --tag chanter-recovery-drill .
+      - name: Verify the configuration recovery tool
+        run: |
+          case "$(uname -m)" in x86_64) architecture=amd64 ;; aarch64) architecture=arm64 ;; *) exit 1 ;; esac
+          bash scripts/deploy/download-backup-tool.sh "$architecture" "$GITHUB_WORKSPACE/.cache/recovery-tools"
       - name: Restore encrypted data and stop at a real WAL recovery point
-        run: bash scripts/deploy/recovery-drill.sh chanter-recovery-drill
+        run: bash scripts/deploy/recovery-drill.sh chanter-recovery-drill "$GITHUB_WORKSPACE/.cache/recovery-tools/restic"

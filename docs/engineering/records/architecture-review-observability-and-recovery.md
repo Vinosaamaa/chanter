@@ -14,7 +14,7 @@ unknowns: ["Native encrypted restore and application consistency proof", "Comple
 modules: ["production-runtime", "shared-observability"]
 interfaces: ["private-telemetry-export", "encrypted-backup-repository", "isolated-restore"]
 seams: ["service-to-telemetry-provider", "postgres-to-backup-repository", "restore-to-public-cutover"]
-adapters: ["opentelemetry", "pgbackrest", "s3"]
+adapters: ["opentelemetry", "pgbackrest", "restic", "s3"]
 relatedRecords: ["architecture-review-chanter-free-deployment@1", "architecture-review-public-edge-and-admission@1"]
 decisions: []
 incidents: []
@@ -52,7 +52,10 @@ alone is insufficient evidence of recoverability. Recovery targets remain
 unverified until measured in an actual provider drill.
 
 The [design](../../architecture/observability-and-recovery.md) owns the detailed
-policy. Four configuration tests currently pass. Native restore, application
-consistency, telemetry/alert implementation and actual provider verification are
-still pending in this proposed record. Publication eligibility means this record
+policy. Native encrypted database restore, real privacy-filtered agent export,
+receiver outage and instrumented release staging pass on AMD64 and ARM64.
+Matching encrypted configuration protection is implemented with pinned restic;
+its current native gate remains pending. Application consistency, full alerting,
+object recovery and actual provider verification remain pending in this proposed
+record. Publication eligibility means this record
 is public-safe, not that the product is ready to launch.

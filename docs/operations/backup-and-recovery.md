@@ -13,8 +13,23 @@ After `host.mjs init`, edit the private `runtime/backup.env` file in the environ
 state directory. Supply an HTTPS S3-compatible origin, region, private backup
 bucket and credentials limited to that bucket. Use a bucket and access key
 different from resource storage. Keep the generated encryption passphrase and a
-copy of repository credentials in the operator's offline secret store. Losing
-that passphrase makes encrypted database recovery impossible.
+copy of repository credentials in the operator's offline secret store. Preserve
+both `CHANTER_BACKUP_CIPHER_PASS` and the independently generated
+`CHANTER_CONFIG_BACKUP_PASSWORD`. Losing either key prevents complete recovery.
+The configuration archive deliberately excludes these bootstrap secrets.
+
+Initialize the configuration repository once from the verified release bundle:
+
+```sh
+node scripts/deploy/host.mjs init-config-backup "$PWD" /srv/chanter/production
+```
+
+This explicit operation creates a restic version 2 repository under
+`configuration/production` in the private backup bucket. Deployment never treats
+an inaccessible repository as an empty one. An existing repository must remain
+intact; repair credentials or connectivity instead of initializing a replacement.
+The release includes a checksum-pinned native restic executable and verifies its
+checksum before use. Release checks also scan that executable for vulnerabilities.
 
 Use a separate repository for staging and production. The release enforces
 encryption, certificate verification, one compression worker, two successful full
@@ -23,7 +38,12 @@ with a 60-second segment timeout. This is configuration, not proof of a five-min
 recovery point. Verify it against the actual provider.
 
 Deployments stop ingress and writers, start persistence, verify the archive and
-take a backup before migrations. A backup failure stops deployment. Do not delete
+take a backup before migrations. Each database backup is annotated with the exact
+encrypted configuration snapshot containing runtime secrets, configuration,
+release identity and the previous migration floor. Contents pass through stdin
+without plaintext archive files. Before a migration, the snapshot describes the
+requested release configuration; it does not assert the database already has that
+release's schema. A backup failure stops deployment. Do not delete
 the deployment lock or migration floor to bypass a failure. Establish whether the
 owner is running, inspect the private repository, and fix forward.
 
@@ -53,10 +73,13 @@ owners. Switching environments requires disabling the old timers and generating
 the new environment's units. Only one environment may occupy the free host.
 
 `backup-status.json` contains a bounded status, backup label, accepted release,
-completion time and full-backup time. It contains no repository credentials or
+completion time, matching configuration snapshot and full-backup time. It contains no repository credentials or
 raw provider error. A chain is stale after 30 hours without a complete backup or
 eight days without a full backup. `backup STATE check` verifies continuous WAL
-archiving and that freshness without creating a new backup.
+archiving, all declared dependencies of the selected chain, and freshness. It also
+decrypts and validates the referenced configuration snapshot without returning its
+contents. It does not create a new backup. This metadata and configuration check
+does not replace a real PostgreSQL restore or detect every damaged data block.
 
 ```sh
 node scripts/deploy/host.mjs backup /srv/chanter/production check
@@ -72,11 +95,20 @@ environment files or raw provider diagnostics in issues.
 ## Rehearse database recovery
 
 The repository's `Recovery drill` workflow builds the pinned PostgreSQL image on
-both supported architectures. `scripts/deploy/recovery-drill.sh IMAGE` creates
+both supported architectures. `scripts/deploy/recovery-drill.sh IMAGE RESTIC` creates
 three isolated fixture volumes and an encrypted local repository. It rejects a
 wrong passphrase, restores two committed markers before a named recovery point,
 excludes a later marker, and checks that the source cluster remains intact.
 Restored PostgreSQL has no published port, no network and archiving disabled.
+The drill also creates a real encrypted configuration archive, rejects its wrong
+key and restores the exact snapshot linked to the database backup. On exit it
+removes only its owned Docker fixtures and verified per-run private directory.
+
+Configuration snapshots currently remain retained; automated deletion awaits a
+policy that preserves every configuration referenced by retained database chains.
+The actual provider's storage and request quotas, including continuous WAL and
+periodic checks, must fit the free allocation before scheduling production work.
+No paid overage or provider recovery guarantee is implied by these fixtures.
 
 This fixture does not contact production, prove object recovery, measure a real
 operator recovery time or authorize replacing a live volume. Preserve production

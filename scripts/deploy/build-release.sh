@@ -8,6 +8,7 @@ commit="$(git rev-parse HEAD)"
 export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
 output="$root/.cache/release/$architecture"
 mkdir -p "$output/infra/production" "$output/scripts/deploy"
+bash scripts/deploy/download-backup-tool.sh "$architecture" "$output/tools"
 
 locked() { node -e 'const fs=require("fs"); process.stdout.write(JSON.parse(fs.readFileSync("infra/production/runtime-lock.json"))[process.argv[1]])' "$1"; }
 mapfile -t modules < <(node --input-type=module -e 'import {modules} from "./scripts/deploy/release.mjs"; console.log(modules.join("\n"))')
@@ -37,6 +38,8 @@ for dependency in redis livekit; do
   docker tag "$(locked "$dependency")" "chanter-$dependency:$commit"
 done
 names=("${modules[@]}" frontend postgres redis livekit clamav)
+docker run --rm --volume "$output/tools:/scan:ro" --volume chanter-trivy-cache:/root/.cache/ \
+  "$(locked scanner)" filesystem --scanners vuln,secret --exit-code 1 --severity HIGH,CRITICAL /scan
 for name in "${names[@]}"; do
   docker run --rm --volume /var/run/docker.sock:/var/run/docker.sock \
     --volume chanter-trivy-cache:/root/.cache/ "$(locked scanner)" image \
@@ -46,6 +49,6 @@ node scripts/deploy/create-manifest.mjs "$output/release.json" "$architecture"
 mapfile -t images < <(node -e 'console.log(Object.values(require(process.argv[1]).images).join("\n"))' "$output/release.json")
 docker save --output "$output/images.tar" "${images[@]}"
 (cd "$output" && sha256sum images.tar > images.sha256)
-cp scripts/deploy/{host.mjs,release.mjs,recovery.mjs,backup-runner.mjs,telemetry.mjs} "$output/scripts/deploy/"
+cp scripts/deploy/{host.mjs,release.mjs,recovery.mjs,backup-runner.mjs,telemetry.mjs,configuration-backup.mjs} "$output/scripts/deploy/"
 cp infra/production/{postgres-init.sh,livekit.yaml,runtime-lock.json,release-policy.json} "$output/infra/production/"
 echo "Release bundle prepared for $commit ($architecture); no secrets or registry account required."

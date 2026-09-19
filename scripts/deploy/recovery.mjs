@@ -20,10 +20,32 @@ export function summarizeBackup(info, now = Date.now()) {
     && Number.isSafeInteger(value.timestamp?.stop) && value.timestamp.stop > 0
     && value.timestamp.stop * 1000 <= now + 300000);
   const latest = backups.reduce((found, item) => !found || item.timestamp.stop > found.timestamp.stop ? item : found, null);
-  const full = backups.filter(item => item.type === 'full')
-    .reduce((found, item) => !found || item.timestamp.stop > found.timestamp.stop ? item : found, null);
+  const fullLabel = latest?.label.split('_')[0];
+  const full = backups.find(item => item.type === 'full' && item.label === fullLabel);
   if (!latest || !full) throw new Error('No complete recoverable backup chain is available');
+  const byLabel = new Map(backups.map(item => [item.label, item]));
+  const pending = [latest];
+  const checked = new Set();
+  while (pending.length) {
+    const item = pending.pop();
+    if (checked.has(item.label)) continue;
+    checked.add(item.label);
+    if (item.type === 'full' && item.label === fullLabel) continue;
+    if (item.label.split('_')[0] !== fullLabel || !Array.isArray(item.reference)
+        || !item.reference.includes(fullLabel) || typeof item.prior !== 'string') {
+      throw new Error('Backup dependency chain is incomplete');
+    }
+    for (const label of new Set([...item.reference, item.prior])) {
+      const dependency = byLabel.get(label);
+      if (!dependency || dependency.label.split('_')[0] !== fullLabel
+          || dependency.timestamp.stop >= item.timestamp.stop) throw new Error('Backup dependency chain is incomplete');
+      pending.push(dependency);
+    }
+  }
+  const configSnapshot = latest.annotation?.['config-snapshot'];
+  if (!/^[a-f0-9]{8,64}$/.test(configSnapshot ?? '')) throw new Error('Database backup has no matching configuration snapshot');
   return { label: latest.label, type: latest.type, completedAt: new Date(latest.timestamp.stop * 1000).toISOString(),
+    configSnapshot,
     fullCompletedAt: new Date(full.timestamp.stop * 1000).toISOString(),
     stale: now - latest.timestamp.stop * 1000 > 30 * 3600000 || now - full.timestamp.stop * 1000 > 8 * 86400000 };
 }

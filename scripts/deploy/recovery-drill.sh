@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 image="${1:?Usage: recovery-drill.sh reviewed-postgres-image}"
+restic="${2:?Verified restic executable is required}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 mkdir -p "$root/.cache/recovery-drill"
 state="$(mktemp -d "$root/.cache/recovery-drill/run.XXXXXX")"
@@ -14,9 +15,28 @@ wrong_volume="$project-wrong-key-data"
 cleanup() {
   docker rm -f "$source" "$restored" >/dev/null 2>&1 || true
   docker volume rm "$source_volume" "$restore_volume" "$wrong_volume" "$repo" >/dev/null 2>&1 || true
+  node --input-type=module - "$root/.cache/recovery-drill" "$state" <<'JS'
+import fs from 'node:fs';
+import path from 'node:path';
+const parent = fs.realpathSync(process.argv[2]);
+const target = fs.realpathSync(process.argv[3]);
+if (path.dirname(target) !== parent || !/^run\.[A-Za-z0-9]{6}$/.test(path.basename(target))) {
+  throw new Error('Refusing cleanup outside the owned recovery fixture');
+}
+fs.rmSync(target, { recursive: true });
+JS
 }
 trap cleanup EXIT
 umask 077
+export RESTIC_REPOSITORY="$state/configuration-repository"
+export RESTIC_PASSWORD="$(openssl rand -hex 32)"
+"$restic" --no-cache init >/dev/null
+printf '%s' '{"version":1,"fixture":"private-recovery-canary"}' | \
+  "$restic" --no-cache backup --stdin --stdin-filename configuration.json --host chanter-drill --json > "$state/configuration-backup.jsonl"
+config_snapshot="$(node -e 'const rows=require("fs").readFileSync(process.argv[1],"utf8").trim().split("\n").map(JSON.parse); process.stdout.write(rows.find(r=>r.message_type==="summary").snapshot_id)' "$state/configuration-backup.jsonl")"
+if RESTIC_PASSWORD=wrong-fixture-password "$restic" --no-cache dump "$config_snapshot" configuration.json > "$state/wrong-config-key.log" 2>&1; then
+  echo 'Configuration restore unexpectedly accepted the wrong key.' >&2; exit 1
+fi
 {
   printf 'POSTGRES_USER=chanter_admin\nPOSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 32)"
   printf 'PGBACKREST_STANZA=chanter\nPGBACKREST_PG1_USER=chanter_admin\n'
@@ -45,7 +65,7 @@ psql_source() { docker exec "$source" psql -v ON_ERROR_STOP=1 -U chanter_admin -
 psql_source 'CREATE TABLE recovery_marker (id integer PRIMARY KEY); INSERT INTO recovery_marker VALUES (1);' >/dev/null
 docker exec "$source" pgbackrest stanza-create
 docker exec "$source" pgbackrest check
-docker exec "$source" pgbackrest --type=full backup
+docker exec "$source" pgbackrest --type=full "--annotation=config-snapshot=$config_snapshot" backup
 docker exec "$source" pgbackrest --output=json info > "$state/backup-info.json"
 node --input-type=module - "$state/backup-info.json" <<'JS'
 import fs from 'node:fs';
@@ -84,5 +104,6 @@ actual="$(docker exec "$restored" psql -v ON_ERROR_STOP=1 -U chanter_admin -d po
 test "$actual" = '1,2' || { echo 'Point-in-time restore included the wrong commits.' >&2; exit 1; }
 test "$(psql_source 'SELECT count(*) FROM recovery_marker')" = 3
 test "$(docker exec "$restored" psql -U chanter_admin -d postgres -Atc 'SHOW archive_mode')" = off
+test "$("$restic" --no-cache dump "$config_snapshot" configuration.json)" = '{"version":1,"fixture":"private-recovery-canary"}'
 echo "Encrypted isolated PostgreSQL restore passed; fixture recovery took $(($(date +%s) - started)) seconds."
 echo 'This local repository drill does not establish production off-host RPO or RTO.'

@@ -24,13 +24,14 @@ test('backup timer commands reject shell and systemd substitutions in operator p
 test('backup status rejects failures and marks overdue chains without copying provider metadata', () => {
   const now = Date.parse('2026-09-19T00:00:00Z');
   const complete = { error: false, type: 'full', label: '20260918-000000F', timestamp: { stop: now / 1000 - 3600 },
-    database: { id: 1, 'repo-key': 1 } };
+    database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64) } };
   const info = [{ name: 'chanter', status: { code: 0 }, db: [{ id: 1, 'repo-key': 1 }], backup: [complete], secret: 'do-not-copy' }];
   assert.equal(summarizeBackup(info, now).stale, false);
   assert.equal(JSON.stringify(summarizeBackup(info, now)).includes('do-not-copy'), false);
   assert.equal(summarizeBackup(info, now + 31 * 3600000).stale, true);
   assert.throws(() => summarizeBackup([{ ...info[0], status: { code: 1 } }], now), /unavailable/);
   assert.throws(() => summarizeBackup([{ ...info[0], backup: [{ ...complete, error: true }] }], now), /No complete/);
+  assert.throws(() => summarizeBackup([{ ...info[0], backup: [{ ...complete, annotation: {} }] }], now), /configuration snapshot/);
   assert.throws(() => summarizeBackup([{ ...info[0], db: [{ id: 2, 'repo-key': 1 }] }], now), /No complete/);
   assert.throws(() => summarizeBackup([{ ...info[0], backup: [{ ...complete, timestamp: { stop: now / 1000 + 3600 } }] }], now), /No complete/);
 });
@@ -45,6 +46,24 @@ test('failed first migrations prevent an older writer even without a successful 
   for (const invalid of [{}, { schemaEpoch: -1 }, { schemaEpoch: 6, commit: 'untrusted' }]) {
     assert.throws(() => assertMigrationFloor(attempted, invalid), /Invalid persisted/);
   }
+});
+
+test('incremental health follows its own full and every referenced dependency', () => {
+  const now = Date.parse('2026-09-19T00:00:00Z');
+  const full = { type: 'full', error: false, label: '20260917-000000F', timestamp: { stop: now / 1000 - 86400 },
+    database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64) } };
+  const intermediate = { ...full, type: 'incr', label: full.label + '_20260917-120000I',
+    timestamp: { stop: now / 1000 - 43200 }, reference: [full.label], prior: full.label };
+  const latest = { ...intermediate, label: full.label + '_20260918-120000I',
+    timestamp: { stop: now / 1000 - 3600 }, reference: [full.label, intermediate.label], prior: intermediate.label };
+  const unrelated = { ...full, label: '20260918-000000F', timestamp: { stop: now / 1000 - 7200 } };
+  const info = backup => [{ name: 'chanter', status: { code: 0 }, db: [{ id: 1, 'repo-key': 1 }], backup }];
+  assert.equal(summarizeBackup(info([full, intermediate, latest, unrelated]), now).fullCompletedAt,
+    new Date(full.timestamp.stop * 1000).toISOString());
+  assert.throws(() => summarizeBackup(info([latest, unrelated]), now), /No complete/);
+  assert.throws(() => summarizeBackup(info([full, latest]), now), /dependency chain/);
+  assert.throws(() => summarizeBackup(info([full, intermediate, { ...latest, prior: unrelated.label }, unrelated]), now), /dependency chain/);
+  assert.throws(() => summarizeBackup(info([full, intermediate, { ...latest, prior: latest.label }]), now), /dependency chain/);
 });
 
 test('production archive settings use encrypted TLS S3 with bounded workers', () => {

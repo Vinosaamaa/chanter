@@ -64,3 +64,19 @@ privacy and instrumented release staging gates are added and remain pending for
 this increment. Export is visibly disabled until a private HTTPS receiver and
 authorization are configured. No external monitoring receipt is claimed. Metrics,
 frontend error delivery, actionable alerting and complete recovery are unfinished.
+
+The telemetry checkpoint now passes full CI, real OTLP privacy/outage tests and
+instrumented native release staging on both supported architectures. The next
+increment adds restic 0.19.1 with pinned native downloads and packaged binary
+scanning. Each database backup references an encrypted configuration snapshot;
+the periodic check decrypts that exact snapshot and validates its identity.
+Bootstrap repository credentials and encryption keys stay outside the snapshot.
+
+Review findings fixed: recovery runs on runtime pin changes, telemetry runs on
+parent/common Maven and deployment wiring changes, backup health follows its own
+full and every referenced dependency, and recovery fixtures remove their private
+per-run state. The reported extension path mismatch is not present: Surefire uses
+the telemetry module working directory. Actual decoded native OTLP assertions on
+both architectures prove the privacy extension is active, including removal of
+planted canaries. Configuration recovery native validation remains pending for
+this increment. Full application restore and free-provider quota proof remain open.

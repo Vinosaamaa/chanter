@@ -61,9 +61,18 @@ cleanup() { "${compose[@]}" down --volumes --remove-orphans; }
 trap cleanup EXIT
 "${compose[@]}" config --quiet
 "${compose[@]}" up -d --wait --wait-timeout 180 postgres redis
+export RESTIC_REPOSITORY="$state/configuration-repository"
+export RESTIC_PASSWORD="$(openssl rand -hex 32)"
+"$bundle/tools/restic" --no-cache init >/dev/null
+node --input-type=module - "$state" "$bundle" <<'JS' | "$bundle/tools/restic" --no-cache backup --stdin --stdin-filename configuration.json --host chanter-staging --json > "$state/configuration-backup.jsonl"
+import fs from 'node:fs';
+import { configurationSnapshot } from './scripts/deploy/host.mjs';
+process.stdout.write(JSON.stringify(configurationSnapshot(process.argv[2], JSON.parse(fs.readFileSync(process.argv[3] + '/release.json')))));
+JS
+config_snapshot="$(node -e 'const rows=require("fs").readFileSync(process.argv[1],"utf8").trim().split("\n").map(JSON.parse); process.stdout.write(rows.find(r=>r.message_type==="summary").snapshot_id)' "$state/configuration-backup.jsonl")"
 "${compose[@]}" exec -T postgres pgbackrest stanza-create
 "${compose[@]}" exec -T postgres pgbackrest check
-"${compose[@]}" exec -T postgres pgbackrest --type=incr backup
+"${compose[@]}" exec -T postgres pgbackrest --type=incr "--annotation=config-snapshot=$config_snapshot" backup
 "${compose[@]}" up -d --no-deps --wait --wait-timeout 600 clamav
 python3 scripts/deploy/check-scanner.py "$project" "$compose_file"
 mapfile -t databases < <(node --input-type=module -e 'import {databaseModules} from "./scripts/deploy/release.mjs"; console.log(databaseModules.join("\n"))')

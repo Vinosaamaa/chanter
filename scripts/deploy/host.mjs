@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { modules, databaseModules, validateRelease, validateConfig, composeFor, executeDeployment } from './release.mjs';
 import { assertMigrationFloor, backupEnvironment, backupUnits, summarizeBackup } from './recovery.mjs';
 import { telemetryEnvironment } from './telemetry.mjs';
+import { configurationBackupEnvironment, runConfigurationBackup, verifyConfigurationBackup } from './configuration-backup.mjs';
 
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const writePrivateText = (file, value) => {
@@ -54,7 +55,8 @@ export function initialize(stateDir, config) {
   save('redis', { REDIS_PASSWORD: redis });
   save('livekit', { LIVEKIT_KEYS: `${mediaKey}: ${mediaSecret}` });
   save('backup', { CHANTER_BACKUP_S3_ENDPOINT: '', CHANTER_BACKUP_S3_BUCKET: '', CHANTER_BACKUP_S3_REGION: '',
-    CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret() });
+    CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret(),
+    CHANTER_CONFIG_BACKUP_PASSWORD: secret() });
   save('telemetry', { CHANTER_TELEMETRY_ENDPOINT: '', CHANTER_TELEMETRY_AUTHORIZATION: '' });
   writeJson(path.join(stateDir, 'config.json'), config);
 }
@@ -107,6 +109,7 @@ export function validateRuntime(stateDir) {
     if (name === 'telemetry') { telemetryEnvironment(env); continue; }
     if (name === 'backup') {
       backupEnvironment(env, json(path.join(stateDir, 'config.json')).environment);
+      configurationBackupEnvironment(env, json(path.join(stateDir, 'config.json')).environment);
       const media = readEnv(path.join(stateDir, 'runtime/media-service.env'));
       if (env.CHANTER_BACKUP_S3_BUCKET === media.CHANTER_S3_BUCKET
           || env.CHANTER_BACKUP_S3_ACCESS_KEY === media.CHANTER_S3_ACCESS_KEY) {
@@ -233,6 +236,14 @@ export function verifyMigrationHistory(stateDir, release, environment, run = doc
   }
 }
 
+export function configurationSnapshot(stateDir, release) {
+  const runtime = Object.fromEntries([...modules, 'postgres', 'redis', 'livekit', 'telemetry']
+    .map(name => [name, readEnv(path.join(stateDir, 'runtime', `${name}.env`))]));
+  const floor = path.join(stateDir, 'migration-floor.json');
+  return { version: 1, release, config: json(path.join(stateDir, 'config.json')), runtime,
+    migrationFloor: fs.existsSync(floor) ? json(floor) : null };
+}
+
 export async function deploy(bundleDir, stateDir, rollback = false) {
   if (process.platform !== 'linux') throw new Error('Host deployment requires Linux; use render and unit tests on other systems');
   validateRuntime(stateDir);
@@ -281,9 +292,11 @@ export async function deploy(bundleDir, stateDir, rollback = false) {
       } else if (operation === 'stop-applications') compose(['stop', ...modules, 'livekit', 'clamav']);
       else if (operation === 'start-persistence') compose(['up', '-d', '--wait', '--wait-timeout', '180', 'postgres', 'redis']);
       else if (operation === 'backup-database') {
+        const configBackup = runConfigurationBackup(source, readEnv(path.join(stateDir, 'runtime/backup.env')),
+          prepared.config.environment, configurationSnapshot(stateDir, target));
         compose(['exec', '-T', 'postgres', 'pgbackrest', 'stanza-create']);
         compose(['exec', '-T', 'postgres', 'pgbackrest', 'check']);
-        compose(['exec', '-T', 'postgres', 'pgbackrest', '--type=incr', 'backup']);
+        compose(['exec', '-T', 'postgres', 'pgbackrest', '--type=incr', `--annotation=config-snapshot=${configBackup.snapshotId}`, 'backup']);
       }
       else if (operation === 'migrate') {
         // Persist before the first SQL attempt. A crash must not turn partially migrated
@@ -333,7 +346,8 @@ export function stopEnvironment(stateDir, run = docker) {
   } finally { fs.rmdirSync(lock); }
 }
 
-export function backupDatabase(stateDir, type = 'incr', run = docker) {
+export function backupDatabase(stateDir, type = 'incr', run = docker, saveConfiguration = runConfigurationBackup,
+    verifyConfiguration = verifyConfigurationBackup) {
   if (!['full', 'incr', 'check'].includes(type)) throw new Error('Backup type must be full, incr or check');
   const lock = path.join(path.dirname(stateDir), '.deploy-lock');
   try { fs.mkdirSync(lock); } catch { throw new Error('Deployment or backup is active; inspect the lock before retrying'); }
@@ -354,10 +368,16 @@ export function backupDatabase(stateDir, type = 'incr', run = docker) {
     const execute = args => run(['compose', '--project-name', `chanter-${config.environment}`, '-f', file,
       'exec', '-T', 'postgres', 'pgbackrest', ...args], true);
     execute(['check']);
-    if (type !== 'check') execute([`--type=${type}`, `--annotation=release=${release.commit}`, 'backup']);
+    if (type !== 'check') {
+      const snapshot = saveConfiguration(current.bundleDir, readEnv(path.join(stateDir, 'runtime/backup.env')),
+        config.environment, configurationSnapshot(stateDir, release));
+      execute([`--type=${type}`, `--annotation=release=${release.commit}`, `--annotation=config-snapshot=${snapshot.snapshotId}`, 'backup']);
+    }
     const receipt = { status: 'ok', checkedAt: new Date().toISOString(), release: release.commit,
       ...summarizeBackup(JSON.parse(execute(['--output=json', 'info']))) };
     if (receipt.stale) throw new Error('Backup chain is stale');
+    verifyConfiguration(current.bundleDir, readEnv(path.join(stateDir, 'runtime/backup.env')),
+      config.environment, receipt.configSnapshot);
     writeJson(path.join(stateDir, 'backup-status.json'), receipt);
     return receipt;
   } catch {
@@ -384,6 +404,10 @@ async function main(args) {
     console.log('Environment stopped; persistent volumes and release receipts retained.');
   } else if (command === 'backup' && first) {
     console.log(JSON.stringify(backupDatabase(path.resolve(first), second ?? 'incr')));
+  } else if (command === 'init-config-backup' && first && second) {
+    const state = path.resolve(second); const config = validateConfig(json(path.join(state, 'config.json')));
+    runConfigurationBackup(path.resolve(first), readEnv(path.join(state, 'runtime/backup.env')), config.environment, null, true);
+    console.log('Encrypted configuration repository initialized. Keep its password in the offline secret store.');
   } else if (command === 'backup-schedule' && first) {
     const state = path.resolve(first);
     const units = backupUnits(state, process.execPath);
@@ -393,7 +417,7 @@ async function main(args) {
     for (const [name, contents] of Object.entries(units)) writePrivateText(path.join(directory, name), contents);
     console.log('Backup units prepared in the private state systemd directory. Install and enable them using the recovery runbook.');
   } else if (command === 'verify' && first) await verifyPublic(first, second ? path.resolve(second) : undefined);
-  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | backup STATE [full|incr|check] | backup-schedule STATE | verify HOST [STATE]');
+  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | init-config-backup BUNDLE STATE | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | backup STATE [full|incr|check] | backup-schedule STATE | verify HOST [STATE]');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
