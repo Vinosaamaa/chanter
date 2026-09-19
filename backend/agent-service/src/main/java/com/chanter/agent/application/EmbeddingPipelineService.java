@@ -41,6 +41,7 @@ public class EmbeddingPipelineService {
         if (resourceId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "resourceId is required");
         }
+        chunkRepository.lockForIndexing(resourceId);
         List<ResourceChunk> chunks = chunkRepository.findByResourceId(resourceId);
         if (chunks.isEmpty()) {
             embeddingRepository.deleteByResourceId(resourceId);

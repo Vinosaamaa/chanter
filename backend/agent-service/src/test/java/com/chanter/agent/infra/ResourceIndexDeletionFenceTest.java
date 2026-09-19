@@ -1,9 +1,12 @@
 package com.chanter.agent.infra;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import com.chanter.agent.application.ResourceChunkRepository;
 import com.chanter.agent.application.ResourceIngestionService;
+import com.chanter.agent.application.EmbeddingPipelineService;
+import com.chanter.agent.application.EmbeddingClient;
 import com.chanter.agent.domain.ResourceChunk;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -17,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,6 +32,37 @@ class ResourceIndexDeletionFenceTest {
     @Autowired ResourceIngestionService ingestion;
     @Autowired JdbcClient jdbc;
     @Autowired PlatformTransactionManager transactions;
+    @Autowired EmbeddingPipelineService embeddings;
+    @MockitoSpyBean EmbeddingClient embeddingClient;
+
+    @Test void backfillAfterDeletionIsRejectedBeforeComputingEmbeddings() {
+        UUID resource = UUID.randomUUID();
+        ingestion.deleteByResourceId(resource);
+        assertThatThrownBy(() -> embeddings.backfillResource(resource)).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test void deletionWaitsForDirectBackfillBeforeRemovingChunksAndEmbeddings() throws Exception {
+        UUID resource = UUID.randomUUID();
+        ingestion.ingest(UUID.randomUUID(), resource, "clean.txt", "backfill evidence".getBytes(StandardCharsets.UTF_8));
+        var computing = new CountDownLatch(1);
+        var finish = new CountDownLatch(1);
+        var deleting = new CountDownLatch(1);
+        doAnswer(call -> { computing.countDown(); await(finish); return call.callRealMethod(); })
+                .when(embeddingClient).embed("backfill evidence");
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var backfill = executor.submit(() -> embeddings.backfillResource(resource));
+            await(computing);
+            var deletion = executor.submit(() -> { deleting.countDown(); ingestion.deleteByResourceId(resource); });
+            await(deleting);
+            try {
+                assertThatThrownBy(() -> deletion.get(150, TimeUnit.MILLISECONDS))
+                        .isInstanceOf(java.util.concurrent.TimeoutException.class);
+            } finally { finish.countDown(); }
+            backfill.get(10, TimeUnit.SECONDS);
+            deletion.get(10, TimeUnit.SECONDS);
+        } finally { finish.countDown(); }
+        assertEmpty(resource);
+    }
 
     @Test void deletionBeforeFirstChunkWriteRejectsPreparedLateContent() throws Exception {
         UUID resource = UUID.randomUUID();

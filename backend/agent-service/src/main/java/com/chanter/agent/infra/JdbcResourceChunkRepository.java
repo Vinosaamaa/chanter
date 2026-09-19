@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -25,7 +26,7 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     @Override
     @Transactional
     public void replaceAllForResource(UUID resourceId, List<ResourceChunk> chunks) {
-        requireLive(lockResource(resourceId));
+        lockForIndexing(resourceId);
         if (chunks.stream().anyMatch(chunk -> !resourceId.equals(chunk.resourceId()))) {
             throw new IllegalArgumentException("Chunk resource does not match replacement target");
         }
@@ -101,6 +102,12 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
                 .param("resourceId", resourceId).update();
         return jdbcClient.sql("SELECT deleted FROM resource_index_lifecycle WHERE resource_id=:resourceId FOR UPDATE")
                 .param("resourceId", resourceId).query(Boolean.class).single();
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockForIndexing(UUID resourceId) {
+        requireLive(lockResource(resourceId));
     }
 
     private static void requireLive(boolean deleted) {

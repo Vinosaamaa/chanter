@@ -7,6 +7,9 @@ import java.util.UUID;
 
 public interface ResourceChunkRepository {
 
+    /** Hold the live resource's lifecycle lock until the caller's indexing transaction completes. */
+    void lockForIndexing(UUID resourceId);
+
     void replaceAllForResource(UUID resourceId, List<ResourceChunk> chunks);
 
     void deleteByResourceId(UUID resourceId);
