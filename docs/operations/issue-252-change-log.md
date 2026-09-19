@@ -115,3 +115,19 @@ real encrypted local database/configuration repositories and remains pending.
 Backup/configuration release mismatches now fail verification. Repeated claims
 that pgBackRest cannot promote an initial incremental were checked against pinned
 source and actual fresh release runs; both establish automatic full-backup fallback.
+
+The metric exporter now shares the private trace receiver and credentials, using
+its sibling metrics endpoint. Disabled configuration and release smoke explicitly
+disable both signals. Views remove private labels before aggregation, while the
+exporter rejects unexpected names, units and residual values. Bounded runtime pool
+and thread dimensions retain meaningful gauge values. Real-agent Windows tests
+prove trace continuity, safe metric export, all 600 observations after private
+dimension removal, and bounded receiver-outage shutdown. Focused residual-field
+tests pass. Business gauges and external monitoring remain unfinished.
+
+The expanded operator recovery drill still fails during PostgreSQL startup on
+both native architectures. The earlier connection-capacity correction was not
+sufficient. Capturing both container output streams identifies a fatal invalid
+configuration setting; the next diagnostic names the setting without emitting
+repository credentials. This operator command has not passed native acceptance,
+even though the simpler encrypted named-point restore fixture does pass.

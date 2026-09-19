@@ -67,8 +67,8 @@ reconciled with #251; no unsupported immediate-erasure claim belongs in policy.
 
 Use OpenTelemetry for correlated server, outbound HTTP, database, background job
 and realtime-handshake traces. Export is sampled and bounded; exporter failure
-must not block customer requests. Use the existing Micrometer metrics for request
-duration/status, JVM/pool pressure and gateway admission, adding bounded labels
+must not block customer requests. Use the agent's metric SDK for request
+duration/status and JVM/pool pressure, adding bounded instruments
 for event lag, email, scan/ingestion, AI outcome/usage and recovery state. A
 disabled paid-billing mode is reported explicitly rather than inventing webhook
 traffic.
@@ -81,8 +81,22 @@ HTTP methods/statuses, database operations and release/service/environment metad
 Raw names, routes, attributes, events, links and incoming vendor trace state are
 discarded. Public ingress removes client-supplied tracing and baggage headers.
 The real-agent test decodes OTLP, verifies client/server trace continuity and
-asserts that planted secret/content values never reach the receiver. Metrics and
-log export are disabled in the agent until their separate privacy boundaries exist.
+asserts that planted secret/content values never reach the receiver. Metrics use
+the same private receiver at its sibling `/v1/metrics` endpoint, with a sixty-second
+interval. Both signals remain disabled without explicit receiver configuration;
+log export stays disabled.
+
+The metric boundary accepts fixed operational names and units. SDK views remove
+private dimensions before aggregation, so many account or URL values cannot split
+a metric into private series or consume the series limit. The exporter rejects
+unknown dimensions and invalid residual values; names, descriptions, resources,
+scope identity and exemplars cannot carry arbitrary text. It preserves bounded
+JVM memory pool/type and thread state/daemon dimensions: collapsing asynchronous
+gauges would retain one value instead of correctly reporting distinct pools.
+Unknown future pool names fail closed until reviewed. The real-agent test records
+600 distinct private account values and verifies one histogram with 600 samples,
+with no canary anywhere in decoded OTLP. Business outcome instruments, dashboards
+and actual alert delivery remain separate implementation and provider gates.
 
 Production log formatting retains logger, severity, immutable release, trace IDs
 and bounded application exception frames. It never serializes free-form messages,

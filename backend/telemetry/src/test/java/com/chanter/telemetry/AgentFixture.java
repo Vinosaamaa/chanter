@@ -2,6 +2,7 @@ package com.chanter.telemetry;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.StatusCode;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -21,6 +22,13 @@ public class AgentFixture {
         });
         server.start();
         try {
+            var meter = GlobalOpenTelemetry.getMeter("private-canary");
+            var duration = meter.histogramBuilder("chanter.ai.duration").setUnit("s").setDescription("private-canary").build();
+            for (int index = 0; index < 600; index++) {
+                duration.record(0.01, Attributes.builder().put("account", "private-canary-" + index)
+                        .put("http.response.status_code", 200).build());
+            }
+            meter.counterBuilder("private-canary").build().add(1);
             var span = GlobalOpenTelemetry.getTracer("private-canary").spanBuilder("private-canary").startSpan();
             try (var ignored = span.makeCurrent(); var client = HttpClient.newHttpClient()) {
                 span.setAttribute("db.query.text", "private-canary");

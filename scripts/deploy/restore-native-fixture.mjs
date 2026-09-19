@@ -65,6 +65,8 @@ if (operation === 'prepare') {
         permissionFailure: /Permission denied/.test(logs),
         readOnlyFailure: /Read-only file system/.test(logs),
         invalidSetting: /unrecognized configuration parameter|invalid value for parameter|invalid input syntax/.test(logs),
+        invalidParameter: /(?:unrecognized configuration parameter|invalid value for parameter) "([a-z_]+)"/.exec(logs)?.[1] ?? null,
+        fatalCategory: /(?:FATAL:|PANIC:)\s+([^\n]+)/.exec(logs)?.[1]?.replace(/"[^"]*"|'[^']*'/g, '[redacted]').slice(0, 240) ?? null,
         recoveryComplete: /archive recovery complete|ready to accept connections/.test(logs),
         missingWal: /unable to find|could not restore|not found in the archive/.test(logs),
         sharedMemoryFailure: /shared memory|No space left/.test(logs),

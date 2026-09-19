@@ -45,16 +45,7 @@ public final class SafeSpanExporter implements SpanExporter {
         String operation = source.getAttributes().get(AttributeKey.stringKey("db.operation.name"));
         if (OPERATIONS.contains(operation == null ? "" : operation)) attributes.put("db.operation.name", operation);
         var safe = attributes.build();
-        var resource = Attributes.builder();
-        String service = source.getResource().getAttribute(AttributeKey.stringKey("service.name"));
-        resource.put("service.name", SERVICES.contains(service == null ? "" : service) ? service : "unknown-service");
-        String release = source.getResource().getAttribute(AttributeKey.stringKey("service.version"));
-        if (release != null && release.matches("[a-f0-9]{40}")) resource.put("service.version", release);
-        String environment = source.getResource().getAttribute(AttributeKey.stringKey("deployment.environment.name"));
-        if (Set.of("staging", "production", "test").contains(environment == null ? "" : environment)) {
-            resource.put("deployment.environment.name", environment);
-        }
-        Resource safeResource = Resource.create(resource.build());
+        Resource safeResource = safeResource(source.getResource());
         String name = safe.get(AttributeKey.stringKey("http.request.method")) != null ? "HTTP " + method
                 : safe.get(AttributeKey.stringKey("db.operation.name")) != null ? "DB " + operation : source.getKind().name();
         return new DelegatingSpanData(source) {
@@ -74,5 +65,17 @@ public final class SafeSpanExporter implements SpanExporter {
     }
     private static SpanContext withoutState(SpanContext context) {
         return SpanContext.create(context.getTraceId(), context.getSpanId(), context.getTraceFlags(), TraceState.getDefault());
+    }
+    static Resource safeResource(Resource source) {
+        var resource = Attributes.builder();
+        String service = source.getAttribute(AttributeKey.stringKey("service.name"));
+        resource.put("service.name", SERVICES.contains(service == null ? "" : service) ? service : "unknown-service");
+        String release = source.getAttribute(AttributeKey.stringKey("service.version"));
+        if (release != null && release.matches("[a-f0-9]{40}")) resource.put("service.version", release);
+        String environment = source.getAttribute(AttributeKey.stringKey("deployment.environment.name"));
+        if (Set.of("staging", "production", "test").contains(environment == null ? "" : environment)) {
+            resource.put("deployment.environment.name", environment);
+        }
+        return Resource.create(resource.build());
     }
 }

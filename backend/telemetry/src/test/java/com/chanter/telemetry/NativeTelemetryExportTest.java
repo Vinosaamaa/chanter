@@ -2,6 +2,7 @@ package com.chanter.telemetry;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.trace.v1.Span;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
@@ -19,15 +20,34 @@ import static org.junit.jupiter.api.Assertions.*;
 class NativeTelemetryExportTest {
     @Test void realAgentExportsCorrelatedHttpSpansThroughThePrivacyExtension() throws Exception {
         List<ExportTraceServiceRequest> received = Collections.synchronizedList(new ArrayList<>());
+        List<ExportMetricsServiceRequest> metrics = Collections.synchronizedList(new ArrayList<>());
         var collector = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         collector.createContext("/v1/traces", exchange -> {
             received.add(ExportTraceServiceRequest.parseFrom(exchange.getRequestBody()));
+            exchange.sendResponseHeaders(200, -1); exchange.close();
+        });
+        collector.createContext("/v1/metrics", exchange -> {
+            metrics.add(ExportMetricsServiceRequest.parseFrom(exchange.getRequestBody()));
             exchange.sendResponseHeaders(200, -1); exchange.close();
         });
         collector.start();
         try {
             runFixture("http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces");
             assertFalse(received.isEmpty(), "The real agent must reach the receiver");
+            assertFalse(metrics.isEmpty(), "The real agent must export sanitized metrics");
+            synchronized (metrics) {
+                assertTrue(metrics.stream().noneMatch(request -> request.toString().contains("private-canary")),
+                        "Metric names, descriptions, resources, scopes and dimensions must exclude the canary");
+                var durations = metrics.stream().flatMap(request -> request.getResourceMetricsList().stream())
+                        .flatMap(resource -> resource.getScopeMetricsList().stream()).flatMap(scope -> scope.getMetricsList().stream())
+                        .filter(metric -> metric.getName().equals("chanter.ai.duration")).toList();
+                assertFalse(durations.isEmpty(), "Known application instruments must survive the privacy boundary");
+                assertTrue(durations.stream().anyMatch(metric -> metric.getHistogram().getDataPointsCount() == 1
+                        && metric.getHistogram().getDataPoints(0).getCount() == 600),
+                        "Private dimensions must be removed before aggregation, preserving all 600 observations");
+                assertTrue(durations.stream().allMatch(metric -> metric.getHistogram().getDataPointsList().stream()
+                        .allMatch(point -> point.getExemplarsCount() == 0)), "Exemplars can contain private dimensions");
+            }
             List<Span> spans = new ArrayList<>();
             synchronized (received) {
                 for (var request : received) {
@@ -60,6 +80,9 @@ class NativeTelemetryExportTest {
         var env = builder.environment();
         env.put("OTEL_JAVAAGENT_EXTENSIONS", Path.of("target/telemetry-0.1.0-SNAPSHOT.jar").toAbsolutePath().toString());
         env.put("OTEL_TRACES_EXPORTER", "otlp"); env.put("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
+        env.put("OTEL_METRICS_EXPORTER", "otlp");
+        env.put("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", endpoint.replace("/v1/traces", "/v1/metrics"));
+        env.put("OTEL_METRIC_EXPORT_INTERVAL", "60000");
         env.put("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", endpoint); env.put("OTEL_TRACES_SAMPLER", "always_on");
         env.put("OTEL_BSP_SCHEDULE_DELAY", "100"); env.put("OTEL_SERVICE_NAME", "agent-service");
         env.put("OTEL_RESOURCE_ATTRIBUTES", "service.version=" + "a".repeat(40) + ",deployment.environment.name=test,private=private-canary");

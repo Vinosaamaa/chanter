@@ -35,7 +35,7 @@ import path from 'node:path';
 const file = process.argv[2]; const compose = JSON.parse(fs.readFileSync(file));
 for (const [name, service] of Object.entries(compose.services)) {
   if (name.endsWith('-service') && !name.startsWith('migrate-')) Object.assign(service.environment, {
-    CHANTER_TELEMETRY_ENABLED: 'true', OTEL_TRACES_EXPORTER: 'none',
+    CHANTER_TELEMETRY_ENABLED: 'true', OTEL_TRACES_EXPORTER: 'none', OTEL_METRICS_EXPORTER: 'none',
     OTEL_JAVAAGENT_EXTENSIONS: '/app/telemetry/privacy.jar', OTEL_JAVAAGENT_LOGGING: 'application',
   });
 }

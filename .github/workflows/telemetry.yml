@@ -41,4 +41,4 @@ jobs:
         working-directory: backend
         run: |
           mvn -B -q -pl telemetry,common -am -DskipTests package
-          mvn -B -q -pl telemetry,common -am -Dtest=SafeSpanExporterTest,SafeLogFormatterTest,NativeTelemetryExportTest -Dsurefire.failIfNoSpecifiedTests=false -Dchanter.telemetry.agent="$GITHUB_WORKSPACE/.cache/telemetry/agent.jar" test
+          mvn -B -q -pl telemetry,common -am -Dtest=SafeSpanExporterTest,SafeMetricExporterTest,SafeLogFormatterTest,NativeTelemetryExportTest -Dsurefire.failIfNoSpecifiedTests=false -Dchanter.telemetry.agent="$GITHUB_WORKSPACE/.cache/telemetry/agent.jar" test
