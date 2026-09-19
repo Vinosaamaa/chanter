@@ -25,6 +25,11 @@ class ResourceEventHttpTest {
     @Autowired ObjectMapper mapper;
     @Autowired ResourceIngestionJobs jobs;
 
+    @Test void jsonNullIsRejectedAsBadRequestBeforeConsumption() throws Exception {
+        mvc.perform(post("/api/v1/internal/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN, TOKEN)
+                .contentType(MediaType.APPLICATION_JSON).content("null")).andExpect(status().isBadRequest());
+    }
+
     @Test void internalEventAuthenticationScopeAndReplayAreEnforced() throws Exception {
         var resource = UUID.randomUUID();
         var change = new ResourceChanged(resource, UUID.randomUUID(), UUID.randomUUID(), "a".repeat(64), "notes.txt", true, false);

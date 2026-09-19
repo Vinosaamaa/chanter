@@ -325,4 +325,14 @@ class ResourceWorkerSafetyTest {
         return jdbc.sql("SELECT payload FROM durable_outbox WHERE destination='agent' AND aggregate_key=:key ORDER BY revision")
                 .param("key", "RESOURCE:" + resource).query(String.class).list();
     }
+
+    @Test void missingLegacyCourseStopsScopeRetryWithVisibleFailure() {
+        var resource = upload(UUID.randomUUID()); worker.runOnce();
+        jdbc.sql("UPDATE course_resources SET study_server_id=NULL,ingestion_event_id=NULL,ingestion_status='PENDING' WHERE id=:id")
+                .param("id", resource.id()).update();
+        access.clear();
+        worker.runOnce();
+        assertThat(lifecycle.find(resource.id()).orElseThrow().ingestionStatus()).isEqualTo("FAILED");
+        assertThat(lifecycle.claim(false)).isEmpty();
+    }
 }

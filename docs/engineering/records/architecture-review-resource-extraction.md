@@ -56,7 +56,7 @@ The final transaction can still make deletion wait briefly for database writes. 
 
 An omnibus parser with automatic OCR would add executables, formats and network behavior outside this scope. Format-specific maintained libraries make resource limits and source locations reviewable. Keeping all preparation under a row lock is simple but gives provider latency control over deletion. Publishing chunks before vectors allows partially ready content; a single final transaction avoids it.
 
-V9 introduces generation and extraction metadata; V10 adds consumer cursors and durable ingestion jobs. Media V4 follows accepted #245 V3 and adds outcome/source-event metadata. Older writers do not honor the generation boundary, so this change requires a deployment epoch after accepted issue #245 (planned epoch 6). Downgrade to pre-246 application code against this schema is unsupported. No production configuration is changed here.
+V9 introduces generation and extraction metadata; V10 adds consumer cursors and durable ingestion jobs. Media V4 follows accepted #245 V3 and adds outcome/source-event metadata. Older writers do not honor the generation boundary. After rebasing onto accepted #253, this change advances the release compatibility policy to epoch 6 and documents consistent recovery. Downgrade to pre-246 application code against this schema is unsupported. Runtime composition is unchanged.
 
 ## Evidence and remaining acceptance
 

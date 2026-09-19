@@ -285,7 +285,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
 
       try {
         const blob = await downloadCourseResourceContent(resource.id)
-        if (activeRequestKeyRef.current !== requestKey || viewGenerationRef.current !== viewGeneration) return
+        if (!isCurrentTransfer()) return
         if (previewUrlRef.current) {
           URL.revokeObjectURL(previewUrlRef.current)
         }

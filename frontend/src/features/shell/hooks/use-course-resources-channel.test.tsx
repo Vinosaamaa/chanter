@@ -335,6 +335,32 @@ describe('useCourseResourcesChannel', () => {
     expect(result.current.canUpload).toBe(false)
     expect(result.current.canView).toBe(false)
   })
+
+  it('does not let an older preview revoke the newer preview URL', async () => {
+    const available = resource({ status: 'AVAILABLE' })
+    const createUrl = vi.fn(() => 'blob:newest')
+    const revokeUrl = vi.fn()
+    vi.stubGlobal('URL', class extends URL { static createObjectURL = createUrl; static revokeObjectURL = revokeUrl })
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValue({ courseResources: [available] })
+    let finishFirst!: (value: Blob) => void
+    let finishSecond!: (value: Blob) => void
+    vi.mocked(downloadCourseResourceContent)
+      .mockReturnValueOnce(new Promise((resolve) => { finishFirst = resolve }))
+      .mockReturnValueOnce(new Promise((resolve) => { finishSecond = resolve }))
+    const { result } = renderHook(() => useCourseResourcesChannel('course-1'))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    let first!: Promise<void>
+    let second!: Promise<void>
+    act(() => { first = result.current.previewResource(available) })
+    act(() => { second = result.current.previewResource(available) })
+    await act(async () => { finishSecond(new Blob(['current'])); await second })
+    await act(async () => { finishFirst(new Blob(['older'])); await first })
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(createUrl).toHaveBeenCalledTimes(1)
+    expect(revokeUrl).not.toHaveBeenCalled()
+  })
 })
 
 function resource(overrides: Partial<CourseResource>): CourseResource {

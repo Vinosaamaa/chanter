@@ -1,4 +1,4 @@
 {
-  "schemaEpoch": 5,
-  "reason": "Accepted issue 245 adds community V18, message V9 and media V3 transactional outboxes plus notification/search V2 event cursors. Older source binaries write without durable delivery and cannot preserve the new projection consistency contract. Epoch 4 already requires private resource lifecycle and terminal indexing deletion markers, epoch 3 versioned password hashes, and epoch 2 durable sessions. Restore source and consumer databases consistently with private objects. Rollback never reverses SQL or changes persistence images."
+  "schemaEpoch": 6,
+  "reason": "Issue 246 adds agent V9 generation-fenced extraction and V10 durable resource ingestion jobs/cursors, plus media V4 extraction outcomes and source-event/scope metadata. Older writers can bypass the generation fence or omit ingestion events, so downgrade to epoch 5 is forbidden. Epoch 5 already requires the issue 245 transactional outboxes and projection cursors; epoch 4 private resource lifecycle and terminal deletion markers; epoch 3 versioned password hashes; epoch 2 durable sessions. Restore media and agent databases, durable cursors and private objects consistently. Rollback never reverses SQL or changes persistence images."
 }

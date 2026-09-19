@@ -53,7 +53,12 @@ public class ResourceWorker {
                 // Provider errors and scanner signatures can contain private information.
                 log.warn("Course Resource work deferred resourceId={} operation={}", job.resource().id(), job.operation());
                 if (job.operation().equals("DELETE")) lifecycle.retryJob(job.resource().id(), job.leaseId());
-                else if (job.operation().equals("INDEX")) lifecycle.retryJob(job.resource().id(), job.leaseId());
+                else if (job.operation().equals("INDEX")) {
+                    if (failure instanceof org.springframework.web.server.ResponseStatusException status
+                            && java.util.Set.of(403, 404).contains(status.getStatusCode().value())) {
+                        lifecycle.finishIndex(job.resource().id(), job.leaseId(), false);
+                    } else lifecycle.retryJob(job.resource().id(), job.leaseId());
+                }
                 else lifecycle.finishScan(job.resource().id(), job.leaseId(), "SCAN_FAILED");
             }
         });

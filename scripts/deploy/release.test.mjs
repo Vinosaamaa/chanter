@@ -1,11 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { validateRelease, composeFor, planDeployment, executeDeployment, modules, imageNames } from './release.mjs';
 
 const hash = (letter) => `sha256:${letter.repeat(64)}`;
 const release = () => ({ version: 1, commit: 'a'.repeat(40), architecture: 'arm64', schemaEpoch: 2,
   images: Object.fromEntries(imageNames.map(name => [name, hash('b')])) });
 const config = { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' };
+
+test('resource generation writers require epoch 6 and cannot fall back to epoch 5', async () => {
+  const policy = JSON.parse(readFileSync(new URL('../../infra/production/release-policy.json', import.meta.url), 'utf8'));
+  assert.equal(policy.schemaEpoch, 6);
+  const current = { ...release(), schemaEpoch: policy.schemaEpoch };
+  const previous = { ...release(), commit: 'c'.repeat(40), schemaEpoch: 5 };
+  const actions = [];
+  await assert.rejects(executeDeployment(previous, current, async action => actions.push(action)), /schema epoch/);
+  assert.deepEqual(actions, []);
+  assert.throws(() => planDeployment(previous, current, true), /schema epoch/);
+});
 
 test('the public proxy has an exact isolated identity and distributed admission is mandatory', () => {
   const stage = composeFor(release(), config, '/srv/chanter/staging/runtime');
