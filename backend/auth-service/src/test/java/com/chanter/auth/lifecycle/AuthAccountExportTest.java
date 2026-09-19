@@ -22,7 +22,6 @@ class AuthAccountExportTest {
         var data = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
         Flyway.configure().dataSource(data).locations("classpath:db/migration").load().migrate();
         var jdbc = new JdbcTemplate(data);
-        jdbc.execute(ExportSnapshotStore.SCHEMA);
         var tx = new TransactionTemplate(new DataSourceTransactionManager(data));
         Instant now = Instant.parse("2026-09-19T00:00:00Z");
         UUID owner = UUID.randomUUID(); UUID other = UUID.randomUUID(); UUID session = UUID.randomUUID();
