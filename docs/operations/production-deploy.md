@@ -137,6 +137,13 @@ Restore both service databases and the private object namespace consistently.
 The retained terminal deletion records prevent delayed indexing from recreating
 deleted content; an older application must not be rolled back across this epoch.
 
+The current compatibility epoch is 5 after accepted #245. Community V18,
+message V9 and media V3 introduce transactional outboxes; notification/search
+V2 record delivery cursors. Older source binaries can still write SQL but omit
+durable events, violating projection consistency. Automatic rollback to epoch 4
+is therefore forbidden. Recover source and consumer databases consistently;
+never reset event cursors independently or enable Flyway out-of-order migration.
+
 The community service's runtime file sets `CHANTER_BETA_MODE=free_beta` and
 `CHANTER_BETA_ASSISTANT_RUN_LIMIT=1000`. The operator may lower the lifetime
 assistant-run limit to an integer between 1 and 1000. Deployment rejects paid

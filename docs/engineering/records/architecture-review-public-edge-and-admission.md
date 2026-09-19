@@ -58,8 +58,9 @@ or provider detail.
 
 The design and remaining rollout work are in
 `docs/architecture/public-edge-and-abuse.md`. Local gateway HTTP and focused
-admission tests pass. Real multi-instance Redis proof, production configuration,
-bounded bodies/concurrency, browser policies, optional bot proof and actual
-provider tests remain incomplete. This record is a design decision, not launch
-acceptance.
+admission tests pass. Four real-Redis hosted cases passed. Production wiring,
+bounded bodies/concurrency and optional accessible bot proof are implemented.
+Final exact-head hosted acceptance, browser screenshot inspection and actual
+provider tests remain incomplete. This records the design and local verification,
+not launch acceptance.
 
