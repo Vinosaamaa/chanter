@@ -21,3 +21,18 @@ Persist explicit ingestion state, source version/checksum and safe failure codes
 Instructor resource UI shows queued, processing, ready and actionable failure states, with retry only where meaningful. It must not imply OCR or transcription exists. UI work follows the vendored frontend-design skill and approved resource layouts. Existing citation fields remain compatible with native-companion signing; locator presentation is additive.
 
 Real generated document fixtures cover each supported format, multiple locators, empty/scanned/encrypted/malformed documents, expansion/text limits and normalization. Concurrency tests cover delayed embedding versus deletion/replacement and atomic publication. Final acceptance requires package security, full review, native PostgreSQL evidence and browser evidence; parser unit success alone does not complete #246.
+
+## Instructor status design
+
+Keep the current learning-desk resource rows and Instrument Sans typography. Use paper white #ffffff and desk #f3f6fa, ink #192c46, muted #596a80, action blue #2458d3 and warning #8a5c12. Existing red/green status tokens retain their shared meanings. Resource title and file details stay left aligned; status and a compact retry action stay beside the same resource rather than opening a dashboard.
+
+```
+[file] Course guide                 [AI ready]          [open] [download]
+       PDF  240 KB
+[file] Scanned worksheet            [Text needed]       [download]
+       PDF  180 KB
+       Upload a version with selectable text.
+[file] Lecture notes                [Preparation failed] [Retry AI preparation]
+```
+
+Show upload/scanning availability separately from AI preparation. Only AVAILABLE + approved + READY can say AI ready. Unknown or older state must never imply readiness. Retry is available to instructors for FAILED preparation only; scanned/encrypted/malformed/unsupported files explain the source change required. Downloads remain enabled for available files regardless of AI readability. Keep keyboard focus and names on each action, refresh pending state without moving focus, and wrap descriptions/actions on narrow screens. The visual emphasis belongs to the actionable state within each course resource row. Review against the existing layout rejected a separate metrics panel because it would hide the file-specific decision.

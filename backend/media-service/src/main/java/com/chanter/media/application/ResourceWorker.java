@@ -77,10 +77,11 @@ public class ResourceWorker {
         requireBackend(resource.storageBackend());
         Path verified = validator.verifiedDownload(storage.open(resource.storageKey()), resource.byteSize(), resource.sha256());
         try {
-            if (lifecycle.find(resource.id()).filter(current -> current.state().equals("AVAILABLE")).isPresent()) {
-                ingestion.ingestAiApprovedResource(resource.courseId(), resource.id(), resource.fileName(), Files.readAllBytes(verified));
-            }
-            lifecycle.finishIndex(resource.id(), job.leaseId(), true);
+            var current = lifecycle.find(resource.id()).filter(r -> r.state().equals("AVAILABLE") && r.aiApproved());
+            var outcome = current.isPresent()
+                    ? ingestion.ingestAiApprovedResource(resource.courseId(), resource.id(), resource.fileName(), Files.readAllBytes(verified))
+                    : new ResourceIngestionClient.Outcome("NONE", java.util.Set.of());
+            lifecycle.finishIndex(resource.id(), job.leaseId(), outcome);
         } finally { Files.deleteIfExists(verified); }
     }
 

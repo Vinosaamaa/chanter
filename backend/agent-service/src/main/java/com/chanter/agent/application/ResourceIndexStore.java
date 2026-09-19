@@ -8,7 +8,7 @@ import java.util.UUID;
 
 /** Short atomic boundaries around preparation; no parser or embedding client runs under these locks. */
 public interface ResourceIndexStore {
-    record Attempt(long generation, boolean alreadyReady, List<ResourceChunk> chunks) {}
+    record Attempt(long generation, boolean alreadyReady, List<ResourceChunk> chunks, Set<String> signals) {}
     Attempt begin(UUID courseId, UUID resourceId, String fileName, String sourceSha256);
     Attempt snapshot(UUID resourceId);
     void complete(UUID resourceId, long generation, List<ResourceChunk> chunks,

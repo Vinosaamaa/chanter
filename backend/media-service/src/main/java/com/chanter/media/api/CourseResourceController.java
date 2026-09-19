@@ -106,6 +106,12 @@ public class CourseResourceController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/course-resources/{resourceId}/retry-ingestion")
+    public ResponseEntity<CourseResourceResponse> retryIngestion(@PathVariable UUID resourceId,
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user) {
+        return ResponseEntity.accepted().body(CourseResourceResponse.from(courseResourceService.retryIngestion(resourceId, user)));
+    }
+
     @GetMapping("/courses/{courseId}/course-resources/usage")
     public com.chanter.media.application.ResourceLifecycle.Usage usage(@PathVariable UUID courseId, @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user) {
         return courseResourceService.usage(courseId, user);

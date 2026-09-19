@@ -7,7 +7,6 @@ import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,10 +43,7 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
     }
 
     @Override
-    public void ingestAiApprovedResource(UUID courseId, UUID resourceId, String fileName, byte[] content) {
-        if (!isTextResource(fileName)) {
-            return;
-        }
+    public Outcome ingestAiApprovedResource(UUID courseId, UUID resourceId, String fileName, byte[] content) {
         if (content == null) {
             content = new byte[0];
         }
@@ -59,12 +55,16 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
         body.put("contentBase64", Base64.getEncoder().encodeToString(content));
 
         try {
-            restClient.post()
+            var result = restClient.post()
                     .uri("/api/v1/internal/resource-chunks/ingest")
                     .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, serviceToken)
                     .body(body)
                     .retrieve()
-                    .toBodilessEntity();
+                    .body(IngestResponse.class);
+            if (result == null || !resourceId.equals(result.resourceId()) || !courseId.equals(result.courseId())) {
+                throw new IllegalStateException("Invalid resource indexing response");
+            }
+            return new Outcome(result.status(), result.signals());
         } catch (RestClientException exception) {
             throw new IllegalStateException("Resource indexing is unavailable");
         }
@@ -83,10 +83,7 @@ public class HttpResourceIngestionClient implements ResourceIngestionClient {
         }
     }
 
-    private static boolean isTextResource(String fileName) {
-        String lower = fileName == null ? "" : fileName.toLowerCase(Locale.ROOT);
-        return lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".markdown");
-    }
+    private record IngestResponse(UUID resourceId, UUID courseId, String status, java.util.Set<String> signals) {}
 
     @Override
     public void purgeResourceChunks(UUID resourceId) {

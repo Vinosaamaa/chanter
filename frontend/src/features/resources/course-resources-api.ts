@@ -34,6 +34,10 @@ export async function downloadCourseResourceContent(resourceId: string): Promise
   return apiFetchBlob(`/api/v1/course-resources/${resourceId}/content`)
 }
 
+export async function retryCourseResourceIngestion(resourceId: string): Promise<CourseResource> {
+  return apiFetch<CourseResource>(`/api/v1/course-resources/${resourceId}/retry-ingestion`, { method: 'POST' })
+}
+
 export function resourceAccessDeniedMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 403) {
     return 'Course resources are only available to enrolled learners and course instructors.'

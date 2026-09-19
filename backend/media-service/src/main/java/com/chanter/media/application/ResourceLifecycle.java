@@ -132,7 +132,7 @@ public class ResourceLifecycle {
                     state IN ('QUARANTINED','SCANNING','DELETE_PENDING')
                     OR (state='SCAN_FAILED' AND byte_reservation=TRUE AND (attempts<5 OR (updated_at<:expired AND storage_backend<>'legacy')))
                     OR (state='REJECTED' AND byte_reservation=TRUE)
-                    OR (state='AVAILABLE' AND ingestion_status IN ('PENDING','FAILED'))
+                    OR (state='AVAILABLE' AND ingestion_status IN ('PENDING','FAILED','PROCESSING'))
                     OR (state='STAGING' AND created_at<:abandoned)
                     OR (state='LEGACY' AND :migrate=TRUE))
                 ORDER BY updated_at,id LIMIT 1 FOR UPDATE SKIP LOCKED
@@ -148,7 +148,8 @@ public class ResourceLifecycle {
         UUID lease = UUID.randomUUID();
         String migrationKey = row.get().migrationKey();
         if (!delete && r.storageBackend().equals("legacy") && migrationKey == null) migrationKey = PrivateResourceStorage.PREFIX + r.courseId() + "/" + r.id() + "/" + UUID.randomUUID();
-        jdbc.sql("UPDATE course_resources SET state=:state, lease_id=:lease, lease_until=:until, migration_key=:migration, attempts=attempts+1, updated_at=:now WHERE id=:id")
+        jdbc.sql("UPDATE course_resources SET state=:state, ingestion_status=CASE WHEN :index THEN 'PROCESSING' ELSE ingestion_status END, lease_id=:lease, lease_until=:until, migration_key=:migration, attempts=attempts+1, updated_at=:now WHERE id=:id")
+                .param("index", index)
                 .param("state", state).param("lease", lease).param("until", time(instant.plusSeconds(180)))
                 .param("migration", migrationKey).param("now", time(instant)).param("id", r.id()).update();
         return Optional.of(new Job(r, lease, delete ? "DELETE" : index ? "INDEX" : r.storageBackend().equals("legacy") ? "MIGRATE" : "SCAN", migrationKey));
@@ -184,13 +185,29 @@ public class ResourceLifecycle {
 
     @Transactional
     public void finishIndex(UUID id, UUID lease, boolean complete) {
+        finishIndex(id, lease, new ResourceIngestionClient.Outcome(complete ? "READY" : "FAILED", java.util.Set.of()));
+    }
+
+    @Transactional
+    public void finishIndex(UUID id, UUID lease, ResourceIngestionClient.Outcome outcome) {
         int changed = jdbc.sql("""
-                UPDATE course_resources SET ingestion_status=:status,lease_id=NULL,lease_until=NULL,
+                UPDATE course_resources SET ingestion_status=:status,ingestion_signals=:signals,lease_id=NULL,lease_until=NULL,
                   retry_at=:retry,updated_at=:now WHERE id=:id AND lease_id=:lease AND state='AVAILABLE'
-                """).param("status", complete ? "COMPLETE" : "FAILED")
-                .param("retry", complete ? null : time(clock.instant().plusSeconds(600)))
+                """).param("status", outcome.status())
+                .param("signals", outcome.signals().stream().sorted().collect(java.util.stream.Collectors.joining(",")))
+                .param("retry", outcome.status().equals("FAILED") ? time(clock.instant().plusSeconds(600)) : null)
                 .param("now", now()).param("id", id).param("lease", lease).update();
         if (changed == 0) releaseLease(id, lease);
+    }
+
+    @Transactional
+    public void retryIndex(UUID id) {
+        int changed = jdbc.sql("""
+                UPDATE course_resources SET ingestion_status='PENDING',ingestion_signals='',retry_at=NULL,updated_at=:now
+                WHERE id=:id AND state='AVAILABLE' AND ai_approved=TRUE AND ingestion_status='FAILED'
+                    AND (lease_until IS NULL OR lease_until<:now)
+                """).param("id", id).param("now", now()).update();
+        if (changed != 1) throw new ResponseStatusException(HttpStatus.CONFLICT, "Only failed AI preparation can be retried");
     }
 
     @Transactional
@@ -243,7 +260,8 @@ public class ResourceLifecycle {
         return new CourseResource(rs.getObject("id", UUID.class), rs.getObject("course_id", UUID.class), rs.getString("title"),
                 rs.getString("file_name"), rs.getString("content_type"), rs.getLong("byte_size"), rs.getString("storage_key"),
                 rs.getBoolean("ai_approved"), rs.getObject("uploaded_by_user_id", UUID.class), rs.getObject("created_at", OffsetDateTime.class).toInstant(),
-                rs.getString("state"), rs.getString("sha256"), rs.getObject("idempotency_key", UUID.class), rs.getString("storage_backend"));
+                rs.getString("state"), rs.getString("sha256"), rs.getObject("idempotency_key", UUID.class), rs.getString("storage_backend"),
+                rs.getString("ingestion_status"), rs.getString("ingestion_signals").isBlank() ? java.util.Set.of() : java.util.Set.of(rs.getString("ingestion_signals").split(",")));
     }
     private record Budget(String month, int foreground, int maintenance) { }
     private record Candidate(CourseResource resource, int attempts, String migrationKey) { }

@@ -26,6 +26,13 @@ class HttpCourseResourceCatalogClientTest {
         rows.add(resource(UUID.randomUUID(), course, "AVAILABLE", false));
         rows.add(resource(UUID.randomUUID(), UUID.randomUUID(), "AVAILABLE", true));
         rows.add(Map.of("id", UUID.randomUUID(), "courseId", course, "aiApproved", true));
+        for (String ingestion : List.of("PENDING", "PROCESSING", "FAILED", "OCR_REQUIRED", "ENCRYPTED", "UNSUPPORTED", "EMPTY", "MALFORMED", "LIMIT_EXCEEDED", "NONE", "UNKNOWN")) {
+            var row = new java.util.HashMap<>(resource(UUID.randomUUID(), course, "AVAILABLE", true));
+            row.put("ingestionStatus", ingestion);
+            rows.add(row);
+        }
+        var missingIngestion = new java.util.HashMap<>(resource(UUID.randomUUID(), course, "AVAILABLE", true));
+        missingIngestion.remove("ingestionStatus"); rows.add(missingIngestion);
         var seenViewer = new AtomicReference<String>();
         var seenToken = new AtomicReference<String>();
         byte[] body = new ObjectMapper().writeValueAsBytes(Map.of("courseResources", rows));
@@ -68,6 +75,6 @@ class HttpCourseResourceCatalogClientTest {
     }
 
     private static Map<String, Object> resource(UUID id, UUID course, String status, boolean approved) {
-        return Map.of("id", id, "courseId", course, "title", "Guide", "fileName", "guide.md", "status", status, "aiApproved", approved);
+        return Map.of("id", id, "courseId", course, "title", "Guide", "fileName", "guide.md", "status", status, "aiApproved", approved, "ingestionStatus", "READY");
     }
 }

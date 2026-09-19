@@ -14,6 +14,7 @@ import {
   listCourseResources,
   resourceAccessDeniedMessage,
   uploadCourseResource,
+  retryCourseResourceIngestion,
 } from '../../resources/course-resources-api'
 
 type UseCourseResourcesChannelResult = {
@@ -35,6 +36,8 @@ type UseCourseResourcesChannelResult = {
   previewResource: (resource: CourseResource) => Promise<void>
   downloadingResourceId: string | null
   aiApprovedCount: number
+  retryIngestion: (resource: CourseResource) => Promise<void>
+  retryingResourceId: string | null
 }
 
 export function useCourseResourcesChannel(courseId: string): UseCourseResourcesChannelResult {
@@ -47,6 +50,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
   const [error, setError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [retryingResourceId, setRetryingResourceId] = useState<string | null>(null)
   const [downloadingResourceId, setDownloadingResourceId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<CourseResourceFilter>('all')
@@ -54,6 +58,8 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
 
   const requestKey = courseId && userId ? `${courseId}:${userId}` : null
   const isLoading = requestKey !== null && loadedKey !== requestKey
+  const activeRequestKeyRef = useRef(requestKey)
+  useEffect(() => { activeRequestKeyRef.current = requestKey }, [requestKey])
 
   useEffect(() => {
     return () => {
@@ -75,6 +81,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       setError(null)
       setAccessDenied(false)
       setUploadSuccess(null)
+      setRetryingResourceId(null)
       setCanUpload(false)
       setCanView(false)
       setResources([])
@@ -122,6 +129,42 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       cancelled = true
     }
   }, [courseId, requestKey, userId])
+
+  useEffect(() => {
+    if (!canView || isLoading || !resources.some((r) => r.status === 'PROCESSING'
+      || (r.aiApproved && ['PENDING', 'PROCESSING'].includes(r.ingestionStatus ?? '')))) return
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void listCourseResources(courseId).then((list) => {
+        if (!cancelled && activeRequestKeyRef.current === requestKey) setResources(list.courseResources)
+      }).catch((caught: unknown) => {
+        if (cancelled || activeRequestKeyRef.current !== requestKey) return
+        setError(resourceAccessDeniedMessage(caught))
+        if (caught instanceof ApiError && [403, 404].includes(caught.status)) {
+          setCanView(false)
+          setCanUpload(false)
+          setResources([])
+        }
+      })
+    }, 5000)
+    return () => { cancelled = true; window.clearTimeout(timer) }
+  }, [canView, courseId, isLoading, requestKey, resources])
+
+  const retryIngestion = useCallback(async (resource: CourseResource) => {
+    if (!canUpload || resource.courseId !== courseId || resource.status !== 'AVAILABLE'
+      || !resource.aiApproved || resource.ingestionStatus !== 'FAILED' || retryingResourceId) return
+    setRetryingResourceId(resource.id)
+    setError(null)
+    try {
+      const updated = await retryCourseResourceIngestion(resource.id)
+      if (activeRequestKeyRef.current !== requestKey) return
+      setResources((current) => current.map((item) => item.id === updated.id ? updated : item))
+    } catch (caught) {
+      if (activeRequestKeyRef.current === requestKey) setError(resourceAccessDeniedMessage(caught))
+    } finally {
+      if (activeRequestKeyRef.current === requestKey) setRetryingResourceId(null)
+    }
+  }, [canUpload, courseId, requestKey, retryingResourceId])
 
   const filteredResources = useMemo(() => {
     return resources.filter(
@@ -245,5 +288,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
     previewResource,
     downloadingResourceId,
     aiApprovedCount,
+    retryIngestion,
+    retryingResourceId,
   }
 }

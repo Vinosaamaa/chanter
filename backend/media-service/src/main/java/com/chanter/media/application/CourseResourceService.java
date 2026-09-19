@@ -83,6 +83,13 @@ public class CourseResourceService {
         return lifecycle.courseUsage(course);
     }
 
+    public CourseResource retryIngestion(UUID id, UUID user) {
+        var resource = existing(id);
+        requireUpload(resource.courseId(), user);
+        lifecycle.retryIndex(id);
+        return existing(id);
+    }
+
     public StoredCourseResourceContent downloadCourseResource(UUID id, UUID user) {
         var resource = existing(id);
         requireView(resource.courseId(), user);

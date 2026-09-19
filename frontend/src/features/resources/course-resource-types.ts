@@ -8,6 +8,9 @@ export type CourseResource = {
   aiApproved: boolean
   uploadedByUserId: string
   createdAt: string
+  status?: 'PROCESSING' | 'AVAILABLE' | 'REJECTED' | 'FAILED'
+  ingestionStatus?: 'NONE' | 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED' | 'EMPTY' | 'OCR_REQUIRED' | 'ENCRYPTED' | 'MALFORMED' | 'UNSUPPORTED' | 'LIMIT_EXCEEDED'
+  ingestionSignals?: string[]
 }
 
 export type CourseResourceListResponse = {

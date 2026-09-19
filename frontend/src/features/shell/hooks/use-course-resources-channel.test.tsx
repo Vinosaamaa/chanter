@@ -7,6 +7,7 @@ import {
   fetchCourseResourceAccess,
   listCourseResources,
   uploadCourseResource,
+  retryCourseResourceIngestion,
 } from '../../resources/course-resources-api'
 import { useCourseResourcesChannel } from './use-course-resources-channel'
 
@@ -17,6 +18,7 @@ vi.mock('../../resources/course-resources-api', () => ({
   resourceAccessDeniedMessage: (error: unknown) =>
     error instanceof Error ? error.message : 'Unable to load course resources.',
   uploadCourseResource: vi.fn(),
+  retryCourseResourceIngestion: vi.fn(),
 }))
 
 const mockedFetchAccess = vi.mocked(fetchCourseResourceAccess)
@@ -33,7 +35,45 @@ describe('useCourseResourcesChannel', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     useAuthStore.getState().clearSession()
+  })
+
+  it('queues instructor retry and refreshes the current resource to ready', async () => {
+    const failed = resource({ aiApproved: true, status: 'AVAILABLE', ingestionStatus: 'FAILED' })
+    const queued = { ...failed, ingestionStatus: 'PENDING' as const }
+    const ready = { ...failed, ingestionStatus: 'READY' as const }
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValue({ courseResources: [failed] })
+    vi.mocked(retryCourseResourceIngestion).mockResolvedValue(queued)
+    const { result } = renderHook(() => useCourseResourcesChannel('course-1'))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    vi.useFakeTimers()
+    await act(async () => { await result.current.retryIngestion(failed) })
+    expect(retryCourseResourceIngestion).toHaveBeenCalledWith(failed.id)
+    expect(result.current.resources).toEqual([queued])
+    mockedListResources.mockResolvedValue({ courseResources: [ready] })
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+    expect(result.current.resources).toEqual([ready])
+  })
+
+  it('ignores a retry result after navigating into another course', async () => {
+    const failed = resource({ aiApproved: true, status: 'AVAILABLE', ingestionStatus: 'FAILED' })
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValue({ courseResources: [failed] })
+    let finish!: (value: CourseResource) => void
+    vi.mocked(retryCourseResourceIngestion).mockReturnValue(new Promise((resolve) => { finish = resolve }))
+    const { result, rerender } = renderHook(({ courseId }) => useCourseResourcesChannel(courseId), { initialProps: { courseId: 'course-1' } })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    let retry!: Promise<void>
+    act(() => { retry = result.current.retryIngestion(failed) })
+    const next = resource({ id: 'next', courseId: 'course-2', aiApproved: false })
+    mockedListResources.mockResolvedValue({ courseResources: [next] })
+    rerender({ courseId: 'course-2' })
+    await waitFor(() => expect(result.current.resources).toEqual([next]))
+    await act(async () => { finish({ ...failed, ingestionStatus: 'PENDING' }); await retry })
+    expect(result.current.resources).toEqual([next])
+    expect(result.current.retryingResourceId).toBeNull()
   })
 
   it('loads durable resources, applies live filters, and keeps successful uploads', async () => {

@@ -56,6 +56,44 @@ class ResourceWorkerSafetyTest {
                 failure -> assertThat(failure.getStatusCode().value()).isEqualTo(status));
     }
 
+    @Test void extractionOutcomeIsSeparateFromDownloadAvailabilityAndOnlyFailureCanRetry() {
+        var resource = upload(UUID.randomUUID()); worker.runOnce();
+        doReturn(new ResourceIngestionClient.Outcome("OCR_REQUIRED", java.util.Set.of()))
+                .when(ingestion).ingestAiApprovedResource(eq(course), eq(resource.id()), anyString(), any());
+        worker.runOnce();
+        var current = service.getCourseResource(resource.id(), teacher);
+        assertThat(current.publicStatus()).isEqualTo("AVAILABLE");
+        assertThat(current.ingestionStatus()).isEqualTo("OCR_REQUIRED");
+        assertThat(lifecycle.claim(false)).isEmpty();
+        assertThatThrownBy(() -> service.retryIngestion(resource.id(), teacher)).isInstanceOf(ResponseStatusException.class);
+        jdbc.sql("UPDATE course_resources SET ingestion_status='FAILED',retry_at=NULL WHERE id=:id").param("id", resource.id()).update();
+        assertThatThrownBy(() -> service.retryIngestion(resource.id(), learner)).isInstanceOf(ResponseStatusException.class);
+        service.retryIngestion(resource.id(), teacher);
+        assertThat(service.getCourseResource(resource.id(), teacher).ingestionStatus()).isEqualTo("PENDING");
+        var job = lifecycle.claim(false).orElseThrow();
+        assertThat(service.getCourseResource(resource.id(), teacher).ingestionStatus()).isEqualTo("PROCESSING");
+        lifecycle.finishIndex(resource.id(), job.leaseId(), new ResourceIngestionClient.Outcome("READY", java.util.Set.of("VISUAL_CONTENT_NOT_EXTRACTED")));
+        current = service.getCourseResource(resource.id(), teacher);
+        assertThat(current.ingestionStatus()).isEqualTo("READY");
+        assertThat(current.ingestionSignals()).containsExactly("VISUAL_CONTENT_NOT_EXTRACTED");
+        assertThatThrownBy(() -> service.retryIngestion(resource.id(), teacher)).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test void expiredIndexLeaseRecoversProcessingAndDeletionRejectsLateOutcome() {
+        var resource = upload(UUID.randomUUID()); worker.runOnce();
+        var old = lifecycle.claim(false).orElseThrow();
+        assertThat(lifecycle.find(resource.id()).orElseThrow().ingestionStatus()).isEqualTo("PROCESSING");
+        jdbc.sql("UPDATE course_resources SET lease_until=TIMESTAMP WITH TIME ZONE '2000-01-01 00:00:00Z'").update();
+        var replacement = lifecycle.claim(false).orElseThrow();
+        lifecycle.finishIndex(resource.id(), old.leaseId(), new ResourceIngestionClient.Outcome("READY", java.util.Set.of()));
+        assertThat(lifecycle.find(resource.id()).orElseThrow().ingestionStatus()).isEqualTo("PROCESSING");
+        service.deleteCourseResource(resource.id(), teacher);
+        lifecycle.finishIndex(resource.id(), replacement.leaseId(), new ResourceIngestionClient.Outcome("READY", java.util.Set.of()));
+        worker.runOnce();
+        assertThat(lifecycle.find(resource.id()).orElseThrow().state()).isEqualTo("DELETED");
+        assertThat(service.usage(course, teacher).reservedBytes()).isZero();
+    }
+
     @Test void infectedFileNeverReachesLearnersOrAiAndRetryKeepsItsIdentityAfterCleanup() throws Exception {
         when(scanner.scan(any())).thenReturn(MalwareScanner.Verdict.INFECTED);
         UUID key = UUID.randomUUID(); var resource = upload(key); worker.runOnce();
@@ -223,6 +261,6 @@ class ResourceWorkerSafetyTest {
         verify(storage, never()).delete(resource.storageKey());
         doCallRealMethod().when(ingestion).ingestAiApprovedResource(any(), any(), anyString(), any());
         jdbc.sql("UPDATE course_resources SET retry_at=NULL").update(); worker.runOnce();
-        assertThat(jdbc.sql("SELECT ingestion_status FROM course_resources WHERE id=:id").param("id", resource.id()).query(String.class).single()).isEqualTo("COMPLETE");
+        assertThat(jdbc.sql("SELECT ingestion_status FROM course_resources WHERE id=:id").param("id", resource.id()).query(String.class).single()).isEqualTo("READY");
     }
 }

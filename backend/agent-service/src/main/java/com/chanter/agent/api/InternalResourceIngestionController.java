@@ -160,7 +160,8 @@ public class InternalResourceIngestionController {
             String status,
             String sourceSha256,
             String parserVersion,
-            long generation
+            long generation,
+            Set<String> signals
     ) {
         static IngestResponse from(IngestResult result) {
             return new IngestResponse(
@@ -168,7 +169,7 @@ public class InternalResourceIngestionController {
                     result.courseId(),
                     result.chunkCount(),
                     result.contentSha256(),
-                    result.empty(), result.status(), result.sourceSha256(), result.parserVersion(), result.generation()
+                    result.empty(), result.status(), result.sourceSha256(), result.parserVersion(), result.generation(), result.signals()
             );
         }
     }

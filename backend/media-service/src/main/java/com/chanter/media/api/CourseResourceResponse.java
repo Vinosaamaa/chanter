@@ -15,7 +15,9 @@ public record CourseResourceResponse(
         UUID uploadedByUserId,
         Instant createdAt,
         String status,
-        String sha256
+        String sha256,
+        String ingestionStatus,
+        java.util.Set<String> ingestionSignals
 ) {
 
     public static CourseResourceResponse from(CourseResource courseResource) {
@@ -30,7 +32,7 @@ public record CourseResourceResponse(
                 courseResource.uploadedByUserId(),
                 courseResource.createdAt(),
                 courseResource.publicStatus(),
-                courseResource.sha256()
+                courseResource.sha256(), courseResource.ingestionStatus(), courseResource.ingestionSignals()
         );
     }
 }

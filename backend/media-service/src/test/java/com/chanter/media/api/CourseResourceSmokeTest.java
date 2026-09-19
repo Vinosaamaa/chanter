@@ -113,8 +113,10 @@ class CourseResourceSmokeTest {
         CourseResourceResponse listedResource = listed.courseResources().getFirst();
         assertThat(listedResource)
                 .usingRecursiveComparison()
-                .ignoringFields("createdAt", "status")
+                .ignoringFields("createdAt", "status", "ingestionStatus")
                 .isEqualTo(uploaded);
+        assertThat(uploaded.ingestionStatus()).isEqualTo("NONE");
+        assertThat(listedResource.ingestionStatus()).isEqualTo("PENDING");
         // Postgres stores timestamps at microsecond precision; upload responses truncate to match.
         assertThat(listedResource.createdAt()).isEqualTo(uploaded.createdAt().truncatedTo(ChronoUnit.MICROS));
 

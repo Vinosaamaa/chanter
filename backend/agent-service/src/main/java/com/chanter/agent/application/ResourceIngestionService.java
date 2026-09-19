@@ -61,7 +61,7 @@ public class ResourceIngestionService {
         if (attempt.alreadyReady()) {
             String textSha = attempt.chunks().isEmpty() ? sha256Hex("") : attempt.chunks().getFirst().contentSha256();
             return new IngestResult(resourceId, courseId, attempt.chunks().size(), textSha,
-                    attempt.chunks().isEmpty(), "READY", sourceSha256, ResourceTextExtractor.PARSER_VERSION, attempt.generation());
+                    attempt.chunks().isEmpty(), "READY", sourceSha256, ResourceTextExtractor.PARSER_VERSION, attempt.generation(), attempt.signals());
         }
         try {
             var extraction = ResourceTextExtractor.extractDocument(content, safeFileName);
@@ -83,7 +83,7 @@ public class ResourceIngestionService {
             indexStore.complete(resourceId, attempt.generation(), prepared, vectors, extraction.status().name(), extraction.signals());
             log.info("Resource extraction completed resourceId={} status={} chunkCount={}", resourceId, extraction.status(), prepared.size());
             return new IngestResult(resourceId, courseId, prepared.size(), contentSha256, prepared.isEmpty(),
-                    extraction.status().name(), sourceSha256, ResourceTextExtractor.PARSER_VERSION, attempt.generation());
+                    extraction.status().name(), sourceSha256, ResourceTextExtractor.PARSER_VERSION, attempt.generation(), extraction.signals());
         } catch (RuntimeException failure) {
             indexStore.fail(resourceId, attempt.generation());
             throw failure;
@@ -133,7 +133,8 @@ public class ResourceIngestionService {
             String status,
             String sourceSha256,
             String parserVersion,
-            long generation
+            long generation,
+            java.util.Set<String> signals
     ) {
     }
 }

@@ -19,8 +19,9 @@ public class TestResourceIngestionClient implements ResourceIngestionClient {
     private final List<UUID> purgeCalls = new ArrayList<>();
 
     @Override
-    public void ingestAiApprovedResource(UUID courseId, UUID resourceId, String fileName, byte[] content) {
+    public Outcome ingestAiApprovedResource(UUID courseId, UUID resourceId, String fileName, byte[] content) {
         ingestCalls.add(new IngestCall(courseId, resourceId, fileName, content));
+        return new Outcome("READY", java.util.Set.of());
     }
 
     @Override

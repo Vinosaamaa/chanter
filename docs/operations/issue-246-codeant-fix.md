@@ -1,0 +1,7 @@
+# Issue #246 review dispositions
+
+The completed review of the initial parser draft identified one production integration gap: the media HTTP client skipped PDF, DOCX and PPTX before they reached the new extractor ([review comment](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051791767)). This finding is accepted and fixed in the integration slice. The client sends all formats and validates the returned resource/course identity and explicit outcome; unsupported formats remain unsupported instead of silently succeeding. DOCX upload validation verifies the expected Office main part and rejects macros and wrong containers. A loopback HTTP contract test covers the production client, and lifecycle tests cover durable outcomes, retry permissions, expired work and late completion after deletion.
+
+Independent integration review also found that current-source fallback could otherwise treat an available, approved file as evidence while its AI preparation was pending or failed. The live media catalog now additionally requires READY. The HTTP fixture rejects every unready/missing/unknown outcome, including instructor requests. Source content and viewer permission are still checked again before AI execution/publication.
+
+The draft remains open for accepted durable-event integration, source-scope metadata and final browser/system review. No security finding is waived or suppressed.
