@@ -41,7 +41,7 @@ class ResourceIndexDeletionFenceTest {
         assertThatThrownBy(() -> embeddings.backfillResource(resource)).isInstanceOf(ResponseStatusException.class);
     }
 
-    @Test void deletionWaitsForDirectBackfillBeforeRemovingChunksAndEmbeddings() throws Exception {
+    @Test void deletionCompletesWhileBackfillComputesAndRejectsItsLateWrite() throws Exception {
         UUID resource = UUID.randomUUID();
         ingestion.ingest(UUID.randomUUID(), resource, "clean.txt", "backfill evidence".getBytes(StandardCharsets.UTF_8));
         var computing = new CountDownLatch(1);
@@ -55,10 +55,11 @@ class ResourceIndexDeletionFenceTest {
             var deletion = executor.submit(() -> { deleting.countDown(); ingestion.deleteByResourceId(resource); });
             await(deleting);
             try {
-                assertThatThrownBy(() -> deletion.get(150, TimeUnit.MILLISECONDS))
-                        .isInstanceOf(java.util.concurrent.TimeoutException.class);
+                deletion.get(2, TimeUnit.SECONDS);
+                assertEmpty(resource);
             } finally { finish.countDown(); }
-            backfill.get(10, TimeUnit.SECONDS);
+            assertThatThrownBy(() -> backfill.get(10, TimeUnit.SECONDS))
+                    .hasCauseInstanceOf(ResponseStatusException.class);
             deletion.get(10, TimeUnit.SECONDS);
         } finally { finish.countDown(); }
         assertEmpty(resource);
@@ -124,10 +125,64 @@ class ResourceIndexDeletionFenceTest {
         ingestion.deleteByResourceId(resource);
         ingestion.deleteByResourceId(resource);
         assertEmpty(resource);
+        assertThat(jdbc.sql("SELECT COUNT(*) FROM resource_index_lifecycle WHERE resource_id=:id AND course_id IS NULL AND file_name IS NULL AND source_sha256 IS NULL AND parser_version IS NULL AND signals=''")
+                .param("id", resource).query(Integer.class).single()).isEqualTo(1);
         assertThatThrownBy(() -> ingestion.purgeByResourceId(resource)).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> ingestion.ingest(course, resource, "late.txt", "late content".getBytes(StandardCharsets.UTF_8)))
                 .isInstanceOf(ResponseStatusException.class);
         assertEmpty(resource);
+    }
+
+
+    @Test void deletionCompletesDuringFirstIngestionPreparationAndRejectsLateWrite() throws Exception {
+        UUID resource = UUID.randomUUID();
+        var computing = new CountDownLatch(1);
+        var finish = new CountDownLatch(1);
+        doAnswer(call -> { computing.countDown(); await(finish); return call.callRealMethod(); })
+                .when(embeddingClient).embed("first slow content");
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var late = executor.submit(() -> ingestion.ingest(UUID.randomUUID(), resource, "slow.txt",
+                    "first slow content".getBytes(StandardCharsets.UTF_8)));
+            await(computing);
+            try {
+                executor.submit(() -> ingestion.deleteByResourceId(resource)).get(2, TimeUnit.SECONDS);
+                assertEmpty(resource);
+            } finally { finish.countDown(); }
+            assertThatThrownBy(() -> late.get(10, TimeUnit.SECONDS)).hasCauseInstanceOf(ResponseStatusException.class);
+        } finally { finish.countDown(); }
+        assertEmpty(resource);
+    }
+
+    @Test void newestIngestionWinsWhenOlderEmbeddingFinishesLater() throws Exception {
+        UUID resource = UUID.randomUUID(), course = UUID.randomUUID();
+        var computing = new CountDownLatch(1);
+        var finish = new CountDownLatch(1);
+        doAnswer(call -> { computing.countDown(); await(finish); return call.callRealMethod(); })
+                .when(embeddingClient).embed("older slow content");
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var older = executor.submit(() -> ingestion.ingest(course, resource, "old.txt",
+                    "older slow content".getBytes(StandardCharsets.UTF_8)));
+            await(computing);
+            try {
+                executor.submit(() -> ingestion.ingest(course, resource, "new.txt",
+                        "newer current content".getBytes(StandardCharsets.UTF_8))).get(2, TimeUnit.SECONDS);
+            } finally { finish.countDown(); }
+            assertThatThrownBy(() -> older.get(10, TimeUnit.SECONDS)).hasCauseInstanceOf(ResponseStatusException.class);
+        } finally { finish.countDown(); }
+        assertThat(chunks.findByResourceId(resource)).extracting(ResourceChunk::contentText)
+                .containsExactly("newer current content");
+        assertThat(embeddingCount(resource)).isEqualTo(1);
+    }
+
+    @Test void identicalReadySourceKeepsItsChunksAndDoesNotEmbedAgain() {
+        UUID resource = UUID.randomUUID(), course = UUID.randomUUID();
+        byte[] content = "unchanged content".getBytes(StandardCharsets.UTF_8);
+        ingestion.ingest(course, resource, "same.txt", content);
+        var original = chunks.findByResourceId(resource);
+        clearInvocations(embeddingClient);
+        ingestion.ingest(course, resource, "same.txt", content);
+        assertThat(chunks.findByResourceId(resource)).isEqualTo(original);
+        verify(embeddingClient, never()).embed(anyString());
     }
 
     private void assertEmpty(UUID resource) {

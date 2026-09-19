@@ -46,7 +46,7 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
                                 content_text,
                                 content_sha256,
                                 file_name,
-                                created_at
+                                created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version
                             ) VALUES (
                                 :id,
                                 :resourceId,
@@ -57,7 +57,7 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
                                 :contentText,
                                 :contentSha256,
                                 :fileName,
-                                :createdAt
+                                :createdAt, :locatorKind, :locatorNumber, :locatorLabel, :sourceSha256, :parserVersion
                             )
                             """)
                     .param("id", chunk.id())
@@ -70,6 +70,11 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
                     .param("contentSha256", chunk.contentSha256())
                     .param("fileName", chunk.fileName())
                     .param("createdAt", Timestamp.from(chunk.createdAt()))
+                    .param("locatorKind", chunk.locatorKind())
+                    .param("locatorNumber", chunk.locatorNumber())
+                    .param("locatorLabel", chunk.locatorLabel())
+                    .param("sourceSha256", chunk.sourceSha256())
+                    .param("parserVersion", chunk.parserVersion())
                     .update();
         }
     }
@@ -78,7 +83,11 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     @Transactional
     public void deleteByResourceId(UUID resourceId) {
         lockResource(resourceId);
-        jdbcClient.sql("UPDATE resource_index_lifecycle SET deleted=TRUE WHERE resource_id=:resourceId")
+        jdbcClient.sql("""
+                UPDATE resource_index_lifecycle SET deleted=TRUE, generation=generation+1, status='DELETED',
+                    course_id=NULL, source_sha256=NULL, parser_version=NULL, file_name=NULL, signals=''
+                WHERE resource_id=:resourceId
+                """)
                 .param("resourceId", resourceId).update();
         clearChunks(resourceId);
     }
@@ -87,6 +96,8 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     @Transactional
     public void purgeByResourceId(UUID resourceId) {
         requireLive(lockResource(resourceId));
+        jdbcClient.sql("UPDATE resource_index_lifecycle SET generation=generation+1, status='PENDING', source_sha256=NULL, signals='' WHERE resource_id=:resourceId")
+                .param("resourceId", resourceId).update();
         clearChunks(resourceId);
     }
 
@@ -119,7 +130,7 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     public Optional<ResourceChunk> findById(UUID chunkId) {
         return jdbcClient.sql("""
                         SELECT id, resource_id, course_id, chunk_index, start_offset, end_offset,
-                               content_text, content_sha256, file_name, created_at
+                               content_text, content_sha256, file_name, created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version
                         FROM resource_chunks
                         WHERE id = :chunkId
                         """)
@@ -133,7 +144,7 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     public List<ResourceChunk> findByResourceId(UUID resourceId) {
         return jdbcClient.sql("""
                         SELECT id, resource_id, course_id, chunk_index, start_offset, end_offset,
-                               content_text, content_sha256, file_name, created_at
+                               content_text, content_sha256, file_name, created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version
                         FROM resource_chunks
                         WHERE resource_id = :resourceId
                         ORDER BY chunk_index ASC
@@ -148,7 +159,7 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     public List<ResourceChunk> findByCourseId(UUID courseId) {
         return jdbcClient.sql("""
                         SELECT id, resource_id, course_id, chunk_index, start_offset, end_offset,
-                               content_text, content_sha256, file_name, created_at
+                               content_text, content_sha256, file_name, created_at, locator_kind, locator_number, locator_label, source_sha256, parser_version
                         FROM resource_chunks
                         WHERE course_id = :courseId
                         ORDER BY resource_id ASC, chunk_index ASC
@@ -181,7 +192,12 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
                 rs.getString("content_text"),
                 rs.getString("content_sha256"),
                 rs.getString("file_name"),
-                instant
+                instant,
+                rs.getString("locator_kind"),
+                rs.getObject("locator_number", Integer.class),
+                rs.getString("locator_label"),
+                rs.getString("source_sha256"),
+                rs.getString("parser_version")
         );
     }
 }

@@ -90,7 +90,8 @@ public class VectorRetrievalService {
                     chunk.contentText(),
                     chunk.fileName(),
                     score,
-                    embedding.modelId()
+                    embedding.modelId(), chunk.locatorKind(), chunk.locatorNumber(), chunk.locatorLabel(),
+                    chunk.sourceSha256(), chunk.parserVersion()
             ));
         }
 
@@ -111,7 +112,17 @@ public class VectorRetrievalService {
             String contentText,
             String fileName,
             double score,
-            String modelId
+            String modelId,
+            String locatorKind,
+            Integer locatorNumber,
+            String locatorLabel,
+            String sourceSha256,
+            String parserVersion
     ) {
+        public RankedChunk(UUID chunkId, UUID resourceId, UUID courseId, int chunkIndex, int startOffset,
+                int endOffset, String contentText, String fileName, double score, String modelId) {
+            this(chunkId, resourceId, courseId, chunkIndex, startOffset, endOffset, contentText, fileName,
+                    score, modelId, null, null, null, null, null);
+        }
     }
 }

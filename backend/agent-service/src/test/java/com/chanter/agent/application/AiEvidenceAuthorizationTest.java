@@ -65,7 +65,7 @@ class AiEvidenceAuthorizationTest {
         verifyNoInteractions(content);
     }
 
-    @Test void checksCurrentApprovalAndContentRatherThanTrustingAnOldRetrievedChunk() {
+    @Test void checksCurrentApprovalAndContentRatherThanTrustingAnOldRetrievedChunk() throws Exception {
         var access = mock(SupportQuestionChannelAccessClient.class);
         var assistant = mock(StudyAssistantRepository.class);
         var resources = mock(CourseResourceCatalogClient.class);
@@ -83,6 +83,14 @@ class AiEvidenceAuthorizationTest {
         var guard = new AiEvidenceAuthorization(access, assistant, resources, content, faqs);
         var evidence = List.of(new SourceCitation(resource, "Guide", "[offsets 0-40] An authorized queue excerpt."));
         guard.requireCurrent(channel, user, evidence);
+        when(content.downloadContent(resource, user)).thenReturn("Cafe\u0301 authorized evidence.".getBytes(StandardCharsets.UTF_8));
+        guard.requireCurrent(channel, user, List.of(new SourceCitation(resource, "Guide", "Caf\u00e9 authorized evidence.")));
+        when(resources.listAiApprovedCourseResources(course, user)).thenReturn(List.of(new CourseResourceSummary(resource, course, "Guide", "guide.pdf", true)));
+        when(content.downloadContent(resource, user)).thenReturn(DocumentExtractionTest.pdf(false, "An authorized queue excerpt."));
+        guard.requireCurrent(channel, user, evidence);
+        when(content.downloadContent(resource, user)).thenReturn(DocumentExtractionTest.pdf(false, "An authorized queue excerpt.", ""));
+        assertThatThrownBy(() -> guard.requireCurrent(channel, user, evidence)).isInstanceOf(ResponseStatusException.class);
+        when(resources.listAiApprovedCourseResources(course, user)).thenReturn(List.of(new CourseResourceSummary(resource, course, "Guide", "guide.md", true)));
         when(content.downloadContent(resource, user)).thenReturn("A replacement no longer supporting that answer.".getBytes(StandardCharsets.UTF_8));
         assertThatThrownBy(() -> guard.requireCurrent(channel, user, evidence)).isInstanceOf(ResponseStatusException.class);
         when(resources.listAiApprovedCourseResources(course, user)).thenReturn(List.of());
