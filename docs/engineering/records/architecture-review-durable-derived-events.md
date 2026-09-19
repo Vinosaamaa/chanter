@@ -28,7 +28,7 @@ verification: {"state":"verified", "evidenceRefs":["test:DurableOutboxTest", "te
 visibility: public-safe
 publicationEligibility: eligible
 issue: 245
-pr: null
+pr: 327
 release: null
 run: null
 ---
