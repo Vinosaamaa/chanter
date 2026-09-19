@@ -131,3 +131,13 @@ sufficient. Capturing both container output streams identifies a fatal invalid
 configuration setting; the next diagnostic names the setting without emitting
 repository credentials. This operator command has not passed native acceptance,
 even though the simpler encrypted named-point restore fixture does pass.
+
+The failing setting is `recovery_target_time`: PostgreSQL startup rejects the
+ISO trailing `Z` before timezone abbreviations are available. The operator now
+converts the validated UTC target to an explicit numeric offset while retaining
+the original ISO value in receipts. This follows PostgreSQL's
+[recovery target guidance](https://www.postgresql.org/docs/16/runtime-config-wal.html#RUNTIME-CONFIG-WAL-RECOVERY-TARGET).
+Fresh native proof is required before accepting the fix. Review also closed three
+gaps: tracing headers are removed before all public handlers including LiveKit,
+the transient recovery environment file is removed on both success and failure,
+and backup health requires a snapshot matching the currently accepted release.

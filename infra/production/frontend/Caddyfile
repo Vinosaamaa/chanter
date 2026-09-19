@@ -24,6 +24,12 @@
 	# Only the ephemeral CI overlay sets this to "tls internal".
 	{$CHANTER_TLS_DIRECTIVE}
 	encode zstd gzip
+	# Apply before every handler, including LiveKit and its join authorization.
+	request_header {
+		-traceparent
+		-tracestate
+		-baggage
+	}
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
@@ -40,9 +46,6 @@
 		header Cache-Control no-store
 		reverse_proxy gateway-service:8080 {
 			header_up -Forwarded
-			header_up -traceparent
-			header_up -tracestate
-			header_up -baggage
 			header_up -X-User-Id
 			header_up -X-Internal-Service-Token
 			header_up -X-Chanter-Internal-Service-Token

@@ -415,6 +415,7 @@ export function backupDatabase(stateDir, type = 'incr', run = docker, saveConfig
     const receipt = { status: 'ok', checkedAt: new Date().toISOString(), release: release.commit,
       ...summarizeBackup(JSON.parse(execute(['--output=json', 'info']))) };
     if (receipt.stale) throw new Error('Backup chain is stale');
+    if (receipt.backupRelease !== release.commit) throw new Error('Backup is not bound to the accepted release');
     verifyConfiguration(current.bundleDir, readEnv(path.join(stateDir, 'runtime/backup.env')),
       config.environment, receipt.configSnapshot, receipt.backupRelease);
     writeJson(path.join(stateDir, 'backup-status.json'), receipt);

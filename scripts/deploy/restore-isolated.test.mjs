@@ -63,10 +63,13 @@ test('restore validates encrypted configuration before new volumes and never aut
   };
   const result = await restoreIsolated(options, run, verify);
   assert.equal(checked, true); assert.equal(result.status, 'database-restored-isolated');
+  assert.equal(fs.existsSync(path.join(options.destination, 'database-recovery.env')), false);
   assert.equal(result.publicCutoverAllowed, false);
   assert.ok(result.pending.includes('current-deletion-journal'));
   assert.equal(calls.some(args => args.includes('-p') || args.includes('--publish')), false);
   assert.equal(JSON.stringify(calls).includes('private-fixture-secret'), false);
+  assert.ok(calls.find(args => args.at(-1) === 'restore').includes('--target=2026-01-01 01:00:00.000+00:00'));
+  assert.equal(result.targetTime, targetTime);
   const server = calls.find(args => args.includes('--entrypoint'));
   assert.ok(server.includes('archive_mode=off')); assert.ok(server.includes('listen_addresses='));
   assert.equal(server.some(value => value.startsWith('max_connections=')), false,
@@ -82,6 +85,7 @@ test('a failed restore stops its own database and preserves its named state for 
   }, () => {}), /^Error: Isolated recovery failed/);
   const receipt = JSON.parse(fs.readFileSync(path.join(options.destination, 'recovery.json')));
   assert.equal(receipt.status, 'failed-preserved');
+  assert.equal(fs.existsSync(path.join(options.destination, 'database-recovery.env')), false);
   assert.equal(calls.some(args => args[0] === 'stop'), false, 'no container was created before this failure');
   assert.equal(calls.some(args => args.includes('rm') && args[0] !== 'run'), false);
   assert.equal(JSON.stringify(receipt).includes('private-repository-failure'), false);

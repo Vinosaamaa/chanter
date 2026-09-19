@@ -265,6 +265,10 @@ test('scheduled backup verifies real completion, shares the deployment lock and 
   assert.deepEqual(calls.map(args => args.at(-1)), ['check', 'backup', 'info']);
   assert.equal(calls.some(args => args.includes('--type=full')), true);
   assert.equal(fs.readFileSync(prepared.file, 'utf8'), renderedBefore);
+  const verificationCount = verified.length;
+  assert.throws(() => backupDatabase(state, 'check', args => run(args).replaceAll(release.commit, 'b'.repeat(40)), save, verify),
+    /verification failed/);
+  assert.equal(verified.length, verificationCount, 'an older release snapshot cannot authorize a current backup receipt');
   fs.mkdirSync(path.join(root, '.deploy-lock'));
   assert.throws(() => backupDatabase(state, 'full', run), /active/);
   fs.rmdirSync(path.join(root, '.deploy-lock'));

@@ -60,8 +60,8 @@ export async function restoreIsolated({ bundleDir, settings, destination, enviro
     fs.renameSync(temporary, path.join(destination, 'recovery.json'));
   };
   save();
+  const envFile = path.join(destination, 'database-recovery.env');
   try {
-    const envFile = path.join(destination, 'database-recovery.env');
     fs.writeFileSync(envFile, Object.entries(backup).map(([key, value]) => `${key}=${value}`).join('\n') + '\n',
       { flag: 'wx', mode: 0o600 });
     const constrained = ['--pull=never', '--user', '70:70', '--read-only', '--cap-drop=ALL',
@@ -82,8 +82,12 @@ export async function restoreIsolated({ bundleDir, settings, destination, enviro
     run(['network', 'create', '--label', `chanter.recovery=${id}`, receipt.network]);
     const volume = ['--volume', `${receipt.volume}:/var/lib/postgresql/data`];
     receipt.phase = 'database-files'; save();
+    // PostgreSQL parses recovery settings before timezone abbreviations are
+    // initialized. Keep ISO UTC in receipts, but use an explicit numeric offset
+    // for recovery_target_time; the ISO trailing Z is rejected at startup.
+    const postgresTarget = targetTime.replace('T', ' ').replace(/Z$/, '+00:00');
     run(['run', '--rm', ...constrained, '--network', receipt.network, ...volume, release.images.postgres,
-      'pgbackrest', `--set=${selected.label}`, '--type=time', `--target=${targetTime}`, '--target-action=promote', '--archive-mode=off', 'restore']);
+      'pgbackrest', `--set=${selected.label}`, '--type=time', `--target=${postgresTarget}`, '--target-action=promote', '--archive-mode=off', 'restore']);
     // WAL replay needs outbound repository access. TCP listening is disabled; only
     // the local Unix socket is available. The network is detached after promotion.
     receipt.phase = 'wal-replay'; save();
@@ -115,6 +119,11 @@ export async function restoreIsolated({ bundleDir, settings, destination, enviro
       }
     } catch { /* Keep the original bounded failure; never stop an unverified container. */ }
     throw new Error('Isolated recovery failed; owned state and volumes are preserved for private inspection');
+  } finally {
+    // Docker copied the environment at container creation. Keep the source
+    // bootstrap file with the operator; this transient extra copy is unnecessary.
+    try { fs.rmSync(envFile, { force: true }); }
+    catch { throw new Error('Recovery environment cleanup failed; inspect the private recovery directory'); }
   }
 }
 
