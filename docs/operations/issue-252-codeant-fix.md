@@ -1,0 +1,47 @@
+# Production foundation review
+
+PR329 contributes to #252; remaining operational and application-recovery scope
+is explicitly owned by #331 and #332. Confirmed security/data-loss defects and
+failing exact-head CI continue to block merge.
+
+Fixed review findings: owned fixture cleanup, workflow triggers for runtime pins
+and shared telemetry inputs, backup dependency-chain validation, preparation of
+older private state without rotating secrets, exact configuration/database/release
+matching, transient recovery-secret cleanup and trace-header removal before all
+public handlers. Native diagnostics also exposed a recovery timestamp rejected by
+PostgreSQL startup; the validated UTC target now uses an explicit numeric offset.
+Actual operator restore and private telemetry tests pass on both architectures.
+
+Non-actionable findings checked against owning evidence:
+
+- An initial incremental is promoted to full by pinned pgBackRest 2.59.1
+  (`src/command/backup/backup.c`, no-prior-backup branch). Actual fresh release
+  staging confirms that behavior; changing the command is unnecessary.
+- The claimed missing libcurl dependency conflicts with the pinned source's HTTP
+  implementation, successful build, executable startup and native backups.
+- The Java extension path is relative to Surefire's telemetry-module working
+  directory. Real decoded OTLP canary tests prove the extension loads and filters.
+- Operator-selected release code is a trusted administrative input. The runbook
+  requires a verified release bundle and immutable image identities. An attacker
+  with write access to the operator's private code/state could replace the restore
+  program itself; an additional self-verifier would not establish a new trust root.
+
+No provider acceptance or public recovery is inferred from these dispositions.
+
+The final full review identified missing unknowns and narrow evidence references
+in the Engineering metadata. Those now name #331/#332 and actual provider gaps,
+and link the successful native operator-restore and decoded telemetry/outage
+proof. Its claim that `setName("*")` matches only a literal asterisk is false:
+the pinned SDK 1.65.0
+[selector contract](https://github.com/open-telemetry/opentelemetry-java/blob/v1.65.0/sdk/metrics/src/main/java/io/opentelemetry/sdk/metrics/InstrumentSelectorBuilder.java)
+defines wildcard matching. Actual native export retains the known instrument
+with all 600 samples after private dimension removal. The repeated initial
+incremental-backup finding is covered by the pinned-source and fresh-staging
+evidence above; it does not justify a behavior change.
+
+Staging exposed a regression in the global tracing-header remediation: Caddy's
+`request_header` directive takes individual fields, not a block. The pinned
+parser rejects the old block and accepts the corrected directives. Its actual
+adapted route tree places all three deletions ahead of every public handler.
+The release smoke now parses the packaged proxy configuration before startup.
+This closes the parser gap; complete staging must still pass before merge.

@@ -19,6 +19,7 @@
     <description>Chanter microservice backend parent</description>
 
     <modules>
+        <module>telemetry</module>
         <module>common</module>
         <module>gateway-service</module>
         <module>auth-service</module>

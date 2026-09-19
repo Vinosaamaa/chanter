@@ -14,12 +14,7 @@
 		format filter {
 			wrap json
 			fields {
-				request>uri query {
-					delete access_token
-					delete token
-					delete code
-					delete state
-				}
+				request delete
 			}
 		}
 	}
@@ -29,6 +24,10 @@
 	# Only the ephemeral CI overlay sets this to "tls internal".
 	{$CHANTER_TLS_DIRECTIVE}
 	encode zstd gzip
+	# Apply before every handler, including LiveKit and its join authorization.
+	request_header -traceparent
+	request_header -tracestate
+	request_header -baggage
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff

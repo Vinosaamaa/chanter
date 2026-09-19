@@ -3,11 +3,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic } from './host.mjs';
+import { initialize, prepareRecovery, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render, configurationSnapshot, configurationFingerprint } from './host.mjs';
 import { imageNames } from './release.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
 fs.mkdirSync(scratch, { recursive: true });
+
+test('missing release receipts cannot authorize an older writer against an orphaned database', t => {
+  const { state } = fixture(t);
+  const release = { schemaEpoch: 5, commit: 'a'.repeat(40) };
+  assert.doesNotThrow(() => verifyMigrationHistory(state, release, 'staging', () => 'chanter-production_postgres\n'));
+  assert.throws(() => verifyMigrationHistory(state, release, 'staging', () => 'chanter-staging_postgres\n'), /without migration history/);
+  fs.writeFileSync(path.join(state, 'migration-floor.json'), JSON.stringify({ schemaEpoch: 6, commit: 'b'.repeat(40) }));
+  assert.throws(() => verifyMigrationHistory(state, release, 'staging', () => { throw new Error('Must reject before Docker'); }), /migration floor/);
+});
 
 test('public verification refuses a serving frontend with missing browser security headers', async t => {
   t.mock.method(globalThis, 'fetch', async () => new Response('<html></html>', { status: 200 }));
@@ -34,6 +43,9 @@ const fixture = t => {
   const media = path.join(state, 'runtime/media-service.env');
   fs.writeFileSync(media, fs.readFileSync(media, 'utf8').replace(/^([A-Z0-9_]+)=$/gm,
     (_, key) => `${key}=${key === 'CHANTER_S3_ENDPOINT' ? 'https://private-storage.example' : 'fixture-only'}`));
+  const backup = path.join(state, 'runtime/backup.env');
+  fs.writeFileSync(backup, fs.readFileSync(backup, 'utf8').replace(/^([A-Z0-9_]+)=$/gm,
+    (_, key) => `${key}=${key === 'CHANTER_BACKUP_S3_ENDPOINT' ? 'https://backup.example' : 'backup-fixture'}`));
   return { root, state, auth };
 };
 
@@ -111,6 +123,50 @@ test('initialization isolates credentials and refuses to overwrite existing or p
   assert.throws(() => initialize(state, config), /partial/);
 });
 
+test('backup credentials remain separate and require configuration before deployment', t => {
+  const { state } = fixture(t);
+  const file = path.join(state, 'runtime/backup.env');
+  const backup = readEnv(file);
+  const auth = readEnv(path.join(state, 'runtime/auth-service.env'));
+  assert.ok(backup.CHANTER_BACKUP_CIPHER_PASS.length >= 32);
+  assert.notEqual(backup.CHANTER_BACKUP_CIPHER_PASS, auth.CHANTER_JWT_SECRET);
+  assert.notEqual(backup.CHANTER_CONFIG_BACKUP_PASSWORD, backup.CHANTER_BACKUP_CIPHER_PASS);
+  assert.equal(auth.CHANTER_BACKUP_CIPHER_PASS, undefined);
+  const configured = fs.readFileSync(file, 'utf8');
+  fs.writeFileSync(file, configured.replace(/^CHANTER_BACKUP_S3_ACCESS_KEY=.*$/m, 'CHANTER_BACKUP_S3_ACCESS_KEY=fixture-only'));
+  assert.throws(() => validateRuntime(state), /separate bucket and credentials/);
+  fs.writeFileSync(file, configured.replace(/^CHANTER_BACKUP_S3_SECRET_KEY=.*$/m, 'CHANTER_BACKUP_S3_SECRET_KEY='));
+  assert.throws(() => validateRuntime(state), /required/);
+});
+
+test('recovery preparation adds missing settings without rotating any existing secret', t => {
+  const { root, state, auth } = fixture(t);
+  const authBefore = fs.readFileSync(auth, 'utf8');
+  const backup = path.join(state, 'runtime/backup.env');
+  const telemetry = path.join(state, 'runtime/telemetry.env');
+  const original = readEnv(backup);
+  fs.writeFileSync(backup, fs.readFileSync(backup, 'utf8').replace(/^CHANTER_CONFIG_BACKUP_PASSWORD=.*\r?\n/m, ''));
+  fs.unlinkSync(telemetry);
+  prepareRecovery(state);
+  assert.equal(readEnv(backup).CHANTER_BACKUP_CIPHER_PASS, original.CHANTER_BACKUP_CIPHER_PASS);
+  assert.equal(readEnv(backup).CHANTER_BACKUP_S3_SECRET_KEY, original.CHANTER_BACKUP_S3_SECRET_KEY);
+  assert.equal(readEnv(backup).CHANTER_CONFIG_BACKUP_PASSWORD.length, 64);
+  assert.equal(readEnv(telemetry).CHANTER_TELEMETRY_ENDPOINT, '');
+  const first = fs.readFileSync(backup, 'utf8');
+  prepareRecovery(state);
+  assert.equal(fs.readFileSync(backup, 'utf8'), first);
+  assert.equal(fs.readFileSync(auth, 'utf8'), authBefore);
+  fs.unlinkSync(backup);
+  fs.mkdirSync(path.join(root, '.deploy-lock'));
+  assert.throws(() => prepareRecovery(state), /active/);
+  assert.equal(fs.existsSync(backup), false);
+  fs.rmdirSync(path.join(root, '.deploy-lock'));
+  prepareRecovery(state);
+  assert.equal(readEnv(backup).CHANTER_BACKUP_CIPHER_PASS.length, 64);
+  assert.equal(readEnv(backup).CHANTER_BACKUP_S3_ACCESS_KEY, '');
+  assert.equal(fs.readFileSync(auth, 'utf8'), authBefore);
+});
+
 test('runtime validation requires all credentials and preserves literal SMTP punctuation', t => {
   const { state, auth } = fixture(t);
   assert.doesNotThrow(() => validateRuntime(state));
@@ -173,4 +229,57 @@ test('a failed first deployment can be stopped without deleting its volumes or l
   assert.equal(calls[0].at(-1), 'stop');
   assert.equal(fs.existsSync(marker), false);
   assert.equal(fs.existsSync(path.join(state, 'runtime/auth-service.env')), true);
+});
+
+test('scheduled backup verifies real completion, shares the deployment lock and redacts failure details', t => {
+  const { root, state } = fixture(t);
+  const bundle = path.join(root, 'bundle');
+  fs.mkdirSync(path.join(bundle, 'infra/production'), { recursive: true });
+  const release = { version: 1, commit: 'a'.repeat(40), architecture: 'arm64', schemaEpoch: 5,
+    images: Object.fromEntries(imageNames.map(name => [name, 'sha256:' + 'b'.repeat(64)])) };
+  fs.writeFileSync(path.join(bundle, 'release.json'), JSON.stringify(release));
+  for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.writeFileSync(path.join(bundle, 'infra/production', name), 'fixture');
+  const prepared = render(bundle, state);
+  const renderedBefore = fs.readFileSync(prepared.file, 'utf8');
+  fs.writeFileSync(path.join(state, 'current.json'), JSON.stringify({ commit: release.commit, bundleDir: bundle,
+    configurationFingerprint: configurationFingerprint(state, release) }));
+  fs.writeFileSync(path.join(root, 'active-environment.json'), JSON.stringify({ stateDir: state, bundleDir: bundle }));
+  const calls = [];
+  const run = args => {
+    calls.push(args);
+    return JSON.stringify([{ name: 'chanter', status: { code: 0 }, db: [{ id: 1, 'repo-key': 1 }],
+      backup: [{ type: 'full', error: false, database: { id: 1, 'repo-key': 1 }, annotation: { 'config-snapshot': 'c'.repeat(64), release: release.commit },
+      label: '20260918-000000F', timestamp: { stop: Math.floor(Date.now() / 1000) } }] }]);
+  };
+  const save = () => ({ snapshotId: 'c'.repeat(64) });
+  const verified = [];
+  const verify = (...args) => verified.push(args[3]);
+  assert.equal(backupDatabase(state, 'full', run, save, verify).status, 'ok');
+  assert.deepEqual(verified, ['c'.repeat(64)]);
+  assert.throws(() => backupDatabase(state, 'check', run, save, () => { throw new Error('private-config-secret'); }), /verification failed/);
+  assert.equal(fs.readFileSync(path.join(state, 'backup-status.json'), 'utf8').includes('private-config-secret'), false);
+  calls.splice(3);
+  const snapshot = configurationSnapshot(state, release);
+  assert.equal(snapshot.runtime.backup, undefined);
+  assert.equal(JSON.stringify(snapshot).includes(readEnv(path.join(state, 'runtime/backup.env')).CHANTER_CONFIG_BACKUP_PASSWORD), false);
+  assert.deepEqual(calls.map(args => args.at(-1)), ['check', 'backup', 'info']);
+  assert.equal(calls.some(args => args.includes('--type=full')), true);
+  assert.equal(fs.readFileSync(prepared.file, 'utf8'), renderedBefore);
+  const verificationCount = verified.length;
+  assert.throws(() => backupDatabase(state, 'check', args => run(args).replaceAll(release.commit, 'b'.repeat(40)), save, verify),
+    /verification failed/);
+  assert.equal(verified.length, verificationCount, 'an older release snapshot cannot authorize a current backup receipt');
+  fs.mkdirSync(path.join(root, '.deploy-lock'));
+  assert.throws(() => backupDatabase(state, 'full', run), /active/);
+  fs.rmdirSync(path.join(root, '.deploy-lock'));
+  assert.throws(() => backupDatabase(state, 'full', () => { throw new Error('private-secret'); }), /verification failed/);
+  assert.equal(fs.readFileSync(path.join(state, 'backup-status.json'), 'utf8').includes('private-secret'), false);
+  assert.equal(fs.existsSync(path.join(root, '.deploy-lock')), false);
+  calls.length = 0;
+  fs.appendFileSync(path.join(state, 'runtime/auth-service.env'), 'PENDING_CONFIGURATION_CHANGE=private-unaccepted-value\n');
+  assert.throws(() => backupDatabase(state, 'check', run, save, verify), /verification failed/);
+  assert.equal(calls.length, 0, 'unaccepted configuration cannot be advertised as matching the running database');
+  fs.writeFileSync(path.join(root, 'active-environment.json'), JSON.stringify({ stateDir: state, bundleDir: path.join(root, 'failed-release') }));
+  assert.throws(() => backupDatabase(state, 'check', run), /verification failed/);
+  assert.equal(calls.length, 0);
 });

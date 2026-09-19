@@ -45,11 +45,14 @@ export function composeFor(release, config, runtimeDir) {
     const database = databaseModules.includes(name);
     services[name] = { ...common, image: release.images[name], pull_policy: 'never', user: '10001:10001',
       mem_limit: `${memory[name]}m`, tmpfs: ['/tmp:size=64m,mode=1777'],
-      env_file: [{ path: path.join(runtimeDir, `${name}.env`), format: 'raw' }],
+      env_file: [{ path: path.join(runtimeDir, `${name}.env`), format: 'raw' }, { path: './telemetry.env', format: 'raw' }],
       environment: { ...urls, SERVER_PORT: '8080', SERVER_SHUTDOWN: 'graceful',
         SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: '25s', SPRING_FLYWAY_ENABLED: 'false',
         MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: 'health', MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: 'true',
         MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: 'never',
+        CHANTER_ENVIRONMENT: config.environment, CHANTER_RELEASE: release.commit,
+        LOGGING_STRUCTURED_FORMAT_CONSOLE: 'com.chanter.common.telemetry.SafeLogFormatter',
+        OTEL_SERVICE_NAME: name, OTEL_RESOURCE_ATTRIBUTES: `service.version=${release.commit},deployment.environment.name=${config.environment}`,
         MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE: `readinessState${database ? ',db' : name === 'realtime-service' ? ',redis' : ''}`,
         SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: '5', SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: '1',
         SERVER_TOMCAT_THREADS_MAX: '40',
@@ -99,8 +102,10 @@ export function composeFor(release, config, runtimeDir) {
   gateway.depends_on = { redis: { condition: 'service_healthy' } };
   gateway.networks = { application: {}, edge: { ipv4_address: `${edgePrefix}.3` } };
   services.postgres = { ...common, image: release.images.postgres, pull_policy: 'never', user: '70:70',
-    mem_limit: '768m', read_only: true, env_file: [{ path: path.join(runtimeDir, 'postgres.env'), format: 'raw' }],
-    command: ['postgres', '-c', 'max_connections=80', '-c', 'shared_buffers=192MB', '-c', 'work_mem=2MB', '-c', 'log_statement=none'],
+    mem_limit: '896m', read_only: true, env_file: [{ path: path.join(runtimeDir, 'postgres.env'), format: 'raw' },
+      { path: './postgres-backup.env', format: 'raw' }],
+    command: ['postgres', '-c', 'max_connections=80', '-c', 'shared_buffers=192MB', '-c', 'work_mem=2MB', '-c', 'log_statement=none',
+      '-c', 'archive_mode=on', '-c', 'archive_command=pgbackrest archive-push %p', '-c', 'archive_timeout=60'],
     volumes: ['postgres:/var/lib/postgresql/data', './postgres-init.sh:/docker-entrypoint-initdb.d/01-databases.sh:ro'],
     tmpfs: ['/tmp:size=32m,mode=1777', '/var/run/postgresql:size=16m,mode=1777'],
     healthcheck: { test: ['CMD', 'pg_isready', '-U', 'chanter_admin', '-d', 'postgres'], interval: '10s', timeout: '5s', retries: 10 },
@@ -136,7 +141,7 @@ export function planDeployment(next, current, rollback = false) {
     }
   }
   return ['verify-images', ...(current ? ['verify-recovery'] : []), 'stop-ingress', 'stop-applications', 'start-persistence',
-    ...(rollback ? [] : ['migrate']), 'start-applications', 'start-ingress', 'verify-public-health', 'record-current'];
+    ...(rollback ? [] : ['backup-database', 'migrate']), 'start-applications', 'start-ingress', 'verify-public-health', 'record-current'];
 }
 
 export async function executeDeployment(next, current, step, rollback = false) {

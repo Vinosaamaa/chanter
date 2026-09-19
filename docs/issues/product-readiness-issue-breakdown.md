@@ -4,7 +4,7 @@
 > **Parent epic:** [#107 - Product Readiness and Public Production Launch](https://github.com/Vinosaamaa/chanter/issues/107)
 > **Audit:** [#238](https://github.com/Vinosaamaa/chanter/issues/238) and [`product-readiness-audit-2026-08-09.md`](../operations/product-readiness-audit-2026-08-09.md)
 > **Rule:** Board/dependency order is implementation order. One issue, branch, PR, review loop, and merge at a time unless isolated worktrees have no dependency.
-> **Progress:** #238–#241 are complete. #242 is the next unmerged issue.
+> **Progress:** See [current execution status](../operations/launch-execution-status.md) for accepted implementations and remaining provider gates. Open parent issues do not imply that their implementation PRs are unmerged.
 
 ## Scope
 
@@ -38,6 +38,11 @@ Course storefront commerce, optional marketing ornaments, and pixel-perfect poli
 `AFK` means an agent can implement repository work without product clarification. `Account checkpoint` means the final provisioning step requires least-privilege access to an owning provider account. `HITL` means a human must approve the irreversible public cutover/sign-off.
 
 ## Execution waves
+
+#252's accepted-foundation path is PR329. Its remaining requirements have two
+independently verifiable children: #331 operational coverage/error tracking/alerts,
+and #332 complete application recovery/current deletion authority. Both block
+#252 and #255. #332 follows #251; it does not block the foundation needed by #247.
 
 ### Wave 0: make green mean green
 
