@@ -11,7 +11,7 @@ createdAt: 2026-09-12
 reconstructed: false
 confidence: medium
 unknowns: ["Eligible-account subscription inference is unverified.", "Production key provisioning/rotation and final claim retention remain incomplete; package is OS-unsigned.", "Native isolation is exercised on Windows CLI 0.153.4 only."]
-modules: ["native-companion", "agent-service", "auth-service", "message-service", "common", "gateway-service", "frontend"]
+modules: ["native-companion", "agent-service", "auth-service", "message-service", "common", "gateway-service", "frontend", "deployment"]
 interfaces: ["companion/src/codex-app-server.mjs", "companion/src/codex-launch.mjs", "companion/src/native-request.mjs", "companion/src/native-server.mjs", "companion/src/native-state.mjs"]
 seams: ["native-ui-to-provider-managed-auth", "restricted-stdio-to-provider-runtime", "backend-evidence-to-local-capability"]
 adapters: ["companion/src/codex-app-server.mjs"]
@@ -55,3 +55,5 @@ The integrated backend uses durable browser session identity and private authent
 Accepted native answers and IDs-only status events commit in one transaction. The existing durable-event dispatcher owns delivery and retry; message-service outages cannot change a saved answer into failed generation or trigger another provider attempt. The authenticated consumer checks current author access and changes only an unanswered question, preserving human and closed outcomes. Status, consumer cursor, and notification event commit together. No source text, capabilities, or credentials enter reconciliation events.
 
 The confirmed hosted failure-after-save defect uses this same persistence transaction. Hosted and source-only answers therefore receive the same durable status delivery. Existing answers created before the outbox are repaired under an answer-row lock, with an indexed event lookup preventing duplicate repair events. Budget reservation remains atomic on its own; signing and metadata creation follow separately and retain the reservation on uncertainty.
+
+The accepted #246 extraction and durable ingestion changes precede native agent migrations V11/V12; message V10 adds accepted-answer replay state. Epoch 7 prevents older writers from omitting the new status transaction or native claims. Production already supplies private auth/message routes. Optional issuer configuration remains absent by default, with preflight checks for all four values, exact deployment origin, allowed models, and a matching Ed25519 pair in the agent environment only. The package neither creates keys nor establishes eligible-account execution. Native audit responses explicitly label client-reported execution and unknown token usage.

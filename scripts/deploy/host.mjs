@@ -66,7 +66,33 @@ export function readEnv(file) {
   return values;
 }
 
+const nativeKeys = ['CHANTER_NATIVE_COMPANION_ORIGIN', 'CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8',
+  'CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI', 'CHANTER_NATIVE_COMPANION_MODELS'];
+
+function validateNativeConfiguration(env, origin) {
+  try {
+    if (nativeKeys.some(key => !env[key]) || env.CHANTER_NATIVE_COMPANION_ORIGIN !== origin) throw new Error();
+    const models = new Set(env.CHANTER_NATIVE_COMPANION_MODELS.split(',').map(value => value.trim()).filter(Boolean));
+    if (!models.size || models.size > 20 || [...models].some(value => !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$/.test(value))) throw new Error();
+    const decode = value => {
+      const bytes = Buffer.from(value, 'base64');
+      if (bytes.toString('base64') !== value) throw new Error();
+      return bytes;
+    };
+    const privateBytes = decode(env.CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8);
+    const publicBytes = decode(env.CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI);
+    const privateKey = crypto.createPrivateKey({ key: privateBytes, format: 'der', type: 'pkcs8' });
+    const publicKey = crypto.createPublicKey({ key: publicBytes, format: 'der', type: 'spki' });
+    if (privateKey.asymmetricKeyType !== 'ed25519' || publicKey.asymmetricKeyType !== 'ed25519'
+        || !privateKey.export({ format: 'der', type: 'pkcs8' }).equals(privateBytes)
+        || !crypto.createPublicKey(privateKey).export({ format: 'der', type: 'spki' }).equals(publicBytes)) throw new Error();
+  } catch {
+    throw new Error('Optional native companion requires a complete matching Ed25519 configuration for this deployment origin and allowed models');
+  }
+}
+
 export function validateRuntime(stateDir) {
+  const config = validateConfig(json(path.join(stateDir, 'config.json')));
   for (const name of [...modules, 'postgres', 'redis', 'livekit']) {
     const file = path.join(stateDir, 'runtime', `${name}.env`);
     if (process.platform !== 'win32' && (fs.statSync(file).mode & 0o077) !== 0) throw new Error(`Runtime file must be private: ${name}.env`);
@@ -86,6 +112,10 @@ export function validateRuntime(stateDir) {
           'CHANTER_SMTP_USERNAME', 'CHANTER_SMTP_PASSWORD', 'CHANTER_SMTP_TLS_MODE'] : [])];
     for (const key of required) if (!env[key]) throw new Error(`Configure ${key} in ${name}.env`);
     for (const [key, value] of Object.entries(env)) if (!value) throw new Error(`Configure ${key} in ${name}.env`);
+    if (nativeKeys.some(key => key in env)) {
+      if (name !== 'agent-service') throw new Error('Native companion configuration belongs only in agent-service.env');
+      validateNativeConfiguration(env, `https://${config.hostname}`);
+    }
     if (name === 'auth-service' && !['starttls', 'implicit'].includes(env.CHANTER_SMTP_TLS_MODE)) throw new Error('SMTP requires verified TLS');
     if (name === 'auth-service' && Boolean(env.CHANTER_TURNSTILE_SITE_KEY) !== Boolean(env.CHANTER_TURNSTILE_SECRET)) {
       throw new Error('Optional Turnstile requires both site and secret keys');

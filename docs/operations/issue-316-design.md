@@ -1,6 +1,6 @@
 # Native subscription companion design
 
-Status: integrated developer slice in draft PR #324; #316 remains open. Repository: `Vinosaamaa/chanter`. Accepted baseline: `5d3b154821620e877d7b417a0ff93635efdb3331`, including #244 authorization, #243 deployment, and #245 durable events. This lane owns native auth/agent/browser integration; #246 owns extraction and precedes this lane's final migration validation. No paid inference is authorized.
+Status: integrated developer slice in draft PR #324; #316 remains open. Repository: `Vinosaamaa/chanter`. Accepted baseline: `f1bf3e81ec356330c7d3fe8745aa9cd4d448afbd`, including #244 authorization, #243 deployment, #245 durable events, #253 edge controls, and #246 extraction/ingestion. This lane owns native auth/agent/browser integration. No paid inference is authorized.
 
 ## First supported path
 
@@ -42,9 +42,11 @@ The desktop browser's pairing UI is an explicit operator flow: copy a two-minute
 
 Every native question requires export consent and a second native terminal approval. The browser fixes loopback to port 43160, omits credentials, rejects redirects, bounds response bytes, cancels on account/navigation changes, and displays only the backend's validated saved answer. Failed or uncertain provider attempts retain the existing reservation and Source only recovery. Native status does not poll or silently exhaust durable claim capacity.
 
-Agent V11 stores immutable request scope, hashes, and a short-lived evidence snapshot. Acceptance claims are atomic; repeated/mismatched results cannot become answers. Terminal settlement clears evidence. A scheduled expiry job clears unsubmitted evidence and abandoned accepting rows, without refunding unknown usage. Agent V12 adds the accepted-answer outbox; message V10 adds its durable consumer cursor. Auth uses existing durable sessions and needs no migration. Deploy compatible auth/agent/message/gateway before enabling the issuer. Agent V9/V10 belong to #246 and must land first; do not enable out-of-order migrations.
+Agent V11 stores immutable request scope, hashes, and a short-lived evidence snapshot. Acceptance claims are atomic; repeated/mismatched results cannot become answers. Terminal settlement clears evidence. A scheduled expiry job clears unsubmitted evidence and abandoned accepting rows, without refunding unknown usage. Agent V12 adds the accepted-answer outbox; message V10 adds its durable consumer cursor. Auth uses existing durable sessions and needs no migration. Deploy compatible auth/agent/message/gateway before enabling the issuer. Accepted #246 supplies agent V9/V10 first; do not enable out-of-order migrations.
 
 Source distribution uses tested GitHub workflow artifacts, SHA-256 checksums, exact commit metadata, and free GitHub build attestations on explicit dispatch or accepted main. Public verifier keys are operator-provisioned; private signing keys stay in the agent service. Provenance is not OS-trusted Authenticode or subscription entitlement. No paid certificate is required or purchased.
+
+Production leaves all four CHANTER_NATIVE_COMPANION configuration values absent by default. Preflight accepts them only together in the private agent environment, verifies the exact configured deployment HTTPS origin, validates the model allowlist, and checks a matching Ed25519 PKCS8/SPKI pair. It never generates or enables keys. The existing Compose URL map supplies AUTH_SERVICE_URL=http://auth-service:8080 and MESSAGE_SERVICE_URL=http://message-service:8080 to agent. Epoch 7 prevents older writers from bypassing V11 request claims, V12 atomic answer/status outbox writes, and message V10 consumer replay state; it retains epoch 6 extraction/ingestion constraints. Restore the related databases consistently rather than enabling Flyway out-of-order or reversing migrations.
 
 ## Accepted-answer status reconciliation
 

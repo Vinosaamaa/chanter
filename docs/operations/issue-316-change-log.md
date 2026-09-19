@@ -1,6 +1,6 @@
 # Issue 316 implementation record
 
-Status: integrated native developer package in draft PR #324, not an OS-trusted or released companion. Accepted rebase baseline is `5d3b154821620e877d7b417a0ff93635efdb3331`; final migration validation follows #246 acceptance. The sections below retain the earlier verification stages. See [operator instructions](../../companion/README.md), [design](issue-316-design.md), and [system review](issue-316-system-review.md).
+Status: integrated native developer package in draft PR #324, not an OS-trusted or released companion. Accepted rebase baseline is `f1bf3e81ec356330c7d3fe8745aa9cd4d448afbd`, including #246 extraction and ingestion. The sections below retain the earlier verification stages. See [operator instructions](../../companion/README.md), [design](issue-316-design.md), and [system review](issue-316-system-review.md).
 
 ## Implemented slice
 
@@ -64,4 +64,6 @@ Local verification passes 55 native tests including nine installed-CLI synthetic
 
 ## Durable saved-answer consistency
 
-Accepted #245's outbox now commits a status reconciliation event with each native, hosted, or source-only answer. The message consumer validates the fixed event scope and current author access, preserves human/closed outcomes, and commits status, notification event, and replay cursor together. Tests cover downstream HTTP503, dispatcher restart, duplicate delivery, and transaction rollback. Legacy repair uses the same outbox; a failed repair cannot hide the saved answer or retry its provider. Known native validation failures now keep their actual outcome and HTTP status while client-reported usage remains UNKNOWN. The final migration/runtime union still follows accepted #246.
+Accepted #245's outbox now commits a status reconciliation event with each native, hosted, or source-only answer. The message consumer validates the fixed event scope and current author access, preserves human/closed outcomes, and commits status, notification event, and replay cursor together. Tests cover downstream HTTP503, dispatcher restart, duplicate delivery, and transaction rollback. Legacy repair uses the same outbox; a failed repair cannot hide the saved answer or retry its provider. Known native validation failures now keep their actual outcome and HTTP status while client-reported usage remains UNKNOWN.
+
+The final union uses accepted #246 at `f1bf3e81`, preserving its extractor and ingestion authorization. Agent V9/V10 precede native V11/V12, with message V10 and compatibility epoch 7. Deployment preflight accepts optional native settings only as a complete matching Ed25519 configuration for the exact deployment origin in the private agent environment. The existing private auth/message routes remain in use. No key is generated or enabled; eligible-account proof remains open.
