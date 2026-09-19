@@ -56,6 +56,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
   const [activeFilter, setActiveFilter] = useState<CourseResourceFilter>('all')
   const previewUrlRef = useRef<string | null>(null)
   const resourceRevisionRef = useRef(0)
+  const transferRevisionRef = useRef(0)
 
   const requestKey = courseId && userId ? `${courseId}:${userId}` : null
   const isLoading = requestKey !== null && loadedKey !== requestKey
@@ -239,6 +240,9 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       setDownloadingResourceId(resource.id)
       setError(null)
       const viewGeneration = viewGenerationRef.current
+      const transferRevision = ++transferRevisionRef.current
+      const isCurrentTransfer = () => activeRequestKeyRef.current === requestKey
+        && viewGenerationRef.current === viewGeneration && transferRevisionRef.current === transferRevision
 
       try {
         const blob = await downloadCourseResourceContent(resource.id)
@@ -253,9 +257,9 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
         anchor.remove()
         window.setTimeout(() => URL.revokeObjectURL(url), 0)
       } catch (caught) {
-        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setError(resourceAccessDeniedMessage(caught))
+        if (isCurrentTransfer()) setError(resourceAccessDeniedMessage(caught))
       } finally {
-        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setDownloadingResourceId(null)
+        if (isCurrentTransfer()) setDownloadingResourceId(null)
       }
     },
     [canView, courseId, requestKey, userId],
@@ -275,6 +279,9 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       setDownloadingResourceId(resource.id)
       setError(null)
       const viewGeneration = viewGenerationRef.current
+      const transferRevision = ++transferRevisionRef.current
+      const isCurrentTransfer = () => activeRequestKeyRef.current === requestKey
+        && viewGenerationRef.current === viewGeneration && transferRevisionRef.current === transferRevision
 
       try {
         const blob = await downloadCourseResourceContent(resource.id)
@@ -286,9 +293,9 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
         previewUrlRef.current = url
         window.open(url, '_blank', 'noopener,noreferrer')
       } catch (caught) {
-        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setError(resourceAccessDeniedMessage(caught))
+        if (isCurrentTransfer()) setError(resourceAccessDeniedMessage(caught))
       } finally {
-        if (activeRequestKeyRef.current === requestKey && viewGenerationRef.current === viewGeneration) setDownloadingResourceId(null)
+        if (isCurrentTransfer()) setDownloadingResourceId(null)
       }
     },
     [canView, courseId, requestKey, userId],

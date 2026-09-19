@@ -285,6 +285,30 @@ describe('useCourseResourcesChannel', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it.each(['downloadResource', 'previewResource'] as const)('keeps the newer %s state when an older same-course transfer fails', async (method) => {
+    const firstResource = resource({ status: 'AVAILABLE' })
+    const secondResource = resource({ id: 'second', status: 'AVAILABLE' })
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValue({ courseResources: [firstResource, secondResource] })
+    let rejectFirst!: (reason: Error) => void
+    let rejectSecond!: (reason: Error) => void
+    vi.mocked(downloadCourseResourceContent)
+      .mockReturnValueOnce(new Promise((_, reject) => { rejectFirst = reject }))
+      .mockReturnValueOnce(new Promise((_, reject) => { rejectSecond = reject }))
+    const { result } = renderHook(() => useCourseResourcesChannel('course-1'))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    let first!: Promise<void>
+    let second!: Promise<void>
+    act(() => { first = result.current[method](firstResource) })
+    act(() => { second = result.current[method](secondResource) })
+    await act(async () => { rejectFirst(new Error('Older transfer failure')); await first })
+    expect(result.current.error).toBeNull()
+    expect(result.current.downloadingResourceId).toBe(secondResource.id)
+    await act(async () => { rejectSecond(new Error('Current transfer failure')); await second })
+    expect(result.current.error).toBe('Current transfer failure')
+    expect(result.current.downloadingResourceId).toBeNull()
+  })
+
   it('clears prior course access and resources when the next course request fails', async () => {
     const existing = resource({ id: 'resource-existing', title: 'Existing notes' })
     mockedFetchAccess.mockResolvedValueOnce({

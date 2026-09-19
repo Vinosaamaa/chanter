@@ -14,6 +14,8 @@ The logout-state finding is accepted ([review comment](https://github.com/Vinosa
 
 The pending download/preview finding is accepted ([review comment](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051930882)). Those operations now use the same visit generation as uploads/retries. Tests cover an old failure arriving while a new course is downloading and successful old responses arriving after logout; neither can change current state or create a blob URL/open a preview.
 
+The same-view transfer-ordering finding is also accepted ([review comment](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051950987)). Each transfer now has a request sequence in addition to its course visit. An older completion cannot overwrite the current transfer error/loading state. Both download and preview cases failed before the sequence check and pass with it; valid downloads requested in the same view remain independent.
+
 The custom suggestions concern bounded-buffer/SQL efficiency, shared validation and presentation refactors. The current 10 MiB source and 2M-character output caps bound the parser draft; the durable-event integration will remove the production Base64 delivery path. Query batching and shared Office validation are not claimed as completed. Neither suggestion changes the required live authorization or generation/deletion fences.
 
 The draft remains open for accepted durable-event integration, source-scope metadata and final system review. No security finding is waived or suppressed.
