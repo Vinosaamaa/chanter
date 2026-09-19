@@ -46,6 +46,10 @@ Agent V10 stores immutable request scope, hashes, and a short-lived evidence sna
 
 Source distribution uses tested GitHub workflow artifacts, SHA-256 checksums, exact commit metadata, and free GitHub build attestations on explicit dispatch or accepted main. Public verifier keys are operator-provisioned; private signing keys stay in the agent service. Provenance is not OS-trusted Authenticode or subscription entitlement. No paid certificate is required or purchased.
 
+## Accepted-answer status reconciliation
+
+A successfully persisted and authorized native answer remains accepted if the message service's subsequent status update fails. Its HTTP result must return that saved answer; usage remains UNKNOWN and the generation attempt remains consumed. After accepted #245, append an IDs-only reconciliation event atomically with answer persistence through its existing DurableOutbox. The fixed agent producer/message destination and strict question/channel/author/answer/status payload extend that event contract only. The message consumer applies the allowed AI status idempotently under its durable cursor, preserving current authorization and terminal question states. No evidence text, provider credentials, or native capabilities enter the event. Draft #324 remains gated until failure/replay and crash-recovery proof cover this reconciliation.
+
 ## Isolation gate
 
 The provider process starts in an empty directory with an explicit environment allowlist, separate provider home, strict configuration, no inherited MCP servers, apps, hooks, plugins, host skills, memories, browser/computer tools, shell, code execution, image access, web search, or subagents. Use supported controls and inspect the effective response; do not rely on prompt instructions. The available experimental `environments: []` field disables environment access according to the generated 0.153.4 protocol schema, but must be exercised before treating it as a security boundary. Permission profiles can further deny filesystem/network access to tools while leaving provider-owned authentication intact.

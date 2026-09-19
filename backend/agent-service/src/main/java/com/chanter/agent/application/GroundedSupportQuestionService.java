@@ -264,7 +264,10 @@ public class GroundedSupportQuestionService {
         var saved = answerPersistenceService.saveAnswer(answer,
                 result.handoffRecommended() ? InvocationType.LOW_CONFIDENCE_HANDOFF : InvocationType.GROUNDED_ANSWER,
                 "codex-native", model, true);
-        supportQuestionClient.updateStatus(channelId, questionId, userId, statusForConfidence(result.confidence()));
+        try { supportQuestionClient.updateStatus(channelId, questionId, userId, statusForConfidence(result.confidence())); }
+        catch (ResponseStatusException unavailableStatus) {
+            // The authorized answer is already durable. Status reconciliation must not turn it into a failed generation.
+        }
         return saved;
     }
 

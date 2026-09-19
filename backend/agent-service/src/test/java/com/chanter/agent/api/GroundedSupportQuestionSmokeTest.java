@@ -42,6 +42,7 @@ class GroundedSupportQuestionSmokeTest {
 
     private static final com.sun.net.httpserver.HttpServer PROVIDER = fixtureProvider();
     private static final java.util.concurrent.atomic.AtomicInteger PROVIDER_CALLS = new java.util.concurrent.atomic.AtomicInteger();
+    private static final java.util.concurrent.atomic.AtomicInteger STATUS_FAILURE_CALLS = new java.util.concurrent.atomic.AtomicInteger();
     private static final java.security.KeyPair NATIVE_KEYS = nativeKeys();
     private static java.security.KeyPair nativeKeys() {
         try { return java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair(); }
@@ -67,6 +68,10 @@ class GroundedSupportQuestionSmokeTest {
     private static com.sun.net.httpserver.HttpServer fixtureProvider() {
         try {
             var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+            server.createContext("/api/v1/course-channels", exchange -> {
+                STATUS_FAILURE_CALLS.incrementAndGet(); exchange.getRequestBody().readAllBytes();
+                exchange.sendResponseHeaders(503, -1); exchange.close();
+            });
             server.createContext("/api/chat", exchange -> {
                 PROVIDER_CALLS.incrementAndGet();
                 String quote = "{\"sourceId\":\"S1\",\"quote\":\"Spring Security uses a filter chain.\"}\n";
@@ -88,10 +93,12 @@ class GroundedSupportQuestionSmokeTest {
 
     @Autowired private com.chanter.agent.application.AiGenerationLedger generationLedger;
     @Autowired private com.chanter.agent.application.LlmModelCatalog modelCatalog;
+    @Autowired private org.springframework.jdbc.core.simple.JdbcClient nativeJdbc;
 
     @Test
     void nativeHttpFlowRechecksEvidenceAndPersistsOnlyValidatedClientQuotations() throws Exception {
-        for (boolean revoke : new boolean[] { false, true }) {
+        for (String scenario : List.of("accepted", "status-unavailable", "revoked")) {
+            boolean revoke = scenario.equals("revoked"), unavailable = scenario.equals("status-unavailable");
             UUID server = UUID.randomUUID(), instructor = UUID.randomUUID(), learner = UUID.randomUUID();
             UUID channel = UUID.randomUUID(), course = UUID.randomUUID(), resource = UUID.randomUUID(), question = UUID.randomUUID();
             UUID session = UUID.randomUUID(), installation = UUID.randomUUID();
@@ -104,6 +111,13 @@ class GroundedSupportQuestionSmokeTest {
             org.mockito.Mockito.when(nativeSessions.requireActive(bearer, learner)).thenReturn(
                     new com.chanter.common.auth.JwtTokenService.AccessSession(learner, session, java.time.Instant.now().plusSeconds(600)));
             int before = PROVIDER_CALLS.get();
+            int statusBefore = STATUS_FAILURE_CALLS.get();
+            if (unavailable) {
+                var failingHttp = new com.chanter.agent.infra.HttpSupportQuestionClient("http://127.0.0.1:" + PROVIDER.getAddress().getPort(), 1, 1,
+                        "test-internal-service-token-for-agent");
+                org.mockito.Mockito.doAnswer(invocation -> failingHttp.updateStatus(channel, question, learner, "AI_ANSWERED"))
+                        .when(supportQuestionClient).updateStatus(channel, question, learner, "AI_ANSWERED");
+            }
             mockMvc.perform(post("/api/v1/native-companion/pair").header(AuthHeaders.USER_ID, learner).header("Authorization", bearer)
                     .header("Origin", "https://chanter.example").contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(Map.of("installationId", installation, "approved", true))))
@@ -127,6 +141,14 @@ class GroundedSupportQuestionSmokeTest {
                             "usage", Map.of("inputTokens", 0, "outputTokens", 0)))));
             if (revoke) result.andExpect(status().isForbidden());
             else result.andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmProvider").value("codex-native"));
+            if (unavailable) {
+                assertThat(STATUS_FAILURE_CALLS.get() - statusBefore).isEqualTo(1);
+                assertThat(nativeJdbc.sql("SELECT outcome FROM native_companion_requests WHERE id=:id")
+                        .param("id", UUID.fromString(issued.path("requestId").asText())).query(String.class).single()).isEqualTo("ACCEPTED");
+                mockMvc.perform(get("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer))
+                        .andExpect(status().isOk());
+            }
             assertThat(PROVIDER_CALLS.get()).isEqualTo(before);
             assertThat(generationLedger.summary(server).unknownUsageCount()).isEqualTo(1);
             assertThat(generationLedger.summary(server).accountedTokens()).isEqualTo(40960);
@@ -251,7 +273,7 @@ class GroundedSupportQuestionSmokeTest {
     @Autowired
     private TestSupportQuestionChannelAccessClient channelAccessClient;
 
-    @Autowired
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
     private TestSupportQuestionClient supportQuestionClient;
 
     @Autowired
