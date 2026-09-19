@@ -33,7 +33,7 @@ infra-up:
 	@test -f .env || (echo "Missing .env — run: make product-env" && exit 1)
 	@$(require-jwt-secret)
 	@$(require-infra-secrets)
-	docker compose -f infra/docker-compose.yml --env-file .env up -d postgres redis redpanda minio
+	docker compose -f infra/docker-compose.yml --env-file .env up -d postgres redis minio
 
 infra-down:
 	docker compose -f infra/docker-compose.yml down

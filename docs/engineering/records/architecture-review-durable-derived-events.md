@@ -10,7 +10,7 @@ capabilityIds: ["chanter-social-collaboration-mvp"]
 createdAt: 2026-09-18
 reconstructed: false
 confidence: high
-unknowns: ["Exact-head hosted gates and production release proof are pending."]
+unknowns: ["Production release proof remains pending."]
 modules: ["common-events", "community-service", "message-service", "media-service", "notification-service", "search-service", "global-search"]
 interfaces: ["durable-event-v1", "internal-outbox-operations", "global-search"]
 seams: ["source-transaction-to-outbox", "delivery-to-consumer-cursor", "projection-to-live-source-authorization"]
@@ -40,4 +40,4 @@ Consumers apply each source revision and its durable cursor atomically. Duplicat
 
 The shared queue code contains only the repeated transaction, lease, retry and cursor mechanics. Resource lifecycle, community scope and message authorization remain in their owning modules. Bounded retries, sanitized failure inspection and identity-preserving replay make outages recoverable. Compatibility epoch 5 is required because older applications cannot preserve the new delivery guarantees.
 
-Focused regressions cover source rollback, lost acknowledgement, retry exhaustion, lease replacement, duplicate application, update/delete ordering and revoked visibility. Separate PostgreSQL and real-process restart gates establish production database and user-visible recovery behavior. Presentation evidence uses labeled fixtures; it does not prove delivery. Final hosted review and release remain pending.
+Focused regressions cover source rollback, lost acknowledgement, retry exhaustion, lease replacement, duplicate application, update/delete ordering and revoked visibility. Separate PostgreSQL and real-process restart gates establish production database and user-visible recovery behavior. Presentation evidence uses labeled fixtures; it does not prove delivery. Exact-head hosted and full-review receipts are recorded on PR #327. Production release proof remains pending; this record does not claim deployment verification.
