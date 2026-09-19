@@ -143,7 +143,16 @@ public class GroundedSupportQuestionService {
             if (!answer.channelId().equals(channelId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
             evidenceAuthorization.requireCurrent(channelId, learnerUserId, citations(answer), execution);
             execution.check();
-            if ("UNANSWERED".equals(supportQuestion.status())) answerPersistenceService.reconcileAnswerStatus(answer);
+            if ("UNANSWERED".equals(supportQuestion.status())) {
+                try {
+                    answerPersistenceService.reconcileAnswerStatus(answer);
+                } catch (RuntimeException repairUnavailable) {
+                    // The separate repair transaction has rolled back. A saved, authorized answer is
+                    // still successful; a later authorized read can repair its missing outbox event.
+                    org.slf4j.LoggerFactory.getLogger(GroundedSupportQuestionService.class)
+                            .warn("Saved answer status repair unavailable");
+                }
+            }
             chunks.accept(answer.answerBody());
             return answer;
         }

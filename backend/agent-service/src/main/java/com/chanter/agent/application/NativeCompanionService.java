@@ -83,9 +83,16 @@ public class NativeCompanionService {
             accepted = true;
             outcome = "SUCCESS";
             return answer;
-        } catch (LlmProviderException invalidResult) {
-            outcome = "INVALID_RESPONSE";
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Native result did not contain valid approved source quotations");
+        } catch (LlmProviderException failure) {
+            outcome = failure.outcome().name();
+            throw switch (failure.outcome()) {
+                case INVALID_RESPONSE -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Native result did not contain valid approved source quotations");
+                case TIMED_OUT -> new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Native result validation timed out");
+                case CANCELLED -> new ResponseStatusException(HttpStatus.REQUEST_TIMEOUT, "Native result validation was cancelled");
+                case REFUSED -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Native result declined to provide approved source quotations");
+                case RATE_LIMITED, LIMIT_EXCEEDED -> new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Native result validation limit reached");
+                case UNAVAILABLE -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Native result validation unavailable");
+            };
         } finally {
             // Even a submitted zero is a client report, never measured provider usage or a budget refund.
             try { ledger.settle(requestId, LlmUsage.UNKNOWN, outcome, 0, request.model(), null, definition(request.model()), true); }

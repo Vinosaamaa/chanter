@@ -97,6 +97,24 @@ class NativeCompanionServiceTest {
         assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
         assertThatThrownBy(this::issue).isInstanceOf(AiGenerationLedger.AttemptConflict.class);
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"TIMED_OUT,504", "CANCELLED,408", "REFUSED,422", "INVALID_RESPONSE,400", "UNAVAILABLE,503", "RATE_LIMITED,429", "LIMIT_EXCEEDED,429"})
+    void validationFailurePreservesItsOutcomeAndCannotReleaseOrReplayTheAttempt(LlmProviderException.Outcome outcome, int status) {
+        var issued = issue();
+        doThrow(new LlmProviderException(outcome)).when(questions).requireNativeEvidenceCurrent(any(), any(), any(), any(), any());
+        assertThatThrownBy(() -> accept(issued.requestId(), RESULT)).isInstanceOfSatisfying(ResponseStatusException.class,
+                failure -> assertThat(failure.getStatusCode().value()).isEqualTo(status));
+        verify(questions, never()).acceptNativeAnswer(any(), any(), any(), any(), any(), any(), any());
+        assertThat(jdbc.sql("SELECT outcome FROM ai_generation_usage WHERE id=:id").param("id", issued.requestId())
+                .query(String.class).single()).isEqualTo(outcome.name());
+        assertThat(jdbc.sql("SELECT outcome FROM native_companion_requests WHERE id=:id").param("id", issued.requestId())
+                .query(String.class).single()).isEqualTo("REJECTED");
+        assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
+        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(40960);
+        assertThatThrownBy(() -> accept(issued.requestId(), RESULT)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
+        org.mockito.Mockito.doNothing().when(questions).requireNativeEvidenceCurrent(any(), any(), any(), any(), any());
+        assertThatThrownBy(this::issue).isInstanceOf(AiGenerationLedger.AttemptConflict.class);
+    }
     @Test void revokedSessionAndMissingExportApprovalPreventEvidenceRelease() {
         assertThatThrownBy(() -> companion.issue(channel, question, user, AUTH, ORIGIN, installation, "fixture-model", false))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");

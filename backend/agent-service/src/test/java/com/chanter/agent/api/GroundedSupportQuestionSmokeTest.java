@@ -98,7 +98,8 @@ class GroundedSupportQuestionSmokeTest {
     @Autowired private org.springframework.jdbc.core.simple.JdbcClient nativeJdbc;
     @Autowired private org.springframework.jdbc.core.JdbcTemplate nativeTemplate;
     @Autowired private org.springframework.transaction.PlatformTransactionManager nativeTransactions;
-    @Autowired private com.chanter.common.events.DurableOutbox nativeOutbox;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private com.chanter.common.events.DurableOutbox nativeOutbox;
 
     @Test
     void nativeHttpFlowRechecksEvidenceAndPersistsOnlyValidatedClientQuotations() throws Exception {
@@ -225,6 +226,44 @@ class GroundedSupportQuestionSmokeTest {
                 .param("key", "ACCEPTED_ANSWER:" + question).query(Integer.class).single()).isEqualTo(1);
         assertThat(nativeJdbc.sql("SELECT status || ':' || last_error FROM durable_outbox WHERE aggregate_key=:key")
                 .param("key", "ACCEPTED_ANSWER:" + question).query(String.class).single()).isEqualTo("PENDING:HTTP_503");
+    }
+
+    @Test
+    void legacyRepairRollbackStillReturnsSavedAnswerAndLaterRepairsOnceWithoutProviderRetry() throws Exception {
+        UUID server = UUID.randomUUID(), instructor = UUID.randomUUID(), learner = UUID.randomUUID();
+        UUID channel = UUID.randomUUID(), course = UUID.randomUUID(), resource = UUID.randomUUID(), question = UUID.randomUUID();
+        installAssistant(server, instructor, learner, channel, course, UUID.randomUUID(), resource);
+        channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
+        supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
+        courseResourceCatalogClient.grantViewerAccess(course, learner);
+        courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+        int providerBefore = PROVIDER_CALLS.get();
+        var initial = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .param("modelId", "fixture").header(AuthHeaders.USER_ID, learner)
+                        .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String answerId = objectMapper.readTree(initial).path("id").asText();
+        String key = "ACCEPTED_ANSWER:" + question;
+        // Represent an answer saved before atomic outbox integration.
+        nativeJdbc.sql("DELETE FROM durable_outbox WHERE aggregate_key=:key").param("key", key).update();
+        var failRepair = new java.util.concurrent.atomic.AtomicBoolean(true);
+        org.mockito.Mockito.doAnswer(call -> {
+            Object event = call.callRealMethod();
+            if (failRepair.get()) throw new org.springframework.dao.TransientDataAccessResourceException("synthetic repair failure after append");
+            return event;
+        }).when(nativeOutbox).append(org.mockito.ArgumentMatchers.eq("message"), org.mockito.ArgumentMatchers.eq("ACCEPTED_ANSWER"),
+                org.mockito.ArgumentMatchers.eq(key), org.mockito.ArgumentMatchers.anyString());
+        for (int attempt = 0; attempt < 3; attempt++) {
+            var response = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                            .param("modelId", "fixture").header(AuthHeaders.USER_ID, learner)
+                            .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertThat(objectMapper.readTree(response).path("id").asText()).isEqualTo(answerId);
+            assertThat(nativeJdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=:key").param("key", key)
+                    .query(Integer.class).single()).isEqualTo(attempt == 0 ? 0 : 1);
+            failRepair.set(false);
+        }
+        assertThat(PROVIDER_CALLS.get() - providerBefore).isEqualTo(1);
     }
 
     @Test
