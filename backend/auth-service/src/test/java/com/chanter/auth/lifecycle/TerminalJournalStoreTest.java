@@ -92,4 +92,36 @@ class TerminalJournalStoreTest {
             assertThat(page.entries()).hasSize(2);
         } finally { release.countDown(); }
     }
+
+    @Test void recoveryPreservesTheOriginalCanonicalChainAndRollsBackWithItsParticipantMutation() {
+        tx.executeWithoutResult(status -> journal.append("ACCOUNT", UUID.randomUUID()));
+        tx.executeWithoutResult(status -> journal.append("RESOURCE", UUID.randomUUID()));
+        var external = journal.page(0, null, 100);
+        var data = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
+        var restoredJdbc = new JdbcTemplate(data);
+        var restoredTx = new TransactionTemplate(new DataSourceTransactionManager(data));
+        restoredJdbc.execute(TerminalJournalStore.SCHEMA);
+        restoredJdbc.execute(com.chanter.common.lifecycle.TerminalReapplyStore.SCHEMA);
+        var restored = new TerminalJournalStore(restoredJdbc, restoredTx, Clock.systemUTC());
+        var fail = new java.util.concurrent.atomic.AtomicBoolean(true);
+        var participant = new com.chanter.common.lifecycle.TerminalReapplyStore(restoredJdbc, restoredTx, "auth", entry -> {
+            if (entry.revision() == 2 && fail.get()) throw new IllegalStateException("closure failed");
+            return com.chanter.common.lifecycle.TerminalReapplyStore.Cleanup.PENDING;
+        });
+        assertThatThrownBy(() -> restored.restore(external, () -> participant.reapply(external))).isInstanceOf(IllegalStateException.class);
+        assertThat(restored.page(0, null, 100).through().revision()).isZero();
+        assertThat(participant.receipt().authority().revision()).isZero();
+        assertThat(restoredJdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_terminal_targets", Integer.class)).isZero();
+        fail.set(false);
+        var receipt = restored.restore(external, () -> participant.reapply(external));
+        assertThat(receipt.authority()).isEqualTo(external.through());
+        assertThat(receipt.pendingTargets()).isEqualTo(2);
+        assertThat(restored.restore(external, () -> participant.reapply(external))).isEqualTo(receipt);
+        assertThat(restored.page(0, null, 100).entries()).isEqualTo(external.entries());
+        assertThat(restored.checkpoint()).isNull();
+        var next = restoredTx.execute(status -> restored.append("STUDY_SERVER", UUID.randomUUID()));
+        assertThat(next.revision()).isEqualTo(3);
+        assertThat(next.previousDigest()).isEqualTo(external.through().digest());
+        restored.page(0, null, 100).validate();
+    }
 }

@@ -35,6 +35,8 @@ class AccountExportJobsHttpTest {
     @Autowired JwtTokenService tokens;
     @Autowired AccountExportProtocol protocol;
     @Autowired org.springframework.transaction.PlatformTransactionManager transactions;
+    @Autowired TerminalJournalStore journal;
+    @Autowired com.chanter.auth.application.RefreshTokenRepository refreshTokens;
     final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
     @Test void liveRecentAccountCreatesOnePrivateJobAndOnlyEverySourceReceiptMakesItReady() throws Exception {
@@ -93,6 +95,85 @@ class AccountExportJobsHttpTest {
         assertThatThrownBy(() -> jobs.create(authorization, UUID.randomUUID())).hasMessageContaining("EXPORT_ALREADY_ACTIVE");
         jobs.cancel(authorization, first.id());
         assertThat(jobs.create(authorization, UUID.randomUUID()).state()).isEqualTo("BUILDING");
+    }
+
+    @Test void terminalAccountClosureCancelsOnlyItsExportsAndCommitsWithTheOwningMutation() {
+        var owner = account(); var other = account();
+        var job = jobs.create(bearer(owner), UUID.randomUUID());
+        var otherJob = jobs.create(bearer(other), UUID.randomUUID());
+        var tx = new org.springframework.transaction.support.TransactionTemplate(transactions);
+        assertThatThrownBy(() -> jobs.cancelAccount(owner.user().id())).isInstanceOf(IllegalStateException.class);
+        tx.executeWithoutResult(status -> { jobs.cancelAccount(owner.user().id()); status.setRollbackOnly(); });
+        assertThat(jobs.get(bearer(owner), job.id()).state()).isEqualTo("BUILDING");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM data_export_account_tombstones WHERE account_id=?", Integer.class, owner.user().id())).isZero();
+        tx.executeWithoutResult(status -> jobs.cancelAccount(owner.user().id()));
+        tx.executeWithoutResult(status -> jobs.cancelAccount(owner.user().id()));
+        assertThat(jobs.get(bearer(owner), job.id()).state()).isEqualTo("CANCELLED");
+        assertThat(jobs.get(bearer(owner), job.id()).cleanupPending()).isTrue();
+        assertThat(jobs.get(bearer(other), otherJob.id()).state()).isEqualTo("BUILDING");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=?", Integer.class, AccountExportProtocol.key(job.id()))).isEqualTo(12);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM data_export_pages WHERE snapshot_id=?", Integer.class, job.id())).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM data_export_pages WHERE snapshot_id=?", Integer.class, otherJob.id())).isPositive();
+        assertThatThrownBy(() -> jobs.create(bearer(owner), UUID.randomUUID())).hasMessageContaining("EXPORT_ACCOUNT_DELETED");
+        jobs.accept(receipt(job.id(), owner.user().id(), "media", "READY", 1));
+        assertThat(jobs.get(bearer(owner), job.id()).state()).isEqualTo("CANCELLED");
+    }
+
+    @Test void accountTerminalAuthorityAndRevocationCannotBeBypassedByLoginOrRefresh() throws Exception {
+        var owner = account(); var other = account();
+        var job = jobs.create(bearer(owner), UUID.randomUUID());
+        var tx = new org.springframework.transaction.support.TransactionTemplate(transactions);
+        tx.executeWithoutResult(status -> {
+            journal.append("ACCOUNT", owner.user().id());
+            refreshTokens.revokeAllForUser(owner.user().id(), Instant.now());
+            jobs.cancelAccount(owner.user().id());
+            status.setRollbackOnly();
+        });
+        assertThat(jobs.get(bearer(owner), job.id()).state()).isEqualTo("BUILDING");
+        tx.executeWithoutResult(status -> {
+            journal.append("ACCOUNT", owner.user().id());
+            refreshTokens.revokeAllForUser(owner.user().id(), Instant.now());
+            jobs.cancelAccount(owner.user().id());
+        });
+        assertThat(send("GET", "/api/v1/auth/account/exports/" + job.id(), null, bearer(owner)).statusCode()).isEqualTo(401);
+        assertThatThrownBy(() -> sessions.refresh(owner.refreshToken())).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        assertThatThrownBy(() -> sessions.login(owner.user().email(), "private fixture password 251", "new browser"))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM auth_sessions WHERE user_id=? AND revoked_at IS NULL", Integer.class, owner.user().id())).isZero();
+        assertThat(sessions.login(other.user().email(), "private fixture password 251", "other browser").user().id()).isEqualTo(other.user().id());
+        // Revocation remains valid after a target becomes terminal.
+        refreshTokens.revokeAllForUser(owner.user().id(), Instant.now());
+    }
+
+    @Test void sessionCreationWaitingOnAccountClosureCannotCreateAnActiveSessionAfterItCommits() throws Exception {
+        var owner = account();
+        var locked = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var creating = new java.util.concurrent.CountDownLatch(1);
+        try (var workers = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var closure = workers.submit(() -> new org.springframework.transaction.support.TransactionTemplate(transactions).executeWithoutResult(status -> {
+                journal.append("ACCOUNT", owner.user().id());
+                refreshTokens.lockUser(owner.user().id());
+                locked.countDown();
+                try { if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("test release timeout"); }
+                catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new IllegalStateException(interrupted); }
+                refreshTokens.revokeAllForUser(owner.user().id(), Instant.now());
+                jobs.cancelAccount(owner.user().id());
+            }));
+            assertThat(locked.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            var create = workers.submit(() -> {
+                creating.countDown();
+                refreshTokens.createSession(UUID.randomUUID(), owner.user().id(), UUID.randomUUID(), UUID.randomUUID().toString(),
+                        Instant.now(), Instant.now().plusSeconds(3600), "new browser");
+            });
+            assertThat(creating.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            assertThatThrownBy(() -> create.get(100, java.util.concurrent.TimeUnit.MILLISECONDS)).isInstanceOf(java.util.concurrent.TimeoutException.class);
+            release.countDown();
+            closure.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            assertThatThrownBy(() -> create.get(5, java.util.concurrent.TimeUnit.SECONDS))
+                    .isInstanceOf(java.util.concurrent.ExecutionException.class).hasCauseInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM auth_sessions WHERE user_id=? AND revoked_at IS NULL", Integer.class, owner.user().id())).isZero();
+        } finally { release.countDown(); }
     }
     @Test void cancellationCannotBypassDailyWorkLimitAndOuterRollbackPublishesNoJobOrSnapshot() {
         var owner = account(); String authorization = bearer(owner); UUID rolledBack = UUID.randomUUID();

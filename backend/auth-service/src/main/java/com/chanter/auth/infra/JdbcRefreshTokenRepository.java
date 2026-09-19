@@ -32,6 +32,8 @@ public class JdbcRefreshTokenRepository implements RefreshTokenRepository {
     public void createSession(UUID sessionId, UUID userId, UUID tokenId, String tokenHash,
                               Instant now, Instant expiresAt, String userAgent) {
         lockUser(userId);
+        if (terminalAccount(userId)) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED, "Account is unavailable");
         jdbc.update("""
                 INSERT INTO auth_sessions (id, user_id, created_at, last_used_at, expires_at, user_agent)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -47,6 +49,7 @@ public class JdbcRefreshTokenRepository implements RefreshTokenRepository {
         UUID userId = identity.get().userId();
         UUID sessionId = identity.get().sessionId();
         lockUser(userId);
+        if (terminalAccount(userId)) return Optional.empty();
         var sessions = jdbc.query("SELECT * FROM auth_sessions WHERE id = ? FOR UPDATE", SESSION_MAPPER, sessionId);
         if (sessions.isEmpty()) return Optional.empty();
         SessionRecord session = sessions.getFirst();
@@ -113,6 +116,12 @@ public class JdbcRefreshTokenRepository implements RefreshTokenRepository {
         jdbc.update("UPDATE auth_sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL", Timestamp.from(revokedAt), sessionId);
         jdbc.update("UPDATE auth_refresh_tokens SET revoked_at = ? WHERE session_id = ? AND revoked_at IS NULL",
                 Timestamp.from(revokedAt), sessionId);
+    }
+
+    private boolean terminalAccount(UUID userId) {
+        // Read after the user-row lock. Closure takes that same lock before revoking every session.
+        return jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_terminal_journal WHERE target_kind='ACCOUNT' AND target_id=?",
+                Integer.class, userId) > 0;
     }
 
     private Optional<TokenIdentity> tokenIdentity(String tokenHash) {

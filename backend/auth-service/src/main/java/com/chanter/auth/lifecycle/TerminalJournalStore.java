@@ -73,6 +73,32 @@ public final class TerminalJournalStore {
         return page;
     }
 
+    /** Recovery imports original canonical authority and its owning source mutations atomically, before new appends. */
+    public <T> T restore(Page page, java.util.function.Supplier<T> sourceMutations) {
+        page.validate();
+        java.util.Objects.requireNonNull(sourceMutations);
+        return tx.execute(status -> {
+            Watermark current = lock();
+            if (page.after().revision() > current.revision() || !watermark(page.after().revision()).equals(page.after()))
+                throw new IllegalArgumentException("Canonical journal prefix is missing or inconsistent");
+            for (Entry entry : page.entries()) {
+                if (entry.revision() <= current.revision()) {
+                    if (!watermark(entry.revision()).digest().equals(entry.digest()))
+                        throw new IllegalArgumentException("Canonical journal history changed");
+                    continue;
+                }
+                if (entry.revision() != current.revision() + 1 || !entry.previousDigest().equals(current.digest()))
+                    throw new IllegalArgumentException("Canonical journal is discontinuous");
+                jdbc.update("INSERT INTO lifecycle_terminal_journal VALUES (?,?,?,?,?,?,?)", entry.revision(), entry.eventId(),
+                        entry.targetKind(), entry.targetId(), Timestamp.from(entry.deletedAt()), entry.previousDigest(), entry.digest());
+                current = new Watermark(entry.revision(), entry.digest());
+            }
+            jdbc.update("UPDATE lifecycle_journal_head SET revision=?,digest=? WHERE id=1", current.revision(), current.digest());
+            // Canonical head precedes participant authority and user/session rows in both normal deletion and restore.
+            return sourceMutations.get();
+        });
+    }
+
     /** The caller owns durable external storage. A matching acknowledgement records its claim, not storage attestation. */
     public Checkpoint acknowledge(Checkpoint checkpoint) {
         checkpoint.validate();

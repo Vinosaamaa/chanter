@@ -94,7 +94,25 @@ public final class AccountExportJobs {
             lock();
             Header header = require(id, account);
             if ("CANCELLED".equals(header.state()) || !header.expiresAt().isAfter(clock.instant())) return read(id, account);
-            var request = new ExportSnapshotStore.Request(id, account, header.requestedAt(), header.expiresAt());
+            cancelLocked(id, header);
+            return read(id, account);
+        });
+    }
+
+    /** Owning account closure joins this transaction; user, job, then snapshot locks match public export creation. */
+    public void cancelAccount(UUID account) {
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Account closure requires the owning transaction");
+        jdbc.query("SELECT id FROM auth_users WHERE id=? FOR UPDATE", (rs, row) -> rs.getObject(1), account);
+        lock();
+        var ids = jdbc.query("SELECT id FROM lifecycle_export_jobs WHERE account_id=? AND state<>'CANCELLED' AND expires_at>?",
+                (rs, row) -> rs.getObject(1, UUID.class), account, time(clock.instant()));
+        for (UUID id : ids) cancelLocked(id, require(id, account));
+        snapshots.cancelAccount(account);
+    }
+
+    private void cancelLocked(UUID id, Header header) {
+            var request = new ExportSnapshotStore.Request(id, header.accountId(), header.requestedAt(), header.expiresAt());
             jdbc.update("UPDATE lifecycle_export_jobs SET state='CANCELLED',cancelled_at=? WHERE id=?", time(clock.instant()), id);
             snapshots.cancelJob(request);
             for (String source : SOURCES) {
@@ -103,8 +121,6 @@ public final class AccountExportJobs {
                 jdbc.update("UPDATE lifecycle_export_parts SET state=?,fingerprint=NULL,request_event_id=?,updated_at=? WHERE job_id=? AND source=?",
                         source.equals("auth") ? "CANCELLED" : "PENDING", event, time(clock.instant()), id, source);
             }
-            return read(id, account);
-        });
     }
 
     public void accept(DurableEvent event) {
