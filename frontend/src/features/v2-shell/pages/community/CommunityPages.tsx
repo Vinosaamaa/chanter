@@ -13,7 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   archiveCommunityAnnouncement,
@@ -308,9 +308,10 @@ function AnnouncementEditorModal({
 
 export function CommunityLoungePage() {
   const { navigation } = useV2Community()
+  const [searchParams, setSearchParams] = useSearchParams()
   const userId = useAuthStore(state => state.user?.id)
   const textChannels = navigation?.studyServerChannels.filter(channel => channel.kind === 'TEXT') ?? []
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedId = searchParams.get('channel')
   const selected = textChannels.find(channel => channel.id === selectedId) ?? textChannels[0]
   const conversation = useChannelConversation('study', selected?.id)
   const messageAccess = useQuery({
@@ -328,7 +329,7 @@ export function CommunityLoungePage() {
   const canPostMessages = messageAccess.data?.canPostMessages === true
   const connected = conversation.connectionStatus === 'connected'
   const [draft, setDraft] = useState('')
-  const selectChannel = (id: string) => { setSelectedId(id); setDraft('') }
+  const selectChannel = (id: string) => { setSearchParams({ channel: id }, { replace: true }); setDraft('') }
   const submit = (event: FormEvent) => {
     event.preventDefault()
     const submitted = draft.trim()

@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 
 public interface ChannelMessageRepository {
+    Optional<ChannelMessage> findByIdAndChannelId(UUID id, UUID channelId);
 
     ChannelMessage save(ChannelMessage message);
 

@@ -19,6 +19,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnableScheduling
 @Import(OutboxOperations.class)
 public class OutboxConfiguration {
+    @Bean
+    org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler durableEventScheduler() {
+        var scheduler = new org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(1);
+        scheduler.setThreadNamePrefix("durable-events-");
+        return scheduler;
+    }
     @Bean NotificationEventWriter notificationEventWriter(DurableOutbox outbox, ObjectMapper mapper) {
         return new NotificationEventWriter(outbox, mapper);
     }
@@ -44,7 +51,7 @@ public class OutboxConfiguration {
     static final class DispatchSchedule {
         private final OutboxDispatcher dispatcher;
         DispatchSchedule(OutboxDispatcher dispatcher) { this.dispatcher = dispatcher; }
-        @Scheduled(fixedDelayString="${chanter.events.poll-delay-ms:1000}")
+        @Scheduled(fixedDelayString="${chanter.events.poll-delay-ms:1000}", scheduler="durableEventScheduler")
         public void poll() { dispatcher.drain(); }
     }
 }

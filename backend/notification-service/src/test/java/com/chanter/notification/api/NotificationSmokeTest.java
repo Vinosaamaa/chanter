@@ -39,6 +39,29 @@ class NotificationSmokeTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private com.chanter.notification.application.NotificationService notificationService;
+
+    @Test
+    void hiddenRecentNotificationsDoNotHideOlderVisibleInboxItems() throws Exception {
+        UUID user = UUID.randomUUID();
+        UUID visibleSource = UUID.randomUUID();
+        for (int index = 0; index < 102; index++) {
+            notificationService.create(new com.chanter.notification.application.NotificationRepository.CreateCommand(
+                    user, NotificationKind.ANNOUNCEMENT, null, "Announcement " + index, null, null, "/app/inbox",
+                    "ANNOUNCEMENT", index == 0 ? visibleSource : UUID.randomUUID(), null, null, null, null));
+        }
+        org.mockito.Mockito.when(visibility.canView(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation ->
+                ((com.chanter.notification.domain.Notification) invocation.getArgument(0)).sourceId().equals(visibleSource));
+        mockMvc.perform(get("/api/v1/me/notifications").header(AuthHeaders.USER_ID, user)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications.length()").value(1))
+                .andExpect(jsonPath("$.notifications[0].sourceId").value(visibleSource.toString()));
+        mockMvc.perform(get("/api/v1/me/notifications/unread-count").header(AuthHeaders.USER_ID, user)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.unreadCount").value(1));
+    }
+
     @Test
     void createListReadDoneAndUnreadCount() throws Exception {
         UUID userId = UUID.randomUUID();

@@ -25,17 +25,20 @@ public class GlobalSearchService {
     private final MediaCatalogClient mediaCatalogClient;
     private final MessageFaqClient messageFaqClient;
     private final JdbcSearchIndexRepository searchIndexRepository;
+    private final SearchSourceClient sourceClient;
 
     public GlobalSearchService(
             CommunityNavigationClient communityNavigationClient,
             MediaCatalogClient mediaCatalogClient,
             MessageFaqClient messageFaqClient,
-            JdbcSearchIndexRepository searchIndexRepository
+            JdbcSearchIndexRepository searchIndexRepository,
+            SearchSourceClient sourceClient
     ) {
         this.communityNavigationClient = communityNavigationClient;
         this.mediaCatalogClient = mediaCatalogClient;
         this.messageFaqClient = messageFaqClient;
         this.searchIndexRepository = searchIndexRepository;
+        this.sourceClient = sourceClient;
     }
 
     public int reindexStudyServer(UUID studyServerId, UUID viewerUserId) {
@@ -111,7 +114,16 @@ public class GlobalSearchService {
         Map<UUID, Set<UUID>> visibleFaqIdsByCourse = new HashMap<>();
 
         return candidates.stream()
-                .filter(hit -> isVisibleToViewer(hit, viewerUserId, visibleResourceIdsByCourse, visibleFaqIdsByCourse))
+                .flatMap(hit -> {
+                    if (hit.documentType() == SearchDocumentType.RESOURCE || hit.documentType() == SearchDocumentType.FAQ) {
+                        return isVisibleToViewer(hit, viewerUserId, visibleResourceIdsByCourse, visibleFaqIdsByCourse)
+                                ? java.util.stream.Stream.of(hit) : java.util.stream.Stream.<SearchHit>empty();
+                    }
+                    return sourceClient.currentVisibleHit(hit, studyServerId, viewerUserId).stream();
+                })
+                .map(hit -> new SearchHit(hit.documentType(), hit.courseId(), hit.courseId() == null ? navigation.studyServerName()
+                        : navigation.courses().stream().filter(course -> course.id().equals(hit.courseId())).map(CommunityNavigationClient.CourseSummary::title).findFirst().orElse("Course"),
+                        hit.sourceId(), hit.title(), hit.snippet(), hit.href(), hit.channelId(), hit.channelScope()))
                 .toList();
     }
 

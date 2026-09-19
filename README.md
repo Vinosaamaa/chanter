@@ -72,7 +72,7 @@ Implemented bootstrap:
 
 - `backend/` — Maven multi-module Spring Boot (`gateway-service`, `auth-service`, `community-service`, `message-service`, `common`; other service dirs reserved)
 - `frontend/` — React + TypeScript + Vite shell for Study Server setup, voice presence, and Friends/DM API demo
-- `infra/docker-compose.yml` — PostgreSQL, Redis, Redpanda, MinIO
+- `infra/docker-compose.yml` — PostgreSQL, Redis, MinIO
 - `.github/workflows/ci.yml` — backend + frontend build checks
 
 Key planning files:
@@ -125,7 +125,7 @@ Use `HANDOFF.md` as the first resume point for new agent sessions. For **what th
 ## Architecture Direction
 
 - Frontend: React, TypeScript, Vite, React Router, TanStack Query, Zustand, and a component system chosen during implementation.
-- Backend: Java 21, Spring Boot 3, true microservices, service-owned PostgreSQL data, Redis, Redpanda or Kafka-compatible event broker, MinIO-compatible object storage, OpenAPI contracts, Flyway migrations, structured logs, health checks, metrics, and Docker Compose local deployment.
+- Backend: Java 21, Spring Boot 3, true microservices, service-owned PostgreSQL data, Redis, database-backed transactional event delivery, MinIO-compatible object storage, OpenAPI contracts, Flyway migrations, structured logs, health checks, metrics, and Docker Compose local deployment.
 - Education MVP: Study Servers, course/module channels, learner/instructor/TA roles, approved course resources, question workflow, office-hours queue, instructor dashboard, and SaaS plan limits.
 - AI platform: the first agent is a visible, permissioned AI Study Assistant that answers from approved course resources and allowed context. Marketplace, voice, advanced billing, safety, and memory deepen after the Study Assistant is trusted.
 
@@ -159,7 +159,7 @@ Guides:
 
 ```bash
 cp .env.example .env
-make infra-up          # PostgreSQL, Redis, Redpanda, MinIO
+make infra-up          # PostgreSQL, Redis, MinIO
 make backend-test      # requires JAVA_HOME 21+ (see .java-version)
 make frontend-install
 make backend-auth      # terminal 1 — port 8081

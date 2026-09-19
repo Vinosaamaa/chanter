@@ -152,9 +152,9 @@ prepare_services() (
 local_start="$(prepare_services true)"
 production_start="$(prepare_services false)"
 assert_contains "local SMTP inbox starts with product services" \
-  "postgres redis redpanda livekit clamav mailpit" "$local_start"
+  "postgres redis livekit clamav mailpit" "$local_start"
 assert_contains "external SMTP starts only runtime dependencies" \
-  "postgres redis redpanda livekit clamav" "$production_start"
+  "postgres redis livekit clamav" "$production_start"
 assert_contains "scanner definitions gate infrastructure readiness" \
   "scripts/media/wait-dependencies.py --scanner-only" "$local_start"
 assert_eq "external SMTP does not start a test inbox" "false" \

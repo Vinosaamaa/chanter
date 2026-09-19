@@ -123,7 +123,9 @@ public class JdbcNotificationRepository implements NotificationRepository {
             UUID userId,
             NotificationListFilter filter,
             NotificationListStatus status,
-            int limit
+            int limit,
+            Notification before,
+            boolean unreadOnly
     ) {
         StringBuilder sql = new StringBuilder("""
                 SELECT id, user_id, kind, filter_bucket, title, body_preview, course_label, href,
@@ -149,7 +151,14 @@ public class JdbcNotificationRepository implements NotificationRepository {
             sql.append(" AND done_at IS NOT NULL");
         }
 
-        sql.append(" ORDER BY created_at DESC LIMIT ?");
+        if (unreadOnly) sql.append(" AND read_at IS NULL");
+        if (before != null) {
+            sql.append(" AND (created_at < ? OR (created_at = ? AND id < ?))");
+            args.add(Timestamp.from(before.createdAt()));
+            args.add(Timestamp.from(before.createdAt()));
+            args.add(before.id());
+        }
+        sql.append(" ORDER BY created_at DESC, id DESC LIMIT ?");
         args.add(limit);
 
         return jdbcTemplate.query(sql.toString(), ROW_MAPPER, args.toArray());

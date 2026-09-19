@@ -21,6 +21,7 @@ public class ApprovedFaqService {
     private final CourseResourceAccessClient courseResourceAccessClient;
     private final FaqCandidateGrouper faqCandidateGrouper;
     private final Clock clock;
+    private final com.chanter.common.events.SearchEventWriter searchEvents;
 
     public ApprovedFaqService(
             ApprovedFaqRepository approvedFaqRepository,
@@ -28,7 +29,8 @@ public class ApprovedFaqService {
             CourseChannelAccessClient courseChannelAccessClient,
             CourseResourceAccessClient courseResourceAccessClient,
             FaqCandidateGrouper faqCandidateGrouper,
-            Clock clock
+            Clock clock,
+            com.chanter.common.events.SearchEventWriter searchEvents
     ) {
         this.approvedFaqRepository = approvedFaqRepository;
         this.supportQuestionRepository = supportQuestionRepository;
@@ -36,6 +38,7 @@ public class ApprovedFaqService {
         this.courseResourceAccessClient = courseResourceAccessClient;
         this.faqCandidateGrouper = faqCandidateGrouper;
         this.clock = clock;
+        this.searchEvents = searchEvents;
     }
 
     @Transactional(readOnly = true)
@@ -95,7 +98,9 @@ public class ApprovedFaqService {
                     clock.instant(),
                     clock.instant()
             );
-            return approvedFaqRepository.save(approvedFaq, normalizedSourceIds);
+            ApprovedFaq saved = approvedFaqRepository.save(approvedFaq, normalizedSourceIds);
+            publishSearch(saved);
+            return saved;
         }
 
         ApprovedFaq existing = approvedFaqRepository.findByIdAndCourseId(approvedFaqId, courseId)
@@ -110,7 +115,9 @@ public class ApprovedFaqService {
                 existing.createdAt(),
                 clock.instant()
         );
-        return approvedFaqRepository.update(updated, normalizedSourceIds);
+        ApprovedFaq saved = approvedFaqRepository.update(updated, normalizedSourceIds);
+        publishSearch(saved);
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -139,6 +146,11 @@ public class ApprovedFaqService {
                     "Approved FAQ access requires Cohort Enrollment or Instructor role"
             );
         }
+    }
+
+    private void publishSearch(ApprovedFaq faq) {
+        searchEvents.append(new com.chanter.common.events.SearchChange("FAQ", faq.id(), null, faq.courseId(), null, null,
+                null, faq.question(), faq.answer(), null, false));
     }
 
     private static List<UUID> normalizeSourceSupportQuestionIds(List<UUID> sourceSupportQuestionIds) {

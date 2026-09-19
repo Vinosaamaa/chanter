@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { CommunityLoungePage } from './CommunityPages'
 
 const state = vi.hoisted(() => ({ messages: [] as { id: string; senderUserId: string; body: string; createdAt: string }[] }))
@@ -11,7 +12,7 @@ vi.mock('../../../friends/friends-api', () => ({ fetchPublicProfiles: async () =
 
 afterEach(cleanup)
 beforeEach(() => { state.messages = [] })
-const mount = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><CommunityLoungePage /></QueryClientProvider>)
+const mount = () => render(<MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><CommunityLoungePage /></QueryClientProvider></MemoryRouter>)
 
 it('shows an honest empty conversation without sample people or unsupported controls', async () => {
   mount()

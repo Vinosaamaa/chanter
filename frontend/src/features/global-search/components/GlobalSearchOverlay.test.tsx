@@ -81,6 +81,25 @@ describe('GlobalSearchOverlay v2', () => {
       )
     })
   })
+
+  it('shows automatically indexed community results and opens their source', async () => {
+    searchApi.searchStudyServer.mockResolvedValue({ results: [{
+      documentType: 'ANNOUNCEMENT', courseId: null, courseTitle: 'Study community',
+      sourceId: 'announcement-real', title: 'Welcome week', snippet: 'Meet your study group',
+      href: '/app/servers/server-real/community/announcements',
+    }] })
+    const user = userEvent.setup()
+    render(<MemoryRouter initialEntries={['/app/servers/server-real/home']}>
+      <Routes><Route path="/app/servers/:serverId/*" element={<SearchHarness />} /></Routes>
+    </MemoryRouter>)
+    await user.click(screen.getByRole('button', { name: 'Open search' }))
+    await user.type(screen.getByRole('textbox', { name: /search resources/i }), 'welcome')
+    expect(await screen.findByText('Welcome week')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Refresh index' })).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Content' }), 'ANNOUNCEMENT')
+    await user.click(screen.getByText('Welcome week'))
+    expect(screen.getByTestId('search-location')).toHaveTextContent('/app/servers/server-real/community/announcements')
+  })
 })
 
 function SearchHarness() {

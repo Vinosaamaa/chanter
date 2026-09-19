@@ -37,6 +37,14 @@ public class JdbcChannelMessageRepository implements ChannelMessageRepository {
     }
 
     @Override
+    public Optional<ChannelMessage> findByIdAndChannelId(UUID id, UUID channelId) {
+        return jdbcClient.sql("SELECT * FROM channel_messages WHERE id=:id AND channel_id=:channel")
+                .param("id", id).param("channel", channelId).query((rs, row) -> new ChannelMessage(
+                    rs.getObject("id", UUID.class), rs.getObject("channel_id", UUID.class), rs.getObject("sender_user_id", UUID.class),
+                    rs.getString("body"), rs.getTimestamp("created_at").toInstant())).optional();
+    }
+
+    @Override
     public List<ChannelMessage> listByChannelSince(
             UUID channelId,
             Optional<Instant> since,

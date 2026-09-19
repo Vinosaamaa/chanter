@@ -33,7 +33,15 @@ public class JdbcSearchIndexRepository {
 
     @Transactional
     public void replaceStudyServerIndex(UUID studyServerId, List<IndexEntry> entries) {
-        jdbcTemplate.update("DELETE FROM search_index_entries WHERE study_server_id = ?", studyServerId);
+        jdbcTemplate.queryForObject("SELECT id FROM durable_consumer_lock WHERE id=1 FOR UPDATE", Integer.class);
+        jdbcTemplate.update("""
+            DELETE FROM search_index_entries s WHERE study_server_id = ? AND NOT EXISTS
+            (SELECT 1 FROM durable_event_cursor c WHERE c.aggregate_key=CONCAT(s.document_type, ':', CAST(s.source_id AS VARCHAR)))
+            """, studyServerId);
+        entries = entries.stream().filter(entry -> jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM durable_event_cursor WHERE aggregate_key=?", Integer.class,
+                entry.documentType().name() + ":" + entry.sourceId()) == 0).toList();
+        final List<IndexEntry> legacyEntries = entries;
 
         if (entries.isEmpty()) {
             return;
@@ -42,7 +50,7 @@ public class JdbcSearchIndexRepository {
         jdbcTemplate.batchUpdate(INSERT_ENTRY_SQL, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement preparedStatement, int index) throws SQLException {
-                IndexEntry entry = entries.get(index);
+                IndexEntry entry = legacyEntries.get(index);
                 preparedStatement.setObject(1, entry.id());
                 preparedStatement.setObject(2, entry.studyServerId());
                 preparedStatement.setObject(3, entry.courseId());
@@ -56,7 +64,7 @@ public class JdbcSearchIndexRepository {
 
             @Override
             public int getBatchSize() {
-                return entries.size();
+                return legacyEntries.size();
             }
         });
     }
@@ -67,17 +75,13 @@ public class JdbcSearchIndexRepository {
             String query,
             int limit
     ) {
-        if (visibleCourseIds.isEmpty()) {
-            return List.of();
-        }
-
         String trimmedQuery = query.trim();
         if (trimmedQuery.isEmpty()) {
             return List.of();
         }
 
         String pattern = likePattern(trimmedQuery);
-        String placeholders = String.join(",", visibleCourseIds.stream().map(id -> "?").toList());
+        String placeholders = visibleCourseIds.isEmpty() ? "NULL" : String.join(",", visibleCourseIds.stream().map(id -> "?").toList());
         Object[] args = new Object[visibleCourseIds.size() + 4];
         args[0] = studyServerId;
         for (int index = 0; index < visibleCourseIds.size(); index++) {
@@ -89,10 +93,10 @@ public class JdbcSearchIndexRepository {
 
         return jdbcTemplate.query(
                 """
-                SELECT document_type, course_id, course_title, source_id, title, body_text
+                SELECT document_type, course_id, course_title, source_id, title, body_text, href, channel_id, channel_scope
                 FROM search_index_entries
-                WHERE study_server_id = ?
-                  AND course_id IN (%s)
+                WHERE (study_server_id = ? OR study_server_id IS NULL)
+                  AND (course_id IS NULL OR course_id IN (%s))
                   AND (
                     LOWER(title) LIKE ? ESCAPE '\\'
                     OR LOWER(body_text) LIKE ? ESCAPE '\\'
@@ -118,12 +122,25 @@ public class JdbcSearchIndexRepository {
         String title = resultSet.getString("title");
         return new SearchHit(
                 SearchDocumentType.valueOf(resultSet.getString("document_type")),
-                UUID.fromString(resultSet.getString("course_id")),
+                resultSet.getObject("course_id", UUID.class),
                 resultSet.getString("course_title"),
                 UUID.fromString(resultSet.getString("source_id")),
                 title,
-                snippet(title, bodyText)
+                snippet(title, bodyText), resultSet.getString("href"), resultSet.getObject("channel_id", UUID.class), resultSet.getString("channel_scope")
         );
+    }
+
+    public void apply(com.chanter.common.events.SearchChange change) {
+        jdbcTemplate.update("DELETE FROM search_index_entries WHERE document_type=? AND source_id=?", change.type(), change.sourceId());
+        if (!change.deleted()) jdbcTemplate.update("""
+            INSERT INTO search_index_entries (id, study_server_id, course_id, course_title, document_type, source_id,
+                title, body_text, indexed_at, href, channel_id, channel_scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, UUID.randomUUID(), change.studyServerId(), change.courseId(), "", change.type(), change.sourceId(),
+                truncate(change.title(), 512), truncate(change.body(), 4000), Timestamp.from(Instant.now()), change.href(), change.channelId(), change.channelScope());
+    }
+
+    private static String truncate(String value, int limit) {
+        return value == null ? "" : value.substring(0, Math.min(limit, value.length()));
     }
 
     private String snippet(String title, String bodyText) {

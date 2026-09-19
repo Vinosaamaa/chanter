@@ -8,6 +8,8 @@ spring:
     locations: classpath:db/migration
 
 chanter:
+  events:
+    dispatch-enabled: false
   jwt:
     secret: chanter-test-jwt-secret-32bytes-min!!
     access-token-ttl: 15m

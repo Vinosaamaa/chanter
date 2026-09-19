@@ -21,8 +21,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class CommunityAnnouncementService {
     private final com.chanter.common.events.SearchEventWriter searchEvents;
 
-    private static final int MAX_FANOUT = 200;
-
     private final CommunityAnnouncementRepository announcementRepository;
     private final StudyServerRepository studyServerRepository;
     private final CourseRepository courseRepository;
@@ -109,6 +107,7 @@ public class CommunityAnnouncementService {
             String body
     ) {
         requireStudyServerOwner(studyServerId, actorUserId);
+        announcementRepository.lockById(announcementId);
         CommunityAnnouncement existing = requireAnnouncementOnServer(studyServerId, announcementId, actorUserId);
         if (existing.archived()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Archived announcements cannot be edited");
@@ -139,6 +138,7 @@ public class CommunityAnnouncementService {
             UUID actorUserId
     ) {
         requireStudyServerOwner(studyServerId, actorUserId);
+        announcementRepository.lockById(announcementId);
         CommunityAnnouncement existing = requireAnnouncementOnServer(studyServerId, announcementId, actorUserId);
         if (existing.archived()) {
             return existing;
@@ -158,6 +158,7 @@ public class CommunityAnnouncementService {
             boolean liked
     ) {
         requireStudyServerMember(studyServerId, actorUserId);
+        announcementRepository.lockById(announcementId);
         CommunityAnnouncement existing = requireAnnouncementOnServer(studyServerId, announcementId, actorUserId);
         if (existing.archived()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Archived announcements cannot be reacted to");
@@ -191,9 +192,6 @@ public class CommunityAnnouncementService {
         for (StudyServerMember member : members) {
             if (!member.userId().equals(actorUserId)) {
                 recipientIds.add(member.userId());
-            }
-            if (recipientIds.size() >= MAX_FANOUT) {
-                break;
             }
         }
         String href = "/app/servers/" + announcement.studyServerId() + "/community/announcements";

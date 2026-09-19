@@ -40,6 +40,10 @@ class GlobalSearchSmokeTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired private com.fasterxml.jackson.databind.ObjectMapper mapper;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @MockitoBean private com.chanter.search.application.SearchSourceClient sourceClient;
+
     @MockitoBean
     private CommunityNavigationClient communityNavigationClient;
 
@@ -51,6 +55,8 @@ class GlobalSearchSmokeTest {
 
     @BeforeEach
     void setUp() {
+        jdbc.update("DELETE FROM search_index_entries");
+        jdbc.update("DELETE FROM durable_event_cursor");
         when(communityNavigationClient.fetchNavigation(eq(STUDY_SERVER_ID), eq(INSTRUCTOR_ID)))
                 .thenReturn(new CommunityNavigationClient.StudyServerNavigation(
                         STUDY_SERVER_ID,
@@ -179,5 +185,52 @@ class GlobalSearchSmokeTest {
                         .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.results.length()").value(0));
+    }
+
+    @Test
+    void automaticEventsDeduplicateAndOldUpdatesCannotRestoreDeletedContent() throws Exception {
+        var change = new com.chanter.common.events.SearchChange("RESOURCE", RESOURCE_ID, null, COURSE_ID,
+                null, null, null, "Automatic slides", "automatic content", null, false);
+        publish(change, 10, "media");
+        publish(change, 10, "media");
+        mockMvc.perform(get("/api/v1/study-servers/{id}/search", STUDY_SERVER_ID).param("q", "automatic")
+                .header(AuthHeaders.USER_ID, LEARNER_ID).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.results.length()").value(1));
+        publish(new com.chanter.common.events.SearchChange("RESOURCE", RESOURCE_ID, null, COURSE_ID,
+                null, null, null, null, null, null, true), 11, "media");
+        publish(change, 10, "media");
+        publish(change, 12, "media");
+        mockMvc.perform(post("/api/v1/study-servers/{id}/search/reindex", STUDY_SERVER_ID)
+                .header(AuthHeaders.USER_ID, INSTRUCTOR_ID).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/study-servers/{id}/search", STUDY_SERVER_ID).param("q", "slides")
+                .header(AuthHeaders.USER_ID, LEARNER_ID).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.results.length()").value(0));
+    }
+
+    @Test
+    void hubEventSearchRequiresCurrentSourcePermissionEvenWithNoCourses() throws Exception {
+        UUID id = UUID.randomUUID();
+        var hit = new com.chanter.search.domain.SearchHit(com.chanter.search.domain.SearchDocumentType.EVENT,
+                null, "", id, "Seminar", "Seminar details", "/app/servers/" + STUDY_SERVER_ID + "/community/events", null, null);
+        publish(new com.chanter.common.events.SearchChange("EVENT", id, STUDY_SERVER_ID, null,
+                null, null, null, "Seminar", "Seminar details", hit.href(), false), 1, "community");
+        when(sourceClient.currentVisibleHit(org.mockito.ArgumentMatchers.any(), eq(STUDY_SERVER_ID), eq(OTHER_LEARNER_ID)))
+                .thenReturn(java.util.Optional.of(hit));
+        mockMvc.perform(get("/api/v1/study-servers/{id}/search", STUDY_SERVER_ID).param("q", "seminar")
+                .header(AuthHeaders.USER_ID, OTHER_LEARNER_ID).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.results.length()").value(1));
+        when(sourceClient.currentVisibleHit(org.mockito.ArgumentMatchers.any(), eq(STUDY_SERVER_ID), eq(OTHER_LEARNER_ID)))
+                .thenReturn(java.util.Optional.empty());
+        mockMvc.perform(get("/api/v1/study-servers/{id}/search", STUDY_SERVER_ID).param("q", "seminar")
+                .header(AuthHeaders.USER_ID, OTHER_LEARNER_ID).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.results.length()").value(0));
+    }
+
+    private void publish(com.chanter.common.events.SearchChange change, long revision, String producer) throws Exception {
+        var event = new com.chanter.common.events.DurableEvent(UUID.randomUUID(), 1, producer, revision, change.type(),
+                change.type() + ":" + change.sourceId(), mapper.writeValueAsString(change));
+        mockMvc.perform(post("/api/v1/internal/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(event)))
+                .andExpect(status().isNoContent());
     }
 }

@@ -9,6 +9,8 @@ import java.util.UUID;
 
 public interface CommunityAnnouncementRepository {
 
+    void lockById(UUID id);
+
     CommunityAnnouncement save(CommunityAnnouncement announcement);
 
     CommunityAnnouncement update(CommunityAnnouncement announcement);

@@ -124,6 +124,7 @@ public class CommunityEventService {
             UUID cohortId
     ) {
         requireStudyServerOwner(studyServerId, actorUserId);
+        eventRepository.lockById(eventId);
         CommunityEvent existing = requireEventOnServer(studyServerId, eventId, actorUserId);
         if (existing.cancelled()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cancelled events cannot be edited");
@@ -160,6 +161,7 @@ public class CommunityEventService {
     @Transactional
     public CommunityEvent cancelEvent(UUID studyServerId, UUID eventId, UUID actorUserId) {
         requireStudyServerOwner(studyServerId, actorUserId);
+        eventRepository.lockById(eventId);
         CommunityEvent existing = requireEventOnServer(studyServerId, eventId, actorUserId);
         if (existing.cancelled()) {
             return existing;
@@ -250,24 +252,17 @@ public class CommunityEventService {
     private void notifyMembersOfEvent(CommunityEvent event, UUID actorUserId) {
         Set<UUID> recipientIds = new LinkedHashSet<>();
         if (event.visibility() == CommunityEventVisibility.COHORT && event.cohortId() != null) {
-            CohortEnrollmentList enrollments = courseRepository.listCohortEnrollments(
-                    event.cohortId(),
-                    MAX_FANOUT,
-                    0,
-                    null
-            );
-            for (CohortEnrollment enrollment : enrollments.enrollments()) {
-                if (!enrollment.learnerUserId().equals(actorUserId)) {
-                    recipientIds.add(enrollment.learnerUserId());
+            for (int offset = 0; ; offset += MAX_FANOUT) {
+                CohortEnrollmentList enrollments = courseRepository.listCohortEnrollments(event.cohortId(), MAX_FANOUT, offset, null);
+                for (CohortEnrollment enrollment : enrollments.enrollments()) {
+                    if (!enrollment.learnerUserId().equals(actorUserId)) recipientIds.add(enrollment.learnerUserId());
                 }
+                if (enrollments.enrollments().size() < MAX_FANOUT) break;
             }
         } else {
             for (StudyServerMember member : studyServerRepository.findMembers(event.studyServerId())) {
                 if (!member.userId().equals(actorUserId)) {
                     recipientIds.add(member.userId());
-                }
-                if (recipientIds.size() >= MAX_FANOUT) {
-                    break;
                 }
             }
         }

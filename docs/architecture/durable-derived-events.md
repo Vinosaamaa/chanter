@@ -22,4 +22,6 @@ Authenticated internal inspection reports pending/in-flight/failed counts, oldes
 
 Tests must prove rollback atomicity, actual destination outage/restart, duplicate acknowledgement loss, stale lease recovery, bounded retries, dead-letter inspection/replay, both update/delete orders and authorization revocation. Source public HTTP tests prove automatic publication; end-to-end checks prove visible search and Inbox convergence. PostgreSQL verification establishes production locking behavior separately from fast H2 tests.
 
-Media and agent integration waits for accepted #318. Its AVAILABLE-only resource state, live viewer checks and permanent deletion markers must dominate delayed indexing. Deployment wiring is coordinated with #243; the issue remains open through merged-main and release verification.
+Media integration follows accepted #318. Its AVAILABLE-only resource state, live viewer checks and permanent deletion markers dominate delayed indexing. Agent ingestion remains unchanged. Deployment wiring is coordinated with #243; the issue remains open through merged-main and release verification.
+
+The release must advance the compatibility epoch to **5** before building this version. Rollback across the durable delivery and search event contract is not supported. The new source outbox and consumer cursor migrations are additive, but an older application cannot preserve these delivery guarantees. Recovery uses a compatible epoch-5 release and retained database state. Production URL/token wiring is owned by #243.

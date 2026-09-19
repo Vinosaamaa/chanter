@@ -8,8 +8,9 @@ public record DurableEvent(UUID id, int schemaVersion, String producer, long rev
     public void validate() {
         if (id == null || schemaVersion != 1 || revision < 1 || producer == null
                 || !java.util.Set.of("community", "message", "media").contains(producer)
-                || kind == null || aggregateKey == null || aggregateKey.length() > 300
-                || payload == null || payload.length() > 32000) {
+                || kind == null || kind.isBlank() || kind.length() > 40
+                || aggregateKey == null || aggregateKey.isBlank() || aggregateKey.length() > 300
+                || payload == null || payload.length() > 65536) {
             throw new IllegalArgumentException("Unsupported or invalid durable event");
         }
     }

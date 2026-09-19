@@ -28,6 +28,11 @@ public class JdbcCommunityAnnouncementRepository implements CommunityAnnouncemen
         this.dataSource = dataSource;
     }
 
+    @Override
+    public void lockById(UUID id) {
+        jdbcClient.sql("SELECT id FROM community_announcements WHERE id = :id FOR UPDATE").param("id", id).query(UUID.class).optional();
+    }
+
     private boolean usePostgresUpsert() {
         if (postgresDatabase == null) {
             synchronized (this) {

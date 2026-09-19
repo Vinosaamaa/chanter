@@ -12,6 +12,8 @@ import java.util.UUID;
 
 public interface CommunityEventRepository {
 
+    void lockById(UUID id);
+
     CommunityEvent save(CommunityEvent event);
 
     CommunityEvent update(CommunityEvent event);

@@ -18,7 +18,9 @@ public interface NotificationRepository {
             UUID userId,
             NotificationListFilter filter,
             NotificationListStatus status,
-            int limit
+            int limit,
+            Notification before,
+            boolean unreadOnly
     );
 
     long countUnread(UUID userId);

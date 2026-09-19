@@ -57,22 +57,37 @@ public class NotificationService {
         return repository.upsert(notification);
     }
 
-    @Transactional(readOnly = true)
     public List<Notification> list(
             UUID userId,
             NotificationListFilter filter,
             NotificationListStatus status
     ) {
-        return repository.findForUser(userId, filter, status, DEFAULT_LIST_LIMIT).stream().filter(visibility::canView).toList();
+        var visible = new java.util.ArrayList<Notification>();
+        Notification before = null;
+        while (visible.size() < DEFAULT_LIST_LIMIT) {
+            var page = repository.findForUser(userId, filter, status, DEFAULT_LIST_LIMIT, before, false);
+            for (var notification : page) {
+                if (visibility.canView(notification)) visible.add(notification);
+                if (visible.size() == DEFAULT_LIST_LIMIT) break;
+            }
+            if (page.size() < DEFAULT_LIST_LIMIT) break;
+            before = page.getLast();
+        }
+        return List.copyOf(visible);
     }
 
-    @Transactional(readOnly = true)
     public long unreadCount(UUID userId) {
-        return repository.findForUser(userId, NotificationListFilter.ALL, NotificationListStatus.OPEN, Integer.MAX_VALUE)
-                .stream().filter(notification -> notification.readAt() == null).filter(visibility::canView).count();
+        long count = 0;
+        Notification before = null;
+        while (true) {
+            var page = repository.findForUser(userId, NotificationListFilter.ALL, NotificationListStatus.OPEN,
+                    DEFAULT_LIST_LIMIT, before, true);
+            count += page.stream().filter(visibility::canView).count();
+            if (page.size() < DEFAULT_LIST_LIMIT) return count;
+            before = page.getLast();
+        }
     }
 
-    @Transactional
     public Notification markRead(UUID notificationId, UUID userId) {
         requireVisible(notificationId, userId);
         if (!repository.markRead(notificationId, userId, clock.instant())) {
@@ -82,7 +97,6 @@ public class NotificationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));
     }
 
-    @Transactional
     public Notification markDone(UUID notificationId, UUID userId) {
         requireVisible(notificationId, userId);
         if (!repository.markDone(notificationId, userId, clock.instant())) {

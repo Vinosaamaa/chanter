@@ -90,4 +90,21 @@ class ResourceLifecycleTest {
         assertThat(lifecycle.claim(false)).isEmpty();
         assertThat(lifecycle.reserve(resource).publicStatus()).isEqualTo("FAILED");
     }
+
+    @Test
+    void onlyAvailableResourcesPublishAndDeletionDominatesLateScan() {
+        var resource = lifecycle.reserve(candidate(UUID.randomUUID()));
+        lifecycle.quarantine(resource.id());
+        assertThat(jdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=:key")
+                .param("key", "RESOURCE:" + resource.id()).query(Integer.class).single()).isZero();
+        var scan = lifecycle.claim(false).orElseThrow();
+        assertThat(lifecycle.finishScan(resource.id(), scan.leaseId(), "AVAILABLE")).isTrue();
+        lifecycle.requestDelete(resource.id());
+        assertThat(lifecycle.finishScan(resource.id(), scan.leaseId(), "AVAILABLE")).isFalse();
+        var payloads = jdbc.sql("SELECT payload FROM durable_outbox WHERE aggregate_key=:key ORDER BY revision")
+                .param("key", "RESOURCE:" + resource.id()).query(String.class).list();
+        assertThat(payloads).hasSize(2);
+        assertThat(payloads.get(0)).contains("\"deleted\":false");
+        assertThat(payloads.get(1)).contains("\"deleted\":true");
+    }
 }

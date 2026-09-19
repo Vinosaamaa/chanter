@@ -10,12 +10,20 @@ import {
   supportOperationPath,
 } from '../../shell/shell-routes'
 import { useGlobalSearch } from '../hooks/use-global-search'
-import { reindexStudyServer, searchStudyServer } from '../global-search-api'
+import { searchStudyServer } from '../global-search-api'
 import type { GlobalSearchHit } from '../global-search-types'
 import { v2CoursePath } from '../../v2-shell/v2-routes'
 
-type ContentTypeFilter = 'all' | 'RESOURCE' | 'FAQ'
+type ContentTypeFilter = 'all' | GlobalSearchHit['documentType']
 type SearchDestinationVariant = 'legacy' | 'v2'
+
+const contentSections = [
+  { type: 'RESOURCE', title: 'Course resources', label: 'Resource' },
+  { type: 'FAQ', title: 'Approved FAQs', label: 'FAQ' },
+  { type: 'MESSAGE', title: 'Messages', label: 'Message' },
+  { type: 'EVENT', title: 'Events', label: 'Event' },
+  { type: 'ANNOUNCEMENT', title: 'Announcements', label: 'Announcement' },
+] as const
 
 function hitDestination(
   serverId: string,
@@ -23,6 +31,8 @@ function hitDestination(
   resourcesChannelId: string | null,
   variant: SearchDestinationVariant,
 ): string {
+  if (hit.href?.startsWith('/app/')) return hit.href
+  if (!hit.courseId) return `/app/servers/${serverId}/home`
   if (variant === 'v2') {
     return v2CoursePath(
       serverId,
@@ -70,8 +80,6 @@ function GlobalSearchOverlayPanel({
   const [results, setResults] = useState<GlobalSearchHit[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isSearching, setIsSearching] = useState(false)
-  const [isReindexing, setIsReindexing] = useState(false)
-  const [reindexMessage, setReindexMessage] = useState<string | null>(null)
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all')
   const [courseFilter, setCourseFilter] = useState<string>('all')
 
@@ -79,6 +87,9 @@ function GlobalSearchOverlayPanel({
 
   const handleQueryChange = (value: string) => {
     setQuery(value)
+    setResults([])
+    setError(null)
+    setIsSearching(value.trim().length >= 2)
     if (value.trim().length < 2) {
       setResults([])
       setError(null)
@@ -120,9 +131,6 @@ function GlobalSearchOverlayPanel({
     }
   }, [trimmedQuery, serverId])
 
-  const canManage = navigationQuery.data?.courses.some(
-    (course) => course.capabilities.canUploadResources,
-  ) ?? false
   const courseIds = useMemo(
     () => new Set((navigationQuery.data?.courses ?? []).map((course) => course.id)),
     [navigationQuery.data?.courses],
@@ -133,7 +141,7 @@ function GlobalSearchOverlayPanel({
 
   const groupedResults = useMemo(() => {
     const base = (serverId && trimmedQuery.length >= 2 ? results : []).filter((hit) => {
-      if (!courseIds.has(hit.courseId)) {
+      if (hit.courseId && !courseIds.has(hit.courseId)) {
         return false
       }
       if (contentTypeFilter !== 'all' && hit.documentType !== contentTypeFilter) {
@@ -145,17 +153,7 @@ function GlobalSearchOverlayPanel({
       return true
     })
 
-    const resourceResults: GlobalSearchHit[] = []
-    const faqResults: GlobalSearchHit[] = []
-    for (const hit of base) {
-      if (hit.documentType === 'RESOURCE') {
-        resourceResults.push(hit)
-      } else if (hit.documentType === 'FAQ') {
-        faqResults.push(hit)
-      }
-    }
-
-    return { all: base, resourceResults, faqResults }
+    return { all: base, sections: contentSections.map(section => ({ ...section, hits: base.filter(hit => hit.documentType === section.type) })) }
   }, [activeCourseFilter, contentTypeFilter, courseIds, results, serverId, trimmedQuery])
 
   const courseLookup = useMemo(() => {
@@ -168,25 +166,6 @@ function GlobalSearchOverlayPanel({
     }
     return { resourcesChannelByCourseId }
   }, [navigationQuery.data?.courses])
-
-  const onReindex = async () => {
-    if (!serverId) {
-      return
-    }
-
-    setIsReindexing(true)
-    setError(null)
-    setReindexMessage(null)
-
-    try {
-      const response = await reindexStudyServer(serverId)
-      setReindexMessage(`Indexed ${response.indexedDocuments} documents for this Study Server.`)
-    } catch (caught) {
-      setError(formatUserFacingApiError(caught, 'Unable to refresh the search index.'))
-    } finally {
-      setIsReindexing(false)
-    }
-  }
 
   return (
     <section
@@ -202,7 +181,7 @@ function GlobalSearchOverlayPanel({
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-app-accent">
               Search
             </p>
-            <h2 className="text-sm font-semibold text-app-text">Course knowledge</h2>
+            <h2 className="text-sm font-semibold text-app-text">Study Server search</h2>
           </div>
           <button
             type="button"
@@ -213,12 +192,12 @@ function GlobalSearchOverlayPanel({
           </button>
         </div>
         <label className="mt-3 flex flex-col gap-1 text-xs text-app-muted">
-          Search resources and approved FAQs
+          Search resources, FAQs, messages and community
           <input
             autoFocus
             value={query}
             onChange={(event) => handleQueryChange(event.target.value)}
-            placeholder="Search resources and approved FAQs"
+            placeholder="Search resources, FAQs, messages and community"
             className="rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm text-app-text"
           />
         </label>
@@ -229,7 +208,7 @@ function GlobalSearchOverlayPanel({
             onChange={setCourseFilter}
             disabled={variant === 'v2' && Boolean(routeCourseId)}
             options={[
-              { value: 'all', label: 'All courses' },
+              { value: 'all', label: 'Entire Study Server' },
               ...(navigationQuery.data?.courses.map((course) => ({
                 value: course.id,
                 label: course.title,
@@ -244,15 +223,18 @@ function GlobalSearchOverlayPanel({
               { value: 'all', label: 'All types' },
               { value: 'RESOURCE', label: 'Resources' },
               { value: 'FAQ', label: 'FAQs' },
+              { value: 'MESSAGE', label: 'Messages' },
+              { value: 'EVENT', label: 'Events' },
+              { value: 'ANNOUNCEMENT', label: 'Announcements' },
             ]}
           />
         </div>
       </header>
 
-      <div className="max-h-[28rem] overflow-y-auto p-2">
+      <div className="max-h-[min(28rem,calc(100dvh-18rem))] overflow-y-auto p-2">
         {!serverId ? (
           <p className="px-3 py-6 text-sm text-app-muted">
-            Open a Study Server to search its resources and FAQs.
+            Open a Study Server to search its content.
           </p>
         ) : null}
 
@@ -270,20 +252,16 @@ function GlobalSearchOverlayPanel({
           </p>
         ) : null}
 
-        {reindexMessage ? (
-          <p role="status" className="px-3 py-2 text-sm text-emerald-200">
-            {reindexMessage}
-          </p>
-        ) : null}
 
         {!isSearching && serverId && groupedResults.all.length === 0 && trimmedQuery.length >= 2 && !error ? (
-          <p className="px-3 py-6 text-sm text-app-muted">No matching resources or FAQs.</p>
+          <p className="px-3 py-6 text-sm text-app-muted">No matches. Try another phrase or change your filters.</p>
         ) : null}
 
-        <SearchResultSection
-          title="Course resources"
-          count={groupedResults.resourceResults.length}
-          hits={groupedResults.resourceResults}
+        {groupedResults.sections.map(section => <SearchResultSection
+          key={section.type}
+          title={section.title}
+          count={section.hits.length}
+          hits={section.hits}
           serverId={serverId}
           courseLookup={courseLookup}
           variant={variant}
@@ -291,38 +269,13 @@ function GlobalSearchOverlayPanel({
             onClose()
             navigate(destination)
           }}
-        />
-        <SearchResultSection
-          title="Approved FAQs"
-          count={groupedResults.faqResults.length}
-          hits={groupedResults.faqResults}
-          serverId={serverId}
-          courseLookup={courseLookup}
-          variant={variant}
-          onNavigate={(destination) => {
-            onClose()
-            navigate(destination)
-          }}
-        />
+        />)}
       </div>
 
-      {serverId && canManage ? (
-        <footer className="flex items-center justify-between border-t border-app-border px-4 py-3 text-xs text-app-muted">
-          <span>Instructors can refresh the search index after uploading new content.</span>
-          <button
-            type="button"
-            disabled={isReindexing}
-            onClick={() => void onReindex()}
-            className="rounded-lg border border-app-border px-3 py-1.5 text-sm text-app-text hover:bg-app-elevated disabled:opacity-60"
-          >
-            {isReindexing ? 'Indexing…' : 'Refresh index'}
-          </button>
-        </footer>
-      ) : null}
 
-      {serverId && !canManage ? (
+      {serverId ? (
         <footer className="border-t border-app-border px-4 py-3 text-xs text-app-muted">
-          Showing enrollment-scoped results only. ⌘F search · esc close
+          Results update automatically. Only content you can access appears.
         </footer>
       ) : null}
     </section>
@@ -392,7 +345,7 @@ function SearchResultSection({
       </div>
       <ul className="flex flex-col gap-1">
         {hits.map((hit) => {
-          const resourcesChannelId = courseLookup.resourcesChannelByCourseId.get(hit.courseId) ?? null
+          const resourcesChannelId = courseLookup.resourcesChannelByCourseId.get(hit.courseId ?? '') ?? null
           const destination = hitDestination(serverId ?? '', hit, resourcesChannelId, variant)
 
           return (
@@ -405,7 +358,7 @@ function SearchResultSection({
                 onClick={() => onNavigate(destination)}
               >
                 <span className="text-xs font-semibold uppercase tracking-[0.12em] text-app-accent">
-                  {hit.documentType === 'RESOURCE' ? 'Resource' : 'FAQ'} · {hit.courseTitle}
+                  {contentSections.find(section => section.type === hit.documentType)?.label} · {hit.courseTitle}
                 </span>
                 <span className="mt-1 text-sm font-medium text-app-text">{hit.title}</span>
                 <span className="mt-1 text-xs text-app-muted">{hit.snippet}</span>
@@ -467,7 +420,7 @@ export function GlobalSearchOverlay({ variant = 'legacy' }: { variant?: SearchDe
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 py-16">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 py-6 sm:py-16">
       <button
         type="button"
         aria-label="Close search"

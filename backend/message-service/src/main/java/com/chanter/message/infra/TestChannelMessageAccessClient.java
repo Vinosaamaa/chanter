@@ -29,7 +29,9 @@ public class TestChannelMessageAccessClient implements ChannelMessageAccessClien
     public void grant(UUID channelId, UUID userId, ChannelScope channelScope) {
         grants.put(
                 new AccessKey(channelId, userId, channelScope),
-                new ChannelMessageAccess(channelId, channelScope, true, true)
+                new ChannelMessageAccess(channelId, channelScope, true, true,
+                        channelScope == ChannelScope.STUDY_SERVER ? channelId : null,
+                        channelScope == ChannelScope.COURSE ? channelId : null)
         );
     }
 
