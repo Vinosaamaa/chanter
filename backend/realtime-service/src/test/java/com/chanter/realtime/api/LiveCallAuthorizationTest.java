@@ -1,0 +1,52 @@
+package com.chanter.realtime.api;
+
+import static org.mockito.Mockito.when;
+
+import com.chanter.common.auth.AuthHeaders;
+import com.chanter.realtime.application.DirectMessageCallAuthorizer;
+import com.chanter.realtime.application.DirectMessageCallStore;
+import com.chanter.realtime.domain.DirectMessageCall;
+import com.chanter.realtime.domain.DirectMessageCallStatus;
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
+
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
+class LiveCallAuthorizationTest {
+    @LocalServerPort int port;
+    WebTestClient client;
+    @BeforeEach void connect() { client=WebTestClient.bindToServer().baseUrl("http://localhost:"+port).build(); }
+    @MockitoBean DirectMessageCallStore calls;
+    @MockitoBean DirectMessageCallAuthorizer authority;
+
+    @Test void aSavedActiveCallDoesNotBypassANewBlockOrEndedCall() {
+        UUID call=UUID.randomUUID(),caller=UUID.randomUUID(),callee=UUID.randomUUID();
+        String path="/internal/v1/dm-calls/"+call+"/media-access?userId="+caller;
+        when(calls.findById(call)).thenReturn(Optional.of(new DirectMessageCall(call,caller,callee,DirectMessageCallStatus.ACTIVE,Instant.now())));
+        when(authority.requireCallAccess(caller,callee)).thenReturn(Mono.empty());
+        client.get().uri(path).header(AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-realtime")
+                .exchange().expectStatus().isNoContent();
+        when(authority.requireCallAccess(caller,callee)).thenReturn(Mono.error(new ResponseStatusException(HttpStatus.FORBIDDEN)));
+        client.get().uri(path).header(AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-realtime")
+                .exchange().expectStatus().isForbidden();
+        when(calls.findById(call)).thenReturn(Optional.empty());
+        client.get().uri(path).header(AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-realtime")
+                .exchange().expectStatus().isNotFound();
+    }
+
+    @Test void internalCallStateCannotBeReadWithAUserHeaderAlone() {
+        client.get().uri("/internal/v1/dm-calls/"+UUID.randomUUID()+"/media-access?userId="+UUID.randomUUID())
+                .header(AuthHeaders.USER_ID,UUID.randomUUID().toString()).exchange().expectStatus().isUnauthorized();
+    }
+}
