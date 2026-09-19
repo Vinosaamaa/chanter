@@ -1,6 +1,7 @@
 package com.chanter.auth.application;
 
 import com.chanter.auth.domain.AuthUser;
+import com.chanter.auth.moderation.ModerationRestrictions;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -39,6 +40,7 @@ public class AuthSessionService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
     private final ProductionAuthService productionAuthService;
+    private final ModerationRestrictions moderation;
     private final Duration refreshTokenTtl;
     private final boolean requireEmailVerification;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -49,6 +51,7 @@ public class AuthSessionService {
             PasswordEncoder passwordEncoder,
             JwtTokenService jwtTokenService,
             ProductionAuthService productionAuthService,
+            ModerationRestrictions moderation,
             @Value("${chanter.jwt.refresh-token-ttl:7d}") Duration refreshTokenTtl,
             @Value("${chanter.auth.require-email-verification:false}") boolean requireEmailVerification
     ) {
@@ -57,6 +60,7 @@ public class AuthSessionService {
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
         this.productionAuthService = productionAuthService;
+        this.moderation = moderation;
         this.refreshTokenTtl = refreshTokenTtl;
         this.requireEmailVerification = requireEmailVerification;
     }
@@ -154,6 +158,7 @@ public class AuthSessionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
         AuthUser user = authUserRepository.findById(session.userId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+        moderation.requireActiveAccount(user.id());
         return new AuthSession(jwtTokenService.createAccessToken(user.id(), session.id()), replacement,
                 jwtTokenService.accessTokenTtlSeconds(), AuthUserProfile.from(user), session.expiresAt());
     }
@@ -180,17 +185,21 @@ public class AuthSessionService {
     }
 
     public AuthUserProfile requireUser(UUID userId) {
+        moderation.requireActiveAccount(userId);
         return authUserRepository.findById(userId)
                 .map(AuthUserProfile::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 
     public UUID requireUserIdFromAccessToken(String authorizationHeader) {
-        return jwtTokenService.parseUserId(authorizationHeader);
+        UUID user = jwtTokenService.parseUserId(authorizationHeader);
+        moderation.requireActiveAccount(user);
+        return user;
     }
 
     public JwtTokenService.AccessSession requireActiveAccessSession(String authorizationHeader) {
         var token = jwtTokenService.parseAccessSession(authorizationHeader);
+        moderation.requireActiveAccount(token.userId());
         var session = refreshTokenRepository.findActiveSessions(token.userId(), Instant.now()).stream()
                 .filter(candidate -> candidate.id().equals(token.sessionId())).findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session is no longer active"));
@@ -225,6 +234,7 @@ public class AuthSessionService {
     }
 
     private AuthSession issueSession(AuthUser user, String userAgent) {
+        moderation.requireActiveAccount(user.id());
         String refreshToken = generateRefreshToken();
         Instant now = Instant.now();
         Instant expiresAt = now.plus(refreshTokenTtl);

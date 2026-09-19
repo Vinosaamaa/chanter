@@ -1,0 +1,39 @@
+# Platform moderation
+
+Issue #249 gives users a report and block workflow and gives separately authorized operators a restricted case workspace. Study Server Owners, Instructors and TAs receive no platform privilege. The existing auth service owns operator credentials, cases, restrictions and their audit trail. Source services remain responsible for evidence authorization and content access. No new deployable service or queue is introduced.
+
+## Authority and evidence
+
+Platform roles are `REVIEWER` and `ADMIN`. A reviewer can investigate assigned cases, append notes and propose or apply reversible content restrictions within that case. An administrator can assign cases, change platform roles and suspend accounts or restrict Study Servers. Every privileged operation requires a recent second-factor step-up bound to the authenticated user and session. Revoking a role invalidates access immediately; a claim in an old access token never grants a role.
+
+Initial administrator enrollment is an explicit local operator command against an existing verified account. It records the invoking operator reason and refuses bootstrap after the first administrator exists. It is not a public endpoint or a superuser header. Enrollment, production key configuration and a real operator exercise are separate release evidence, not outcomes inferred from tests.
+
+A report names a typed source and a reason. The source service must prove that the reporter can access that exact source before accepting evidence. Evidence references do not authorize arbitrary operator reads. Case assignment, operator role and a supplied investigation reason authorize a bounded evidence read, which is audited before returning content. Reporter-submitted text cannot select a URL or an arbitrary database query. Reports about DMs require a participant; reports about channel messages/resources/Study Servers require the existing source permission. Blocking must not delete historic report evidence.
+
+## Reversible enforcement
+
+Restrictions are durable records with a typed target, case, actor, reason, start and expiry. Revocation appends an action and ends the restriction; it never erases the prior record. A duplicate request has a stable operation identity. Restrictions support accounts, messages, resources and Study Servers. Restriction changes and their audit records commit together.
+
+Auth checks current account status before issuing or refreshing a session and when introspecting an existing session. Other services check current account status before acting on an authenticated identity, including trusted service hops. An unavailable authority cannot be treated as an active account. Existing realtime sessions need both per-action checks and bounded periodic revalidation; tests must exercise a connected client when a restriction changes. Content owners check current restriction status before returning content or issuing media access, so stale search projections and previously queued events cannot restore quarantined material. Actual enforcement must be demonstrated across services before suspension is reported complete.
+
+Remote access checks use a two-second connection deadline, three-second request deadline and at most 32 simultaneous calls per service. Saturation or an authority outage returns 503 without performing the protected action. Positive decisions are not cached. Realtime checks must remain sequential per connection, with periodic checks also bounded by the shared limit. Generated production composition already supplies `AUTH_SERVICE_URL=http://auth-service:8080` to every listed backend. The native development default is separate. The deployment owner still provisions the optional distinct operator key. The internal contract is `POST /internal/v1/moderation/access`, authenticated with the existing service token, with an optional user UUID and at most 100 typed source targets. A request must contain an account or source. Only an explicit successful allow response grants access.
+
+Authenticator codes follow [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238), with a 30-second step and one adjacent step of clock tolerance. Accepted counters cannot be reused. The database persists verification attempt limits. Enrollment secrets use authenticated encryption bound to the operator UUID and a separate `CHANTER_OPERATOR_ENCRYPTION_KEY`, a base64-encoded 32-byte key. Missing operator configuration disables verification, while ordinary product authentication continues. Secrets are shown only during enrollment and are absent from audit records.
+
+Blocking remains owned by message-service. Pair-level serialization must close the check/write race between a block and a new request or DM. Unblocking removes only the requesting user's block. Presence delivery and call authorization recheck the pair, and active client state is invalidated without deleting saved messages.
+
+## Audit and operating limits
+
+Privileged reads and mutations append actor, action, target, reason, timestamp, correlation and bounded before/after state. The application exposes no audit update/delete operation. PostgreSQL protection rejects audit changes outside append, and verification covers database attempts as well as API behavior. This protects against application mutations; a database superuser is outside that guarantee and is governed by deployment access and backups.
+
+Report search and evidence are paged and bounded. Case notes are append-only. Notifications contain a user-safe reason and an in-product appeal reference, not internal notes. Suspended users retain a narrowly scoped appeal path. Broad retention/legal policy remains #251; no automatic evidence purge or unverified retention promise is introduced here.
+
+The planned appeal path uses an existing verified account email, including for passwordless and provider accounts. `POST /api/v1/auth/moderation-appeals/request` returns a generic accepted response and sends a short-lived link only after matching restriction ownership and verified account email. Existing durable email delivery and account/IP throttling apply. `POST /api/v1/auth/moderation-appeals` consumes the one-use token bound to that account and restriction, records the appeal and issues no product session. Unverified email or caller-supplied text cannot establish account authority. These routes require narrow public gateway exceptions and sensitive admission limits; implementation and release proof remain pending.
+
+Public routes are `/api/v1/moderation/reports` and descendants plus `/api/v1/platform-admin` and descendants, all served by auth. #253 owns their gateway routing and admission limits. Internal evidence/status endpoints remain unrouted. Admin navigation is separate from ordinary product navigation, but authorization is enforced by the backend.
+
+## Integration and verification
+
+#316 owns session-bound JWT claims and session introspection. This implementation must preserve those checks and add current suspension status. #246 owns resource ingestion; moderation must not create a competing ingestion loop or erase its deletion fences. Shared event deliveries reuse #245.
+
+Required tests include ordinary-role escalation and forged headers, revoked operator sessions, second-factor replay/expiry, cross-scope evidence references, block/write races, live account suspension on HTTP and connected realtime clients, content quarantine through search/media, expiry and reinstatement, audit atomicity and database immutability, and report/appeal desktop and phone journeys. Local tests, hosted exact-head checks, merged-main checks and actual operator/release proof are distinct gates.
