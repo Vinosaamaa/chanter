@@ -28,7 +28,7 @@ verification: {"state":"verified", "evidenceRefs":["test:SaasPlanSmokeTest", "te
 visibility: public-safe
 publicationEligibility: eligible
 issue: 250
-pr: null
+pr: 323
 release: null
 run: null
 ---
