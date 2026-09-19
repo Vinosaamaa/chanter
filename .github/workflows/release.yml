@@ -103,7 +103,7 @@ jobs:
             release.json images.tar images.sha256 \
             infra/production/postgres-init.sh infra/production/livekit.yaml \
             infra/production/runtime-lock.json infra/production/release-policy.json \
-            scripts/deploy/host.mjs scripts/deploy/release.mjs
+            scripts/deploy/host.mjs scripts/deploy/release.mjs scripts/deploy/recovery.mjs
           test "$(stat -c %s ".cache/$asset")" -lt 2000000000 || { echo 'Release asset exceeds the free delivery limit.' >&2; exit 1; }
           (cd .cache && sha256sum "$asset" > "$asset.sha256")
           tag="deploy-$GITHUB_SHA"

@@ -1,3 +1,11 @@
+/** A failed first migration still constrains later binaries, even without a successful release receipt. */
+export function assertMigrationFloor(release, floor) {
+  if (floor === null) return;
+  if (!floor || !Number.isSafeInteger(floor.schemaEpoch) || floor.schemaEpoch < 1
+      || !/^[a-f0-9]{40}$/.test(floor.commit ?? '')) throw new Error('Invalid persisted migration floor; inspect recovery state');
+  if (release.schemaEpoch < floor.schemaEpoch) throw new Error('Deployment cannot cross the persisted migration floor; fix forward');
+}
+
 /** Production backup policy. Secrets are returned only for private container configuration. */
 export function backupEnvironment(settings, environment = 'production') {
   if (!['staging', 'production'].includes(environment)) throw new Error('Invalid backup environment');

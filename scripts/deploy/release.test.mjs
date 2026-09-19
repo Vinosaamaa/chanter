@@ -124,6 +124,24 @@ test('migrations are isolated one-shot jobs and precede application startup', ()
   assert.ok(plan.indexOf('verify-public-health') < plan.indexOf('record-current'));
 });
 
+test('deployment requires an encrypted database backup before schema changes', async () => {
+  const plan = planDeployment(release());
+  assert.ok(plan.indexOf('backup-database') > plan.indexOf('start-persistence'));
+  assert.ok(plan.indexOf('backup-database') < plan.indexOf('migrate'));
+  const steps = [];
+  await assert.rejects(executeDeployment(release(), null, async operation => {
+    steps.push(operation);
+    if (operation === 'backup-database') throw new Error('Backup repository unavailable');
+  }), /repository unavailable/);
+  assert.ok(!steps.includes('migrate'));
+  assert.ok(!steps.includes('start-ingress'));
+  assert.equal(steps.at(-1), 'stop-ingress');
+  const postgres = composeFor(release(), config, '/srv/chanter/staging/runtime').services.postgres;
+  assert.ok(postgres.command.includes('archive_mode=on'));
+  assert.ok(postgres.command.includes('archive_command=pgbackrest archive-push %p'));
+  assert.equal(postgres.env_file[1].path, './postgres-backup.env');
+});
+
 test('rollback rejects changed schema epochs and persistence images', () => {
   const before = release(); const after = release(); after.commit = 'c'.repeat(40);
   assert.doesNotThrow(() => planDeployment(before, after, true));

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { backupEnvironment } from './recovery.mjs';
+import { assertMigrationFloor, backupEnvironment } from './recovery.mjs';
 
 const configured = () => ({
   CHANTER_BACKUP_S3_ENDPOINT: 'https://backup.example.test',
@@ -9,6 +9,18 @@ const configured = () => ({
   CHANTER_BACKUP_S3_ACCESS_KEY: 'fixture-access',
   CHANTER_BACKUP_S3_SECRET_KEY: 'fixture-secret',
   CHANTER_BACKUP_CIPHER_PASS: 'fixture-independent-backup-passphrase-32bytes',
+});
+
+test('failed first migrations prevent an older writer even without a successful release', () => {
+  const prior = { schemaEpoch: 5, commit: 'a'.repeat(40) };
+  const attempted = { schemaEpoch: 6, commit: 'b'.repeat(40) };
+  assert.doesNotThrow(() => assertMigrationFloor(prior, null));
+  assert.throws(() => assertMigrationFloor(prior, attempted), /migration floor/);
+  assert.doesNotThrow(() => assertMigrationFloor(attempted, attempted));
+  assert.doesNotThrow(() => assertMigrationFloor({ ...attempted, schemaEpoch: 7 }, attempted));
+  for (const invalid of [{}, { schemaEpoch: -1 }, { schemaEpoch: 6, commit: 'untrusted' }]) {
+    assert.throws(() => assertMigrationFloor(attempted, invalid), /Invalid persisted/);
+  }
 });
 
 test('production archive settings use encrypted TLS S3 with bounded workers', () => {

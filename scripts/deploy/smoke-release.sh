@@ -19,16 +19,35 @@ for (const [key, value] of Object.entries({ CHANTER_EMAIL_FROM: 'noreply@staging
   text = text.replace(new RegExp('^' + key + '=$', 'm'), key + '=' + value);
 }
 fs.writeFileSync(file, text, { mode: 0o600 });
+const backupFile = process.argv[2] + '/runtime/backup.env';
+let backup = fs.readFileSync(backupFile, 'utf8');
+for (const [key, value] of Object.entries({ CHANTER_BACKUP_S3_ENDPOINT: 'https://backup.chanter.test',
+  CHANTER_BACKUP_S3_BUCKET: 'fixture-backup', CHANTER_BACKUP_S3_REGION: 'fixture-region',
+  CHANTER_BACKUP_S3_ACCESS_KEY: 'fixture-backup-access', CHANTER_BACKUP_S3_SECRET_KEY: 'fixture-backup-secret' })) {
+  backup = backup.replace(new RegExp('^' + key + '=$', 'm'), key + '=' + value);
+}
+fs.writeFileSync(backupFile, backup, { mode: 0o600 });
 JS
 compose_file="$(node scripts/deploy/host.mjs render "$bundle" "$state")"
 node --input-type=module - "$compose_file" <<'JS'
 import fs from 'node:fs';
+import path from 'node:path';
 const file = process.argv[2]; const compose = JSON.parse(fs.readFileSync(file));
 compose.services.frontend.environment.CHANTER_TLS_DIRECTIVE = 'tls internal';
 // This isolated startup test has no external provider credentials. Production remains forced to S3.
 compose.services['media-service'].environment.CHANTER_MEDIA_STORAGE_BACKEND = 'local';
 compose.services['media-service'].volumes = compose.services['media-service'].volumes
   .map(volume => volume === 'resources:/app/resources:ro' ? 'resources:/app/resources' : volume);
+// The real encrypted local backup exercises the same archive/backup commands;
+// separate provider drills must prove the configured off-host S3 repository.
+const backupFile = path.join(path.dirname(file), 'postgres-backup.env');
+const backup = fs.readFileSync(backupFile, 'utf8').split('\n')
+  .filter(line => !/^PGBACKREST_REPO1_(S3_|STORAGE_)/.test(line))
+  .map(line => line.startsWith('PGBACKREST_REPO1_TYPE=') ? 'PGBACKREST_REPO1_TYPE=posix'
+    : line.startsWith('PGBACKREST_REPO1_PATH=') ? 'PGBACKREST_REPO1_PATH=/var/lib/pgbackrest/repo' : line).join('\n');
+fs.writeFileSync(backupFile, backup, { mode: 0o600 });
+compose.services.postgres.volumes.push('backup-repository:/var/lib/pgbackrest/repo');
+compose.volumes['backup-repository'] = {};
 fs.writeFileSync(file, JSON.stringify(compose, null, 2));
 JS
 compose=(docker compose --project-name "$project" -f "$compose_file")
@@ -36,6 +55,9 @@ cleanup() { "${compose[@]}" down --volumes --remove-orphans; }
 trap cleanup EXIT
 "${compose[@]}" config --quiet
 "${compose[@]}" up -d --wait --wait-timeout 180 postgres redis
+"${compose[@]}" exec -T postgres pgbackrest stanza-create
+"${compose[@]}" exec -T postgres pgbackrest check
+"${compose[@]}" exec -T postgres pgbackrest --type=incr backup
 "${compose[@]}" up -d --no-deps --wait --wait-timeout 600 clamav
 python3 scripts/deploy/check-scanner.py "$project" "$compose_file"
 mapfile -t databases < <(node --input-type=module -e 'import {databaseModules} from "./scripts/deploy/release.mjs"; console.log(databaseModules.join("\n"))')

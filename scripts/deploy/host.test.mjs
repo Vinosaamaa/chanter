@@ -3,11 +3,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic } from './host.mjs';
+import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory } from './host.mjs';
 import { imageNames } from './release.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
 fs.mkdirSync(scratch, { recursive: true });
+
+test('missing release receipts cannot authorize an older writer against an orphaned database', t => {
+  const { state } = fixture(t);
+  const release = { schemaEpoch: 5, commit: 'a'.repeat(40) };
+  assert.doesNotThrow(() => verifyMigrationHistory(state, release, 'staging', () => 'chanter-production_postgres\n'));
+  assert.throws(() => verifyMigrationHistory(state, release, 'staging', () => 'chanter-staging_postgres\n'), /without migration history/);
+  fs.writeFileSync(path.join(state, 'migration-floor.json'), JSON.stringify({ schemaEpoch: 6, commit: 'b'.repeat(40) }));
+  assert.throws(() => verifyMigrationHistory(state, release, 'staging', () => { throw new Error('Must reject before Docker'); }), /migration floor/);
+});
 
 test('public verification refuses a serving frontend with missing browser security headers', async t => {
   t.mock.method(globalThis, 'fetch', async () => new Response('<html></html>', { status: 200 }));
@@ -34,6 +43,9 @@ const fixture = t => {
   const media = path.join(state, 'runtime/media-service.env');
   fs.writeFileSync(media, fs.readFileSync(media, 'utf8').replace(/^([A-Z0-9_]+)=$/gm,
     (_, key) => `${key}=${key === 'CHANTER_S3_ENDPOINT' ? 'https://private-storage.example' : 'fixture-only'}`));
+  const backup = path.join(state, 'runtime/backup.env');
+  fs.writeFileSync(backup, fs.readFileSync(backup, 'utf8').replace(/^([A-Z0-9_]+)=$/gm,
+    (_, key) => `${key}=${key === 'CHANTER_BACKUP_S3_ENDPOINT' ? 'https://backup.example' : 'backup-fixture'}`));
   return { root, state, auth };
 };
 
@@ -109,6 +121,21 @@ test('initialization isolates credentials and refuses to overwrite existing or p
   assert.throws(() => initialize(state, config), /initialized/);
   fs.unlinkSync(path.join(state, 'config.json'));
   assert.throws(() => initialize(state, config), /partial/);
+});
+
+test('backup credentials remain separate and require configuration before deployment', t => {
+  const { state } = fixture(t);
+  const file = path.join(state, 'runtime/backup.env');
+  const backup = readEnv(file);
+  const auth = readEnv(path.join(state, 'runtime/auth-service.env'));
+  assert.ok(backup.CHANTER_BACKUP_CIPHER_PASS.length >= 32);
+  assert.notEqual(backup.CHANTER_BACKUP_CIPHER_PASS, auth.CHANTER_JWT_SECRET);
+  assert.equal(auth.CHANTER_BACKUP_CIPHER_PASS, undefined);
+  const configured = fs.readFileSync(file, 'utf8');
+  fs.writeFileSync(file, configured.replace(/^CHANTER_BACKUP_S3_ACCESS_KEY=.*$/m, 'CHANTER_BACKUP_S3_ACCESS_KEY=fixture-only'));
+  assert.throws(() => validateRuntime(state), /separate bucket and credentials/);
+  fs.writeFileSync(file, configured.replace(/^CHANTER_BACKUP_S3_SECRET_KEY=.*$/m, 'CHANTER_BACKUP_S3_SECRET_KEY='));
+  assert.throws(() => validateRuntime(state), /required/);
 });
 
 test('runtime validation requires all credentials and preserves literal SMTP punctuation', t => {

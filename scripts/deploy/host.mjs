@@ -6,13 +6,15 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { modules, databaseModules, validateRelease, validateConfig, composeFor, executeDeployment } from './release.mjs';
+import { assertMigrationFloor, backupEnvironment } from './recovery.mjs';
 
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
-const writeJson = (file, value) => {
+const writePrivateText = (file, value) => {
   const pending = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(pending, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
+  fs.writeFileSync(pending, value, { mode: 0o600 });
   fs.renameSync(pending, file);
 };
+const writeJson = (file, value) => writePrivateText(file, JSON.stringify(value, null, 2) + '\n');
 const secret = () => crypto.randomBytes(32).toString('hex');
 const envText = values => Object.entries(values).map(([key, value]) => {
   if (!/^[A-Z][A-Z0-9_]*$/.test(key) || /[\r\n\0]/.test(value)) throw new Error('Invalid environment key or multiline value');
@@ -50,6 +52,8 @@ export function initialize(stateDir, config) {
     ...Object.fromEntries(databaseModules.map(name => [`DB_${name.replace('-service', '').toUpperCase()}_PASSWORD`, db[name]])) });
   save('redis', { REDIS_PASSWORD: redis });
   save('livekit', { LIVEKIT_KEYS: `${mediaKey}: ${mediaSecret}` });
+  save('backup', { CHANTER_BACKUP_S3_ENDPOINT: '', CHANTER_BACKUP_S3_BUCKET: '', CHANTER_BACKUP_S3_REGION: '',
+    CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret() });
   writeJson(path.join(stateDir, 'config.json'), config);
 }
 
@@ -94,10 +98,19 @@ function validateNativeConfiguration(env, origin) {
 
 export function validateRuntime(stateDir) {
   const config = validateConfig(json(path.join(stateDir, 'config.json')));
-  for (const name of [...modules, 'postgres', 'redis', 'livekit']) {
+  for (const name of [...modules, 'postgres', 'redis', 'livekit', 'backup']) {
     const file = path.join(stateDir, 'runtime', `${name}.env`);
     if (process.platform !== 'win32' && (fs.statSync(file).mode & 0o077) !== 0) throw new Error(`Runtime file must be private: ${name}.env`);
     const env = readEnv(file);
+    if (name === 'backup') {
+      backupEnvironment(env, json(path.join(stateDir, 'config.json')).environment);
+      const media = readEnv(path.join(stateDir, 'runtime/media-service.env'));
+      if (env.CHANTER_BACKUP_S3_BUCKET === media.CHANTER_S3_BUCKET
+          || env.CHANTER_BACKUP_S3_ACCESS_KEY === media.CHANTER_S3_ACCESS_KEY) {
+        throw new Error('Backup storage requires a separate bucket and credentials from resource storage');
+      }
+      continue;
+    }
     const required = name === 'postgres' ? ['POSTGRES_USER', 'POSTGRES_DB', 'POSTGRES_PASSWORD',
       ...databaseModules.map(module => `DB_${module.replace('-service', '').toUpperCase()}_PASSWORD`)]
       : name === 'redis' ? ['REDIS_PASSWORD'] : name === 'livekit' ? ['LIVEKIT_KEYS']
@@ -144,6 +157,8 @@ export function render(bundleDir, stateDir) {
   const config = validateConfig(json(path.join(stateDir, 'config.json')));
   const output = path.join(stateDir, 'rendered', release.commit);
   fs.mkdirSync(output, { recursive: true, mode: 0o700 });
+  writePrivateText(path.join(output, 'postgres-backup.env'), envText(backupEnvironment(
+    readEnv(path.join(stateDir, 'runtime/backup.env')), config.environment)));
   writeJson(path.join(output, 'compose.json'), composeFor(release, config, path.join(stateDir, 'runtime')));
   for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.copyFileSync(path.join(bundleDir, 'infra/production', name), path.join(output, name));
   return { release, config, file: path.join(output, 'compose.json') };
@@ -198,6 +213,22 @@ function docker(args, capture = false) {
   catch { throw new Error(`Docker operation failed: ${args[0]}`); }
 }
 
+export function verifyMigrationHistory(stateDir, release, environment, run = docker) {
+  const floorFile = path.join(stateDir, 'migration-floor.json');
+  const currentFile = path.join(stateDir, 'current.json');
+  if (fs.existsSync(floorFile)) assertMigrationFloor(release, json(floorFile));
+  if (fs.existsSync(currentFile)) {
+    const previous = validateRelease(json(path.join(json(currentFile).bundleDir, 'release.json')));
+    assertMigrationFloor(release, previous);
+  } else if (!fs.existsSync(floorFile)) {
+    // A missing receipt is not proof that the durable database is empty. Do not
+    // let a lost state directory silently authorize old application writers.
+    const volume = `chanter-${environment}_postgres`;
+    const volumes = run(['volume', 'ls', '--format', '{{.Name}}'], true).trim().split(/\r?\n/);
+    if (volumes.includes(volume)) throw new Error('Database volume exists without migration history; reconcile recovery state before deployment');
+  }
+}
+
 export async function deploy(bundleDir, stateDir, rollback = false) {
   if (process.platform !== 'linux') throw new Error('Host deployment requires Linux; use render and unit tests on other systems');
   validateRuntime(stateDir);
@@ -215,6 +246,8 @@ export async function deploy(bundleDir, stateDir, rollback = false) {
     if (fs.existsSync(activeFile) && json(activeFile).stateDir !== stateDir) {
       throw new Error('Another environment owns this host. Explicitly stop it before switching; never run both inside the free VM budget.');
     }
+    const floorFile = path.join(stateDir, 'migration-floor.json');
+    verifyMigrationHistory(stateDir, prepared.release, prepared.config.environment);
     const checksum = fs.readFileSync(path.join(bundleDir, 'images.sha256'), 'utf8').trim();
     if (!/^[a-f0-9]{64}  images\.tar$/.test(checksum) || (await sha256(path.join(bundleDir, 'images.tar'))) !== checksum.slice(0, 64)) {
       throw new Error('Release image archive checksum mismatch');
@@ -243,7 +276,15 @@ export async function deploy(bundleDir, stateDir, rollback = false) {
         compose(['stop', 'frontend']);
       } else if (operation === 'stop-applications') compose(['stop', ...modules, 'livekit', 'clamav']);
       else if (operation === 'start-persistence') compose(['up', '-d', '--wait', '--wait-timeout', '180', 'postgres', 'redis']);
+      else if (operation === 'backup-database') {
+        compose(['exec', '-T', 'postgres', 'pgbackrest', 'stanza-create']);
+        compose(['exec', '-T', 'postgres', 'pgbackrest', 'check']);
+        compose(['exec', '-T', 'postgres', 'pgbackrest', '--type=incr', 'backup']);
+      }
       else if (operation === 'migrate') {
+        // Persist before the first SQL attempt. A crash must not turn partially migrated
+        // data into an apparently empty environment with no successful current.json.
+        writeJson(floorFile, { schemaEpoch: target.schemaEpoch, commit: target.commit });
         for (const name of databaseModules) compose(['--profile', 'migration', 'run', '--rm', '--no-deps', `migrate-${name}`]);
       } else if (operation === 'start-applications') {
         compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '600', 'clamav']);
@@ -292,7 +333,7 @@ async function main(args) {
   const [command, first, second, third, fourth] = args;
   if (command === 'init' && first && second && third && fourth) {
     initialize(path.resolve(first), { environment: second, hostname: third, publicIp: fourth });
-    console.log('Environment initialized. Configure SMTP in runtime/auth-service.env and private S3 storage in runtime/media-service.env before deployment.');
+    console.log('Environment initialized. Configure SMTP, private resource S3 and separate encrypted backup S3 in runtime/auth-service.env, media-service.env and backup.env before deployment.');
   } else if (command === 'render' && first && second) {
     const result = render(path.resolve(first), path.resolve(second)); console.log(result.file);
   } else if (command === 'deploy' && first && second) await deploy(path.resolve(first), path.resolve(second));
