@@ -1,0 +1,28 @@
+name: Recovery drill
+on:
+  pull_request:
+    paths:
+      - 'infra/production/postgres/**'
+      - 'scripts/deploy/recovery*'
+      - '.github/workflows/recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  encrypted-postgres-restore:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate recovery configuration
+        run: node --test scripts/deploy/recovery.test.mjs
+      - name: Build pinned backup-capable PostgreSQL
+        run: |
+          base=$(node -p 'JSON.parse(require("fs").readFileSync("infra/production/runtime-lock.json")).postgres')
+          docker build --file infra/production/postgres/Dockerfile --build-arg "POSTGRES_IMAGE=$base" --tag chanter-recovery-drill .
+      - name: Restore encrypted data and stop at a real WAL recovery point
+        run: bash scripts/deploy/recovery-drill.sh chanter-recovery-drill
