@@ -26,17 +26,21 @@ public class ModerationAppeals {
     private final EmailSender email;
     private final ObjectMapper mapper;
     private final ModerationAudit audit;
+    private final OperatorAccess operators;
+    private final ModerationRestrictions restrictions;
     private final String publicBaseUrl;
     private final SecureRandom random = new SecureRandom();
 
     public ModerationAppeals(JdbcTemplate jdbc, AuthUserRepository users, EmailSender email,
-            ObjectMapper mapper, ModerationAudit audit,
+            ObjectMapper mapper, ModerationAudit audit, OperatorAccess operators, ModerationRestrictions restrictions,
             @Value("${chanter.public-base-url:http://localhost:5173}") String publicBaseUrl) {
         this.jdbc = jdbc;
         this.users = users;
         this.email = email;
         this.mapper = mapper;
         this.audit = audit;
+        this.operators = operators;
+        this.restrictions = restrictions;
         this.publicBaseUrl = publicBaseUrl.replaceAll("/+$", "");
     }
 
@@ -93,6 +97,46 @@ public class ModerationAppeals {
                     }
                 }, restriction).stream().findFirst().orElse(false);
     }
+
+    @Transactional
+    public java.util.List<Appeal> list(String authorization,String verification,String reason,int offset,UUID correlation) {
+        var operator=operators.requireStepUp(authorization,verification); operator.requireAdmin();
+        OperatorRoles.requireReason(reason);
+        if(offset<0 || offset>10000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid page");
+        audit.append(operator.userId(),"APPEALS_READ","appeals",reason,correlation,"",Integer.toString(offset));
+        return jdbc.query("""
+                SELECT a.*,r.report_id FROM moderation_appeals a JOIN moderation_restrictions r ON r.id=a.restriction_id
+                ORDER BY a.created_at DESC,a.id LIMIT 50 OFFSET ?
+                """,(rs,row)->appeal(rs),offset);
+    }
+
+    @Transactional
+    public void resolve(String authorization,String verification,UUID id,String status,String reason,String confirmation,UUID correlation) {
+        var operator=operators.requireStepUp(authorization,verification); operator.requireAdmin();
+        OperatorRoles.requireReason(reason);
+        if(!java.util.List.of("UPHELD","REVERSED").contains(status)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Choose uphold or reverse");
+        var appeal=jdbc.query("""
+                SELECT a.*,r.report_id FROM moderation_appeals a JOIN moderation_restrictions r ON r.id=a.restriction_id
+                WHERE a.id=? FOR UPDATE
+                """,(rs,row)->appeal(rs),id).stream().findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Appeal not found"));
+        if(!appeal.restrictionId().toString().equals(confirmation)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Confirm the exact restriction ID");
+        if(!appeal.status().equals("PENDING")) throw new ResponseStatusException(HttpStatus.CONFLICT,"Appeal already resolved");
+        if(status.equals("REVERSED")) restrictions.revoke(appeal.reportId(),appeal.restrictionId(),operator.userId(),reason,correlation);
+        jdbc.update("UPDATE moderation_appeals SET status=?,resolution=?,resolved_at=?,resolved_by=? WHERE id=?",
+                status,reason.strip(),OffsetDateTime.now(ZoneOffset.UTC),operator.userId(),id);
+        audit.append(operator.userId(),"APPEAL_RESOLVED",id.toString(),reason,correlation,"PENDING",status);
+        users.findById(appeal.userId()).filter(user -> user.emailVerified()).ifPresent(user -> email.send(user.email(),
+                "Your Chanter appeal was reviewed","Appeal "+id+" was "+status.toLowerCase(Locale.ROOT)+".\nReason: "+reason
+                        +"\nOther active restrictions, if any, still apply."));
+    }
+
+    private static Appeal appeal(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new Appeal(rs.getObject("id",UUID.class),rs.getObject("restriction_id",UUID.class),rs.getObject("report_id",UUID.class),
+                rs.getObject("user_id",UUID.class),rs.getString("body"),rs.getString("status"),rs.getString("resolution"),
+                rs.getObject("created_at",OffsetDateTime.class).toInstant());
+    }
+    public record Appeal(UUID id,UUID restrictionId,UUID reportId,UUID userId,String body,String status,String resolution,Instant createdAt) { }
 
     private static ResponseStatusException invalid() {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST,

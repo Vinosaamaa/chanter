@@ -11,8 +11,6 @@ import java.time.Duration;
 import com.chanter.realtime.application.ChannelMessageClient;
 import com.chanter.realtime.application.ChannelSubscriptionAuthorizer;
 import com.chanter.realtime.application.PersistedChannelMessage;
-import com.chanter.realtime.application.PresenceStore;
-import com.chanter.realtime.application.SocialFriendsClient;
 import com.chanter.realtime.domain.RealtimeChannelScope;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,8 +45,6 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
     private final RealtimeSubscriptionHub subscriptionHub;
     private final SocialRealtimeHub socialRealtimeHub;
     private final DirectMessageCallHub directMessageCallHub;
-    private final SocialFriendsClient socialFriendsClient;
-    private final PresenceStore presenceStore;
     private final ObjectMapper objectMapper;
 
     public RealtimeWebSocketHandler(
@@ -59,8 +55,6 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
             RealtimeSubscriptionHub subscriptionHub,
             SocialRealtimeHub socialRealtimeHub,
             DirectMessageCallHub directMessageCallHub,
-            SocialFriendsClient socialFriendsClient,
-            PresenceStore presenceStore,
             ObjectMapper objectMapper
     ) {
         this.jwtTokenService = jwtTokenService;
@@ -70,8 +64,6 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         this.subscriptionHub = subscriptionHub;
         this.socialRealtimeHub = socialRealtimeHub;
         this.directMessageCallHub = directMessageCallHub;
-        this.socialFriendsClient = socialFriendsClient;
-        this.presenceStore = presenceStore;
         this.objectMapper = objectMapper;
     }
 
@@ -91,7 +83,7 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                 Mono.just(session),
                 activeSession -> currentAccess(activeSession, userId)
                         .then(Mono.defer(() -> socialRealtimeHub.connect(activeSession, userId)
-                                .then(sendInitialFriendPresence(activeSession, userId).onErrorResume(error -> {
+                                .then(socialRealtimeHub.refreshPresence(activeSession, userId).onErrorResume(error -> {
                                     log.warn(
                                             "Initial friend presence snapshot unavailable for user {}",
                                             userId,
@@ -102,7 +94,8 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                         .subscribeOn(Schedulers.boundedElastic())
                         .then(Mono.defer(() -> receiveWithAccessChecks(activeSession, userId)))
                         .onErrorResume(ResponseStatusException.class, denied -> Mono.empty()),
-                activeSession -> socialRealtimeHub.disconnect(activeSession)
+                activeSession -> directMessageCallHub.reconcileUser(userId).onErrorResume(error -> Mono.empty())
+                        .then(socialRealtimeHub.disconnect(activeSession))
                         .onErrorResume(error -> {
                             log.warn("Social disconnect cleanup failed for session {}", activeSession.getId(), error);
                             return Mono.empty();
@@ -120,15 +113,18 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                 .then()
                 .doFinally(signal -> receiveFinished.tryEmitEmpty());
         Mono<Void> accessChecks = Flux.interval(Duration.ofSeconds(5))
+                .onBackpressureDrop()
                 // Stop future checks when receive ends, while allowing a pending close frame to flush.
                 .takeUntilOther(receiveFinished.asMono())
-                .concatMap(tick -> currentAccess(session, userId), 1)
+                .concatMap(tick -> currentAccess(session,userId)
+                        .then(directMessageCallHub.reconcileUser(userId))
+                        .then(socialRealtimeHub.refreshPresence(session,userId)), 1)
                 .then();
         return Mono.whenDelayError(receive, accessChecks);
     }
 
     private Mono<Void> currentAccess(WebSocketSession session, UUID user) {
-        return Mono.fromRunnable(() -> moderation.requireAccount(user)).subscribeOn(Schedulers.boundedElastic()).then()
+        return Mono.fromRunnable(() -> moderation.requireSession(authorization(session), user)).subscribeOn(Schedulers.boundedElastic()).then()
                 // Send the close frame before cancelling receive; cancellation alone loses the policy status.
                 .onErrorResume(ResponseStatusException.class, denied -> session
                         .close(CloseStatus.POLICY_VIOLATION.withReason("Current access is unavailable"))
@@ -258,22 +254,6 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
                 .onErrorResume(exception -> sendError(session, "error", "Call end failed"));
     }
 
-    private Mono<Void> sendInitialFriendPresence(WebSocketSession session, UUID userId) {
-        return socialFriendsClient.listFriendUserIds(userId)
-                .flatMap(friendUserIds -> Mono.fromCallable(() -> friendUserIds.stream()
-                                .filter(presenceStore::isOnline)
-                                .map(friendUserId -> Map.<String, Object>of(
-                                        "type", "presence_changed",
-                                        "userId", friendUserId.toString(),
-                                        "status", "online"
-                                ))
-                                .toList())
-                        .subscribeOn(Schedulers.boundedElastic()))
-                .flatMapMany(Flux::fromIterable)
-                .concatMap(frame -> sendJson(session, frame))
-                .then();
-    }
-
     private UUID authenticate(WebSocketSession session) {
         // 1. Prefer Authorization header (gateway may inject after resolving subprotocol token)
         String authorizationHeader = session.getHandshakeInfo().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
@@ -309,6 +289,13 @@ public class RealtimeWebSocketHandler implements WebSocketHandler {
         }
 
         return null;
+    }
+
+    private String authorization(WebSocketSession session) {
+        String header = session.getHandshakeInfo().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (header != null && !header.isBlank()) return header;
+        String token = WebSocketJwtProtocols.extractToken(session.getHandshakeInfo().getHeaders().get("Sec-WebSocket-Protocol"));
+        return token == null ? null : AuthHeaders.BEARER_PREFIX + token;
     }
 
     private Mono<Void> sendError(WebSocketSession session, String code, String message) {

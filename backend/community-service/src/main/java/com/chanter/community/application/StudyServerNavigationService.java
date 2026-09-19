@@ -12,6 +12,8 @@ import com.chanter.community.domain.StudyServerChannel;
 import com.chanter.community.domain.StudyServerNavigation;
 import com.chanter.community.domain.StudyServerNavigationCohort;
 import com.chanter.community.domain.StudyServerNavigationCourse;
+import com.chanter.common.auth.ModerationAccess;
+import com.chanter.common.auth.ModerationAccess.Target;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -24,17 +26,27 @@ public class StudyServerNavigationService {
 
     private final CourseRepository courseRepository;
     private final StudyServerRepository studyServerRepository;
+    private final ModerationAccess moderation;
 
     public StudyServerNavigationService(
             CourseRepository courseRepository,
-            StudyServerRepository studyServerRepository
+            StudyServerRepository studyServerRepository,
+            ModerationAccess moderation
     ) {
         this.courseRepository = courseRepository;
         this.studyServerRepository = studyServerRepository;
+        this.moderation = moderation;
     }
 
     public List<AccessibleStudyServer> listAccessibleStudyServers(UUID userId) {
-        return courseRepository.listAccessibleStudyServers(userId);
+        var servers=courseRepository.listAccessibleStudyServers(userId);
+        var visible=new java.util.ArrayList<AccessibleStudyServer>();
+        for(int start=0;start<servers.size();start+=100) {
+            var page=servers.subList(start,Math.min(start+100,servers.size()));
+            var allowed=moderation.allowedSources(userId,page.stream().map(server -> new Target("STUDY_SERVER",server.id())).toList());
+            page.stream().filter(server -> allowed.contains(new Target("STUDY_SERVER",server.id()))).forEach(visible::add);
+        }
+        return List.copyOf(visible);
     }
 
     public StudyServerNavigation findNavigation(UUID studyServerId, UUID userId) {
@@ -47,6 +59,7 @@ public class StudyServerNavigationService {
             );
         }
 
+        moderation.requireAllowed(userId,List.of(new Target("STUDY_SERVER",studyServerId)));
         StudyAssistantViewerScope viewerScope = courseRepository.findViewerScope(studyServerId, userId)
                 .orElseGet(() -> new StudyAssistantViewerScope(
                         studyServerId,

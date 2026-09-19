@@ -19,8 +19,10 @@ public class PlatformReportsController {
     List<ModerationCases.QueueItem> queue(@RequestHeader("Authorization") String authorization,
             @RequestHeader("X-Chanter-Operator-Verification") String verification,
             @RequestParam(required=false) String status,@RequestParam String reason,
+            @RequestParam(defaultValue="") String query,@RequestParam(defaultValue="0") int offset,
+            @RequestParam(required=false) UUID targetId,
             @RequestAttribute(ModerationRequestContext.CORRELATION) UUID correlation) {
-        return cases.queue(authorization,verification,status,reason,correlation);
+        return cases.queue(authorization,verification,status,query,offset,targetId,reason,correlation);
     }
     @GetMapping("/{id}")
     ModerationCases.Detail detail(@RequestHeader("Authorization") String authorization,

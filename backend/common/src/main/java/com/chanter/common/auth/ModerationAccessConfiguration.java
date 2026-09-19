@@ -25,6 +25,7 @@ public class ModerationAccessConfiguration {
     ModerationAccess testModerationAccess(ObjectMapper mapper) {
         return new ModerationAccess(URI.create("http://localhost"), "test-only-unused", mapper) {
             @Override public void requireAllowed(UUID user, List<Target> targets) { }
+            @Override public void requireSession(String authorization, UUID user) { }
             @Override public java.util.Set<Target> allowedSources(UUID user, List<Target> targets) { return java.util.Set.copyOf(targets); }
         };
     }

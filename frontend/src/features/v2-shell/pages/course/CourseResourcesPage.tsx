@@ -31,6 +31,7 @@ import {
   useStudyAssistantInstallFlow,
 } from '../../../study-assistant/hooks/use-study-assistant-install'
 import { useV2CourseWorkspace } from '../../layouts/v2-course-workspace-context'
+import { ReportLink } from '../../../moderation/ReportLink'
 
 const filters: { id: CourseResourceFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -425,6 +426,7 @@ function LiveResourceRow({
       </span>
       <div>
         <strong>{resource.title}</strong>
+        <ReportLink type="RESOURCE" id={resource.id} label="Report resource" />
         <p>
           {resourceKindLabel(kind)} · {formatByteSize(resource.byteSize)}
         </p>

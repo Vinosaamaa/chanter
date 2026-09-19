@@ -21,6 +21,7 @@ import reactor.core.publisher.Mono;
 public class HttpDirectMessageCallAuthorizer implements DirectMessageCallAuthorizer {
 
     private final WebClient webClient;
+    private final java.util.concurrent.Semaphore inFlight = new java.util.concurrent.Semaphore(32);
 
     public HttpDirectMessageCallAuthorizer(
             @Value("${chanter.message-service.base-url:http://localhost:8083}") String messageServiceBaseUrl,
@@ -36,7 +37,9 @@ public class HttpDirectMessageCallAuthorizer implements DirectMessageCallAuthori
 
     @Override
     public Mono<Void> requireCallAccess(UUID callerUserId, UUID calleeUserId) {
-        return webClient.get()
+        return Mono.defer(() -> {
+            if(!inFlight.tryAcquire()) return Mono.error(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Current pair access is busy"));
+            return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/v1/direct-message-calls/eligibility")
                         .queryParam("peerUserId", calleeUserId.toString())
@@ -49,6 +52,7 @@ public class HttpDirectMessageCallAuthorizer implements DirectMessageCallAuthori
                         HttpStatus.valueOf(exception.getStatusCode().value()),
                         exception.getResponseBodyAsString(),
                         exception
-                ));
+                )).doFinally(signal -> inFlight.release());
+        });
     }
 }

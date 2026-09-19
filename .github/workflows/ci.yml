@@ -168,8 +168,15 @@ jobs:
         run: command -v lsof >/dev/null || sudo apt-get install --yes lsof
       - name: Generate isolated product-test environment
         run: make product-env
+      - name: Prepare hosted moderation frontend and signaling proxy
+        run: bash scripts/product/moderation-browser.sh prepare
       - name: Run signed-in Owner, Member, and Learner journeys
         run: make product-e2e
+        env:
+          CI: 'true'
+          KEEP_STACK: '1'
+      - name: Verify moderation, published audio removal, and emailed appeal
+        run: bash scripts/product/moderation-browser.sh run
         env:
           CI: 'true'
       - name: Retain signed-in browser and service artifacts
@@ -187,6 +194,7 @@ jobs:
       - name: Tear down product test stack
         if: always()
         run: |
+          bash scripts/product/moderation-browser.sh stop || true
           make product-down || true
           docker compose -f infra/docker-compose.yml --env-file .env --profile product down --volumes || true
 

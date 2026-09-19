@@ -18,6 +18,12 @@ public class OperatorVerificationController {
     private final OperatorVerification verification;
     public OperatorVerificationController(OperatorVerification verification) { this.verification = verification; }
 
+    @org.springframework.web.bind.annotation.GetMapping
+    OperatorVerification.Status status(@RequestHeader("Authorization") String authorization,
+            @RequestAttribute(ModerationRequestContext.CORRELATION) UUID correlation) {
+        return verification.status(authorization,correlation);
+    }
+
     @PostMapping("/enrollment")
     OperatorVerification.Enrollment enroll(@RequestHeader("Authorization") String authorization,
             @Valid @RequestBody Password request,@RequestAttribute(ModerationRequestContext.CORRELATION) UUID correlation) {

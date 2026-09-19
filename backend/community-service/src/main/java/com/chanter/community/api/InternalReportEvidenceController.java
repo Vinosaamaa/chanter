@@ -20,11 +20,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class InternalReportEvidenceController {
     private final byte[] token;
     private final StudyServerRepository servers;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public InternalReportEvidenceController(@Value("${chanter.internal-service-token}") String token,
-            StudyServerRepository servers) {
+            StudyServerRepository servers,org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.token = InternalServiceTokens.requireBytes(token);
         this.servers = servers;
+        this.jdbc = jdbc;
     }
 
     @GetMapping("/internal/v1/moderation/evidence/STUDY_SERVER/{id}")
@@ -43,5 +45,18 @@ public class InternalReportEvidenceController {
 
     private static ResponseStatusException missing() {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, "Report source unavailable");
+    }
+
+    @GetMapping("/internal/v1/moderation/directory")
+    java.util.List<com.chanter.common.auth.ModerationDirectoryItem> directory(
+            @RequestHeader(value=AuthHeaders.INTERNAL_SERVICE_TOKEN,required=false) String presented,
+            @RequestParam String query,@RequestParam(defaultValue="0") int offset) {
+        if(!MessageDigest.isEqual(token,(presented==null?"":presented).getBytes(StandardCharsets.UTF_8)))
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Internal service authentication required");
+        if(query.strip().length()<3 || query.length()>120 || offset<0 || offset>10000)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid directory query");
+        String pattern="%"+query.strip().toLowerCase(java.util.Locale.ROOT).replace("!","!!").replace("%","!%").replace("_","!_")+"%";
+        return jdbc.query("SELECT id,name FROM study_servers WHERE LOWER(name) LIKE ? ESCAPE '!' OR CAST(id AS VARCHAR)=? ORDER BY name,id LIMIT 50 OFFSET ?",
+                (rs,row)->new com.chanter.common.auth.ModerationDirectoryItem("STUDY_SERVER",rs.getObject(1,UUID.class),rs.getString(2)),pattern,query.strip(),offset);
     }
 }

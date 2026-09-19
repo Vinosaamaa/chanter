@@ -1,6 +1,7 @@
 package com.chanter.realtime.api;
 
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.realtime.application.DirectMessageCallAuthorizer;
@@ -29,6 +30,17 @@ class LiveCallAuthorizationTest {
     @BeforeEach void connect() { client=WebTestClient.bindToServer().baseUrl("http://localhost:"+port).build(); }
     @MockitoBean DirectMessageCallStore calls;
     @MockitoBean DirectMessageCallAuthorizer authority;
+    @org.springframework.beans.factory.annotation.Autowired com.chanter.realtime.websocket.DirectMessageCallHub hub;
+
+    @Test void periodicRevalidationEndsTheStoredCallAfterABlock() {
+        UUID id=UUID.randomUUID(),caller=UUID.randomUUID(),callee=UUID.randomUUID();
+        var call=new DirectMessageCall(id,caller,callee,DirectMessageCallStatus.ACTIVE,Instant.now());
+        when(calls.findActiveCallForUser(caller)).thenReturn(Optional.of(call));
+        when(authority.requireCallAccess(caller,callee)).thenReturn(Mono.error(new ResponseStatusException(HttpStatus.FORBIDDEN)));
+        when(calls.endIfPresent(id)).thenReturn(Optional.of(call));
+        hub.reconcileUser(caller).block(java.time.Duration.ofSeconds(5));
+        verify(calls).endIfPresent(id);
+    }
 
     @Test void aSavedActiveCallDoesNotBypassANewBlockOrEndedCall() {
         UUID call=UUID.randomUUID(),caller=UUID.randomUUID(),callee=UUID.randomUUID();

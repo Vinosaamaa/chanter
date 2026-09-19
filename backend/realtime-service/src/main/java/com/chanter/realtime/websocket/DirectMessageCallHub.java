@@ -167,7 +167,16 @@ public class DirectMessageCallHub {
                     }
                     return call;
                 }).subscribeOn(Schedulers.boundedElastic())
-                .flatMap(call -> callAuthorizer.requireCallAccess(call.callerUserId(), call.calleeUserId()));
+                .flatMap(call -> callAuthorizer.requireCallAccess(call.callerUserId(), call.calleeUserId())
+                        .onErrorResume(denied -> endCall(call.callId(),"access_changed").then(Mono.error(denied))));
+    }
+
+    /** One current call per connected user; the existing five-second connection check drives this. */
+    public Mono<Void> reconcileUser(UUID userId) {
+        return Mono.fromCallable(() -> callStore.findActiveCallForUser(userId))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(call -> call.map(active -> callAuthorizer.requireCallAccess(active.callerUserId(),active.calleeUserId())
+                        .onErrorResume(denied -> endCall(active.callId(),"access_changed"))).orElse(Mono.empty()));
     }
 
     private Mono<Void> endCall(UUID userId, UUID callId, String reason) {

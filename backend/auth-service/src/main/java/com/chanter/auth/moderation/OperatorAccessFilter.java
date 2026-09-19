@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class OperatorAccessFilter extends OncePerRequestFilter {
     public static final String OPERATOR_ATTRIBUTE = OperatorAccessFilter.class.getName() + ".operator";
     private static final Set<String> VERIFICATION_PATHS = Set.of(
+            "/api/v1/platform-admin/verification",
             "/api/v1/platform-admin/verification/enrollment",
             "/api/v1/platform-admin/verification/confirmation",
             "/api/v1/platform-admin/verification/challenge");

@@ -36,6 +36,15 @@ public class OperatorVerification {
         this.audit = audit;
     }
 
+    @Transactional
+    public Status status(String authorization,UUID correlation) {
+        var operator=access.requireRole(authorization);
+        var row=lock(operator.userId());
+        audit.append(operator.userId(),"OPERATOR_VERIFICATION_STATUS_READ",operator.userId().toString(),
+                "Prepare operator verification",correlation,"","");
+        return new Status(operator.userId(),operator.role(),row.confirmed());
+    }
+
     // Invalid attempts must commit their durable rate limit. Other failures roll back normally.
     @Transactional(noRollbackFor = ResponseStatusException.class)
     public Enrollment enroll(String authorization, String password, UUID correlation) {
@@ -121,4 +130,5 @@ public class OperatorVerification {
     private record FactorRow(String encrypted, boolean confirmed, long lastCounter, int attempts, OffsetDateTime window) { }
     public record Enrollment(String secret, String authenticatorUri) { }
     public record Verified(String token, Instant expiresAt) { }
+    public record Status(UUID userId,OperatorAccess.Role role,boolean enrolled) { }
 }

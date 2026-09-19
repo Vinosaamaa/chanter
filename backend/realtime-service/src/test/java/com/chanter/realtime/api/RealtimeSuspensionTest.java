@@ -30,14 +30,15 @@ class RealtimeSuspensionTest {
 
     @RepeatedTest(3) void alreadyConnectedIdleClientIsClosedWhenItsAccountBecomesSuspended() throws Exception {
         UUID user = UUID.randomUUID();
+        String authorization="Bearer "+tokens.createAccessToken(user,UUID.randomUUID());
         AtomicInteger checks = new AtomicInteger();
         doAnswer(call -> {
             if (checks.incrementAndGet() > 1) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
             return null;
-        }).when(moderation).requireAccount(user);
+        }).when(moderation).requireSession(authorization,user);
         CompletableFuture<Integer> closed = new CompletableFuture<>();
         try (var client=HttpClient.newHttpClient()) {
-            WebSocket socket=client.newWebSocketBuilder().header("Authorization","Bearer "+tokens.createAccessToken(user))
+            WebSocket socket=client.newWebSocketBuilder().header("Authorization",authorization)
                     .buildAsync(URI.create("ws://localhost:"+port+"/api/v1/realtime/ws"),new WebSocket.Listener(){
                         @Override public java.util.concurrent.CompletionStage<?> onClose(WebSocket socket,int code,String reason){
                             closed.complete(code); return CompletableFuture.completedFuture(null);
