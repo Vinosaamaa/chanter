@@ -21,6 +21,7 @@ import { useFaqApprovalPanel } from '../../../support-operations/hooks/use-faq-a
 import { useTaQueuePanel } from '../../../support-operations/hooks/use-ta-queue-panel'
 import { useQuestionsChannel } from '../../../shell/hooks/use-questions-channel'
 import { AssistantAnswerControls } from './AssistantAnswerControls'
+import { NativeAnswerControls } from './NativeAnswerControls'
 import { V2Avatar } from '../../components/V2Avatar'
 import { useV2CourseWorkspace } from '../../layouts/v2-course-workspace-context'
 
@@ -69,6 +70,7 @@ function questionsForFilter(
 export function CourseQuestionsPage() {
   const { serverId, course, courseCapabilities, selectedCohort } = useV2CourseWorkspace()
   const userId = useAuthStore((state) => state.user?.id ?? null)
+  const sessionGeneration = useAuthStore((state) => state.generation)
   const manageQuestions = courseCapabilities.canManageQuestions
   const questionChannel = course.channels.find((channel) => channel.name.toLowerCase() === 'questions')
   const questions = useQuestionsChannel({
@@ -229,6 +231,11 @@ export function CourseQuestionsPage() {
                 onInvoke={(selection) => void questions.invokeAssistant(selected.id, selection)}
               />
             ) : null}
+            {canAskAi && userId && !questions.requiresSourceRecovery ? <NativeAnswerControls
+              key={`native:${questionChannel.id}:${userId}:${sessionGeneration}:${selected.id}`}
+              disabled={questions.invokingQuestionId !== null}
+              onInvoke={(pairing, model) => void questions.invokeNative(selected.id, pairing, model)}
+            /> : null}
             {questions.streamPhase === 'streaming' && !questions.streamingText ? (
               <p className="assistant-retrieval-status" role="status">{questions.streamStatus === 'retrieving' ? 'Finding approved course sources…' : 'Starting your answer request…'}</p>
             ) : null}

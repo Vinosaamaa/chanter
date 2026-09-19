@@ -18,6 +18,10 @@ class AiModelRouteTest {
     @Test void modelCatalogUsesTheAgentRouteWithoutStealingOtherCourseRoutes() {
         assertThat(routeFor("/api/v1/course-channels/fixture/assistant-models")).isEqualTo("agent-service-support-question-answer");
         assertThat(routeFor("/api/v1/course-channels/fixture/assistant-models/other")).isNotEqualTo("agent-service-support-question-answer");
+        assertThat(routeFor("/api/v1/native-companion/configuration")).isEqualTo("agent-service-support-question-answer");
+        assertThat(routeFor("/api/v1/course-channels/fixture/support-questions/question/native-request")).isEqualTo("agent-service-support-question-answer");
+        assertThat(routeFor("/api/v1/course-channels/fixture/support-questions/question/native-results/request")).isEqualTo("agent-service-support-question-answer");
+        assertThat(routeFor("/api/v1/course-channels/fixture/support-questions")).isNotEqualTo("agent-service-support-question-answer");
     }
     private String routeFor(String path) {
         var exchange = MockServerWebExchange.from(MockServerHttpRequest.get(path).build());

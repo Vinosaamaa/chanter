@@ -42,6 +42,14 @@ class GroundedSupportQuestionSmokeTest {
 
     private static final com.sun.net.httpserver.HttpServer PROVIDER = fixtureProvider();
     private static final java.util.concurrent.atomic.AtomicInteger PROVIDER_CALLS = new java.util.concurrent.atomic.AtomicInteger();
+    private static final java.security.KeyPair NATIVE_KEYS = nativeKeys();
+    private static java.security.KeyPair nativeKeys() {
+        try { return java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair(); }
+        catch (Exception failure) { throw new ExceptionInInitializerError(failure); }
+    }
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.chanter.agent.infra.NativeSessionClient nativeSessions;
+    @Autowired private com.chanter.common.auth.JwtTokenService jwtTokens;
 
     @org.springframework.test.context.DynamicPropertySource
     static void localProvider(org.springframework.test.context.DynamicPropertyRegistry properties) {
@@ -50,6 +58,10 @@ class GroundedSupportQuestionSmokeTest {
         properties.add("chanter.llm.models.fixture.model", () -> "fixture-local");
         properties.add("chanter.llm.models.fixture.label", () -> "Local fixture");
         properties.add("chanter.llm.models.fixture.base-url", () -> "http://127.0.0.1:" + PROVIDER.getAddress().getPort());
+        properties.add("chanter.native-companion.origin", () -> "https://chanter.example");
+        properties.add("chanter.native-companion.private-key-pkcs8", () -> java.util.Base64.getEncoder().encodeToString(NATIVE_KEYS.getPrivate().getEncoded()));
+        properties.add("chanter.native-companion.public-key-spki", () -> java.util.Base64.getEncoder().encodeToString(NATIVE_KEYS.getPublic().getEncoded()));
+        properties.add("chanter.native-companion.models", () -> "fixture-native");
     }
 
     private static com.sun.net.httpserver.HttpServer fixtureProvider() {
@@ -76,6 +88,50 @@ class GroundedSupportQuestionSmokeTest {
 
     @Autowired private com.chanter.agent.application.AiGenerationLedger generationLedger;
     @Autowired private com.chanter.agent.application.LlmModelCatalog modelCatalog;
+
+    @Test
+    void nativeHttpFlowRechecksEvidenceAndPersistsOnlyValidatedClientQuotations() throws Exception {
+        for (boolean revoke : new boolean[] { false, true }) {
+            UUID server = UUID.randomUUID(), instructor = UUID.randomUUID(), learner = UUID.randomUUID();
+            UUID channel = UUID.randomUUID(), course = UUID.randomUUID(), resource = UUID.randomUUID(), question = UUID.randomUUID();
+            UUID session = UUID.randomUUID(), installation = UUID.randomUUID();
+            installAssistant(server, instructor, learner, channel, course, UUID.randomUUID(), resource);
+            channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
+            supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
+            courseResourceCatalogClient.grantViewerAccess(course, learner);
+            courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+            String bearer = "Bearer " + jwtTokens.createAccessToken(learner, session);
+            org.mockito.Mockito.when(nativeSessions.requireActive(bearer, learner)).thenReturn(
+                    new com.chanter.common.auth.JwtTokenService.AccessSession(learner, session, java.time.Instant.now().plusSeconds(600)));
+            int before = PROVIDER_CALLS.get();
+            mockMvc.perform(post("/api/v1/native-companion/pair").header(AuthHeaders.USER_ID, learner).header("Authorization", bearer)
+                    .header("Origin", "https://chanter.example").contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(Map.of("installationId", installation, "approved", true))))
+                    .andExpect(status().isOk());
+            mockMvc.perform(post("/api/v1/native-companion/status-ticket").header(AuthHeaders.USER_ID, learner).header("Authorization", bearer)
+                    .header("Origin", "https://chanter.example").contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(Map.of("installationId", installation))))
+                    .andExpect(status().isOk());
+            var issued = objectMapper.readTree(mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/native-request", channel, question)
+                    .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer).header("Origin", "https://chanter.example")
+                    .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of(
+                            "installationId", installation, "model", "fixture-native", "exportApproved", true))))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            var signed = objectMapper.readTree(java.util.Base64.getUrlDecoder().decode(issued.path("ticket").asText().split("\\.")[0]));
+            assertThat(signed.path("evidenceSha256").isArray()).isTrue();
+            if (revoke) courseResourceCatalogClient.clear();
+            var result = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/native-results/{request}", channel, question, issued.path("requestId").asText())
+                    .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer).header("Origin", "https://chanter.example")
+                    .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of("installationId", installation,
+                            "text", "{\"sourceId\":\"S1\",\"quote\":\"Spring Security uses a filter chain.\"}\n",
+                            "usage", Map.of("inputTokens", 0, "outputTokens", 0)))));
+            if (revoke) result.andExpect(status().isForbidden());
+            else result.andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmProvider").value("codex-native"));
+            assertThat(PROVIDER_CALLS.get()).isEqualTo(before);
+            assertThat(generationLedger.summary(server).unknownUsageCount()).isEqualTo(1);
+            assertThat(generationLedger.summary(server).accountedTokens()).isEqualTo(40960);
+        }
+    }
 
     @Test
     void abandonedProviderAttemptAllowsSourceOnlyRecoveryWithoutAnotherProviderCall() throws Exception {

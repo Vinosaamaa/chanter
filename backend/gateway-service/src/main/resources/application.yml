@@ -74,7 +74,7 @@ spring:
               uri: ${AGENT_SERVICE_URL:http://localhost:8085}
               order: -2
               predicates:
-                - Path=/api/v1/course-channels/*/support-questions/*/assistant-answer,/api/v1/course-channels/*/support-questions/*/assistant-answer/**,/api/v1/course-channels/*/assistant-models
+                - Path=/api/v1/course-channels/*/support-questions/*/assistant-answer,/api/v1/course-channels/*/support-questions/*/assistant-answer/**,/api/v1/course-channels/*/assistant-models,/api/v1/native-companion/**,/api/v1/course-channels/*/support-questions/*/native-request,/api/v1/course-channels/*/support-questions/*/native-results/*
             - id: agent-service-study-assistant
               uri: ${AGENT_SERVICE_URL:http://localhost:8085}
               order: -1

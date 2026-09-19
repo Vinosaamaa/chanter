@@ -1,6 +1,6 @@
 # Issue 316 system review
 
-Status: initial boundary review, not release approval. This review separates native observations from the remaining product security work.
+Status: integrated developer-slice review, not production release approval. The integration update below supersedes the initial boundary-only gaps in this historical review.
 
 | Boundary | Observed evidence | Remaining requirement |
 | --- | --- | --- |
@@ -19,4 +19,14 @@ The fixed `skills` namespace is an observed provider behavior, not an intentiona
 
 No known deployment is enabled by the current module. The private production turn checks effective thread isolation before input, rejects unexpected tools and mismatched stream/completion content, reports client-claimed usage, and closes its provider process after one attempt, with forced termination after a one-second grace period. The unsigned source installer supplies the pinned public deployment configuration, visible-terminal approval, private state, and provider transport. A real installed Windows session reported signed-out status, restarted, stopped, and left no owned runtime directories. Setup status does not imply a running listener or authenticated account. Production study checks require subscription authentication, an advertised model, and known unexhausted limit windows; individual eligibility remains unverified.
 
-Backend capability issuance is not shipped. The complete request path is exercised with synthetic signatures and synthetic model transport only. Product access remains gated on backend integration, provider-managed account verification, and the remaining release work. No issue closure, paid call, provider entitlement, signed installer, or production readiness is claimed.
+The integrated slice now includes deployment-owned issuance and result acceptance, with provider-managed account verification and release provisioning still outstanding. No issue closure, paid call, provider entitlement, OS-trusted installer, or production readiness is claimed.
+
+## Integration review
+
+Access JWTs carry the existing durable session ID. The private auth endpoint requires the internal service token and verifies current session ownership, expiry, and revocation. Native access fails closed for legacy session-less JWTs while existing web parsing remains compatible. Tests cover refresh rotation, logout, refresh replay, expired/foreign sessions, and missing service authentication. The agent performs uncached introspection before releasing a ticket and repeatedly during result validation; a private HTTP fixture verifies actual DTO/header behavior and revoked authority.
+
+Native retrieval shares the existing hosted retrieval method, retaining strict resource availability/approval, current grants, viewer access, and excerpt checks. Reservation uses the existing atomic per-question generation ledger. V10 metadata adds session/installation/model/hash scope and an atomic one-way acceptance claim. Fabricated quotations, mismatched scope, revoked evidence, and repeated submissions fail. Client zero/unknown usage remains UNKNOWN with the full conservative reservation. The HTTP test crosses pairing/status/study/result controllers and real retrieval/persistence, verifies no hosted-provider call, and rejects a resource removed after issuance.
+
+The browser offers native access only through explicit desktop setup; unsupported devices and disabled deployments retain normal web answer options. Pairing requires native terminal approval, status requires a signed paired capability, and every study request separately requires website export consent and native approval. Loopback receives no bearer/cookie credentials. Logout or account change aborts its requests; raw native deltas cannot appear as saved answers. Functional tests exercise terminal-pairing instructions, explicit consent, unavailable states, model intersection, duplicate completion, and cancellation. Real eligible-account inference and browser local-network permission behavior remain external verification gates.
+
+Short-lived evidence snapshots are erased on settlement or minute-based expiry, including abandoned acceptance grace. Durable attempt metadata persists for replay and budget authority. The native provider's operational per-turn files are removed only after its owned process exits; persistent provider authentication remains provider-owned. Checksums and GitHub source attestations give zero-spend verifiable provenance, with no OS-trusted signing claim. Operator-provisioned signing configuration is disabled by default and rejects partial or mismatched keys.

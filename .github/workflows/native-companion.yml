@@ -1,6 +1,7 @@
 name: Native companion boundary
 
 on:
+  workflow_dispatch:
   pull_request:
     paths: ['companion/**', '.github/workflows/native-companion.yml']
   push:
@@ -26,3 +27,32 @@ jobs:
         run: node --test companion/tests/*.test.mjs
       # Native Codex tests skip without an explicitly supplied supported binary.
       # Hosted boundary tests do not establish provider entitlement or native isolation.
+
+  package:
+    needs: boundary
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package the exact tested source without provider binaries or credentials
+        run: |
+          mkdir native-package
+          git archive --format=zip --output=native-package/chanter-native-source.zip HEAD companion
+          git rev-parse HEAD > native-package/SOURCE_COMMIT.txt
+          cd native-package
+          sha256sum chanter-native-source.zip > SHA256SUMS
+      - name: Attest explicitly dispatched or accepted-main source
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: native-package/chanter-native-source.zip
+          create-storage-record: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-companion-source-${{ github.sha }}
+          path: native-package/
+          retention-days: 14
+          if-no-files-found: error

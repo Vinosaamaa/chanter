@@ -9,8 +9,8 @@ const bounded = (value, max) => Number.isSafeInteger(value) && value > 0 && valu
 
 /** Internal native boundary. Deployment key, approval UI, state and transport never come from a website. */
 export class NativeRequestGate {
-  #state; #origin; #host; #key; #approve; #transport; #busy = false;
-  constructor({ state, origin, host, publicKey, approve, transport }) {
+  #state; #origin; #host; #key; #approve; #transport; #discover; #busy = false;
+  constructor({ state, origin, host, publicKey, approve, transport, discover }) {
     let validOrigin = false;
     try { const parsed = new URL(origin); validOrigin = parsed.protocol === 'https:' && parsed.origin === origin; } catch { /* Reject. */ }
     const port = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/.exec(host ?? '');
@@ -19,7 +19,7 @@ export class NativeRequestGate {
       throw new CompanionError('INVALID_NATIVE_CONFIGURATION');
     }
     this.#state = state; this.#origin = origin; this.#host = host; this.#key = publicKey;
-    this.#approve = approve; this.#transport = transport;
+    this.#approve = approve; this.#transport = transport; this.#discover = discover;
   }
 
   /** Invoke from native user action after displaying the backend-signed pairing identity. */
@@ -31,7 +31,26 @@ export class NativeRequestGate {
       }
       this.#requireCurrent(payload);
       this.#state.consume('pair_' + payload.requestId, payload.expiresAt);
-      return this.#state.pair(payload);
+      return this.#state.pair({ ...payload, expiresAt: Date.now() + 300_000 });
+    });
+  }
+
+  /** User-triggered, signed discovery. No credentials, generic RPC, or provider input. */
+  async status(request, { signal } = {}) {
+    return this.#exclusive(async () => {
+      const { headers, ticket } = request ?? {};
+      if (headers?.host !== this.#host || headers?.origin !== this.#origin || headers?.['content-type'] !== 'application/json') {
+        throw new CompanionError('NATIVE_ORIGIN_REJECTED');
+      }
+      const payload = this.#read(ticket, 'status');
+      this.#state.requirePairing(headers['x-chanter-pairing'], payload);
+      if (signal?.aborted) throw new CompanionError('STUDY_CANCELLED');
+      if (typeof this.#discover !== 'function') throw new CompanionError('NATIVE_STATUS_UNAVAILABLE');
+      this.#state.consume('status_' + payload.requestId, payload.expiresAt);
+      const result = await this.#discover({ signal });
+      this.#requireCurrent(payload);
+      this.#state.requirePairing(headers['x-chanter-pairing'], payload);
+      return result;
     });
   }
 

@@ -22,6 +22,13 @@ chanter:
     secret: ${CHANTER_JWT_SECRET}
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
   internal-service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
+  auth-service:
+    base-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  native-companion:
+    origin: ${CHANTER_NATIVE_COMPANION_ORIGIN:}
+    private-key-pkcs8: ${CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8:}
+    public-key-spki: ${CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI:}
+    models: ${CHANTER_NATIVE_COMPANION_MODELS:}
   grounding:
     engine: ${CHANTER_GROUNDING_ENGINE:rag}
     min-retrieval-score: ${CHANTER_GROUNDING_MIN_SCORE:0.12}

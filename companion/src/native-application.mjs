@@ -30,6 +30,7 @@ class NativeApplication {
     this.#state.revokePairing();
     this.#server = await startNativeServer({ state: this.#state, origin: this.#config.origin, port: this.#config.port,
       publicKey: createPublicKey(this.#config.publicKey), approve: this.#approve,
+      discover: (options) => this.#provider.status(options),
       transport: (request, options) => this.#provider.study(request, options) });
   }
 

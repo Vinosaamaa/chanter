@@ -49,3 +49,11 @@ The local suite passes 53 tests, including nine native cases with unmodified Cod
 ## Remaining owning-issue work
 
 Signed installers, backend signing/reservations/export approval/result acceptance, signing-key provisioning, hosted pairing UI and live session-revocation wiring, final durable-claim retention policy, and consenting eligible-account end-to-end verification remain required. #321 owns the existing hosted-provider selector/error UI; it does not deliver #316. Claude remains a separate native adapter within this owning issue's acceptance criteria. Full retrieval and grounded study explanation still depend on #247/evaluation. No public service, provider login, copied credential, or paid inference was used in this work.
+
+## Integrated developer slice (supersedes backend/UI gaps above)
+
+The agent now signs pairing/status/study capabilities using an operator-provisioned Ed25519 key. Access tokens carry durable session identity; authenticated private introspection checks live ownership/revocation before native release and result acceptance. Existing session-less web compatibility is preserved. Shared retrieval and the existing one-attempt ledger enforce authorization/reservation; V10 adds immutable native scope and a one-way result claim. The backend validates source quotations and clears temporary evidence, preserving UNKNOWN provider usage for all client reports.
+
+The Windows browser offers an explicit terminal-pairing flow, live signed connection check, deployment/provider model intersection, per-question export consent, and cancellation. Local traffic omits browser credentials and no raw provider output becomes a saved answer. Unsupported devices and unavailable deployments keep web/source choices. Native status is user-triggered, with one fresh check before generation. The native terminal grants five-minute pairings and retains separate per-request approval.
+
+The source workflow now creates a tested archive with exact commit metadata and checksums; trusted dispatch/main runs add free GitHub provenance. This remains OS-unsigned. Provisioning and consenting eligible-account end-to-end proof, Claude support, and final durable-claim retention remain owning-issue gates. No provider login, copied credentials, or paid call occurred.

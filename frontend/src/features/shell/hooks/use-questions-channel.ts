@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ApiError } from '../../../lib/api-client'
 import { useAuthStore } from '../../../stores/auth-store'
+import { streamNativeAnswer, type NativePairing } from '../../questions/native-companion-api'
 import { fetchPublicProfiles } from '../../friends/friends-api'
 import type { PublicUserProfile } from '../../friends/types'
 import {
@@ -53,6 +54,7 @@ type UseQuestionsChannelResult = {
   postQuestion: (body: string) => Promise<boolean>
   isPosting: boolean
   invokeAssistant: (supportQuestionId: string, selection?: AssistantAnswerSelection) => Promise<void>
+  invokeNative: (supportQuestionId: string, pairing: NativePairing, model: string) => Promise<void>
   invokingQuestionId: string | null
   streamingText: string
   streamPhase: AssistantStreamPhase
@@ -272,7 +274,7 @@ export function useQuestionsChannel({
     }
   }, [channelId, userId])
 
-  const invokeAssistant = useCallback(async (supportQuestionId: string, selection?: AssistantAnswerSelection) => {
+  const invokeAssistant = useCallback(async (supportQuestionId: string, selection?: AssistantAnswerSelection, native?: { pairing: NativePairing; model: string }) => {
     if (!contextKey) return
     const attemptKey = `${contextKey}:${supportQuestionId}`
     const sourceOnly = selection?.answerMode === 'source-only' || selection?.modelId === 'source-only'
@@ -295,7 +297,7 @@ export function useQuestionsChannel({
     setTaQueueSuccess(null)
     setSelectedSupportQuestionId(supportQuestionId)
     try {
-      await streamAssistantAnswer(channelId, supportQuestionId, {
+      const handlers: import('../../questions/questions-api').StreamAssistantHandlers = {
         signal: abortController.signal,
         onStatus: (status) => { if (ownsRequest()) setStreamStatus(status) },
         onToken: (token) => {
@@ -312,7 +314,9 @@ export function useQuestionsChannel({
           setStreamingText('')
           setStreamPhase('complete')
         },
-      }, selection)
+      }
+      if (native) await streamNativeAnswer(channelId, supportQuestionId, native.pairing, native.model, handlers)
+      else await streamAssistantAnswer(channelId, supportQuestionId, handlers, selection)
     } catch (caught) {
       if (!ownsRequest()) return
       setStreamPhase('error')
@@ -427,6 +431,7 @@ export function useQuestionsChannel({
     postQuestion,
     isPosting,
     invokeAssistant,
+    invokeNative: (question, pairing, model) => invokeAssistant(question, { modelId: 'native-codex', answerMode: 'quoted-evidence' }, { pairing, model }),
     invokingQuestionId: streamContextKey === contextKey ? invokingQuestionId : null,
     streamingText: streamContextKey === contextKey ? streamingText : '',
     streamPhase: streamContextKey === contextKey ? streamPhase : 'idle',

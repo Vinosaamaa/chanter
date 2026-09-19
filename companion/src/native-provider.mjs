@@ -39,7 +39,7 @@ export class NativeProvider {
     }
   }
 
-  status() { return this.#using((client) => client.discover()); }
+  status({ signal } = {}) { return this.#using((client) => client.discover(), 30_000, signal); }
 
   login(showDevice) {
     return this.#using(async (client, signal) => {

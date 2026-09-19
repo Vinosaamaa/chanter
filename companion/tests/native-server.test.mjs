@@ -68,3 +68,37 @@ test('actual HTTP stream requires signed native pairing and cannot replay a comp
     assert.equal(calls, 1);
   } finally { await server.close(); state.close(); }
 });
+
+test('signed status is user-triggered, paired, single-use and cannot run study transport', async () => {
+  await mkdir('.cache/companion-state', { recursive: true });
+  const parent = await mkdtemp(path.resolve('.cache/companion-state/status-'));
+  const state = await NativeState.open(path.join(parent, 'protected'));
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const origin = 'https://chanter.example';
+  const ticket = (value) => {
+    const body = Buffer.from(JSON.stringify(value)).toString('base64url');
+    return body + '.' + sign(null, Buffer.from('chanter-native-v1.' + body), privateKey).toString('base64url');
+  };
+  let discoveries = 0, studies = 0, approvals = 0;
+  const server = await startNativeServer({ state, origin, publicKey, port: 0,
+    approve: async () => { approvals++; return true; }, transport: async () => { studies++; },
+    discover: async () => { discoveries++; return { account: { state: 'signed-out', provider: 'codex', plan: null }, models: [], limits: null }; } });
+  try {
+    const common = { version: 1, installationId: state.installationId, origin, userId: 'user-316', sessionId: 'session-316',
+      issuedAt: Date.now(), expiresAt: Date.now() + 60_000 };
+    const pairing = await server.pair(ticket({ ...common, kind: 'pair', requestId: 'pair-status' }));
+    assert.ok(pairing.expiresAt > common.expiresAt);
+    assert.equal(discoveries, 0);
+    const headers = { origin, 'content-type': 'application/json', 'x-chanter-pairing': pairing.handle };
+    const body = JSON.stringify({ ticket: ticket({ ...common, kind: 'status', requestId: 'status-316' }) });
+    const response = await fetch(`http://127.0.0.1:${server.port}/status`, { method: 'POST', headers, body });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).account.state, 'signed-out');
+    const replay = await fetch(`http://127.0.0.1:${server.port}/status`, { method: 'POST', headers, body });
+    assert.deepEqual(await replay.json(), { error: 'CAPABILITY_ALREADY_USED' });
+    const wrongSession = JSON.stringify({ ticket: ticket({ ...common, sessionId: 'other-session', kind: 'status', requestId: 'status-other' }) });
+    const denied = await fetch(`http://127.0.0.1:${server.port}/status`, { method: 'POST', headers, body: wrongSession });
+    assert.deepEqual(await denied.json(), { error: 'PAIRING_REQUIRED' });
+    assert.equal(discoveries, 1); assert.equal(studies, 0); assert.equal(approvals, 1);
+  } finally { await server.close(); state.close(); }
+});

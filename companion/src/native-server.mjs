@@ -3,7 +3,7 @@ import { CompanionError } from './codex-app-server.mjs';
 import { NativeRequestGate } from './native-request.mjs';
 
 /** Internal listener, started only by a native launcher with a pinned deployment and approval UI. */
-export async function startNativeServer({ state, origin, publicKey, approve, transport, port = 43160 }) {
+export async function startNativeServer({ state, origin, publicKey, approve, transport, discover, port = 43160 }) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new CompanionError('INVALID_NATIVE_CONFIGURATION');
   let gate, host;
   const controllers = new Set();
@@ -19,7 +19,7 @@ export async function startNativeServer({ state, origin, publicKey, approve, tra
     server.listen(port, '127.0.0.1', resolve);
   });
   host = `127.0.0.1:${server.address().port}`;
-  try { gate = new NativeRequestGate({ state, origin, host, publicKey, approve, transport }); }
+  try { gate = new NativeRequestGate({ state, origin, host, publicKey, approve, transport, discover }); }
   catch (error) { await new Promise((resolve) => server.close(resolve)); throw error; }
 
   async function handle(req, res) {
@@ -32,7 +32,8 @@ export async function startNativeServer({ state, origin, publicKey, approve, tra
       res.writeHead(403, { 'connection': 'close', 'cache-control': 'no-store' }); res.end(); return;
     }
     const cors = { 'access-control-allow-origin': origin, 'vary': 'Origin', 'cache-control': 'no-store' };
-    if (req.method === 'OPTIONS' && req.url === '/study') {
+    const supportedPath = req.url === '/study' || req.url === '/status';
+    if (req.method === 'OPTIONS' && supportedPath) {
       const headers = (req.headers['access-control-request-headers'] ?? '').toLowerCase().split(',').map((name) => name.trim()).sort();
       if (req.headers['access-control-request-method'] !== 'POST' || headers.join(',') !== 'content-type,x-chanter-pairing') {
         res.writeHead(403, cors); res.end(); return;
@@ -41,7 +42,7 @@ export async function startNativeServer({ state, origin, publicKey, approve, tra
         'access-control-allow-headers': 'Content-Type, X-Chanter-Pairing', 'access-control-allow-private-network': 'true' });
       res.end(); return;
     }
-    if (req.method !== 'POST' || req.url !== '/study') { res.writeHead(404, cors); res.end(); return; }
+    if (req.method !== 'POST' || !supportedPath) { res.writeHead(404, cors); res.end(); return; }
     if (!/^[a-zA-Z0-9_-]{43}$/.test(req.headers['x-chanter-pairing'] ?? '')) {
       res.writeHead(401, { ...cors, 'connection': 'close' }); res.end(); return;
     }
@@ -71,7 +72,15 @@ export async function startNativeServer({ state, origin, publicKey, approve, tra
       let body;
       try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
       catch { throw new CompanionError('INVALID_STUDY_REQUEST'); }
-      if (!body || Array.isArray(body) || Object.keys(body).sort().join(',') !== 'prompt,ticket') throw new CompanionError('INVALID_STUDY_REQUEST');
+      const expected = req.url === '/status' ? 'ticket' : 'prompt,ticket';
+      if (!body || Array.isArray(body) || Object.keys(body).sort().join(',') !== expected) throw new CompanionError('INVALID_STUDY_REQUEST');
+      if (req.url === '/status') {
+        const result = await gate.status({ headers: req.headers, ...body }, { signal: controller.signal });
+        const encoded = JSON.stringify(result);
+        if (Buffer.byteLength(encoded) > 64 * 1024) throw new CompanionError('NATIVE_STATUS_UNAVAILABLE');
+        res.writeHead(200, { ...cors, 'content-type': 'application/json', 'x-content-type-options': 'nosniff' });
+        res.end(encoded); return;
+      }
       const result = await gate.execute({ headers: req.headers, ...body }, { signal: controller.signal,
         onDelta: (delta) => {
           if (typeof delta !== 'string') throw new CompanionError('PROVIDER_PROTOCOL_ERROR');
