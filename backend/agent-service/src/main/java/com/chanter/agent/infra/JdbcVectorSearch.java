@@ -34,14 +34,37 @@ public class JdbcVectorSearch {
     public List<RankedChunk> nearest(EmbeddingModel model, UUID course, List<AuthorizedResource> authorized,
             float[] query, int limit, double minimumScore) {
         if(authorized.isEmpty()) return List.of();
-        if(authorized.size()>5000 || course==null || limit<1 || limit>50 || !Double.isFinite(minimumScore)
-                || minimumScore<0 || minimumScore>1) throw new IllegalArgumentException("Invalid bounded vector query");
-        String vector=VectorValue.encode(query,model.dimensions());
+        var statement=statement(model,course,authorized,query,limit,minimumScore);
+        configureQuery();
+        return jdbc.sql(statement.sql()).params(statement.parameters()).query((rs,row)->new RankedChunk(
+                rs.getObject("id",UUID.class),rs.getObject("resource_id",UUID.class),rs.getObject("course_id",UUID.class),
+                rs.getInt("chunk_index"),rs.getInt("start_offset"),rs.getInt("end_offset"),rs.getString("content_text"),
+                rs.getString("file_name"),rs.getDouble("score"),rs.getString("model_id"),rs.getString("locator_kind"),
+                rs.getObject("locator_number",Integer.class),rs.getString("locator_label"),rs.getString("source_sha256"),
+                rs.getString("parser_version"),rs.getString("signals").isBlank()?Set.of():Set.of(rs.getString("signals").split(",")),
+                new ResourceSourceScope(rs.getObject("study_server_id",UUID.class),rs.getObject("cohort_id",UUID.class),"und",
+                        rs.getObject("cohort_id")==null?"COURSE":"COHORT",rs.getLong("source_revision")))).list();
+    }
+    @Transactional(readOnly=true)
+    String explain(EmbeddingModel model,UUID course,List<AuthorizedResource> authorized,float[] query) {
+        if(!postgres || authorized.isEmpty()) throw new IllegalArgumentException("PostgreSQL plan requires an authorization fixture");
+        var statement=statement(model,course,authorized,query,5,0.35);
+        configureQuery();
+        return jdbc.sql("EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) "+statement.sql()).params(statement.parameters()).query(String.class).single();
+    }
+    private void configureQuery() {
         if(postgres) {
             jdbc.sql("SELECT set_config('hnsw.iterative_scan','strict_order',true)").query(String.class).single();
             jdbc.sql("SELECT set_config('statement_timeout','2000',true)").query(String.class).single();
             jdbc.sql("SELECT set_config('plan_cache_mode','force_custom_plan',true)").query(String.class).single();
         }
+    }
+    private record Statement(String sql,Map<String,Object> parameters) {}
+    private Statement statement(EmbeddingModel model,UUID course,List<AuthorizedResource> authorized,
+            float[] query,int limit,double minimumScore) {
+        if(authorized.size()>5000 || course==null || limit<1 || limit>50 || !Double.isFinite(minimumScore)
+                || minimumScore<0 || minimumScore>1) throw new IllegalArgumentException("Invalid bounded vector query");
+        String vector=VectorValue.encode(query,model.dimensions());
         Map<String,Object> params=new LinkedHashMap<>();
         List<String> rows=new ArrayList<>();
         for(int i=0;i<authorized.size();i++) {
@@ -70,13 +93,6 @@ public class JdbcVectorSearch {
                 ORDER BY %s LIMIT :limit
             ) SELECT * FROM nearest WHERE score>=:minimum ORDER BY score DESC,id
             """.formatted(String.join(",",rows),distance,distance);
-        return jdbc.sql(sql).params(params).query((rs,row)->new RankedChunk(
-                rs.getObject("id",UUID.class),rs.getObject("resource_id",UUID.class),rs.getObject("course_id",UUID.class),
-                rs.getInt("chunk_index"),rs.getInt("start_offset"),rs.getInt("end_offset"),rs.getString("content_text"),
-                rs.getString("file_name"),rs.getDouble("score"),rs.getString("model_id"),rs.getString("locator_kind"),
-                rs.getObject("locator_number",Integer.class),rs.getString("locator_label"),rs.getString("source_sha256"),
-                rs.getString("parser_version"),rs.getString("signals").isBlank()?Set.of():Set.of(rs.getString("signals").split(",")),
-                new ResourceSourceScope(rs.getObject("study_server_id",UUID.class),rs.getObject("cohort_id",UUID.class),"und",
-                        rs.getObject("cohort_id")==null?"COURSE":"COHORT",rs.getLong("source_revision")))).list();
+        return new Statement(sql,params);
     }
 }

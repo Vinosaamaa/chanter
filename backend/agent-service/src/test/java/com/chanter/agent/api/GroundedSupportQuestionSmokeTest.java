@@ -40,6 +40,31 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 class GroundedSupportQuestionSmokeTest {
     @Autowired private org.springframework.jdbc.core.simple.JdbcClient jdbcClient;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private com.chanter.agent.application.VectorRetrievalService vectorRetrieval;
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})
+    void unavailableSemanticEvidenceNeverFallsBackToDownloadedResource(boolean providerFailed) throws Exception {
+        UUID server=UUID.randomUUID(),instructor=UUID.randomUUID(),learner=UUID.randomUUID(),channel=UUID.randomUUID(),
+                course=UUID.randomUUID(),cohort=UUID.randomUUID(),resource=UUID.randomUUID(),question=UUID.randomUUID();
+        installAssistant(server,instructor,learner,channel,course,cohort,resource);
+        channelAccessClient.grantLearnerPost(channel,learner,course,server,"questions");
+        supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question,channel,learner,"When is homework due?"));
+        courseResourceCatalogClient.registerResource(new CourseResourceSummary(resource,course,"Homework","homework.txt",true));
+        courseResourceCatalogClient.grantViewerAccess(course,learner);
+        courseResourceContentClient.registerContent(resource,"Homework is due Friday. Submit homework before Friday.".getBytes(StandardCharsets.UTF_8));
+        if(providerFailed) org.mockito.Mockito.doThrow(new IllegalStateException("Synthetic semantic provider outage"))
+                .when(vectorRetrieval).retrieve(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.eq(course),
+                    org.mockito.ArgumentMatchers.eq(learner),org.mockito.ArgumentMatchers.anySet(),org.mockito.ArgumentMatchers.anyInt());
+        var result=mockMvc.perform(post("/api/v1/course-channels/{channelId}/support-questions/{questionId}/assistant-answer",channel,question)
+                .header(AuthHeaders.USER_ID,learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-agent"))
+                .andExpect(status().isOk()).andReturn();
+        var response=objectMapper.readValue(result.getResponse().getContentAsString(),AssistantAnswerResponse.class);
+        assertThat(response.confidence()).isEqualTo("LOW");
+        assertThat(response.handoffRecommended()).isTrue();
+        assertThat(response.sources()).isEmpty();
+    }
 
     private static final com.sun.net.httpserver.HttpServer PROVIDER = fixtureProvider();
     private static final java.util.concurrent.atomic.AtomicInteger PROVIDER_CALLS = new java.util.concurrent.atomic.AtomicInteger();
@@ -114,7 +139,7 @@ class GroundedSupportQuestionSmokeTest {
             channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
             supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
             courseResourceCatalogClient.grantViewerAccess(course, learner);
-            courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+            indexSecurityGuide(server,course,resource);
             String bearer = "Bearer " + jwtTokens.createAccessToken(learner, session);
             org.mockito.Mockito.when(nativeSessions.requireActive(bearer, learner)).thenReturn(
                     new com.chanter.common.auth.JwtTokenService.AccessSession(learner, session, java.time.Instant.now().plusSeconds(600)));
@@ -215,7 +240,7 @@ class GroundedSupportQuestionSmokeTest {
         channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
         supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
         courseResourceCatalogClient.grantViewerAccess(course, learner);
-        courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+        indexSecurityGuide(server,course,resource);
         int providerBefore = PROVIDER_CALLS.get();
         String answerId = null;
         for (int attempt = 0; attempt < 2; attempt++) {
@@ -250,7 +275,7 @@ class GroundedSupportQuestionSmokeTest {
         channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
         supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
         courseResourceCatalogClient.grantViewerAccess(course, learner);
-        courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+        indexSecurityGuide(server,course,resource);
         int providerBefore = PROVIDER_CALLS.get();
         var initial = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
                         .param("modelId", "fixture").header(AuthHeaders.USER_ID, learner)
@@ -288,7 +313,7 @@ class GroundedSupportQuestionSmokeTest {
         channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
         supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
         courseResourceCatalogClient.grantViewerAccess(course, learner);
-        courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+        indexSecurityGuide(server,course,resource);
         generationLedger.reserve(server, question, learner, "fixture", modelCatalog.definition("fixture"));
         int before = PROVIDER_CALLS.get();
 
@@ -319,7 +344,7 @@ class GroundedSupportQuestionSmokeTest {
         channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
         supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
         courseResourceCatalogClient.grantViewerAccess(course, learner);
-        courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+        indexSecurityGuide(server,course,resource);
         int before = PROVIDER_CALLS.get();
 
         MvcResult result = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer/stream", channel, question)
@@ -643,6 +668,16 @@ class GroundedSupportQuestionSmokeTest {
                 .andExpect(status().isNotFound());
     }
 
+    private void indexSecurityGuide(UUID server,UUID course,UUID resource) throws Exception {
+        byte[] bytes="Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8);
+        courseResourceContentClient.registerContent(resource,bytes);
+        resourceIngestionService.ingest(course,resource,"spring-security-guide.md",bytes);
+        jdbcClient.sql("UPDATE resource_index_lifecycle SET study_server_id=:server WHERE resource_id=:id")
+                .param("server",server).param("id",resource).update();
+        courseResourceCatalogClient.registerResource(new CourseResourceSummary(resource,course,"Spring Security Guide",
+                "spring-security-guide.md",true,server,null,
+                java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes))));
+    }
     private void installAssistant(
             UUID studyServerId,
             UUID instructorUserId,

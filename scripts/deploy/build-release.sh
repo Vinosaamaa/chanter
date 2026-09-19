@@ -15,6 +15,7 @@ mapfile -t modules < <(node --input-type=module -e 'import {modules} from "./scr
 test -f backend/auth-service/src/main/resources/db/migration/V3__durable_browser_sessions.sql || {
   echo 'The secure browser-session release from #242 must be integrated first.' >&2; exit 1;
 }
+node scripts/vector/download-model.mjs backend/agent-service/target/embedding-model
 for module in "${modules[@]}"; do
   docker build --platform "linux/$architecture" --file infra/production/java/Dockerfile \
     --build-arg "MODULE=$module" --build-arg "JDK_IMAGE=$(locked jdk)" --build-arg "JRE_IMAGE=$(locked jre)" \

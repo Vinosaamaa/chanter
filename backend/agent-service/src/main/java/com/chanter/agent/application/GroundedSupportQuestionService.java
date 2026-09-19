@@ -15,13 +15,13 @@ import com.chanter.agent.domain.StudyAssistantAnswer;
 import com.chanter.agent.domain.StudyAssistantAnswerAudit;
 import com.chanter.agent.domain.StudyAssistantAnswerSource;
 import com.chanter.agent.domain.StudyAssistantGrant;
-import java.nio.charset.StandardCharsets;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -41,11 +41,9 @@ public class GroundedSupportQuestionService {
     private final SupportQuestionChannelAccessClient channelAccessClient;
     private final SupportQuestionClient supportQuestionClient;
     private final CourseResourceCatalogClient courseResourceCatalogClient;
-    private final CourseResourceContentClient courseResourceContentClient;
     private final ApprovedFaqClient approvedFaqClient;
     private final VectorRetrievalService vectorRetrievalService;
     private final ObjectProvider<RagGroundingEngine> ragGroundingEngine;
-    private final ObjectProvider<KeywordGroundingEngine> keywordGroundingEngine;
     private final AgentRuntimeService agentRuntimeService;
     private final LlmModelCatalog modelCatalog;
     private final AiEvidenceAuthorization evidenceAuthorization;
@@ -53,7 +51,6 @@ public class GroundedSupportQuestionService {
     private final StudyAssistantAnswerPersistenceService answerPersistenceService;
     private final StudyAssistantAnswerRepository answerRepository;
     private final Clock clock;
-    private final String groundingEngineMode;
     private final int retrievalTopK;
 
     public GroundedSupportQuestionService(
@@ -61,11 +58,9 @@ public class GroundedSupportQuestionService {
             SupportQuestionChannelAccessClient channelAccessClient,
             SupportQuestionClient supportQuestionClient,
             CourseResourceCatalogClient courseResourceCatalogClient,
-            CourseResourceContentClient courseResourceContentClient,
             ApprovedFaqClient approvedFaqClient,
             VectorRetrievalService vectorRetrievalService,
             ObjectProvider<RagGroundingEngine> ragGroundingEngine,
-            ObjectProvider<KeywordGroundingEngine> keywordGroundingEngine,
             AgentRuntimeService agentRuntimeService,
             LlmModelCatalog modelCatalog,
             AiEvidenceAuthorization evidenceAuthorization,
@@ -80,11 +75,9 @@ public class GroundedSupportQuestionService {
         this.channelAccessClient = channelAccessClient;
         this.supportQuestionClient = supportQuestionClient;
         this.courseResourceCatalogClient = courseResourceCatalogClient;
-        this.courseResourceContentClient = courseResourceContentClient;
         this.approvedFaqClient = approvedFaqClient;
         this.vectorRetrievalService = vectorRetrievalService;
         this.ragGroundingEngine = ragGroundingEngine;
-        this.keywordGroundingEngine = keywordGroundingEngine;
         this.agentRuntimeService = agentRuntimeService;
         this.modelCatalog = modelCatalog;
         this.evidenceAuthorization = evidenceAuthorization;
@@ -92,7 +85,7 @@ public class GroundedSupportQuestionService {
         this.answerPersistenceService = answerPersistenceService;
         this.answerRepository = answerRepository;
         this.clock = clock;
-        this.groundingEngineMode = groundingEngineMode == null ? "rag" : groundingEngineMode;
+        if (!"rag".equalsIgnoreCase(groundingEngineMode)) throw new IllegalArgumentException("Resource grounding requires semantic retrieval");
         this.retrievalTopK = retrievalTopK < 1 ? 5 : retrievalTopK;
     }
 
@@ -304,7 +297,6 @@ public class GroundedSupportQuestionService {
                 .collect(Collectors.toSet());
 
         Map<UUID, String> resourceTitles = new HashMap<>();
-        List<GroundingSource> downloadedSources = new ArrayList<>();
         execution.check();
         for (CourseResourceSummary resource : courseResourceCatalogClient.listAiApprovedCourseResources(
                 access.courseId(),
@@ -316,22 +308,6 @@ public class GroundedSupportQuestionService {
             }
             resourceTitles.put(resource.id(), resource.title());
 
-            try {
-                byte[] content = courseResourceContentClient.downloadContent(resource.id(), learnerUserId);
-                String textContent = decodeTextContent(content, resource.fileName());
-                if (!textContent.isBlank()) {
-                    downloadedSources.add(new GroundingSource(resource.id(), resource.title(), textContent));
-                }
-            } catch (ResponseStatusException exception) {
-                if (exception.getStatusCode() == HttpStatus.NOT_FOUND
-                        || exception.getStatusCode() == HttpStatus.FORBIDDEN
-                        || exception.getStatusCode() == HttpStatus.BAD_GATEWAY) {
-                    continue;
-                }
-                throw exception;
-            } catch (RuntimeException exception) {
-                continue;
-            }
         }
 
         // A grant alone is insufficient: stale vectors must also belong to currently approved Course material.
@@ -346,7 +322,6 @@ public class GroundedSupportQuestionService {
                 access.courseId(), learnerUserId,
                 grantedResourceIds,
                 resourceTitles,
-                downloadedSources,
                 faqSources
         );
         return groundingResult;
@@ -357,35 +332,17 @@ public class GroundedSupportQuestionService {
             UUID courseId, UUID viewerUserId,
             Set<UUID> grantedResourceIds,
             Map<UUID, String> resourceTitles,
-            List<GroundingSource> downloadedSources,
             List<GroundingSource> faqSources
     ) {
-        if ("keyword".equalsIgnoreCase(groundingEngineMode)) {
-            KeywordGroundingEngine keyword = keywordGroundingEngine.getIfAvailable();
-            if (keyword == null) {
-                keyword = new KeywordGroundingEngine();
-            }
-            List<GroundingSource> all = new ArrayList<>(downloadedSources);
-            all.addAll(faqSources);
-            return keyword.answer(question, all);
-        }
-
         RagGroundingEngine rag = ragGroundingEngine.getIfAvailable();
         if (rag == null) {
-            rag = new RagGroundingEngine(0.12);
+            rag = new RagGroundingEngine(0.35);
         }
 
-        List<RankedChunk> ranked = vectorRetrievalService.retrieve(question, courseId, viewerUserId, grantedResourceIds, retrievalTopK);
-        if (!ranked.isEmpty()) {
-            return rag.answer(question, ranked, faqSources, resourceTitles);
-        }
-
-        List<GroundingSource> fallbackSources = new ArrayList<>(downloadedSources);
-        fallbackSources.addAll(faqSources);
-        if (!fallbackSources.isEmpty()) {
-            return rag.answerWithKeywordFallback(question, fallbackSources);
-        }
-        return rag.answer(question, List.of(), faqSources, resourceTitles);
+        List<RankedChunk> ranked;
+        try { ranked = vectorRetrievalService.retrieve(question, courseId, viewerUserId, grantedResourceIds, retrievalTopK); }
+        catch (RuntimeException unavailable) { ranked = List.of(); }
+        return rag.answer(question, ranked, faqSources, resourceTitles);
     }
 
     private List<GroundingSource> loadFaqSources(UUID courseId, UUID learnerUserId) {
@@ -472,7 +429,4 @@ public class GroundedSupportQuestionService {
     ) {
     }
 
-    private static String decodeTextContent(byte[] content, String fileName) {
-        return ResourceTextExtractor.extractDocument(content, fileName).text();
-    }
 }

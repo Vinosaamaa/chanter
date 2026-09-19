@@ -7,11 +7,13 @@ ADD --checksum=sha256:bbf83c151b6400709e2f225bdd07a04f839d9d13b8b93464241333fd25
 COPY backend/telemetry/target/telemetry-0.1.0-SNAPSHOT.jar /work/telemetry/privacy.jar
 COPY backend/${MODULE}/target/${MODULE}-0.1.0-SNAPSHOT.jar input.jar
 COPY infra/production/java/Probe.java infra/production/java/Migrate.java helpers/
+COPY backend/agent-service/target/embedding-model/ model-source/
 RUN jar -xf input.jar && mkdir -p app/helpers && \
     mv BOOT-INF/classes app/classes && mv BOOT-INF/lib app/lib && \
     sed -n 's/^Start-Class: //p' META-INF/MANIFEST.MF | tr -d '\r' > app/main-class && \
     test -s app/main-class && javac -d app/helpers helpers/Probe.java && \
-    if find app/lib -name 'flyway-core-*.jar' | grep -q .; then javac -cp 'app/lib/*' -d app/helpers helpers/Migrate.java; fi
+    if find app/lib -name 'flyway-core-*.jar' | grep -q .; then javac -cp 'app/lib/*' -d app/helpers helpers/Migrate.java; fi && \
+    if [ "$MODULE" = agent-service ]; then mkdir -p app/models/minilm && cp model-source/* app/models/minilm/; fi
 
 FROM ${JRE_IMAGE}
 WORKDIR /app

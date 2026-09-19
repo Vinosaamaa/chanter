@@ -63,12 +63,15 @@ public class EmbeddingVersionStore {
         lock();
         String staged=jdbc.sql("SELECT candidate_model_id FROM embedding_control WHERE id=1").query(String.class).optional().orElse(null);
         if(!id.equals(staged)) throw new IllegalStateException("Model is not the staged candidate");
+        String previous=state().previous();
+        if(previous!=null && !previous.equals(id)) throw new IllegalStateException("Discard the older rollback version before activation");
         requireCoverage(id);
         jdbc.sql("UPDATE embedding_control SET previous_model_id=active_model_id,active_model_id=:id,candidate_model_id=NULL WHERE id=1")
                 .param("id",id).update();
     }
     @Transactional public void rollback() {
         lock();
+        if(state().candidate()!=null) throw new IllegalStateException("Discard the staged candidate before rollback");
         String previous=jdbc.sql("SELECT previous_model_id FROM embedding_control WHERE id=1").query(String.class).optional().orElse(null);
         if(previous==null) throw new IllegalStateException("No retained embedding version");
         requireCoverage(previous);

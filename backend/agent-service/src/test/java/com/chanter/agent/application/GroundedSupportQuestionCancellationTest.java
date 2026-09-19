@@ -16,7 +16,7 @@ import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 class GroundedSupportQuestionCancellationTest {
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void cancelledFirstDownloadNeverStartsAnotherDownloadOrProvider(boolean downloadFails) {
+    void cancelledCatalogNeverStartsRetrievalOrProvider(boolean catalogFails) {
         UUID server = UUID.randomUUID(), channel = UUID.randomUUID(), user = UUID.randomUUID(), course = UUID.randomUUID();
         UUID question = UUID.randomUUID(), install = UUID.randomUUID(), first = UUID.randomUUID(), second = UUID.randomUUID();
         var assistant = mock(StudyAssistantService.class);
@@ -38,15 +38,15 @@ class GroundedSupportQuestionCancellationTest {
         when(resources.listAiApprovedCourseResources(course, user)).thenReturn(List.of(
                 new CourseResourceCatalogClient.CourseResourceSummary(first, course, "First", "first.md", true),
                 new CourseResourceCatalogClient.CourseResourceSummary(second, course, "Second", "second.md", true)));
-        var service = new GroundedSupportQuestionService(assistant, access, questions, resources, content, faqs,
-                mock(VectorRetrievalService.class), factory.getBeanProvider(RagGroundingEngine.class), factory.getBeanProvider(KeywordGroundingEngine.class),
+        var service = new GroundedSupportQuestionService(assistant, access, questions, resources, faqs,
+                mock(VectorRetrievalService.class), factory.getBeanProvider(RagGroundingEngine.class),
                 runtime, catalog, mock(AiEvidenceAuthorization.class), mock(AiQuotaEnforcementService.class),
-                mock(StudyAssistantAnswerPersistenceService.class), mock(StudyAssistantAnswerRepository.class), Clock.systemUTC(), "keyword", 5);
+                mock(StudyAssistantAnswerPersistenceService.class), mock(StudyAssistantAnswerRepository.class), Clock.systemUTC(), "rag", 5);
         try (var execution = new LlmExecution(Duration.ofSeconds(3))) {
-            when(content.downloadContent(first, user)).thenAnswer(call -> {
+            when(resources.listAiApprovedCourseResources(course,user)).thenAnswer(call -> {
                 execution.cancel();
-                if (downloadFails) throw new IllegalStateException("download stopped");
-                return "A queue preserves order.".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                if (catalogFails) execution.check();
+                return List.of();
             });
             when(runtime.orchestrate(any(), any(), any(), any(), any())).thenAnswer(call -> {
                 execution.check(); return null;

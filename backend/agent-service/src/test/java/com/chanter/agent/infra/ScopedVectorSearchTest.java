@@ -15,7 +15,6 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest @ActiveProfiles("test")
 class ScopedVectorSearchTest {
     @Autowired ResourceIngestionService ingestion;
-    @Autowired ResourceChunkEmbeddingRepository embeddings;
     @Autowired EmbeddingVersionStore versions;
     @Autowired JdbcVectorSearch search;
     @Autowired JdbcClient jdbc;
@@ -29,7 +28,10 @@ class ScopedVectorSearchTest {
                 .param("server",server).param("cohort",cohort).param("id",id).update();
         return new JdbcVectorSearch.AuthorizedResource(id,server,cohort,result.sourceSha256());
     }
-    private float[] vector(UUID id) { return embeddings.findByResourceIds(List.of(id)).getFirst().vector(); }
+    private float[] vector(UUID id) {
+        return VectorValue.decode(jdbc.sql("SELECT embedding FROM resource_chunk_embeddings WHERE resource_id=:id LIMIT 1")
+                .param("id",id).query(String.class).single());
+    }
 
     @Test void authorizationFiltersBeforeTopKAndVersionsScopesRemainCurrent() {
         var allowed=resource(course,null,"Students submit homework on Friday.");
