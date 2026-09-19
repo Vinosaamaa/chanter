@@ -62,7 +62,7 @@ export function OperatorAdminTools({ request, reason, openTarget }: { request: P
 
   return <section className="operator-admin" aria-label="Administrator tools">
     <h2>Administrator tools</h2>
-    <nav aria-label="Administrator views">{(['directory', 'appeals', 'operators'] as const).map(value => <button key={value} aria-pressed={view === value} onClick={() => { setView(value); setOffset(0); setItems(null); setAppeals(null); setOperators(null); setSelectedAppeal(null); setConfirmation(''); setError(''); setNotice('') }}>{value === 'directory' ? 'Find accounts and servers' : value === 'appeals' ? 'Review appeals' : 'Operator roles'}</button>)}</nav>
+    <nav aria-label="Administrator views">{(['directory', 'appeals', 'operators'] as const).map(value => <button key={value} disabled={busy} aria-pressed={view === value} onClick={() => { setView(value); setOffset(0); setItems(null); setAppeals(null); setOperators(null); setSelectedAppeal(null); setConfirmation(''); setError(''); setNotice('') }}>{value === 'directory' ? 'Find accounts and servers' : value === 'appeals' ? 'Review appeals' : 'Operator roles'}</button>)}</nav>
     <p>Each read uses the investigation reason above and is recorded in the audit trail.</p>
     {error && <p role="alert" className="inline-error">{error}</p>}{notice && <p role="status" className="moderation-notice">{notice}</p>}
     <form className="moderation-form" onSubmit={event => { event.preventDefault(); void load() }}>

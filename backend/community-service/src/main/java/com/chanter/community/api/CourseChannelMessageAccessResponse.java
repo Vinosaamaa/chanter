@@ -6,6 +6,7 @@ import java.util.UUID;
 public record CourseChannelMessageAccessResponse(
         UUID channelId,
         UUID courseId,
+        UUID studyServerId,
         String channelName,
         boolean canReadMessages,
         boolean canPostMessages
@@ -15,6 +16,7 @@ public record CourseChannelMessageAccessResponse(
         return new CourseChannelMessageAccessResponse(
                 access.channelId(),
                 access.courseId(),
+                access.studyServerId(),
                 access.channelName(),
                 access.canReadMessages(),
                 access.canPostMessages()

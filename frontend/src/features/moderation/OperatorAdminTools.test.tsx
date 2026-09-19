@@ -1,9 +1,22 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { OperatorAdminTools } from './OperatorAdminTools'
 
 afterEach(cleanup)
+
+it('keeps the selected view while its request is pending and clears results on a later switch', async () => {
+  let resolve: (rows: unknown[]) => void = () => { throw new Error('No request') }
+  const request=vi.fn().mockImplementation(() => new Promise(done => { resolve=done }))
+  render(<OperatorAdminTools request={request} reason="Find reported account" openTarget={vi.fn()} />)
+  fireEvent.change(screen.getByLabelText('Name, exact email or reference'),{target:{value:'Learner'}})
+  await userEvent.click(screen.getByRole('button',{name:'Search directory'}))
+  expect(screen.getByRole('button',{name:'Review appeals'})).toBeDisabled()
+  await act(async () => resolve([{type:'USER',id:'account',name:'Result from directory'}]))
+  expect(await screen.findByText('Result from directory')).toBeVisible()
+  await userEvent.click(screen.getByRole('button',{name:'Review appeals'}))
+  expect(screen.queryByText('Result from directory')).not.toBeInTheDocument()
+})
 
 it('requires exact account confirmation and a reason before revoking an operator', async () => {
   const request = vi.fn().mockResolvedValue(undefined)

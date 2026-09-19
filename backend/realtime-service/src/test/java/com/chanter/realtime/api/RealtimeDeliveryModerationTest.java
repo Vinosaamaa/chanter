@@ -76,6 +76,19 @@ class RealtimeDeliveryModerationTest {
         assertThat(received.getLast()).contains("presence_snapshot").doesNotContain(peer.toString());
     }
 
+    @Test void authorityOutageAndTransportFailureAreNotReportedAsSuccessfulDelivery() {
+        UUID sender=UUID.randomUUID(),recipient=UUID.randomUUID(); var session=session(new ArrayList<>());
+        social.connect(session,recipient).block(Duration.ofSeconds(5));
+        when(pairAccess.requireCallAccess(sender,recipient)).thenReturn(Mono.error(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE)));
+        try {
+            assertThatThrownBy(() -> social.publishDirectMessage(new PersistedDirectMessage(UUID.randomUUID(),sender,recipient,"saved message",Instant.now())).block(Duration.ofSeconds(5)))
+                    .isInstanceOf(ResponseStatusException.class);
+            doReturn(Mono.error(new IllegalStateException("transport failed"))).when(session).send(any());
+            assertThatThrownBy(() -> social.deliverEventToUser(recipient,Map.of("type","call_ended")).block(Duration.ofSeconds(5)))
+                    .isInstanceOf(IllegalStateException.class).hasMessage("transport failed");
+        } finally { social.disconnect(session).block(Duration.ofSeconds(5)); }
+    }
+
     private static WebSocketSession session(List<String> received) {
         var session=mock(WebSocketSession.class);
         when(session.getId()).thenReturn(UUID.randomUUID().toString());

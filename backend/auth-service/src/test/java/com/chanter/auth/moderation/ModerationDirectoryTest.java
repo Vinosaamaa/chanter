@@ -26,6 +26,8 @@ class ModerationDirectoryTest {
         jdbc.update("INSERT INTO auth_users(id,email,password_hash,display_name,email_verified,created_at) VALUES(?,?,?,'Distinct learner',TRUE,CURRENT_TIMESTAMP)",user,user+"@directory.test","private-hash");
         assertThat(directory.search("admin","verified","USER","Distinct",0,"Locate reported account",UUID.randomUUID())).extracting(item -> item.id()).containsExactly(user);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_audit WHERE actor_id=? AND action='MODERATION_DIRECTORY_READ'",Integer.class,admin)).isEqualTo(1);
+        assertThat(directory.search("admin","verified","USER",user.toString().toUpperCase(java.util.Locale.ROOT),0,"Find exact account",UUID.randomUUID()))
+                .extracting(item -> item.id()).containsExactly(user);
         assertThatThrownBy(() -> directory.search("reviewer","verified","USER","Distinct",0,"Search",UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> directory.search("admin","verified","USER","x",0,"Search",UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> directory.search("admin","verified","USER","Distinct",10001,"Search",UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);

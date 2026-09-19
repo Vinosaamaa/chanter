@@ -69,9 +69,16 @@ test('real moderation, active audio revocation and verified-email appeal', async
     const servers = await get<Array<{ id: string; name: string }>>(operator, '/api/v1/study-servers', ownerSession)
     const server = servers.find(item => item.name === 'Workable Product Demo')!
     expect(server).toBeDefined()
-    const nav = await get<{ studyServerChannels: Array<{ id: string; kind: string }>; courses: Array<{ channels: Array<{ id: string; kind: string }> }> }>(operator, `/api/v1/study-servers/${server.id}/navigation`, ownerSession)
+    const nav = await get<{ studyServerChannels: Array<{ id: string; kind: string }>; courses: Array<{ cohorts: Array<{ id: string }> }> }>(learner, `/api/v1/study-servers/${server.id}/navigation`, learnerSession)
     const voice = nav.studyServerChannels.find(item => item.kind === 'VOICE')!
-    const textChannel = nav.courses.flatMap(course => course.channels).find(item => item.kind === 'TEXT')!
+    const cohort = nav.courses.flatMap(course => course.cohorts)[0]
+    expect(cohort).toBeDefined()
+    // Default announcements are instructor-only. Create a normal discussion in this learner's actual cohort.
+    const createdChannel = await operator.request.post(`/api/v1/cohorts/${cohort.id}/channels`, {
+      headers: bearer(ownerSession), data: { name: 'moderation-proof', kind: 'TEXT' },
+    })
+    expect(createdChannel.status()).toBe(201)
+    const textChannel = await createdChannel.json() as { id: string }
     expect(voice).toBeDefined(); expect(textChannel).toBeDefined()
     const posted = await learner.request.post(`/api/v1/course-channels/${textChannel.id}/messages`, {
       headers: learnerHeaders, data: { body: 'Synthetic moderation evidence. Preserve this message during review.' },
@@ -115,8 +122,12 @@ test('real moderation, active audio revocation and verified-email appeal', async
     const receiveToken = await post<Media>(operator, mediaPath, ownerSession)
     const sendToken = await post<Media>(learner, mediaPath, learnerSession)
     expect(new URL(sendToken.serverUrl).origin).toBe(origin.replace('http:', 'ws:'))
-    await receiver.evaluate(media => window.moderationAudio.connect(media.serverUrl, media.participantToken, false), receiveToken)
-    await sender.evaluate(media => window.moderationAudio.connect(media.serverUrl, media.participantToken, true), sendToken)
+    expect(await receiver.evaluate(async media => {
+      try { await window.moderationAudio.connect(media.serverUrl, media.participantToken, false); return true } catch { return false }
+    }, receiveToken)).toBe(true)
+    expect(await sender.evaluate(async media => {
+      try { await window.moderationAudio.connect(media.serverUrl, media.participantToken, true); return true } catch { return false }
+    }, sendToken)).toBe(true)
     await expect.poll(async () => (await sender.evaluate(() => window.moderationAudio.stats())).sent, { timeout: 20000 }).toBeGreaterThan(0)
     await expect.poll(async () => (await receiver.evaluate(() => window.moderationAudio.stats())).energy, { timeout: 20000 }).toBeGreaterThan(0)
     const before = await receiver.evaluate(() => window.moderationAudio.stats())
@@ -149,8 +160,10 @@ test('real moderation, active audio revocation and verified-email appeal', async
     const claim = JSON.parse(Buffer.from(sendToken.participantToken.split('.')[1], 'base64url').toString()) as { exp: number }
     expect(claim.exp * 1000).toBeGreaterThan(Date.now())
     // A fresh signaling HTTP request carrying that still-valid signed token must fail at Caddy's guard.
-    const reconnect = await sender.request.get(`/livekit/rtc?access_token=${encodeURIComponent(sendToken.participantToken)}&protocol=16`)
-    expect(reconnect.status()).toBe(403)
+    const reconnectStatus = await sender.evaluate(async token => {
+      try { return (await fetch(`/livekit/rtc?access_token=${encodeURIComponent(token)}&protocol=16`)).status } catch { return 0 }
+    }, sendToken.participantToken)
+    expect(reconnectStatus).toBe(403)
     expect((await learner.request.post(mediaPath, { headers: learnerHeaders })).status()).toBe(403)
     expect((await learner.request.get('/api/v1/study-servers', { headers: learnerHeaders })).status()).toBe(403)
     expect((await learner.request.post('/api/v1/auth/refresh', { headers: { Origin: origin, 'X-Chanter-CSRF': '1' } })).status()).toBe(401)
@@ -169,8 +182,9 @@ test('real moderation, active audio revocation and verified-email appeal', async
     const delivered = await emailText(appeal, 'Review your Chanter restriction')
     const link = delivered.match(/http:\/\/127\.0\.0\.1:9419\/appeal#token=[A-Za-z0-9_-]+/)?.[0]
     expect(Boolean(link)).toBe(true)
-    await appeal.goto(link!)
-    await expect(appeal).toHaveURL(`${origin}/appeal`)
+    await appeal.evaluate(url => { location.assign(url) }, link!)
+    await expect(appeal.getByLabel('Why should this be reviewed?')).toBeVisible()
+    expect(await appeal.evaluate(() => location.pathname === '/appeal' && location.hash === '')).toBe(true)
     await appeal.getByLabel('Why should this be reviewed?').fill('This is the hosted acceptance fixture. Please reverse the temporary restriction.')
     await pixels(appeal, info, 'appeal-submit')
     await appeal.getByRole('button', { name: 'Send appeal', exact: true }).click()
@@ -192,7 +206,7 @@ test('real moderation, active audio revocation and verified-email appeal', async
     await info.attach('moderation-evidence', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
       source: 'Real isolated PostgreSQL, Redis, auth/community/realtime services, Caddy and LiveKit',
       bootstrap: 'Explicit non-web command; fixture account only', network, transfers, before, after, stable,
-      activeMediaRemoved: true, liveSessionClosed: true, signedUnexpiredReconnectStatus: reconnect.status(),
+      activeMediaRemoved: true, liveSessionClosed: true, signedUnexpiredReconnectStatus: reconnectStatus,
       verifiedEmailAppealSavedAndReversed: true,
     }, null, 2)) })
   } finally { await Promise.all(contexts.map(context => context.close())) }
