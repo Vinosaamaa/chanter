@@ -76,7 +76,8 @@ function validateNativeConfiguration(env, origin) {
     if (!models.size || models.size > 20 || [...models].some(value => !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$/.test(value))) throw new Error();
     const decode = value => {
       const bytes = Buffer.from(value, 'base64');
-      if (bytes.toString('base64') !== value) throw new Error();
+      const canonical = bytes.toString('base64');
+      if (canonical !== value && canonical.replace(/=+$/, '') !== value) throw new Error();
       return bytes;
     };
     const privateBytes = decode(env.CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8);

@@ -55,6 +55,10 @@ test('native signer is absent by default and a complete matching agent-only conf
   fs.appendFileSync(file, text);
   assert.doesNotThrow(() => validateRuntime(state));
   assert.equal(fs.readFileSync(file, 'utf8'), before + text);
+  const unpadded = Object.entries(values).map(([key, value]) => `${key}=${value.replace(/=+$/, '')}`).join('\n') + '\n';
+  fs.writeFileSync(file, before + unpadded);
+  assert.doesNotThrow(() => validateRuntime(state));
+  assert.equal(fs.readFileSync(file, 'utf8'), before + unpadded);
   const gateway = path.join(state, 'runtime/gateway-service.env');
   assert.ok(!fs.readFileSync(gateway, 'utf8').includes('CHANTER_NATIVE_COMPANION_'));
   fs.appendFileSync(gateway, text);
