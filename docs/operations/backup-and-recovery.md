@@ -9,6 +9,12 @@ implementation in #252 and #251. Do not open a restored database to users yet.
 
 ## Configure the repository
 
+For a state directory created before this release, run
+`node scripts/deploy/host.mjs prepare-recovery /srv/chanter/production` first.
+It adds only missing backup/telemetry settings under the deployment lock and
+preserves existing keys, credentials and application files. Repeating it is safe.
+It neither initializes a remote repository nor deploys unconfigured settings.
+
 After `host.mjs init`, edit the private `runtime/backup.env` file in the environment
 state directory. Supply an HTTPS S3-compatible origin, region, private backup
 bucket and credentials limited to that bucket. Use a bucket and access key

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render, configurationSnapshot, configurationFingerprint } from './host.mjs';
+import { initialize, prepareRecovery, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render, configurationSnapshot, configurationFingerprint } from './host.mjs';
 import { imageNames } from './release.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
@@ -137,6 +137,34 @@ test('backup credentials remain separate and require configuration before deploy
   assert.throws(() => validateRuntime(state), /separate bucket and credentials/);
   fs.writeFileSync(file, configured.replace(/^CHANTER_BACKUP_S3_SECRET_KEY=.*$/m, 'CHANTER_BACKUP_S3_SECRET_KEY='));
   assert.throws(() => validateRuntime(state), /required/);
+});
+
+test('recovery preparation adds missing settings without rotating any existing secret', t => {
+  const { root, state, auth } = fixture(t);
+  const authBefore = fs.readFileSync(auth, 'utf8');
+  const backup = path.join(state, 'runtime/backup.env');
+  const telemetry = path.join(state, 'runtime/telemetry.env');
+  const original = readEnv(backup);
+  fs.writeFileSync(backup, fs.readFileSync(backup, 'utf8').replace(/^CHANTER_CONFIG_BACKUP_PASSWORD=.*\r?\n/m, ''));
+  fs.unlinkSync(telemetry);
+  prepareRecovery(state);
+  assert.equal(readEnv(backup).CHANTER_BACKUP_CIPHER_PASS, original.CHANTER_BACKUP_CIPHER_PASS);
+  assert.equal(readEnv(backup).CHANTER_BACKUP_S3_SECRET_KEY, original.CHANTER_BACKUP_S3_SECRET_KEY);
+  assert.equal(readEnv(backup).CHANTER_CONFIG_BACKUP_PASSWORD.length, 64);
+  assert.equal(readEnv(telemetry).CHANTER_TELEMETRY_ENDPOINT, '');
+  const first = fs.readFileSync(backup, 'utf8');
+  prepareRecovery(state);
+  assert.equal(fs.readFileSync(backup, 'utf8'), first);
+  assert.equal(fs.readFileSync(auth, 'utf8'), authBefore);
+  fs.unlinkSync(backup);
+  fs.mkdirSync(path.join(root, '.deploy-lock'));
+  assert.throws(() => prepareRecovery(state), /active/);
+  assert.equal(fs.existsSync(backup), false);
+  fs.rmdirSync(path.join(root, '.deploy-lock'));
+  prepareRecovery(state);
+  assert.equal(readEnv(backup).CHANTER_BACKUP_CIPHER_PASS.length, 64);
+  assert.equal(readEnv(backup).CHANTER_BACKUP_S3_ACCESS_KEY, '');
+  assert.equal(fs.readFileSync(auth, 'utf8'), authBefore);
 });
 
 test('runtime validation requires all credentials and preserves literal SMTP punctuation', t => {

@@ -95,3 +95,12 @@ installation by the cluster owner before application migrations on fresh and
 existing volumes, and no superuser privilege for the agent role. Recovery fixtures
 now restore actual vector data alongside relational markers. The union still
 requires fresh native release/recovery proof; #247 owns embedding/retrieval behavior.
+
+Existing state directories can now run `prepare-recovery STATE` to add missing
+backup/telemetry settings without rotating existing secrets or replacing runtime
+files. Tests cover repeat calls, retained credentials and the deployment lock.
+Review's claimed first-backup failure is contradicted by the actual fresh native
+release smoke: pgBackRest promotes the requested incremental to a full when no
+prior full exists. Its claimed missing libcurl dependency is likewise inconsistent
+with the pinned native build and executable startup; pgBackRest uses its own HTTP
+implementation. Actual S3-provider proof remains pending independently.

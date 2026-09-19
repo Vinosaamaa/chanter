@@ -18,6 +18,12 @@ const writePrivateText = (file, value) => {
 };
 const writeJson = (file, value) => writePrivateText(file, JSON.stringify(value, null, 2) + '\n');
 const secret = () => crypto.randomBytes(32).toString('hex');
+const recoveryDefaults = () => ({
+  backup: { CHANTER_BACKUP_S3_ENDPOINT: '', CHANTER_BACKUP_S3_BUCKET: '', CHANTER_BACKUP_S3_REGION: '',
+    CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret(),
+    CHANTER_CONFIG_BACKUP_PASSWORD: secret() },
+  telemetry: { CHANTER_TELEMETRY_ENDPOINT: '', CHANTER_TELEMETRY_AUTHORIZATION: '' },
+});
 const envText = values => Object.entries(values).map(([key, value]) => {
   if (!/^[A-Z][A-Z0-9_]*$/.test(key) || /[\r\n\0]/.test(value)) throw new Error('Invalid environment key or multiline value');
   return `${key}=${value}`;
@@ -54,11 +60,30 @@ export function initialize(stateDir, config) {
     ...Object.fromEntries(databaseModules.map(name => [`DB_${name.replace('-service', '').toUpperCase()}_PASSWORD`, db[name]])) });
   save('redis', { REDIS_PASSWORD: redis });
   save('livekit', { LIVEKIT_KEYS: `${mediaKey}: ${mediaSecret}` });
-  save('backup', { CHANTER_BACKUP_S3_ENDPOINT: '', CHANTER_BACKUP_S3_BUCKET: '', CHANTER_BACKUP_S3_REGION: '',
-    CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret(),
-    CHANTER_CONFIG_BACKUP_PASSWORD: secret() });
-  save('telemetry', { CHANTER_TELEMETRY_ENDPOINT: '', CHANTER_TELEMETRY_AUTHORIZATION: '' });
+  for (const [name, values] of Object.entries(recoveryDefaults())) save(name, values);
   writeJson(path.join(stateDir, 'config.json'), config);
+}
+
+export function prepareRecovery(stateDir) {
+  if (!path.isAbsolute(stateDir)) throw new Error('State directory must be absolute');
+  validateConfig(json(path.join(stateDir, 'config.json')));
+  const runtime = path.join(stateDir, 'runtime');
+  if (!fs.lstatSync(runtime).isDirectory() || fs.lstatSync(runtime).isSymbolicLink()) throw new Error('Runtime directory must be owned local state');
+  const lock = path.join(path.dirname(stateDir), '.deploy-lock');
+  try { fs.mkdirSync(lock); } catch { throw new Error('Deployment or backup is active; inspect the lock before retrying'); }
+  try {
+    for (const [name, defaults] of Object.entries(recoveryDefaults())) {
+      const file = path.join(runtime, `${name}.env`);
+      if (!fs.existsSync(file)) { fs.writeFileSync(file, envText(defaults), { flag: 'wx', mode: 0o600 }); continue; }
+      const stat = fs.lstatSync(file);
+      if (!stat.isFile() || stat.isSymbolicLink() || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) {
+        throw new Error('Recovery settings must be private regular files');
+      }
+      const existing = readEnv(file);
+      const missing = Object.fromEntries(Object.entries(defaults).filter(([key]) => !Object.hasOwn(existing, key)));
+      if (Object.keys(missing).length) writePrivateText(file, fs.readFileSync(file, 'utf8').replace(/\r?\n?$/, '\n') + envText(missing));
+    }
+  } finally { fs.rmdirSync(lock); }
 }
 
 export function readEnv(file) {
@@ -417,6 +442,9 @@ async function main(args) {
     console.log('Environment stopped; persistent volumes and release receipts retained.');
   } else if (command === 'backup' && first) {
     console.log(JSON.stringify(backupDatabase(path.resolve(first), second ?? 'incr')));
+  } else if (command === 'prepare-recovery' && first) {
+    prepareRecovery(path.resolve(first));
+    console.log('Missing recovery settings prepared. Existing runtime secrets retained; configure the private backup repository before deployment.');
   } else if (command === 'init-config-backup' && first && second) {
     const state = path.resolve(second); const config = validateConfig(json(path.join(state, 'config.json')));
     runConfigurationBackup(path.resolve(first), readEnv(path.join(state, 'runtime/backup.env')), config.environment, null, true);
@@ -430,7 +458,7 @@ async function main(args) {
     for (const [name, contents] of Object.entries(units)) writePrivateText(path.join(directory, name), contents);
     console.log('Backup units prepared in the private state systemd directory. Install and enable them using the recovery runbook.');
   } else if (command === 'verify' && first) await verifyPublic(first, second ? path.resolve(second) : undefined);
-  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | init-config-backup BUNDLE STATE | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | backup STATE [full|incr|check] | backup-schedule STATE | verify HOST [STATE]');
+  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | prepare-recovery STATE | init-config-backup BUNDLE STATE | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | backup STATE [full|incr|check] | backup-schedule STATE | verify HOST [STATE]');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
