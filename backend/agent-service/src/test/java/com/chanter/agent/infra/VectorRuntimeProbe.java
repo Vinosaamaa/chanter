@@ -43,6 +43,11 @@ public final class VectorRuntimeProbe {
             if(!client.metadata().provider().equals("onnx")) throw new AssertionError("Runtime proof requires the real local semantic model");
             var vectors=new ArrayList<float[]>();
             for(String document:DOCUMENTS) vectors.add(client.embed(document));
+            var fullWindow=new ArrayList<Double>();
+            for(int i=0;i<12;i++) {
+                long start=System.nanoTime();client.embed(DOCUMENTS[0].repeat(30));
+                if(i>=2) fullWindow.add((System.nanoTime()-start)/1e6);
+            }
             int correct=0,answered=0;
             boolean[] expectedAnswers=new boolean[QUESTIONS.length];
             for(int i=0;i<QUESTIONS.length;i++) {
@@ -95,14 +100,28 @@ public final class VectorRuntimeProbe {
                 if(i>=5){inference.add((embedded-start)/1e6);database.add((completed-embedded)/1e6);combined.add((completed-start)/1e6);}
             }
             String plan=search.explain(client.metadata(),course,authorized,client.embed(QUESTIONS[0]));
-            Files.writeString(Path.of("/tmp/vector-query-plan.json"),plan);
+            System.out.println("VECTOR_QUERY_PLAN "+plan.replace('\n',' ').replace('\r',' '));
             if(!plan.contains("Index") || !plan.contains("Limit")) throw new AssertionError("Actual scoped query has no indexed bounded plan");
             long invalid=jdbc.sql("SELECT COUNT(*) FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=current_schema() AND NOT i.indisvalid")
                     .query(Long.class).single();
             if(invalid!=0) throw new AssertionError("Invalid vector database index");
+            var parallel=new ArrayList<Double>();
+            try(var executor=java.util.concurrent.Executors.newFixedThreadPool(4)) {
+                var tasks=new ArrayList<java.util.concurrent.Callable<Double>>();
+                for(int i=0;i<20;i++) tasks.add(()->{
+                    long start=System.nanoTime();var query=client.embed(QUESTIONS[0]);
+                    var results=search.nearest(client.metadata(),course,authorized,query,5,0.35);
+                    if(results.size()!=5 || results.stream().anyMatch(row->!allowed.contains(row.resourceId())))
+                        throw new AssertionError("Concurrent scoped retrieval lost its authorization boundary");
+                    return (System.nanoTime()-start)/1e6;
+                });
+                for(var result:executor.invokeAll(tasks)) parallel.add(result.get());
+            }
             System.out.printf(java.util.Locale.ROOT,"VECTOR_PROOF corpus=100000 resources=1000 courses=10 authorized=%d top1=%d/10 answered=%d/10 inference_p50_ms=%.1f inference_p95_ms=%.1f database_p50_ms=%.1f database_p95_ms=%.1f combined_p95_ms=%.1f cgroup_peak_bytes=%s%n",
                     authorized.size(),correct,answered,percentile(inference,0.5),percentile(inference,0.95),percentile(database,0.5),percentile(database,0.95),percentile(combined,0.95),Files.readString(Path.of("/sys/fs/cgroup/memory.peak")).trim());
             if(percentile(combined,0.95)>2000) throw new AssertionError("Scoped answer retrieval exceeds two-second p95 budget");
+            System.out.printf(java.util.Locale.ROOT,"VECTOR_LOAD full_256token_p95_ms=%.1f four_clients_p95_ms=%.1f%n",percentile(fullWindow,0.95),percentile(parallel,0.95));
+            if(percentile(parallel,0.95)>2000) throw new AssertionError("Four-client scoped retrieval exceeds two-second p95 budget");
         }
     }
     private static double cosine(float[] left,float[] right){double score=0;for(int i=0;i<left.length;i++)score+=left[i]*right[i];return score;}

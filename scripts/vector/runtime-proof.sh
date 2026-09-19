@@ -26,6 +26,6 @@ docker run --name chanter-vector-runtime --network host --memory 640m --memory-s
   --chanter.events.dispatch-enabled=false --spring.datasource.hikari.maximum-pool-size=5 \
   --spring.datasource.hikari.minimum-idle=1 --server.tomcat.threads.max=40 \
   | tee .cache/vector-proof/runtime.log
-docker cp chanter-vector-runtime:/tmp/vector-query-plan.json .cache/vector-proof/query-plan.json
+node -e 'const fs=require("fs"); const line=fs.readFileSync(".cache/vector-proof/runtime.log","utf8").split("\n").find(line=>line.startsWith("VECTOR_QUERY_PLAN ")); if(!line) throw Error("Missing actual scoped query plan"); fs.writeFileSync(".cache/vector-proof/query-plan.json",JSON.stringify(JSON.parse(line.slice(18)),null,2));'
 test "$(docker inspect -f '{{.State.OOMKilled}}' chanter-vector-runtime)" = false
 grep '^VECTOR_PROOF ' .cache/vector-proof/runtime.log
