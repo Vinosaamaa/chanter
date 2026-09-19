@@ -73,6 +73,23 @@ for event lag, email, scan/ingestion, AI outcome/usage and recovery state. A
 disabled paid-billing mode is reported explicitly rather than inventing webhook
 traffic.
 
+Use the pinned OpenTelemetry Java agent with a small exporter privacy extension.
+Existing services construct both Spring and raw JDK HTTP clients, so a Spring-only
+starter would leave material call paths untraced. The extension uses the agent's
+own SDK and is isolated from application dependencies. It exports an allowlist of
+HTTP methods/statuses, database operations and release/service/environment metadata.
+Raw names, routes, attributes, events, links and incoming vendor trace state are
+discarded. Public ingress removes client-supplied tracing and baggage headers.
+The real-agent test decodes OTLP, verifies client/server trace continuity and
+asserts that planted secret/content values never reach the receiver. Metrics and
+log export are disabled in the agent until their separate privacy boundaries exist.
+
+Production log formatting retains logger, severity, immutable release, trace IDs
+and bounded application exception frames. It never serializes free-form messages,
+arguments, arbitrary MDC or exception messages. This intentionally omits third-party
+diagnostic text; stable operational outcome metrics and explicit application events
+must supply actionable detail. Developer logging is unchanged outside the release.
+
 Structured records identify environment, service, immutable release, request and
 trace IDs, safe operation/outcome and an authenticated actor only where needed.
 Exclude raw URLs/query strings, headers, cookies, tokens, message/file contents,

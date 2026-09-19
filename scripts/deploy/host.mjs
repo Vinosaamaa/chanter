@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { modules, databaseModules, validateRelease, validateConfig, composeFor, executeDeployment } from './release.mjs';
 import { assertMigrationFloor, backupEnvironment, backupUnits, summarizeBackup } from './recovery.mjs';
+import { telemetryEnvironment } from './telemetry.mjs';
 
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const writePrivateText = (file, value) => {
@@ -54,6 +55,7 @@ export function initialize(stateDir, config) {
   save('livekit', { LIVEKIT_KEYS: `${mediaKey}: ${mediaSecret}` });
   save('backup', { CHANTER_BACKUP_S3_ENDPOINT: '', CHANTER_BACKUP_S3_BUCKET: '', CHANTER_BACKUP_S3_REGION: '',
     CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret() });
+  save('telemetry', { CHANTER_TELEMETRY_ENDPOINT: '', CHANTER_TELEMETRY_AUTHORIZATION: '' });
   writeJson(path.join(stateDir, 'config.json'), config);
 }
 
@@ -98,10 +100,11 @@ function validateNativeConfiguration(env, origin) {
 
 export function validateRuntime(stateDir) {
   const config = validateConfig(json(path.join(stateDir, 'config.json')));
-  for (const name of [...modules, 'postgres', 'redis', 'livekit', 'backup']) {
+  for (const name of [...modules, 'postgres', 'redis', 'livekit', 'backup', 'telemetry']) {
     const file = path.join(stateDir, 'runtime', `${name}.env`);
     if (process.platform !== 'win32' && (fs.statSync(file).mode & 0o077) !== 0) throw new Error(`Runtime file must be private: ${name}.env`);
     const env = readEnv(file);
+    if (name === 'telemetry') { telemetryEnvironment(env); continue; }
     if (name === 'backup') {
       backupEnvironment(env, json(path.join(stateDir, 'config.json')).environment);
       const media = readEnv(path.join(stateDir, 'runtime/media-service.env'));
@@ -159,6 +162,7 @@ export function render(bundleDir, stateDir) {
   fs.mkdirSync(output, { recursive: true, mode: 0o700 });
   writePrivateText(path.join(output, 'postgres-backup.env'), envText(backupEnvironment(
     readEnv(path.join(stateDir, 'runtime/backup.env')), config.environment)));
+  writePrivateText(path.join(output, 'telemetry.env'), envText(telemetryEnvironment(readEnv(path.join(stateDir, 'runtime/telemetry.env')))));
   writeJson(path.join(output, 'compose.json'), composeFor(release, config, path.join(stateDir, 'runtime')));
   for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.copyFileSync(path.join(bundleDir, 'infra/production', name), path.join(output, name));
   return { release, config, file: path.join(output, 'compose.json') };

@@ -33,6 +33,12 @@ node --input-type=module - "$compose_file" <<'JS'
 import fs from 'node:fs';
 import path from 'node:path';
 const file = process.argv[2]; const compose = JSON.parse(fs.readFileSync(file));
+for (const [name, service] of Object.entries(compose.services)) {
+  if (name.endsWith('-service') && !name.startsWith('migrate-')) Object.assign(service.environment, {
+    CHANTER_TELEMETRY_ENABLED: 'true', OTEL_TRACES_EXPORTER: 'none',
+    OTEL_JAVAAGENT_EXTENSIONS: '/app/telemetry/privacy.jar', OTEL_JAVAAGENT_LOGGING: 'application',
+  });
+}
 compose.services.frontend.environment.CHANTER_TLS_DIRECTIVE = 'tls internal';
 // This isolated startup test has no external provider credentials. Production remains forced to S3.
 compose.services['media-service'].environment.CHANTER_MEDIA_STORAGE_BACKEND = 'local';

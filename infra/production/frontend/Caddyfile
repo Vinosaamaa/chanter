@@ -14,12 +14,7 @@
 		format filter {
 			wrap json
 			fields {
-				request>uri query {
-					delete access_token
-					delete token
-					delete code
-					delete state
-				}
+				request delete
 			}
 		}
 	}
@@ -45,6 +40,9 @@
 		header Cache-Control no-store
 		reverse_proxy gateway-service:8080 {
 			header_up -Forwarded
+			header_up -traceparent
+			header_up -tracestate
+			header_up -baggage
 			header_up -X-User-Id
 			header_up -X-Internal-Service-Token
 			header_up -X-Chanter-Internal-Service-Token

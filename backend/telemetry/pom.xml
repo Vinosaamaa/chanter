@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent><groupId>com.chanter</groupId><artifactId>chanter-backend</artifactId><version>0.1.0-SNAPSHOT</version></parent>
+    <artifactId>telemetry</artifactId>
+    <description>Privacy boundary loaded only by the pinned OpenTelemetry Java agent</description>
+    <properties><opentelemetry.version>1.65.0</opentelemetry.version></properties>
+    <dependencies>
+        <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-extension-autoconfigure-spi</artifactId><version>1.65.0</version><scope>provided</scope></dependency>
+        <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-trace</artifactId><version>1.65.0</version><scope>provided</scope></dependency>
+        <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-testing</artifactId><version>1.65.0</version><scope>test</scope></dependency>
+        <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>io.opentelemetry.proto</groupId><artifactId>opentelemetry-proto</artifactId><version>1.11.0-alpha</version><scope>test</scope></dependency>
+    </dependencies>
+</project>

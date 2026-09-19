@@ -47,3 +47,20 @@ safe restore commands, object/configuration protection, telemetry/privacy gates,
 metrics/error reporting, alert/runbook coverage and application-level recovery.
 Actual S3, operator notification and measured production recovery remain separate
 provider gates. No paid service has been enabled.
+
+The telemetry increment pins OpenTelemetry Java agent 2.31.1 and its published
+checksum. A separate small extension uses the matching SDK 1.65.0 and permits
+only bounded HTTP/database attributes and service/release/environment identity.
+It removes raw span names, routes, SQL/content attributes, events, links, status
+messages and vendor trace state. Public ingress strips incoming trace/baggage
+headers. Production logs use a formatter that excludes messages/arguments and
+keeps bounded application exception frames and validated correlation IDs.
+
+Two real-agent Windows tests pass: decoded OTLP preserves HTTP client/server
+parentage without the planted content/secret canary, and receiver outage does
+not break the synthetic application or leave it waiting indefinitely. Unit
+privacy tests and deployment configuration tests pass. Matching hosted native
+privacy and instrumented release staging gates are added and remain pending for
+this increment. Export is visibly disabled until a private HTTPS receiver and
+authorization are configured. No external monitoring receipt is claimed. Metrics,
+frontend error delivery, actionable alerting and complete recovery are unfinished.
