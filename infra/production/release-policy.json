@@ -1,4 +1,4 @@
 {
-  "schemaEpoch": 4,
-  "reason": "Issue 244 media V2 introduces private resource lifecycle state and agent V8 terminal indexing deletion markers. Older binaries bypass these boundaries. Epoch 3 already required versioned PBKDF2 hashes and epoch 2 durable session linkage. Restore media and agent databases together with the private object namespace; rollback never reverses SQL or changes persistence images."
+  "schemaEpoch": 5,
+  "reason": "Accepted issue 245 adds community V18, message V9 and media V3 transactional outboxes plus notification/search V2 event cursors. Older source binaries write without durable delivery and cannot preserve the new projection consistency contract. Epoch 4 already requires private resource lifecycle and terminal indexing deletion markers, epoch 3 versioned password hashes, and epoch 2 durable sessions. Restore source and consumer databases consistently with private objects. Rollback never reverses SQL or changes persistence images."
 }

@@ -22,6 +22,7 @@ public class CorsConfig {
         config.setAllowCredentials(true);
         config.setAllowedMethods(ALLOWED_METHODS);
         config.addAllowedHeader("*");
+        config.setExposedHeaders(List.of("Retry-After", "X-Request-Id"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

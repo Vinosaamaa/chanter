@@ -3,12 +3,14 @@ import { Eye, EyeOff, BookOpen, MessageSquare, CalendarDays } from 'lucide-react
 import { Link, useLocation } from 'react-router-dom'
 
 import { CohortInviteRedirect } from '../components/CohortInviteRedirect'
+import { HumanVerificationControl } from '../components/HumanVerificationControl'
 import {
   fetchOauthProviders,
   isAuthSession,
   login,
   register,
   type OAuthProvider,
+  type HumanVerification,
 } from '../auth-api'
 import { isHttpOrHttpsUrl } from '../is-http-or-https-url'
 import { authenticateBrowserSession, signOutBrowserSession } from '../browser-session'
@@ -30,6 +32,8 @@ export function SignInPage() {
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [verification, setVerification] = useState<HumanVerification | null>(null)
+  const [verificationAttempt, setVerificationAttempt] = useState(0)
   const [logoutRetried, setLogoutRetried] = useState(false)
   const logoutFailed = !logoutRetried && Boolean((location.state as { logoutFailed?: boolean } | null)?.logoutFailed)
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([])
@@ -53,6 +57,7 @@ export function SignInPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (mode === 'register' && !verification) return
     setIsSubmitting(true)
     setError(null)
     setInfo(null)
@@ -61,7 +66,7 @@ export function SignInPage() {
         await authenticateBrowserSession(() => login({ email, password }))
         return
       }
-      const result = await authenticateBrowserSession(() => register({ email, password, displayName }))
+      const result = await authenticateBrowserSession(() => register({ email, password, displayName }, verification ?? undefined))
       if (!isAuthSession(result)) {
         setInfo(result.message)
         setMode('sign-in')
@@ -70,6 +75,7 @@ export function SignInPage() {
       setError(caught instanceof Error ? caught.message : 'Unable to authenticate')
     } finally {
       setIsSubmitting(false)
+      if (mode === 'register') { setVerification(null); setVerificationAttempt((attempt) => attempt + 1) }
     }
   }
 
@@ -92,6 +98,7 @@ export function SignInPage() {
 
     event.preventDefault()
     setMode(nextMode)
+    if (nextMode !== mode) setVerification(null)
     authTabRefs.current[nextMode]?.focus()
   }
 
@@ -138,7 +145,7 @@ export function SignInPage() {
               aria-selected={mode === 'sign-in'}
               tabIndex={mode === 'sign-in' ? 0 : -1}
               className={mode === 'sign-in' ? 'active' : undefined}
-              onClick={() => setMode('sign-in')}
+              onClick={() => { setMode('sign-in'); setVerification(null) }}
               onKeyDown={handleAuthTabKeyDown}
             >
               Sign in
@@ -154,7 +161,7 @@ export function SignInPage() {
               aria-selected={mode === 'register'}
               tabIndex={mode === 'register' ? 0 : -1}
               className={mode === 'register' ? 'active' : undefined}
-              onClick={() => setMode('register')}
+              onClick={() => { if (mode !== 'register') { setMode('register'); setVerification(null) } }}
               onKeyDown={handleAuthTabKeyDown}
             >
               Create account
@@ -199,7 +206,8 @@ export function SignInPage() {
             ) : null}
             {error ? <p role="alert" className="v2-auth-error">{error}</p> : null}
             {info ? <p role="status" className="v2-auth-info">{info}</p> : null}
-            <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Working…' : mode === 'register' ? 'Create account' : 'Sign in'}</button>
+            {mode === 'register' ? <HumanVerificationControl key={verificationAttempt} action="register" onChange={setVerification} /> : null}
+            <button type="submit" disabled={isSubmitting || (mode === 'register' && !verification)}>{isSubmitting ? 'Working…' : mode === 'register' ? 'Create account' : 'Sign in'}</button>
           </form>
 
           {googleAuthorizationUrl ? (

@@ -1,6 +1,6 @@
 # Chanter launch execution status
 
-Reviewed 2026-09-11 against Git main `2073de358c7007aba4824ec48e09eafb56196fc5` and the owning GitHub issues.
+Reviewed 2026-09-18 against accepted main `5d3b154821620e877d7b417a0ff93635efdb3331`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
 
 Chanter has substantial local-beta product code. It has no verified public release. The previous audit's DNS and provider observations are historical; this review does not claim that those external systems have been rechecked.
 
@@ -12,7 +12,20 @@ The owner subsequently rejected the current interface and explicitly requested a
 
 AI provider and model choice must be configurable. OpenAI, Anthropic, xAI/Grok, compatible endpoints and local/no-provider operation belong to #248. Subscription-backed operation must use provider-supported access. ChatGPT API billing is separate from chat subscriptions; xAI's current usage documentation includes API activity in its subscription usage view, so entitlement must be checked per provider and account. Sources: [OpenAI billing](https://help.openai.com/en/articles/9039756), [Claude API access](https://support.claude.com/en/articles/9876003), [xAI usage](https://docs.x.ai/grok/faq).
 
-[#238](https://github.com/Vinosaamaa/chanter/issues/238) through [#241](https://github.com/Vinosaamaa/chanter/issues/241) are closed. [#242](https://github.com/Vinosaamaa/chanter/issues/242), secure browser sessions and transactional email, is in implementation. See its [design](../architecture/secure-browser-sessions-and-email.md) and [implementation record](issue-242-change-log.md).
+[#238](https://github.com/Vinosaamaa/chanter/issues/238) through [#241](https://github.com/Vinosaamaa/chanter/issues/241) are closed. Secure browser sessions and transactional email are merged in PR312; actual inbox/provider and public HTTPS verification keep #242 open. See its [design](../architecture/secure-browser-sessions-and-email.md) and [implementation record](issue-242-change-log.md).
+
+The free deployment package now builds, scans, stages and uploads immutable AMD64
+and ARM64 bundles. Actual publication succeeded at main `7d42dd7` after PR326,
+with matching checksum assets. This is a draft release of that commit, not a
+public server or the final launch candidate. Subsequent accepted durable events
+require the reviewed epoch5 package before deployment. Oracle Free Tier account
+signup is the owner's pending identity-verification step; no credentials or
+provider account are fabricated, and paid provisioning remains disabled.
+
+The accepted UI reconstruction is in PR314 and answer controls in PR322.
+Document ingestion is in draft PR325, native subscription support in draft PR324,
+and public-edge controls in draft PR328. All workers are configured as Astra High
+without a fast-mode override. Their issue branches and worktrees are preserved.
 
 The open dependency-update PRs and the older environment PR remain separate work. They have not been merged merely because individual test jobs passed. Dependency updates still need exact-head review and Engineering evidence.
 
@@ -20,20 +33,26 @@ The open dependency-update PRs and the older environment PR remain separate work
 
 | Issue | Customer or operator outcome | Current state |
 |---|---|---|
-| #242 | Reliable sign-in, verification, recovery, device sessions | PR #312 full hosted journeys passed; review fixes need exact-head rerun; provider/HTTPS proof pending |
-| #243 | Reproducible staging and production with rollback | Deployment package in progress; free single-host choice recorded, provisioning unverified |
-| #244 | Durable private resource storage and quarantine | Open; depends on infrastructure |
-| #245 | Durable notifications and search indexing | Open; depends on infrastructure |
-| #246 | Truthful supported resource ingestion | Open; depends on storage/events |
-| #247 | Authorized production vector retrieval | Open; depends on ingestion |
-| #248 | Evaluated AI safety, usage and cost accounting | Provider adapters, model catalog and metering in progress; final retrieval/provider proof pending |
-| #249 | Administration, reports and moderation | Open; depends on sessions/infrastructure/events |
-| #250 | Truthful free-beta mode or real paid billing | Open; billing mode/provider evidence needed |
-| #251 | Export, deletion, retention and accurate policy pages | Open; depends on durable data/moderation |
-| #252 | Monitoring, alerts, backups and proven restore | Open; depends on deployed infrastructure |
-| #253 | Trusted edge, proxy handling and abuse limits | Open; edge/account evidence needed |
-| #254 | Complete modern UI reconstruction, working controls and responsive accessibility | Design and implementation in progress; final capability/browser gates remain |
-| #255 | Release-candidate proof and public cutover | Open; requires preceding gates |
+| #242 | Reliable sign-in, verification, recovery, device sessions | PR312 merged and main journeys passed; actual SMTP/public HTTPS proof remains |
+| #243 | Reproducible staging and production with rollback | PR315 and repair326 merged; real dual-architecture package upload passed; account/provisioning/public deployment remain |
+| #244 | Durable private resource storage and quarantine | PR318 merged; native scanning passed; real private bucket and off-host restore proof remain |
+| #245 | Durable notifications and search indexing | PR327 merged; main CI, real PostgreSQL and consumer-restart journeys passed; production delivery proof remains |
+| #246 | Truthful supported resource ingestion | Draft325 parses supported documents and exposes truthful status; integrating durable jobs with accepted245 |
+| #247 | Authorized production vector retrieval | Open implementation work after ingestion; current hashing fallback is not production semantic retrieval |
+| #248 | Evaluated AI safety, usage and cost accounting | PR317/322 merged provider adapters, catalog, accounting and answer controls; final retrieval/evaluations and configured-provider proof remain |
+| #249 | Administration, reports and moderation | Scoped implementation started after245; privileged access, evidence and live enforcement remain required |
+| #250 | Truthful free-beta mode or real paid billing | PR323 merged truthful free-beta mode and limits; final deployed accounting proof remains; paid billing is outside initial free beta |
+| #251 | Export, deletion, retention and accurate policy pages | Open implementation work, including new durable data and moderation records |
+| #252 | Monitoring, alerts, backups and proven restore | Open implementation and provider drills; real deployment does not yet exist |
+| #253 | Trusted edge, proxy handling and abuse limits | Draft328 implements shared admission, request bounds and accessible optional proof; final hosted/review/provider gates remain |
+| #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; new capability integration and final whole-product/mobile/voice checks remain |
+| #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |
+
+Native subscription support is tracked separately in #316. Its draft324 has
+verified Windows/Linux packaging and local companion transport. It is integrating
+durable saved-answer status delivery after245 and must rebase after246 migrations.
+No actual provider login or subscription inference has been performed. API-based
+provider choice remains independent of this optional desktop capability.
 
 The [ordered breakdown](../issues/product-readiness-issue-breakdown.md) defines dependencies and acceptance. This table summarizes that program; it does not create a second issue queue.
 

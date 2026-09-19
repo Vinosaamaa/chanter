@@ -7,6 +7,25 @@ const release = () => ({ version: 1, commit: 'a'.repeat(40), architecture: 'arm6
   images: Object.fromEntries(imageNames.map(name => [name, hash('b')])) });
 const config = { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' };
 
+test('the public proxy has an exact isolated identity and distributed admission is mandatory', () => {
+  const stage = composeFor(release(), config, '/srv/chanter/staging/runtime');
+  const prod = composeFor(release(), { ...config, environment: 'production' }, '/srv/chanter/production/runtime');
+  const gateway = stage.services['gateway-service'];
+  const proxy = stage.services.frontend;
+  assert.equal(gateway.environment.CHANTER_EDGE_LIMITS_ENABLED, 'true');
+  assert.equal(gateway.environment.CHANTER_TRUSTED_PROXY_ADDRESSES, proxy.networks.edge.ipv4_address);
+  assert.equal(gateway.environment.CHANTER_EDGE_PUBLIC_ORIGIN, 'https://staging.chanter.example');
+  assert.equal(proxy.networks.application, undefined);
+  assert.ok(gateway.networks.application);
+  assert.equal(gateway.depends_on.redis.condition, 'service_healthy');
+  assert.match(gateway.environment.MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE, /redis/);
+  assert.notEqual(stage.networks.edge.ipam.config[0].subnet, prod.networks.edge.ipam.config[0].subnet);
+  // Dynamic LiveKit allocation must never consume the proxy's static identity before it starts.
+  assert.equal(stage.networks.edge.ipam.config[0].ip_range, '172.30.45.8/29');
+  assert.equal(prod.networks.edge.ipam.config[0].ip_range, '172.30.46.8/29');
+  assert.ok(!stage.services['auth-service'].networks.includes('edge'));
+});
+
 test('release accepts only complete immutable image sets and known architectures', () => {
   assert.doesNotThrow(() => validateRelease(release()));
   const mutable = release(); mutable.images['auth-service'] = 'chanter/auth:latest';

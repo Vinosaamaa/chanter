@@ -18,6 +18,9 @@ spring:
     enabled: true
 
 chanter:
+  turnstile:
+    site-key: ${CHANTER_TURNSTILE_SITE_KEY:}
+    secret: ${CHANTER_TURNSTILE_SECRET:}
   internal-service-token: ${CHANTER_INTERNAL_SERVICE_TOKEN}
   public-base-url: ${CHANTER_PUBLIC_BASE_URL:http://localhost:5173}
   jwt:

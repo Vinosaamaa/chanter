@@ -30,6 +30,7 @@ export default mergeConfig(base, defineConfig({
         const send = (body: unknown) => response.end(JSON.stringify(body))
         const empty = request.headers.cookie?.includes('visual_review=empty')
         if (pathname.endsWith('/oauth/providers')) return send({ providers: [] })
+        if (pathname.endsWith('/auth/verification-options')) return send({ enabled: false, siteKey: null })
         if (pathname.endsWith('/auth/login')) { response.setHeader('Set-Cookie', 'visual_session=1; Path=/; SameSite=Strict'); return send(session) }
         if (pathname.endsWith('/auth/refresh')) { if (request.headers.cookie?.includes('visual_review=anonymous')) { response.statusCode = 204; return response.end() } return send(session) }
         if (pathname.endsWith('/auth/logout')) { response.setHeader('Set-Cookie', 'visual_session=; Path=/; Max-Age=0'); response.statusCode = 204; return response.end() }

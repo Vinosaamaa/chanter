@@ -2,11 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { initialize, readEnv, validateRuntime, stopEnvironment } from './host.mjs';
+import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic } from './host.mjs';
 import { imageNames } from './release.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
 fs.mkdirSync(scratch, { recursive: true });
+
+test('public verification refuses a serving frontend with missing browser security headers', async t => {
+  t.mock.method(globalThis, 'fetch', async () => new Response('<html></html>', { status: 200 }));
+  await assert.rejects(verifyPublic('staging.chanter.example'), /security header/);
+});
+
+test('optional challenge credentials must be configured together', t => {
+  const { state, auth } = fixture(t);
+  fs.appendFileSync(auth, 'CHANTER_TURNSTILE_SITE_KEY=fixture-site\n');
+  assert.throws(() => validateRuntime(state), /Turnstile/);
+  fs.appendFileSync(auth, 'CHANTER_TURNSTILE_SECRET=fixture-secret\n');
+  assert.doesNotThrow(() => validateRuntime(state));
+});
 const fixture = t => {
   const root = fs.mkdtempSync(path.join(scratch, 'host-'));
   t.after(() => {
@@ -30,6 +43,10 @@ test('initialization isolates credentials and refuses to overwrite existing or p
   const media = readEnv(path.join(state, 'runtime/media-service.env'));
   assert.equal(gateway.CHANTER_JWT_SECRET, auth.CHANTER_JWT_SECRET);
   assert.equal(gateway.POSTGRES_PASSWORD, undefined);
+  assert.equal(gateway.REDIS_PASSWORD, readEnv(path.join(state, 'runtime/redis.env')).REDIS_PASSWORD);
+  assert.ok(gateway.CHANTER_EDGE_KEY_SECRET.length >= 32);
+  assert.notEqual(gateway.CHANTER_EDGE_KEY_SECRET, gateway.CHANTER_JWT_SECRET);
+  assert.equal(gateway.CHANTER_INTERNAL_SERVICE_TOKEN, undefined);
   assert.equal(media.CHANTER_SMTP_PASSWORD, undefined);
   assert.notEqual(media.POSTGRES_PASSWORD, auth.POSTGRES_PASSWORD);
   const config = JSON.parse(fs.readFileSync(path.join(state, 'config.json')));

@@ -137,6 +137,13 @@ Restore both service databases and the private object namespace consistently.
 The retained terminal deletion records prevent delayed indexing from recreating
 deleted content; an older application must not be rolled back across this epoch.
 
+The current compatibility epoch is 5 after accepted #245. Community V18,
+message V9 and media V3 introduce transactional outboxes; notification/search
+V2 record delivery cursors. Older source binaries can still write SQL but omit
+durable events, violating projection consistency. Automatic rollback to epoch 4
+is therefore forbidden. Recover source and consumer databases consistently;
+never reset event cursors independently or enable Flyway out-of-order migration.
+
 The community service's runtime file sets `CHANTER_BETA_MODE=free_beta` and
 `CHANTER_BETA_ASSISTANT_RUN_LIMIT=1000`. The operator may lower the lifetime
 assistant-run limit to an integer between 1 and 1000. Deployment rejects paid
@@ -168,7 +175,7 @@ This procedure has downtime, including database migration and JVM startup. Exist
 node /srv/chanter/releases/COMMIT/scripts/deploy/host.mjs rollback /srv/chanter/production
 ```
 
-Rollback restarts the recorded previous application images against the existing data. It never reverses SQL, deletes volumes or silently restores an old database. It is allowed only when both releases have the same reviewed `schemaEpoch` and identical PostgreSQL/Redis image IDs. Increase `infra/production/release-policy.json`'s epoch whenever stored data or schema removes compatibility with the preceding binary. #242 introduced epoch 2 for required browser-session linkage. This package uses epoch 3 because #319 writes versioned PBKDF2 password hashes which older application code cannot verify, even though the password column itself is unchanged. The subsequent #244 quarantine migration requires epoch 4. A changed epoch or persistence image requires a reviewed fix-forward or backup recovery procedure, not automatic rollback.
+Rollback restarts the recorded previous application images against the existing data. It never reverses SQL, deletes volumes or silently restores an old database. It is allowed only when both releases have the same reviewed `schemaEpoch` and identical PostgreSQL/Redis image IDs. Increase `infra/production/release-policy.json`'s epoch whenever stored data or schema removes compatibility with the preceding binary. Historical epochs 2 and 3 introduced browser-session linkage and versioned PBKDF2 password hashes respectively. The storage and durable-event compatibility requirements for epochs 4 and 5 are described above. A changed epoch or persistence image requires a reviewed fix-forward or backup recovery procedure, not automatic rollback.
 
 Every release review must inspect all migrations since the previous receipt and explicitly record whether the previous binary can read and write the new schema. An unchanged epoch is a reviewer assertion of that compatibility, not an automated schema proof. Include the migration diff, chosen epoch and a previous-binary smoke against the migrated staging database in the release evidence; do not approve automatic rollback from the integer alone.
 
@@ -184,6 +191,34 @@ node /srv/chanter/releases/COMMIT/scripts/deploy/host.mjs stop /srv/chanter/prod
 `stop` retains volumes and can stop a partially failed first deployment. Do not use `docker compose down --volumes` on the VM. Routine health commands use the recorded generated Compose path, `docker compose ... ps`, and the public verifier. Monitor free disk, memory, restart counts, database health, SMTP queue failures and certificate expiry. Keep at least 20 GB free for the next bundle and rollback images; when disk or memory is exhausted, reduce use or pause enrollment. Scaling past the free allocation requires a new owner decision; it must not trigger paid provisioning.
 
 ## Edge and remaining release proof
+
+The gateway runtime file now needs `REDIS_PASSWORD` matching the private Redis
+instance and a dedicated randomly generated `CHANTER_EDGE_KEY_SECRET` of at least
+32 bytes. New initialization writes both; an existing environment must add them
+privately before deployment. Production always enables distributed admission
+and Redis readiness checks. Do not print these values or substitute the JWT key.
+
+Staging uses edge subnet `172.30.45.0/28`; production uses `172.30.46.0/28`.
+Caddy occupies `.2`, gateway `.3`, and dynamically allocated peers use `.8/29`.
+Confirm these subnets do not overlap host networks. Internal services stay off
+the edge network. Only Caddy's exact address may supply client identity; do not
+trust a whole application subnet or enable automatic forwarded-header handling.
+
+Turnstile is optional and off when its keys are absent. To enable it, add both
+`CHANTER_TURNSTILE_SITE_KEY` and `CHANTER_TURNSTILE_SECRET` to the private auth
+runtime file and configure the exact public hostname in that provider account.
+Never disable enforced email verification. Signup and recovery offer a stricter
+email alternative; sign-in/sign-out remain independent. Verify valid, expired,
+replayed and provider-outage behavior at the real hostname before declaring the
+provider enabled. Removing both optional keys returns to the ordinary email flow.
+
+Watch the fixed-label `chanter.gateway.admission` metrics for limited/unavailable
+and bounded-recovery outcomes, Redis readiness, memory saturation and HTTP429/503.
+Browsers receive Retry-After and a fresh X-Request-Id. Do not automatically retry
+inference or other paid operations after uncertain completion. Redis failure
+closes ordinary admission while preserving a bounded recovery/logout allowance.
+Public verification now checks the served browser security headers as well as
+TLS, auth bootstrap, origin enforcement and LiveKit signaling.
 
 The baseline exposes Caddy directly through owner-controlled DNS. It has no Cloudflare account, proxy or WAF configured. Caddy strips client-supplied identity/internal-service headers, sets forwarding metadata, disables API caching, caches fingerprinted assets, and adds CSP, HSTS, frame and referrer policies. API/auth/reset/verification URLs and cookies must never enter a shared cache. Browser production previews are not created automatically and never receive production secrets.
 

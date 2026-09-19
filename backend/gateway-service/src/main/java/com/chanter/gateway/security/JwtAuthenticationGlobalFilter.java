@@ -25,6 +25,7 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
     private static final String OAUTH_AUTH_PREFIX = "/api/v1/auth/oauth/";
     private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
             "/api/v1/auth/health",
+            "/api/v1/auth/verification-options",
             "/api/v1/auth/register",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",

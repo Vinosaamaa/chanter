@@ -13,6 +13,7 @@ describe('SignInPage public destinations', () => {
   beforeEach(() => {
     useAuthStore.setState({ accessToken: null, user: null })
     vi.spyOn(authApi, 'fetchOauthProviders').mockResolvedValue({ providers: [] })
+    vi.spyOn(authApi, 'fetchVerificationOptions').mockResolvedValue({ enabled: false, siteKey: null })
   })
 
   it('exposes Terms, forgot password, and omits unavailable sign-in providers', () => {

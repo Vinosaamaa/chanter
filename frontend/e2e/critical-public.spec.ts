@@ -4,6 +4,11 @@ test.beforeEach(async ({ page }) => {
   // An anonymous cookie response keeps this public UI suite independent of Java.
   // Real refresh and rotation are covered by the authentication lifecycle suite.
   await page.route('**/api/v1/auth/refresh', (route) => route.fulfill({ status: 204 }))
+  await page.route('**/api/v1/auth/verification-options', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ enabled: false, siteKey: null }),
+  }))
   await page.route('**/api/v1/auth/oauth/providers', async (route) => {
     await route.fulfill({
       status: 200,

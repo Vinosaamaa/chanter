@@ -1,7 +1,15 @@
 server:
   port: ${GATEWAY_PORT:8080}
+  forward-headers-strategy: none
 
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: 1s
+      timeout: 1s
   http:
     codecs:
       preferred-json-mapper: jackson2
@@ -28,6 +36,10 @@ spring:
               uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:
                 - Path=/api/v1/auth/**
+            - id: auth-service-moderation
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/moderation/reports,/api/v1/moderation/reports/**,/api/v1/platform-admin,/api/v1/platform-admin/**
             - id: message-service-channel-messages
               uri: ${MESSAGE_SERVICE_URL:http://localhost:8083}
               order: -1
@@ -101,6 +113,11 @@ spring:
           # CORS is configured in CorsConfig from chanter.cors.allowed-origins (CHANTER_CORS_ORIGINS).
 
 chanter:
+  edge:
+    limits-enabled: ${CHANTER_EDGE_LIMITS_ENABLED:false}
+    key-secret: ${CHANTER_EDGE_KEY_SECRET:}
+    trusted-proxy-addresses: ${CHANTER_TRUSTED_PROXY_ADDRESSES:}
+    public-origin: ${CHANTER_EDGE_PUBLIC_ORIGIN:}
   jwt:
     secret: ${CHANTER_JWT_SECRET}
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}
@@ -109,6 +126,9 @@ chanter:
     allowed-origins: ${CHANTER_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
 
 management:
+  health:
+    redis:
+      enabled: ${CHANTER_EDGE_LIMITS_ENABLED:false}
   endpoints:
     web:
       exposure:

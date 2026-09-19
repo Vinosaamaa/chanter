@@ -33,7 +33,8 @@ export function initialize(stateDir, config) {
     const values = { CHANTER_JWT_SECRET: jwt };
     if (name !== 'gateway-service') values.CHANTER_INTERNAL_SERVICE_TOKEN = internal;
     if (db[name]) values.POSTGRES_PASSWORD = db[name];
-    if (name === 'realtime-service') values.REDIS_PASSWORD = redis;
+    if (['realtime-service', 'gateway-service'].includes(name)) values.REDIS_PASSWORD = redis;
+    if (name === 'gateway-service') values.CHANTER_EDGE_KEY_SECRET = secret();
     if (['community-service', 'message-service', 'realtime-service'].includes(name)) {
       values.LIVEKIT_API_KEY = mediaKey; values.LIVEKIT_API_SECRET = mediaSecret;
     }
@@ -75,7 +76,8 @@ export function validateRuntime(stateDir) {
       : name === 'redis' ? ['REDIS_PASSWORD'] : name === 'livekit' ? ['LIVEKIT_KEYS']
       : ['CHANTER_JWT_SECRET', ...(name === 'gateway-service' ? [] : ['CHANTER_INTERNAL_SERVICE_TOKEN']),
         ...(databaseModules.includes(name) ? ['POSTGRES_PASSWORD'] : []),
-        ...(name === 'realtime-service' ? ['REDIS_PASSWORD'] : []),
+        ...(['realtime-service', 'gateway-service'].includes(name) ? ['REDIS_PASSWORD'] : []),
+        ...(name === 'gateway-service' ? ['CHANTER_EDGE_KEY_SECRET'] : []),
         ...(name === 'community-service' ? ['CHANTER_BETA_MODE', 'CHANTER_BETA_ASSISTANT_RUN_LIMIT'] : []),
         ...(name === 'media-service' ? ['CHANTER_S3_ENDPOINT', 'CHANTER_S3_REGION', 'CHANTER_S3_BUCKET',
           'CHANTER_S3_ACCESS_KEY', 'CHANTER_S3_SECRET_KEY'] : []),
@@ -85,6 +87,9 @@ export function validateRuntime(stateDir) {
     for (const key of required) if (!env[key]) throw new Error(`Configure ${key} in ${name}.env`);
     for (const [key, value] of Object.entries(env)) if (!value) throw new Error(`Configure ${key} in ${name}.env`);
     if (name === 'auth-service' && !['starttls', 'implicit'].includes(env.CHANTER_SMTP_TLS_MODE)) throw new Error('SMTP requires verified TLS');
+    if (name === 'auth-service' && Boolean(env.CHANTER_TURNSTILE_SITE_KEY) !== Boolean(env.CHANTER_TURNSTILE_SECRET)) {
+      throw new Error('Optional Turnstile requires both site and secret keys');
+    }
     if (name === 'media-service') {
       let endpoint;
       try { endpoint = new URL(env.CHANTER_S3_ENDPOINT); } catch { throw new Error('S3 object storage requires a valid HTTPS endpoint'); }
@@ -97,7 +102,7 @@ export function validateRuntime(stateDir) {
         || Number(env.CHANTER_BETA_ASSISTANT_RUN_LIMIT) > 1000)) {
       throw new Error('Free beta requires a lifetime assistant limit between 1 and 1000');
     }
-    for (const key of ['CHANTER_JWT_SECRET', 'CHANTER_INTERNAL_SERVICE_TOKEN', 'POSTGRES_PASSWORD', 'REDIS_PASSWORD', 'LIVEKIT_API_SECRET']) {
+    for (const key of ['CHANTER_JWT_SECRET', 'CHANTER_INTERNAL_SERVICE_TOKEN', 'POSTGRES_PASSWORD', 'REDIS_PASSWORD', 'LIVEKIT_API_SECRET', 'CHANTER_EDGE_KEY_SECRET']) {
       if (key in env && env[key].length < 32) throw new Error(`Runtime credential too short: ${key}`);
     }
   }
@@ -124,6 +129,14 @@ export async function verifyPublic(hostname, stateDir) {
   const request = async (suffix, options = {}) => fetch(base + suffix, { ...options, signal: AbortSignal.timeout(10000), redirect: 'error' });
   const home = await request('/');
   if (home.status !== 200 || !(await home.text()).includes('<html')) throw new Error('Frontend did not serve the application');
+  for (const [header, expected] of Object.entries({ 'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer' })) {
+    if (home.headers.get(header) !== expected) throw new Error(`Public security header is missing: ${header}`);
+  }
+  if (!home.headers.get('strict-transport-security')?.includes('max-age=31536000')
+      || !home.headers.get('content-security-policy')?.includes("frame-ancestors 'none'")) {
+    throw new Error('Public transport or content security policy is missing');
+  }
   const auth = await request('/api/v1/auth/health');
   if (auth.status !== 200 || (await auth.json()).service !== 'auth-service') throw new Error('Gateway auth route is unhealthy');
   const bootstrap = await request('/api/v1/auth/refresh', { method: 'POST', headers: { Origin: base, 'X-Chanter-CSRF': '1' } });

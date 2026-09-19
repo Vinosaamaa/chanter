@@ -1,6 +1,15 @@
 {
 	http_port 8080
 	https_port 8443
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 60s
+			idle 2m
+		}
+		max_header_size 16KB
+		strict_sni_host on
+	}
 	log {
 		format filter {
 			wrap json
@@ -26,15 +35,22 @@
 		X-Frame-Options DENY
 		Referrer-Policy no-referrer
 		Permissions-Policy "camera=(), microphone=(self), geolocation=()"
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' wss://{$CHANTER_HOSTNAME}; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' wss://{$CHANTER_HOSTNAME} http://127.0.0.1:43160 https://challenges.cloudflare.com; worker-src 'self' blob:; media-src 'self' blob:; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		-Server
 	}
 	handle /api/* {
+		request_body {
+			max_size 12MB
+		}
 		header Cache-Control no-store
 		reverse_proxy gateway-service:8080 {
 			header_up -Forwarded
 			header_up -X-User-Id
 			header_up -X-Internal-Service-Token
+			header_up -X-Chanter-Internal-Service-Token
+			header_up -CF-*
+			header_up -X-Real-IP
+			header_up -X-Chanter-Origin-Token
 			header_up X-Forwarded-For {remote_host}
 			header_up X-Forwarded-Proto https
 			header_up X-Forwarded-Host {host}
