@@ -62,6 +62,7 @@ ready() {
 }
 ready "$source"
 psql_source() { docker exec "$source" psql -v ON_ERROR_STOP=1 -U chanter_admin -d postgres -Atc "$1"; }
+psql_source "CREATE EXTENSION vector; CREATE TABLE vector_marker (embedding vector(3)); INSERT INTO vector_marker VALUES ('[1,2,3]');" >/dev/null
 psql_source 'CREATE TABLE recovery_marker (id integer PRIMARY KEY); INSERT INTO recovery_marker VALUES (1);' >/dev/null
 docker exec "$source" pgbackrest stanza-create
 docker exec "$source" pgbackrest check
@@ -104,6 +105,7 @@ actual="$(docker exec "$restored" psql -v ON_ERROR_STOP=1 -U chanter_admin -d po
 test "$actual" = '1,2' || { echo 'Point-in-time restore included the wrong commits.' >&2; exit 1; }
 test "$(psql_source 'SELECT count(*) FROM recovery_marker')" = 3
 test "$(docker exec "$restored" psql -U chanter_admin -d postgres -Atc 'SHOW archive_mode')" = off
+test "$(docker exec "$restored" psql -U chanter_admin -d postgres -Atc 'SELECT embedding::text FROM vector_marker')" = '[1,2,3]'
 test "$("$restic" --no-cache dump "$config_snapshot" configuration.json)" = '{"version":1,"fixture":"private-recovery-canary"}'
 echo "Encrypted isolated PostgreSQL restore passed; fixture recovery took $(($(date +%s) - started)) seconds."
 echo 'This local repository drill does not establish production off-host RPO or RTO.'

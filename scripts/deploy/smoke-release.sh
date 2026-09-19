@@ -73,6 +73,9 @@ config_snapshot="$(node -e 'const rows=require("fs").readFileSync(process.argv[1
 "${compose[@]}" exec -T postgres pgbackrest stanza-create
 "${compose[@]}" exec -T postgres pgbackrest check
 "${compose[@]}" exec -T postgres pgbackrest --type=incr "--annotation=config-snapshot=$config_snapshot" backup
+"${compose[@]}" exec -T postgres psql -v ON_ERROR_STOP=1 -U chanter_admin -d chanter_agent \
+  -c 'CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public'
+test "$("${compose[@]}" exec -T postgres psql -U chanter_admin -d chanter_agent -Atc "SELECT rolsuper FROM pg_roles WHERE rolname='chanter_agent'")" = f
 "${compose[@]}" up -d --no-deps --wait --wait-timeout 600 clamav
 python3 scripts/deploy/check-scanner.py "$project" "$compose_file"
 mapfile -t databases < <(node --input-type=module -e 'import {databaseModules} from "./scripts/deploy/release.mjs"; console.log(databaseModules.join("\n"))')

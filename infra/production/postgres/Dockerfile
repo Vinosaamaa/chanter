@@ -1,4 +1,14 @@
 ARG POSTGRES_IMAGE
+FROM ${POSTGRES_IMAGE} AS vector-build
+USER 0
+RUN apk add --no-cache build-base \
+    && wget -q https://codeload.github.com/pgvector/pgvector/tar.gz/refs/tags/v0.8.6 -O /tmp/vector.tar.gz \
+    && echo '10bf9938906e5d643bbc4a7eea104b6f57ba4898e5b76b20e60484ea1d5a7f8f  /tmp/vector.tar.gz' | sha256sum -c - \
+    && tar -xzf /tmp/vector.tar.gz -C /tmp \
+    && cd /tmp/pgvector-0.8.6 \
+    && make OPTFLAGS='' with_llvm=no \
+    && make install with_llvm=no DESTDIR=/install
+
 FROM ${POSTGRES_IMAGE} AS backup-build
 USER 0
 RUN apk add --no-cache build-base meson ninja pkgconf libpq-dev openssl-dev libxml2-dev lz4-dev zstd-dev bzip2-dev zlib-dev curl
@@ -11,6 +21,7 @@ RUN curl --fail --silent --show-error --location \
     && /tmp/build/src/pgbackrest version
 
 FROM ${POSTGRES_IMAGE}
+COPY --from=vector-build /install/usr/local/ /usr/local/
 COPY --from=backup-build /tmp/build/src/pgbackrest /usr/local/bin/pgbackrest
 RUN apk add --no-cache libpq libxml2 lz4-libs zstd-libs libbz2 \
     && mkdir -p /var/lib/pgbackrest/repo \

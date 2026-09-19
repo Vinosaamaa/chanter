@@ -307,6 +307,10 @@ export async function deploy(bundleDir, stateDir, rollback = false) {
         // Persist before the first SQL attempt. A crash must not turn partially migrated
         // data into an apparently empty environment with no successful current.json.
         writeJson(floorFile, { schemaEpoch: target.schemaEpoch, commit: target.commit });
+        // pgvector is not a trusted extension. Install as the cluster owner before
+        // application-owned Flyway migrations, including already initialized volumes.
+        compose(['exec', '-T', 'postgres', 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'chanter_admin',
+          '-d', 'chanter_agent', '-c', 'CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public']);
         for (const name of databaseModules) compose(['--profile', 'migration', 'run', '--rm', '--no-deps', `migrate-${name}`]);
       } else if (operation === 'start-applications') {
         compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '600', 'clamav']);

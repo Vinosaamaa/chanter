@@ -86,3 +86,12 @@ can be edited before deployment. Successful deployment now records their digest;
 scheduled backup rejects changed state before touching the repository. This keeps
 unaccepted credentials from being advertised as matching a running database.
 The encrypted configuration/database drill now passes on AMD64 and ARM64.
+
+The production integration now includes accepted native companion #316 at epoch7.
+Its optional signer stays absent by default and explicitly disabled in migrators.
+The runtime lane also owns the pgvector0.8.6 image addition required by #247:
+separate pinned builder, no compiler in the final PostgreSQL image, extension
+installation by the cluster owner before application migrations on fresh and
+existing volumes, and no superuser privilege for the agent role. Recovery fixtures
+now restore actual vector data alongside relational markers. The union still
+requires fresh native release/recovery proof; #247 owns embedding/retrieval behavior.
