@@ -6,6 +6,8 @@ on:
       - 'backend/pom.xml'
       - 'backend/common/pom.xml'
       - 'backend/common/src/**/telemetry/**'
+      - 'backend/common/src/**/events/OutboxMetrics*'
+      - 'backend/common/src/**/events/OutboxConfiguration.java'
       - 'infra/production/java/**'
       - 'infra/production/runtime-lock.json'
       - 'scripts/deploy/telemetry*'
@@ -25,6 +27,15 @@ jobs:
         runner: [ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
+    services:
+      metrics-postgres:
+        image: postgres:16.15-alpine3.23@sha256:3dc6d8874cacc4a9c5c1d7f63cfe5b385a22f8f3527c4896f94f9ec897dd01f2
+        env:
+          POSTGRES_USER: metric_test
+          POSTGRES_PASSWORD: metric_test
+          POSTGRES_DB: metric_test
+        ports: ['5432/tcp']
+        options: --health-cmd "pg_isready -U metric_test" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -39,6 +50,8 @@ jobs:
           echo 'bbf83c151b6400709e2f225bdd07a04f839d9d13b8b93464241333fd25d3e3ba  .cache/telemetry/agent.jar' | sha256sum --check -
       - name: Build privacy extension and verify actual OTLP export and receiver outage
         working-directory: backend
+        env:
+          METRIC_TEST_PORT: ${{ job.services.metrics-postgres.ports['5432'] }}
         run: |
           mvn -B -q -pl telemetry,common -am -DskipTests package
-          mvn -B -q -pl telemetry,common -am -Dtest=SafeSpanExporterTest,SafeMetricExporterTest,SafeLogFormatterTest,NativeTelemetryExportTest -Dsurefire.failIfNoSpecifiedTests=false -Dchanter.telemetry.agent="$GITHUB_WORKSPACE/.cache/telemetry/agent.jar" test
+          mvn -B -q -pl telemetry,common -am -Dtest=SafeSpanExporterTest,SafeMetricExporterTest,SafeLogFormatterTest,NativeTelemetryExportTest,QueueMetricsTest,QueueMetricQueryTest,OutboxMetricsTest,NativeQueueMetricQueryTest -Dsurefire.failIfNoSpecifiedTests=false -Dchanter.telemetry.agent="$GITHUB_WORKSPACE/.cache/telemetry/agent.jar" -Dchanter.telemetry.jdbc="jdbc:postgresql://127.0.0.1:$METRIC_TEST_PORT/metric_test" test

@@ -18,6 +18,36 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @EnabledIfSystemProperty(named = "chanter.telemetry.agent", matches = ".+")
 class NativeTelemetryExportTest {
+    @Test void realSpringApplicationExportsBoundedBusinessMetricsWithoutPrivateLabels() throws Exception {
+        List<ExportMetricsServiceRequest> received = Collections.synchronizedList(new ArrayList<>());
+        var collector = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        collector.createContext("/v1/metrics", exchange -> {
+            received.add(ExportMetricsServiceRequest.parseFrom(exchange.getRequestBody()));
+            exchange.sendResponseHeaders(200, -1); exchange.close();
+        });
+        collector.createContext("/v1/traces", exchange -> { exchange.getRequestBody().readAllBytes(); exchange.sendResponseHeaders(200, -1); exchange.close(); });
+        collector.start();
+        try {
+            runFixture("http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces", ApplicationMetricFixture.class);
+            synchronized (received) {
+                assertFalse(received.isEmpty(), "A real Boot registry must reach the configured agent exporter");
+                assertTrue(received.stream().noneMatch(request -> request.toString().contains("private-canary")));
+                var metrics = received.stream().flatMap(request -> request.getResourceMetricsList().stream())
+                        .flatMap(resource -> resource.getScopeMetricsList().stream()).flatMap(scope -> scope.getMetricsList().stream()).toList();
+                var deliveries = metrics.stream().filter(metric -> metric.getName().equals("chanter.auth.email.delivery")).toList();
+                assertFalse(deliveries.isEmpty(), "Existing email delivery counters must survive private export");
+                assertTrue(deliveries.stream().anyMatch(metric -> metric.getSum().getDataPointsCount() == 2
+                        && metric.getSum().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 600)
+                        && metric.getSum().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 3)),
+                        "All private account dimensions must collapse while accepted and retry outcomes remain distinct");
+                assertTrue(metrics.stream().anyMatch(metric -> metric.getName().equals("chanter.gateway.admission")
+                        && metric.getSum().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 2
+                        && point.getAttributesList().stream().anyMatch(attribute -> attribute.getKey().equals("operation")
+                        && attribute.getValue().getStringValue().equals("AI")))));
+            }
+        } finally { collector.stop(0); }
+    }
+
     @Test void realAgentExportsCorrelatedHttpSpansThroughThePrivacyExtension() throws Exception {
         List<ExportTraceServiceRequest> received = Collections.synchronizedList(new ArrayList<>());
         List<ExportMetricsServiceRequest> metrics = Collections.synchronizedList(new ArrayList<>());
@@ -73,14 +103,19 @@ class NativeTelemetryExportTest {
     }
 
     private static void runFixture(String endpoint) throws Exception {
+        runFixture(endpoint, AgentFixture.class);
+    }
+
+    private static void runFixture(String endpoint, Class<?> fixture) throws Exception {
         var output = Files.createTempFile(Path.of("target"), "agent-fixture-", ".log");
         var java = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java");
         var builder = new ProcessBuilder(java.toString(), "-javaagent:" + System.getProperty("chanter.telemetry.agent"),
-                "-cp", System.getProperty("java.class.path"), AgentFixture.class.getName()).redirectErrorStream(true).redirectOutput(output.toFile());
+                "-cp", System.getProperty("java.class.path"), fixture.getName()).redirectErrorStream(true).redirectOutput(output.toFile());
         var env = builder.environment();
         env.put("OTEL_JAVAAGENT_EXTENSIONS", Path.of("target/telemetry-0.1.0-SNAPSHOT.jar").toAbsolutePath().toString());
         env.put("OTEL_TRACES_EXPORTER", "otlp"); env.put("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
         env.put("OTEL_METRICS_EXPORTER", "otlp");
+        env.put("OTEL_INSTRUMENTATION_MICROMETER_ENABLED", "true");
         env.put("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", endpoint.replace("/v1/traces", "/v1/metrics"));
         env.put("OTEL_METRIC_EXPORT_INTERVAL", "60000");
         env.put("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", endpoint); env.put("OTEL_TRACES_SAMPLER", "always_on");

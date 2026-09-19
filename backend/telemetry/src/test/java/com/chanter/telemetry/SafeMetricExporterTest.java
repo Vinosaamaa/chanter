@@ -9,6 +9,18 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SafeMetricExporterTest {
+    @Test void micrometerOnlyContributesBusinessMetricsSoRuntimeGaugesAreNotDuplicated() {
+        var reader = InMemoryMetricReader.create();
+        var destination = InMemoryMetricExporter.create();
+        try (var provider = SdkMeterProvider.builder().registerMetricReader(reader).build()) {
+            var bridge = provider.get("io.opentelemetry.micrometer-1.5");
+            bridge.gaugeBuilder("jvm.memory.used").setUnit("By").buildWithCallback(gauge -> gauge.record(123));
+            bridge.counterBuilder("chanter.auth.email.delivery").build().add(1, Attributes.builder().put("outcome", "accepted").build());
+            new SafeMetricExporter(destination).export(reader.collectAllMetrics()).join(1, java.util.concurrent.TimeUnit.SECONDS);
+            assertEquals(java.util.List.of("chanter.auth.email.delivery"), destination.getFinishedMetricItems().stream().map(metric -> metric.getName()).toList());
+        }
+    }
+
     @Test void unsafeResidualDimensionsNamesAndUnitsAreRejectedWithoutErasingRuntimePoolMeaning() {
         var reader = InMemoryMetricReader.create();
         var destination = InMemoryMetricExporter.create();
@@ -43,6 +55,10 @@ class SafeMetricExporterTest {
             var meter = provider.get("fixture");
             meter.counterBuilder("chanter.ai.requests").build().add(1,
                     Attributes.builder().put("http.response.status_code", "private-canary").build());
+            meter.counterBuilder("chanter.auth.email.delivery").build().add(1,
+                    Attributes.builder().put("outcome", "private-canary").build());
+            meter.counterBuilder("chanter.gateway.admission").build().add(1,
+                    Attributes.builder().put("operation", "private-canary").build());
             meter.gaugeBuilder("jvm.memory.used").setUnit("By").buildWithCallback(gauge -> gauge.record(100,
                     Attributes.builder().put("jvm.memory.pool.name", "private-canary").build()));
             new SafeMetricExporter(destination).export(reader.collectAllMetrics()).join(1, java.util.concurrent.TimeUnit.SECONDS);
