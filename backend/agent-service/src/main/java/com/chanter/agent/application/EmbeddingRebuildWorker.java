@@ -11,6 +11,7 @@ public class EmbeddingRebuildWorker {
     public EmbeddingRebuildWorker(EmbeddingRebuildJobs jobs,EmbeddingPipelineService pipeline) {this.jobs=jobs;this.pipeline=pipeline;}
     @Scheduled(fixedDelayString="${chanter.embeddings.rebuild-delay-ms:5000}")
     public void runOnce() {
+        jobs.expireLeases();
         jobs.claim().ifPresent(job->{
             try {jobs.complete(job,pipeline.prepareFor(job.modelId(),job.snapshot().chunks()));}
             catch(RuntimeException failure){jobs.failed(job);}

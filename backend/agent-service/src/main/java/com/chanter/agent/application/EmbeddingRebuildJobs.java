@@ -27,10 +27,12 @@ public class EmbeddingRebuildJobs {
         try(var connection=dataSource.getConnection()){postgres=connection.getMetaData().getDatabaseProductName().equals("PostgreSQL");}
     }
     private OffsetDateTime now(){return clock.instant().atOffset(ZoneOffset.UTC);}
+    @Transactional public void expireLeases() {
+        jdbc.sql("UPDATE embedding_rebuild_jobs SET status='FAILED',lease_id=NULL,lease_until=NULL WHERE status='PROCESSING' AND attempts>=5 AND lease_until<=:now")
+                .param("now",now()).update();
+    }
     @Transactional public Optional<Job> claim() {
         var now=now();
-        jdbc.sql("UPDATE embedding_rebuild_jobs SET status='FAILED',lease_id=NULL,lease_until=NULL WHERE status='PROCESSING' AND attempts>=5 AND lease_until<=:now")
-                .param("now",now).update();
         var models=new ArrayList<>(versions.writableIds());
         String active=versions.active().id();models.remove(active);models.addFirst(active);
         for(String model:models) {
@@ -46,6 +48,8 @@ public class EmbeddingRebuildJobs {
                 """.formatted(postgres?"FOR UPDATE OF l SKIP LOCKED":"FOR UPDATE SKIP LOCKED");
             var resource=jdbc.sql(sql).param("model",model).param("now",now).query(UUID.class).optional();
             if(resource.isEmpty()) continue;
+            versions.lock();
+            if(!versions.writableIds().contains(model)) return Optional.empty();
             UUID id=resource.get(),lease=UUID.randomUUID();
             var snapshot=index.snapshot(id);
             int updated=jdbc.sql("""

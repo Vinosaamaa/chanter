@@ -19,7 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 class EmbeddingRebuildJobsTest {
     @TestConfiguration static class Models {
         @Bean @Primary EmbeddingProviders migrationModels(HashingEmbeddingClient original) {
-            return new EmbeddingProviders(List.of(original,new HashingEmbeddingClient(16)),original.modelId());
+            return new EmbeddingProviders(List.of(original,org.mockito.Mockito.spy(new HashingEmbeddingClient(16))),original.modelId());
         }
     }
     @Autowired ResourceIngestionService ingestion;
@@ -27,9 +27,11 @@ class EmbeddingRebuildJobsTest {
     @Autowired EmbeddingRebuildJobs jobs;
     @Autowired EmbeddingPipelineService pipeline;
     @Autowired JdbcClient jdbc;
+    @Autowired @org.springframework.beans.factory.annotation.Qualifier("migrationModels") EmbeddingProviders providers;
     UUID resource,course;
     final String next="hashing-v1-16";
     @BeforeEach void setup() {
+        org.mockito.Mockito.reset(providers.client(next));
         jdbc.sql("DELETE FROM embedding_rebuild_jobs").update();
         jdbc.sql("DELETE FROM resource_chunks").update(); jdbc.sql("DELETE FROM resource_index_lifecycle").update();
         jdbc.sql("UPDATE embedding_control SET active_model_id='hashing-v1-384',candidate_model_id=NULL,previous_model_id=NULL").update();
@@ -81,5 +83,20 @@ class EmbeddingRebuildJobsTest {
         assertThat(jobs.failedCount(next)).isEqualTo(1);
         jobs.retryFailed(resource,next);
         assertThat(jobs.claim()).isPresent();
+    }
+    @Test void delayedProviderDoesNotBlockDeletionAndCannotPublishAfterIt() throws Exception {
+        var started=new java.util.concurrent.CountDownLatch(1);
+        var release=new java.util.concurrent.CountDownLatch(1);
+        org.mockito.Mockito.doAnswer(call->{started.countDown();if(!release.await(10,java.util.concurrent.TimeUnit.SECONDS))throw new AssertionError("Fixture release timed out");return call.callRealMethod();})
+                .when(providers.client(next)).embed(org.mockito.ArgumentMatchers.anyString());
+        try(var executor=java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var rebuild=executor.submit(()->new EmbeddingRebuildWorker(jobs,pipeline).runOnce());
+            assertThat(started.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            try { executor.submit(()->ingestion.deleteByResourceId(resource)).get(2,java.util.concurrent.TimeUnit.SECONDS); }
+            finally { release.countDown(); }
+            rebuild.get(5,java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(jdbc.sql("SELECT COUNT(*) FROM resource_chunk_embeddings WHERE resource_id=:id").param("id",resource).query(Long.class).single()).isZero();
+            assertThat(jdbc.sql("SELECT COUNT(*) FROM embedding_rebuild_jobs WHERE resource_id=:id").param("id",resource).query(Long.class).single()).isZero();
+        }
     }
 }
