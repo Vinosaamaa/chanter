@@ -77,10 +77,6 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
   }, [])
 
   useEffect(() => {
-    if (!requestKey || !courseId || !userId) {
-      return
-    }
-
     let cancelled = false
 
     void (async () => {
@@ -92,6 +88,11 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
       setCanUpload(false)
       setCanView(false)
       setResources([])
+      setDownloadingResourceId(null)
+      if (!requestKey || !courseId || !userId) {
+        setLoadedKey(null)
+        return
+      }
 
       try {
         const access = await fetchCourseResourceAccess(courseId)
@@ -138,7 +139,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
   }, [courseId, requestKey, userId])
 
   useEffect(() => {
-    if (!canView || isLoading || isUploading || retryingResourceId || !resources.some((r) => r.status === 'PROCESSING'
+    if (!requestKey || !canView || isLoading || isUploading || retryingResourceId || !resources.some((r) => r.status === 'PROCESSING'
       || (r.aiApproved && ['PENDING', 'PROCESSING'].includes(r.ingestionStatus ?? '')))) return
     let cancelled = false
     let timer: number
@@ -166,7 +167,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
   }, [canView, courseId, isLoading, isUploading, requestKey, resources, retryingResourceId])
 
   const retryIngestion = useCallback(async (resource: CourseResource) => {
-    if (!canUpload || resource.courseId !== courseId || resource.status !== 'AVAILABLE'
+    if (!requestKey || !canUpload || resource.courseId !== courseId || resource.status !== 'AVAILABLE'
       || !resource.aiApproved || resource.ingestionStatus !== 'FAILED' || retryingResourceId) return
     resourceRevisionRef.current += 1
     const viewGeneration = viewGenerationRef.current
@@ -290,12 +291,12 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
   )
 
   return {
-    resources,
-    filteredResources,
+    resources: requestKey ? resources : [],
+    filteredResources: requestKey ? filteredResources : [],
     isLoading,
     accessDenied,
-    canUpload,
-    canView,
+    canUpload: requestKey !== null && canUpload,
+    canView: requestKey !== null && canView,
     error,
     uploadSuccess,
     searchQuery,
@@ -307,7 +308,7 @@ export function useCourseResourcesChannel(courseId: string): UseCourseResourcesC
     downloadResource,
     previewResource,
     downloadingResourceId,
-    aiApprovedCount,
+    aiApprovedCount: requestKey ? aiApprovedCount : 0,
     retryIngestion,
     retryingResourceId,
   }

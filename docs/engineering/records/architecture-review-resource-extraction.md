@@ -10,8 +10,8 @@ capabilityIds: ["resource-ingestion"]
 createdAt: 2026-09-18
 reconstructed: false
 confidence: high
-unknowns: ["Durable event integration depends on accepted issue 245", "Instructor status and retry UI is pending", "Native PostgreSQL, package security and completed review are pending for this draft"]
-modules: ["agent-service"]
+unknowns: ["Durable event integration and authoritative source-scope metadata depend on accepted issue 245", "Final integrated-head system and review gates remain pending"]
+modules: ["agent-service", "media-service", "frontend"]
 interfaces: ["resource-chunk-ingestion", "current-evidence-authorization"]
 seams: ["bounded-document-extraction", "generation-checked-index-publication", "terminal-deletion", "source-locator-citations"]
 adapters: ["apache-pdfbox", "apache-poi", "postgresql"]
@@ -28,7 +28,7 @@ verification: {"state":"verified","evidenceRefs":["backend/agent-service/src/tes
 visibility: public-safe
 publicationEligibility: eligible
 issue: 246
-pr: null
+pr: 325
 release: null
 run: null
 ---
@@ -60,4 +60,6 @@ V9 introduces generation and extraction metadata. Older writers do not honor the
 
 Generated real documents exercise multisection Word tables, multipage PDF, multislide PowerPoint, encrypted PDF/Office, image-only and mixed sources, expansion limits, strict UTF-8, normalization and malformed bytes. Database tests preserve locators/checksums and prove failed preparation retains no chunks/vectors. Latch-controlled embedding tests prove deletion completes while the provider is paused, late writes fail, newer ingestion remains current, and same-source replay avoids duplicate embedding. The same deletion suite is inherited by native PostgreSQL tests.
 
-The current draft is independent parsing and ingestion work. Durable event consumption, instructor status/retry integration, exact-head native/container/package-security gates, browser evidence and completed full review remain acceptance requirements. This record does not close issue #246.
+The media client now forwards document formats, persists explicit extraction outcomes and exposes instructor retry. Current AI catalog authorization additionally requires READY. The resource component shows queued/processing/ready and source-specific failure states, keeps downloads separate from AI readiness, and explains that OCR/transcription are unavailable. Browser inspection of labeled synthetic fixtures covered desktop and 390-pixel layouts, retry transitions, unavailable downloads and the upload dialog; it does not prove live-stack ingestion.
+
+The independent draft passed full hosted CI, native AMD64/ARM64 PostgreSQL/scanner/restart tests and packaged-Java security. Completed full review findings have driven production format wiring and stale/transient UI response fixes, with failing reproductions followed by passing tests. The remaining migration-order finding requires accepted #245 before media V4. Durable event consumption, authoritative source-scope metadata and final integrated-head system/review gates remain acceptance requirements. This record does not close issue #246.

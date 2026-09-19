@@ -18,6 +18,14 @@ Parsing and embedding preparation run outside the final database transaction. Th
 
 Persist explicit ingestion state, source version/checksum and safe failure codes. Replayed matching content must not create duplicates. Transient provider failure is retryable; unsupported/encrypted/malformed sources require a changed source or explicit instructor action. Versioned event consumption follows accepted #245 and must not infer current permission from historical events.
 
+## Durable delivery integration plan
+
+Reuse #245's outbox envelope and consumer cursor. A dedicated media ResourceChanged event carries the resource/course/Study Server identity, source checksum, filename, approval and terminal-deletion flag. Course-wide sources have no Cohort; language is explicitly undetermined (`und`) and access scope is COURSE. Metadata comes from the owning Course record, never from a generated identifier or a learner's current Cohort.
+
+The agent consumer commits only the accepted event and queued extraction state. A single agent worker claims the current event with a new generation and a durable lease, obtains the current approved source through an internal content endpoint, and prepares outside a transaction. Final publication must still match the claimed generation/event and the permanent deletion marker. Expired claims advance the generation before retry, so a late worker cannot publish. Bounded transient retries end in an instructor-visible FAILED state; unchanged READY content reuses existing chunks.
+
+Media's existing INDEX task becomes outcome synchronization for its expected event/source checksum, not a second extraction retry owner. Instructor retry appends a new event in the media transaction. The existing synchronous agent deletion fence remains mandatory before media releases its storage reservation; the durable terminal event provides replay convergence. Historical events never authorize viewer retrieval, which continues to recheck current readiness, approval, course and permission.
+
 ## User and integration boundary
 
 Instructor resource UI shows queued, processing, ready and actionable failure states, with retry only where meaningful. It must not imply OCR or transcription exists. UI work follows the vendored frontend-design skill and approved resource layouts. Existing citation fields remain compatible with native-companion signing; locator presentation is additive.

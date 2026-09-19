@@ -121,6 +121,28 @@ describe('useCourseResourcesChannel', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('clears course state and rejects pending polling responses after logout', async () => {
+    const pending = resource({ aiApproved: true, status: 'AVAILABLE', ingestionStatus: 'PENDING' })
+    mockedFetchAccess.mockResolvedValue({ courseId: 'course-1', canUploadCourseResource: true, canViewCourseResources: true })
+    mockedListResources.mockResolvedValueOnce({ courseResources: [pending] })
+    let finish!: (value: { courseResources: CourseResource[] }) => void
+    mockedListResources.mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useCourseResourcesChannel('course-1'))
+    await act(async () => { await Promise.resolve() })
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+    expect(mockedListResources).toHaveBeenCalledTimes(2)
+    act(() => useAuthStore.getState().clearSession())
+    expect(result.current.resources).toEqual([])
+    expect(result.current.filteredResources).toEqual([])
+    expect(result.current.canView).toBe(false)
+    expect(result.current.canUpload).toBe(false)
+    await act(async () => { finish({ courseResources: [{ ...pending, ingestionStatus: 'READY' }] }) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(15000) })
+    expect(result.current.resources).toEqual([])
+    expect(mockedListResources).toHaveBeenCalledTimes(2)
+  })
+
   it('ignores a retry from an earlier visit after returning to the same course', async () => {
     const failed = resource({ aiApproved: true, status: 'AVAILABLE', ingestionStatus: 'FAILED' })
     const ready = { ...failed, ingestionStatus: 'READY' as const }

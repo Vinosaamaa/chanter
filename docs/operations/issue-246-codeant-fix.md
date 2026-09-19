@@ -10,6 +10,8 @@ The migration-order finding ([review comment](https://github.com/Vinosaamaa/chan
 
 The follow-up review's transient polling failure and return-to-the-same-course findings are accepted ([poll recovery](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051895128), [earlier visit](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051895130)). Both failed targeted deferred-response/timer tests. Transient errors schedule the next bounded-delay poll and clear on recovery; permission failures stop polling. Each mounted course visit now has its own generation, so a response from an earlier visit cannot update the new one even when course/user IDs match.
 
+The logout-state finding is accepted ([review comment](https://github.com/Vinosaamaa/chanter/pull/325#discussion_r4051918567)). The hook previously returned retained resources when its course/user request key became null. A pending-response test now verifies immediate empty resource/access state, cancellation of the old response and no further polling after logout. The hook clears state on missing identity and requires a nonnull key before polling or retrying.
+
 The custom suggestions concern bounded-buffer/SQL efficiency, shared validation and presentation refactors. The current 10 MiB source and 2M-character output caps bound the parser draft; the durable-event integration will remove the production Base64 delivery path. Query batching and shared Office validation are not claimed as completed. Neither suggestion changes the required live authorization or generation/deletion fences.
 
 The draft remains open for accepted durable-event integration, source-scope metadata and final system review. No security finding is waived or suppressed.
