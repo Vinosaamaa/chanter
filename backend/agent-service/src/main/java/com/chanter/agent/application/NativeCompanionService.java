@@ -95,8 +95,16 @@ public class NativeCompanionService {
             };
         } finally {
             // Even a submitted zero is a client report, never measured provider usage or a budget refund.
-            try { ledger.settle(requestId, LlmUsage.UNKNOWN, outcome, 0, request.model(), null, definition(request.model()), true); }
-            finally { requests.finish(requestId, accepted, inputTokens, outputTokens); }
+            try {
+                try { ledger.settle(requestId, LlmUsage.UNKNOWN, outcome, 0, request.model(), null, definition(request.model()), true); }
+                finally { requests.finish(requestId, accepted, inputTokens, outputTokens); }
+            } catch (RuntimeException settlementUnavailable) {
+                if (!accepted) throw settlementUnavailable;
+                // Persistence is authoritative. Existing reservation/claim rows still prevent another
+                // attempt; expiry redacts evidence and stale reservations retain unknown usage.
+                org.slf4j.LoggerFactory.getLogger(NativeCompanionService.class)
+                        .warn("Saved native answer settlement unavailable");
+            }
         }
     }
     private void requireOrigin(String origin) {

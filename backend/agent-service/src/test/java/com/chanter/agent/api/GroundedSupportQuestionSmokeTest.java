@@ -93,7 +93,8 @@ class GroundedSupportQuestionSmokeTest {
     @org.junit.jupiter.api.AfterAll
     static void closeProvider() { PROVIDER.stop(0); }
 
-    @Autowired private com.chanter.agent.application.AiGenerationLedger generationLedger;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private com.chanter.agent.application.AiGenerationLedger generationLedger;
     @Autowired private com.chanter.agent.application.LlmModelCatalog modelCatalog;
     @Autowired private org.springframework.jdbc.core.simple.JdbcClient nativeJdbc;
     @Autowired private org.springframework.jdbc.core.JdbcTemplate nativeTemplate;
@@ -103,7 +104,7 @@ class GroundedSupportQuestionSmokeTest {
 
     @Test
     void nativeHttpFlowRechecksEvidenceAndPersistsOnlyValidatedClientQuotations() throws Exception {
-        for (String scenario : List.of("status-unavailable", "accepted", "revoked")) {
+        for (String scenario : List.of("status-unavailable", "accepted", "settlement-unavailable", "revoked")) {
             boolean revoke = scenario.equals("revoked"), unavailable = scenario.equals("status-unavailable");
             UUID server = UUID.randomUUID(), instructor = UUID.randomUUID(), learner = UUID.randomUUID();
             UUID channel = UUID.randomUUID(), course = UUID.randomUUID(), resource = UUID.randomUUID(), question = UUID.randomUUID();
@@ -137,11 +138,23 @@ class GroundedSupportQuestionSmokeTest {
             String nativeResultJson = objectMapper.writeValueAsString(Map.of("installationId", installation,
                     "text", "{\"sourceId\":\"S1\",\"quote\":\"Spring Security uses a filter chain.\"}\n",
                     "usage", Map.of("inputTokens", 0, "outputTokens", 0)));
+            if (scenario.equals("settlement-unavailable")) org.mockito.Mockito.doThrow(
+                    new org.springframework.dao.TransientDataAccessResourceException("synthetic settlement outage"))
+                    .when(generationLedger).settle(org.mockito.ArgumentMatchers.eq(UUID.fromString(issued.path("requestId").asText())),
+                            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(),
+                            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean());
             var result = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/native-results/{request}", channel, question, issued.path("requestId").asText())
                     .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer).header("Origin", "https://chanter.example")
                     .contentType(MediaType.APPLICATION_JSON).content(nativeResultJson));
             if (revoke) result.andExpect(status().isForbidden());
-            else result.andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmProvider").value("codex-native"));
+            else result.andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmProvider").value("codex-native"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.executionProvenance").value("CLIENT_REPORTED"));
+            if (scenario.equals("settlement-unavailable")) {
+                String savedId = objectMapper.readTree(result.andReturn().getResponse().getContentAsString()).path("id").asText();
+                mockMvc.perform(get("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                        .header(AuthHeaders.USER_ID, learner).header("Authorization", bearer)).andExpect(status().isOk())
+                        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.id").value(savedId));
+            }
             if (unavailable) {
                 String aggregate = com.chanter.common.events.AcceptedAnswerStatus.KIND + ":" + question;
                 var destination = Map.of("message", java.net.URI.create("http://127.0.0.1:" + PROVIDER.getAddress().getPort() + "/api/v1/internal/events"));
@@ -290,7 +303,8 @@ class GroundedSupportQuestionSmokeTest {
                         .param("modelId", "source-only")
                         .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
                 .andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmUsed").value(false));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.llmUsed").value(false))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.audit.executionProvenance").value("NOT_USED"));
         assertThat(PROVIDER_CALLS.get()).isEqualTo(before);
         assertThat(generationLedger.summary(server).requestCount()).isEqualTo(1);
         assertThat(generationLedger.summary(server).unknownUsageCount()).isEqualTo(1);
@@ -321,6 +335,7 @@ class GroundedSupportQuestionSmokeTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), AssistantAnswerResponse.class);
         assertThat(answer.audit().llmUsed()).isTrue();
         assertThat(answer.audit().llmProvider()).isEqualTo("ollama");
+        assertThat(answer.audit().executionProvenance()).isEqualTo("SERVER_OBSERVED");
         assertThat(answer.sources()).hasSize(1);
         // Instructor grant visibility does not require learner enrollment or a personal assistant installation.
         channelAccessClient.grantInstructorView(channel, instructor, course, server, "questions");

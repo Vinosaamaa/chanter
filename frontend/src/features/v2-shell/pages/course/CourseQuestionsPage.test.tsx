@@ -277,6 +277,17 @@ describe('CourseQuestionsPage', () => {
     mocks.workspace.courseCapabilities.canManageQuestions = true
   })
 
+  it.each(['CLIENT_REPORTED', undefined] as const)('labels native execution as a client report with unavailable token usage (%s)', (executionProvenance) => {
+    mocks.questions.selectedAnswer = {
+      id: 'native-answer', supportQuestionId: 'question-1', channelId: 'questions-1', studyServerId: 'server-1', learnerUserId: 'learner-1',
+      questionBody: 'Question', answerBody: 'Persisted quotation', confidence: 'HIGH', supportQuestionStatus: 'AI_ANSWERED', handoffRecommended: false,
+      sources: [], createdAt: '2026-07-14T20:02:00.000Z',
+      audit: { llmUsed: true, llmProvider: 'codex-native', llmModel: 'fixture-native', executionProvenance, sourceCount: 1, invocationType: 'GROUNDED_ANSWER', createdAt: '2026-07-14T20:02:00.000Z' },
+    }
+    render(<CourseQuestionsPage />)
+    expect(screen.getByText(/Reported by your desktop app\. Token usage unavailable\./)).toBeInTheDocument()
+  })
+
   it('keeps the active filter aligned with the selected thread status', async () => {
     mocks.questions.supportQuestions = [
       {

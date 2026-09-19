@@ -68,6 +68,7 @@ public record AssistantAnswerResponse(
             boolean llmUsed,
             String llmProvider,
             String llmModel,
+            String executionProvenance,
             Instant createdAt
     ) {
         public static AuditResponse from(StudyAssistantAnswerAudit audit) {
@@ -77,6 +78,7 @@ public record AssistantAnswerResponse(
                     audit.llmUsed(),
                     audit.llmProvider(),
                     audit.llmModel(),
+                    "codex-native".equals(audit.llmProvider()) ? "CLIENT_REPORTED" : audit.llmUsed() ? "SERVER_OBSERVED" : "NOT_USED",
                     audit.createdAt()
             );
         }

@@ -308,6 +308,9 @@ export function CourseQuestionsPage() {
                           : 'Approved sources · no generation model'}
                         {' · '}
                         {questions.selectedAnswer.audit.sourceCount} source{questions.selectedAnswer.audit.sourceCount === 1 ? '' : 's'}
+                        {questions.selectedAnswer.audit.executionProvenance === 'CLIENT_REPORTED' || questions.selectedAnswer.audit.llmProvider === 'codex-native'
+                          ? <><br />Reported by your desktop app. Token usage unavailable.</>
+                          : null}
                       </p>
                     ) : null}
                   </div>

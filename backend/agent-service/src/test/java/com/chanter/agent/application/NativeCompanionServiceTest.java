@@ -40,9 +40,9 @@ import org.springframework.web.server.ResponseStatusException;
 @ActiveProfiles("test")
 class NativeCompanionServiceTest {
     @Autowired NativeCompanionService companion;
-    @Autowired AiGenerationLedger ledger;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean AiGenerationLedger ledger;
     @Autowired JdbcClient jdbc;
-    @Autowired com.chanter.agent.infra.NativeRequestRepository requests;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean com.chanter.agent.infra.NativeRequestRepository requests;
     @MockitoBean NativeSessionClient sessions;
     @MockitoBean GroundedSupportQuestionService questions;
     private UUID user, session, installation, channel, question, server;
@@ -96,6 +96,22 @@ class NativeCompanionServiceTest {
         verify(questions, never()).acceptNativeAnswer(any(), any(), any(), any(), any(), any(), any());
         assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
         assertThatThrownBy(this::issue).isInstanceOf(AiGenerationLedger.AttemptConflict.class);
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = { true, false })
+    void savedAnswerRemainsSuccessfulWhenSettlementOrRequestFinalizationFails(boolean ledgerFailure) {
+        var issued = issue();
+        var failure = new org.springframework.dao.TransientDataAccessResourceException("synthetic settlement failure");
+        if (ledgerFailure) doThrow(failure).when(ledger).settle(eq(issued.requestId()), any(), any(), org.mockito.ArgumentMatchers.anyLong(), any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        else doThrow(failure).when(requests).finish(issued.requestId(), true, 0, 0);
+        assertThat(accept(issued.requestId(), RESULT)).isEqualTo(saved);
+        assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
+        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(40960);
+        assertThat(jdbc.sql("SELECT outcome FROM native_companion_requests WHERE id=:id").param("id", issued.requestId())
+                .query(String.class).single()).isEqualTo(ledgerFailure ? "ACCEPTED" : "ACCEPTING");
+        assertThatThrownBy(() -> accept(issued.requestId(), RESULT)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
+        assertThatThrownBy(this::issue).isInstanceOf(AiGenerationLedger.AttemptConflict.class);
+        verify(questions, org.mockito.Mockito.times(1)).acceptNativeAnswer(any(), any(), any(), any(), any(), any(), any());
     }
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"TIMED_OUT,504", "CANCELLED,408", "REFUSED,422", "INVALID_RESPONSE,400", "UNAVAILABLE,503", "RATE_LIMITED,429", "LIMIT_EXCEEDED,429"})
