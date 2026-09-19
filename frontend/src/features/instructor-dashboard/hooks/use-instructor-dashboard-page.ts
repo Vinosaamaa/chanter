@@ -27,6 +27,9 @@ function accessErrorMessage(caught: unknown): string {
     if (caught.status === 403) {
       return 'Only Study Server owners and course instructors can open the Instructor Dashboard.'
     }
+    if (caught.status === 502) {
+      return 'Usage and teaching information are temporarily unavailable. Please try again.'
+    }
     if (caught.body && caught.body.trim().length > 0) {
       try {
         const parsed = JSON.parse(caught.body) as {
@@ -34,7 +37,7 @@ function accessErrorMessage(caught: unknown): string {
           message?: string
           status?: number
         }
-        if (parsed.error === 'Bad Gateway' || caught.status === 502) {
+        if (parsed.error === 'Bad Gateway') {
           return 'Usage and teaching information are temporarily unavailable. Please try again.'
         }
         if (parsed.message && parsed.message.trim().length > 0) {

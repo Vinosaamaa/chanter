@@ -10,4 +10,6 @@ The remaining suggestions do not identify further incorrect behavior:
 - Fixed synthetic counts and limits keep visual expectations explicit. Naming constants, shortening the owner-tampering test name and consolidating warning markup are optional style changes.
 - The real-service journey retains its Teaching navigation assertion before testing Usage, preserving existing product coverage.
 
+The second completed review identified empty/plain-text HTTP 502 responses bypassing temporary-unavailability guidance. Two new hook cases failed before moving the status check outside JSON parsing; all three body variants now return the same useful guidance. The navigation mock regression deliberately guards a removed dependency: it failed against the prior page and passes after removing that dependency. Reintroducing the failing sidebar gate makes it fail again. The suggested usage-only hook would remove the selected server ownership check and duplicate existing loading/error logic, so the verified shared hook remains. A suggested evidence table is omitted under the current concise-documentation instruction.
+
 The final candidate requires fresh exact-head CI and a completed full review. Review completion and final acceptance evidence are recorded on the PR before integration. Paid-provider and production-release requirements remain open in #250.
