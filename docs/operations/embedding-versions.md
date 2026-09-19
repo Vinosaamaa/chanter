@@ -2,6 +2,8 @@
 
 The agent uses the pinned `sentence-transformers/all-MiniLM-L6-v2` ONNX model by default. The release build downloads and checks the model and tokenizer; the agent verifies both again at startup. Runtime inference never downloads a model. The packaged directory is `/app/models/minilm`, selected with `CHANTER_EMBEDDINGS_MODEL_DIRECTORY`. Hashing is a test-profile fixture and production rejects it.
 
+For direct source runs, execute `node scripts/vector/download-model.mjs .cache/models/minilm` from the repository root, then set `CHANTER_EMBEDDINGS_MODEL_DIRECTORY` to that directory's absolute path before starting the agent. `make backend-agent` and `make product-up` prepare the assets and path automatically. Existing development database volumes still require the database owner to create `vector` in the `chanter_agent` database before V13; initialization scripts only run for fresh volumes.
+
 The model runs one inference at a time on one native thread, truncates at 256 tokens and accepts at most 16,384 input characters. Requests wait at most two seconds for inference capacity. Unavailable embeddings, missing vectors or insufficient similarity produce no resource evidence and recommend human support. Approved FAQs remain a separate source. There is no downloaded-resource keyword fallback.
 
 V13 requires pgvector in the agent database before Flyway runs. The cluster owner creates the extension; the application role does not receive superuser privileges. V13 discards old hashing coordinates and preserves current chunks for rebuilding. Epoch 8 prevents downgrade to a binary that expects the former BYTEA schema. Current resource scope, source checksum and live viewer approval remain required regardless of the vector version.
