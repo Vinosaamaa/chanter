@@ -19,6 +19,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnableScheduling
 @Import(OutboxOperations.class)
 public class OutboxConfiguration {
+    // Keep Spring's unqualified lifecycle jobs off the network-delivery scheduler.
+    @Bean
+    org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler taskScheduler() {
+        var scheduler = new org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(1);
+        scheduler.setThreadNamePrefix("source-jobs-");
+        return scheduler;
+    }
     @Bean
     org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler durableEventScheduler() {
         var scheduler = new org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler();

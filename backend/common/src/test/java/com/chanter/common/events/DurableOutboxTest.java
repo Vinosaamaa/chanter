@@ -75,7 +75,16 @@ class DurableOutboxTest {
         }
         assertThat(outbox.stats().failed()).isEqualTo(1);
         assertThat(outbox.claim()).isEmpty();
-        assertThat(outbox.replay(id)).isTrue();
+        String token = "test-internal-token-with-at-least-32-characters";
+        var operations = new OutboxOperations(outbox, token);
+        assertThatThrownBy(() -> operations.stats(null)).isInstanceOfSatisfying(
+                org.springframework.web.server.ResponseStatusException.class,
+                failure -> assertThat(failure.getStatusCode().value()).isEqualTo(401));
+        assertThat(operations.failed(token)).singleElement().satisfies(failure -> {
+            assertThat(failure.attempts()).isEqualTo(8);
+            assertThat(failure.lastError()).isEqualTo("HTTP_503");
+        });
+        operations.replay(id, token);
         var replay = outbox.claim().orElseThrow();
         assertThat(replay.event().id()).isEqualTo(id);
         outbox.delivered(replay);
