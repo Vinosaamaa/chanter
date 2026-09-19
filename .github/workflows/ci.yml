@@ -56,6 +56,10 @@ jobs:
           cache: maven
       - name: Verify backend with hermetic Java 21 gate
         run: make backend-verify
+      - name: Verify shared admission through two real gateways and Redis
+        run: >-
+          scripts/java21.sh mvn -B -q -s backend/.mvn/settings.xml -f backend/pom.xml
+          -pl gateway-service -am -Dtest=RedisAdmissionHttpTest -Dsurefire.failIfNoSpecifiedTests=false test
         env:
           CHANTER_TEST_REDIS_PORT: ${{ job.services.admission-redis.ports[6379] }}
       - name: Product stack script tests
