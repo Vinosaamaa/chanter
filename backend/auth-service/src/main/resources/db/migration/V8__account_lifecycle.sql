@@ -54,3 +54,18 @@ CREATE TABLE durable_event_cursor (
     processed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (producer, aggregate_key)
 );
+
+CREATE TABLE lifecycle_export_job_lock (id INT PRIMARY KEY);
+INSERT INTO lifecycle_export_job_lock VALUES (1);
+CREATE TABLE lifecycle_export_jobs (
+    id UUID PRIMARY KEY, account_id UUID NOT NULL,
+    requested_at TIMESTAMP WITH TIME ZONE NOT NULL, expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    state VARCHAR(16) NOT NULL, cancelled_at TIMESTAMP WITH TIME ZONE
+);
+CREATE INDEX lifecycle_export_jobs_owner ON lifecycle_export_jobs(account_id,requested_at);
+CREATE TABLE lifecycle_export_parts (
+    job_id UUID NOT NULL REFERENCES lifecycle_export_jobs(id) ON DELETE CASCADE,
+    source VARCHAR(16) NOT NULL, state VARCHAR(16) NOT NULL, fingerprint VARCHAR(64),
+    request_event_id UUID, updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    PRIMARY KEY(job_id,source)
+);
