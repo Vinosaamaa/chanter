@@ -157,6 +157,31 @@ class ExportSnapshotStoreTest {
         assertThatThrownBy(badCount::fingerprint).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test void retainedPeerContentAndFilesRequireCurrentOwningScopeWhileAuthoredRowsStaySeparate() {
+        UUID peer = UUID.randomUUID(); UUID resource = UUID.randomUUID(); var request = request();
+        var manifest = store.capture(request, writer -> {
+            writer.jsonLines("authored_messages", rows -> rows.add(Map.of("body", "My text")));
+            writer.protectedJsonLines("conversations", peer, new ExportSnapshotStore.AccessScope("DM_PEER", peer),
+                    rows -> rows.add(Map.of("body", "Received private text")));
+            writer.file(resource, new ByteArrayInputStream(new byte[]{1, 2, 3}));
+        });
+        assertThat(manifest.fingerprint()).hasSize(64);
+        store.requireAccess(request.jobId(), owner, 0, ExportSnapshotAccess.denyProtected());
+        assertStatus(503, () -> store.requireAccess(request.jobId(), owner, null, ExportSnapshotAccess.denyProtected()));
+        var checked = new java.util.ArrayList<String>();
+        ExportSnapshotAccess granted = (account, kind, target) -> {
+            assertThat(account).isEqualTo(owner); checked.add(kind + ":" + target);
+        };
+        store.requireAccess(request.jobId(), owner, 1, granted);
+        assertThat(checked).containsExactly("DM_PEER:" + peer);
+        checked.clear(); store.requireAccess(request.jobId(), owner, 2, granted);
+        assertThat(checked).containsExactly("RESOURCE:" + resource);
+        ExportSnapshotAccess revoked = (account, kind, target) -> { throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "CURRENT_ACCESS_REVOKED"); };
+        assertStatus(403, () -> store.requireAccess(request.jobId(), owner, 1, revoked));
+        assertStatus(403, () -> store.requireAccess(request.jobId(), owner, null, revoked));
+        assertStatus(404, () -> store.requireAccess(request.jobId(), UUID.randomUUID(), 1, granted));
+    }
+
     @Test void oversizedRecordsAndUnsafeEntryNamesRollbackWithoutAPartialExport() {
         var request = request();
         assertThatThrownBy(() -> store.capture(request, writer -> writer.jsonLines("../../private", rows -> {})))

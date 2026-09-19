@@ -39,6 +39,7 @@ public final class ExportSnapshotStore {
             snapshot_id UUID NOT NULL REFERENCES data_export_snapshots(id) ON DELETE CASCADE,
             ordinal INT NOT NULL, entry_path VARCHAR(120) NOT NULL, media_type VARCHAR(100) NOT NULL,
             byte_size BIGINT NOT NULL DEFAULT 0, page_count INT NOT NULL DEFAULT 0, sha256 VARCHAR(64),
+            access_kind VARCHAR(24), access_id UUID,
             PRIMARY KEY(snapshot_id, ordinal), UNIQUE(snapshot_id, entry_path)
         );
         CREATE TABLE data_export_pages (
@@ -113,6 +114,16 @@ public final class ExportSnapshotStore {
         return result;
     }
 
+    /** Private source controllers use this around every retained read; a receipt is not current content authorization. */
+    public void requireAccess(UUID jobId, UUID accountId, Integer entry, ExportSnapshotAccess access) {
+        requireReadable(jobId, accountId);
+        String sql = "SELECT DISTINCT access_kind,access_id FROM data_export_entries WHERE snapshot_id=? AND access_kind IS NOT NULL";
+        Object[] parameters = entry == null ? new Object[]{jobId} : new Object[]{jobId, entry};
+        if (entry != null) sql += " AND ordinal=?";
+        var scopes = jdbc.query(sql, (rs, row) -> new AccessScope(rs.getString(1), rs.getObject(2, UUID.class)), parameters);
+        for (AccessScope scope : scopes) access.require(accountId, scope.kind(), scope.id());
+    }
+
     /** Preserve cancellation authority until the expired request cannot be replayed. */
     public void cancelAccount(UUID accountId) {
         tx.executeWithoutResult(status -> {
@@ -171,7 +182,18 @@ public final class ExportSnapshotStore {
 
         public void jsonLines(String section, JsonProjection projection) throws IOException {
             if (section == null || !section.matches("[a-z][a-z0-9_-]{0,39}")) throw new IllegalArgumentException("Invalid export section");
-            try (var output = new PageOutput(section + ".jsonl", "application/x-ndjson")) {
+            jsonLinesAt(section + ".jsonl", null, projection);
+        }
+
+        public void protectedJsonLines(String group, UUID entryId, AccessScope access, JsonProjection projection) throws IOException {
+            if (!java.util.Set.of("conversations", "answers", "notifications").contains(group) || entryId == null || access == null)
+                throw new IllegalArgumentException("Invalid protected export entry");
+            access.validate();
+            jsonLinesAt(group + "/" + entryId + ".jsonl", access, projection);
+        }
+
+        private void jsonLinesAt(String path, AccessScope access, JsonProjection projection) throws IOException {
+            try (var output = new PageOutput(path, "application/x-ndjson", access)) {
                 projection.write(value -> {
                     byte[] bytes = mapper.writeValueAsBytes(value);
                     if (bytes.length > PAGE_BYTES) throw new ExportFailure("EXPORT_RECORD_TOO_LARGE", null);
@@ -182,7 +204,7 @@ public final class ExportSnapshotStore {
 
         public void file(UUID resourceId, InputStream input) throws IOException {
             if (resourceId == null || input == null) throw new IllegalArgumentException("Invalid export file");
-            try (var output = new PageOutput("files/" + resourceId + "/content", "application/octet-stream")) {
+            try (var output = new PageOutput("files/" + resourceId + "/content", "application/octet-stream", new AccessScope("RESOURCE", resourceId))) {
                 byte[] buffer = new byte[PAGE_BYTES];
                 int count;
                 while ((count = input.read(buffer)) != -1) if (count > 0) output.write(buffer, 0, count);
@@ -196,10 +218,11 @@ public final class ExportSnapshotStore {
             private long size;
             private int pages;
             private boolean closed;
-            PageOutput(String entryPath, String mediaType) {
+            PageOutput(String entryPath, String mediaType, AccessScope access) {
                 if (nextEntry >= 10_000) throw new ExportFailure("EXPORT_ENTRY_LIMIT", null);
                 ordinal = nextEntry++;
-                jdbc.update("INSERT INTO data_export_entries(snapshot_id,ordinal,entry_path,media_type) VALUES (?,?,?,?)", jobId, ordinal, entryPath, mediaType);
+                jdbc.update("INSERT INTO data_export_entries(snapshot_id,ordinal,entry_path,media_type,access_kind,access_id) VALUES (?,?,?,?,?,?)",
+                        jobId, ordinal, entryPath, mediaType, access == null ? null : access.kind(), access == null ? null : access.id());
             }
             @Override public void write(int value) { write(new byte[]{(byte) value}, 0, 1); }
             @Override public void write(byte[] bytes, int offset, int length) {
@@ -242,6 +265,14 @@ public final class ExportSnapshotStore {
         }
     }
     public record Entry(int ordinal, String path, String mediaType, long bytes, int pageCount, String sha256) { }
+    public record AccessScope(String kind, UUID id) {
+        public AccessScope { validate(kind, id); }
+        public void validate() { validate(kind, id); }
+        private static void validate(String kind, UUID id) {
+            if (kind == null || !java.util.Set.of("DM_PEER", "RESOURCE", "AI_ANSWER", "NOTIFICATION").contains(kind) || id == null)
+                throw new IllegalArgumentException("Invalid export access scope");
+        }
+    }
     public record Manifest(int schemaVersion, String source, UUID jobId, UUID accountId, Instant capturedAt, Instant expiresAt, List<Entry> entries) {
         public Manifest { entries = List.copyOf(entries); }
 
@@ -256,7 +287,8 @@ public final class ExportSnapshotStore {
             var paths = new java.util.HashSet<String>();
             for (int index = 0; index < entries.size(); index++) {
                 Entry entry = entries.get(index);
-                boolean json = entry.path() != null && entry.path().matches("[a-z][a-z0-9_-]{0,39}\\.jsonl");
+                boolean json = entry.path() != null && (entry.path().matches("[a-z][a-z0-9_-]{0,39}\\.jsonl")
+                        || entry.path().matches("(conversations|answers|notifications)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jsonl"));
                 boolean file = entry.path() != null && entry.path().matches("files/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/content");
                 if (entry.ordinal() != index || (!json && !file) || !paths.add(entry.path()) || entry.bytes() < 0
                         || entry.bytes() > MAX_SNAPSHOT_BYTES - bytes || entry.pageCount() != (entry.bytes() + PAGE_BYTES - 1) / PAGE_BYTES

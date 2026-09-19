@@ -11,6 +11,7 @@ CREATE TABLE data_export_entries (
     snapshot_id UUID NOT NULL REFERENCES data_export_snapshots(id) ON DELETE CASCADE,
     ordinal INT NOT NULL, entry_path VARCHAR(120) NOT NULL, media_type VARCHAR(100) NOT NULL,
     byte_size BIGINT NOT NULL DEFAULT 0, page_count INT NOT NULL DEFAULT 0, sha256 VARCHAR(64),
+    access_kind VARCHAR(24), access_id UUID,
     PRIMARY KEY(snapshot_id, ordinal), UNIQUE(snapshot_id, entry_path)
 );
 CREATE TABLE data_export_pages (

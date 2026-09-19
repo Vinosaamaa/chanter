@@ -31,6 +31,7 @@ class CommunityExportHttpTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired AccountExportProtocol protocol;
+    @Autowired ExportSnapshotStore snapshots;
     final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
     @Test void privateHttpCaptureAndPagesRequireServiceAuthenticationAccountScopeAndUncancelledState() throws Exception {
@@ -65,6 +66,15 @@ class CommunityExportHttpTest {
 
     private DurableEvent event(ExportSnapshotStore.Request request, String kind, long revision) {
         return new DurableEvent(UUID.randomUUID(), 1, "auth", revision, kind, AccountExportProtocol.key(request.jobId()), protocol.encode(request));
+    }
+    @Test void protectedSnapshotPagesHaveNoPermissiveFallbackWhenSourceAccessCheckerIsMissing() throws Exception {
+        UUID account = UUID.randomUUID(); UUID resource = UUID.randomUUID();
+        Instant now = Instant.now();
+        var request = new ExportSnapshotStore.Request(UUID.randomUUID(), account, now, now.plusSeconds(3600));
+        snapshots.capture(request, output -> output.file(resource, new java.io.ByteArrayInputStream(new byte[]{1, 2, 3})));
+        String path = "/api/v1/internal/lifecycle/exports/" + request.jobId();
+        assertThat(get(path + "?accountId=" + account, TOKEN).statusCode()).isEqualTo(503);
+        assertThat(get(path + "/entries/0/pages/0?accountId=" + account, TOKEN).statusCode()).isEqualTo(503);
     }
     private HttpResponse<String> post(String body, String token) throws Exception {
         var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/v1/internal/lifecycle/events"))
