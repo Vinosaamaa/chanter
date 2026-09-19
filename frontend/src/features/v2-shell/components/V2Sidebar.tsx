@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useParams } from 'react-router-dom'
 import {
   CalendarDays,
   ChevronDown,
-  CreditCard,
+  ChartNoAxesColumn,
   GraduationCap,
   Home as HomeIcon,
   Inbox,
@@ -250,14 +250,14 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
             {data.showBillingNav ? (
               <Link
                 role="menuitem"
-                to="/app/settings/billing"
+                to="/app/settings/usage"
                 onClick={() => {
                   setAccountOpen(false)
                   onCloseMenu()
                 }}
               >
-                <CreditCard />
-                Billing
+                <ChartNoAxesColumn />
+                Usage
               </Link>
             ) : null}
             <button

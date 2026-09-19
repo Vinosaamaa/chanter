@@ -4,12 +4,6 @@ import { useSearchParams } from 'react-router-dom'
 import { cn } from '../../../lib/cn'
 
 import { useInstructorDashboardPage } from '../hooks/use-instructor-dashboard-page'
-import {
-  SAAS_PLAN_LABELS,
-  SAAS_PLAN_TIERS,
-  type SaasPlanTier,
-} from '../instructor-dashboard-types'
-
 type MetricCardProps = {
   label: string
   value: string | number
@@ -72,7 +66,7 @@ export function InstructorDashboardPage() {
                 <select
                   value={page.selectedServerId ?? ''}
                   onChange={(event) => page.setSelectedServerId(event.target.value)}
-                  disabled={page.isLoading || page.isUpdatingPlan}
+                  disabled={page.isLoading}
                   className="min-w-48 rounded-lg border border-app-border bg-app-surface px-3 py-2 text-sm text-app-text"
                 >
                   {page.servers.map((server) => (
@@ -88,7 +82,7 @@ export function InstructorDashboardPage() {
             <button
               type="button"
               onClick={() => void page.refresh()}
-              disabled={page.isLoading || page.isUpdatingPlan || !page.selectedServerId}
+              disabled={page.isLoading || !page.selectedServerId}
               className="rounded-lg border border-app-border px-3 py-2 text-sm text-app-muted hover:bg-app-elevated hover:text-app-text disabled:opacity-60"
             >
               Refresh
@@ -118,16 +112,6 @@ export function InstructorDashboardPage() {
           </p>
         )}
 
-        {page.actionMessage && (
-          <p
-            role="status"
-            aria-live="polite"
-            className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
-          >
-            {page.actionMessage}
-          </p>
-        )}
-
         {!page.isLoading && !page.accessDenied && page.dashboard && (
           <div className="flex flex-col gap-6">
             {page.dashboard.quotaExhausted && (
@@ -136,8 +120,7 @@ export function InstructorDashboardPage() {
                 aria-live="polite"
                 className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
               >
-                AI query quota exhausted for {SAAS_PLAN_LABELS[page.planTierDraft]}. Upgrade the
-                SaaS plan or wait for the next reset cycle.
+                Assistant run limit reached. Course resources and instructor support remain available.
               </p>
             )}
 
@@ -196,19 +179,19 @@ export function InstructorDashboardPage() {
               <article className="rounded-xl border border-app-border bg-app-surface p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-app-text">SaaS plan &amp; billing</h2>
+                    <h2 className="text-sm font-semibold text-app-text">Assistant usage</h2>
                     <p className="mt-1 text-xs text-app-muted">
                       AI usage limits for {selectedServerName}.
                     </p>
                   </div>
                   <span className="rounded-full border border-app-border px-2 py-1 text-xs text-app-muted">
-                    {SAAS_PLAN_LABELS[page.planTierDraft]}
+                    Free beta
                   </span>
                 </div>
 
                 <div className="mt-5">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-app-muted">AI queries used</span>
+                    <span className="text-app-muted">Assistant runs used</span>
                     <span className="font-medium text-app-text">
                       {page.dashboard.aiInvocationCount} / {page.dashboard.aiInvocationLimit}
                     </span>
@@ -223,44 +206,12 @@ export function InstructorDashboardPage() {
                     />
                   </div>
                   <p className="mt-2 text-xs text-app-muted">
-                    {page.dashboard.remainingAiInvocations} remaining ({aiUsagePercent} of monthly
-                    quota)
+                    {page.dashboard.remainingAiInvocations} remaining ({aiUsagePercent} of the lifetime
+                    limit)
                   </p>
                 </div>
 
-                {page.isOwner ? (
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
-                    <label className="flex flex-1 flex-col gap-1 text-xs text-app-muted">
-                      Plan tier
-                      <select
-                        value={page.planTierDraft}
-                        onChange={(event) =>
-                          page.setPlanTierDraft(event.target.value as SaasPlanTier)
-                        }
-                        disabled={page.isUpdatingPlan}
-                        className="rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm text-app-text"
-                      >
-                        {SAAS_PLAN_TIERS.map((tier) => (
-                          <option key={tier} value={tier}>
-                            {SAAS_PLAN_LABELS[tier]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => void page.savePlan()}
-                      disabled={page.isUpdatingPlan}
-                      className="rounded-lg bg-app-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-                    >
-                      {page.isUpdatingPlan ? 'Updating…' : 'Update plan'}
-                    </button>
-                  </div>
-                ) : (
-                  <p className="mt-5 text-xs text-app-muted">
-                    Only the Study Server owner can change the SaaS plan tier.
-                  </p>
-                )}
+                <p className="mt-5 text-xs text-app-muted">Free-beta limits are set by the platform.</p>
               </article>
             </div>
           </div>

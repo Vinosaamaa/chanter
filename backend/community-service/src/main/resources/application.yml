@@ -26,6 +26,9 @@ management:
       show-details: when_authorized
 
 chanter:
+  beta:
+    mode: ${CHANTER_BETA_MODE:free_beta}
+    assistant-run-limit: ${CHANTER_BETA_ASSISTANT_RUN_LIMIT:1000}
   jwt:
     secret: ${CHANTER_JWT_SECRET}
     access-token-ttl: ${CHANTER_JWT_ACCESS_TTL:15m}

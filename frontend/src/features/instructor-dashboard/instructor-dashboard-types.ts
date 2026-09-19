@@ -1,4 +1,4 @@
-export type SaasPlanTier = 'STARTER' | 'PRO' | 'ORGANIZATION'
+export type SaasPlanTier = 'FREE_BETA'
 
 export type InstructorDashboard = {
   studyServerId: string
@@ -39,6 +39,8 @@ export type SaasPlan = {
   studyServerId: string
   planTier: SaasPlanTier
   aiInvocationLimit: number
+  entitlementSource: 'OPERATOR_POLICY'
+  usageWindow: 'LIFETIME'
 }
 
 export type StudyServerDetails = {
@@ -49,12 +51,4 @@ export type StudyServerDetails = {
     role: string
   }
   planTier: string
-}
-
-export const SAAS_PLAN_TIERS: SaasPlanTier[] = ['STARTER', 'PRO', 'ORGANIZATION']
-
-export const SAAS_PLAN_LABELS: Record<SaasPlanTier, string> = {
-  STARTER: 'Starter',
-  PRO: 'Pro',
-  ORGANIZATION: 'Organization',
 }

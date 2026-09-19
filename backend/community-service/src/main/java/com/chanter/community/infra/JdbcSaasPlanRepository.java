@@ -2,7 +2,6 @@ package com.chanter.community.infra;
 
 import com.chanter.community.application.SaasPlanRepository;
 import com.chanter.community.domain.SaasPlanTier;
-import com.chanter.community.domain.StudyServerRole;
 import com.chanter.community.domain.StudyServerSaasPlan;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,25 +38,4 @@ public class JdbcSaasPlanRepository implements SaasPlanRepository {
                 .optional();
     }
 
-    @Override
-    @Transactional
-    public boolean updatePlanTierIfOwner(UUID studyServerId, UUID ownerUserId, SaasPlanTier planTier) {
-        return jdbcClient.sql("""
-                        UPDATE study_servers
-                        SET plan_tier = :planTier
-                        WHERE id = :studyServerId
-                        AND EXISTS (
-                            SELECT 1
-                            FROM study_server_roles
-                            WHERE study_server_id = :studyServerId
-                            AND user_id = :ownerUserId
-                            AND role = :ownerRole
-                        )
-                        """)
-                .param("studyServerId", studyServerId)
-                .param("ownerUserId", ownerUserId)
-                .param("planTier", planTier.name())
-                .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
-                .update() > 0;
-    }
 }

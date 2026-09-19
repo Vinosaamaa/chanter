@@ -151,15 +151,43 @@ test.describe('Product critical paths @product', () => {
     await expect(page.getByText('Loading calendar…')).toHaveCount(0, { timeout: 15_000 })
   })
 
-  test('teaching and billing settings routes load for owner', async ({ page }) => {
-    await openAndSignIn(page, ownerEmail)
+  test('owner sees actual free-beta usage and cannot patch a higher quota', async ({ page }) => {
+    const { accessToken } = await openAndSignIn(page, ownerEmail)
     await expect(page).toHaveURL(/\/app\//, { timeout: 30_000 })
     await page.goto('/app/teaching')
     await expect(page.getByRole('heading', { level: 1, name: 'Teaching', exact: true })).toBeVisible()
     await expect(page.getByText('Loading dashboard...')).toHaveCount(0, { timeout: 15_000 })
     await page.goto('/app/settings/billing')
-    await expect(page.getByRole('heading', { level: 1, name: 'Plan and Billing' })).toBeVisible()
-    await expect(page.getByText('Loading plan usage…')).toHaveCount(0, { timeout: 15_000 })
+    await expect(page).toHaveURL(/\/app\/settings\/usage$/)
+    await expect(page.getByRole('heading', { level: 1, name: 'Usage' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Free beta' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /save plan|upgrade|checkout/i })).toHaveCount(0)
+    await expect(page.getByText('Loading usage…')).toHaveCount(0, { timeout: 15_000 })
+    const headers = { Authorization: `Bearer ${accessToken}` }
+    const servers = await (await page.request.get('/api/v1/study-servers', { headers })).json() as Array<{ id: string; name: string }>
+    const server = servers.find(server => server.name === 'Workable Product Demo')!
+    expect(server).toBeDefined()
+    const selector = page.getByRole('combobox', { name: 'Select Study Server' })
+    if (await selector.count()) await selector.selectOption(server.id)
+    const dashboardResponse = await page.request.get(`/api/v1/study-servers/${server.id}/instructor-dashboard`, { headers })
+    expect(dashboardResponse.status()).toBe(200)
+    const dashboard = await dashboardResponse.json() as { aiInvocationCount: number; aiInvocationLimit: number; remainingAiInvocations: number }
+    const usage = `${dashboard.aiInvocationCount.toLocaleString()} of ${dashboard.aiInvocationLimit.toLocaleString()} assistant runs used, ${dashboard.remainingAiInvocations.toLocaleString()} remaining`
+    await expect(page.getByText(usage, { exact: true })).toBeVisible()
+    const planPath = `/api/v1/study-servers/${server.id}/saas-plan`
+    const before = await (await page.request.get(planPath, { headers })).json()
+    expect(before).toMatchObject({ planTier: 'FREE_BETA', entitlementSource: 'OPERATOR_POLICY', usageWindow: 'LIFETIME' })
+    expect((await page.request.patch(planPath, { headers, data: { planTier: 'ORGANIZATION' } })).status()).toBe(403)
+    expect(await (await page.request.get(planPath, { headers })).json()).toEqual(before)
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Free beta' })).toBeVisible()
+    if (await selector.count()) await selector.selectOption(server.id)
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      await expect(page.getByText(usage, { exact: true })).toBeVisible()
+      await expect(page.getByText(/does not reset monthly/)).toBeVisible()
+      await expectNoHorizontalOverflow(page)
+    }
   })
 
   test('friends page loads', async ({ page }) => {

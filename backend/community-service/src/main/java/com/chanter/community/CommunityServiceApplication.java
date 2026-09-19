@@ -1,6 +1,7 @@
 package com.chanter.community;
 
 import com.chanter.community.config.AuthServiceClientProperties;
+import com.chanter.community.config.FreeBetaProperties;
 import com.chanter.community.config.LiveKitProperties;
 import com.chanter.community.config.NotificationServiceClientProperties;
 import org.springframework.boot.SpringApplication;
@@ -10,6 +11,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 @SpringBootApplication
 @EnableConfigurationProperties({
         LiveKitProperties.class,
+        FreeBetaProperties.class,
         AuthServiceClientProperties.class,
         NotificationServiceClientProperties.class
 })

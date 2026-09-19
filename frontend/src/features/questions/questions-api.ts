@@ -236,5 +236,5 @@ export function quotaExhaustedMessage(body: string | undefined): string {
   if (body && body.trim().length > 0) {
     return body
   }
-  return 'AI Study Assistant quota exhausted. Upgrade the Study Server SaaS Plan to continue.'
+  return 'AI Study Assistant quota exhausted. Course resources and instructor support remain available.'
 }
