@@ -41,6 +41,8 @@ export function initialize(stateDir, config) {
       CHANTER_SMTP_PORT: '587', CHANTER_SMTP_USERNAME: '', CHANTER_SMTP_PASSWORD: '', CHANTER_SMTP_TLS_MODE: 'starttls' });
     if (name === 'community-service') Object.assign(values, {
       CHANTER_BETA_MODE: 'free_beta', CHANTER_BETA_ASSISTANT_RUN_LIMIT: '1000' });
+    if (name === 'media-service') Object.assign(values, { CHANTER_S3_ENDPOINT: '', CHANTER_S3_REGION: '',
+      CHANTER_S3_BUCKET: '', CHANTER_S3_ACCESS_KEY: '', CHANTER_S3_SECRET_KEY: '' });
     save(name, values);
   }
   save('postgres', { POSTGRES_USER: 'chanter_admin', POSTGRES_DB: 'postgres', POSTGRES_PASSWORD: secret(),
@@ -75,12 +77,21 @@ export function validateRuntime(stateDir) {
         ...(databaseModules.includes(name) ? ['POSTGRES_PASSWORD'] : []),
         ...(name === 'realtime-service' ? ['REDIS_PASSWORD'] : []),
         ...(name === 'community-service' ? ['CHANTER_BETA_MODE', 'CHANTER_BETA_ASSISTANT_RUN_LIMIT'] : []),
+        ...(name === 'media-service' ? ['CHANTER_S3_ENDPOINT', 'CHANTER_S3_REGION', 'CHANTER_S3_BUCKET',
+          'CHANTER_S3_ACCESS_KEY', 'CHANTER_S3_SECRET_KEY'] : []),
         ...(['community-service', 'message-service', 'realtime-service'].includes(name) ? ['LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET'] : []),
         ...(name === 'auth-service' ? ['CHANTER_EMAIL_FROM', 'CHANTER_SMTP_HOST', 'CHANTER_SMTP_PORT',
           'CHANTER_SMTP_USERNAME', 'CHANTER_SMTP_PASSWORD', 'CHANTER_SMTP_TLS_MODE'] : [])];
     for (const key of required) if (!env[key]) throw new Error(`Configure ${key} in ${name}.env`);
     for (const [key, value] of Object.entries(env)) if (!value) throw new Error(`Configure ${key} in ${name}.env`);
     if (name === 'auth-service' && !['starttls', 'implicit'].includes(env.CHANTER_SMTP_TLS_MODE)) throw new Error('SMTP requires verified TLS');
+    if (name === 'media-service') {
+      let endpoint;
+      try { endpoint = new URL(env.CHANTER_S3_ENDPOINT); } catch { throw new Error('S3 object storage requires a valid HTTPS endpoint'); }
+      if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+        throw new Error('S3 object storage requires HTTPS without embedded credentials, queries or fragments');
+      }
+    }
     if (name === 'community-service' && (env.CHANTER_BETA_MODE !== 'free_beta'
         || !/^[1-9]\d{0,3}$/.test(env.CHANTER_BETA_ASSISTANT_RUN_LIMIT)
         || Number(env.CHANTER_BETA_ASSISTANT_RUN_LIMIT) > 1000)) {
@@ -181,11 +192,12 @@ export async function deploy(bundleDir, stateDir, rollback = false) {
         // Reserve the host before the first mutation, including a partially failed first deployment.
         writeJson(activeFile, { environment: prepared.config.environment, stateDir, bundleDir: source });
         compose(['stop', 'frontend']);
-      } else if (operation === 'stop-applications') compose(['stop', ...modules, 'livekit']);
+      } else if (operation === 'stop-applications') compose(['stop', ...modules, 'livekit', 'clamav']);
       else if (operation === 'start-persistence') compose(['up', '-d', '--wait', '--wait-timeout', '180', 'postgres', 'redis']);
       else if (operation === 'migrate') {
         for (const name of databaseModules) compose(['--profile', 'migration', 'run', '--rm', '--no-deps', `migrate-${name}`]);
       } else if (operation === 'start-applications') {
+        compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '600', 'clamav']);
         for (const name of modules) compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', name]);
         compose(['up', '-d', '--no-deps', 'livekit']);
         let ready = false;
@@ -231,7 +243,7 @@ async function main(args) {
   const [command, first, second, third, fourth] = args;
   if (command === 'init' && first && second && third && fourth) {
     initialize(path.resolve(first), { environment: second, hostname: third, publicIp: fourth });
-    console.log('Environment initialized. Configure SMTP in runtime/auth-service.env before deployment.');
+    console.log('Environment initialized. Configure SMTP in runtime/auth-service.env and private S3 storage in runtime/media-service.env before deployment.');
   } else if (command === 'render' && first && second) {
     const result = render(path.resolve(first), path.resolve(second)); console.log(result.file);
   } else if (command === 'deploy' && first && second) await deploy(path.resolve(first), path.resolve(second));

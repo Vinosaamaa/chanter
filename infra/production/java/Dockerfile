@@ -14,7 +14,8 @@ RUN jar -xf input.jar && mkdir -p app/helpers && \
 FROM ${JRE_IMAGE}
 WORKDIR /app
 RUN groupadd --gid 10001 chanter && useradd --uid 10001 --gid 10001 --no-create-home chanter && \
-    mkdir /app/resources && chown 10001:10001 /app/resources
+    mkdir /app/resources /app/media-spool && chown 10001:10001 /app/resources /app/media-spool && \
+    chmod 700 /app/resources /app/media-spool
 COPY --from=extract --chown=10001:10001 /work/app/ /app/
 COPY infra/production/java/entrypoint.sh /app/entrypoint.sh
 RUN chmod 755 /app/entrypoint.sh

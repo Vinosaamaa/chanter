@@ -12,16 +12,17 @@ Render's free service allocation and expiring free PostgreSQL do not fit ten per
 
 | Runtime | Memory limit |
 | --- | ---: |
-| Ten Java services together | 6,144 MiB |
-| PostgreSQL | 1,024 MiB |
-| Redis | 256 MiB |
+| Ten Java services together | 4,608 MiB |
+| PostgreSQL | 768 MiB |
+| Redis | 192 MiB |
 | LiveKit | 256 MiB |
 | Caddy and static frontend | 128 MiB |
-| Total running containers | 7,808 MiB |
+| ClamAV upload scanner | 4,096 MiB |
+| Total running containers | 10,048 MiB |
 
-The remaining host memory covers Linux, Docker and filesystem cache. Java uses half each container's memory for heap, at most two processors, bounded direct memory and five database connections per service. PostgreSQL allows 80 connections; Redis uses a 128 MB data cap and rejects writes when full. Migrations run sequentially while application processes are stopped. CPU and memory limits are initial sizing, not measured capacity. Load tests on the actual A1 host must establish concurrent-user and voice-room limits before public enrollment.
+The remaining host memory covers Linux, Docker and filesystem cache. Java uses half each container's memory for heap, at most two processors, bounded direct memory and five database connections per service. PostgreSQL allows 80 connections; Redis uses a 96 MB data cap and rejects writes when full. Migrations run sequentially while application processes are stopped. CPU and memory limits are initial sizing, not measured capacity. Load tests on the actual A1 host must establish concurrent-user and voice-room limits before public enrollment.
 
-This base budget excludes the upload scanner and object-storage process being evaluated under #244. Those services cannot be added by spending the same memory reserve twice. Remeasure the complete runtime under #244/#252 and reduce concurrency or revise the free architecture before enabling them.
+The scanner is included in this budget. Private object storage is an external S3-compatible namespace; no object-store process runs on the VM. The native startup checks cover the reduced per-service caps, but idle measurements cannot establish classroom capacity. Remeasure the complete runtime under #251/#252 before public enrollment.
 
 Staging and production have separate Compose projects, volumes and secrets, but **only one is active on this VM**. Deploy commands reserve the host and reject a second environment. Normal staging runs on ephemeral standard GitHub-hosted runners; a staging hostname on the VM is an optional maintenance-time replacement for production, not an always-on second environment. Standard runners are free for this public repository; the workflow refuses private repositories. See [GitHub-hosted runner availability and billing](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 
@@ -36,6 +37,24 @@ derivative removes the unused `gosu` privilege-switching helper and starts as
 UID 70. Redis and LiveKit use refreshed upstream digests. These are scanned as
 the final runtime images, with no advisory exceptions. Never restore the old
 binary or helper solely to match an upstream image byte for byte.
+
+The upload scanner uses Alpine's native ClamAV 1.4.6 LTS packages, including
+the separate RAR library. [ClamAV's support policy](https://docs.clamav.net/faq/faq-eol.html)
+lists this patch as supported through August 2027. The digest-pinned Debian
+image supplies only signed virus definitions; none of its system libraries or
+executables enter the final scanner. Top-level ClamAV package versions are
+pinned, while signed Alpine dependency resolution can advance between builds.
+The delivered image ID and archive checksum are immutable; this does not claim
+byte-identical future rebuilding against changing package repositories.
+
+ClamAV runs as UID 10002 with a private signature volume and a group-restricted
+Unix socket shared only with media. Media runs as UID 10001 and cannot modify
+the signature volume. The socket directory is mode 2770 and the socket 0660.
+LTS 1.4 does not support disabling the protocol's shutdown command separately;
+the media service is therefore trusted to send scanner commands. No scanner TCP
+port is opened. Losing either the updater or engine restarts the pair. Startup
+must update definitions first, and the media adapter rejects definitions older
+than 72 hours on every upload.
 
 The `Release package` workflow validates both AMD64 and ARM64 on pull requests. It runs backend and frontend checks, builds images, scans all runtime images for high/critical vulnerabilities and secrets, then starts an empty ephemeral staging environment. It runs migrations twice, checks PostgreSQL-specific indexes, readiness, HTTPS routing, the frontend, anonymous auth bootstrap and rejected foreign origins. A scanner or staging failure blocks packaging; do not silence a finding merely to publish.
 
@@ -62,6 +81,14 @@ project for each invocation, then deletes only that project's ephemeral volumes.
 Separate state makes retries safe and preserves failed-run diagnostics. Run it
 on a disposable runner, never on the production VM. Do not copy `.cache`, local
 `.env` files or demo data into release assets.
+
+The native smoke exercises the real release scanner with a clean document,
+the harmless antivirus test signature, an archive exceeding inspection limits,
+signature freshness, private permissions and restart. Its isolated application
+startup uses an explicit local-storage overlay because CI holds no private
+provider credentials. This is not S3 provider or recovery proof. Production
+composition always selects S3; #244's native adapter tests cover S3-compatible
+behavior separately, and the actual selected provider must still be verified.
 
 ## Provisioning checkpoint
 
@@ -95,6 +122,20 @@ node COMMIT/scripts/deploy/host.mjs init /srv/chanter/production production app.
 ```
 
 Initialization generates independent random database passwords, JWT signing material, an internal service credential, Redis and LiveKit credentials. Every service receives only its required credentials in a private mode-0600 file under a mode-0700 environment directory. The gateway receives no database, SMTP or internal service credential. Initialization refuses existing or partial state to avoid replacing live database passwords. Back up this private state through the separately reviewed recovery process.
+
+Set `CHANTER_S3_ENDPOINT`, `CHANTER_S3_REGION`, `CHANTER_S3_BUCKET`,
+`CHANTER_S3_ACCESS_KEY` and `CHANTER_S3_SECRET_KEY` in the media runtime file.
+Deployment requires HTTPS without embedded credentials or query parameters.
+Use a private bucket and a credential restricted to its namespace. Account,
+permission, quota and off-host recovery proof remain #244 prerequisites.
+Media has a private writable spool volume and a read-only legacy resource
+volume for explicit migration; uploads never fall back to legacy local storage.
+Existing runtime files must add these S3 settings before using this release.
+
+Compatibility epoch 4 includes media migration V2 and agent migration V8.
+Restore both service databases and the private object namespace consistently.
+The retained terminal deletion records prevent delayed indexing from recreating
+deleted content; an older application must not be rolled back across this epoch.
 
 The community service's runtime file sets `CHANTER_BETA_MODE=free_beta` and
 `CHANTER_BETA_ASSISTANT_RUN_LIMIT=1000`. The operator may lower the lifetime

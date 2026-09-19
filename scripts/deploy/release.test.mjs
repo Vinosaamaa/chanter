@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateRelease, composeFor, planDeployment, executeDeployment, modules } from './release.mjs';
+import { validateRelease, composeFor, planDeployment, executeDeployment, modules, imageNames } from './release.mjs';
 
 const hash = (letter) => `sha256:${letter.repeat(64)}`;
 const release = () => ({ version: 1, commit: 'a'.repeat(40), architecture: 'arm64', schemaEpoch: 2,
-  images: Object.fromEntries([...modules, 'frontend', 'postgres', 'redis', 'livekit'].map(name => [name, hash('b')])) });
+  images: Object.fromEntries(imageNames.map(name => [name, hash('b')])) });
 const config = { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' };
 
 test('release accepts only complete immutable image sets and known architectures', () => {
@@ -31,7 +31,24 @@ test('all applications have resource caps, non-root users and no published inter
   assert.equal(compose.services.minio, undefined);
   assert.equal(compose.services.redpanda, undefined);
   const allocated = Object.values(compose.services).filter(s => !s.profiles).reduce((n, s) => n + Number(s.mem_limit.replace('m', '')), 0);
-  assert.ok(allocated <= 9216, `application budget ${allocated} MiB exceeds 9 GiB`);
+  assert.ok(allocated <= 10240, `application budget ${allocated} MiB exceeds 10 GiB`);
+});
+
+test('production media uses private object storage and an isolated non-root Unix scanner', () => {
+  const compose = composeFor(release(), config, '/srv/chanter/staging/runtime');
+  const media = compose.services['media-service'];
+  const scanner = compose.services.clamav;
+  assert.equal(media.environment.CHANTER_MEDIA_STORAGE_BACKEND, 's3');
+  assert.equal(media.environment.CHANTER_CLAMAV_TCP_DEVELOPMENT, 'false');
+  assert.equal(media.environment.CHANTER_MEDIA_SPOOL_DIR, '/app/media-spool');
+  assert.ok(media.volumes.includes('scanner-socket:/run/clamav:ro'));
+  assert.ok(media.volumes.includes('resources:/app/resources:ro'));
+  assert.equal(scanner.user, '10002:10001');
+  assert.equal(scanner.read_only, true);
+  assert.equal(scanner.ports, undefined);
+  assert.ok(scanner.volumes.includes('scanner-signatures:/var/lib/clamav'));
+  assert.ok(!media.volumes.some(volume => volume.startsWith('scanner-signatures:')));
+  assert.equal(media.depends_on.clamav.condition, 'service_healthy');
 });
 
 test('migrations are isolated one-shot jobs and precede application startup', () => {

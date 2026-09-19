@@ -17,6 +17,9 @@ const fixture = t => {
   initialize(state, { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' });
   const auth = path.join(state, 'runtime/auth-service.env');
   fs.writeFileSync(auth, fs.readFileSync(auth, 'utf8').replace(/^([A-Z_]+)=$/gm, '$1=fixture-only'));
+  const media = path.join(state, 'runtime/media-service.env');
+  fs.writeFileSync(media, fs.readFileSync(media, 'utf8').replace(/^([A-Z0-9_]+)=$/gm,
+    (_, key) => `${key}=${key === 'CHANTER_S3_ENDPOINT' ? 'https://private-storage.example' : 'fixture-only'}`));
   return { root, state, auth };
 };
 
@@ -58,6 +61,24 @@ test('operator beta policy is explicit and rejects paid modes or unbounded assis
     assert.throws(() => validateRuntime(state), /beta|BETA/);
   }
   fs.writeFileSync(file, defaults.replace('CHANTER_BETA_ASSISTANT_RUN_LIMIT=1000', 'CHANTER_BETA_ASSISTANT_RUN_LIMIT=17'));
+  assert.doesNotThrow(() => validateRuntime(state));
+});
+
+test('deployment requires a private HTTPS object-store configuration before any host mutation', t => {
+  const { state } = fixture(t);
+  const file = path.join(state, 'runtime/media-service.env');
+  const valid = fs.readFileSync(file, 'utf8');
+  assert.equal(readEnv(file).CHANTER_S3_ENDPOINT, 'https://private-storage.example');
+  for (const endpoint of ['', 'http://private-storage.example', 'https://user:password@private-storage.example',
+    'https://private-storage.example?credential=value']) {
+    fs.writeFileSync(file, valid.replace(/^CHANTER_S3_ENDPOINT=.*$/m, `CHANTER_S3_ENDPOINT=${endpoint}`));
+    assert.throws(() => validateRuntime(state), /S3|object/);
+  }
+  for (const key of ['CHANTER_S3_BUCKET', 'CHANTER_S3_REGION', 'CHANTER_S3_ACCESS_KEY', 'CHANTER_S3_SECRET_KEY']) {
+    fs.writeFileSync(file, valid.replace(new RegExp(`^${key}=.*$`, 'm'), `${key}=`));
+    assert.throws(() => validateRuntime(state), /S3/);
+  }
+  fs.writeFileSync(file, valid);
   assert.doesNotThrow(() => validateRuntime(state));
 });
 

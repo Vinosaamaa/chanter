@@ -67,3 +67,15 @@ The new initialization/validation regression failed with the settings absent,
 then passed for the default, a lower limit and all rejected boundaries. All
 11 deployment tests pass. Backend enforcement and the Usage screen are owned
 by #250 and must be merged into the final release candidate.
+# Private upload runtime integration
+
+Integrated accepted #244 at `52e485b`. Production now requires private S3
+configuration, a separate writable spool and a restricted Unix scanner socket.
+The legacy resource volume is read-only. Epoch 4 includes media V2 and agent V8.
+Missing storage and unsafe endpoint tests failed before implementation; all 15
+local deployment regressions pass after it. The scanner uses supported Alpine
+ClamAV 1.4.6 LTS with RAR support and only signature data from the upstream
+Debian image, whose runtime scan failed. Combined service limits are 10,048 MiB;
+native image/security/startup proof is required at this candidate before merge.
+The native smoke explicitly uses local storage, not an unverified private
+provider. Actual provider authorization, restore and load acceptance stay open.

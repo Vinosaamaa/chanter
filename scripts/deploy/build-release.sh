@@ -28,11 +28,15 @@ docker build --platform "linux/$architecture" --file infra/production/frontend/D
 docker build --platform "linux/$architecture" --file infra/production/postgres/Dockerfile \
   --build-arg "POSTGRES_IMAGE=$(locked postgres)" --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" \
   --label "org.opencontainers.image.revision=$commit" --tag "chanter-postgres:$commit" .
+docker build --platform "linux/$architecture" --file infra/production/clamav/Dockerfile \
+  --build-arg "ALPINE_IMAGE=$(locked alpine)" --build-arg "SIGNATURE_IMAGE=$(locked clamavSignatures)" \
+  --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" \
+  --label "org.opencontainers.image.revision=$commit" --tag "chanter-clamav:$commit" .
 for dependency in redis livekit; do
   docker pull --platform "linux/$architecture" "$(locked "$dependency")"
   docker tag "$(locked "$dependency")" "chanter-$dependency:$commit"
 done
-names=("${modules[@]}" frontend postgres redis livekit)
+names=("${modules[@]}" frontend postgres redis livekit clamav)
 for name in "${names[@]}"; do
   docker run --rm --volume /var/run/docker.sock:/var/run/docker.sock \
     --volume chanter-trivy-cache:/root/.cache/ "$(locked scanner)" image \

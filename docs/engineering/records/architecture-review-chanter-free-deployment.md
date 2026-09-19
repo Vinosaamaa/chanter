@@ -38,7 +38,7 @@ run: null
 
 Chanter already has ten Java services and a React client. The owner requires free resources and has no infrastructure accounts. Converting the working product into a different architecture merely to fit a 512 MB free container would add application risk without proving a usable deployment. The accepted package keeps current service boundaries and uses one fixed 2 OCPU/12 GB Always Free A1 VM, with service-owned PostgreSQL databases, Redis, LiveKit and Caddy. Current provider capacity and account eligibility remain external unknowns.
 
-The running containers have a combined 7,808 MiB memory cap. Staging and production have separate state, secrets and volumes, but only one can reserve the VM at a time. Continuous staging runs on disposable standard runners for the public repository. This replaces the original managed-database and simultaneous staging/production assumptions with explicit downtime and a single host failure boundary. It does not promise high availability or measured load capacity.
+The running containers, including the private upload scanner, have a combined 10,048 MiB memory cap. Staging and production have separate state, secrets and volumes, but only one can reserve the VM at a time. Continuous staging runs on disposable standard runners for the public repository. This replaces the original managed-database and simultaneous staging/production assumptions with explicit downtime and a single host failure boundary. It does not promise high availability or measured load capacity.
 
 ## Release and trust boundaries
 
@@ -52,6 +52,15 @@ toolchain and checked-in module checksums. Remove the database helper because
 the runtime starts directly as its unprivileged account. This adds a small
 maintained Caddy module lock; complete runtime scans and actual native startup
 remain mandatory for every subsequent refresh.
+
+The upstream Debian scanner failed the same runtime gate. Use maintained native
+Alpine ClamAV 1.4.6 LTS packages and copy only signed definitions from the pinned
+upstream image. The daemon and updater run as a separate unprivileged account;
+only media can access their group-restricted Unix socket. No TCP scanner port or
+object-store server is exposed. Production requires private S3 storage and a
+separate bounded spool; the legacy volume is read-only. Exact image scans and
+real clean/infected/limit/restart tests remain the acceptance boundary. Package
+repository changes mean future rebuilds are not promised byte-identical.
 
 Private per-service environment files are generated on the host. Compose's raw file format preserves provider-password punctuation. Initialization refuses partial or existing state, validation rejects missing values, and the gateway receives no database or SMTP credential. The release manifest and Docker image IDs are public configuration; runtime files and host state are private operator data.
 
@@ -67,4 +76,12 @@ Automatic recovery and explicit rollback only reuse an older binary when its rev
 
 Local regression tests cover immutable manifests, resource and port boundaries, secret isolation, initialization and validation failures, migration ordering, rollback compatibility, failed-health recovery, partial-install stopping and the actual Java readiness helper. OpenTofu validates the pinned OCI configuration, Docker Compose validates rendered configuration, and Caddy validates its routing policy. Shell parsing and migration-helper compilation pass.
 
-There is no Docker engine or public VM in the implementation environment, so image builds/scans, full container staging and real-host deployment/rollback are unverified until their dedicated runs complete. The operator runbook lists those gates and the account checkpoint. Storage/restore work under #244 and provider-agnostic AI under #248 remain separate scope; MinIO, Redpanda and paid inference are not deployed by this package.
+Native AMD64 and ARM64 runs passed the fourteen-image baseline's scans, seven
+databases migrated twice, same-origin HTTPS, browser-session checks and secure
+voice signaling. Adding the fifteenth scanner image, S3 composition and lower
+memory caps requires fresh exact-head native proof. Local tests reproduce and
+reject missing private storage and unsafe endpoint configuration. Actual
+provider deployment, capacity, restore and rollback remain unverified. The
+operator runbook lists those gates and the account checkpoint. Provider-agnostic
+AI under #248 remains separate scope; MinIO, Redpanda and paid inference are not
+deployed by this package.

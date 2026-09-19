@@ -3,10 +3,10 @@ import path from 'node:path';
 export const modules = ['auth-service', 'notification-service', 'community-service', 'message-service',
   'media-service', 'agent-service', 'analytics-service', 'search-service', 'realtime-service', 'gateway-service'];
 export const databaseModules = modules.filter(name => !['analytics-service', 'realtime-service', 'gateway-service'].includes(name));
-const memory = { 'gateway-service': 512, 'auth-service': 640, 'community-service': 768, 'message-service': 640,
-  'realtime-service': 640, 'media-service': 512, 'agent-service': 768, 'analytics-service': 512,
-  'search-service': 640, 'notification-service': 512 };
-export const imageNames = [...modules, 'frontend', 'postgres', 'redis', 'livekit'];
+const memory = { 'gateway-service': 384, 'auth-service': 512, 'community-service': 640, 'message-service': 384,
+  'realtime-service': 384, 'media-service': 512, 'agent-service': 640, 'analytics-service': 384,
+  'search-service': 384, 'notification-service': 384 };
+export const imageNames = [...modules, 'frontend', 'postgres', 'redis', 'livekit', 'clamav'];
 
 export function validateRelease(release) {
   if (release.version !== 1 || !/^[a-f0-9]{40}$/.test(release.commit ?? '')) throw new Error('Invalid release version or commit');
@@ -71,18 +71,29 @@ export function composeFor(release, config, runtimeDir) {
         env_file: services[name].env_file, environment: services[name].environment, networks: ['application'] };
     }
   }
-  services['media-service'].volumes = ['resources:/app/resources'];
+  Object.assign(services['media-service'].environment, { CHANTER_MEDIA_STORAGE_BACKEND: 's3',
+    CHANTER_MEDIA_SPOOL_DIR: '/app/media-spool', CHANTER_CLAMAV_SOCKET_PATH: '/run/clamav/clamd.sock',
+    CHANTER_CLAMAV_TCP_DEVELOPMENT: 'false' });
+  services['media-service'].volumes = ['resources:/app/resources:ro', 'media-spool:/app/media-spool',
+    'scanner-socket:/run/clamav:ro'];
+  services['media-service'].depends_on.clamav = { condition: 'service_healthy' };
+  services.clamav = { ...common, image: release.images.clamav, pull_policy: 'never', user: '10002:10001',
+    mem_limit: '4096m', environment: { TZ: 'UTC' },
+    volumes: ['scanner-signatures:/var/lib/clamav', 'scanner-socket:/run/clamav'],
+    tmpfs: ['/tmp:size=128m,mode=1777'],
+    healthcheck: { test: ['CMD-SHELL', "printf 'zPING\\000' | nc -w 3 -U /run/clamav/clamd.sock | tr -d '\\000' | grep -qx PONG"],
+      interval: '10s', timeout: '5s', retries: 60, start_period: '60s' }, networks: ['application'] };
   services['realtime-service'].depends_on = { redis: { condition: 'service_healthy' } };
   services.postgres = { ...common, image: release.images.postgres, pull_policy: 'never', user: '70:70',
-    mem_limit: '1024m', read_only: true, env_file: [{ path: path.join(runtimeDir, 'postgres.env'), format: 'raw' }],
-    command: ['postgres', '-c', 'max_connections=80', '-c', 'shared_buffers=256MB', '-c', 'work_mem=4MB', '-c', 'log_statement=none'],
+    mem_limit: '768m', read_only: true, env_file: [{ path: path.join(runtimeDir, 'postgres.env'), format: 'raw' }],
+    command: ['postgres', '-c', 'max_connections=80', '-c', 'shared_buffers=192MB', '-c', 'work_mem=2MB', '-c', 'log_statement=none'],
     volumes: ['postgres:/var/lib/postgresql/data', './postgres-init.sh:/docker-entrypoint-initdb.d/01-databases.sh:ro'],
     tmpfs: ['/tmp:size=32m,mode=1777', '/var/run/postgresql:size=16m,mode=1777'],
     healthcheck: { test: ['CMD', 'pg_isready', '-U', 'chanter_admin', '-d', 'postgres'], interval: '10s', timeout: '5s', retries: 10 },
     networks: ['application'] };
-  services.redis = { ...common, image: release.images.redis, pull_policy: 'never', user: '999:1000', mem_limit: '256m',
+  services.redis = { ...common, image: release.images.redis, pull_policy: 'never', user: '999:1000', mem_limit: '192m',
     env_file: [{ path: path.join(runtimeDir, 'redis.env'), format: 'raw' }], volumes: ['redis:/data'], tmpfs: ['/tmp:size=16m,mode=1777'],
-    command: ['sh', '-c', 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --maxmemory 128mb --maxmemory-policy noeviction'],
+    command: ['sh', '-c', 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --maxmemory 96mb --maxmemory-policy noeviction'],
     healthcheck: { test: ['CMD-SHELL', 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -qx PONG'], interval: '10s', timeout: '5s', retries: 10 },
     networks: ['application'] };
   services.livekit = { ...common, image: release.images.livekit, pull_policy: 'never', user: '10001:10001', mem_limit: '256m',
@@ -95,7 +106,8 @@ export function composeFor(release, config, runtimeDir) {
     healthcheck: { test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:2019/config/'], interval: '15s', timeout: '5s', retries: 10 },
     networks: ['application'] };
   return { name: `chanter-${config.environment}`, services, networks: { application: {} },
-    volumes: Object.fromEntries(['postgres', 'redis', 'resources', 'caddy-data', 'caddy-config'].map(name => [name, {}])) };
+    volumes: Object.fromEntries(['postgres', 'redis', 'resources', 'media-spool', 'scanner-signatures', 'scanner-socket',
+      'caddy-data', 'caddy-config'].map(name => [name, {}])) };
 }
 
 export function planDeployment(next, current, rollback = false) {

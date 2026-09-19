@@ -25,6 +25,10 @@ node --input-type=module - "$compose_file" <<'JS'
 import fs from 'node:fs';
 const file = process.argv[2]; const compose = JSON.parse(fs.readFileSync(file));
 compose.services.frontend.environment.CHANTER_TLS_DIRECTIVE = 'tls internal';
+// This isolated startup test has no external provider credentials. Production remains forced to S3.
+compose.services['media-service'].environment.CHANTER_MEDIA_STORAGE_BACKEND = 'local';
+compose.services['media-service'].volumes = compose.services['media-service'].volumes
+  .map(volume => volume === 'resources:/app/resources:ro' ? 'resources:/app/resources' : volume);
 fs.writeFileSync(file, JSON.stringify(compose, null, 2));
 JS
 compose=(docker compose --project-name "$project" -f "$compose_file")
@@ -32,6 +36,8 @@ cleanup() { "${compose[@]}" down --volumes --remove-orphans; }
 trap cleanup EXIT
 "${compose[@]}" config --quiet
 "${compose[@]}" up -d --wait --wait-timeout 180 postgres redis
+"${compose[@]}" up -d --no-deps --wait --wait-timeout 600 clamav
+python3 scripts/deploy/check-scanner.py "$project" "$compose_file"
 mapfile -t databases < <(node --input-type=module -e 'import {databaseModules} from "./scripts/deploy/release.mjs"; console.log(databaseModules.join("\n"))')
 for module in "${databases[@]}"; do "${compose[@]}" --profile migration run --rm --no-deps "migrate-$module"; done
 # A second run validates Flyway's durable once-only history, rather than relying on a local marker.
@@ -51,6 +57,8 @@ test "$("${compose[@]}" exec -T postgres stat -c '%u:%g' /var/lib/postgresql/dat
 "${compose[@]}" exec -T postgres sh -c 'test "$(id -u)" = 70 && test ! -e /usr/local/bin/gosu'
 test "$("${compose[@]}" exec -T redis stat -c '%u:%g' /data)" = '999:1000'
 test "$("${compose[@]}" exec -T media-service stat -c '%u:%g' /app/resources)" = '10001:10001'
+test "$("${compose[@]}" exec -T media-service stat -c '%u:%g' /app/media-spool)" = '10001:10001'
+"${compose[@]}" exec -T media-service sh -c 'test -w /app/media-spool && test -S /run/clamav/clamd.sock'
 test "$("${compose[@]}" exec -T frontend stat -c '%u:%g' /data/caddy)" = '10001:10001'
 "${compose[@]}" exec -T media-service sh -c 'test -w /app/resources && test "$(id -u)" = 10001'
 "${compose[@]}" exec -T frontend sh -c 'test -w /data/caddy && test -w /config/caddy && test "$(id -u)" = 10001'
