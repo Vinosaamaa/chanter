@@ -7,8 +7,12 @@ import { imageNames } from './release.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
 fs.mkdirSync(scratch, { recursive: true });
-const fixture = () => {
+const fixture = t => {
   const root = fs.mkdtempSync(path.join(scratch, 'host-'));
+  t.after(() => {
+    assert.ok(path.resolve(root).startsWith(scratch + path.sep));
+    fs.rmSync(root, { recursive: true });
+  });
   const state = path.join(root, 'staging');
   initialize(state, { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' });
   const auth = path.join(state, 'runtime/auth-service.env');
@@ -16,8 +20,8 @@ const fixture = () => {
   return { root, state, auth };
 };
 
-test('initialization isolates credentials and refuses to overwrite existing or partial state', () => {
-  const { state } = fixture();
+test('initialization isolates credentials and refuses to overwrite existing or partial state', t => {
+  const { state } = fixture(t);
   const auth = readEnv(path.join(state, 'runtime/auth-service.env'));
   const gateway = readEnv(path.join(state, 'runtime/gateway-service.env'));
   const media = readEnv(path.join(state, 'runtime/media-service.env'));
@@ -31,8 +35,8 @@ test('initialization isolates credentials and refuses to overwrite existing or p
   assert.throws(() => initialize(state, config), /partial/);
 });
 
-test('runtime validation requires all credentials and preserves literal SMTP punctuation', () => {
-  const { state, auth } = fixture();
+test('runtime validation requires all credentials and preserves literal SMTP punctuation', t => {
+  const { state, auth } = fixture(t);
   assert.doesNotThrow(() => validateRuntime(state));
   fs.appendFileSync(auth, 'UNRELATED_VALUE=$literal#value"with=punctuation\n');
   assert.equal(readEnv(auth).UNRELATED_VALUE, '$literal#value"with=punctuation');
@@ -41,8 +45,8 @@ test('runtime validation requires all credentials and preserves literal SMTP pun
   assert.throws(() => validateRuntime(state), /CHANTER_JWT_SECRET/);
 });
 
-test('operator beta policy is explicit and rejects paid modes or unbounded assistant usage', () => {
-  const { state } = fixture();
+test('operator beta policy is explicit and rejects paid modes or unbounded assistant usage', t => {
+  const { state } = fixture(t);
   const file = path.join(state, 'runtime/community-service.env');
   const defaults = fs.readFileSync(file, 'utf8');
   assert.equal(readEnv(file).CHANTER_BETA_MODE, 'free_beta');
@@ -57,8 +61,8 @@ test('operator beta policy is explicit and rejects paid modes or unbounded assis
   assert.doesNotThrow(() => validateRuntime(state));
 });
 
-test('a failed first deployment can be stopped without deleting its volumes or losing failure state', () => {
-  const { root, state } = fixture();
+test('a failed first deployment can be stopped without deleting its volumes or losing failure state', t => {
+  const { root, state } = fixture(t);
   const bundle = path.join(root, 'bundle');
   fs.mkdirSync(path.join(bundle, 'infra/production'), { recursive: true });
   const release = { version: 1, commit: 'a'.repeat(40), architecture: 'arm64', schemaEpoch: 2,

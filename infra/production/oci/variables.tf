@@ -27,8 +27,8 @@ variable "ssh_public_key" {
   type        = string
   description = "An SSH public key only. Never supply a private key."
   validation {
-    condition     = startswith(var.ssh_public_key, "ssh-ed25519 ")
-    error_message = "Supply an Ed25519 public key."
+    condition     = can(regex("^ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI[A-Za-z0-9+/]{43}( [^\\r\\n]+)?$", trimspace(var.ssh_public_key)))
+    error_message = "Supply one complete OpenSSH Ed25519 public key with its encoded 32-byte key, optionally followed by a comment."
   }
 }
 variable "confirm_always_free_only" {

@@ -52,10 +52,19 @@ test "$("${compose[@]}" exec -T frontend stat -c '%u:%g' /data/caddy)" = '10001:
 "${compose[@]}" exec -T media-service sh -c 'test -w /app/resources && test "$(id -u)" = 10001'
 "${compose[@]}" exec -T frontend sh -c 'test -w /data/caddy && test -w /config/caddy && test "$(id -u)" = 10001'
 "${compose[@]}" exec -T frontend caddy version | grep -q '^v2.11.4'
-"${compose[@]}" exec -T gateway-service java -cp /app/helpers Probe http://livekit:7880
+livekit_ready=false
+for attempt in $(seq 1 30); do
+  if "${compose[@]}" exec -T gateway-service java -cp /app/helpers Probe http://livekit:7880; then
+    livekit_ready=true; break
+  fi
+  sleep 2
+done
+test "$livekit_ready" = true || { echo 'LiveKit signaling did not become ready.' >&2; exit 1; }
 "${compose[@]}" cp frontend:/data/caddy/pki/authorities/local/root.crt "$state/root.crt"
 printf '127.0.0.1 staging.chanter.test\n' | sudo tee -a /etc/hosts >/dev/null
 NODE_EXTRA_CA_CERTS="$state/root.crt" node scripts/deploy/host.mjs verify staging.chanter.test "$state"
+# Internal high ports must not leak into public HTTP-to-HTTPS redirects.
+test "$(curl --silent --output /dev/null --write-out '%{redirect_url}' http://staging.chanter.test/sign-in)" = 'https://staging.chanter.test/sign-in'
 echo "Runner processors: $(getconf _NPROCESSORS_ONLN)"
 grep '^MemTotal:' /proc/meminfo
 mapfile -t containers < <("${compose[@]}" ps --quiet)

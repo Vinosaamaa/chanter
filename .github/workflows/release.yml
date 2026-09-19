@@ -47,6 +47,9 @@ jobs:
         run: bash scripts/deploy/smoke-release.sh '${{ matrix.architecture }}'
   package:
     if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    concurrency:
+      group: release-package-${{ github.sha }}-${{ matrix.architecture }}
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:
@@ -105,4 +108,4 @@ jobs:
               --notes 'Immutable deployment bundles. Review staging evidence and publish this draft before operator installation.' \
               || gh release view "$tag" >/dev/null
           fi
-          gh release upload "$tag" ".cache/$asset" ".cache/$asset.sha256"
+          node scripts/deploy/publish-assets.mjs "$tag" ".cache/$asset" ".cache/$asset.sha256"
