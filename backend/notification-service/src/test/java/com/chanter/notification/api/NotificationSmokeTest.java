@@ -43,6 +43,27 @@ class NotificationSmokeTest {
     private com.chanter.notification.application.NotificationService notificationService;
 
     @Test
+    void sourceVisibilityIsSharedOnlyWithinOneRequest() throws Exception {
+        UUID user = UUID.randomUUID();
+        UUID source = UUID.randomUUID();
+        for (var kind : java.util.List.of(NotificationKind.SUPPORT_QUESTION_CREATED, NotificationKind.SUPPORT_QUESTION_ANSWERED)) {
+            notificationService.create(new com.chanter.notification.application.NotificationRepository.CreateCommand(
+                    user, kind, null, "Question update", null, null, "/app/inbox", "SUPPORT_QUESTION", source,
+                    null, null, null, null));
+        }
+        org.mockito.Mockito.clearInvocations(visibility);
+        mockMvc.perform(get("/api/v1/me/notifications").header(AuthHeaders.USER_ID, user)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications.length()").value(2));
+        org.mockito.Mockito.verify(visibility, org.mockito.Mockito.times(1)).canView(org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.when(visibility.canView(org.mockito.ArgumentMatchers.any())).thenReturn(false);
+        mockMvc.perform(get("/api/v1/me/notifications").header(AuthHeaders.USER_ID, user)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications.length()").value(0));
+        org.mockito.Mockito.verify(visibility, org.mockito.Mockito.times(2)).canView(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void hiddenRecentNotificationsDoNotHideOlderVisibleInboxItems() throws Exception {
         UUID user = UUID.randomUUID();
         UUID visibleSource = UUID.randomUUID();

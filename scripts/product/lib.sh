@@ -369,6 +369,10 @@ with open(log_file, "ab", buffering=0) as log:
         close_fds=True,
         start_new_session=True,
     )
+with open(f"/proc/{proc.pid}/stat", encoding="utf-8") as handle:
+    process_start = handle.read().rsplit(")", 1)[1].split()[19]
+with open(pid_file + ".start", "w", encoding="utf-8") as handle:
+    handle.write(process_start)
 with open(pid_file, "w", encoding="utf-8") as handle:
     handle.write(str(proc.pid))
 os._exit(0)

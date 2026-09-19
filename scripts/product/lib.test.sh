@@ -167,4 +167,5 @@ if [ "$failures" -gt 0 ]; then
   exit 1
 fi
 
+python3 "$SCRIPT_DIR/test_stop_event_consumer.py"
 echo "All product lib tests passed."

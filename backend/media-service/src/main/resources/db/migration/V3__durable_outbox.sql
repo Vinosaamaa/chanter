@@ -9,3 +9,4 @@ CREATE TABLE durable_outbox (
             replay_count INT NOT NULL DEFAULT 0, replayed_at TIMESTAMP WITH TIME ZONE
         );
 CREATE INDEX idx_outbox_delivery ON durable_outbox (status, available_at, revision);
+CREATE INDEX idx_outbox_expired_lease ON durable_outbox(status, lease_until, revision);

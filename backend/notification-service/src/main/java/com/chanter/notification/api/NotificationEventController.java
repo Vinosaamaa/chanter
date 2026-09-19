@@ -41,7 +41,8 @@ public class NotificationEventController {
             if (!event.kind().equals("NOTIFICATION") || !java.util.Set.of("community", "message").contains(event.producer())) throw new IllegalArgumentException();
             var request = mapper.readValue(event.payload(), CreateNotificationRequest.class);
             if (!validator.validate(request).isEmpty()) throw new IllegalArgumentException();
-            String key = "NOTIFICATION:" + request.userId() + ":" + request.sourceType() + ":" + request.sourceId() + ":" + request.kind();
+            String key = com.chanter.common.events.NotificationEventWriter.aggregateKey(
+                    request.userId(), request.sourceType(), request.sourceId(), request.kind().name());
             if (!key.equals(event.aggregateKey())) throw new IllegalArgumentException();
             consumer.apply(event, false, () -> notifications.create(new NotificationRepository.CreateCommand(request.userId(), request.kind(),
                     request.filterBucket(), request.title(), request.bodyPreview(), request.courseLabel(), request.href(), request.sourceType(),

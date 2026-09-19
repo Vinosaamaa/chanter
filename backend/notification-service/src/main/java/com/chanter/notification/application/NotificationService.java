@@ -63,11 +63,12 @@ public class NotificationService {
             NotificationListStatus status
     ) {
         var visible = new java.util.ArrayList<Notification>();
+        var access = new java.util.HashMap<SourceScope, Boolean>();
         Notification before = null;
         while (visible.size() < DEFAULT_LIST_LIMIT) {
             var page = repository.findForUser(userId, filter, status, DEFAULT_LIST_LIMIT, before, false);
             for (var notification : page) {
-                if (visibility.canView(notification)) visible.add(notification);
+                if (canView(notification, access)) visible.add(notification);
                 if (visible.size() == DEFAULT_LIST_LIMIT) break;
             }
             if (page.size() < DEFAULT_LIST_LIMIT) break;
@@ -78,11 +79,12 @@ public class NotificationService {
 
     public long unreadCount(UUID userId) {
         long count = 0;
+        var access = new java.util.HashMap<SourceScope, Boolean>();
         Notification before = null;
         while (true) {
             var page = repository.findForUser(userId, NotificationListFilter.ALL, NotificationListStatus.OPEN,
                     DEFAULT_LIST_LIMIT, before, true);
-            count += page.stream().filter(visibility::canView).count();
+            count += page.stream().filter(notification -> canView(notification, access)).count();
             if (page.size() < DEFAULT_LIST_LIMIT) return count;
             before = page.getLast();
         }
@@ -119,4 +121,11 @@ public class NotificationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));
         if (!visibility.canView(notification)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found");
     }
+
+    private boolean canView(Notification notification, java.util.Map<SourceScope, Boolean> access) {
+        var source = new SourceScope(notification.sourceType(), notification.sourceId(), notification.studyServerId(),
+                notification.courseId(), notification.cohortId(), notification.channelId());
+        return access.computeIfAbsent(source, ignored -> visibility.canView(notification));
+    }
+    private record SourceScope(String type, UUID id, UUID server, UUID course, UUID cohort, UUID channel) { }
 }

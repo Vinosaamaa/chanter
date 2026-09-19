@@ -10,3 +10,4 @@ CREATE TABLE durable_outbox (
         );
 CREATE INDEX idx_outbox_delivery ON durable_outbox (status, available_at, revision);
 
+CREATE INDEX idx_outbox_expired_lease ON durable_outbox(status, lease_until, revision);

@@ -5,8 +5,6 @@ import com.chanter.community.domain.CommunityEventFilter;
 import com.chanter.community.domain.CommunityEventRsvpStatus;
 import com.chanter.community.domain.CommunityEventStatus;
 import com.chanter.community.domain.CommunityEventVisibility;
-import com.chanter.community.domain.CohortEnrollment;
-import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.StudyServer;
 import com.chanter.community.domain.StudyServerMember;
 import java.time.Clock;
@@ -23,8 +21,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CommunityEventService {
     private final com.chanter.common.events.SearchEventWriter searchEvents;
-
-    private static final int MAX_FANOUT = 200;
 
     private final CommunityEventRepository eventRepository;
     private final StudyServerRepository studyServerRepository;
@@ -251,14 +247,9 @@ public class CommunityEventService {
 
     private void notifyMembersOfEvent(CommunityEvent event, UUID actorUserId) {
         Set<UUID> recipientIds = new LinkedHashSet<>();
-        if (event.visibility() == CommunityEventVisibility.COHORT && event.cohortId() != null) {
-            for (int offset = 0; ; offset += MAX_FANOUT) {
-                CohortEnrollmentList enrollments = courseRepository.listCohortEnrollments(event.cohortId(), MAX_FANOUT, offset, null);
-                for (CohortEnrollment enrollment : enrollments.enrollments()) {
-                    if (!enrollment.learnerUserId().equals(actorUserId)) recipientIds.add(enrollment.learnerUserId());
-                }
-                if (enrollments.enrollments().size() < MAX_FANOUT) break;
-            }
+        if (event.visibility() != CommunityEventVisibility.HUB) {
+            recipientIds.addAll(eventRepository.findScopedNotificationRecipients(event));
+            recipientIds.remove(actorUserId);
         } else {
             for (StudyServerMember member : studyServerRepository.findMembers(event.studyServerId())) {
                 if (!member.userId().equals(actorUserId)) {
@@ -273,7 +264,6 @@ public class CommunityEventService {
             preview = preview.substring(0, 237) + "...";
         }
         for (UUID recipientId : recipientIds) {
-            if (!viewerCanSee(event, recipientId)) continue;
             notificationClient.createNotification(
                     recipientId,
                     "COMMUNITY_EVENT",

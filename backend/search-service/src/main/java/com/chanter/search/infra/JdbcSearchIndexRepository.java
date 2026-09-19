@@ -22,7 +22,8 @@ public class JdbcSearchIndexRepository {
             INSERT INTO search_index_entries (
                 id, study_server_id, course_id, course_title, document_type,
                 source_id, title, body_text, indexed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
+            WHERE NOT EXISTS (SELECT 1 FROM durable_event_cursor WHERE aggregate_key=?)
             """;
 
     private final JdbcTemplate jdbcTemplate;
@@ -38,10 +39,6 @@ public class JdbcSearchIndexRepository {
             DELETE FROM search_index_entries s WHERE study_server_id = ? AND NOT EXISTS
             (SELECT 1 FROM durable_event_cursor c WHERE c.aggregate_key=CONCAT(s.document_type, ':', CAST(s.source_id AS VARCHAR)))
             """, studyServerId);
-        entries = entries.stream().filter(entry -> jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM durable_event_cursor WHERE aggregate_key=?", Integer.class,
-                entry.documentType().name() + ":" + entry.sourceId()) == 0).toList();
-        final List<IndexEntry> legacyEntries = entries;
 
         if (entries.isEmpty()) {
             return;
@@ -50,7 +47,7 @@ public class JdbcSearchIndexRepository {
         jdbcTemplate.batchUpdate(INSERT_ENTRY_SQL, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement preparedStatement, int index) throws SQLException {
-                IndexEntry entry = legacyEntries.get(index);
+                IndexEntry entry = entries.get(index);
                 preparedStatement.setObject(1, entry.id());
                 preparedStatement.setObject(2, entry.studyServerId());
                 preparedStatement.setObject(3, entry.courseId());
@@ -60,11 +57,12 @@ public class JdbcSearchIndexRepository {
                 preparedStatement.setString(7, entry.title());
                 preparedStatement.setString(8, entry.bodyText());
                 preparedStatement.setTimestamp(9, Timestamp.from(entry.indexedAt()));
+                preparedStatement.setString(10, entry.documentType().name() + ":" + entry.sourceId());
             }
 
             @Override
             public int getBatchSize() {
-                return legacyEntries.size();
+                return entries.size();
             }
         });
     }

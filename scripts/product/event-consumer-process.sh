@@ -14,20 +14,15 @@ case "$action" in
     pid="$(cat "$pid_file")"
     [[ "$pid" =~ ^[0-9]+$ ]] || exit 2
     jar="$(product_module_jar "$module")"
-    # Refuse ambiguous ownership and never fall back to killing a port listener.
-    [ "$(readlink -f "/proc/$pid/cwd")" = "$root/backend" ] || exit 3
-    mapfile -d '' -t argv < "/proc/$pid/cmdline"
-    [ "${argv[1]:-}" = '-jar' ] && [ "${argv[2]:-}" = "$jar" ] || exit 3
-    start="$(awk '{print $22}' "/proc/$pid/stat")"
-    [ "$start" = "$(awk '{print $22}' "/proc/$pid/stat")" ] || exit 3
-    kill -TERM "$pid"
+    # Receipt and pidfd checks refuse stale/reused PIDs without a port-listener fallback.
+    python3 "$root/scripts/product/stop-event-consumer.py" "$pid_file" "$root/backend" "$jar"
     for _ in {1..100}; do
       if ! product_is_port_listening "$(product_module_port "$module")"; then break; fi
       sleep 0.1
     done
     ! product_is_port_listening "$(product_module_port "$module")" || exit 4
-    printf '%s\n' "$start" > "$marker"
-    rm -- "$pid_file"
+    cp -- "$pid_file.start" "$marker"
+    rm -- "$pid_file" "$pid_file.start"
     ;;
   start)
     [ -f "$marker" ] || exit 3

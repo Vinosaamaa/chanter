@@ -39,6 +39,44 @@ class CommunityEventSmokeTest {
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Test
+    void scopedFanoutSelectsOnlyAuthorizedRecipientsWithoutTheOldTwoHundredLimit() throws Exception {
+        UUID owner = UUID.randomUUID();
+        UUID server = createStudyServer(owner);
+        UUID course = UUID.randomUUID();
+        UUID cohort = UUID.randomUUID();
+        UUID otherCohort = UUID.randomUUID();
+        UUID instructor = UUID.randomUUID();
+        UUID otherLearner = UUID.randomUUID();
+        jdbc.update("INSERT INTO courses(id,study_server_id,title,instructor_user_id,created_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)",
+                course, server, "Scoped course", instructor);
+        jdbc.update("INSERT INTO course_roles(course_id,user_id,role) VALUES (?,?,'INSTRUCTOR')", course, instructor);
+        jdbc.update("INSERT INTO cohorts(id,course_id,name,invite_code) VALUES (?,?,?,?)", cohort, course, "Target", UUID.randomUUID());
+        jdbc.update("INSERT INTO cohorts(id,course_id,name,invite_code) VALUES (?,?,?,?)", otherCohort, course, "Other", UUID.randomUUID());
+        jdbc.update("INSERT INTO cohort_enrollments(cohort_id,learner_user_id,enrolled_by_user_id,enrolled_at) VALUES (?,?,?,CURRENT_TIMESTAMP)", otherCohort, otherLearner, owner);
+        for (int index = 0; index < 201; index++) {
+            jdbc.update("INSERT INTO cohort_enrollments(cohort_id,learner_user_id,enrolled_by_user_id,enrolled_at) VALUES (?,?,?,CURRENT_TIMESTAMP)", cohort, UUID.randomUUID(), owner);
+        }
+        Instant start = Instant.now().plus(3, ChronoUnit.DAYS);
+        for (String scope : java.util.List.of("COHORT", "COURSE")) {
+            Map<String, Object> request = new java.util.HashMap<>(Map.of(
+                    "title", "Scoped event", "startsAt", start.toString(), "endsAt", start.plus(1, ChronoUnit.HOURS).toString(),
+                    "visibility", scope, "courseId", course));
+            if (scope.equals("COHORT")) request.put("cohortId", cohort);
+            var result = mockMvc.perform(post("/api/v1/study-servers/{id}/events", server).with(asUser(owner))
+                    .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated()).andReturn();
+            String eventId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+            var payloads = jdbc.queryForList("SELECT payload FROM durable_outbox WHERE destination='notification' AND aggregate_key LIKE ?",
+                    String.class, "%:COMMUNITY_EVENT:" + eventId + ":COMMUNITY_EVENT");
+            org.assertj.core.api.Assertions.assertThat(payloads).hasSize(scope.equals("COHORT") ? 201 : 203);
+            if (scope.equals("COHORT")) {
+                org.assertj.core.api.Assertions.assertThat(payloads).noneMatch(payload -> payload.contains(otherLearner.toString())
+                        || payload.contains(instructor.toString()));
+            }
+        }
+    }
+
+    @Test
     void durableEventsSupportCreateRsvpFilterShareAndIcs() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
         UUID outsiderUserId = UUID.randomUUID();

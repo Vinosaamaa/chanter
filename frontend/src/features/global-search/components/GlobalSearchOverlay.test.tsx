@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -99,6 +99,25 @@ describe('GlobalSearchOverlay v2', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Content' }), 'ANNOUNCEMENT')
     await user.click(screen.getByText('Welcome week'))
     expect(screen.getByTestId('search-location')).toHaveTextContent('/app/servers/server-real/community/announcements')
+  })
+
+  it('refreshes an open unchanged query when durable indexing catches up', async () => {
+    vi.useFakeTimers()
+    searchApi.searchStudyServer.mockResolvedValueOnce({ results: [] }).mockResolvedValue({ results: [{
+      documentType: 'EVENT', courseId: null, courseTitle: 'Community', sourceId: 'event-new',
+      title: 'Newly indexed event', snippet: 'Just published', href: '/app/servers/server-real/community/events',
+    }] })
+    try {
+      render(<MemoryRouter initialEntries={['/app/servers/server-real/home']}>
+        <Routes><Route path="/app/servers/:serverId/*" element={<SearchHarness />} /></Routes>
+      </MemoryRouter>)
+      fireEvent.click(screen.getByRole('button', { name: 'Open search' }))
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'event' } })
+      await act(() => vi.advanceTimersByTimeAsync(250))
+      expect(screen.queryByText('Newly indexed event')).not.toBeInTheDocument()
+      await act(() => vi.advanceTimersByTimeAsync(5000))
+      expect(screen.getByText('Newly indexed event')).toBeInTheDocument()
+    } finally { vi.useRealTimers() }
   })
 })
 

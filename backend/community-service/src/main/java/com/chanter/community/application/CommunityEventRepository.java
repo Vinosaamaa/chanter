@@ -35,6 +35,8 @@ public interface CommunityEventRepository {
 
     boolean isCohortAccessible(UUID cohortId, UUID userId);
 
+    List<UUID> findScopedNotificationRecipients(CommunityEvent event);
+
     boolean courseBelongsToStudyServer(UUID courseId, UUID studyServerId);
 
     boolean cohortBelongsToCourse(UUID cohortId, UUID courseId);

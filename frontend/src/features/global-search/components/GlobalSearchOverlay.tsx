@@ -103,13 +103,13 @@ function GlobalSearchOverlayPanel({
     }
 
     let cancelled = false
-    const handle = window.setTimeout(() => {
-      setIsSearching(true)
-      setError(null)
+    let handle: number
+    const refresh = () => {
       void searchStudyServer(serverId, trimmedQuery)
         .then((response) => {
           if (!cancelled) {
             setResults(response.results)
+            setError(null)
           }
         })
         .catch((caught) => {
@@ -121,9 +121,11 @@ function GlobalSearchOverlayPanel({
         .finally(() => {
           if (!cancelled) {
             setIsSearching(false)
+            handle = window.setTimeout(refresh, 5000)
           }
         })
-    }, 250)
+    }
+    handle = window.setTimeout(refresh, 250)
 
     return () => {
       cancelled = true

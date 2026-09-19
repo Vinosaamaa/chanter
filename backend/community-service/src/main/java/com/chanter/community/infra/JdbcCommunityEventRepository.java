@@ -276,6 +276,28 @@ public class JdbcCommunityEventRepository implements CommunityEventRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public List<UUID> findScopedNotificationRecipients(CommunityEvent event) {
+        if (event.visibility() == CommunityEventVisibility.COHORT) {
+            // Enrollment itself grants cohort visibility; preserve learner-only event fanout.
+            return jdbcClient.sql("SELECT learner_user_id FROM cohort_enrollments WHERE cohort_id=:cohortId")
+                    .param("cohortId", event.cohortId()).query(UUID.class).list();
+        }
+        if (event.visibility() != CommunityEventVisibility.COURSE) {
+            throw new IllegalArgumentException("Scoped recipients require a Course or Cohort event");
+        }
+        return jdbcClient.sql("""
+                SELECT cr.user_id FROM course_roles cr WHERE cr.course_id=:courseId AND cr.role='INSTRUCTOR'
+                UNION
+                SELECT ce.learner_user_id FROM cohort_enrollments ce JOIN cohorts c ON c.id=ce.cohort_id
+                  WHERE c.course_id=:courseId
+                UNION
+                SELECT ss.owner_user_id FROM study_servers ss JOIN courses c ON c.study_server_id=ss.id
+                  WHERE c.id=:courseId
+                """).param("courseId", event.courseId()).query(UUID.class).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean isCourseAccessible(UUID courseId, UUID userId) {
         Integer count = jdbcClient.sql("""
                         SELECT COUNT(*)
