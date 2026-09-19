@@ -3,6 +3,13 @@ server:
   forward-headers-strategy: none
 
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: 1s
+      timeout: 1s
   http:
     codecs:
       preferred-json-mapper: jackson2
@@ -103,6 +110,8 @@ spring:
 
 chanter:
   edge:
+    limits-enabled: ${CHANTER_EDGE_LIMITS_ENABLED:false}
+    key-secret: ${CHANTER_EDGE_KEY_SECRET:}
     trusted-proxy-addresses: ${CHANTER_TRUSTED_PROXY_ADDRESSES:}
     public-origin: ${CHANTER_EDGE_PUBLIC_ORIGIN:}
   jwt:
@@ -113,6 +122,9 @@ chanter:
     allowed-origins: ${CHANTER_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
 
 management:
+  health:
+    redis:
+      enabled: ${CHANTER_EDGE_LIMITS_ENABLED:false}
   endpoints:
     web:
       exposure:
