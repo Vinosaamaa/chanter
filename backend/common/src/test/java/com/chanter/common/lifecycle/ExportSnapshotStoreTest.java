@@ -62,6 +62,7 @@ class ExportSnapshotStoreTest {
         }
         assertThat(reconstructed.toByteArray()).isEqualTo(original);
         assertThat(entry.sha256()).isEqualTo(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(original)));
+        assertThat(manifest.fingerprint()).hasSize(64).isEqualTo(store.manifest(request.jobId(), owner).fingerprint());
         assertThat(new String(store.page(request.jobId(), owner, 0, 0), java.nio.charset.StandardCharsets.UTF_8)).contains("Ålice");
     }
 
@@ -134,6 +135,26 @@ class ExportSnapshotStoreTest {
             assertThat(first.get()).isEqualTo(second.get());
         }
         assertThat(captures).hasValue(1);
+    }
+
+    @Test void cancellingAnUnseenJobBlocksLateCaptureButAllowsANewExportForTheSameAccount() {
+        var cancelled = request();
+        store.cancelJob(cancelled);
+        assertStatus(410, () -> store.capture(cancelled, writer -> {}));
+        var fresh = request();
+        var manifest = store.capture(fresh, writer -> writer.jsonLines("profile", rows -> rows.add(Map.of("name", "fresh"))));
+        assertThat(manifest.jobId()).isEqualTo(fresh.jobId());
+        store.cancelJob(fresh);
+        assertStatus(410, () -> store.page(fresh.jobId(), owner, 0, 0));
+    }
+
+    @Test void receivedManifestCannotChangeArchivePathsOrChunkBounds() {
+        var invalid = new ExportSnapshotStore.Manifest(1, "auth", UUID.randomUUID(), owner, now, now.plusSeconds(60),
+                java.util.List.of(new ExportSnapshotStore.Entry(0, "../outside", "application/x-ndjson", 2, 1, "a".repeat(64))));
+        assertThatThrownBy(invalid::fingerprint).isInstanceOf(IllegalArgumentException.class);
+        var badCount = new ExportSnapshotStore.Manifest(1, "auth", UUID.randomUUID(), owner, now, now.plusSeconds(60),
+                java.util.List.of(new ExportSnapshotStore.Entry(0, "profile.jsonl", "application/x-ndjson", 2, 100, "a".repeat(64))));
+        assertThatThrownBy(badCount::fingerprint).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test void oversizedRecordsAndUnsafeEntryNamesRollbackWithoutAPartialExport() {

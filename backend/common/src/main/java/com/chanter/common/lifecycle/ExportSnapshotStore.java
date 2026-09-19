@@ -124,6 +124,24 @@ public final class ExportSnapshotStore {
         });
     }
 
+    /** Cancels one export without deleting the account; rejects a delayed capture with the same job ID. */
+    public void cancelJob(Request request) {
+        request.validate(clock.instant());
+        tx.executeWithoutResult(status -> {
+            lock();
+            var existing = headers(request.jobId());
+            if (!existing.isEmpty() && (!existing.getFirst().accountId().equals(request.accountId())
+                    || !existing.getFirst().requestedAt().equals(request.requestedAt()) || !existing.getFirst().expiresAt().equals(request.expiresAt())))
+                throw failure(HttpStatus.CONFLICT, "EXPORT_SCOPE_MISMATCH");
+            if (existing.isEmpty()) jdbc.update("""
+                INSERT INTO data_export_snapshots(id,account_id,requested_at,captured_at,expires_at,status)
+                VALUES (?,?,?,?,?,'CANCELLED')
+                """, request.jobId(), request.accountId(), time(request.requestedAt()), time(clock.instant()), time(request.expiresAt()));
+            jdbc.update("DELETE FROM data_export_entries WHERE snapshot_id=?", request.jobId());
+            jdbc.update("UPDATE data_export_snapshots SET status='CANCELLED',byte_size=0 WHERE id=?", request.jobId());
+        });
+    }
+
     public void expire() { tx.executeWithoutResult(status -> { lock(); expireLocked(); }); }
 
     private void expireLocked() {
@@ -224,7 +242,34 @@ public final class ExportSnapshotStore {
         }
     }
     public record Entry(int ordinal, String path, String mediaType, long bytes, int pageCount, String sha256) { }
-    public record Manifest(int schemaVersion, String source, UUID jobId, UUID accountId, Instant capturedAt, Instant expiresAt, List<Entry> entries) { }
+    public record Manifest(int schemaVersion, String source, UUID jobId, UUID accountId, Instant capturedAt, Instant expiresAt, List<Entry> entries) {
+        public Manifest { entries = List.copyOf(entries); }
+
+        /** Receipt fingerprint covers immutable metadata; each entry separately covers its exact bytes. */
+        public String fingerprint() {
+            if (schemaVersion != 1 || source == null || !List.of("auth", "community", "message", "media", "agent", "notification", "search").contains(source)
+                    || jobId == null || accountId == null || capturedAt == null || expiresAt == null || !expiresAt.isAfter(capturedAt()) || entries.size() > 10_000)
+                throw new IllegalArgumentException("Invalid export manifest");
+            var digest = sha256();
+            update(digest, "1\n" + source + "\n" + jobId + "\n" + accountId + "\n" + capturedAt + "\n" + expiresAt + "\n");
+            long bytes = 0;
+            var paths = new java.util.HashSet<String>();
+            for (int index = 0; index < entries.size(); index++) {
+                Entry entry = entries.get(index);
+                boolean json = entry.path() != null && entry.path().matches("[a-z][a-z0-9_-]{0,39}\\.jsonl");
+                boolean file = entry.path() != null && entry.path().matches("files/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/content");
+                if (entry.ordinal() != index || (!json && !file) || !paths.add(entry.path()) || entry.bytes() < 0
+                        || entry.bytes() > MAX_SNAPSHOT_BYTES - bytes || entry.pageCount() != (entry.bytes() + PAGE_BYTES - 1) / PAGE_BYTES
+                        || !(json ? "application/x-ndjson" : "application/octet-stream").equals(entry.mediaType())
+                        || entry.sha256() == null || !entry.sha256().matches("[a-f0-9]{64}"))
+                    throw new IllegalArgumentException("Invalid export entry");
+                bytes += entry.bytes();
+                update(digest, index + "\n" + entry.path() + "\n" + entry.mediaType() + "\n" + entry.bytes() + "\n" + entry.pageCount() + "\n" + entry.sha256() + "\n");
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        }
+        private static void update(MessageDigest digest, String value) { digest.update(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+    }
     private record Header(UUID accountId, Instant requestedAt, Instant capturedAt, Instant expiresAt, String status) { }
     @FunctionalInterface public interface Projection { void write(Capture capture) throws IOException; }
     @FunctionalInterface public interface JsonProjection { void write(JsonRows rows) throws IOException; }

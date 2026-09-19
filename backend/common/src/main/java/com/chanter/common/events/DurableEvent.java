@@ -5,7 +5,7 @@ import java.util.UUID;
 /** Versioned delivery contract. Payload interpretation belongs to the destination. */
 public record DurableEvent(UUID id, int schemaVersion, String producer, long revision,
         String kind, String aggregateKey, String payload) {
-    private static final java.util.Set<String> PRODUCERS = java.util.Set.of("community", "message", "media", "agent");
+    private static final java.util.Set<String> PRODUCERS = java.util.Set.of("auth", "community", "message", "media", "agent", "notification", "search");
     public void validate() {
         if (id == null || schemaVersion != 1 || revision < 1 || producer == null
                 || !PRODUCERS.contains(producer)
