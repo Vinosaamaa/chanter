@@ -34,10 +34,23 @@ export type RegisterResponse =
   | AuthSession
   | { verificationRequired: true; message: string }
 
-export async function register(input: RegisterInput): Promise<RegisterResponse> {
+export type HumanVerification = { token?: string; method?: 'email' }
+export type VerificationOptions = { enabled: boolean; siteKey: string | null }
+
+export function fetchVerificationOptions(): Promise<VerificationOptions> {
+  return apiFetch('/api/v1/auth/verification-options', { skipAuthRefresh: true })
+}
+
+function verificationHeaders(verification?: HumanVerification): Record<string, string> {
+  if (verification?.method === 'email') return { 'X-Chanter-Verification-Method': 'email' }
+  return verification?.token ? { 'X-Chanter-Bot-Token': verification.token } : {}
+}
+
+export async function register(input: RegisterInput, verification?: HumanVerification): Promise<RegisterResponse> {
   return apiFetch<RegisterResponse>('/api/v1/auth/register', {
     method: 'POST',
     body: JSON.stringify(input),
+    headers: verificationHeaders(verification),
     skipAuthRefresh: true,
   })
 }
@@ -73,10 +86,11 @@ export async function fetchCurrentUser(accessToken: string): Promise<AuthUser> {
   })
 }
 
-export async function forgotPassword(email: string): Promise<{ message: string }> {
+export async function forgotPassword(email: string, verification?: HumanVerification): Promise<{ message: string }> {
   return apiFetch<{ message: string }>('/api/v1/auth/forgot-password', {
     method: 'POST',
     body: JSON.stringify({ email }),
+    headers: verificationHeaders(verification),
     skipAuthRefresh: true,
   })
 }

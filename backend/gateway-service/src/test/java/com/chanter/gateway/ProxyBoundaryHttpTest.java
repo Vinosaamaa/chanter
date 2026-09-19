@@ -52,6 +52,8 @@ class ProxyBoundaryHttpTest {
                 .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.discarding());
         assertThat(response.statusCode()).isEqualTo(200);
         assertSanitized();
+        assertThat(response.headers().firstValue("X-Request-Id").orElseThrow()).isEqualTo(delivered.get().getFirst("X-Request-Id"));
+        assertThat(delivered.get().getFirst("X-Request-Id")).isNotEqualTo("forged-correlation");
         assertThat(delivered.get().getFirst(AuthHeaders.USER_ID)).isNull();
     }
 
@@ -69,7 +71,16 @@ class ProxyBoundaryHttpTest {
         return HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
                 .header("X-Forwarded-For", "198.51.100.1").header("Forwarded", "for=198.51.100.1;host=evil.example")
                 .header("X-Forwarded-Host", "evil.example").header("CF-Connecting-IP", "198.51.100.2")
+                .header("X-Request-Id", "forged-correlation")
                 .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "forged-service").header(AuthHeaders.USER_ID, "forged-user");
+    }
+
+    @Test void matrixParametersCannotSelectADifferentPolicyThanTheBackendRoute() throws Exception {
+        for (String suffix : new String[]{";review=1", "%3breview=1"}) {
+            var response = HttpClient.newHttpClient().send(request("/api/v1/auth/register" + suffix)
+                    .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.discarding());
+            assertThat(response.statusCode()).isEqualTo(400);
+        }
     }
 
     private void assertSanitized() {

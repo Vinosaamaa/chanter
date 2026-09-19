@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono;
 /** Runs before gateway authentication; untrusted HTTP headers never become authority. */
 public final class ProxyBoundaryFilter implements WebFilter, Ordered {
     public static final String CLIENT_IP_ATTRIBUTE = ProxyBoundaryFilter.class.getName() + ".clientIp";
+    public static final String REQUEST_ID_ATTRIBUTE = ProxyBoundaryFilter.class.getName() + ".requestId";
     private final TrustedClientIdentity identities;
     private final URI publicOrigin;
 
@@ -32,6 +33,15 @@ public final class ProxyBoundaryFilter implements WebFilter, Ordered {
     @Override public int getOrder() { return Ordered.HIGHEST_PRECEDENCE; }
 
     @Override public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        String requestId = java.util.UUID.randomUUID().toString();
+        exchange.getAttributes().put(REQUEST_ID_ATTRIBUTE, requestId);
+        exchange.getResponse().getHeaders().set("X-Request-Id", requestId);
+        String rawPath = exchange.getRequest().getURI().getRawPath().toLowerCase(Locale.ROOT);
+        if (rawPath.contains(";") || rawPath.contains("%3b")) {
+            exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
+            exchange.getResponse().getHeaders().setCacheControl("no-store");
+            return exchange.getResponse().setComplete();
+        }
         final String client;
         try {
             client = identities.resolve(exchange.getRequest().getRemoteAddress(),
@@ -46,6 +56,7 @@ public final class ProxyBoundaryFilter implements WebFilter, Ordered {
         exchange.getAttributes().put(CLIENT_IP_ATTRIBUTE, client);
         var request = exchange.getRequest().mutate().headers(headers -> {
             headers.headerNames().stream().filter(ProxyBoundaryFilter::untrustedHeader).toList().forEach(headers::remove);
+            headers.set("X-Request-Id", requestId);
             applyForwardedHeaders(headers, exchange);
         }).build();
         return chain.filter(exchange.mutate().request(request).build());

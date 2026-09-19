@@ -2,11 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { initialize, readEnv, validateRuntime, stopEnvironment } from './host.mjs';
+import { initialize, readEnv, validateRuntime, stopEnvironment, verifyPublic } from './host.mjs';
 import { imageNames } from './release.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
 fs.mkdirSync(scratch, { recursive: true });
+
+test('public verification refuses a serving frontend with missing browser security headers', async t => {
+  t.mock.method(globalThis, 'fetch', async () => new Response('<html></html>', { status: 200 }));
+  await assert.rejects(verifyPublic('staging.chanter.example'), /security header/);
+});
+
+test('optional challenge credentials must be configured together', t => {
+  const { state, auth } = fixture(t);
+  fs.appendFileSync(auth, 'CHANTER_TURNSTILE_SITE_KEY=fixture-site\n');
+  assert.throws(() => validateRuntime(state), /Turnstile/);
+  fs.appendFileSync(auth, 'CHANTER_TURNSTILE_SECRET=fixture-secret\n');
+  assert.doesNotThrow(() => validateRuntime(state));
+});
 const fixture = t => {
   const root = fs.mkdtempSync(path.join(scratch, 'host-'));
   t.after(() => {

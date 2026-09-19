@@ -61,7 +61,7 @@ jobs:
           scripts/java21.sh mvn -B -q -s backend/.mvn/settings.xml -f backend/pom.xml
           -pl gateway-service -am -Dtest=RedisAdmissionHttpTest -Dsurefire.failIfNoSpecifiedTests=false test
         env:
-          CHANTER_TEST_REDIS_PORT: ${{ job.services.admission-redis.ports[6379] }}
+          CHANTER_TEST_REDIS_PORT: ${{ job.services.admission-redis.ports['6379'] }}
       - name: Product stack script tests
         run: make product-test
       - name: Validate product Docker Compose profile

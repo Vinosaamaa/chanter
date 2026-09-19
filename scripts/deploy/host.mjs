@@ -87,6 +87,9 @@ export function validateRuntime(stateDir) {
     for (const key of required) if (!env[key]) throw new Error(`Configure ${key} in ${name}.env`);
     for (const [key, value] of Object.entries(env)) if (!value) throw new Error(`Configure ${key} in ${name}.env`);
     if (name === 'auth-service' && !['starttls', 'implicit'].includes(env.CHANTER_SMTP_TLS_MODE)) throw new Error('SMTP requires verified TLS');
+    if (name === 'auth-service' && Boolean(env.CHANTER_TURNSTILE_SITE_KEY) !== Boolean(env.CHANTER_TURNSTILE_SECRET)) {
+      throw new Error('Optional Turnstile requires both site and secret keys');
+    }
     if (name === 'media-service') {
       let endpoint;
       try { endpoint = new URL(env.CHANTER_S3_ENDPOINT); } catch { throw new Error('S3 object storage requires a valid HTTPS endpoint'); }
@@ -126,6 +129,14 @@ export async function verifyPublic(hostname, stateDir) {
   const request = async (suffix, options = {}) => fetch(base + suffix, { ...options, signal: AbortSignal.timeout(10000), redirect: 'error' });
   const home = await request('/');
   if (home.status !== 200 || !(await home.text()).includes('<html')) throw new Error('Frontend did not serve the application');
+  for (const [header, expected] of Object.entries({ 'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer' })) {
+    if (home.headers.get(header) !== expected) throw new Error(`Public security header is missing: ${header}`);
+  }
+  if (!home.headers.get('strict-transport-security')?.includes('max-age=31536000')
+      || !home.headers.get('content-security-policy')?.includes("frame-ancestors 'none'")) {
+    throw new Error('Public transport or content security policy is missing');
+  }
   const auth = await request('/api/v1/auth/health');
   if (auth.status !== 200 || (await auth.json()).service !== 'auth-service') throw new Error('Gateway auth route is unhealthy');
   const bootstrap = await request('/api/v1/auth/refresh', { method: 'POST', headers: { Origin: base, 'X-Chanter-CSRF': '1' } });

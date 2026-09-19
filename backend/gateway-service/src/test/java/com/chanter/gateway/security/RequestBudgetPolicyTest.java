@@ -12,6 +12,8 @@ class RequestBudgetPolicyTest {
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/auth/logout")).isEqualTo(RequestBudgetPolicy.LOGOUT);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.GET, "/api/v1/realtime/connect")).isEqualTo(RequestBudgetPolicy.RECONNECT);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/course-channels/abc/support-questions/def/assistant-answer")).isEqualTo(RequestBudgetPolicy.AI);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/course-channels/abc/support-questions/def/native-request")).isEqualTo(RequestBudgetPolicy.AI);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/course-channels/abc/support-questions/def/native-results/ghi")).isEqualTo(RequestBudgetPolicy.AI);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/courses/abc/course-resources")).isEqualTo(RequestBudgetPolicy.UPLOAD);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.GET, "/api/v1/course-resources/abc/download")).isEqualTo(RequestBudgetPolicy.DOWNLOAD);
         assertThat(RequestBudgetPolicy.classify(HttpMethod.GET, "/api/v1/study-servers/abc/search")).isEqualTo(RequestBudgetPolicy.SEARCH);
@@ -27,5 +29,13 @@ class RequestBudgetPolicyTest {
         assertThat(RequestBudgetPolicy.tenantHint("/api/v1/study-servers/" + tenant + "/search")).isEqualTo(tenant);
         assertThat(RequestBudgetPolicy.tenantHint("/api/v1/study-servers/arbitrary/search")).isNull();
         assertThat(RequestBudgetPolicy.tenantHint("/api/v1/courses/" + tenant)).isNull();
+    }
+
+    @Test void catalogsFeedbackAndResourceManagementDoNotConsumeInferenceOrUploadCapacity() {
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.GET, "/api/v1/study-servers/a/study-assistant-grant-candidates")).isEqualTo(RequestBudgetPolicy.READ);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.GET, "/api/v1/course-channels/a/support-questions/b/assistant-answer")).isEqualTo(RequestBudgetPolicy.READ);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/course-channels/a/support-questions/b/assistant-answer/helpful")).isEqualTo(RequestBudgetPolicy.MESSAGE);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.DELETE, "/api/v1/course-resources/a")).isEqualTo(RequestBudgetPolicy.WRITE);
+        assertThat(RequestBudgetPolicy.classify(HttpMethod.POST, "/api/v1/course-resources/a/retry-ingestion")).isEqualTo(RequestBudgetPolicy.WRITE);
     }
 }

@@ -22,17 +22,22 @@ public enum RequestBudgetPolicy {
                 || path.equals("/api/v1/auth/verify-email")) return RECOVERY;
         if (path.startsWith("/api/v1/auth/")) return AUTH;
         if (path.startsWith("/api/v1/realtime/")) return RECONNECT;
-        if (path.contains("/study-assistant") || path.contains("/assistant-answer") || path.contains("/native-companion")) return AI;
-        if (path.contains("/search")) return SEARCH;
         boolean read = HttpMethod.GET.equals(method) || HttpMethod.HEAD.equals(method) || HttpMethod.OPTIONS.equals(method);
-        if (path.contains("/course-resources")) {
+        if (HttpMethod.POST.equals(method) && (path.endsWith("/assistant-answer") || path.endsWith("/assistant-answer/stream")
+                || path.endsWith("/native-request") || segment(path, "native-results") || segment(path, "native-companion"))) return AI;
+        if (segment(path, "search")) return SEARCH;
+        if (segment(path, "course-resources")) {
             if (read && (path.endsWith("/download") || path.endsWith("/content"))) return DOWNLOAD;
-            if (!read) return UPLOAD;
+            if (HttpMethod.POST.equals(method) && path.endsWith("/course-resources")) return UPLOAD;
         }
         if (!read && (path.contains("/invitations") || path.contains("-invitations") || path.contains("/billing")
                 || path.contains("/reports") || path.contains("/admin/"))) return SENSITIVE;
         if (!read && (path.contains("/messages") || path.contains("/direct-messages") || path.contains("/support-questions"))) return MESSAGE;
         return read ? READ : WRITE;
+    }
+
+    private static boolean segment(String path, String name) {
+        return path.endsWith("/" + name) || path.contains("/" + name + "/");
     }
 
     /** A partition only. It is never used to grant membership or permissions. */

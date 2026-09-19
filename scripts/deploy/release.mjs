@@ -113,7 +113,7 @@ export function composeFor(release, config, runtimeDir) {
     healthcheck: { test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:2019/config/'], interval: '15s', timeout: '5s', retries: 10 },
     networks: { edge: { ipv4_address: `${edgePrefix}.2` } } };
   return { name: `chanter-${config.environment}`, services, networks: { application: {},
-    edge: { ipam: { config: [{ subnet: `${edgePrefix}.0/28` }] } } },
+    edge: { ipam: { config: [{ subnet: `${edgePrefix}.0/28`, ip_range: `${edgePrefix}.8/29` }] } } },
     volumes: Object.fromEntries(['postgres', 'redis', 'resources', 'media-spool', 'scanner-signatures', 'scanner-socket',
       'caddy-data', 'caddy-config'].map(name => [name, {}])) };
 }

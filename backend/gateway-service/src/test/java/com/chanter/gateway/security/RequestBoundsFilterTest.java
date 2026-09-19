@@ -13,6 +13,25 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 class RequestBoundsFilterTest {
+    @Test void sharedNetworkAllowsSignupRacesButKeepsABoundedActiveLimit() {
+        var filter = new RequestBoundsFilter(16, 32, 32, Duration.ofSeconds(1));
+        var pending = new java.util.ArrayList<reactor.core.Disposable>();
+        var forwarded = new java.util.concurrent.atomic.AtomicInteger();
+        try {
+            for (int i = 0; i < 8; i++) {
+                var request = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/register").body("{}"));
+                pending.add(filter.filter(request, next -> { forwarded.incrementAndGet(); return Mono.never(); }).subscribe());
+            }
+            assertThat(forwarded.get()).isEqualTo(8);
+            var excess = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/register").body("{}"));
+            filter.filter(excess, next -> Mono.error(new AssertionError("Active signup limit exceeded"))).block();
+            assertThat(excess.getResponse().getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        } finally { pending.forEach(reactor.core.Disposable::dispose); }
+        var retry = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/register").body("{}"));
+        filter.filter(retry, next -> { forwarded.incrementAndGet(); return Mono.empty(); }).block();
+        assertThat(forwarded.get()).isEqualTo(9);
+    }
+
     @Test void rejectsDeclaredAndChunkedOversizeBeforeForwardingAnything() {
         var filter = new RequestBoundsFilter(16, 32, 1, Duration.ofSeconds(1));
         var declared = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/auth/login").contentLength(17).build());

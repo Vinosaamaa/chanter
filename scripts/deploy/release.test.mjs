@@ -20,6 +20,9 @@ test('the public proxy has an exact isolated identity and distributed admission 
   assert.equal(gateway.depends_on.redis.condition, 'service_healthy');
   assert.match(gateway.environment.MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE, /redis/);
   assert.notEqual(stage.networks.edge.ipam.config[0].subnet, prod.networks.edge.ipam.config[0].subnet);
+  // Dynamic LiveKit allocation must never consume the proxy's static identity before it starts.
+  assert.equal(stage.networks.edge.ipam.config[0].ip_range, '172.30.45.8/29');
+  assert.equal(prod.networks.edge.ipam.config[0].ip_range, '172.30.46.8/29');
   assert.ok(!stage.services['auth-service'].networks.includes('edge'));
 });
 

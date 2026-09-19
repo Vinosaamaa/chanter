@@ -11,6 +11,13 @@ verify pass. The four real-Redis tests compile and skip locally because no Redis
 is provisioned here. CI supplies an isolated Redis and runs those tests outside
 the hermetic environment wrapper, which deliberately removes CHANTER variables.
 
-This issue remains in implementation. Production wiring, payload/concurrency
-bounds, browser policy, optional bot proof, hosted acceptance and provider proof
-are still required. No public launch or enabled production protection is claimed.
+The real Redis suite subsequently passed all four cases in hosted CI, including
+two independent gateways and the outage/recovery path. The production generator
+now requires Redis admission and dedicated key material, uses an isolated proxy
+network and bounds request memory, duration and active work. Browser policy and
+optional challenge/email-alternative controls are implemented. Local gateway/auth
+Maven verify, frontend build and deployment tests pass.
+
+Hosted regressions and review fixes are recorded in `issue-253-codeant-fix.md`.
+Final exact-head hosted acceptance, browser screenshot inspection and provider
+proof remain required. No public launch or enabled production protection is claimed.

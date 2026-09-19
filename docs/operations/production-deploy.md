@@ -185,6 +185,34 @@ node /srv/chanter/releases/COMMIT/scripts/deploy/host.mjs stop /srv/chanter/prod
 
 ## Edge and remaining release proof
 
+The gateway runtime file now needs `REDIS_PASSWORD` matching the private Redis
+instance and a dedicated randomly generated `CHANTER_EDGE_KEY_SECRET` of at least
+32 bytes. New initialization writes both; an existing environment must add them
+privately before deployment. Production always enables distributed admission
+and Redis readiness checks. Do not print these values or substitute the JWT key.
+
+Staging uses edge subnet `172.30.45.0/28`; production uses `172.30.46.0/28`.
+Caddy occupies `.2`, gateway `.3`, and dynamically allocated peers use `.8/29`.
+Confirm these subnets do not overlap host networks. Internal services stay off
+the edge network. Only Caddy's exact address may supply client identity; do not
+trust a whole application subnet or enable automatic forwarded-header handling.
+
+Turnstile is optional and off when its keys are absent. To enable it, add both
+`CHANTER_TURNSTILE_SITE_KEY` and `CHANTER_TURNSTILE_SECRET` to the private auth
+runtime file and configure the exact public hostname in that provider account.
+Never disable enforced email verification. Signup and recovery offer a stricter
+email alternative; sign-in/sign-out remain independent. Verify valid, expired,
+replayed and provider-outage behavior at the real hostname before declaring the
+provider enabled. Removing both optional keys returns to the ordinary email flow.
+
+Watch the fixed-label `chanter.gateway.admission` metrics for limited/unavailable
+and bounded-recovery outcomes, Redis readiness, memory saturation and HTTP429/503.
+Browsers receive Retry-After and a fresh X-Request-Id. Do not automatically retry
+inference or other paid operations after uncertain completion. Redis failure
+closes ordinary admission while preserving a bounded recovery/logout allowance.
+Public verification now checks the served browser security headers as well as
+TLS, auth bootstrap, origin enforcement and LiveKit signaling.
+
 The baseline exposes Caddy directly through owner-controlled DNS. It has no Cloudflare account, proxy or WAF configured. Caddy strips client-supplied identity/internal-service headers, sets forwarding metadata, disables API caching, caches fingerprinted assets, and adds CSP, HSTS, frame and referrer policies. API/auth/reset/verification URLs and cookies must never enter a shared cache. Browser production previews are not created automatically and never receive production secrets.
 
 If a free Cloudflare account is later selected, review an auditable change before enabling the proxy: export DNS and rules, use Full (strict) TLS, bypass cache for all API and auth/token-bearing routes, preserve the SPA's no-cache policy, and verify free WAF rule availability. Authenticate or restrict origin access before claiming that Cloudflare is an enforced edge; direct-origin bypass remains possible otherwise. Preserve LiveKit's separate media-port reachability. No account-dependent edge control is marked implemented by this package.

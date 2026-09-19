@@ -23,7 +23,6 @@ import reactor.core.publisher.Mono;
 
 /** The WebFilter limits socket identity before JWT work; the GlobalFilter limits verified users afterward. */
 public final class RequestAdmissionFilter implements WebFilter, GlobalFilter, Ordered {
-    private static final String REQUEST_ID = RequestAdmissionFilter.class.getName() + ".requestId";
     private final RequestBudgetStore store;
     private final SecretKeySpec key;
     private final MeterRegistry metrics;
@@ -45,16 +44,16 @@ public final class RequestAdmissionFilter implements WebFilter, GlobalFilter, Or
         String path = exchange.getRequest().getPath().pathWithinApplication().value();
         if (!path.startsWith("/api/v1/") || path.equals("/api/v1/auth/health")
                 || HttpMethod.OPTIONS.equals(exchange.getRequest().getMethod())) return chain.filter(exchange);
-        String requestId = UUID.randomUUID().toString();
-        exchange.getAttributes().put(REQUEST_ID, requestId);
-        exchange.getResponse().getHeaders().set("X-Request-Id", requestId);
         var policy = RequestBudgetPolicy.classify(exchange.getRequest().getMethod(), path);
         String client = exchange.getAttribute(ProxyBoundaryFilter.CLIENT_IP_ATTRIBUTE);
         if (client == null) return reject(exchange, policy, HttpStatus.SERVICE_UNAVAILABLE, "ADMISSION_UNAVAILABLE", 5);
         var budgets = new ArrayList<RequestBudgetStore.Budget>();
         // Recovery has an independent allowance; ordinary traffic cannot consume it.
         if (!policy.allowsBoundedRecovery()) budgets.add(budget("ip:all", client, 1200));
-        budgets.add(budget("ip:" + policy.name(), client, policy.ipLimit));
+        boolean emailAlternative = "email".equals(exchange.getRequest().getHeaders().getFirst("X-Chanter-Verification-Method"));
+        int ipLimit = emailAlternative && policy == RequestBudgetPolicy.REGISTRATION ? 3
+                : emailAlternative && policy == RequestBudgetPolicy.RECOVERY ? 6 : policy.ipLimit;
+        budgets.add(budget("ip:" + policy.name(), client, ipLimit));
         return admit(exchange, policy, budgets).flatMap(allowed -> allowed ? chain.filter(exchange) : Mono.empty());
     }
 
@@ -109,7 +108,7 @@ public final class RequestAdmissionFilter implements WebFilter, GlobalFilter, Or
         response.getHeaders().setCacheControl("no-store");
         response.getHeaders().set("Retry-After", Long.toString(Math.max(1, retry)));
         response.getHeaders().set("X-Content-Type-Options", "nosniff");
-        String requestId = exchange.getAttributeOrDefault(REQUEST_ID, UUID.randomUUID().toString());
+        String requestId = exchange.getAttributeOrDefault(ProxyBoundaryFilter.REQUEST_ID_ATTRIBUTE, UUID.randomUUID().toString());
         String body = "{\"code\":\"" + code + "\",\"message\":\"Please wait before trying again.\",\"requestId\":\"" + requestId + "\"}";
         return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8))));
     }

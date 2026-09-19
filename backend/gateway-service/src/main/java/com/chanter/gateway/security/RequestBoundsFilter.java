@@ -62,7 +62,14 @@ public final class RequestBoundsFilter implements GlobalFilter, Ordered {
                 : exchange.getAttributeOrDefault(ProxyBoundaryFilter.CLIENT_IP_ATTRIBUTE, "unknown"));
         return Mono.defer(() -> {
             if (!capacity.tryAcquire()) return reject(exchange, HttpStatus.SERVICE_UNAVAILABLE, "REQUEST_CAPACITY");
-            int userMaximum = socket ? 4 : switch (policy) { case UPLOAD -> 1; case AI, DOWNLOAD -> 2; case READ -> 12; default -> 4; };
+            int userMaximum = socket ? 4 : switch (policy) {
+                case UPLOAD -> 1;
+                case AI, DOWNLOAD -> 2;
+                case READ -> 12;
+                // Browsers and shared networks can race signup requests; the shared minute budget still applies.
+                case AUTH, REGISTRATION -> 8;
+                default -> 4;
+            };
             if (!claimUser(identity, userMaximum)) {
                 capacity.release();
                 return reject(exchange, HttpStatus.SERVICE_UNAVAILABLE, "REQUEST_CAPACITY");

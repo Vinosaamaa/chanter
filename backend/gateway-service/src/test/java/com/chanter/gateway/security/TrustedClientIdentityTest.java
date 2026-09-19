@@ -35,4 +35,12 @@ class TrustedClientIdentityTest {
         assertThatThrownBy(() -> new TrustedClientIdentity(List.of("proxy.internal")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test void mappedIpv6SocketsAndLiteralProxyAddressesUseTheSameIdentity() throws Exception {
+        byte[] mapped = io.netty.util.NetUtil.createByteArrayFromIpAddressString("::ffff:172.30.45.2");
+        var socket = new InetSocketAddress(java.net.Inet6Address.getByAddress(null, mapped, -1), 1234);
+        assertThat(identities.resolve(socket, List.of("198.51.100.9"))).isEqualTo("198.51.100.9");
+        assertThat(new TrustedClientIdentity(List.of("::ffff:172.30.45.2"))
+                .resolve(new InetSocketAddress("172.30.45.2", 1234), List.of("198.51.100.9"))).isEqualTo("198.51.100.9");
+    }
 }

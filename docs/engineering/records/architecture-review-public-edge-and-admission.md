@@ -10,7 +10,7 @@ capabilityIds: ["production-deployment"]
 createdAt: 2026-09-18
 reconstructed: false
 confidence: high
-unknowns: ["Real Redis multi-instance hosted acceptance", "Production wiring and body/concurrency/browser policy completion", "Optional bot-proof integration", "Actual provider firewall and public edge verification"]
+unknowns: ["Final exact-head hosted acceptance and browser screenshot inspection", "Actual provider firewall, challenge and public edge verification"]
 modules: ["gateway-service", "production-edge"]
 interfaces: ["trusted-forwarded-identity", "shared-request-admission"]
 seams: ["proxy-to-gateway", "authenticated-user-to-request-budget"]
@@ -28,7 +28,7 @@ verification: {"state":"verified", "evidenceRefs":["backend/gateway-service/src/
 visibility: public-safe
 publicationEligibility: eligible
 issue: 253
-pr: null
+pr: 328
 release: null
 run: null
 ---
@@ -62,3 +62,4 @@ admission tests pass. Real multi-instance Redis proof, production configuration,
 bounded bodies/concurrency, browser policies, optional bot proof and actual
 provider tests remain incomplete. This record is a design decision, not launch
 acceptance.
+
