@@ -38,3 +38,10 @@ defines wildcard matching. Actual native export retains the known instrument
 with all 600 samples after private dimension removal. The repeated initial
 incremental-backup finding is covered by the pinned-source and fresh-staging
 evidence above; it does not justify a behavior change.
+
+Staging exposed a regression in the global tracing-header remediation: Caddy's
+`request_header` directive takes individual fields, not a block. The pinned
+parser rejects the old block and accepts the corrected directives. Its actual
+adapted route tree places all three deletions ahead of every public handler.
+The release smoke now parses the packaged proxy configuration before startup.
+This closes the parser gap; complete staging must still pass before merge.

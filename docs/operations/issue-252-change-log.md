@@ -151,3 +151,11 @@ business metrics/error tracking/tested alerts and #332 owns object protection,
 current deletion-journal replication and full application restore. Parent #252
 stays open through those children and provider acceptance; PR329 is the runtime,
 private telemetry and database/configuration recovery foundation.
+
+Release staging then caught an invalid Caddy block introduced by the global
+tracing-header change. The real pinned parser reproduces the startup failure.
+Three individual `request_header` directives fix it; adapted configuration proves
+their unconditional deletion runs before both API and LiveKit handlers. Release
+smoke now invokes the packaged Caddy parser before starting the application, so
+invalid proxy syntax fails immediately. All 51 deployment tests pass locally;
+fresh staging on both architectures remains the acceptance gate.

@@ -60,6 +60,9 @@ compose=(docker compose --project-name "$project" -f "$compose_file")
 cleanup() { "${compose[@]}" down --volumes --remove-orphans; }
 trap cleanup EXIT
 "${compose[@]}" config --quiet
+# Parse the actual packaged proxy configuration before booting the application.
+# Adapt does not start a listener or provision certificates.
+"${compose[@]}" run --rm --no-deps --entrypoint caddy frontend adapt --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 "${compose[@]}" up -d --wait --wait-timeout 180 postgres redis
 export RESTIC_REPOSITORY="$state/configuration-repository"
 export RESTIC_PASSWORD="$(openssl rand -hex 32)"
