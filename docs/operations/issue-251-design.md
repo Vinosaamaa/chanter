@@ -1,0 +1,55 @@
+# Account data lifecycle
+
+Repository: Chanter. Owning issue: #251. Branch: `codex/251-account-lifecycle`. One draft pull request will contain the implementation and Engineering receipt. The starting accepted main is `935f6f849ae72c3682ed26d033aa543a9be0b4d8`. #249 owns moderation authority and auth migrations V5–V7; this lane starts at auth V8. #247 owns agent V13; lifecycle agent migrations start at V14. Final integration follows acceptance of both dependencies.
+
+## Outcome and acceptance
+
+An authenticated person can export their data in a machine-readable archive, see which service supplied each section, and download it through a private expiring route. Account and Study Server deletion show each downstream step and any retention or replication condition that prevents completion. A confirmation requires a live session created by a recent login. Passive refresh cannot renew that proof. Owned Study Servers require an explicit transfer or deletion choice before account removal can proceed.
+
+The implementation must prove private export access, actual cross-service coverage, transaction rollback, duplicate delivery, process restart, late-write fencing, source/index/file disappearance, and truthful failed or pending states. Operator recovery uses existing durable-event replay, not direct database edits. The issue remains open through accepted-main and deployed verification, real support/legal review, and external retention proof.
+
+## Data ownership map
+
+| Owner | Personal records and export boundary | Deletion boundary |
+| --- | --- | --- |
+| Auth | Profile, linked provider names, session metadata, the person's lifecycle jobs. Never passwords, token hashes, reset links, provider tokens, or operator-only evidence. | Close login and live session authority first; redact identity and credentials after prerequisites. Keep minimal terminal authority and restricted retention evidence. |
+| Community | Memberships, owned Study Servers/Courses/Cohorts, invitations, authored announcements/events, participation, and actual plan records. Free-beta plan state is not an invoice. | Resolve ownership explicitly; fence membership/creation writes; preserve descendant identifiers until all participant receipts exist. |
+| Message | The person's authored content, support questions/replies, eligible direct-message history, friend requests and blocks. Exclude third-party private and operator-only evidence. | Redact or remove scoped rows and revoke conversation access; preserve only explicit preservation holds. Publish existing search deletion events. |
+| Media | Uploaded-file metadata and available, authorized clean bytes. Explain unavailable/quarantined content rather than exporting unsafe or inaccessible files. | Reuse durable resource deletion state and object deletion retry. Object/index disappearance is a required receipt, not inferred from an HTTP acknowledgement. |
+| Agent | The person's questions, saved answers, feedback, and usage/provenance. No provider credentials or another learner's prompts. | Redact snapshots and answers, invalidate pending native work, and reuse resource terminal fences. Preserve conservative attempt authority without source text. |
+| Search | Derived documents only; identify the source and avoid claiming an independent canonical copy. | Terminal scope exclusion must precede asynchronous index removal and reject stale updates. |
+| Notification | Notifications addressed to the person and delivery metadata. | Remove scoped content and fence delayed deliveries. |
+| Analytics and realtime | Currently derived/live state rather than separate durable personal databases; report actual coverage explicitly. | Revoke live access, terminate presence/calls where owned, and invalidate derived/cache state. |
+
+## Export boundary
+
+Auth owns the public job and download authority. Source services own explicit projections of their data. Queries name every exported field and bind the account identifier; neither a browser nor an event supplies SQL, table names, filenames, or storage keys. The archive uses stable generated entry paths, UTF-8 JSON Lines and a manifest with schema version, source capture times, counts, digests, omissions, and expiry. It is a collection of service snapshots, not a distributed atomic database snapshot.
+
+Use bounded chunks and streaming archive output so one export cannot load an account's entire history into memory. Snapshot pages remain private in their owning database and expire after 24 hours. A job is downloadable only after every required participant has a committed receipt. Partial, oversized, expired, or failed work is visible and never labeled complete. Concurrent export and deletion serialize through terminal account authority; deleting an account invalidates pending exports and download access. Active-job limits and expiry bound retained work.
+
+The existing durable outbox transports fixed lifecycle requests and receipts. The existing consumer transaction commits each source snapshot or deletion step with its receipt event. Duplicate delivery is idempotent. The existing operator replay mechanism is the only delivery retry mechanism. Timed cleanup only expires private snapshots and completed job payloads; it does not start a parallel retry queue.
+
+## Deletion and preservation
+
+A terminal account or Study Server marker closes access before fan-out. Each participant retains that authority while cleanup progresses, rejecting delayed events and writes that would recreate data. The coordinator stores service-specific progress, safe error codes, preservation holds, and the revision needed for off-host recovery. Human confirmation explains irreversible steps; no undeclared grace period or restoration promise is implied.
+
+Preservation holds are explicit operator actions under #249 authority, with scope, reason, review/expiry information, and immutable audit. A held payload stays restricted and is reported as retained; it must not remain reachable through normal APIs. Billing retention applies only to records that actually exist. No statutory retention period or legal basis is invented by this implementation.
+
+## Recovery journal contract
+
+Auth owns an append-only terminal journal for ACCOUNT, STUDY_SERVER and RESOURCE targets. Entries contain only a monotonic committed revision, event UUID, validated target UUID/kind, terminal action and timestamp. Bounded private export pins an upper watermark and includes a deterministic digest. Reapply is idempotent and reports each participant's committed watermark. A restore invalidates all browser sessions and pending native requests rather than replaying every historic logout.
+
+#252 owns external journal storage/checkpointing and restore orchestration. A current off-host checkpoint must precede a claim that deletion is complete. Missing replication remains a visible pending condition. Catastrophic host loss cannot recover newer tombstones from a lost source database. Recovery remains isolated and nonpublic until the current journal has been validated and reapplied everywhere; a backup alone never proves preservation of later deletions.
+
+## Retention and legal truthfulness
+
+Production backup policy currently keeps two successful weekly pgBackRest full chains and required WAL, with daily incremental backups. Expiry depends on successful replacement and retention execution; it is not a guaranteed fourteen-day deletion deadline. Restic configuration archives have no completed chain-aware pruning yet. Real provider operation, recovery point and recovery time remain unverified. These are explicit deployment facts and gaps, not guarantees.
+
+Existing placeholder mailboxes, unverified domains, and unsupported effective/review dates must not be presented as working legal/support contacts. Publish only deployment-provided, reviewed contact and disclosure configuration. When missing, say that the deployment has not supplied it. Describe actual cookies, analytics and AI/provider behavior without claiming legal approval. Real legal review and support ownership remain external launch gates.
+
+## Implementation order
+
+1. Add the bounded export/snapshot contract, auth job authority and real source projections with transaction and access tests.
+2. Add terminal journal and participant lifecycle receipts, integrating #249 live authority and #246/#247 deletion fences after their accepted commits.
+3. Add ownership resolution, recoverable deletion progress, preservation and retention automation, then private export/download and mobile account controls.
+4. Verify cross-service failure/replay, stale writes, binary/index disappearance, restore reapply, current legal disclosures and actual browser pixels. Publish one draft PR with full CI/security/review and retain external gates explicitly.
