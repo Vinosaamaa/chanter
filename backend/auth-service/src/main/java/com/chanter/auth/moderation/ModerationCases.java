@@ -1,6 +1,8 @@
 package com.chanter.auth.moderation;
 
 import com.chanter.common.auth.ReportEvidence;
+import com.chanter.auth.application.AuthUserRepository;
+import com.chanter.auth.application.EmailSender;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -9,6 +11,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -24,11 +27,19 @@ public class ModerationCases {
     private final ModerationAudit audit;
     private final ObjectMapper mapper;
     private final TransactionTemplate tx;
+    private final ModerationRestrictions restrictions;
+    private final AuthUserRepository users;
+    private final EmailSender email;
+    private final String publicBaseUrl;
 
     public ModerationCases(JdbcTemplate jdbc,ReportEvidenceClient sources,OperatorAccess operators,
-            ModerationAudit audit,ObjectMapper mapper,PlatformTransactionManager transactions) {
+            ModerationAudit audit,ObjectMapper mapper,PlatformTransactionManager transactions,
+            ModerationRestrictions restrictions,AuthUserRepository users,EmailSender email,
+            @Value("${chanter.public-base-url:http://localhost:5173}") String publicBaseUrl) {
         this.jdbc=jdbc; this.sources=sources; this.operators=operators; this.audit=audit; this.mapper=mapper;
         this.tx=new TransactionTemplate(transactions);
+        this.restrictions=restrictions; this.users=users; this.email=email;
+        this.publicBaseUrl=publicBaseUrl.replaceAll("/+$", "");
     }
 
     public Report submit(UUID reporter,String type,UUID source,String reason) {
@@ -68,7 +79,7 @@ public class ModerationCases {
         var notes=jdbc.query("SELECT id,actor_id,body,created_at FROM moderation_notes WHERE report_id=? ORDER BY created_at,id LIMIT 100",
                 (rs,index)->new Note(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getString(3),
                         rs.getObject(4,OffsetDateTime.class).toInstant()),id);
-        return new Detail(row.report(),row.reporter(),row.assignedTo(),decode(row.snapshot()),notes);
+        return new Detail(row.report(),row.reporter(),row.assignedTo(),decode(row.snapshot()),notes,restrictions.list(id));
     }
 
     @Transactional
@@ -125,6 +136,55 @@ public class ModerationCases {
         return row;
     }
 
+    @Transactional
+    public void restrict(String authorization,String verification,UUID report,UUID operation,String type,UUID target,
+            String reason,Instant expires,String confirmation,UUID correlation) {
+        var operator=operators.requireStepUp(authorization,verification);
+        var row=accessible(report,operator);
+        if(row.report().status().equals("RESOLVED"))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Resolved reports cannot receive new restrictions");
+        var evidence=decode(row.snapshot());
+        requireActionScope(operator,evidence,type,target,confirmation);
+        restrictions.add(operation,report,type,target,operator.userId(),reason,expires,correlation);
+        notifyRestriction(type.equals("USER") ? target : evidence.authorId(), operation,
+                "Chanter moderation restriction", "A " + type.toLowerCase(java.util.Locale.ROOT)
+                        + " restriction was applied until " + expires + ".\nReason: " + reason);
+    }
+
+    @Transactional
+    public void reinstate(String authorization,String verification,UUID report,UUID restriction,String reason,
+            String confirmation,UUID correlation) {
+        var operator=operators.requireStepUp(authorization,verification);
+        var row=accessible(report,operator);
+        var evidence=decode(row.snapshot());
+        var record=restrictions.get(report,restriction);
+        requireActionScope(operator,evidence,record.type(),record.targetId(),confirmation);
+        if(restrictions.revoke(report,restriction,operator.userId(),reason,correlation)) {
+            notifyRestriction(record.type().equals("USER") ? record.targetId() : evidence.authorId(), restriction,
+                    "Chanter moderation review", "Restriction " + restriction + " was lifted.\nReason: " + reason
+                            + "\nOther active restrictions, if any, still apply.");
+        }
+    }
+
+    private static void requireActionScope(OperatorAccess.Operator operator,ReportEvidence evidence,
+            String type,UUID target,String confirmation) {
+        ModerationRestrictions.requireType(type);
+        if(target==null || !target.toString().equals(confirmation))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Confirm the exact target ID");
+        boolean exactSource=type.equals(evidence.type()) && target.equals(evidence.id());
+        boolean author=type.equals("USER") && target.equals(evidence.authorId());
+        if(!exactSource && !author)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Action must target this case's preserved source or author");
+        if(type.equals("USER") || type.equals("STUDY_SERVER")) operator.requireAdmin();
+    }
+
+    private void notifyRestriction(UUID recipient,UUID restriction,String subject,String message) {
+        if(recipient==null) return;
+        users.findById(recipient).filter(user -> user.emailVerified()).ifPresent(user ->
+                email.send(user.email(),subject,message+"\n\nRestriction reference: "+restriction
+                        +"\nRequest an appeal link: "+publicBaseUrl+"/appeal?restriction="+restriction));
+    }
+
     private String encode(ReportEvidence evidence) {
         try{return mapper.writeValueAsString(evidence);}catch(JsonProcessingException invalid){throw new IllegalStateException("Could not preserve report evidence",invalid);}
     }
@@ -139,6 +199,7 @@ public class ModerationCases {
     private record Row(Report report,UUID reporter,UUID assignedTo,String snapshot){}
     public record Report(UUID id,String targetType,UUID targetId,String reason,String status,String resolution,Instant createdAt){}
     public record Note(UUID id,UUID actorId,String body,Instant createdAt){}
-    public record Detail(Report report,UUID reporterId,UUID assignedTo,ReportEvidence evidence,List<Note> notes){}
+    public record Detail(Report report,UUID reporterId,UUID assignedTo,ReportEvidence evidence,List<Note> notes,
+            List<ModerationRestrictions.Restriction> restrictions){}
     public record QueueItem(Report report,UUID assignedTo){}
 }

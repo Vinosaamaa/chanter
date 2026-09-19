@@ -3,6 +3,8 @@ package com.chanter.auth.moderation;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -63,4 +65,41 @@ public class ModerationRestrictions {
     static void requireType(String type) {
         if (!TARGET_TYPES.contains(type)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported moderation target");
     }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Restriction get(UUID report, UUID id) {
+        return jdbc.query("SELECT * FROM moderation_restrictions WHERE report_id=? AND id=? FOR UPDATE",
+                (rs, row) -> restriction(rs), report, id).stream().findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restriction not found"));
+    }
+
+    public List<Restriction> list(UUID report) {
+        return jdbc.query("SELECT * FROM moderation_restrictions WHERE report_id=? ORDER BY starts_at DESC,id LIMIT 100",
+                (rs, row) -> restriction(rs), report);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean revoke(UUID report, UUID id, UUID actor, String reason, UUID correlation) {
+        OperatorRoles.requireReason(reason);
+        Restriction record = get(report, id);
+        if (record.revokedAt() != null) return false;
+        Instant now = Instant.now();
+        boolean previouslyRestricted = isRestricted(record.type(), record.targetId(), now);
+        jdbc.update("UPDATE moderation_restrictions SET revoked_at=? WHERE id=?", now.atOffset(ZoneOffset.UTC), id);
+        boolean stillRestricted = isRestricted(record.type(), record.targetId(), now);
+        audit.append(actor, "RESTRICTION_REVOKED", record.type()+":"+record.targetId(), reason, correlation,
+                previouslyRestricted ? "RESTRICTED" : "UNRESTRICTED", stillRestricted ? "RESTRICTED" : "UNRESTRICTED");
+        return true;
+    }
+
+    private static Restriction restriction(java.sql.ResultSet row) throws java.sql.SQLException {
+        OffsetDateTime revoked = row.getObject("revoked_at", OffsetDateTime.class);
+        return new Restriction(row.getObject("id", UUID.class), row.getString("target_type"),
+                row.getObject("target_id", UUID.class), row.getString("reason"),
+                row.getObject("starts_at", OffsetDateTime.class).toInstant(),
+                row.getObject("expires_at", OffsetDateTime.class).toInstant(), revoked == null ? null : revoked.toInstant());
+    }
+
+    public record Restriction(UUID id, String type, UUID targetId, String reason, Instant startsAt,
+            Instant expiresAt, Instant revokedAt) { }
 }

@@ -40,6 +40,8 @@ class JwtAuthenticationGlobalFilterPublicAuthPathsTest {
                 "/api/v1/auth/forgot-password",
                 "/api/v1/auth/reset-password",
                 "/api/v1/auth/verify-email",
+                "/api/v1/auth/moderation-appeals/request",
+                "/api/v1/auth/moderation-appeals",
                 "/api/v1/auth/oauth/providers",
                 "/api/v1/auth/oauth/google/start",
                 "/api/v1/auth/oauth/google/callback"
@@ -56,6 +58,7 @@ class JwtAuthenticationGlobalFilterPublicAuthPathsTest {
     void protectedAuthPathsStillRequireJwt() {
         assertThat(JwtAuthenticationGlobalFilter.isPublicPath("/api/v1/auth/me")).isFalse();
         assertThat(JwtAuthenticationGlobalFilter.isPublicPath("/api/v1/auth/profiles/query")).isFalse();
+        assertThat(JwtAuthenticationGlobalFilter.isPublicPath("/api/v1/auth/moderation-appeals/admin")).isFalse();
     }
 
     @ParameterizedTest
