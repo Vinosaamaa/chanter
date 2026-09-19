@@ -10,7 +10,7 @@ capabilityIds: ["resource-ingestion"]
 createdAt: 2026-09-18
 reconstructed: false
 confidence: high
-unknowns: ["Final production union and exact-head review gates remain pending"]
+unknowns: ["Combined telemetry memory proof and exact-head integrated review gates remain pending"]
 modules: ["agent-service", "media-service"]
 interfaces: ["authorized-resource-vector-query", "embedding-version-migration"]
 seams: ["current-resource-scope", "datastore-ranking", "generation-checked-publication"]
@@ -40,4 +40,4 @@ The small real local model runs in process as the free default. The extended nat
 
 Candidate versions are stored alongside the active version. Activation requires current chunk coverage; rollback requires retained complete coverage. Parsing/model calls remain outside resource locks, and final writes retain the #246 generation/chunk identity fence. Deletion removes every model's content. V13 follows #316's V11/V12; production pgvector installation requires the database owner before unprivileged agent migrations.
 
-Native PostgreSQL and local tests establish asset integrity, real paraphrase separation, authorized SQL ranking, model-specific indexes, durable migration progress and concurrent deletion/rollback behavior. The actual image completed 100,000-chunk retrieval, full-window inference and four-client load below its memory allocation on both architectures, with captured query plans and valid indexes. Final production wiring and exact-head integrated review remain required. The fixture reports 10/10 top-ranked sources and 8/10 confident answers without lowering the threshold. See the change log for evidence and limits; this record does not close #247.
+Native PostgreSQL and local tests establish asset integrity, real paraphrase separation, authorized SQL ranking, model-specific indexes, durable migration progress and concurrent deletion/rollback behavior. The actual image completed 100,000-chunk retrieval, full-window inference and four-client load below its memory allocation on both architectures, with captured query plans and valid indexes. The accepted #252 union preserves database bootstrap and telemetry and stamps epoch 8; its combined memory/export proof and exact-head integrated review remain required. The fixture reports 10/10 top-ranked sources and 8/10 confident answers without lowering the threshold. See the change log for evidence and limits; this record does not close #247.

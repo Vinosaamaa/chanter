@@ -8,6 +8,8 @@ The model runs one inference at a time on one native thread, truncates at 256 to
 
 V13 requires pgvector in the agent database before Flyway runs. The cluster owner creates the extension; the application role does not receive superuser privileges. V13 discards old hashing coordinates and preserves current chunks for rebuilding. Epoch 8 prevents downgrade to a binary that expects the former BYTEA schema. Current resource scope, source checksum and live viewer approval remain required regardless of the vector version.
 
+The accepted production runtime installs the extension before unprivileged migrations, including existing volumes. Deployment records its durable migration floor before the first SQL operation. A failed first deployment cannot bypass epoch 8 merely because it has no successful-release receipt. A matching historical release can still initialize an actually empty environment. Model rollback within V13 uses retained complete coordinates and never reverses the schema.
+
 ## Optional embeddings API
 
 Operators may configure up to two OpenAI-compatible embeddings endpoints through `chanter.embeddings.api-models`. Each entry requires `id`, `base-url`, `model`, `revision`, `dimensions`, and an optional `api-key` supplied through the deployment secret configuration. The immutable ID identifies provider, model revision, dimensions and normalization; never reuse it for changed model behavior. Use an upstream versioned model name and a new local ID when its revision changes. Responses must identify the configured model, contain one indexed result with the exact dimensions, and contain finite nonzero coordinates. HTTPS is required except for an explicit loopback endpoint. Response size and time are bounded; no other provider is tried on failure.

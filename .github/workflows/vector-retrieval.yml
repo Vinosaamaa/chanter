@@ -46,7 +46,7 @@ jobs:
         run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service -am test -Dtest=OnnxEmbeddingClientTest,PostgresScopedVectorSearchTest,PostgresEmbeddingVersionStoreTest,PostgresEmbeddingRebuildJobsTest -Dsurefire.failIfNoSpecifiedTests=false
       - name: Package actual agent and measure scoped semantic retrieval under its production memory limit
         run: |
-          scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service -am package -DskipTests
+          scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service,telemetry -am package -DskipTests
           bash scripts/vector/runtime-proof.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
