@@ -69,6 +69,8 @@ test('restore validates encrypted configuration before new volumes and never aut
   assert.equal(JSON.stringify(calls).includes('private-fixture-secret'), false);
   const server = calls.find(args => args.includes('--entrypoint'));
   assert.ok(server.includes('archive_mode=off')); assert.ok(server.includes('listen_addresses='));
+  assert.equal(server.some(value => value.startsWith('max_connections=')), false,
+    'WAL replay must not lower connection capacity below the recorded primary setting');
   assert.deepEqual(calls.at(-1), ['network', 'disconnect', result.network, result.container]);
 });
 

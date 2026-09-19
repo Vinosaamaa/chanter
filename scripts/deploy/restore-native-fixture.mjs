@@ -54,6 +54,14 @@ if (operation === 'prepare') {
   } catch (error) {
     const receipt = JSON.parse(fs.readFileSync(path.join(state, 'operator-restore/recovery.json')));
     console.error(`Native operator recovery failed during ${receipt.phase}`);
+    try {
+      const logs = execFileSync('docker', ['logs', '--tail', '100', receipt.container], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      console.error(JSON.stringify({ nativeRecoveryDiagnostics: {
+        sourceConnectionsHigher: /max_connections.*lower|insufficient parameter settings/s.test(logs),
+        missingRecoveryTarget: /recovery ended before configured recovery target was reached/.test(logs),
+        permissionFailure: /Permission denied/.test(logs),
+      } }));
+    } catch { console.error('Native recovery container diagnostics unavailable'); }
     throw error;
   }
   assert.equal(result.publicCutoverAllowed, false);

@@ -90,7 +90,7 @@ export async function restoreIsolated({ bundleDir, settings, destination, enviro
     run(['run', '-d', '--name', id, '--label', `chanter.recovery=${id}`, ...constrained,
       '--network', receipt.network, ...volume, '--entrypoint', 'postgres', release.images.postgres,
       '-D', '/var/lib/postgresql/data', '-c', 'archive_mode=off', '-c', 'listen_addresses=',
-      '-c', 'shared_buffers=192MB', '-c', 'max_connections=20', '-c', 'work_mem=2MB']);
+      '-c', 'shared_buffers=192MB', '-c', 'work_mem=2MB']);
     let ready = false;
     const deadline = Date.now() + 120000;
     for (let attempt = 0; attempt < 120 && Date.now() < deadline && !ready; attempt++) {
