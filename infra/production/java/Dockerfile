@@ -25,7 +25,7 @@ RUN if [ "$MODULE" = agent-service ]; then \
 
 FROM ${JRE_IMAGE}
 WORKDIR /app
-ENV JDK_JAVA_OPTIONS="-Donnxruntime.native.path=/app/native -DRUST_LIBRARY_PATH=/app/native"
+ENV JDK_JAVA_OPTIONS="-Donnxruntime.native.path=/app/native -DRUST_LIBRARY_PATH=/app/native/libtokenizers.so"
 RUN groupadd --gid 10001 chanter && useradd --uid 10001 --gid 10001 --no-create-home chanter && \
     mkdir /app/resources /app/media-spool && chown 10001:10001 /app/resources /app/media-spool && \
     chmod 700 /app/resources /app/media-spool

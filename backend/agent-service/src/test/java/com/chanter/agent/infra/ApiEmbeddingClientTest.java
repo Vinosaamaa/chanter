@@ -24,12 +24,23 @@ class ApiEmbeddingClientTest {
             var client=new ApiEmbeddingClient("api-v1",URI.create("http://127.0.0.1:"+server.getAddress().getPort()),
                     "fixture-key","stable-model","immutable-revision",8);
             assertThat(client.embed("Evidence query")).containsExactly(1,0,0,0,0,0,0,0);
+            var prefixed=new ApiEmbeddingClient("api-prefixed",URI.create("http://127.0.0.1:"+server.getAddress().getPort()+"/v1"),
+                    "fixture-key","stable-model","immutable-revision",8);
+            assertThat(prefixed.embed("Evidence query")).containsExactly(1,0,0,0,0,0,0,0);
             body.set("{\"model\":\"other-model\",\"data\":[{\"index\":0,\"embedding\":[1,0,0,0,0,0,0,0]}]}");
             assertThatThrownBy(()->client.embed("Evidence query")).isInstanceOf(IllegalStateException.class);
             body.set("{\"model\":\"stable-model\",\"data\":[{\"index\":0,\"embedding\":[1,0]}]}");
             assertThatThrownBy(()->client.embed("Evidence query")).isInstanceOf(IllegalStateException.class);
             body.set("{\"model\":\"stable-model\",\"data\":[{\"index\":0,\"embedding\":[0,0,0,0,0,0,0,0]}]}");
             assertThatThrownBy(()->client.embed("Evidence query")).isInstanceOf(IllegalStateException.class);
+            body.set(" ".repeat(65537));
+            assertThatThrownBy(()->client.embed("Evidence query")).isInstanceOf(IllegalStateException.class);
         } finally {server.stop(0);}
+    }
+    @Test void credentialsAndNonTlsRemoteEndpointsAreRejected() {
+        for(String endpoint:java.util.List.of("http://remote.example/v1","https://user:password@remote.example/v1","https://remote.example/v1?key=fixture","/relative")) {
+            assertThatThrownBy(()->new ApiEmbeddingClient("api",URI.create(endpoint),null,"stable","v1",384))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 }

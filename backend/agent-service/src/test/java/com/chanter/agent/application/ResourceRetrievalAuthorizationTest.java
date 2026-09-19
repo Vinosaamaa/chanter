@@ -94,6 +94,10 @@ class ResourceRetrievalAuthorizationTest {
         assertThatThrownBy(() -> retrieval.retrieve("question", course, viewer, Set.of(resource), 5)).isInstanceOf(ResponseStatusException.class);
         verifyNoInteractions(embeddingClient, chunks, embeddings);
     }
+    @Test void tokenlessQueryHasNoSemanticEvidence() {
+        assertThat(retrieval.retrieve("?! ...",course,viewer,Set.of(resource),5)).isEmpty();
+        verifyNoInteractions(embeddingClient,embeddings);
+    }
 
     @Test void datastoreReceivesTheLiveAuthorizedScopeAndSourceVersion() {
         assertThat(retrieval.retrieve("question", course, viewer, Set.of(resource), 5)).hasSize(1);

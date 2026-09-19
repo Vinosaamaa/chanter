@@ -28,6 +28,7 @@ public class VectorRetrievalService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Course, viewer and query are required");
         }
         if(grantedResourceIds==null || grantedResourceIds.isEmpty()) return List.of();
+        if(query.codePoints().noneMatch(Character::isLetterOrDigit)) return List.of();
         var authorized=new ArrayList<JdbcVectorSearch.AuthorizedResource>();
         for(var resource:resources.listAiApprovedCourseResources(courseId,viewerUserId)) {
             if(!resource.aiApproved() || !courseId.equals(resource.courseId()) || !grantedResourceIds.contains(resource.id())) continue;

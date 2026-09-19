@@ -8,9 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * Deterministic local embedder for CI and default local product stacks.
- * Uses a hashing / bag-of-words projection into a fixed unit vector — not a neural model.
- * Swap to {@code chanter.embeddings.provider=ollama} for real local embeddings.
+ * Deterministic test-profile fixture. Production configuration rejects this provider.
  */
 @Component
 @org.springframework.context.annotation.Profile("test")

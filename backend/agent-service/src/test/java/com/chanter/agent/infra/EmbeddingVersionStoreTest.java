@@ -70,4 +70,17 @@ class EmbeddingVersionStoreTest {
         assertThat(jdbc.sql("SELECT COUNT(*) FROM resource_chunk_embeddings WHERE resource_id=:id")
                 .param("id",resource).query(Integer.class).single()).isZero();
     }
+    @Test void anotherRotationMustDiscardOldRetainedCoordinatesExplicitly() {
+        String original=versions.active().id();
+        versions.register(new EmbeddingModel("rotation-one","test","fixture","r1",8));
+        versions.register(new EmbeddingModel("rotation-two","test","fixture","r2",8));
+        versions.stage("rotation-one");versions.activate("rotation-one");
+        versions.stage("rotation-two");
+        assertThatThrownBy(()->versions.activate("rotation-two")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(versions::rollback).isInstanceOf(IllegalStateException.class);
+        versions.discard(original);versions.activate("rotation-two");
+        assertThat(versions.state().previous()).isEqualTo("rotation-one");
+        versions.rollback();versions.discard("rotation-two");
+        versions.stage(original);versions.activate(original);versions.discard("rotation-one");
+    }
 }
