@@ -40,7 +40,7 @@ public final class DurableOutbox {
         if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Outbox event requires the source transaction");
         }
-        if (!java.util.Set.of("search", "notification", "agent").contains(destination)) {
+        if (!java.util.Set.of("search", "notification", "agent", "message").contains(destination)) {
             throw new IllegalArgumentException("Unknown event destination");
         }
         UUID id = UUID.randomUUID();

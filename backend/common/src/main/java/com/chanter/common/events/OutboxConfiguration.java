@@ -54,10 +54,12 @@ public class OutboxConfiguration {
             @Value("${SEARCH_SERVICE_URL:http://localhost:8088}") String search,
             @Value("${NOTIFICATION_SERVICE_URL:http://localhost:8089}") String notification,
             @Value("${AGENT_SERVICE_URL:http://localhost:8085}") String agent,
+            @Value("${MESSAGE_SERVICE_URL:http://localhost:8083}") String message,
             @Value("${chanter.internal-service-token}") String token) {
         return new DispatchSchedule(new OutboxDispatcher(outbox, mapper, Map.of(
                 "search", URI.create(search + "/api/v1/internal/events"),
                 "agent", URI.create(agent + "/api/v1/internal/events"),
+                "message", URI.create(message + "/api/v1/internal/events"),
                 "notification", URI.create(notification + "/api/v1/internal/events")), token));
     }
 

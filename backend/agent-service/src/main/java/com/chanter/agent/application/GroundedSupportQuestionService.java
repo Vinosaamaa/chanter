@@ -261,14 +261,9 @@ public class GroundedSupportQuestionService {
                 c.resourceId(), c.resourceTitle(), c.excerpt())).toList();
         var answer = new StudyAssistantAnswer(UUID.randomUUID(), questionId, channelId, evidence.studyServerId(), userId,
                 evidence.question(), result.answerBody(), result.confidence(), result.handoffRecommended(), sources, clock.instant());
-        var saved = answerPersistenceService.saveAnswer(answer,
+        return answerPersistenceService.saveNativeAnswer(answer,
                 result.handoffRecommended() ? InvocationType.LOW_CONFIDENCE_HANDOFF : InvocationType.GROUNDED_ANSWER,
-                "codex-native", model, true);
-        try { supportQuestionClient.updateStatus(channelId, questionId, userId, statusForConfidence(result.confidence())); }
-        catch (ResponseStatusException unavailableStatus) {
-            // The authorized answer is already durable. Status reconciliation must not turn it into a failed generation.
-        }
-        return saved;
+                model);
     }
 
     public record NativeEvidence(UUID studyServerId, UUID courseId, String question, List<SourceCitation> citations) {

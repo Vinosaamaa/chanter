@@ -1,8 +1,10 @@
 # Issue 316 implementation record
 
-Status: independent native developer package in progress, not a signed or released companion. Accepted rebase baseline is `798eb16cd1f505b6378ff6241cd3c16a430e74ff`; backend integration still waits for #244. See [operator instructions](../../companion/README.md), [design](issue-316-design.md), and [system review](issue-316-system-review.md).
+Status: integrated native developer package in draft PR #324, not an OS-trusted or released companion. Accepted rebase baseline is `5d3b154821620e877d7b417a0ff93635efdb3331`; final migration validation follows #246 acceptance. The sections below retain the earlier verification stages. See [operator instructions](../../companion/README.md), [design](issue-316-design.md), and [system review](issue-316-system-review.md).
 
 ## Implemented slice
+
+The accepted #245 event contract now carries native answer-status reconciliation. Agent V11/V12 follow #246's reserved V9/V10; message V10 stores the consumer cursor. A saved answer and its IDs-only event share one transaction, and the existing dispatcher is the sole delivery/retry path. HTTP503 and abandoned-claim recovery tests preserve accepted answers and UNKNOWN usage. Consumer rollback/replay tests preserve current author authorization, existing outcomes, and exactly one durable notification.
 
 The separate `companion` module has a private stdio client for an unmodified provider-owned Codex binary. The client has explicit methods for sanitized account/model/limit discovery, provider-owned device login/cancellation, and a bounded private study turn. A separate signed-request gate serves the fixed loopback study route. It has no generic browser-to-Codex RPC proxy, API-key login, external-token refresh, or purchase/reset action. The launch plan removes inherited tokens, proxies, agent context, plugins, tools, and instruction discovery. Exact supported-version matching starts at CLI 0.153.4.
 
@@ -52,7 +54,7 @@ Signed installers, backend signing/reservations/export approval/result acceptanc
 
 ## Integrated developer slice (supersedes backend/UI gaps above)
 
-The agent now signs pairing/status/study capabilities using an operator-provisioned Ed25519 key. Access tokens carry durable session identity; authenticated private introspection checks live ownership/revocation before native release and result acceptance. Existing session-less web compatibility is preserved. Shared retrieval and the existing one-attempt ledger enforce authorization/reservation; V10 adds immutable native scope and a one-way result claim. The backend validates source quotations and clears temporary evidence, preserving UNKNOWN provider usage for all client reports.
+The agent now signs pairing/status/study capabilities using an operator-provisioned Ed25519 key. Access tokens carry durable session identity; authenticated private introspection checks live ownership/revocation before native release and result acceptance. Existing session-less web compatibility is preserved. Shared retrieval and the existing one-attempt ledger enforce authorization/reservation; V11 adds immutable native scope and a one-way result claim. The backend validates source quotations and clears temporary evidence, preserving UNKNOWN provider usage for all client reports.
 
 The Windows browser offers an explicit terminal-pairing flow, live signed connection check, deployment/provider model intersection, per-question export consent, and cancellation. Local traffic omits browser credentials and no raw provider output becomes a saved answer. Unsupported devices and unavailable deployments keep web/source choices. Native status is user-triggered, with one fresh check before generation. The native terminal grants five-minute pairings and retains separate per-request approval.
 
