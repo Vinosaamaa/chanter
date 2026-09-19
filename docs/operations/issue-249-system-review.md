@@ -18,9 +18,9 @@ PostgreSQL triggers reject audit and internal-note updates, deletion and truncat
 
 ## Remaining acceptance work
 
-- Real source authorization for all report targets, including blocked historic DMs and cross-tenant rejection.
+- Resource evidence and cross-service content restriction checks. DM/message and current-member Study Server report evidence now have focused authorization tests.
 - Complete block/unblock races, current presence and call behavior.
-- Case-scoped restriction/reinstatement operations, expiry, notifications and verified-email appeals for all account types.
+- Operator appeal resolution and broader action/notification proof. Case-scoped restriction/reinstatement and verified-email submission now have focused tests, including wrong ownership, expiry, replay and independent account/IP limits.
 - Live quarantine and Study Server restrictions on public, search, media and ingestion access.
 - Operator/user UI, desktop and phone interaction/pixel checks, full product restart journeys.
 - Current-main integration, full backend/frontend verification, exact-head hosted gates, CodeAnt review, Engineering receipt and release proof.

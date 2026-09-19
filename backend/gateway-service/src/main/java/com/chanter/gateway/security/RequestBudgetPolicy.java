@@ -16,6 +16,8 @@ public enum RequestBudgetPolicy {
     RequestBudgetPolicy(int ipLimit, int userLimit) { this.ipLimit = ipLimit; this.userLimit = userLimit; }
 
     public static RequestBudgetPolicy classify(HttpMethod method, String path) {
+        if (path.equals("/api/v1/auth/moderation-appeals")
+                || path.equals("/api/v1/auth/moderation-appeals/request")) return SENSITIVE;
         if (path.equals("/api/v1/auth/logout")) return LOGOUT;
         if (path.equals("/api/v1/auth/register")) return REGISTRATION;
         if (path.equals("/api/v1/auth/forgot-password") || path.equals("/api/v1/auth/reset-password")
