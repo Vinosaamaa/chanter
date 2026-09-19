@@ -57,7 +57,11 @@ bash scripts/deploy/build-release.sh arm64
 bash scripts/deploy/smoke-release.sh arm64
 ```
 
-The smoke script owns and deletes only its ephemeral `chanter-staging` volumes. Run it on a disposable runner, never on the production VM. Do not copy `.cache`, local `.env` files or demo data into release assets.
+The smoke script creates a unique state directory and `chanter-smoke-*` Compose
+project for each invocation, then deletes only that project's ephemeral volumes.
+Separate state makes retries safe and preserves failed-run diagnostics. Run it
+on a disposable runner, never on the production VM. Do not copy `.cache`, local
+`.env` files or demo data into release assets.
 
 ## Provisioning checkpoint
 

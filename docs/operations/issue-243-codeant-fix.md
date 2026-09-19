@@ -65,3 +65,20 @@ The migration helper deliberately targets this package's fixed private database
 endpoint. Its readiness helper only requests owned small health responses.
 Engineering verification refers to the cited implementation checks; unknowns
 and the public runbook retain the separate production gates.
+
+## Follow-up review
+
+- Repeated smoke initialization: fixed with a unique scratch directory and
+  Compose project per invocation. A retry cannot reuse prior credentials or
+  delete another invocation's volumes; failed diagnostics remain in ignored
+  runner scratch storage. Unsupported architecture arguments fail before setup.
+- Lock left after an abrupt process crash: retained deliberately. Automatic
+  stale-lock deletion without proving process ownership could overlap a live
+  deployment. The runbook already requires inspection and removal of the empty
+  lock only after confirming no deployment process remains. This is bounded
+  operator recovery, not a claim that process-kill recovery is automatic.
+- Missing PostgreSQL-only migration location: disproven by the actual native
+  staging run at `4588514`, which successfully migrated all seven service
+  databases twice on both architectures. Flyway's missing-location behavior
+  does not match the reported failure. The same native proof remains required
+  on the final candidate.

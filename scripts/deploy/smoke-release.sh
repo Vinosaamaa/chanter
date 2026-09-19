@@ -3,8 +3,11 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
 architecture="${1:?Usage: smoke-release.sh arm64|amd64}"
+case "$architecture" in arm64|amd64) ;; *) echo 'Unsupported architecture' >&2; exit 2 ;; esac
 bundle="$root/.cache/release/$architecture"
-state="$root/.cache/release-smoke/$architecture/staging"
+mkdir -p "$root/.cache/release-smoke/$architecture"
+state="$(mktemp -d "$root/.cache/release-smoke/$architecture/staging.XXXXXX")"
+project="chanter-smoke-$architecture-$(basename "$state" | tr '[:upper:].' '[:lower:]-')"
 node scripts/deploy/host.mjs init "$state" staging staging.chanter.test 192.0.2.1
 # Isolated smoke credentials are never sent to an SMTP provider. The database starts empty.
 node --input-type=module - "$state" <<'JS'
@@ -24,7 +27,7 @@ const file = process.argv[2]; const compose = JSON.parse(fs.readFileSync(file));
 compose.services.frontend.environment.CHANTER_TLS_DIRECTIVE = 'tls internal';
 fs.writeFileSync(file, JSON.stringify(compose, null, 2));
 JS
-compose=(docker compose --project-name chanter-staging -f "$compose_file")
+compose=(docker compose --project-name "$project" -f "$compose_file")
 cleanup() { "${compose[@]}" down --volumes --remove-orphans; }
 trap cleanup EXIT
 "${compose[@]}" config --quiet
