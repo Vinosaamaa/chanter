@@ -32,15 +32,13 @@ class NativeAnswerOutboxTest {
 
     @Test
     void failureAfterAppendRollsBackAnswerAuditSourcesAndEventTogether() {
-        var answer = new StudyAssistantAnswer(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                UUID.randomUUID(), "Authorized question", "Authorized quotation", AnswerConfidence.HIGH, false,
-                List.of(new StudyAssistantAnswerSource(UUID.randomUUID(), UUID.randomUUID(), "Resource", "Authorized quotation")), Instant.now());
+        var answer = answer();
         doAnswer(invocation -> {
             invocation.callRealMethod();
             throw new IllegalStateException("Synthetic transaction failure after append");
         }).when(outbox).append(anyString(), anyString(), anyString(), anyString());
 
-        assertThatThrownBy(() -> persistence.saveNativeAnswer(answer, InvocationType.GROUNDED_ANSWER, "fixture-native"))
+        assertThatThrownBy(() -> persistence.saveAnswer(answer, InvocationType.GROUNDED_ANSWER, "codex-native", "fixture-native", true))
                 .isInstanceOf(IllegalStateException.class);
         assertThat(answers.findBySupportQuestionId(answer.supportQuestionId())).isEmpty();
         assertThat(answers.findAuditByAnswerId(answer.id())).isEmpty();
@@ -48,5 +46,29 @@ class NativeAnswerOutboxTest {
                 .param("id", answer.id()).query(Integer.class).single()).isZero();
         assertThat(jdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=:key")
                 .param("key", "ACCEPTED_ANSWER:" + answer.supportQuestionId()).query(Integer.class).single()).isZero();
+    }
+
+    @Test
+    void concurrentLegacyAnswerRepairEnqueuesExactlyOneStatusEvent() throws Exception {
+        var answer = answer();
+        answers.saveAnswer(answer, InvocationType.GROUNDED_ANSWER);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var workers = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            java.util.concurrent.Callable<Void> repair = () -> { start.await(); persistence.reconcileAnswerStatus(answer); return null; };
+            var first = workers.submit(repair);
+            var second = workers.submit(repair);
+            start.countDown();
+            first.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            second.get(10, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        assertThat(jdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=:key")
+                .param("key", "ACCEPTED_ANSWER:" + answer.supportQuestionId()).query(Integer.class).single()).isEqualTo(1);
+        assertThat(answers.findBySupportQuestionId(answer.supportQuestionId())).isPresent();
+    }
+
+    private StudyAssistantAnswer answer() {
+        return new StudyAssistantAnswer(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), "Authorized question", "Authorized quotation", AnswerConfidence.HIGH, false,
+                List.of(new StudyAssistantAnswerSource(UUID.randomUUID(), UUID.randomUUID(), "Resource", "Authorized quotation")), Instant.now());
     }
 }

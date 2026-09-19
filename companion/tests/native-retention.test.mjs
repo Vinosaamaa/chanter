@@ -36,10 +36,19 @@ test('recovery removes an owned orphan only after its recorded controller and pr
   assert.deepEqual(await readdir(path.join(root, 'runs')), []);
 });
 
-test('recovery refuses active or unrecognized directories instead of deleting them', async () => {
+test('recovery refuses an active owned run instead of deleting it', async () => {
   const root = await privateRoot();
   await createRun(root, 'installation-fixture');
   await assert.rejects(recoverRuns(root, 'installation-fixture'), { code: 'NATIVE_RETENTION_BLOCKED' });
+});
+
+test('recovery refuses an unrecognized directory and preserves its contents', async () => {
+  const root = await privateRoot();
+  const unknown = path.join(root, 'runs', 'unrecognized');
+  await mkdir(unknown, { recursive: true });
+  await writeFile(path.join(unknown, 'canary'), 'preserved');
+  await assert.rejects(recoverRuns(root, 'installation-fixture'), { code: 'NATIVE_RETENTION_BLOCKED' });
+  assert.equal(await readFile(path.join(unknown, 'canary'), 'utf8'), 'preserved');
 });
 
 test('retention refuses a linked descendant and preserves the outside canary', async () => {

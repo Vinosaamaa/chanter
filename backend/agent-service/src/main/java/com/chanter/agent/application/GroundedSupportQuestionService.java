@@ -143,8 +143,9 @@ public class GroundedSupportQuestionService {
             if (!answer.channelId().equals(channelId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
             evidenceAuthorization.requireCurrent(channelId, learnerUserId, citations(answer), execution);
             execution.check();
+            if ("UNANSWERED".equals(supportQuestion.status())) answerPersistenceService.reconcileAnswerStatus(answer);
             chunks.accept(answer.answerBody());
-            return reconcileExistingAnswer(channelId, supportQuestionId, learnerUserId, answer);
+            return answer;
         }
 
         String selectedModel = modelCatalog.select(modelId, access.courseId());
@@ -206,7 +207,7 @@ public class GroundedSupportQuestionService {
                 clock.instant()
         );
 
-        StudyAssistantAnswer savedAnswer = answerPersistenceService.saveAnswer(
+        return answerPersistenceService.saveAnswer(
                 answer,
                 invocationType,
                 orchestrated.providerId(),
@@ -214,10 +215,6 @@ public class GroundedSupportQuestionService {
                 orchestrated.llmUsed()
         );
 
-        String updatedStatus = statusForConfidence(groundingResult.confidence());
-        supportQuestionClient.updateStatus(channelId, supportQuestionId, learnerUserId, updatedStatus);
-
-        return savedAnswer;
     }
 
     /** Export preparation shares the exact hosted retrieval and current-evidence checks; it never invokes a provider. */
@@ -261,9 +258,9 @@ public class GroundedSupportQuestionService {
                 c.resourceId(), c.resourceTitle(), c.excerpt())).toList();
         var answer = new StudyAssistantAnswer(UUID.randomUUID(), questionId, channelId, evidence.studyServerId(), userId,
                 evidence.question(), result.answerBody(), result.confidence(), result.handoffRecommended(), sources, clock.instant());
-        return answerPersistenceService.saveNativeAnswer(answer,
+        return answerPersistenceService.saveAnswer(answer,
                 result.handoffRecommended() ? InvocationType.LOW_CONFIDENCE_HANDOFF : InvocationType.GROUNDED_ANSWER,
-                model);
+                "codex-native", model, true);
     }
 
     public record NativeEvidence(UUID studyServerId, UUID courseId, String question, List<SourceCitation> citations) {
@@ -464,32 +461,6 @@ public class GroundedSupportQuestionService {
             boolean helpfulMarked,
             int helpfulCount
     ) {
-    }
-
-    private StudyAssistantAnswer reconcileExistingAnswer(
-            UUID channelId,
-            UUID supportQuestionId,
-            UUID learnerUserId,
-            StudyAssistantAnswer existingAnswer
-    ) {
-        SupportQuestion current = supportQuestionClient.getSupportQuestion(
-                channelId,
-                supportQuestionId,
-                learnerUserId
-        );
-        if ("UNANSWERED".equals(current.status())) {
-            supportQuestionClient.updateStatus(
-                    channelId,
-                    supportQuestionId,
-                    learnerUserId,
-                    statusForConfidence(existingAnswer.confidence())
-            );
-        }
-        return existingAnswer;
-    }
-
-    private static String statusForConfidence(AnswerConfidence confidence) {
-        return confidence == AnswerConfidence.HIGH ? "AI_ANSWERED" : "AI_LOW_CONFIDENCE";
     }
 
     private static String decodeTextContent(byte[] content, String fileName) {

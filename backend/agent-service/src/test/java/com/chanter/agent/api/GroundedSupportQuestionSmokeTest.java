@@ -170,6 +170,9 @@ class GroundedSupportQuestionSmokeTest {
                 nativeJdbc.sql("UPDATE durable_outbox SET available_at=:expired WHERE aggregate_key=:key")
                         .param("expired", java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(1)))
                         .param("key", aggregate).update();
+                nativeJdbc.sql("UPDATE durable_outbox SET available_at=:later WHERE aggregate_key<>:key AND status='PENDING'")
+                        .param("later", java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(300)))
+                        .param("key", aggregate).update();
                 var abandoned = nativeOutbox.claim().orElseThrow();
                 assertThat(abandoned.event().aggregateKey()).isEqualTo(aggregate);
                 nativeJdbc.sql("UPDATE durable_outbox SET lease_until=:expired WHERE id=:id")
@@ -187,6 +190,41 @@ class GroundedSupportQuestionSmokeTest {
             assertThat(generationLedger.summary(server).unknownUsageCount()).isEqualTo(1);
             assertThat(generationLedger.summary(server).accountedTokens()).isEqualTo(40960);
         }
+    }
+
+    @Test
+    void hostedAnswerRemainsSuccessfulDuringStatusOutageAndRetryDoesNotGenerateOrEnqueueAgain() throws Exception {
+        UUID server = UUID.randomUUID(), instructor = UUID.randomUUID(), learner = UUID.randomUUID();
+        UUID channel = UUID.randomUUID(), course = UUID.randomUUID(), resource = UUID.randomUUID(), question = UUID.randomUUID();
+        installAssistant(server, instructor, learner, channel, course, UUID.randomUUID(), resource);
+        channelAccessClient.grantLearnerPost(channel, learner, course, server, "questions");
+        supportQuestionClient.registerSupportQuestion(TestSupportQuestionClient.unanswered(question, channel, learner, "How does Spring Security work?"));
+        courseResourceCatalogClient.grantViewerAccess(course, learner);
+        courseResourceContentClient.registerContent(resource, "Spring Security uses a filter chain.".getBytes(StandardCharsets.UTF_8));
+        int providerBefore = PROVIDER_CALLS.get();
+        String answerId = null;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            var response = mockMvc.perform(post("/api/v1/course-channels/{channel}/support-questions/{question}/assistant-answer", channel, question)
+                    .param("modelId", "fixture").header(AuthHeaders.USER_ID, learner)
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, "test-internal-service-token-for-agent"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            String returnedId = objectMapper.readTree(response).path("id").asText();
+            if (answerId == null) answerId = returnedId;
+            else assertThat(returnedId).isEqualTo(answerId);
+            if (attempt == 0) {
+                STATUS_RESPONSE.set(503);
+                int statusBefore = STATUS_FAILURE_CALLS.get();
+                new com.chanter.common.events.OutboxDispatcher(nativeOutbox, objectMapper,
+                        Map.of("message", java.net.URI.create("http://127.0.0.1:" + PROVIDER.getAddress().getPort() + "/api/v1/internal/events")),
+                        "test-internal-service-token-for-agent").drain();
+                assertThat(STATUS_FAILURE_CALLS.get()).isGreaterThan(statusBefore);
+            }
+        }
+        assertThat(PROVIDER_CALLS.get() - providerBefore).isEqualTo(1);
+        assertThat(nativeJdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=:key")
+                .param("key", "ACCEPTED_ANSWER:" + question).query(Integer.class).single()).isEqualTo(1);
+        assertThat(nativeJdbc.sql("SELECT status || ':' || last_error FROM durable_outbox WHERE aggregate_key=:key")
+                .param("key", "ACCEPTED_ANSWER:" + question).query(String.class).single()).isEqualTo("PENDING:HTTP_503");
     }
 
     @Test
