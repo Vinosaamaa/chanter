@@ -2,6 +2,7 @@ package com.chanter.auth.moderation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,25 @@ import org.springframework.web.server.ResponseStatusException;
 class ModerationAppealsTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ModerationAppeals appeals;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean OperatorAccess operators;
+
+    @Test void administratorCanReverseAnAppealWithAtomicRestrictionAuditAndNotice() {
+        Fixture owner=fixture(true); UUID operator=fixture(true).user();
+        jdbc.update("INSERT INTO platform_operators(user_id,role,granted_at) VALUES(?,'ADMIN',CURRENT_TIMESTAMP)",operator);
+        when(operators.requireStepUp("operator","verified")).thenReturn(new OperatorAccess.Operator(operator,OperatorAccess.Role.ADMIN));
+        appeals.request(owner.email(),owner.restriction());
+        appeals.submit(sentToken(owner.email()),"Please reconsider",UUID.randomUUID());
+        UUID appeal=jdbc.queryForObject("SELECT id FROM moderation_appeals WHERE restriction_id=?",UUID.class,owner.restriction());
+        assertThatThrownBy(() -> appeals.resolve("operator","verified",appeal,"REVERSED","Action corrected",UUID.randomUUID().toString(),UUID.randomUUID()))
+                .isInstanceOf(ResponseStatusException.class);
+        appeals.resolve("operator","verified",appeal,"REVERSED","Action corrected",owner.restriction().toString(),UUID.randomUUID());
+        assertThat(jdbc.queryForObject("SELECT revoked_at IS NOT NULL FROM moderation_restrictions WHERE id=?",Boolean.class,owner.restriction())).isTrue();
+        assertThat(jdbc.queryForObject("SELECT status FROM moderation_appeals WHERE id=?",String.class,appeal)).isEqualTo("REVERSED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_audit WHERE actor_id=?",Integer.class,operator)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM auth_email_outbox WHERE recipient=?",Integer.class,owner.email())).isEqualTo(2);
+        when(operators.requireStepUp("reviewer","verified")).thenReturn(new OperatorAccess.Operator(UUID.randomUUID(),OperatorAccess.Role.REVIEWER));
+        assertThatThrownBy(() -> appeals.list("reviewer","verified","Review appeals",0,UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
+    }
 
     @Test void wrongRestrictionOwnershipAndUnverifiedEmailNeverSendAuthority() {
         Fixture owner=fixture(true), stranger=fixture(true), unverified=fixture(false);

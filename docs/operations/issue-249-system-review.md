@@ -2,7 +2,7 @@
 
 ## Current implementation boundary
 
-The initial foundation is implemented in auth-service: separate platform grants, password and authenticator verification, short-lived operator verification tokens, report records, assigned-case evidence reads, reversible restriction records and audit writes. Source authorization is a fixed-service contract, not a caller-selected URL. Source evidence endpoints, enforcement actions, appeals and browser workflows are still being integrated. This document does not claim issue completion or deployment.
+Auth owns separately granted platform roles, authenticator verification, assigned reports, preserved evidence, timed restrictions, verified-email appeals and immutable audit records. Source services authorize the reporter and enforce current restrictions. The interface supports reporting, caller-owned unblock, scoped investigation, assignment, notes, restrictions, reinstatement, appeal decisions and role changes. Product roles do not confer operator access. This document does not claim deployment.
 
 The first focused tests reject forged role headers and ordinary accounts, validate standard authenticator vectors and encrypted enrollment secrets, reject code replay, honor role revocation, preserve restriction/audit transaction atomicity and enforce assignment before evidence reads. Message-service rejects otherwise valid suspended identities and refuses access when the authority is unavailable. A real idle WebSocket connection closes on a later suspension decision; its policy close frame is sent before receive cancellation.
 
@@ -10,7 +10,11 @@ The first focused tests reject forged role headers and ordinary accounts, valida
 
 Operator roles come from the database on every privileged request. Product roles are not inputs. Second-factor secrets use a distinct encryption key and are not written to audit records. Verification attempt limits persist through process restarts. The first administrator is created by an explicit non-web command, which refuses repeat bootstrap. Real operator enrollment and key provisioning require separate release evidence.
 
-Suspension is checked when auth accepts an access token, refreshes a session or issues a provider session. Seven servlet services check the current account before their authenticated handlers. Realtime checks on incoming frames and every five seconds cover idle sessions. Remaining work includes recipient fanout, active calls and current source restrictions. #316 session-ID tokens and live session introspection must be integrated before claiming revoked sessions lose operator/realtime access.
+Suspension protects auth issuance, refresh and introspection plus authenticated handlers in seven servlet services. The accepted #316 session-ID contract is preserved. Message history filters current source decisions without deleting rows. Community resolves matched course/cohort/channel/office-hours routes to their Study Server; navigation removes restricted servers. Media public and ingestion reads check resource/server restrictions before and after provider reads. Derived search cannot confer access through a stale index.
+
+Blocking and message/friend acceptance serialize on the same canonical account pair. Unblock removes only the caller's block. Realtime rechecks source scope, pair eligibility and recipient account state before delivery. Periodic connection checks validate live sessions, reconcile the user's active call and replace online-friend snapshots. Replacement clears stale presence and is bounded to 1,000 peers and four seconds. These bounds are not a five-second revocation guarantee under load.
+
+Every privileged read uses a current role and live session; case evidence requires assignment or administrator authority and an investigation reason. Five-minute verification is bound to the same session. The browser clears sensitive views on lock and rejects late responses from former verification. Appeal submission requires a one-use credential delivered to the existing verified account email, including for passwordless accounts. Reversal lifts the selected restriction, leaves other restrictions and revoked sessions intact, audits the change and durably queues the decision email in one transaction.
 
 Remote checks have bounded deadlines and concurrency, with no positive authorization cache. Failure prevents the protected action. Auth is consequently an explicit availability dependency for protected product requests; health probes remain independent. Isolated service tests use synthetic-user authorization only in the test profile. A real product-stack journey is still required.
 
@@ -18,11 +22,10 @@ The active-media implementation now validates current room authority at the sign
 
 PostgreSQL triggers reject audit and internal-note updates, deletion and truncation. The added PostgreSQL regression must run against the real database; an H2 pass cannot establish this protection. Database administrators who can remove triggers remain outside the application immutability guarantee. Retention and legal policy are coordinated with #251.
 
-## Remaining acceptance work
+## Evidence and remaining gates
 
-- Resource evidence now has current-scope tests and excludes private storage identifiers. Public and worker downloads reject restrictions imposed during the provider read. Broader cross-service source checks remain in progress.
-- Block/unblock and message-write serialization now pass focused concurrent tests; current presence delivery and complete active-call state remain to verify.
-- Operator appeal resolution and broader action/notification proof. Case-scoped restriction/reinstatement and verified-email submission now have focused tests, including wrong ownership, expiry, replay and independent account/IP limits.
-- Live quarantine and Study Server restrictions on public, search, media and ingestion access.
-- Operator/user UI, desktop and phone interaction/pixel checks, full product restart journeys.
-- Current-main integration, full backend/frontend verification, exact-head hosted gates, CodeAnt review, Engineering receipt and release proof.
+Full native backend verification passed after correcting one controller fixture that unintentionally used live authority. The complete frontend suite passed 323 tests with bounded workers, and lint passed. Focused regressions cover escalation, assignment, audit atomicity, factor replay, live session revocation, restricted sources, block/write races, idle WebSocket policy closure, presence replacement, action confirmation and appeals. The production build preserves the existing core bundle caps with exact deferred moderation allowances. Static import checks establish that feature entries are not initial-route dependencies.
+
+The added hosted combined proof exercises the real PostgreSQL/Redis services, audio between browser peers, operator action, emailed appeal, desktop/phone accessibility and pixels, and fresh initial-route network absence. Its result and artifact inspection remain pending at this checkpoint, as do exact-head hosted checks and complete CodeAnt review. No local preview stack or browser attachment was started for this proof.
+
+Production requires epoch 9 after accepted retrieval epoch 8. The release owner must union the signed-token Caddy guard, keep direct signaling private, configure the distinct operator key, and provide real enrollment/deployment evidence. Account-lifecycle retention and deletion remain coordinated with #251. Issue #249 remains open through those release gates.

@@ -203,7 +203,14 @@ public class SocialMessagingService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Messages are blocked between these users");
         }
 
-        return repository.findDirectMessages(viewerUserId, peerUserId);
+        var messages = repository.findDirectMessages(viewerUserId, peerUserId);
+        var visible = new java.util.ArrayList<DirectMessage>();
+        for (int start=0; start<messages.size(); start+=100) {
+            var page=messages.subList(start,Math.min(start+100,messages.size()));
+            var allowed=moderation.allowedSources(viewerUserId,page.stream().map(message -> new Target("DM",message.id())).toList());
+            page.stream().filter(message -> allowed.contains(new Target("DM",message.id()))).forEach(visible::add);
+        }
+        return List.copyOf(visible);
     }
 
     public void requireDirectMessageCallAccess(UUID callerUserId, UUID calleeUserId) {

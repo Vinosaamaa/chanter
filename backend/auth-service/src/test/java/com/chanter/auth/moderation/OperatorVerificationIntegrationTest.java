@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.chanter.common.auth.JwtTokenService;
+import com.chanter.auth.application.AuthSessionService;
+import com.chanter.auth.application.AuthUserRepository;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -24,10 +26,12 @@ class OperatorVerificationIntegrationTest {
     @Autowired OperatorFactor factor;
     @Autowired JwtTokenService tokens;
     @Autowired PasswordEncoder passwords;
+    @Autowired AuthSessionService sessions;
+    @Autowired AuthUserRepository users;
 
     @Test void secondFactorIsSingleUseAndRevocationInvalidatesAnIssuedStepUp() {
         UUID user = operator();
-        String authorization = "Bearer " + tokens.createAccessToken(user);
+        String authorization = authorization(user);
         byte[] secret = factor.newSecret();
         jdbc.update("UPDATE platform_operators SET factor_ciphertext=?,factor_confirmed=TRUE WHERE user_id=?",
                 factor.encrypt(user, secret), user);
@@ -42,7 +46,7 @@ class OperatorVerificationIntegrationTest {
 
     @Test void enrollmentRequiresPasswordAndNeverReturnsExistingConfirmedSecret() {
         UUID user = operator();
-        String authorization = "Bearer " + tokens.createAccessToken(user);
+        String authorization = authorization(user);
         assertThatThrownBy(() -> verification.enroll(authorization, "wrong", UUID.randomUUID()))
                 .isInstanceOf(ResponseStatusException.class);
         var enrollment = verification.enroll(authorization, "password123", UUID.randomUUID());
@@ -62,5 +66,21 @@ class OperatorVerificationIntegrationTest {
                 user, user + "@operator.test", passwords.encode("password123"), "Operator");
         jdbc.update("INSERT INTO platform_operators(user_id,role,granted_at) VALUES(?,'ADMIN',CURRENT_TIMESTAMP)", user);
         return user;
+    }
+
+    private String authorization(UUID user) {
+        return "Bearer " + sessions.issueSessionForUser(users.findById(user).orElseThrow()).accessToken();
+    }
+
+    @Test void revokingTheBrowserSessionImmediatelyInvalidatesItsOperatorStepUp() {
+        UUID user=operator();
+        var session=sessions.issueSessionForUser(users.findById(user).orElseThrow());
+        String authorization="Bearer "+session.accessToken();
+        byte[] secret=factor.newSecret();
+        jdbc.update("UPDATE platform_operators SET factor_ciphertext=?,factor_confirmed=TRUE WHERE user_id=?",factor.encrypt(user,secret),user);
+        var step=verification.verify(authorization,"password123",OperatorFactor.code(secret,Instant.now().getEpochSecond()/30,6),false,UUID.randomUUID());
+        assertThat(access.requireStepUp(authorization,step.token()).userId()).isEqualTo(user);
+        sessions.logout(session.refreshToken());
+        assertThatThrownBy(() -> access.requireStepUp(authorization,step.token())).isInstanceOf(ResponseStatusException.class);
     }
 }

@@ -45,4 +45,16 @@ describe('SocialRealtimeClient reconnect refresh', () => {
     expect(MockWebSocket.instances).toHaveLength(2)
     expect(MockWebSocket.instances[1]?.protocols).toEqual(['chanter-jwt', 'fresh-token'])
   })
+
+  it('clears old online peers when a current presence snapshot excludes them', () => {
+    const onPresenceChange=vi.fn()
+    const client=new SocialRealtimeClient({getAccessToken:()=> 'token',refreshSession:async()=>true,
+      onDirectMessage:vi.fn(),onPresenceChange,onCallEvent:vi.fn(),onStatusChange:vi.fn(),onError:vi.fn()})
+    client.connect()
+    const socket=MockWebSocket.instances[0]!
+    socket.onmessage?.({data:JSON.stringify({type:'presence_changed',userId:'peer',status:'online'})})
+    socket.onmessage?.({data:JSON.stringify({type:'presence_snapshot',onlineUserIds:[]})})
+    expect(onPresenceChange).toHaveBeenLastCalledWith('peer','offline')
+    client.disconnect()
+  })
 })

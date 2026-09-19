@@ -33,6 +33,31 @@ public class ModerationAccess {
 
     public void requireAccount(UUID user) { requireAllowed(user, List.of()); }
 
+    /** Reuses the auth-owned session contract, including current account restrictions. */
+    public void requireSession(String authorization, UUID expectedUser) {
+        if (authorization == null || !authorization.startsWith(AuthHeaders.BEARER_PREFIX) || authorization.length() > 8192)
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Active browser session required");
+        if (!inFlight.tryAcquire()) throw unavailable();
+        try {
+            var request = HttpRequest.newBuilder(endpoint.resolve("/internal/v1/auth/session/introspect"))
+                    .timeout(Duration.ofSeconds(3)).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, token)
+                    .header(AuthHeaders.AUTHORIZATION, authorization).POST(HttpRequest.BodyPublishers.noBody()).build();
+            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 401 || response.statusCode() == 403)
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Current session access required");
+            if (response.statusCode() != 200) throw unavailable();
+            var result = mapper.readTree(response.body());
+            if (result == null || !expectedUser.toString().equals(result.path("userId").asText())) throw unavailable();
+            UUID.fromString(result.path("sessionId").asText());
+            if (!java.time.Instant.parse(result.path("expiresAt").asText()).isAfter(java.time.Instant.now()))
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Current session access required");
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt(); throw unavailable();
+        } catch (IOException | IllegalArgumentException | java.time.format.DateTimeParseException invalid) {
+            throw unavailable();
+        } finally { inFlight.release(); }
+    }
+
     public void requireAllowed(UUID user, List<Target> targets) {
         readStatus(endpoint, user, targets);
     }

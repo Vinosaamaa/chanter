@@ -84,16 +84,25 @@ public class ModerationCases {
 
     @Transactional
     public List<QueueItem> queue(String authorization,String verification,String status,String reason,UUID correlation) {
+        return queue(authorization,verification,status,"",0,null,reason,correlation);
+    }
+
+    @Transactional
+    public List<QueueItem> queue(String authorization,String verification,String status,String query,int offset,UUID target,String reason,UUID correlation) {
         var operator=operators.requireStepUp(authorization,verification);
         OperatorRoles.requireReason(reason);
+        if(query==null || query.length()>120 || offset<0 || offset>10000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid report search or page");
         if(status!=null && !List.of("NEW","ASSIGNED","RESOLVED","ESCALATED").contains(status))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Unsupported report status");
         audit.append(operator.userId(),"REPORT_QUEUE_READ","reports",reason,correlation,"",status==null ? "ALL" : status);
         return jdbc.query("""
                 SELECT * FROM moderation_reports WHERE (?=TRUE OR assigned_to=?) AND (CAST(? AS VARCHAR) IS NULL OR status=?)
-                ORDER BY created_at DESC,id LIMIT 50
+                  AND (LOWER(reason) LIKE ? ESCAPE '!' OR CAST(id AS VARCHAR)=?)
+                  AND (CAST(? AS UUID) IS NULL OR target_id=?)
+                ORDER BY created_at DESC,id LIMIT 50 OFFSET ?
                 """,(rs,row)->new QueueItem(report(rs),rs.getObject("assigned_to",UUID.class)),
-                operator.role()==OperatorAccess.Role.ADMIN,operator.userId(),status,status);
+                operator.role()==OperatorAccess.Role.ADMIN,operator.userId(),status,status,
+                "%"+query.strip().toLowerCase(java.util.Locale.ROOT).replace("!","!!").replace("%","!%").replace("_","!_")+"%",query.strip(),target,target,offset);
     }
 
     @Transactional

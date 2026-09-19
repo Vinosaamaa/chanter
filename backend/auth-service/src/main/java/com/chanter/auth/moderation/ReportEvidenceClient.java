@@ -4,6 +4,7 @@ import com.chanter.auth.application.AuthUserRepository;
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.auth.InternalServiceTokens;
 import com.chanter.common.auth.ReportEvidence;
+import com.chanter.common.auth.ModerationDirectoryItem;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
@@ -58,6 +59,20 @@ public class ReportEvidenceClient {
 
     private static ResponseStatusException unavailableSource() {
         return new ResponseStatusException(HttpStatus.NOT_FOUND,"The report source is not available to you");
+    }
+
+    public java.util.List<ModerationDirectoryItem> searchStudyServers(String query,int offset) {
+        URI endpoint=URI.create(sources.get("STUDY_SERVER")).resolve("/internal/v1/moderation/directory?query="
+                +java.net.URLEncoder.encode(query,java.nio.charset.StandardCharsets.UTF_8)+"&offset="+offset);
+        try {
+            var request=HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(3)).header(AuthHeaders.INTERNAL_SERVICE_TOKEN,token).GET().build();
+            var response=http.send(request,HttpResponse.BodyHandlers.ofString());
+            if(response.statusCode()!=200 || response.body().length()>24000) throw unavailable();
+            java.util.List<ModerationDirectoryItem> result=mapper.readValue(response.body(),mapper.getTypeFactory().constructCollectionType(java.util.List.class,ModerationDirectoryItem.class));
+            if(result==null || result.size()>50 || result.stream().anyMatch(item -> !item.type().equals("STUDY_SERVER"))) throw unavailable();
+            return result;
+        } catch(InterruptedException interrupted) { Thread.currentThread().interrupt(); throw unavailable(); }
+        catch(IOException invalid) { throw unavailable(); }
     }
     private static ResponseStatusException unavailable() {
         return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Report evidence is temporarily unavailable");

@@ -1,6 +1,7 @@
 package com.chanter.auth.moderation;
 
 import com.chanter.common.auth.JwtTokenService;
+import com.chanter.auth.application.AuthSessionService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -19,11 +20,13 @@ public class OperatorAccess {
     private final JdbcTemplate jdbc;
     private final JwtTokenService tokens;
     private final ModerationRestrictions restrictions;
+    private final AuthSessionService sessions;
 
-    public OperatorAccess(JdbcTemplate jdbc, JwtTokenService tokens, ModerationRestrictions restrictions) {
+    public OperatorAccess(JdbcTemplate jdbc, JwtTokenService tokens, ModerationRestrictions restrictions, AuthSessionService sessions) {
         this.jdbc = jdbc;
         this.tokens = tokens;
         this.restrictions = restrictions;
+        this.sessions = sessions;
     }
 
     public Operator requireRole(String authorization) {
@@ -32,6 +35,7 @@ public class OperatorAccess {
                 (rs, row) -> new Operator(user, Role.valueOf(rs.getString(1))), user).stream().findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Platform operator access required"));
         restrictions.requireActiveAccount(user);
+        sessions.requireActiveAccessSession(authorization);
         return operator;
     }
 

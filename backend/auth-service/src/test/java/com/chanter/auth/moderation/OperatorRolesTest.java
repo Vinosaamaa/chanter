@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.chanter.common.auth.JwtTokenService;
+import com.chanter.auth.application.AuthSessionService;
+import com.chanter.auth.application.AuthUserRepository;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,8 @@ class OperatorRolesTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired OperatorRoles roles;
     @Autowired JwtTokenService tokens;
+    @Autowired AuthSessionService sessions;
+    @Autowired AuthUserRepository users;
 
     @Test void initialBootstrapIsAuditedAndCannotBeRepeated() {
         UUID first = user();
@@ -56,7 +60,7 @@ class OperatorRolesTest {
 
     private String grant(UUID user, String role) {
         jdbc.update("INSERT INTO platform_operators(user_id,role,granted_at) VALUES(?,?,CURRENT_TIMESTAMP)", user, role);
-        String bearer = "Bearer "+tokens.createAccessToken(user);
+        String bearer = "Bearer "+sessions.issueSessionForUser(users.findById(user).orElseThrow()).accessToken();
         jdbc.update("INSERT INTO platform_step_up(token_hash,user_id,access_token_hash,expires_at) VALUES(?,?,?,?)",
                 OperatorAccess.hash("test-step-up"+user), user, OperatorAccess.hash(bearer), OffsetDateTime.now().plusMinutes(3));
         // Each user's opaque value is distinct, as in production.

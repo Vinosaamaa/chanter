@@ -38,6 +38,7 @@ import { useChannelConversation } from '../../../shell/hooks/use-channel-convers
 import { fetchChannelMessageAccess } from '../../../shell/channel-messages-api'
 import { useAuthStore } from '../../../../stores/auth-store'
 import { V2Avatar } from '../../components/V2Avatar'
+import { ReportLink } from '../../../moderation/ReportLink'
 import { useV2Community } from '../../layouts/v2-community-context'
 import { v2CommunityPath } from '../../v2-routes'
 
@@ -359,7 +360,7 @@ export function CommunityLoungePage() {
           {!conversation.isLoadingHistory && !conversation.error && conversation.messages.length === 0 ? <p className="chat-empty">No messages yet. Start the conversation.</p> : null}
           {conversation.messages.map(message => <article className="course-chat-message" key={message.id}>
             <V2Avatar name={names.get(message.senderUserId) ?? 'Member'} tone="blue" size="md" />
-            <div><p><strong>{names.get(message.senderUserId) ?? 'Member'}</strong><time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</time></p><span>{message.body}</span></div>
+              <div><p><strong>{names.get(message.senderUserId) ?? 'Member'}</strong><time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</time></p><span>{message.body}</span><ReportLink type="MESSAGE" id={message.id} label="Report message" /></div>
           </article>)}
         </div>
         <form className="chat-composer" onSubmit={submit}>

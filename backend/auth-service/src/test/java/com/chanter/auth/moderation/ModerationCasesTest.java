@@ -25,6 +25,19 @@ class ModerationCasesTest {
     @MockitoBean ReportEvidenceClient sources;
     @MockitoBean OperatorAccess operators;
 
+    @Test void reportSearchAndPagingRetainAssignmentAndTargetScope() {
+        UUID admin=operator("ADMIN"),target=UUID.randomUUID(),other=UUID.randomUUID();
+        when(operators.requireStepUp("admin","verified")).thenReturn(new OperatorAccess.Operator(admin,OperatorAccess.Role.ADMIN));
+        when(sources.read(admin,"USER",target)).thenReturn(new ReportEvidence("USER",target,target,null,null,null,"Reported account","",null));
+        when(sources.read(admin,"USER",other)).thenReturn(new ReportEvidence("USER",other,other,null,null,null,"Other account","",null));
+        var first=cases.submit(admin,"USER",target,"Specific harassment report");
+        cases.submit(admin,"USER",other,"Different issue");
+        assertThat(cases.queue("admin","verified",null,"harassment",0,target,"Review target history",UUID.randomUUID()))
+                .extracting(item -> item.report().id()).containsExactly(first.id());
+        assertThat(cases.queue("admin","verified",null,"harassment",1,target,"Review next page",UUID.randomUUID())).isEmpty();
+        assertThatThrownBy(() -> cases.queue("admin","verified",null,"",-1,null,"Review",UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
+    }
+
     @Test void unauthorizedEvidenceCannotCreateAReportOrPreservedSnapshot() {
         UUID reporter = UUID.randomUUID();
         UUID source = UUID.randomUUID();

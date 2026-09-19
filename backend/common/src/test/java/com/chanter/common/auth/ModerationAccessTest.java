@@ -16,6 +16,28 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 class ModerationAccessTest {
+    @Test void liveSessionIntrospectionRejectsRevocationAndMismatchedIdentity() throws Exception {
+        UUID user=UUID.randomUUID(),session=UUID.randomUUID();
+        var reply=new AtomicReference<>("{\"userId\":\""+user+"\",\"sessionId\":\""+session+"\",\"expiresAt\":\""+java.time.Instant.now().plusSeconds(60)+"\"}");
+        var status=new AtomicInteger(200);
+        HttpServer server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/internal/v1/auth/session/introspect",exchange -> {
+            assertThat(exchange.getRequestHeaders().getFirst(AuthHeaders.AUTHORIZATION)).isEqualTo("Bearer session-test");
+            assertThat(exchange.getRequestHeaders().getFirst(AuthHeaders.INTERNAL_SERVICE_TOKEN)).isEqualTo("test-token");
+            byte[] body=reply.get().getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(status.get(),body.length); exchange.getResponseBody().write(body); exchange.close();
+        });
+        server.start();
+        try {
+            var access=new ModerationAccess(URI.create("http://127.0.0.1:"+server.getAddress().getPort()),"test-token",new ObjectMapper());
+            access.requireSession("Bearer session-test",user);
+            assertThatThrownBy(() -> access.requireSession("Bearer session-test",UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
+            status.set(401);
+            assertThatThrownBy(() -> access.requireSession("Bearer session-test",user)).isInstanceOf(ResponseStatusException.class);
+            status.set(200); reply.set("{}");
+            assertThatThrownBy(() -> access.requireSession("Bearer session-test",user)).isInstanceOf(ResponseStatusException.class);
+        } finally { server.stop(0); }
+    }
     @Test void aBatchFiltersOnlyNamedRestrictedSourcesAndRejectsAnUnrelatedReply() throws Exception {
         var visible=new ModerationAccess.Target("RESOURCE",UUID.randomUUID());
         var restricted=new ModerationAccess.Target("RESOURCE",UUID.randomUUID());
