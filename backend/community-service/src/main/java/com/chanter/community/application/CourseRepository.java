@@ -71,7 +71,7 @@ public interface CourseRepository {
 
     Optional<CohortJoinDetails> findCohortJoinDetails(UUID cohortId);
 
-    Optional<UUID> findCohortInviteCodeForInstructor(UUID cohortId, UUID instructorUserId);
+    Optional<UUID> findCohortInviteCodeForPeopleManager(UUID cohortId, UUID viewerUserId);
 
     boolean cohortExists(UUID cohortId);
 
