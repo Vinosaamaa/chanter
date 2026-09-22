@@ -9,7 +9,7 @@ function fixture(count = 2) {
   for (let revision = 1; revision <= count; revision++) {
     const id = revision.toString(16).padStart(12, '0');
     const entry = { revision, eventId: `11111111-1111-4111-8111-${id}`, targetKind: 'ACCOUNT',
-      targetId: `22222222-2222-4222-8222-${id}`, action: 'DELETE', deletedAt: '2026-09-19T06:00:00Z',
+      targetId: `22222222-2222-4222-8222-${id}`, action: 'DELETE', retentionPolicy: 'PRESERVE_MODERATION_RECORDS_V1', deletedAt: '2026-09-19T06:00:00Z',
       previousDigest: entries.at(-1)?.digest ?? GENESIS.digest };
     entry.digest = entryDigest(entry); entries.push(entry);
   }
@@ -19,7 +19,7 @@ function fixture(count = 2) {
   const source = { kind: 'fixture', checkpoint: async () => checkpoint,
     page: async (after, through = null) => {
       const end = through ?? entries.length, selected = entries.slice(after, Math.min(after + 500, end));
-      return { schemaVersion: 1, after: mark(after), through: mark(end), entries: selected, next: mark(after + selected.length) };
+      return { schemaVersion: 2, after: mark(after), through: mark(end), entries: selected, next: mark(after + selected.length) };
     }, acknowledge: async value => { calls.push(value); checkpoint = value; return value; } };
   const repository = { kind: 'fixture', environment: 'staging', manifests: () => structuredClone(manifests),
     write: (kind, value) => {

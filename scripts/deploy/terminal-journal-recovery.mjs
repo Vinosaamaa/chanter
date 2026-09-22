@@ -1,4 +1,4 @@
-import { GENESIS, exactFields, nonzeroUuid, sameWatermark, validatePage, validateWatermark } from './terminal-journal.mjs';
+import { GENESIS, JOURNAL_SCHEMA, exactFields, nonzeroUuid, sameWatermark, validatePage, validateWatermark } from './terminal-journal.mjs';
 import { readCurrentReplica } from './terminal-journal-replica.mjs';
 
 export const SOURCES = Object.freeze(['auth', 'community', 'message', 'media', 'agent', 'notification', 'search']);
@@ -47,7 +47,7 @@ export async function recoverCurrentAuthority({ repository, clients, recoveryId,
   for (const ref of refs) {
     within();
     const stored = ref ? repository.read('page', ref.snapshotId)
-      : { schemaVersion: 1, after: GENESIS, through: GENESIS, entries: [], next: GENESIS };
+      : { schemaVersion: JOURNAL_SCHEMA, after: GENESIS, through: GENESIS, entries: [], next: GENESIS };
     const page = validatePage({ ...stored, through: authority }, cursor, authority);
     for (const source of SOURCES) { within(); await clients[source].reapply(page); }
     cursor = page.next;

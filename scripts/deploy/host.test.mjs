@@ -392,7 +392,7 @@ test('journal replication requires the accepted configuration and shares the dep
   }, clientFactory: value => {
     assert.equal(value.composeFile, prepared.file);
     return { kind: 'fixture', checkpoint: async () => null,
-      page: async () => ({ schemaVersion: 1, after: GENESIS, through: GENESIS, next: GENESIS, entries: [] }),
+      page: async () => ({ schemaVersion: 2, after: GENESIS, through: GENESIS, next: GENESIS, entries: [] }),
       acknowledge: async value => { acknowledgements++; return value; } };
   } };
   assert.equal((await replicateTerminalJournal(state, options)).status, 'ok');

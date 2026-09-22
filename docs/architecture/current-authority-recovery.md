@@ -51,13 +51,20 @@ custom encryption, a second backup format or a retry service. The existing host
 operation lock and scheduler own serialization and later retries. Each invocation
 has bounded subprocess deadlines and fails with a content-free error.
 
-The service protocol is schema 1 from `terminal-journal-contract.md` in #251.
+The service protocol is schema 2 from `terminal-journal-contract.md` in #251.
 Validate each page before persistence: exact supported fields, nonzero target
 UUID, fixed kind/action, safe positive integer revision, canonical millisecond
 Java timestamp, previous digest, recomputed SHA-256 digest, contiguous revisions,
 pinned upper watermark and matching final watermark. Reject empty nonterminal
 pages, changed bounds and duplicate/conflicting target authority. The JSON
 implementation must reject revisions beyond its exact integer range.
+
+Every entry requires `retentionPolicy: PRESERVE_MODERATION_RECORDS_V1`, included
+after the deletion timestamp in the version 2 digest text. Missing or unknown
+policy and version 1 pages are rejected. This fixed scope preserves previously
+collected moderation snapshots, notes and audit records. It does not preserve
+original resource bytes or infer a general legal hold. The protocol is unreleased;
+there is no production version 1 import or migration claim.
 
 Store bounded immutable page objects as encrypted restic stdin snapshots. A
 manifest records its schema, environment, checkpoint identity, source watermark,
@@ -192,6 +199,17 @@ verified. Injected recovery clients exercise sequencing only. #251's real seven
 participant effects and both durable invalidations, #249 authority rules, matching
 isolated runtime startup, object checks, provider freshness protection and
 original-writer fencing remain required before operational application recovery.
+
+The isolated composition also requires an explicit matching release capability,
+`recoveryProtocol: {journalSchema:2,ordinaryWorkIsolation:1}`. Build policy remains
+disabled until the accepted source union and native isolation proof are complete.
+Historical bundles without it are rejected before starting any application. No
+migration or silent binary upgrade occurs during recovery. The composition starts
+only the seven required sources and restored PostgreSQL on an internal Docker
+network, with no published ports, source HTTP bound to container loopback,
+archiving disabled and no media/scanner volumes. `CHANTER_RECOVERY_MODE=true`
+omits ordinary worker beans while retaining private replay and invalidation.
+Normal email, outbox, ingestion and media flags are also disabled explicitly.
 
 References: [restic backup and stdin behavior](https://restic.readthedocs.io/en/stable/040_backup.html),
 [repository snapshot operations](https://restic.readthedocs.io/en/stable/045_working_with_repos.html),

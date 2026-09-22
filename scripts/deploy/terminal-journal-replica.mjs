@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { GENESIS, MAX_ENTRIES, MAX_PAGE, checkpointIdentity, environmentName, exactFields,
+import { GENESIS, JOURNAL_SCHEMA, MAX_ENTRIES, MAX_PAGE, checkpointIdentity, environmentName, exactFields,
   nonzeroUuid, sameWatermark, validatePage, validateWatermark } from './terminal-journal.mjs';
 import { MAX_MANIFEST_BYTES, MAX_MANIFESTS } from './terminal-journal-storage.mjs';
 
@@ -104,7 +104,7 @@ export async function replicateJournal(source, repository) {
   let fetched = cursor, through = null, buffer = [], requests = 0;
   const writePage = entries => {
     const next = mark(entries.at(-1));
-    const page = { schemaVersion: 1, after: cursor, through, entries, next };
+    const page = { schemaVersion: JOURNAL_SCHEMA, after: cursor, through, entries, next };
     validatePage(page, cursor, through);
     refs.push({ snapshotId: repository.write('page', page), sha256: hash(page), after: cursor, next, count: entries.length });
     cursor = next;

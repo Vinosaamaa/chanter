@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 
 export const GENESIS = Object.freeze({ revision: 0, digest: '0'.repeat(64) });
+export const JOURNAL_SCHEMA = 2;
+export const RETENTION_POLICY = 'PRESERVE_MODERATION_RECORDS_V1';
 export const MAX_PAGE = 500;
 export const MAX_ENTRIES = 250_000;
 export const MAX_PAGE_BYTES = 256 * 1024;
@@ -44,16 +46,16 @@ function javaInstant(value) {
 export function entryDigest(entry) {
   if (!Number.isSafeInteger(entry?.revision) || entry.revision < 1
       || !UUID.test(entry.eventId ?? '') || !['ACCOUNT', 'STUDY_SERVER', 'RESOURCE'].includes(entry.targetKind)
-      || entry.action !== 'DELETE' || !DIGEST.test(entry.previousDigest ?? '')) failure();
+      || entry.action !== 'DELETE' || entry.retentionPolicy !== RETENTION_POLICY || !DIGEST.test(entry.previousDigest ?? '')) failure();
   nonzeroUuid(entry.targetId);
-  const canonical = ['1', String(entry.revision), entry.eventId, entry.targetKind, entry.targetId,
-    'DELETE', javaInstant(entry.deletedAt), entry.previousDigest, ''].join('\n');
+  const canonical = [String(JOURNAL_SCHEMA), String(entry.revision), entry.eventId, entry.targetKind, entry.targetId,
+    'DELETE', javaInstant(entry.deletedAt), RETENTION_POLICY, entry.previousDigest, ''].join('\n');
   return createHash('sha256').update(canonical, 'utf8').digest('hex');
 }
 
 export function validatePage(page, expectedAfter, expectedThrough = null) {
   exactFields(page, ['schemaVersion', 'after', 'through', 'entries', 'next']);
-  if (page.schemaVersion !== 1 || !Array.isArray(page.entries) || page.entries.length > MAX_PAGE
+  if (page.schemaVersion !== JOURNAL_SCHEMA || !Array.isArray(page.entries) || page.entries.length > MAX_PAGE
       || Buffer.byteLength(JSON.stringify(page)) > MAX_PAGE_BYTES) failure();
   validateWatermark(page.after); validateWatermark(page.through); validateWatermark(page.next);
   if (!sameWatermark(page.after, expectedAfter) || (expectedThrough && !sameWatermark(page.through, expectedThrough))
@@ -61,7 +63,7 @@ export function validatePage(page, expectedAfter, expectedThrough = null) {
   let cursor = page.after;
   const targets = new Set(), events = new Set();
   for (const entry of page.entries) {
-    exactFields(entry, ['revision', 'eventId', 'targetKind', 'targetId', 'action', 'deletedAt', 'previousDigest', 'digest']);
+    exactFields(entry, ['revision', 'eventId', 'targetKind', 'targetId', 'action', 'deletedAt', 'retentionPolicy', 'previousDigest', 'digest']);
     if (entry.digest !== entryDigest(entry) || entry.revision !== cursor.revision + 1
         || entry.previousDigest !== cursor.digest || targets.has(`${entry.targetKind}:${entry.targetId}`)
         || events.has(entry.eventId)) failure();

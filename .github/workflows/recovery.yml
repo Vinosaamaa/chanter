@@ -12,6 +12,7 @@ on:
       - 'scripts/deploy/download-backup-tool.sh'
       - 'infra/production/tool-lock.json'
       - 'infra/production/runtime-lock.json'
+      - 'infra/production/recovery-policy.json'
       - 'scripts/deploy/host*'
       - '.github/workflows/recovery.yml'
   workflow_dispatch:
@@ -42,7 +43,7 @@ jobs:
           java -cp .cache/lifecycle-helper LifecycleHttpFixture
       - name: Validate recovery configuration
         run: |
-          node --test scripts/deploy/recovery.test.mjs scripts/deploy/configuration-backup.test.mjs scripts/deploy/host.test.mjs scripts/deploy/restore-isolated.test.mjs
+          node --test scripts/deploy/recovery.test.mjs scripts/deploy/recovery-runtime.test.mjs scripts/deploy/configuration-backup.test.mjs scripts/deploy/host.test.mjs scripts/deploy/restore-isolated.test.mjs
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import { backupUnits } from './scripts/deploy/recovery.mjs';

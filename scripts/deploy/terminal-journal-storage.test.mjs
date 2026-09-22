@@ -66,12 +66,12 @@ test('real restic round trip encrypts and verifies a complete prefix before chec
   const snapshot = repository.write('page', { canary });
   assert.deepEqual(repository.read('page', snapshot), { canary });
   const entry = { revision: 1, eventId: '11111111-1111-4111-8111-111111111111', targetKind: 'ACCOUNT',
-    targetId: '22222222-2222-4222-8222-222222222222', action: 'DELETE', deletedAt: '2026-09-19T06:00:00Z', previousDigest: GENESIS.digest };
+    targetId: '22222222-2222-4222-8222-222222222222', action: 'DELETE', retentionPolicy: 'PRESERVE_MODERATION_RECORDS_V1', deletedAt: '2026-09-19T06:00:00Z', previousDigest: GENESIS.digest };
   entry.digest = entryDigest(entry);
   const authority = { revision: 1, digest: entry.digest };
   let acknowledged = null;
   await replicateJournal({ kind: 'fixture', checkpoint: async () => null,
-    page: async () => ({ schemaVersion: 1, after: GENESIS, through: authority, entries: [entry], next: authority }),
+    page: async () => ({ schemaVersion: 2, after: GENESIS, through: authority, entries: [entry], next: authority }),
     acknowledge: async value => {
       assert.deepEqual(readCurrentReplica(repository).manifest.authority, authority);
       acknowledged = value; return value;

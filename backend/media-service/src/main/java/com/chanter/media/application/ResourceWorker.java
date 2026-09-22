@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 /** Database leases fence completion; provider calls never hold a database transaction. */
 @Component
+@com.chanter.common.recovery.OrdinaryOperation
 public class ResourceWorker {
     private static final Logger log = LoggerFactory.getLogger(ResourceWorker.class);
     private final ResourceLifecycle lifecycle;

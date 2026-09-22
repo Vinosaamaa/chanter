@@ -8,7 +8,7 @@ import { recoverCurrentAuthority, SOURCES } from './terminal-journal-recovery.mj
 const recoveryId = '33333333-3333-4333-8333-333333333333';
 async function fixture() {
   const entry = { revision: 1, eventId: '11111111-1111-4111-8111-111111111111', targetKind: 'ACCOUNT',
-    targetId: '22222222-2222-4222-8222-222222222222', action: 'DELETE', deletedAt: '2026-09-19T06:00:00Z', previousDigest: GENESIS.digest };
+    targetId: '22222222-2222-4222-8222-222222222222', action: 'DELETE', retentionPolicy: 'PRESERVE_MODERATION_RECORDS_V1', deletedAt: '2026-09-19T06:00:00Z', previousDigest: GENESIS.digest };
   entry.digest = entryDigest(entry);
   const authority = { revision: 1, digest: entry.digest }, objects = new Map(), listing = [], calls = [];
   const repository = { kind: 'fixture', environment: 'staging', manifests: () => structuredClone(listing),
@@ -17,7 +17,7 @@ async function fixture() {
       if (kind === 'manifest') listing.push({ snapshotId: id, authority: value.authority }); return id;
     } };
   await replicateJournal({ kind: 'fixture', checkpoint: async () => null, acknowledge: async value => value,
-    page: async () => ({ schemaVersion: 1, after: GENESIS, through: authority, entries: [entry], next: authority }) }, repository);
+    page: async () => ({ schemaVersion: 2, after: GENESIS, through: authority, entries: [entry], next: authority }) }, repository);
   const clients = Object.fromEntries(SOURCES.map(source => {
     let current = GENESIS;
     return [source, { kind: 'fixture', reapply: async page => { current = page.next; calls.push(`${source}:reapply`); },

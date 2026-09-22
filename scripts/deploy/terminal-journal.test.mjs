@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { GENESIS, entryDigest, validatePage, checkpointIdentity } from './terminal-journal.mjs';
 
 const entry = () => ({ revision: 1, eventId: '11111111-1111-4111-8111-111111111111', targetKind: 'ACCOUNT',
-  targetId: '22222222-2222-4222-8222-222222222222', action: 'DELETE', deletedAt: '2026-09-19T06:00:00.120Z',
-  previousDigest: '0'.repeat(64), digest: '2d1edffd5db3690b8c68345b185fa1f59f038b2cde856ede807457fd2d10a569' });
+  targetId: '22222222-2222-4222-8222-222222222222', action: 'DELETE', retentionPolicy: 'PRESERVE_MODERATION_RECORDS_V1', deletedAt: '2026-09-19T06:00:00.120Z',
+  previousDigest: '0'.repeat(64), digest: 'b0d23bf4b8f953242aed4725ef4cf5cc1f01d6d2e957454c67e8ddec9a6a4c72' });
 const mark = value => ({ revision: value.revision, digest: value.digest });
-const page = () => ({ schemaVersion: 1, after: GENESIS, through: mark(entry()), entries: [entry()], next: mark(entry()) });
+const page = () => ({ schemaVersion: 2, after: GENESIS, through: mark(entry()), entries: [entry()], next: mark(entry()) });
 
 test('canonical digest matches the actual Java251 contract including trailing newline and milliseconds', () => {
   assert.equal(entryDigest(entry()), entry().digest);
@@ -27,10 +27,12 @@ test('pages reject corrupted authority, discontinuities, private extra fields an
     p => { p.entries[0].deletedAt = '2026-02-30T06:00:00Z'; },
     p => { p.entries[0].revision = Number.MAX_SAFE_INTEGER + 1; },
     p => { p.entries[0].privateContent = 'must-not-survive'; },
+    p => { delete p.entries[0].retentionPolicy; },
+    p => { p.entries[0].retentionPolicy = 'PURGE_ALL'; },
     p => { p.next.digest = 'a'.repeat(64); },
     p => { p.through.digest = 'b'.repeat(64); },
     p => { p.entries = []; },
-    p => { p.schemaVersion = 2; },
+    p => { p.schemaVersion = 1; },
   ]) {
     const value = structuredClone(page()); change(value);
     assert.throws(() => validatePage(value, GENESIS, page().through), /journal/i);
@@ -39,7 +41,7 @@ test('pages reject corrupted authority, discontinuities, private extra fields an
 });
 
 test('empty genesis is explicit and duplicate targets or oversized pages fail closed', () => {
-  const empty = { schemaVersion: 1, after: GENESIS, through: GENESIS, entries: [], next: GENESIS };
+  const empty = { schemaVersion: 2, after: GENESIS, through: GENESIS, entries: [], next: GENESIS };
   assert.deepEqual(validatePage(empty, GENESIS), empty);
   assert.throws(() => validatePage(null, GENESIS), /journal/i);
   const repeated = { ...entry(), revision: 2, eventId: '33333333-3333-4333-8333-333333333333', previousDigest: entry().digest };
