@@ -10,7 +10,7 @@ reads the invite in that same statement. Internal method and actor names reflect
 the policy. The existing route, response, 403 and 404 behavior are retained.
 
 The new regression failed with the expected owner 403 before the change. After
-the change, all nine invite, enrollment and navigation tests pass against the
+the change, all 20 invite, enrollment, roster and navigation tests pass against the
 migrated embedded database. The test separates owner and instructor identities,
 asserts the owner has no course role, and covers unrelated server ownership,
 unrelated course instruction, learner and TA denial. It exercises the real

@@ -1,8 +1,8 @@
 ---
 schemaVersion: 1
-id: change-note-owner-cohort-invites
+id: architecture-review-owner-cohort-invites
 revision: 1
-type: change-note
+type: architecture-review
 status: proposed
 title: "Allow cohort people managers to retrieve invite links"
 repository: chanter
@@ -28,7 +28,7 @@ verification: {"state":"verified", "evidenceRefs":["test:CohortInviteAuthorizati
 visibility: public-safe
 publicationEligibility: eligible
 issue: 136
-pr: null
+pr: 341
 release: null
 run: null
 ---
