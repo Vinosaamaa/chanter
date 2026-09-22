@@ -50,7 +50,8 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        if (!request.getRequestURI().startsWith("/api/v1/") || request.getRequestURI().equals("/api/v1/internal/events")) {
+        // Private controllers enforce their service token without inventing a browser identity.
+        if (!request.getRequestURI().startsWith("/api/v1/") || request.getRequestURI().startsWith("/api/v1/internal/")) {
             filterChain.doFilter(request, response);
             return;
         }

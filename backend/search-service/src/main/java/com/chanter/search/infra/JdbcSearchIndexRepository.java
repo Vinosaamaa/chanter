@@ -27,27 +27,33 @@ public class JdbcSearchIndexRepository {
             """;
 
     private final JdbcTemplate jdbcTemplate;
+    private final com.chanter.common.lifecycle.TerminalReapplyStore terminal;
 
-    public JdbcSearchIndexRepository(JdbcTemplate jdbcTemplate) {
+    public JdbcSearchIndexRepository(JdbcTemplate jdbcTemplate, com.chanter.common.lifecycle.TerminalReapplyStore terminal) {
         this.jdbcTemplate = jdbcTemplate;
+        this.terminal = terminal;
     }
 
     @Transactional
     public void replaceStudyServerIndex(UUID studyServerId, List<IndexEntry> entries) {
         jdbcTemplate.queryForObject("SELECT id FROM durable_consumer_lock WHERE id=1 FOR UPDATE", Integer.class);
+        if (!terminal.writable("STUDY_SERVER",studyServerId)) return;
+        var writableEntries=entries.stream().filter(entry ->
+                (entry.studyServerId()==null || terminal.writable("STUDY_SERVER",entry.studyServerId()))
+                && (entry.documentType()!=SearchDocumentType.RESOURCE || terminal.writable("RESOURCE",entry.sourceId()))).toList();
         jdbcTemplate.update("""
             DELETE FROM search_index_entries s WHERE study_server_id = ? AND NOT EXISTS
             (SELECT 1 FROM durable_event_cursor c WHERE c.aggregate_key=CONCAT(s.document_type, ':', CAST(s.source_id AS VARCHAR)))
             """, studyServerId);
 
-        if (entries.isEmpty()) {
+        if (writableEntries.isEmpty()) {
             return;
         }
 
         jdbcTemplate.batchUpdate(INSERT_ENTRY_SQL, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement preparedStatement, int index) throws SQLException {
-                IndexEntry entry = entries.get(index);
+                IndexEntry entry = writableEntries.get(index);
                 preparedStatement.setObject(1, entry.id());
                 preparedStatement.setObject(2, entry.studyServerId());
                 preparedStatement.setObject(3, entry.courseId());
@@ -62,7 +68,7 @@ public class JdbcSearchIndexRepository {
 
             @Override
             public int getBatchSize() {
-                return entries.size();
+                return writableEntries.size();
             }
         });
     }
@@ -134,7 +140,11 @@ public class JdbcSearchIndexRepository {
         );
     }
 
+    @Transactional
     public void apply(com.chanter.common.events.SearchChange change) {
+        // The caller's durable cursor commits even when an old source event is discarded.
+        if (change.studyServerId()!=null && !terminal.writable("STUDY_SERVER",change.studyServerId())) return;
+        if (change.type().equals("RESOURCE") && !terminal.writable("RESOURCE",change.sourceId())) return;
         jdbcTemplate.update("DELETE FROM search_index_entries WHERE document_type=? AND source_id=?", change.type(), change.sourceId());
         if (!change.deleted()) jdbcTemplate.update("""
             INSERT INTO search_index_entries (id, study_server_id, course_id, course_title, document_type, source_id,

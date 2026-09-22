@@ -74,7 +74,9 @@ The final schema integration follows foundation #252 epoch 7, retrieval #247 epo
 
 A terminal account or Study Server marker closes access before fan-out. Each participant retains that authority while cleanup progresses, rejecting delayed events and writes that would recreate data. The coordinator stores service-specific progress, safe error codes, preservation holds, and the revision needed for off-host recovery. Human confirmation explains irreversible steps; no undeclared grace period or restoration promise is implied.
 
-Preservation holds are explicit operator actions under #249 authority, with scope, reason, review/expiry information, and immutable audit. A held payload stays restricted and is reported as retained; it must not remain reachable through normal APIs. Billing retention applies only to records that actually exist. No statutory retention period or legal basis is invented by this implementation.
+The required journal policy preserves existing restricted moderation reports, evidence, notes and audit records collected under #249 authority. It does not add a general hold API or preserve original source files by default. Retained moderation records stay outside ordinary account access and are reported separately. Billing retention applies only to records that actually exist. No statutory retention period, review deadline or legal basis is invented by this implementation.
+
+Search applies exact RESOURCE deletion to its derived rows and fences both durable indexing and legacy full-index replacement. STUDY_SERVER deletion removes directly scoped rows and prevents new scoped writes. Older course-only rows lack server ownership, and the index has no author identity. ACCOUNT and STUDY_SERVER cleanup therefore remain PENDING until canonical source deletion delivery is reconciled; recording the journal alone cannot prove their complete erasure. Source export snapshots for an account are cancelled in the same terminal transaction.
 
 ## Recovery journal contract
 
