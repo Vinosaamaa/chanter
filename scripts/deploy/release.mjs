@@ -104,6 +104,7 @@ export function composeFor(release, config, runtimeDir) {
     MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE: 'readinessState,redis' });
   gateway.depends_on = { redis: { condition: 'service_healthy' } };
   gateway.networks = { application: {}, edge: { ipv4_address: `${edgePrefix}.3` } };
+  services['community-service'].networks.push('media-authorization');
   services.postgres = { ...common, image: release.images.postgres, pull_policy: 'never', user: '70:70',
     mem_limit: '896m', read_only: true, env_file: [{ path: path.join(runtimeDir, 'postgres.env'), format: 'raw' },
       { path: './postgres-backup.env', format: 'raw' }],
@@ -126,8 +127,8 @@ export function composeFor(release, config, runtimeDir) {
     environment: { CHANTER_HOSTNAME: config.hostname }, volumes: ['caddy-data:/data', 'caddy-config:/config'],
     ports: ['80:8080', '443:8443'], tmpfs: ['/tmp:size=16m,mode=1777'],
     healthcheck: { test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:2019/config/'], interval: '15s', timeout: '5s', retries: 10 },
-    networks: { edge: { ipv4_address: `${edgePrefix}.2` } } };
-  return { name: `chanter-${config.environment}`, services, networks: { application: {},
+    networks: { edge: { ipv4_address: `${edgePrefix}.2` }, 'media-authorization': {} } };
+  return { name: `chanter-${config.environment}`, services, networks: { application: {}, 'media-authorization': { internal: true },
     edge: { ipam: { config: [{ subnet: `${edgePrefix}.0/28`, ip_range: `${edgePrefix}.8/29` }] } } },
     volumes: Object.fromEntries(['postgres', 'redis', 'resources', 'media-spool', 'scanner-signatures', 'scanner-socket',
       'caddy-data', 'caddy-config'].map(name => [name, {}])) };
