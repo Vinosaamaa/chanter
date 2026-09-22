@@ -35,8 +35,19 @@ async function signIn(page: Page, email: string, password: string) {
   await page.goto(new URL('/sign-in', appUrl).toString())
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
+  const homeResponses = Promise.all([
+    '/api/v1/study-servers', '/api/v1/me/home-summary',
+    '/api/v1/study-server-invitations', '/api/v1/me/notifications/unread-count',
+  ].map(path => page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === 'GET')))
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page).toHaveURL(/\/app\/home/)
+  for (const response of await homeResponses) {
+    expect(response.status()).toBe(200)
+    expect(await response.finished()).toBeNull()
+  }
+  await expect(page.getByRole('heading', { level: 1, name: /^Good (morning|afternoon|evening),/ })).toBeVisible()
+  await expect(page.getByText('Loading your courses…')).toHaveCount(0)
+  await expect(page.getByText('Loading courses…', { exact: true })).toHaveCount(0)
 }
 
 async function signOut(page: Page) {

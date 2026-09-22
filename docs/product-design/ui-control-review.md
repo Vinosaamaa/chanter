@@ -7,21 +7,22 @@ This is the active #254 audit, not a completion certificate. Fixture browser run
 Issue #339 and PR340 own the remaining combined review. The reconstruction evidence
 below is historical; it is not the final lifecycle/recovery release acceptance.
 The current review started from accepted moderation and monitoring main, and now
-includes accepted dependency PR338 and owner cohort-invite authorization PR341.
+includes accepted dependency PR338, owner cohort-invite authorization PR341 and
+recovery infrastructure PR336. Final #251 and #342 integration remains open.
 
 | Surface or capability | Current implementation and evidence boundary |
 | --- | --- |
-| Friends and Inbox phone navigation | #339 reproduces and fixes focus left in hidden panes. Component regressions pass; new three-engine browser cases cover Back, remaining/last notifications and the native Add friend dialog. Hosted fixtures passed all but six ended-call focus cases; the correction and persistent busy/audio feedback are awaiting the next browser proof. |
-| Questions | Conversation/composer focus and Back restoration now have focused regressions; final hosted phone proof remains required. |
-| Teaching and legacy enrollment | Teaching preserves dashboard metrics, Refresh and bookmarked Study Server selection; the old dashboard redirects. Enrollment waits for resolved manager authorization before mounting invite/roster hooks and retains pagination and real Preview links. |
-| Community dialogs | Event, announcement and invitation forms use native modality. Phone and landscape screenshots were inspected; hosted modal interaction cases passed at the prior checkpoint. Event edits preserve their restricted audience. |
+| Friends and Inbox phone navigation | Focus follows the visible pane and returns on Back. Component and three-engine fixture regressions pass for remaining/last notifications, Add friend, incoming/ended calls and persistent busy/audio feedback. Real announcement read/completion persists after reload; delayed delivery refreshes the OPEN list. |
+| Questions | Conversation/composer focus and Back restoration pass focused and three-engine phone fixture checks. Provider answer quality remains a separate gate. |
+| Teaching and legacy enrollment | Teaching retains metrics/Refresh and resolves bookmarked communities against accessible Study Servers. The old dashboard redirects. Enrollment resolves manager access and cohort bookmarks before privileged requests, retaining pagination and real Preview links. Focused regressions pass; phone/desktop count layouts were inspected. |
+| Community dialogs | Event, announcement and invitation forms use native modality. Phone/landscape interaction and scrolling to the actual footer pass. Event edits preserve their restricted audience. Title/close-control separation now passes geometry checks at all dialog sizes and the landscape screenshot was inspected at 8cb80b93. |
 | Community members and legacy header | #339 removes unavailable Active/Online filters and the inert Help control. All/Staff/Learners retain real API filtering and expose selected state. |
 | AI answer controls | PR322 accepted explicit model/mode choices, billing notes and persisted answer audit. PR330 accepted scoped semantic retrieval. These do not establish live-provider login, paid entitlement or generated explanation quality. |
 | Course Resources | PR318/325 accepted private storage/quarantine and supported ingestion. Final upload, authorization, processing and deletion journeys must include #251; actual remote bucket acceptance remains open. |
 | Moderation | PR333 accepted operator/report/appeal controls and real signaling revocation, with phone/desktop and emailed-appeal browser evidence. Actual production operator enrollment remains open. |
 | Billing | PR323 accepted truthful free-beta quotas and rejected quota elevation. No paid purchase or invoice control is offered for this initial release. |
 | Account data | #251 owns real export/download, coordinated deletion and terminal receipt. Final role and browser integration awaits its accepted implementation. |
-| Cross-browser product gate | #339 adds Firefox/WebKit to the real signed-in suite, retaining the existing Chromium/viewport cases. Listing tests is not a passing execution receipt. |
+| Cross-browser product gate | At 74d5c0a6 all 45 actual-service journeys passed in Chromium, Firefox and WebKit, plus real moderation audio removal and emailed appeal. Latest-head and final accepted dependency-union checks remain required; prior passing results do not prove later changes. |
 
 Native-dialog focus required a correction after the first actual browser run;
 the synthetic DOM had not reproduced the initialization problem. The owning

@@ -173,6 +173,7 @@ test('real moderation, active audio revocation and verified-email appeal', async
     expect(after.connected).toBe(true)
     await new Promise(resolve => setTimeout(resolve, 1500))
     const stable = await receiver.evaluate(() => window.moderationAudio.stats())
+    expect(stable).toMatchObject({ connected: true, remoteParticipants: 0 })
     expect(stable.received).toBe(after.received)
     const claim = JSON.parse(Buffer.from(sendToken.participantToken.split('.')[1], 'base64url').toString()) as { exp: number }
     expect(claim.exp * 1000).toBeGreaterThan(Date.now())

@@ -50,3 +50,20 @@ event screenshot showed the long title entering the absolute close control's
 horizontal area. The event header now reserves space for that control. Browser
 geometry assertions at all three dialog sizes guard the separation; hosted
 confirmation is required for the new spacing.
+
+At 8cb80b93 the spacing and responsive fixture checks passed; the inspected
+landscape image shows clear title/dismiss separation. Full browser execution
+exposed two remaining test defects. The recovery journey navigated from Home
+before its unread-count request finished, causing one WebKit retry. Its login
+helper now waits for the same completed Home bootstrap used by product journeys.
+
+Moderation removed the audio publisher, but its observation total changed from
+66,226 to zero when the browser removed the RTP statistics object. The
+[WebRTC statistics lifecycle](https://www.w3.org/TR/webrtc-stats/#the-rtp-statistics-hierarchy)
+permits removed streams to disappear and assigns replacement streams new IDs.
+The fixture now retains the last observed counters per peer and stream ID.
+Three regressions first failed for disappearing streams and pass after the fix;
+continued reception and new streams still increase the total. The actual test
+continues to require sender disconnect, zero remote participants, a connected
+receiver, stable received bytes and denied reconnect. It does not accept a
+decrease as proof that media stopped. Hosted confirmation remains required.
