@@ -46,3 +46,32 @@ The control inventory also found an inert Help control in the legacy management
 header and unavailable Active/Online member filters. These optional controls are
 removed; the actual All/Staff/Learners filters retain their API behavior and expose
 selected state to assistive technology. No member presence is fabricated.
+
+## Teaching consolidation design
+
+The legacy instructor dashboard duplicates the modern Teaching destination, but a
+redirect alone would discard bookmarked Study Server selection, Refresh and useful
+operational counts. Preserve those controls and existing dashboard fields first.
+Keep the current Course/queue actions primary; show the additional counts in a
+compact wrapping definition list using the existing typography and colors. Usage
+must describe the lifetime free-beta limit. The old URL will preserve its query
+when forwarding to Teaching; shared API/hook/types stay in place. Remove the unused
+legacy page only after proving route and behavior parity, freeing shipped assets
+for the accessibility fixes without increasing budgets.
+
+## Community interaction corrections
+
+The event list uses pointer-only articles, and community dialogs lack native modal
+focus isolation. Use a small shared native-dialog wrapper for repeated community
+forms, preserving their existing layout and mutation behavior. Event titles become
+real buttons. Keep the underlying document inert and restore the previous control
+on close. Verify phone, desktop and landscape layouts with synthetic screenshots.
+
+The event editor also has a fixed historical date and a visibility toggle whose two
+states both submit HUB. Default new events to a future hour; new community events
+remain visibly community-wide. Editing must preserve the existing visibility,
+Course and Cohort identifiers. A regression must fail before this correction.
+
+Teaching now preserves bookmarked Study Server selection, Refresh, all six operational counts and lifetime free-beta usage. The legacy route forwards its full query to Teaching inside the modern shell. Four Teaching and ten Friends component tests pass. Incoming voice-call dialogs use native modality and restore the prior control; this does not prove audio delivery.
+
+Event title buttons, native community dialogs, future defaults and restricted-audience preservation have three red-to-green component regressions. Nine event/community tests pass. Removed only the inert legacy Mark helpful control; modern saved-answer helpful behavior remains. Lint/build and unchanged bundle caps pass at this checkpoint (core JS 1264.0 KiB raw / 377.8 KiB gzip, CSS 214.4 KiB raw / 34.9 KiB gzip). Additional browser cases cover 390px phone, 1280px desktop and 844px landscape dialogs; hosted proof remains pending.

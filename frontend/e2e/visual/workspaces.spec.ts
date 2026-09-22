@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test, type WebSocketRoute } from '@playwright/test'
 import { VISUAL_NOW } from './workspace-fixtures'
 
 // A synthetic socket supplies connection acknowledgements for layout-only screenshots.
@@ -17,6 +17,56 @@ test.beforeEach(async ({ page }) => {
 // Layout evidence uses explicit synthetic responses; authenticated backend journeys run separately.
 const course = '/app/servers/visual-study/courses/visual-course-0'
 const community = '/app/servers/visual-study/community'
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }, { width: 844, height: 390 }]) {
+  test(`fixture UI community dialogs support keyboard navigation at ${viewport.width} @dialogs`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport)
+    await page.goto(`${community}/events?visual=staff`)
+    const event = page.getByRole('button', { name: 'Community study circle: making difficult ideas clear' })
+    await event.focus()
+    await page.keyboard.press('Enter')
+    const detail = page.getByRole('dialog', { name: 'Community study circle: making difficult ideas clear' })
+    await expect(detail.getByRole('button', { name: 'Close event details' })).toBeFocused()
+    await event.evaluate(element => element.focus())
+    await expect(event).not.toBeFocused()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-event-details-${viewport.width}.png`) })
+    await page.keyboard.press('Escape')
+    await expect(detail).toBeHidden()
+    await expect(event).toBeFocused()
+    for (const [button, name] of [['Create event', 'Create event'], ['Invite people', 'Invite people']]) {
+      const opener = page.getByRole('button', { name: button, exact: true })
+      await opener.click()
+      const dialog = page.getByRole('dialog', { name, exact: true })
+      await expect(dialog).toBeVisible()
+      expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
+      await opener.evaluate(element => element.focus())
+      await expect(opener).not.toBeFocused()
+      await page.screenshot({ path: testInfo.outputPath(`fixture-ui-${button.replaceAll(' ', '-')}-${viewport.width}.png`) })
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+      await expect(opener).toBeFocused()
+    }
+    await page.goto(`${community}/announcements?visual=staff`)
+    const publish = page.getByRole('button', { name: 'Publish', exact: true })
+    await publish.click()
+    const announcement = page.getByRole('dialog', { name: 'Publish announcement' })
+    await expect(announcement.getByRole('textbox', { name: 'Title', exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-announcement-editor-${viewport.width}.png`) })
+    await page.keyboard.press('Escape')
+    await expect(announcement).toBeHidden()
+    await expect(publish).toBeFocused()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+  })
+}
+
+test('fixture UI legacy teaching bookmark preserves Study Server and actions', async ({ page }) => {
+  await page.goto('/app/instructor-dashboard?serverId=visual-study&visual=staff')
+  await expect(page).toHaveURL(/\/app\/teaching\?serverId=visual-study&visual=staff/)
+  await expect(page.getByRole('button', { name: 'Refresh teaching' })).toBeVisible()
+  await expect(page.getByText('Low-confidence handoffs', { exact: true })).toBeVisible()
+  await expect(page.getByText('Office Hours waitlist', { exact: true })).toBeVisible()
+})
+
 const routes = [
   ['course-overview', `${course}/overview`],
   ['course-chat', `${course}/chat`],
@@ -173,9 +223,13 @@ test('fixture UI phone Friends dialog contains focus and restores Add friend', a
   await opener.click()
   const dialog = page.getByRole('dialog', { name: 'Add a friend' })
   await expect(page.getByRole('textbox', { name: 'Search co-members' })).toBeFocused()
+  await opener.evaluate(element => element.focus())
+  await expect(opener).not.toBeFocused()
   for (let index = 0; index < 8; index++) {
     await page.keyboard.press('Tab')
-    expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
+    // Native dialogs keep the document behind them inert; browsers may still
+    // move focus to their own chrome, reported here as document.body.
+    expect(await dialog.evaluate(element => document.activeElement === document.body || element.contains(document.activeElement))).toBe(true)
   }
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-friend-dialog-390.png') })
   await page.keyboard.press('Escape')
@@ -198,7 +252,7 @@ test('fixture UI phone Inbox marks a notification done and returns to the list',
 })
 
 test('fixture UI phone Inbox restores its heading when the last notification is completed', async ({ page }) => {
-  await page.route('**/api/v1/notifications?*', async route => {
+  await page.route(/\/api\/v1\/me\/notifications(?:\?.*)?$/, async route => {
     const response = await route.fetch()
     const data = await response.json() as { notifications: Array<{ id: string }> }
     await route.fulfill({ response, json: { ...data, notifications: data.notifications.filter(item => item.id === 'visual-notification') } })
@@ -210,6 +264,38 @@ test('fixture UI phone Inbox restores its heading when the last notification is 
   await expect(page.getByText('No open notifications.')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Inbox', exact: true })).toBeFocused()
 })
+
+for (const width of [390, 1280]) {
+  test(`fixture UI phone Friends incoming call uses an inert modal at ${width}`, async ({ page }, testInfo) => {
+    const sockets: WebSocketRoute[] = []
+    const declined: string[] = []
+    await page.routeWebSocket('**/api/v1/realtime/ws', socket => {
+      sockets.push(socket)
+      socket.onMessage(message => {
+        const frame = JSON.parse(String(message))
+        if (frame.type === 'call_decline') declined.push(frame.callId)
+      })
+    })
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto('/app/friends?friend=visual-peer')
+    const previous = page.getByRole('button', { name: 'Start voice call with Alexandra Montgomery-Williams' })
+    await expect(previous).toBeVisible()
+    await previous.focus()
+    await expect.poll(() => sockets.length).toBeGreaterThan(0)
+    for (const socket of sockets) socket.send(JSON.stringify({ type: 'call_ringing', callId: 'visual-call', callerUserId: 'visual-peer', calleeUserId: 'visual-learner', direction: 'incoming' }))
+    const dialog = page.getByRole('dialog', { name: 'Voice call with Alexandra Montgomery-Williams' })
+    await expect(dialog.getByRole('button', { name: 'Accept voice call' })).toBeFocused()
+    await previous.evaluate(element => element.focus())
+    await expect(previous).not.toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-incoming-call-${width}.png`) })
+    await dialog.getByRole('button', { name: 'Decline voice call' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(previous).toBeFocused()
+    expect(declined).toEqual(['visual-call'])
+  })
+}
 
 test('fixture UI phone Questions returns from its reading pane', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })

@@ -329,9 +329,6 @@ function AiAnswerCard({
             {isAddingToQueue ? 'Adding…' : '+ Add to TA Queue'}
           </button>
         ) : null}
-        <button type="button" className="rounded-md border border-app-border px-3 py-1.5 text-xs font-semibold text-app-muted">
-          Mark helpful
-        </button>
       </div>
     </article>
   )

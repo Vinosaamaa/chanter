@@ -302,7 +302,7 @@
 
 .v2-app-shell .settings-home-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--blue); font-size: 13px; margin-bottom: 20px; }
 /* Native dialog keeps the background inert and restores the invoking control. */
-.v2-app-shell dialog.add-friend-modal::backdrop { background: rgb(25 44 70 / 40%); }
+.v2-app-shell :is(dialog.add-friend-modal,dialog.dm-call-modal,.workspace-dialog)::backdrop { background: rgb(25 44 70 / 40%); }
 /* Refinements from actual phone/desktop browser review. */
 .v2-app-shell .friends-page { gap: 0; padding: 0; }
 .v2-app-shell :is(.friends-list-pane,.dm-pane) { border-radius: 0; border-top: 0; border-bottom: 0; border-left: 0; }
@@ -466,3 +466,11 @@
  .v2-app-shell .lounge-channel-select { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--desk); }
  .v2-app-shell .lounge-channel-select select { width: 100%; min-height: 44px; color: var(--ink); background: transparent; border: 0; font-size: 16px; }
 }
+
+.v2-app-shell .teaching-operational-summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 16px; margin: 0 0 24px; }
+.v2-app-shell .teaching-operational-summary dt { color: var(--muted); font-size: 13px; }
+.v2-app-shell .teaching-operational-summary dd { margin: 4px 0 0; font-size: 20px; font-weight: 600; }
+
+.v2-app-shell .workspace-dialog { width: min(780px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); margin: auto; padding: 0; border: 0; background: transparent; color: var(--ink); }
+.v2-app-shell .workspace-dialog:has(> .event-detail-modal) { width: min(720px, calc(100vw - 24px)); }
+.v2-app-shell .event-detail-link { border: 0; padding: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }

@@ -19,6 +19,7 @@ import type {
 } from '../../../community-events/community-event-types'
 import { formatUserFacingApiError } from '../../../../lib/format-api-error'
 import { useV2Community } from '../../layouts/v2-community-context'
+import { WorkspaceDialog } from '../../components/WorkspaceDialog'
 
 const FILTERS: { label: string; value: CommunityEventFilter }[] = [
   { label: 'Upcoming', value: 'UPCOMING' },
@@ -176,7 +177,7 @@ export function CommunityEventsPage() {
           const when = formatEventWhen(event.startsAt, event.endsAt)
           const going = event.viewerRsvp === 'GOING'
           return (
-            <article key={event.id} onClick={() => openEvent(event.id)}>
+            <article key={event.id}>
               <span>
                 <CalendarDays />
               </span>
@@ -185,7 +186,7 @@ export function CommunityEventsPage() {
                   {when.date} · {when.time}
                   {event.status === 'CANCELLED' ? ' · Cancelled' : ''}
                 </small>
-                <h2>{event.title}</h2>
+                <h2><button type="button" className="event-detail-link" onClick={() => openEvent(event.id)}>{event.title}</button></h2>
                 <p>
                   <MapPin />
                   {event.location || 'Location TBA'}
@@ -293,9 +294,9 @@ function EventDetailModal({
 }) {
   const when = formatEventWhen(event.startsAt, event.endsAt)
   return (
-    <div className="v2-modal-backdrop">
+    <WorkspaceDialog label={event.title} onClose={onClose}>
       <section className="event-detail-modal">
-        <button type="button" className="modal-close" onClick={onClose}>
+        <button type="button" className="modal-close" onClick={onClose} aria-label="Close event details">
           <X />
         </button>
         <header>
@@ -363,7 +364,7 @@ function EventDetailModal({
           </button>
         </footer>
       </section>
-    </div>
+    </WorkspaceDialog>
   )
 }
 
@@ -378,18 +379,17 @@ function CreateEventModal({
   onSave: (input: CreateCommunityEventInput) => void
   onClose: () => void
 }) {
-  const defaultStart = event?.startsAt ?? '2026-07-18T14:00:00.000Z'
-  const defaultEnd = event?.endsAt ?? '2026-07-18T16:00:00.000Z'
+  const [defaultStart] = useState(() => event?.startsAt ?? new Date(Math.ceil((Date.now() + 3_600_000) / 3_600_000) * 3_600_000).toISOString())
+  const defaultEnd = event?.endsAt ?? new Date(new Date(defaultStart).getTime() + 3_600_000).toISOString()
   const [title, setTitle] = useState(event?.title ?? '')
   const [startsAt, setStartsAt] = useState(toLocalInputValue(defaultStart))
   const [endsAt, setEndsAt] = useState(toLocalInputValue(defaultEnd))
   const [place, setPlace] = useState(event?.location ?? '')
   const [description, setDescription] = useState(event?.description ?? '')
-  const [hubWide, setHubWide] = useState(event?.visibility !== 'COURSE' && event?.visibility !== 'COHORT')
   const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? '')
 
   return (
-    <div className="v2-modal-backdrop">
+    <WorkspaceDialog label={event ? 'Edit event' : 'Create event'} onClose={onClose}>
       <form
         className="create-event-modal"
         onSubmit={(submit: FormEvent) => {
@@ -401,11 +401,13 @@ function CreateEventModal({
             startsAt: fromLocalInputValue(startsAt),
             endsAt: fromLocalInputValue(endsAt),
             capacity: capacity.trim() ? Number(capacity) : undefined,
-            visibility: hubWide ? 'HUB' : 'HUB',
+            visibility: event?.visibility ?? 'HUB',
+            courseId: event?.courseId ?? undefined,
+            cohortId: event?.cohortId ?? undefined,
           })
         }}
       >
-        <button type="button" className="modal-close" onClick={onClose}>
+        <button type="button" className="modal-close" onClick={onClose} aria-label="Close event editor">
           <X />
         </button>
         <h2>{event ? 'Edit event' : 'Create event'}</h2>
@@ -483,18 +485,7 @@ function CreateEventModal({
             <textarea value={description} onChange={(change) => setDescription(change.target.value)} />
           </div>
         </label>
-        <label className="hub-wide-event">
-          <span>
-            <UsersRound />
-          </span>
-          <div>
-            <strong>Hub-wide event</strong>
-            <small>Visible to everyone in this Study Server.</small>
-          </div>
-          <button type="button" className={hubWide ? 'active' : ''} onClick={() => setHubWide(!hubWide)}>
-            <i />
-          </button>
-        </label>
+        <p>{event?.visibility === 'COURSE' ? 'Visible to members of this Course.' : event?.visibility === 'COHORT' ? 'Visible to members of this Cohort.' : 'Visible to everyone in this Study Server.'}</p>
         <footer>
           <button type="button" className="v2-outline-button" onClick={onClose} disabled={saving}>
             Cancel
@@ -504,6 +495,6 @@ function CreateEventModal({
           </button>
         </footer>
       </form>
-    </div>
+    </WorkspaceDialog>
   )
 }

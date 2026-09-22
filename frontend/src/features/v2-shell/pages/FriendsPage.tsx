@@ -543,14 +543,24 @@ function AddFriendModal({
 type FriendsHook = ReturnType<typeof useFriendsHub>
 
 function CallModal({ hub, friendName }: { hub: FriendsHook; friendName: string }) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const dialog = dialogRef.current
+    dialog?.showModal()
+    dialog?.querySelector<HTMLButtonElement>('button')?.focus()
+    return () => {
+      dialog?.close()
+      if (previous?.isConnected) previous.focus()
+    }
+  }, [])
   const incoming = hub.callState.phase === 'incoming_ringing'
   const inCall = hub.callState.phase === 'in_call'
   return (
-    <div className="v2-modal-backdrop">
-      <section
+      <dialog
+        ref={dialogRef}
         className="dm-call-modal"
-        role="dialog"
-        aria-modal="true"
+        onCancel={event => event.preventDefault()}
         aria-label={`Voice call with ${friendName}`}
       >
         <V2Avatar name={friendName} tone="blue" size="lg" online />
@@ -598,8 +608,7 @@ function CallModal({ hub, friendName }: { hub: FriendsHook; friendName: string }
             <Phone />
           </button>
         </div>
-      </section>
-    </div>
+      </dialog>
   )
 }
 

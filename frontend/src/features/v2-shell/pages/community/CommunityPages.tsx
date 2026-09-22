@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { WorkspaceDialog } from '../../components/WorkspaceDialog'
 
 import {
   archiveCommunityAnnouncement,
@@ -274,7 +275,7 @@ function AnnouncementEditorModal({
   const [title, setTitle] = useState(initial?.title ?? '')
   const [body, setBody] = useState(initial?.body ?? '')
   return (
-    <div className="v2-modal-backdrop" role="presentation">
+    <WorkspaceDialog label={initial ? 'Edit announcement' : 'Publish announcement'} onClose={onClose}>
       <form
         className="create-event-modal"
         onSubmit={(event) => {
@@ -303,7 +304,7 @@ function AnnouncementEditorModal({
           </button>
         </footer>
       </form>
-    </div>
+    </WorkspaceDialog>
   )
 }
 

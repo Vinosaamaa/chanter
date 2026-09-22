@@ -12,8 +12,8 @@ const topNavItems = [
   { id: 'friends', label: 'Friends', to: '/app/friends', icon: '👥', matchPrefix: true },
   {
     id: 'dashboard',
-    label: 'Instructor Dashboard',
-    to: '/app/instructor-dashboard',
+    label: 'Teaching',
+    to: '/app/teaching',
     icon: '📊',
     matchPrefix: false,
   },

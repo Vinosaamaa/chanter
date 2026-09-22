@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 
 import { TeachingPage } from './TeachingPage'
+import { InstructorDashboardPage } from '../../instructor-dashboard/components/InstructorDashboardPage'
 
 const mocks = vi.hoisted(() => ({
   access: {
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     showTeachingNav: true,
   },
   dashboardPage: {
+    refresh: vi.fn(),
     servers: [{ id: 'server-1', name: 'Systems Guild' }],
     selectedServerId: 'server-1',
     setSelectedServerId: vi.fn(),
@@ -46,6 +48,7 @@ const mocks = vi.hoisted(() => ({
     error: null,
   },
   listOfficeHoursSessions: vi.fn(),
+  dashboardSelection: vi.fn(),
 }))
 
 vi.mock('../hooks/use-v2-sidebar-data', () => ({
@@ -53,7 +56,10 @@ vi.mock('../hooks/use-v2-sidebar-data', () => ({
 }))
 
 vi.mock('../../instructor-dashboard/hooks/use-instructor-dashboard-page', () => ({
-  useInstructorDashboardPage: () => mocks.dashboardPage,
+  useInstructorDashboardPage: (serverId: string | null, select: (id: string) => void) => {
+    mocks.dashboardSelection(serverId)
+    return { ...mocks.dashboardPage, setSelectedServerId: select }
+  },
 }))
 
 vi.mock('../../support-operations/office-hours-api', () => ({
@@ -132,5 +138,26 @@ describe('TeachingPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent(
       '/app/servers/server-1/courses/course-1/questions?cohort=cohort-2',
     )
+  })
+
+  it('preserves bookmarked Study Server context and offers refresh with lifetime usage', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter initialEntries={['/app/teaching?serverId=bookmarked-server']}><TeachingPage /></MemoryRouter>)
+    expect(mocks.dashboardSelection).toHaveBeenCalledWith('bookmarked-server')
+    await user.click(screen.getByRole('button', { name: 'Refresh teaching' }))
+    expect(mocks.dashboardPage.refresh).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('88 runs remaining of the lifetime limit')).toBeInTheDocument()
+    expect(screen.getByText('Low-confidence handoffs').parentElement).toHaveTextContent('1')
+    expect(screen.getByText('Approved FAQs').parentElement).toHaveTextContent('3')
+  })
+
+  it('forwards legacy dashboard bookmarks to Teaching without losing Study Server context', async () => {
+    render(<MemoryRouter initialEntries={['/app/instructor-dashboard?serverId=server-2']}>
+      <Routes>
+        <Route path="/app/instructor-dashboard" element={<InstructorDashboardPage />} />
+        <Route path="/app/teaching" element={<LocationProbe />} />
+      </Routes>
+    </MemoryRouter>)
+    expect(await screen.findByTestId('location')).toHaveTextContent('/app/teaching?serverId=server-2')
   })
 })

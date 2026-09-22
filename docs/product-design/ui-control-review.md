@@ -2,6 +2,32 @@
 
 This is the active #254 audit, not a completion certificate. Fixture browser runs render production components against an explicit synthetic server. They do not establish backend behavior.
 
+## Current integration pass
+
+Issue #339 and PR340 own the remaining combined review. The reconstruction evidence
+below is historical; it is not the final lifecycle/recovery release acceptance.
+The current review started from accepted moderation and monitoring main, and now
+includes the accepted dependency update from PR338.
+
+| Surface or capability | Current implementation and evidence boundary |
+| --- | --- |
+| Friends and Inbox phone navigation | #339 reproduces and fixes focus left in hidden panes. Component regressions pass; new three-engine browser cases cover Back, remaining/last notifications and the native Add friend dialog. Hosted acceptance is still running. |
+| Community members and legacy header | #339 removes unavailable Active/Online filters and the inert Help control. All/Staff/Learners retain real API filtering and expose selected state. |
+| AI answer controls | PR322 accepted explicit model/mode choices, billing notes and persisted answer audit. PR330 accepted scoped semantic retrieval. These do not establish live-provider login, paid entitlement or generated explanation quality. |
+| Course Resources | PR318/325 accepted private storage/quarantine and supported ingestion. Final upload, authorization, processing and deletion journeys must include #251; actual remote bucket acceptance remains open. |
+| Moderation | PR333 accepted operator/report/appeal controls and real signaling revocation, with phone/desktop and emailed-appeal browser evidence. Actual production operator enrollment remains open. |
+| Billing | PR323 accepted truthful free-beta quotas and rejected quota elevation. No paid purchase or invoice control is offered for this initial release. |
+| Account data | #251 owns real export/download, coordinated deletion and terminal receipt. Final role and browser integration awaits its accepted implementation. |
+| Cross-browser product gate | #339 adds Firefox/WebKit to the real signed-in suite, retaining the existing Chromium/viewport cases. Listing tests is not a passing execution receipt. |
+
+Native-dialog focus required a correction after the first actual browser run;
+the synthetic DOM had not reproduced the initialization problem. The owning
+debug record is `docs/operations/issue-339-debug-log.md`. This distinction is kept
+explicit so future work does not treat component or fixture success as proof of
+public product readiness.
+
+## Reconstruction baseline
+
 Candidate cbe0c128 passed [179 fixture checks](https://github.com/Vinosaamaa/chanter/actions/runs/34676290434) and [CI with 259 frontend tests, seven public journeys and fourteen real signed-in journeys](https://github.com/Vinosaamaa/chanter/actions/runs/34676290436). The fixture run covers 24 route views at six widths and selected Firefox/WebKit interactions. This evidence updates the individual rows below; untested capabilities remain explicit.
 
 | Route family | Current control behavior | Evidence and remaining gate |

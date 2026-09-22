@@ -109,6 +109,7 @@ describe('FriendsPage', () => {
     vi.clearAllMocks()
     mocks.preferredFriendId = null
     mocks.hub.selectedFriendId = 'friend-alex'
+    mocks.hub.callState.phase = 'idle'
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value() { this.setAttribute('open', '') } })
     Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value() { this.removeAttribute('open') } })
   })
@@ -215,6 +216,18 @@ describe('FriendsPage', () => {
     renderPage('/app/friends?friend=friend-alex')
 
     expect(mocks.preferredFriendId).toBe('friend-alex')
+  })
+
+  it('moves focus into an incoming call and restores the prior control when the call ends', () => {
+    const view = renderPage()
+    const opener = screen.getByRole('button', { name: 'Start voice call with Alex Chen' })
+    opener.focus()
+    mocks.hub.callState.phase = 'incoming_ringing'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'Accept voice call' })).toHaveFocus()
+    mocks.hub.callState.phase = 'idle'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    expect(opener).toHaveFocus()
   })
 })
 
