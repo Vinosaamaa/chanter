@@ -15,3 +15,5 @@
 **/*.log
 frontend/test-results
 frontend/playwright-report
+infra/production/frontend/caddy/vendor
+infra/production/frontend/caddy/.caddy-compat
