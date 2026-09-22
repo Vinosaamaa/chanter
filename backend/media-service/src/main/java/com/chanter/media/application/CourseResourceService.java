@@ -72,7 +72,7 @@ public class CourseResourceService {
 
     public List<CourseResource> listCourseResources(UUID course, UUID user) {
         var access = requireView(course, user);
-        var resources = lifecycle.list(course, access.canUploadCourseResource());
+        var resources = lifecycle.list(course, access.canUploadCourseResource()).stream().filter(resource -> !lifecycle.terminalScope(resource)).toList();
         var visible = new java.util.ArrayList<CourseResource>();
         for (int offset = 0; offset < resources.size(); offset += 100) {
             var page = resources.subList(offset, Math.min(offset + 100, resources.size()));
@@ -176,7 +176,7 @@ public class CourseResourceService {
             temporary = path;
             // Deletion accepted during a provider read must win before any bytes are exposed.
             var latest = lifecycle.find(id);
-            if (latest.isEmpty() || !latest.get().state().equals("AVAILABLE") || !stillAuthorized.test(latest.get())) {
+            if (latest.isEmpty() || !latest.get().state().equals("AVAILABLE") || lifecycle.terminalScope(latest.get()) || !stillAuthorized.test(latest.get())) {
                 Files.deleteIfExists(path); throw missing();
             }
             var closed = new AtomicBoolean();
@@ -197,7 +197,7 @@ public class CourseResourceService {
     }
 
     private CourseResource existing(UUID id) {
-        return lifecycle.find(id).filter(resource -> !List.of("DELETE_PENDING", "DELETED").contains(resource.state()))
+        return lifecycle.find(id).filter(resource -> !List.of("DELETE_PENDING", "DELETED").contains(resource.state()) && !lifecycle.terminalScope(resource))
                 .orElseThrow(CourseResourceService::missing);
     }
     private CourseResourceAccess requireView(UUID course, UUID user) {
