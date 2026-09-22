@@ -41,3 +41,15 @@ enabled and disabled cases. The telemetry workflow also omitted AI-ledger and
 realtime source paths. Both now trigger the native privacy proof, together with
 the new error-reporting configuration and deployment module. Neither fix changes
 the source worker's scheduling or authorization behavior.
+
+The next review found that the new error settings were omitted from configuration
+snapshots/fingerprints, and differently cased receiver hostnames passed preflight
+but could fail Java startup. Failing regressions reproduced both. Snapshots now
+include error configuration and preflight returns the normalized URL. Receipt
+metadata lists remaining unknowns. The native workflow compiles and exercises
+the actual AI/realtime modules as well as testing their exported metrics.
+
+Resource age intentionally follows `updated_at`, not every worker attempt.
+`retryJob` changes lease/retry fields without updating that timestamp. The code
+comment, design and implementation record now state this accurately; no source
+worker behavior is changed to make a monitoring claim appear true.

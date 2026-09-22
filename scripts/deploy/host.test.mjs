@@ -9,6 +9,16 @@ import { imageNames } from './release.mjs';
 const scratch = path.resolve('.cache/deploy-tests');
 fs.mkdirSync(scratch, { recursive: true });
 
+test('error receiver changes are preserved in encrypted configuration and invalidate its fingerprint', t => {
+  const { state } = fixture(t);
+  const release = { commit: 'a'.repeat(40), schemaEpoch: 8 };
+  const before = configurationFingerprint(state, release);
+  const dsn = `https://${'a'.repeat(32)}@o1.ingest.us.sentry.io/1`;
+  fs.writeFileSync(path.join(state, 'runtime/errors.env'), `CHANTER_ERRORS_DSN=${dsn}\n`);
+  assert.equal(configurationSnapshot(state, release).runtime.errors.CHANTER_ERRORS_DSN, dsn);
+  assert.notEqual(configurationFingerprint(state, release), before);
+});
+
 test('missing release receipts cannot authorize an older writer against an orphaned database', t => {
   const { state } = fixture(t);
   const release = { schemaEpoch: 5, commit: 'a'.repeat(40) };

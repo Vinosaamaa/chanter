@@ -26,7 +26,8 @@ pending messages and retained expired-message metadata, which the existing worke
 purges after seven days. Resource counts include upload, scan, indexing and cleanup
 work, with scan/index failures shown separately. Resource age is elapsed time
 since the oldest pending row's last update, not its total queue wait or original
-upload age. Retry and claim transitions reset that activity timestamp. No content,
+upload age. State/index transitions reset that timestamp; lease-only retries in
+`retryJob` do not. It does not claim to track every worker attempt. No content,
 recipient, resource ID or model name is a metric dimension.
 Legacy resources count as pending only while the existing legacy migration worker
 is enabled. An inactive migration must not create a fictitious backlog.
@@ -104,6 +105,13 @@ frontend error capture, source-map
 publishing, incident/rotation runbooks and provider acceptance remain unfinished. #332 separately owns complete
 application restore with current deletion authority. Neither issue is closed by
 the successful database-only restore in PR329.
+
+Initial importable dashboards and seven alert rules now live in `infra/monitoring`.
+The pinned Prometheus parser validates the actual eighteen dashboard queries;
+synthetic series test alert firing, recovery, unknown collection and environment
+isolation. The [runbook](../operations/monitoring-runbook.md) records their initial
+thresholds and exact limits. Actual provider translation, dashboard rendering,
+notification routing and external uptime/backup monitoring are still gates.
 
 Primary references:
 

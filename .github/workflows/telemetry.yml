@@ -24,11 +24,28 @@ on:
       - 'scripts/deploy/release*'
       - 'scripts/deploy/build-release.sh'
       - 'scripts/deploy/smoke-release.sh'
+      - 'scripts/check-monitoring.mjs'
+      - 'infra/monitoring/**'
       - '.github/workflows/telemetry.yml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  operational-rules:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate actual dashboard expressions and alert transitions
+        run: |
+          mkdir -p .cache/monitoring
+          curl --fail --location --retry 3 https://github.com/prometheus/prometheus/releases/download/v3.14.0/prometheus-3.14.0.linux-amd64.tar.gz -o .cache/monitoring/prometheus.tar.gz
+          echo 'f665c6da19eb7ba399c915d30c7d9793c9b417bf8a749b504bc470678631478d  .cache/monitoring/prometheus.tar.gz' | sha256sum --check -
+          tar -xzf .cache/monitoring/prometheus.tar.gz -C .cache/monitoring
+          node scripts/check-monitoring.mjs .cache/monitoring/prometheus-3.14.0.linux-amd64/promtool
   native-agent-export:
     strategy:
       fail-fast: false
@@ -62,5 +79,5 @@ jobs:
         env:
           METRIC_TEST_PORT: ${{ job.services.metrics-postgres.ports['5432'] }}
         run: |
-          mvn -B -q -pl telemetry,common,auth-service,media-service -am -DskipTests package
-          mvn -B -q -pl telemetry,common,auth-service,media-service -am -Dtest=SafeSpanExporterTest,SafeMetricExporterTest,SafeLogFormatterTest,NativeTelemetryExportTest,QueueMetricsTest,QueueMetricQueryTest,OutboxMetricsTest,NativeQueueMetricQueryTest,EmailQueueMetricsTest,ResourceQueueMetricsTest,PrivateErrorEventTest,PrivateErrorReporterTest -Dsurefire.failIfNoSpecifiedTests=false -Dchanter.telemetry.agent="$GITHUB_WORKSPACE/.cache/telemetry/agent.jar" -Dchanter.telemetry.jdbc="jdbc:postgresql://127.0.0.1:$METRIC_TEST_PORT/metric_test" test
+          mvn -B -q -pl telemetry,common,auth-service,media-service,agent-service,realtime-service -am -DskipTests package
+          mvn -B -q -pl telemetry,common,auth-service,media-service,agent-service,realtime-service -am -Dtest=SafeSpanExporterTest,SafeMetricExporterTest,SafeLogFormatterTest,NativeTelemetryExportTest,QueueMetricsTest,QueueMetricQueryTest,OutboxMetricsTest,NativeQueueMetricQueryTest,EmailQueueMetricsTest,ResourceQueueMetricsTest,PrivateErrorEventTest,PrivateErrorReporterTest,AiOperationalMetricsTest,AiGenerationLedgerTest,RealtimeConnectionMetricsTest -Dsurefire.failIfNoSpecifiedTests=false -Dchanter.telemetry.agent="$GITHUB_WORKSPACE/.cache/telemetry/agent.jar" -Dchanter.telemetry.jdbc="jdbc:postgresql://127.0.0.1:$METRIC_TEST_PORT/metric_test" test

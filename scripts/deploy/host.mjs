@@ -266,7 +266,7 @@ export function verifyMigrationHistory(stateDir, release, environment, run = doc
 }
 
 export function configurationSnapshot(stateDir, release) {
-  const runtime = Object.fromEntries([...modules, 'postgres', 'redis', 'livekit', 'telemetry']
+  const runtime = Object.fromEntries([...modules, 'postgres', 'redis', 'livekit', 'telemetry', 'errors']
     .map(name => [name, readEnv(path.join(stateDir, 'runtime', `${name}.env`))]));
   const floor = path.join(stateDir, 'migration-floor.json');
   return { version: 1, release, config: json(path.join(stateDir, 'config.json')), runtime,

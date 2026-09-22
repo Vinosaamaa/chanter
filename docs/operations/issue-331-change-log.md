@@ -24,7 +24,8 @@ pool's configuration rather than the statement timeout.
 Email and resource collectors now pass source-state tests. Email follows actual
 outbox delivery and expiry. Resource monitoring distinguishes active scan/index/
 cleanup, retained failures and completed/deleted rows. Its age is pending-row
-inactivity, since existing retry/claim transitions update the source timestamp.
+age since the existing source update timestamp. State/index transitions reset it,
+but lease-only retry writes do not; it is not an attempt heartbeat.
 Both tests also run against the dedicated hosted PostgreSQL fixture.
 
 The native Boot gauge assertion first reproduced the missing live gauge proof.
@@ -74,3 +75,20 @@ privacy extension, including simultaneous SDK error delivery. The actual envelop
 still excludes private canaries and forbidden context fields. All 53 deployment
 tests, Bash syntax and workflow validation pass. These isolated tests do not
 substitute for the failed release startup or an actual provider account.
+
+The enabled auth context reproduced the native startup failure as a Spring bean
+name collision between `EmailQueueMetrics` and its factory method. Resource
+monitoring had the same collision. Explicit sampler bean names fix both; the
+real auth-session and resource-lifecycle contexts now permanently enable
+monitoring. The receipt summary was shortened to its required 280-character
+limit after the hosted Engineering gate rejected the longer description.
+
+The initial Grafana dashboard has eighteen actual Prometheus expressions for
+traffic, latency, errors, heap/CPU, pools, queues, email, AI, realtime and admission.
+Its free-beta and missing-data limitations are explicit. Pinned Prometheus 3.14.0
+parses every expression and validates seven alert rules. Fixtures cover initial
+delay, firing, recovery, failed queue collection, low-volume suppression,
+staging isolation and all ten service identities. The operating runbook defines
+initial targets, ownership, escalation, provider acceptance, incident handling
+and secret rotation. Provider-side import/rendering, metric translation,
+independent uptime/backup heartbeats and actual notifications remain unverified.

@@ -1,0 +1,54 @@
+# Import into the private Prometheus-compatible rule service. No provider is configured by this file.
+groups:
+  - name: chanter-launch
+    interval: 1m
+    rules:
+      - alert: ChanterTelemetryMissing
+        expr: count(count by (service_name) (present_over_time(jvm_memory_used_bytes{deployment_environment_name="production",service_name=~"(gateway|auth|community|message|realtime|media|agent|analytics|search|notification)-service"}[5m]))) < 10 or absent_over_time(jvm_memory_used_bytes{deployment_environment_name="production"}[5m])
+        for: 2m
+        labels: {severity: critical, owner: launch-operator, environment: production}
+        annotations:
+          summary: One or more of the ten application services has stopped reporting
+          runbook_url: https://github.com/Vinosaamaa/chanter/blob/main/docs/operations/monitoring-runbook.md#missing-telemetry
+      - alert: ChanterQueueCollectionFailed
+        expr: '{__name__=~"chanter_(events|email|resources)_collection_healthy_ratio",deployment_environment_name="production"} == 0'
+        for: 2m
+        labels: {severity: warning, owner: launch-operator}
+        annotations:
+          summary: A source queue measurement is failing or stale
+          runbook_url: https://github.com/Vinosaamaa/chanter/blob/main/docs/operations/monitoring-runbook.md#queues-and-email
+      - alert: ChanterEmailStalled
+        expr: (chanter_email_oldest_age_seconds{deployment_environment_name="production"} > 120) and on(service_name,deployment_environment_name) (chanter_email_collection_healthy_ratio{deployment_environment_name="production"} == 1)
+        for: 3m
+        labels: {severity: critical, owner: launch-operator}
+        annotations:
+          summary: Transactional email has waited over two minutes for three minutes
+          runbook_url: https://github.com/Vinosaamaa/chanter/blob/main/docs/operations/monitoring-runbook.md#queues-and-email
+      - alert: ChanterEventsStalled
+        expr: (chanter_events_oldest_age_seconds{deployment_environment_name="production"} > 300) and on(service_name,deployment_environment_name) (chanter_events_collection_healthy_ratio{deployment_environment_name="production"} == 1)
+        for: 5m
+        labels: {severity: warning, owner: launch-operator}
+        annotations:
+          summary: Durable event work has exceeded five minutes
+          runbook_url: https://github.com/Vinosaamaa/chanter/blob/main/docs/operations/monitoring-runbook.md#queues-and-email
+      - alert: ChanterResourcesStalled
+        expr: (chanter_resources_oldest_age_seconds{deployment_environment_name="production"} > 900) and on(service_name,deployment_environment_name) (chanter_resources_collection_healthy_ratio{deployment_environment_name="production"} == 1)
+        for: 5m
+        labels: {severity: warning, owner: launch-operator}
+        annotations:
+          summary: Resource scan, indexing or cleanup has made no recorded progress for fifteen minutes
+          runbook_url: https://github.com/Vinosaamaa/chanter/blob/main/docs/operations/monitoring-runbook.md#resources-and-ai
+      - alert: ChanterGatewayErrors
+        expr: (sum(rate(http_server_request_duration_seconds_count{service_name="gateway-service",deployment_environment_name="production",http_response_status_code=~"5.."}[5m])) / sum(rate(http_server_request_duration_seconds_count{service_name="gateway-service",deployment_environment_name="production"}[5m])) > 0.05) and (sum(increase(http_server_request_duration_seconds_count{service_name="gateway-service",deployment_environment_name="production"}[5m])) >= 20)
+        for: 5m
+        labels: {severity: critical, owner: launch-operator, environment: production}
+        annotations:
+          summary: Gateway failures exceed five percent with at least twenty requests per five minutes
+          runbook_url: https://github.com/Vinosaamaa/chanter/blob/main/docs/operations/monitoring-runbook.md#gateway-and-capacity
+      - alert: ChanterHeapPressure
+        expr: sum by(service_name,deployment_environment_name) (jvm_memory_used_bytes{deployment_environment_name="production",jvm_memory_type="heap"}) / sum by(service_name,deployment_environment_name) (jvm_memory_limit_bytes{deployment_environment_name="production",jvm_memory_type="heap"} > 0) > 0.85
+        for: 10m
+        labels: {severity: warning, owner: launch-operator}
+        annotations:
+          summary: Application heap remains above eighty-five percent of its known limit
+          runbook_url: https://github.com/Vinosaamaa/chanter/blob/main/docs/operations/monitoring-runbook.md#gateway-and-capacity

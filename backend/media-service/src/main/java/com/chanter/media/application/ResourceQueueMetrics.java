@@ -13,11 +13,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "chanter.telemetry.enabled", havingValue = "true")
 public class ResourceQueueMetrics {
-    @Bean(initMethod = "start", destroyMethod = "close")
+    @Bean(name = "resourceQueueSampler", initMethod = "start", destroyMethod = "close")
     QueueMetrics resourceQueueMetrics(DataSource source, MeterRegistry registry,
             @Value("${chanter.media.migrate-legacy:false}") boolean migrateLegacy) {
-        // Retry/claim transitions update updated_at. Age measures pending-row
-        // inactivity, not total wait since upload or first ingestion request.
+        // Age follows updated_at, not total wait since upload. State/index
+        // transitions reset it; retryJob lease/retry-only writes do not.
         return new QueueMetrics(QueueMetrics.Queue.RESOURCES, registry, QueueMetricQuery.source(source, """
                 SELECT COUNT(CASE WHEN pending_work THEN 1 END) pending,
                        COUNT(CASE WHEN failed_work THEN 1 END) failed,

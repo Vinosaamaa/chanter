@@ -17,8 +17,8 @@ AI provider and model choice must be configurable. OpenAI, Anthropic, xAI/Grok, 
 The free deployment package now builds, scans, stages and uploads immutable AMD64
 and ARM64 bundles. Actual publication succeeded at main `7d42dd7` after PR326,
 with matching checksum assets. This is a draft release of that commit, not a
-public server or the final launch candidate. Subsequent accepted durable events
-require the reviewed epoch5 package before deployment. Oracle Free Tier account
+public server or the final launch candidate. Accepted semantic retrieval now
+requires epoch8; the pending moderation/lifecycle union has later migration gates. Oracle Free Tier account
 signup is the owner's pending identity-verification step; no credentials or
 provider account are fabricated, and paid provisioning remains disabled.
 
@@ -45,11 +45,12 @@ The open dependency-update PRs and the older environment PR remain separate work
 | #248 | Evaluated AI safety, usage and cost accounting | PR317/322 merged provider adapters, catalog, accounting and answer controls; final retrieval/evaluations and configured-provider proof remain |
 | #249 | Administration, reports and moderation | Draft333 implements step-up operator access, reports/appeals and live restrictions; source-contract fixes and complete database-driven media/responsive UI proof remain |
 | #250 | Truthful free-beta mode or real paid billing | PR323 merged truthful free-beta mode and limits; final deployed accounting proof remains; paid billing is outside initial free beta |
-| #251 | Export, deletion, retention and accurate policy pages | Active branch has bounded source exports, durable transport and terminal journal/checkpoint tests; public export/deletion and restore reapply are still underway |
-| #252 | Monitoring, alerts, backups and proven restore | PR329 merged private telemetry and native database/configuration recovery; draft334 adds private application metrics; #332 implements current-deletion-authority recovery; alerts, whole-application restore and actual providers remain launch gates |
+| #251 | Export, deletion, retention and accurate policy pages | Draft335 has bounded source exports, one-use browser downloads and terminal journal v2; actual source reapply, ownership/deletion and legal integration remain underway |
+| #252 | Monitoring, alerts, backups and proven restore | PR329 merged its foundation; draft334 adds private metrics, bounded backend errors and initial tested dashboards/alerts; draft336 adds current-authority recovery. Combined release, full application restore and actual operator/provider receipts remain gates |
 | #253 | Trusted edge, proxy handling and abuse limits | PR328 merged with shared admission and request bounds; actual public proxy/provider proof remains |
 | #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; new capability integration and final whole-product/mobile/voice checks remain |
 | #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |
+| #337 | Patched edge and frontend test dependencies | Eight current Caddy Go/Vitest dependency findings are tracked for compatible fixes and exact release verification |
 
 Native subscription support is tracked separately in #316. Merged PR324 has
 verified Windows/Linux packaging, exact-origin pairing, isolated provider execution

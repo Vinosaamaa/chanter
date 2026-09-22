@@ -51,7 +51,8 @@ The real Boot fixture now proves enabled queue-gauge export while its applicatio
 is alive, with a receiver acknowledgement before shutdown. Disabled monitoring is
 tested separately. Email and resource collectors pass their source-state tests
 on both hosted architectures. Resource age describes pending-row
-inactivity because claim and retry transitions reset its existing timestamp.
+age since the row's existing update timestamp. State/index transitions reset it;
+lease-only retry writes do not, so it is not an attempt heartbeat.
 
 AI observations follow committed reservations and successful settlement writes,
 with fixed outcomes and measured/unmeasured usage. They do not replace durable
@@ -74,10 +75,17 @@ queue bound each process. Receiver and shutdown timeouts preserve application
 behavior during failure. Wire-level canary, overload and outage tests pass;
 account-wide quotas and actual operator notification remain external gates.
 
+The initial private dashboard contains eighteen Prometheus queries. Seven alert
+rules cover missing services, failed queue collection, old email/events/resources,
+gateway errors and heap pressure. The pinned Prometheus parser checks actual
+dashboard expressions; synthetic series verify rule delay, firing, recovery,
+environment separation and traffic-volume thresholds. The runbook records the
+metric translation assumptions and separate host/backup notification gates.
+
 The [design](../../architecture/operational-monitoring.md) and
 [implementation record](../../operations/issue-331-change-log.md) distinguish this
-tested coverage from the unfinished final combined proof, dashboards, frontend
-exception transport, private source maps, operational runbooks and
+tested coverage from the unfinished final combined proof, provider-side dashboard
+rendering, frontend exception transport, private source maps, operational drills and
 actual provider notification. Free quotas and disabled paid overage must be
 verified in the eventual accounts. This proposed system review does not claim
 operator alert delivery, full recovery or public launch.

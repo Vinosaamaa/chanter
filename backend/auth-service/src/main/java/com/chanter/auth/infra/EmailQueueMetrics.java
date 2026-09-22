@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "chanter.telemetry.enabled", havingValue = "true")
 public class EmailQueueMetrics {
-    @Bean(initMethod = "start", destroyMethod = "close")
+    @Bean(name = "emailQueueSampler", initMethod = "start", destroyMethod = "close")
     QueueMetrics emailQueueMetrics(DataSource source, MeterRegistry registry) {
         // Expired rows retain content-free metadata for seven days. This is a
         // current retained failure count, not a monotonically increasing counter.
