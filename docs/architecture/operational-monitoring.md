@@ -113,6 +113,14 @@ isolation. The [runbook](../operations/monitoring-runbook.md) records their init
 thresholds and exact limits. Actual provider translation, dashboard rendering,
 notification routing and external uptime/backup monitoring are still gates.
 
+Frontend builds will generate hidden source maps, then move maps and copy their
+matching JavaScript into ignored private build output before public bundle checks
+and image packaging. A manifest binds the source-map and served-script hashes to
+the exact Git release. The frontend image must reject leftover `.map` files.
+These local/runner artifacts are not published as public release assets. Upload
+to a private error project and actual symbolication require that project's
+credentials and matching release receipt; generation alone is not linkage proof.
+
 Primary references:
 
 - [Pinned Java agent supported libraries](https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/v2.31.1/docs/supported-libraries.md)

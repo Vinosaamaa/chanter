@@ -12,6 +12,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
     manifest: true,
+    sourcemap: 'hidden',
     rolldownOptions: {
       output: {
         codeSplitting: {

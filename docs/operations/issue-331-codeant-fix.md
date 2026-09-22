@@ -53,3 +53,9 @@ Resource age intentionally follows `updated_at`, not every worker attempt.
 `retryJob` changes lease/retry fields without updating that timestamp. The code
 comment, design and implementation record now state this accurately; no source
 worker behavior is changed to make a monitoring claim appear true.
+
+Existing deployments must run the documented `prepare-recovery` upgrade before
+preflight. That locked, idempotent command creates missing disabled error settings
+without rotating existing secrets. The legacy-state regression now explicitly
+removes and restores `errors.env`. Preflight remains read-only rather than
+silently changing an operator's runtime configuration.

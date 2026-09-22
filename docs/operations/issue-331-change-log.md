@@ -92,3 +92,12 @@ staging isolation and all ten service identities. The operating runbook defines
 initial targets, ownership, escalation, provider acceptance, incident handling
 and secret rotation. Provider-side import/rendering, metric translation,
 independent uptime/backup heartbeats and actual notifications remain unverified.
+
+Frontend builds now generate hidden JavaScript maps and move them outside `dist`
+into ignored private build output. Each artifact includes the matching served
+script and both SHA-256 hashes in a release-bound manifest. The frontend image
+rejects leftover public `.map` files. Privacy regressions reject an invalid
+release, an unmatched map or a public map directive before producing a manifest.
+The real frontend build prepared eighty matching scripts, served no maps and
+remained within all existing bundle budgets. Lint and all six release-tool tests
+pass. No source maps were uploaded and no frontend symbolication is claimed.

@@ -192,6 +192,15 @@ reports may drop events. Use the metric dashboards for aggregate failure rates.
 Actual provider receipt, operator notification, frontend capture and private
 source maps are still required before public cutover.
 
+Frontend `npm run build` now leaves matching JavaScript/source-map pairs and a
+hash manifest under ignored `frontend/.cache/private-source-maps/COMMIT-*`.
+Only `dist` enters the frontend image, and its image build rejects `.map` files.
+These private build artifacts are not included in the public deployment archive
+or uploaded to public CI artifacts. Retain/use only the artifact whose manifest
+release and script hashes match the accepted image. A private error-project
+upload and actual symbolication check remain necessary; local generation does
+not authorize enabling frontend reporting or prove release linkage.
+
 ## Optional native companion issuer
 
 Native access is disabled while all four issuer values are absent. To provision it after the #316 acceptance gates, add only to the private `agent-service.env`:

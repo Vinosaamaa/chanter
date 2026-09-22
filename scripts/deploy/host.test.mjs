@@ -154,14 +154,17 @@ test('recovery preparation adds missing settings without rotating any existing s
   const authBefore = fs.readFileSync(auth, 'utf8');
   const backup = path.join(state, 'runtime/backup.env');
   const telemetry = path.join(state, 'runtime/telemetry.env');
+  const errors = path.join(state, 'runtime/errors.env');
   const original = readEnv(backup);
   fs.writeFileSync(backup, fs.readFileSync(backup, 'utf8').replace(/^CHANTER_CONFIG_BACKUP_PASSWORD=.*\r?\n/m, ''));
   fs.unlinkSync(telemetry);
+  fs.unlinkSync(errors);
   prepareRecovery(state);
   assert.equal(readEnv(backup).CHANTER_BACKUP_CIPHER_PASS, original.CHANTER_BACKUP_CIPHER_PASS);
   assert.equal(readEnv(backup).CHANTER_BACKUP_S3_SECRET_KEY, original.CHANTER_BACKUP_S3_SECRET_KEY);
   assert.equal(readEnv(backup).CHANTER_CONFIG_BACKUP_PASSWORD.length, 64);
   assert.equal(readEnv(telemetry).CHANTER_TELEMETRY_ENDPOINT, '');
+  assert.equal(readEnv(errors).CHANTER_ERRORS_DSN, '');
   const first = fs.readFileSync(backup, 'utf8');
   prepareRecovery(state);
   assert.equal(fs.readFileSync(backup, 'utf8'), first);
