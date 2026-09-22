@@ -42,7 +42,7 @@ class DeletedStudyServerScopeTest {
         var snapshots=new com.chanter.common.lifecycle.ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"community");
         var ownership=new CommunityOwnershipFence(jdbc);
         var config=new CommunityTerminalConfiguration();
-        terminal=config.communityTerminalStore(jdbc,transactions,snapshots,ownership,scopes);
+        terminal=config.communityTerminalStore(jdbc,transactions,snapshots,ownership,scopes,recoveryDelivery());
         protocol=new com.chanter.common.lifecycle.AccountDeletionProtocol(mapper);
         participant=config.communityDeletionParticipant(jdbc,transactions,
                 new com.chanter.common.events.DurableOutbox(jdbc,tx,"community",java.time.Clock.systemUTC()),protocol,terminal,ownership);
@@ -250,7 +250,7 @@ class DeletedStudyServerScopeTest {
     private void useRecoveryMode() {
         scopes=new DeletedStudyServerScope(jdbc,tx,true,UUID.fromString("33333333-3333-4333-8333-333333333333"),() -> terminal);
         var snapshots=new com.chanter.common.lifecycle.ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"community");
-        terminal=new CommunityTerminalConfiguration().communityTerminalStore(jdbc,tx.getTransactionManager(),snapshots,new CommunityOwnershipFence(jdbc),scopes);
+        terminal=new CommunityTerminalConfiguration().communityTerminalStore(jdbc,tx.getTransactionManager(),snapshots,new CommunityOwnershipFence(jdbc),scopes,recoveryDelivery());
         http=MockMvcBuilders.standaloneSetup(new DeletedStudyServerScopeController(scopes,mapper,TOKEN),
                 new com.chanter.common.lifecycle.SourceTerminalRecoveryController(terminal,mapper,TOKEN)).build();
     }
@@ -289,6 +289,14 @@ class DeletedStudyServerScopeTest {
         var entry=new TerminalJournal.Entry(revision,event,"STUDY_SERVER",server,"DELETE",now,TerminalJournal.RETENTION_POLICY,before.digest(),digest);
         var head=new TerminalJournal.Watermark(revision,digest);
         return new TerminalJournal.Page(2,before,head,List.of(entry),head);
+    }
+    private com.chanter.common.lifecycle.DeletedScopeDelivery recoveryDelivery() {
+        // These source-scope tests replay recovery authority. Ordinary outbox paging has separate real-store coverage.
+        var beans=new org.springframework.beans.factory.support.DefaultListableBeanFactory();
+        return new com.chanter.common.lifecycle.DeletedScopeDelivery("community",jdbc,tx,
+                new com.chanter.common.events.DurableOutbox(jdbc,tx,"community",java.time.Clock.systemUTC()),mapper,
+                beans.getBeanProvider(com.chanter.common.lifecycle.DeletedScopeDelivery.Source.class),
+                beans.getBeanProvider(com.chanter.common.lifecycle.DeletedScopeStore.class),beans.getBeanProvider(TerminalReapplyStore.class),true);
     }
     private com.chanter.common.lifecycle.DeletedScope.Page read(TerminalJournal.Entry entry,String kind,UUID after,int limit) {
         return scopes.page(entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),kind,after,limit);

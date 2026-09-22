@@ -26,6 +26,15 @@ public class ExportSnapshotConfiguration {
     }
     @Bean AccountExportProtocol accountExportProtocol(ObjectMapper mapper) { return new AccountExportProtocol(mapper); }
     @Bean AccountDeletionProtocol accountDeletionProtocol(ObjectMapper mapper) { return new AccountDeletionProtocol(mapper); }
+    @Bean DeletedScopeDelivery deletedScopeDelivery(JdbcTemplate jdbc,PlatformTransactionManager transactions,ObjectMapper mapper,
+            com.chanter.common.events.DurableOutbox outbox,@Value("${spring.application.name}") String serviceName,
+            org.springframework.beans.factory.ObjectProvider<DeletedScopeDelivery.Source> source,
+            org.springframework.beans.factory.ObjectProvider<DeletedScopeStore> imports,
+            org.springframework.beans.factory.ObjectProvider<TerminalReapplyStore> terminal,
+            @Value("${chanter.recovery-mode:false}") boolean recovery) {
+        var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
+        return new DeletedScopeDelivery(serviceName.replace("-service",""),jdbc,tx,outbox,mapper,source,imports,terminal,recovery);
+    }
     @Bean @com.chanter.common.recovery.OrdinaryOperation
     ExportExpiry exportExpiry(ExportSnapshotStore snapshots) { return new ExportExpiry(snapshots); }
     static final class ExportExpiry {

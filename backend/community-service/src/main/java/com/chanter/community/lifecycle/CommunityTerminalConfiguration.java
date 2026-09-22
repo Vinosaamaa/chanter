@@ -18,6 +18,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 @Import(SourceTerminalRecoveryController.class)
 public class CommunityTerminalConfiguration {
+    @Bean com.chanter.common.lifecycle.DeletedScopeDelivery.Source communityScopeDeliverySource(DeletedStudyServerScope scopes) {
+        return (entry,kind,after) -> scopes.page(entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),kind,after,256);
+    }
     @Bean com.chanter.common.lifecycle.SourceDeletionRequests communitySourceDeletionRequests(JdbcTemplate jdbc,PlatformTransactionManager transactions,
             DurableOutbox outbox,AccountDeletionProtocol protocol) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
@@ -34,7 +37,8 @@ public class CommunityTerminalConfiguration {
     }
 
     @Bean TerminalReapplyStore communityTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,CommunityOwnershipFence ownership,DeletedStudyServerScope scopes) {
+            ExportSnapshotStore snapshots,CommunityOwnershipFence ownership,DeletedStudyServerScope scopes,
+            com.chanter.common.lifecycle.DeletedScopeDelivery delivery) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
         return new TerminalReapplyStore(jdbc,tx,"community",entry -> {
             switch(entry.targetKind()) {
@@ -46,6 +50,7 @@ public class CommunityTerminalConfiguration {
                 }
                 case "STUDY_SERVER" -> {
                     if(!scopes.capture(entry)) return TerminalReapplyStore.Cleanup.PENDING;
+                    delivery.start(entry);
                     // Remove events first: course/cohort SET NULL actions cannot satisfy their visibility constraint.
                     jdbc.update("DELETE FROM community_events WHERE study_server_id=?",entry.targetId());
                     jdbc.update("DELETE FROM study_servers WHERE id=?",entry.targetId());

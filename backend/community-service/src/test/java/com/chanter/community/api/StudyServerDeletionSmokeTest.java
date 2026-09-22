@@ -72,6 +72,8 @@ class StudyServerDeletionSmokeTest {
         terminal.accept(command); terminal.accept(command);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,studyServer.id())).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_deleted_server_scope_digests WHERE study_server_id=?",Integer.class,studyServer.id())).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='DELETED_SCOPE_ADVANCE' AND aggregate_key LIKE ?",Integer.class,
+                "DELETED_SCOPE:"+studyServer.id()+":%")).isEqualTo(2);
     }
 
     @Test

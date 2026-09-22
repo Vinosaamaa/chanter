@@ -113,7 +113,8 @@ public final class CanonicalLifecycleFixture {
                         var receipt=((AccountDeletionProtocol)protocol).receipt(event);
                         invoke(bean(receipt.targetKind().equals("ACCOUNT") ? "com.chanter.auth.lifecycle.AccountDeletionJobs" : "com.chanter.auth.lifecycle.SourceDeletionJobs"),"accept",event);
                     }
-                } else context.getBean(AccountDeletionParticipant.class).accept(event);
+                } else if(DeletedScopeDelivery.command(event.kind())) context.getBean(DeletedScopeDelivery.class).accept(event);
+                else context.getBean(AccountDeletionParticipant.class).accept(event);
                 yield Map.of("eventId",event.id(),"committed",true);
             }
             case "journal" -> {

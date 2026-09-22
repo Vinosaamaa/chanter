@@ -115,3 +115,8 @@ CREATE TABLE lifecycle_terminal_delivery (
     target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,job_id UUID NOT NULL,reported_state VARCHAR(16) NOT NULL,
     PRIMARY KEY(target_kind,target_id)
 );
+CREATE TABLE lifecycle_scope_delivery (
+    study_server_id UUID NOT NULL,scope_kind VARCHAR(8) NOT NULL,source VARCHAR(16) NOT NULL,
+    terminal_digest VARCHAR(64) NOT NULL,scope_digest VARCHAR(64) NOT NULL,total_count BIGINT NOT NULL,
+    PRIMARY KEY(study_server_id,scope_kind,source)
+);

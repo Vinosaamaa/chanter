@@ -17,10 +17,12 @@ public final class ExportRequestController {
     private final AccountExportProtocol protocol;
     private final ExportSourceExecution execution;
     private final org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions;
+    private final DeletedScopeDelivery scopes;
     public ExportRequestController(ExportParticipant participant, AccountExportProtocol protocol, ExportSourceExecution execution,
-            org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions, @Value("${chanter.internal-service-token}") String token) {
+            org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions,DeletedScopeDelivery scopes, @Value("${chanter.internal-service-token}") String token) {
         this.participant = participant; this.protocol = protocol; this.execution = execution; this.access = new InternalLifecycleAccess(token);
         this.deletions=deletions;
+        this.scopes=scopes;
     }
 
     @PostMapping("/api/v1/internal/lifecycle/events")
@@ -29,7 +31,9 @@ public final class ExportRequestController {
         access.require(token);
         try {
             var event = protocol.event(body);
-            if(AccountDeletionProtocol.command(event.kind())) {
+            if(DeletedScopeDelivery.command(event.kind())) {
+                execution.deliver(event,() -> scopes.accept(event));
+            } else if(AccountDeletionProtocol.command(event.kind())) {
                 var deletion=deletions.getIfAvailable();
                 if(deletion==null) throw new IllegalArgumentException("Deletion participant unavailable");
                 deletion.validate(event);
