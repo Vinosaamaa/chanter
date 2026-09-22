@@ -15,8 +15,24 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
-@Import(SourceTerminalRecoveryController.class)
+@Import({SourceTerminalRecoveryController.class,com.chanter.common.lifecycle.SourceDeletedScopeController.class})
 public class SearchTerminalConfiguration {
+    @Bean com.chanter.common.lifecycle.DeletedScopeStore searchDeletedScopeStore(JdbcTemplate jdbc,
+            PlatformTransactionManager transactions,TerminalReapplyStore terminal) {
+        var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
+        return new com.chanter.common.lifecycle.DeletedScopeStore(jdbc,tx,entry -> terminal.cleanup(entry),terminal::reconcile);
+    }
+
+    @Bean com.chanter.common.lifecycle.RecoveryScopeStore searchRecoveryScopeStore(JdbcTemplate jdbc,
+            PlatformTransactionManager transactions,com.chanter.common.lifecycle.DeletedScopeStore current,TerminalReapplyStore terminal,
+            @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
+            @org.springframework.beans.factory.annotation.Value("${chanter.recovery-restore-id:${CHANTER_RECOVERY_RESTORE_ID:}}") String restore) {
+        if(!recovery && !restore.isBlank()) throw new IllegalArgumentException("Restore identity requires recovery mode");
+        var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
+        java.util.UUID restoreId=recovery && !restore.isBlank() ? java.util.UUID.fromString(restore) : null;
+        return new com.chanter.common.lifecycle.RecoveryScopeStore(jdbc,tx,current,restoreId,entry -> terminal.cleanup(entry),terminal::reconcile);
+    }
+
     @Bean AccountDeletionParticipant searchDeletionParticipant(JdbcTemplate jdbc, PlatformTransactionManager transactions,
             DurableOutbox outbox, AccountDeletionProtocol protocol, TerminalReapplyStore terminal) {
         return new AccountDeletionParticipant("search",new DurableConsumer(jdbc,new TransactionTemplate(transactions)),
@@ -24,21 +40,38 @@ public class SearchTerminalConfiguration {
     }
 
     @Bean TerminalReapplyStore searchTerminalStore(JdbcTemplate jdbc, PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots) {
+            ExportSnapshotStore snapshots,
+            @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
+            org.springframework.beans.factory.ObjectProvider<com.chanter.common.lifecycle.RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions);
         tx.setTimeout(30);
         return new TerminalReapplyStore(jdbc,tx,"search",entry -> {
             switch(entry.targetKind()) {
-                case "ACCOUNT" -> snapshots.cancelAccount(entry.targetId());
-                case "STUDY_SERVER" -> jdbc.update("DELETE FROM search_index_entries WHERE study_server_id=?",entry.targetId());
+                case "ACCOUNT" -> {
+                    snapshots.cancelAccount(entry.targetId());
+                    // Canonical sources still own authored content identity.
+                    return TerminalReapplyStore.Cleanup.PENDING;
+                }
+                case "STUDY_SERVER" -> {
+                    jdbc.update("DELETE FROM search_index_entries WHERE study_server_id=?",entry.targetId());
+                    if(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_scope_imports WHERE study_server_id=? AND revision=? AND event_id=? AND terminal_digest=? AND ready=TRUE",
+                            Integer.class,entry.targetId(),entry.revision(),entry.eventId(),entry.digest())!=2)
+                        return TerminalReapplyStore.Cleanup.PENDING;
+                    if(recovery && (!historical.getObject().ready(entry,"COURSE") || !historical.getObject().ready(entry,"CHANNEL")))
+                        return TerminalReapplyStore.Cleanup.PENDING;
+                    jdbc.update("""
+                            DELETE FROM search_index_entries WHERE course_id IN (
+                                SELECT scope_id FROM lifecycle_scope_import_ids WHERE study_server_id=? AND scope_kind='COURSE')
+                            OR channel_id IN (SELECT scope_id FROM lifecycle_scope_import_ids WHERE study_server_id=? AND scope_kind='CHANNEL')
+                            """.replace("lifecycle_scope_import_ids",recovery ? "lifecycle_recovery_scope_ids" : "lifecycle_scope_import_ids"),entry.targetId(),entry.targetId());
+                }
                 case "RESOURCE" -> {
                     jdbc.update("DELETE FROM search_index_entries WHERE document_type='RESOURCE' AND source_id=?",entry.targetId());
                     return TerminalReapplyStore.Cleanup.COMPLETE;
                 }
                 default -> throw new IllegalArgumentException("Unknown terminal target");
             }
-            // Author identity and legacy course-to-server ownership belong to the canonical sources.
-            return TerminalReapplyStore.Cleanup.PENDING;
+            return TerminalReapplyStore.Cleanup.COMPLETE;
         });
     }
 }

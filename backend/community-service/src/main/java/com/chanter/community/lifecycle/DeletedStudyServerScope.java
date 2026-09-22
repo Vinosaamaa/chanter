@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Repository
 public class DeletedStudyServerScope {
     public static final int MAX_PAGE=256;
+    public static final long MAX_DERIVED_IDS=250_000;
     private final JdbcTemplate jdbc;
     private final boolean recovery;
     private final DeletedScopeStore imports;
@@ -71,14 +72,27 @@ public class DeletedStudyServerScope {
                         WHERE s.study_server_id=? AND s.scope_kind='CHANNEL' AND c.study_server_id<>s.study_server_id)
                     """,Boolean.class,entry.targetId(),entry.targetId(),entry.targetId())))
                 throw new IllegalArgumentException("Restored child relationship contradicts current authority");
+            var unions=new java.util.LinkedHashMap<String,String>();
+            var counts=new java.util.HashMap<String,Long>();
+            long total=0;
             for(String kind:List.of("COURSE","CHANNEL")) {
-                if(historical.ready(entry,kind)) continue;
                 String union="SELECT scope_id FROM lifecycle_scope_import_ids WHERE study_server_id=? AND scope_kind='"+kind+"' UNION "+
                         (kind.equals("COURSE") ? "SELECT id FROM courses WHERE study_server_id=?" :
                         "SELECT id FROM study_server_channels WHERE study_server_id=? UNION SELECT ch.id FROM course_channels ch JOIN courses c ON c.id=ch.course_id WHERE c.study_server_id=?");
                 int parameters=kind.equals("COURSE") ? 2 : 3;
                 Object[] ids=new Object[parameters]; java.util.Arrays.fill(ids,entry.targetId());
-                long count=jdbc.queryForObject("SELECT COUNT(*) FROM ("+union+") scope",Long.class,ids);
+                long count=historical.ready(entry,kind) ? historical.receipt(request.recoveryId(),entry,kind).scope().totalCount()
+                        : jdbc.queryForObject("SELECT COUNT(*) FROM ("+union+") scope",Long.class,ids);
+                total=Math.addExact(total,count);
+                if(total>MAX_DERIVED_IDS) throw new IllegalArgumentException("Recovery scope exceeds aggregate ID limit");
+                unions.put(kind,union); counts.put(kind,count);
+            }
+            // Count both kinds before hashing or staging either, including immutable previously derived scope on retry.
+            for(String kind:List.of("COURSE","CHANNEL")) {
+                if(historical.ready(entry,kind)) continue;
+                String union=unions.get(kind); long count=counts.get(kind);
+                int parameters=kind.equals("COURSE") ? 2 : 3;
+                Object[] ids=new Object[parameters]; java.util.Arrays.fill(ids,entry.targetId());
                 String[] digest={DeletedScope.startDigest(historical.basis(entry,kind),kind,count)};
                 jdbc.query("SELECT scope_id FROM ("+union+") scope ORDER BY scope_id",statement -> {
                     for(int index=1;index<=parameters;index++) statement.setObject(index,entry.targetId());

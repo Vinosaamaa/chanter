@@ -223,6 +223,30 @@ class DeletedStudyServerScopeTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_recovery_scopes",Integer.class)).isZero();
     }
 
+    @Test void aggregateDerivedLimitRejectsBeforeEitherKindIsHashedOrStaged() {
+        UUID server=UUID.randomUUID(); seed(server,UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID());
+        var journal=page(server); var entry=journal.entries().getFirst(); terminal.reapply(journal);
+        var courses=read(entry,"COURSE",new UUID(0,0),256); var channels=read(entry,"CHANNEL",new UUID(0,0),256);
+        setup(); seed(server,UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID()); useRecoveryMode();
+        scopes.importPage(new com.chanter.common.lifecycle.DeletedScope.Import(entry,courses));
+        scopes.importPage(new com.chanter.common.lifecycle.DeletedScope.Import(entry,channels));
+        var counted=org.mockito.Mockito.spy(jdbc);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            String sql=invocation.getArgument(0);
+            return sql.contains("scope_kind='COURSE'") ? 125_000L : 125_001L;
+        }).when(counted).queryForObject(org.mockito.ArgumentMatchers.startsWith("SELECT COUNT(*) FROM ("),
+                org.mockito.ArgumentMatchers.eq(Long.class),org.mockito.ArgumentMatchers.any(Object[].class));
+        var bounded=new DeletedStudyServerScope(counted,tx,true,UUID.fromString("33333333-3333-4333-8333-333333333333"),() -> terminal);
+        assertThatThrownBy(() -> bounded.derive(new com.chanter.common.lifecycle.RecoveryScope.Derive(UUID.randomUUID(),entry)))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("aggregate ID limit");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_recovery_scopes",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,server)).isEqualTo(1);
+        org.mockito.Mockito.verify(counted,org.mockito.Mockito.never()).query(
+                org.mockito.ArgumentMatchers.startsWith("SELECT scope_id FROM ("),
+                org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.PreparedStatementSetter.class),
+                org.mockito.ArgumentMatchers.any(org.springframework.jdbc.core.RowCallbackHandler.class));
+    }
+
     private void useRecoveryMode() {
         scopes=new DeletedStudyServerScope(jdbc,tx,true,UUID.fromString("33333333-3333-4333-8333-333333333333"),() -> terminal);
         var snapshots=new com.chanter.common.lifecycle.ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"community");
