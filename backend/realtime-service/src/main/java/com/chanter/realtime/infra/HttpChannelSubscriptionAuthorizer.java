@@ -19,6 +19,7 @@ public class HttpChannelSubscriptionAuthorizer implements ChannelSubscriptionAut
 
     private final WebClient webClient;
     private final String internalServiceToken;
+    private final java.util.concurrent.Semaphore inFlight = new java.util.concurrent.Semaphore(32);
 
     public HttpChannelSubscriptionAuthorizer(
             @Value("${chanter.community-service.base-url:http://localhost:8082}") String communityServiceBaseUrl,
@@ -26,12 +27,17 @@ public class HttpChannelSubscriptionAuthorizer implements ChannelSubscriptionAut
     ) {
         this.webClient = WebClient.builder()
                 .baseUrl(communityServiceBaseUrl)
+                .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(
+                        reactor.netty.http.client.HttpClient.create()
+                                .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS,2000)
+                                .responseTimeout(java.time.Duration.ofSeconds(3))))
                 .build();
         this.internalServiceToken = InternalServiceTokens.require(internalServiceToken);
     }
 
     @Override
     public void requireSubscribeAccess(UUID channelId, UUID userId, RealtimeChannelScope channelScope) {
+        if(!inFlight.tryAcquire()) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Current channel access is busy");
         try {
             String path = channelScope == RealtimeChannelScope.STUDY_SERVER
                     ? "/api/v1/study-server-channels/{channelId}/channel-message-access"
@@ -67,7 +73,7 @@ public class HttpChannelSubscriptionAuthorizer implements ChannelSubscriptionAut
                     "Unable to reach Community Service for channel access",
                     exception
             );
-        }
+        } finally { inFlight.release(); }
     }
 
     private record AccessResponse(

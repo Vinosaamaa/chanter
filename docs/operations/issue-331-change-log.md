@@ -145,3 +145,20 @@ unified browser manifest/frame validation and added an independently bounded
 stalled-transport test. Enabled staged configuration now verifies matching public
 settings, CSP and compiled filenames. Fresh exact-head checks cover these final
 changes plus the private upload and backup-heartbeat additions.
+
+Full CI and both native staging architectures passed at `0019fcf`, including the
+enabled synthetic browser configuration. Moderation is now accepted at main
+`b76d32fd`; this branch integrates it without raising any core, startup or page
+budget. Twelve release-tool tests and all dashboard/alert fixture checks pass.
+The dashboard fixtures evaluate known values, environment separation and missing
+telemetry for every actual query. The review fixes align build-time map validation
+with upload validation and make all frontend changes trigger release validation.
+Combined-head CI, native staging and review remain required before merge.
+
+The combined production build passes after moving configured-only reporting setup
+into its existing lazy module; no budget was raised. Generated private compiled
+copies are excluded from lint alongside `dist`. The actual realtime connection
+test passes with the accepted moderation services. Deployment tests pass (63;
+one native-only dependency check is skipped locally), including actual Caddy
+handler-order assertions in native staging. Full frontend regression results are
+recorded by the combined CI gate.

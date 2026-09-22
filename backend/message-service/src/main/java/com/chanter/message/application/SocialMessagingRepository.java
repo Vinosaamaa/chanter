@@ -11,6 +11,10 @@ import java.util.UUID;
 
 public interface SocialMessagingRepository {
 
+    void lockPair(UUID firstUserId, UUID secondUserId);
+
+    void removeUserBlock(UUID blockerUserId, UUID blockedUserId);
+
     FriendRequest saveFriendRequest(FriendRequest friendRequest);
 
     Optional<FriendRequest> findFriendRequestById(UUID friendRequestId);

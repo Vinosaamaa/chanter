@@ -30,6 +30,9 @@ export function privatizeSourceMaps(distDirectory, privateDirectory, release) {
       throw new Error('Public source-map directive must be absent')
     const map = JSON.parse(mapBytes.toString('utf8'))
     if (map.version !== 3 || !Array.isArray(map.sources) || !Array.isArray(map.sourcesContent)
+        || map.sources.length !== map.sourcesContent.length
+        || map.sourcesContent.some(source => typeof source !== 'string')
+        || map.sources.some(source => typeof source !== 'string' || /^(?:[A-Za-z]:|\/|file:)/i.test(source))
         || typeof map.mappings !== 'string') throw new Error('Invalid source map')
     return { file, script, relative, scriptBytes, mapBytes }
   })

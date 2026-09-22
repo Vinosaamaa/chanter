@@ -4,6 +4,9 @@ import com.chanter.realtime.application.DirectMessageClient;
 import com.chanter.realtime.application.PersistedDirectMessage;
 import com.chanter.realtime.application.PresenceStore;
 import com.chanter.realtime.application.SocialFriendsClient;
+import com.chanter.realtime.application.DirectMessageCallAuthorizer;
+import com.chanter.common.auth.ModerationAccess;
+import com.chanter.common.auth.ModerationAccess.Target;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
@@ -21,11 +24,14 @@ import reactor.core.scheduler.Schedulers;
 
 @Component
 public class SocialRealtimeHub {
+    private static final org.slf4j.Logger log=org.slf4j.LoggerFactory.getLogger(SocialRealtimeHub.class);
 
     private final SocialFriendsClient socialFriendsClient;
     private final DirectMessageClient directMessageClient;
     private final PresenceStore presenceStore;
     private final ObjectMapper objectMapper;
+    private final DirectMessageCallAuthorizer pairAccess;
+    private final ModerationAccess moderation;
     private final Map<UUID, Set<WebSocketSession>> sessionsByUser = new ConcurrentHashMap<>();
     private final Map<String, UUID> userBySession = new ConcurrentHashMap<>();
     private final Map<UUID, AtomicInteger> connectionGenerations = new ConcurrentHashMap<>();
@@ -35,12 +41,16 @@ public class SocialRealtimeHub {
             SocialFriendsClient socialFriendsClient,
             DirectMessageClient directMessageClient,
             PresenceStore presenceStore,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            DirectMessageCallAuthorizer pairAccess,
+            ModerationAccess moderation
     ) {
         this.socialFriendsClient = socialFriendsClient;
         this.directMessageClient = directMessageClient;
         this.presenceStore = presenceStore;
         this.objectMapper = objectMapper;
+        this.pairAccess = pairAccess;
+        this.moderation = moderation;
     }
 
     /** Local authenticated socket count; no per-user telemetry dimensions. */
@@ -72,7 +82,7 @@ public class SocialRealtimeHub {
                         return socialSubscribed;
                     }
                     return socialSubscribed.then(
-                            notifyFriendsPresence(userId, "online").onErrorResume(error -> Mono.empty())
+                            notifyFriendsPresence(userId, "online").onErrorResume(SocialRealtimeHub::presenceUnavailable)
                     );
                 })
                 .onErrorResume(error -> disconnect(session).then(Mono.error(error)));
@@ -125,7 +135,7 @@ public class SocialRealtimeHub {
                     if (generation == null || generation.get() != generationAtDisconnect) {
                         return Mono.empty();
                     }
-                    return notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty());
+                    return notifyFriendsPresence(userId, "offline").onErrorResume(SocialRealtimeHub::presenceUnavailable);
                 }))
                 .doFinally(signal -> {
                     synchronized (sessionLock) {
@@ -159,10 +169,13 @@ public class SocialRealtimeHub {
     }
 
     public Mono<Void> publishDirectMessage(PersistedDirectMessage message, String clientMessageId) {
-        return Flux.merge(
+        return pairAccess.requireCallAccess(message.senderUserId(),message.recipientUserId())
+                .then(Mono.fromRunnable(() -> moderation.requireAllowed(message.senderUserId(),List.of(new Target("DM",message.id()))))
+                        .subscribeOn(Schedulers.boundedElastic()))
+                .thenMany(Flux.merge(
                 deliverToUser(message.senderUserId(), message, clientMessageId),
                 deliverToUser(message.recipientUserId(), message, clientMessageId)
-        ).then();
+        )).onErrorResume(SocialRealtimeHub::isAccessDenial, error -> Mono.empty()).then();
     }
 
     public Mono<Void> deliverEventToUser(UUID userId, Map<String, Object> payload) {
@@ -171,15 +184,41 @@ public class SocialRealtimeHub {
             return Mono.empty();
         }
 
-        return Flux.fromIterable(sessions)
-                .flatMap(session -> sendJson(session, payload))
+        return Mono.fromRunnable(() -> moderation.requireAccount(userId)).subscribeOn(Schedulers.boundedElastic())
+                .thenMany(Flux.fromIterable(sessions))
+                .flatMap(session -> sendJson(session, payload),4)
+                .onErrorResume(SocialRealtimeHub::isAccessDenial, error -> Mono.empty())
                 .then();
+    }
+
+    /** A replacement snapshot clears stale online state after blocking or suspension.
+     * The cap and deadline fail closed under unusually large friend graphs or authority outages.
+     */
+    public Mono<Void> refreshPresence(WebSocketSession session, UUID user) {
+        return socialFriendsClient.listFriendUserIds(user)
+                .flatMapMany(ids -> Flux.fromIterable(ids).take(1000))
+                .filterWhen(peer -> Mono.fromCallable(() -> presenceStore.isOnline(peer)).subscribeOn(Schedulers.boundedElastic()),4)
+                .flatMap(peer -> pairAccess.requireCallAccess(user,peer).thenReturn(peer)
+                        .onErrorResume(denied -> Mono.empty()),4)
+                .collectList().timeout(java.time.Duration.ofSeconds(4))
+                .onErrorReturn(List.of())
+                .flatMap(online -> sendJson(session,Map.of("type","presence_snapshot","onlineUserIds",online)));
+    }
+
+    private static boolean isAccessDenial(Throwable failure) {
+        return failure instanceof org.springframework.web.server.ResponseStatusException status
+                && java.util.Set.of(401,403,404).contains(status.getStatusCode().value());
+    }
+
+    private static Mono<Void> presenceUnavailable(Throwable failure) {
+        log.warn("Presence fanout unavailable; current presence snapshots will reconcile");
+        return Mono.empty();
     }
 
     private Mono<Void> notifyFriendsPresence(UUID userId, String status) {
         return socialFriendsClient.listFriendUserIds(userId)
                 .flatMapMany(Flux::fromIterable)
-                .flatMap(friendUserId -> deliverPresence(friendUserId, userId, status))
+                .flatMap(friendUserId -> deliverPresence(friendUserId, userId, status),4)
                 .then();
     }
 
@@ -195,8 +234,10 @@ public class SocialRealtimeHub {
                 "status", status
         );
 
-        return Flux.fromIterable(sessions)
-                .flatMap(session -> sendJson(session, payload))
+        return pairAccess.requireCallAccess(viewerUserId,subjectUserId)
+                .thenMany(Flux.fromIterable(sessions))
+                .flatMap(session -> sendJson(session, payload),4)
+                .onErrorResume(SocialRealtimeHub::isAccessDenial,error -> Mono.empty())
                 .then();
     }
 
@@ -222,15 +263,14 @@ public class SocialRealtimeHub {
         );
 
         return Flux.fromIterable(sessions)
-                .flatMap(session -> sendJson(session, payload))
+                .flatMap(session -> sendJson(session, payload),4)
                 .then();
     }
 
     private Mono<Void> sendJson(WebSocketSession session, Map<String, Object> payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);
-            return session.send(Mono.just(session.textMessage(json)))
-                    .onErrorResume(error -> Mono.empty());
+            return session.send(Mono.just(session.textMessage(json)));
         } catch (JsonProcessingException exception) {
             return Mono.error(exception);
         }

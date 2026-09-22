@@ -37,6 +37,9 @@ class InstructorDashboardControllerTest {
     @MockitoBean
     private JwtTokenService jwtTokenService;
 
+    @MockitoBean
+    private com.chanter.common.auth.ModerationAccess moderation;
+
     @Test
     void instructorCanLoadDashboardAggregates() throws Exception {
         UUID studyServerId = UUID.randomUUID();

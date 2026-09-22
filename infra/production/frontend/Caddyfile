@@ -61,8 +61,20 @@
 			header_up X-Forwarded-Host {host}
 		}
 	}
-	handle_path /livekit/* {
-		reverse_proxy livekit:7880
+	handle /livekit/* {
+		route {
+			request_header X-Chanter-LiveKit-Token {query.access_token}
+			forward_auth community-service:8080 {
+				uri /internal/v1/media/join-authorization
+				transport http {
+					dial_timeout 2s
+					response_header_timeout 5s
+				}
+			}
+			request_header -X-Chanter-LiveKit-Token
+			uri strip_prefix /livekit
+			reverse_proxy livekit:7880
+		}
 	}
 	handle /assets/* {
 		root * /srv

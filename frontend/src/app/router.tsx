@@ -17,6 +17,8 @@ export function createAppRouter() {
       path: '/forgot-password',
       lazy: async () => ({ Component: (await import('../features/auth/pages/ForgotPasswordPage')).ForgotPasswordPage }),
     },
+    { path: '/appeal', lazy: async () => ({ Component: (await import('../features/moderation/AppealPage')).AppealPage }) },
+    { path: '/operator', element: <ProtectedRoute><Outlet /></ProtectedRoute>, children: [{ index: true, lazy: async () => ({ Component: (await import('../features/moderation/OperatorPage')).OperatorPage }) }] },
     {
       path: '/reset-password',
       lazy: async () => ({ Component: (await import('../features/auth/pages/ResetPasswordPage')).ResetPasswordPage }),
@@ -80,6 +82,7 @@ export function createAppRouter() {
             { path: 'settings/billing', element: <Navigate to="/app/settings/usage" replace /> },
             { path: 'settings/usage', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/UsageSettingsPage')).UsageSettingsPage }) },
             { path: 'friends', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/FriendsPage')).FriendsPage }) },
+            { path: 'safety', lazy: async () => ({ Component: (await import('../features/moderation/SafetyPage')).SafetyPage }) },
             {
               path: 'servers/:serverId/courses/:courseId/settings',
               lazy: async () => ({ Component: (await import('../features/v2-shell/pages/course/CourseGovernancePage')).CourseGovernancePage }),

@@ -32,6 +32,26 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
         this.dataSource = dataSource;
     }
 
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void lockPair(UUID firstUserId, UUID secondUserId) {
+        UUID first = firstUserId.toString().compareTo(secondUserId.toString()) < 0 ? firstUserId : secondUserId;
+        UUID second = first.equals(firstUserId) ? secondUserId : firstUserId;
+        String insert = usePostgresUpsert()
+                ? "INSERT INTO social_pair_locks(first_user_id,second_user_id) VALUES (:first,:second) ON CONFLICT DO NOTHING"
+                : "MERGE INTO social_pair_locks(first_user_id,second_user_id) KEY(first_user_id,second_user_id) VALUES (:first,:second)";
+        jdbcClient.sql(insert).param("first", first).param("second", second).update();
+        jdbcClient.sql("SELECT first_user_id FROM social_pair_locks WHERE first_user_id=:first AND second_user_id=:second FOR UPDATE")
+                .param("first", first).param("second", second).query(UUID.class).single();
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void removeUserBlock(UUID blockerUserId, UUID blockedUserId) {
+        jdbcClient.sql("DELETE FROM user_blocks WHERE blocker_user_id=:blocker AND blocked_user_id=:blocked")
+                .param("blocker", blockerUserId).param("blocked", blockedUserId).update();
+    }
+
     private boolean usePostgresUpsert() {
         if (postgresDatabase == null) {
             synchronized (this) {

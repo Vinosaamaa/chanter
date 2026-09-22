@@ -6,6 +6,24 @@ const releasePattern = /^[a-f0-9]{40}$/
 const errorTypes = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError', 'AggregateError'])
 const compiledAssetPattern = /^\/assets\/[A-Za-z0-9_-]{1,180}-[A-Za-z0-9_-]{8,}\.js$/
 
+/** Release validation and event hooks load only after an operator enables reporting. */
+export async function installBrowserReporter(value: unknown, release: string) {
+  const config = readBrowserErrorConfiguration(value, release)
+  if (!config) return null
+  const response = await fetch('/browser-error-assets.json', {
+    credentials: 'omit', cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(1500),
+  })
+  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return null
+  const text = await response.text()
+  if (text.length > 65_536) return null
+  const assets = readBrowserErrorAssets(JSON.parse(text), config.release)
+  if (!assets) return null
+  const reporter = createBrowserReporter(config, window.location.origin, assets)
+  window.addEventListener('error', event => reporter.capture(event.error))
+  window.addEventListener('unhandledrejection', event => reporter.capture(event.reason))
+  return reporter.capture
+}
+
 export function readBrowserErrorAssets(value: unknown, release: string): ReadonlySet<string> | null {
   if (!value || typeof value !== 'object') return null
   const manifest = value as { release?: unknown; assets?: unknown }

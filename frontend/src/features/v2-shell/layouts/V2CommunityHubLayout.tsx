@@ -12,6 +12,7 @@ import {
 import { formatUserFacingApiError } from '../../../lib/format-api-error'
 import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queries'
 import { V2Avatar } from '../components/V2Avatar'
+import { ReportLink } from '../../moderation/ReportLink'
 import { WorkspaceTabStrip } from '../components/WorkspaceTabStrip'
 import { v2CommunityPath, type V2CommunityTab } from '../v2-routes'
 import type { V2CommunityContext } from './v2-community-context'
@@ -104,6 +105,7 @@ export function V2CommunityHubLayout() {
           </span>
           <div>
             <h1>{serverName}</h1>
+            <ReportLink type="STUDY_SERVER" id={serverId} label="Report Study Server" />
             <p>
               Community · {memberCount == null ? '…' : `${memberCount} members`} · {courseCount} courses
             </p>

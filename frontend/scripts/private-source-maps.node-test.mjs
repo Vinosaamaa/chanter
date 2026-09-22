@@ -44,3 +44,16 @@ test('missing script, public map directives and invalid releases fail before pac
   assert.throws(() => privatizeSourceMaps(dist, privateOutput, 'a'.repeat(40)), /script/)
   assert.equal(fs.existsSync(path.join(dist, 'assets/index-Abc123.js.map')), true)
 })
+
+test('incomplete or invalid embedded sources fail before moving any map', t => {
+  const { dist, privateOutput } = fixture(t)
+  const mapFile = path.join(dist, 'assets/index-Abc123.js.map')
+  const valid = JSON.parse(fs.readFileSync(mapFile, 'utf8'))
+  for (const fields of [{ sourcesContent: [] }, { sourcesContent: [null] },
+    { sources: ['C:/private/source.ts'] }, { sources: [123] }]) {
+    fs.writeFileSync(mapFile, JSON.stringify({ ...valid, ...fields }))
+    assert.throws(() => privatizeSourceMaps(dist, privateOutput, 'a'.repeat(40)), /Invalid source map/)
+    assert.equal(fs.existsSync(mapFile), true)
+    assert.equal(fs.existsSync(path.join(privateOutput, 'manifest.json')), false)
+  }
+})

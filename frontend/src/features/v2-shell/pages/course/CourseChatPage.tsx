@@ -33,6 +33,7 @@ import { fetchVoicePresences } from '../../../voice/voice-api'
 import { useVoiceChannel } from '../../../voice/hooks/use-voice-channel'
 import { useAuthStore } from '../../../../stores/auth-store'
 import { V2Avatar } from '../../components/V2Avatar'
+import { ReportLink } from '../../../moderation/ReportLink'
 import { useV2CourseWorkspace } from '../../layouts/v2-course-workspace-context'
 
 type ChannelEditorState =
@@ -427,6 +428,7 @@ function TextChannelWorkspace({
           return (
             <ChatMessage
               key={message.id}
+              messageId={message.id}
               name={name}
               time={new Date(message.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
               body={message.body}
@@ -632,11 +634,13 @@ function ChannelEditorModal({
 }
 
 function ChatMessage({
+  messageId,
   name,
   time,
   body,
   tone,
 }: {
+  messageId: string
   name: string
   time: string
   body: string
@@ -645,7 +649,7 @@ function ChatMessage({
   return (
     <article className="course-chat-message">
       <V2Avatar name={name} tone={tone} size="lg" />
-      <div><p><strong>{name}</strong><time>{time}</time></p><span>{body}</span></div>
+      <div><p><strong>{name}</strong><time>{time}</time></p><span>{body}</span><ReportLink type="MESSAGE" id={messageId} label="Report message" /></div>
     </article>
   )
 }

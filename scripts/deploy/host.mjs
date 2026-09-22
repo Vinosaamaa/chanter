@@ -170,6 +170,17 @@ export function validateRuntime(stateDir) {
       if (name !== 'agent-service') throw new Error('Native companion configuration belongs only in agent-service.env');
       validateNativeConfiguration(env, `https://${config.hostname}`);
     }
+    if ('CHANTER_OPERATOR_ENCRYPTION_KEY' in env) {
+      if (name !== 'auth-service') throw new Error('Operator encryption configuration belongs only in auth-service.env');
+      const configured = env.CHANTER_OPERATOR_ENCRYPTION_KEY;
+      const decoded = Buffer.from(configured, 'base64');
+      const shared = ['CHANTER_JWT_SECRET', 'CHANTER_INTERNAL_SERVICE_TOKEN', 'POSTGRES_PASSWORD'].map(key => env[key]);
+      if (decoded.length !== 32 || decoded.toString('base64') !== configured
+          || shared.some(value => value === configured || decoded.equals(Buffer.from(value))
+            || (/^[a-f0-9]{64}$/i.test(value) && decoded.equals(Buffer.from(value, 'hex'))))) {
+        throw new Error('Optional operator encryption requires a distinct canonical base64-encoded 32-byte key');
+      }
+    }
     if (name === 'auth-service' && !['starttls', 'implicit'].includes(env.CHANTER_SMTP_TLS_MODE)) throw new Error('SMTP requires verified TLS');
     if (name === 'auth-service' && Boolean(env.CHANTER_TURNSTILE_SITE_KEY) !== Boolean(env.CHANTER_TURNSTILE_SECRET)) {
       throw new Error('Optional Turnstile requires both site and secret keys');

@@ -79,4 +79,26 @@ private artifact's success manifest is written only after every map has moved.
 The image rejects remaining public maps, and upload separately validates every
 file/hash and the served build. Partial failed build artifacts are preserved for
 inspection and cannot satisfy these gates. No additional rollback/cleanup mechanism
-is required to publish a failed build.
+is required: publishing a failed build is refused.
+
+The complete review at `0019fcf` found that frontend changes could bypass native
+release validation. The release path filter now includes all frontend sources,
+configuration and lockfiles. Source-map packaging also rejects missing/non-string
+embedded sources and absolute source paths before moving any map, matching the
+upload verifier; the new regression failed before the fix and passes afterward.
+
+The claim that Sentry CLI 3.8.0 lacks `--wait-for` is incorrect. The pinned,
+checksum-verified executable's `sourcemaps upload --help` lists `--wait-for <SECS>`;
+its tagged upstream implementation also defines it. No provider upload is claimed.
+
+The dashboard's `_ratio` suffix is the documented receiver translation for unit
+`1`, not a renamed Java metric. Beyond syntax checks, all 18 actual dashboard
+queries now run through pinned Prometheus against independent known-value
+fixtures, including staged-environment exclusion and missing telemetry. This
+checks the expected translation contract; actual provider ingestion/import still
+requires the operator acceptance exercise.
+
+Integration with accepted moderation keeps separate exact-entry JavaScript caps
+for moderation and browser reporting. Shared/vendor code stays in the unchanged
+core cap. Tests cover both allowances together, independent oversize rejection,
+duplicate ownership rejection and startup dependency refusal.
