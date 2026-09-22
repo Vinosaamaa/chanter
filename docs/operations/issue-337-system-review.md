@@ -53,6 +53,9 @@ change is needed.
 The initial npm audit reproduced two moderate test-tool findings. The patched
 clean install reports none. Local frontend tests hit three typing failures after
 timeouts under host memory pressure; all three passed in an isolated one-worker
-rerun without changed assertions or timeouts. Exact-head hosted full frontend,
+rerun without changed assertions or timeouts. The native patched Caddy build, security/source checks and upstream expression
+matcher tests pass. Frontend lint and the production build pass with unchanged
+budgets. All 56 deployment tests pass, including actual Caddy adaptation and
+media guard ordering. Hosted full frontend passes at `70a795e7`; final exact-head
 release and CodeAnt results remain acceptance gates. Issue #337 stays open until
 root records merged-main and required release verification.

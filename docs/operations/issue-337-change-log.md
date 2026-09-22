@@ -22,12 +22,15 @@ Use `npm ci`, `npm test`, `npm run lint`, and `npm run build` in `frontend`.
 The build retains all existing bundle gates. `npm audit --package-lock-only`
 changed from two moderate findings to none. The initial local full suite passed
 322/325; the three timeout-affected tests passed with one worker and unchanged
-assertions. Hosted full-suite proof is still required.
+assertions. Lint and production build pass with unchanged budgets. Hosted
+full-suite proof is still required.
 
 In `infra/production/frontend/caddy`, run `go mod verify`, `go mod vendor`,
 `go run -mod=readonly ./compat`, then `go test` and `go build` with
 `-mod=vendor`. The Dockerfile also runs
-upstream `TestMatchExpression` tests. Run deployment tests with
+upstream `TestMatchExpression` tests. These tests and the native patched binary
+build pass. All 56 deployment tests pass, including actual Caddy adaptation.
+Run deployment tests with
 `CHANTER_CADDY_BINARY` pointing at the rebuilt binary to exercise actual Caddy
 adaptation. Both native release jobs must pass packaged staging and scans.
 

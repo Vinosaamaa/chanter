@@ -48,13 +48,13 @@ func prepare() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(sourcePath, patched, 0644); err != nil {
-		return err
-	}
 	// go mod vendor omits dependency tests. Retain the matching upstream
 	// expression regression from the checksum-verified original module.
 	tests, err := os.ReadFile(filepath.Join(module.Dir, "modules", "caddyhttp", "celmatcher_test.go"))
 	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(sourcePath, patched, 0644); err != nil {
 		return err
 	}
 	return os.WriteFile(filepath.Join(filepath.Dir(sourcePath), "celmatcher_test.go"), tests, 0644)
