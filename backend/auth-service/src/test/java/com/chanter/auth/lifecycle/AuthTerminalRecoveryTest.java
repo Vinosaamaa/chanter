@@ -61,10 +61,10 @@ class AuthTerminalRecoveryTest {
                 emailToken, account.user().id(), UUID.randomUUID().toString(), Timestamp.from(now.plusSeconds(600)));
         UUID event = UUID.randomUUID();
         String digest = TerminalJournal.digest(1, event, "ACCOUNT", account.user().id(), now, TerminalJournal.GENESIS);
-        var entry = new TerminalJournal.Entry(1,event,"ACCOUNT",account.user().id(),"DELETE",now,TerminalJournal.GENESIS,digest);
+        var entry = new TerminalJournal.Entry(1,event,"ACCOUNT",account.user().id(),"DELETE",now,TerminalJournal.RETENTION_POLICY,TerminalJournal.GENESIS,digest);
         var zero = new TerminalJournal.Watermark(0,TerminalJournal.GENESIS);
         var head = new TerminalJournal.Watermark(1,digest);
-        var page = new TerminalJournal.Page(1,zero,head,List.of(entry),head);
+        var page = new TerminalJournal.Page(TerminalJournal.SCHEMA_VERSION,zero,head,List.of(entry),head);
         var tx = new TransactionTemplate(transactions);
         tx.executeWithoutResult(status -> { recovery.reapply(page); status.setRollbackOnly(); });
         assertThat(journal.page(0,null,100).through()).isEqualTo(zero);

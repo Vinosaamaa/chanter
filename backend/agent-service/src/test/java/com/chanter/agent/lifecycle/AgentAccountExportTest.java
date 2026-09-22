@@ -28,7 +28,8 @@ import org.springframework.web.server.ResponseStatusException;
 class AgentAccountExportTest {
     @Test void nativeUsageStaysUnknownAndSavedAnswerPagesRepeatCurrentEvidenceAndContentChecks() {
         var data = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
-        Flyway.configure().dataSource(data).locations("classpath:db/migration").load().migrate();
+        Flyway.configure().dataSource(data).locations("classpath:db/migration")
+                .placeholders(java.util.Map.of("testVectorDatabase", "true")).load().migrate();
         var jdbc = new JdbcTemplate(data); var tx = new TransactionTemplate(new DataSourceTransactionManager(data));
         Instant now = Instant.parse("2026-09-19T00:00:00Z"); Timestamp time = Timestamp.from(now);
         UUID owner = UUID.randomUUID(); UUID other = UUID.randomUUID(); UUID id = UUID.randomUUID(); UUID question = UUID.randomUUID();

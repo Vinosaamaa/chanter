@@ -29,6 +29,7 @@ CREATE TABLE lifecycle_terminal_journal (
     revision BIGINT PRIMARY KEY, event_id UUID NOT NULL UNIQUE,
     target_kind VARCHAR(16) NOT NULL, target_id UUID NOT NULL,
     deleted_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    retention_policy VARCHAR(40) NOT NULL CHECK(retention_policy='PRESERVE_MODERATION_RECORDS_V1'),
     previous_digest VARCHAR(64) NOT NULL, digest VARCHAR(64) NOT NULL,
     UNIQUE(target_kind,target_id)
 );

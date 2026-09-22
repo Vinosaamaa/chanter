@@ -4,6 +4,7 @@ import type { ExportJob } from '../../src/features/account-data/account-data-api
 
 const id = 'b633c892-6762-40ec-a945-b042957a052b'
 const endpoint = '/api/v1/auth/account/exports'
+const archive = Buffer.from('UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==', 'base64')
 const job: ExportJob = {
   schemaVersion: 1, id, accountId: 'visual-learner', requestedAt: '2026-09-22T18:00:00Z', expiresAt: '2026-09-23T18:00:00Z',
   state: 'READY', cleanupPending: false,
@@ -32,8 +33,7 @@ for (const width of [320, 390, 1280]) {
         expect(request.headers().authorization).toBeUndefined()
         expect(grants).toBeGreaterThan(downloads)
         downloads++
-        return route.fulfill({ contentType: 'application/zip', headers: { 'Content-Disposition': 'attachment; filename="synthetic-account.zip"', 'Cache-Control': 'no-store' },
-          body: Buffer.from('UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==', 'base64') })
+        return route.fulfill({ contentType: 'application/zip', headers: { 'Content-Disposition': 'attachment; filename="chanter-account.zip"', 'Cache-Control': 'no-store' }, body: archive })
       }
       return route.fulfill({ status: 404 })
     })
@@ -48,10 +48,17 @@ for (const width of [320, 390, 1280]) {
     const transfer = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Download ZIP' }).click()
     const artifact = await transfer
-    expect(artifact.suggestedFilename()).toBe('synthetic-account.zip')
+    expect(artifact.suggestedFilename()).toBe('chanter-account.zip')
     expect(await artifact.failure()).toBeNull()
+    const stream = await artifact.createReadStream()
+    expect(stream).not.toBeNull()
+    const chunks: Buffer[] = []
+    for await (const chunk of stream!) chunks.push(Buffer.from(chunk))
+    expect(Buffer.concat(chunks)).toEqual(archive)
     await expect(page).toHaveURL(/\/app\/account-data$/)
     await expect(page.getByText(/Download requested. Check your browser/)).toBeVisible()
+    await page.getByText(/Download requested. Check your browser/).scrollIntoViewIfNeeded()
+    await page.screenshot({ path: info.outputPath(`fixture-ui-account-data-download-${width}.png`), fullPage: true })
     const retry = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Download ZIP' }).click()
     expect(await (await retry).failure()).toBeNull()
@@ -71,6 +78,7 @@ for (const state of ['BUILDING', 'CANCELLED', 'EXPIRED'] as const) {
     if (state === 'BUILDING') await expect(page.getByText('Preparation needs attention')).toBeVisible()
     if (state === 'CANCELLED') await expect(page.getByText(/Some sources have not yet confirmed removal/)).toBeVisible()
     if (state === 'EXPIRED') await expect(page.getByText(/This export is no longer available/)).toBeVisible()
+    await page.getByRole('heading', { name: 'Latest request' }).scrollIntoViewIfNeeded()
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
     await page.screenshot({ path: info.outputPath(`fixture-ui-account-data-${state.toLowerCase()}.png`), fullPage: true })
   })

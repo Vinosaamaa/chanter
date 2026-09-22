@@ -48,10 +48,10 @@ class TerminalJournalStoreTest {
         assertThat(last.next()).isEqualTo(first.through());
         assertThat(last.entries()).hasSize(1);
         assertThat(first.next()).isEqualTo(last.after());
-        var corrupted = new TerminalJournal.Page(1, first.after(), first.through(), last.entries(), first.next());
+        var corrupted = new TerminalJournal.Page(TerminalJournal.SCHEMA_VERSION, first.after(), first.through(), last.entries(), first.next());
         assertThatThrownBy(corrupted::validate).isInstanceOf(IllegalArgumentException.class);
         var entry = first.entries().getFirst();
-        var changed = new TerminalJournal.Entry(entry.revision(), entry.eventId(), "ACCOUNT", entry.targetId(), "DELETE", entry.deletedAt(), entry.previousDigest(), entry.digest());
+        var changed = new TerminalJournal.Entry(entry.revision(), entry.eventId(), "ACCOUNT", entry.targetId(), "DELETE", entry.deletedAt(), TerminalJournal.RETENTION_POLICY, entry.previousDigest(), entry.digest());
         assertThatThrownBy(changed::validate).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> journal.page(0, null, 501)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> journal.page(0, 5L, 1)).isInstanceOf(IllegalArgumentException.class);

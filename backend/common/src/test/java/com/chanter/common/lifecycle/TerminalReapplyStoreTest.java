@@ -85,7 +85,7 @@ class TerminalReapplyStoreTest {
         assertThat(store.receipt().authority().revision()).isZero();
         var after = new TerminalJournal.Watermark(1, first.digest());
         var through = new TerminalJournal.Watermark(2, second.digest());
-        assertThatThrownBy(() -> store.reapply(new TerminalJournal.Page(1, after, through, List.of(second), through)))
+        assertThatThrownBy(() -> store.reapply(new TerminalJournal.Page(TerminalJournal.SCHEMA_VERSION, after, through, List.of(second), through)))
                 .isInstanceOf(IllegalArgumentException.class);
         store.reapply(page(List.of(first, second)));
         assertThat(calls).hasValue(2);
@@ -93,7 +93,7 @@ class TerminalReapplyStoreTest {
         assertThatThrownBy(() -> store.reapply(page(List.of(changed)))).isInstanceOf(IllegalArgumentException.class);
         var time = first.deletedAt();
         var differentId = UUID.randomUUID();
-        var mismatch = new TerminalJournal.Entry(3, differentId, first.targetKind(), first.targetId(), "DELETE", time,
+        var mismatch = new TerminalJournal.Entry(3, differentId, first.targetKind(), first.targetId(), "DELETE", time, TerminalJournal.RETENTION_POLICY,
                 second.digest(), TerminalJournal.digest(3, differentId, first.targetKind(), first.targetId(), time, second.digest()));
         assertThatThrownBy(() -> tx.executeWithoutResult(status -> store.applyTerminal(mismatch))).isInstanceOf(IllegalArgumentException.class);
         assertThat(calls).hasValue(2);
@@ -101,12 +101,12 @@ class TerminalReapplyStoreTest {
 
     private static TerminalJournal.Entry entry(long revision, String kind, String previous) {
         var event = UUID.randomUUID(); var target = UUID.randomUUID(); var time = Instant.parse("2026-09-19T00:00:00Z");
-        return new TerminalJournal.Entry(revision, event, kind, target, "DELETE", time, previous,
+        return new TerminalJournal.Entry(revision, event, kind, target, "DELETE", time, TerminalJournal.RETENTION_POLICY, previous,
                 TerminalJournal.digest(revision, event, kind, target, time, previous));
     }
     private static TerminalJournal.Page page(List<TerminalJournal.Entry> entries) {
         var last = entries.getLast();
         var end = new TerminalJournal.Watermark(last.revision(), last.digest());
-        return new TerminalJournal.Page(1, new TerminalJournal.Watermark(0, TerminalJournal.GENESIS), end, entries, end);
+        return new TerminalJournal.Page(TerminalJournal.SCHEMA_VERSION, new TerminalJournal.Watermark(0, TerminalJournal.GENESIS), end, entries, end);
     }
 }

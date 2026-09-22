@@ -21,6 +21,7 @@ public final class TerminalJournalStore {
             revision BIGINT PRIMARY KEY, event_id UUID NOT NULL UNIQUE,
             target_kind VARCHAR(16) NOT NULL, target_id UUID NOT NULL,
             deleted_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            retention_policy VARCHAR(40) NOT NULL CHECK(retention_policy='PRESERVE_MODERATION_RECORDS_V1'),
             previous_digest VARCHAR(64) NOT NULL, digest VARCHAR(64) NOT NULL,
             UNIQUE(target_kind,target_id)
         );
@@ -51,10 +52,10 @@ public final class TerminalJournalStore {
         UUID event = UUID.randomUUID();
         var now = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
         String digest = TerminalJournal.digest(revision, event, kind, targetId, now, previous.digest());
-        jdbc.update("INSERT INTO lifecycle_terminal_journal VALUES (?,?,?,?,?,?,?)", revision, event, kind, targetId,
-                Timestamp.from(now), previous.digest(), digest);
+        jdbc.update("INSERT INTO lifecycle_terminal_journal VALUES (?,?,?,?,?,?,?,?)", revision, event, kind, targetId,
+                Timestamp.from(now), TerminalJournal.RETENTION_POLICY, previous.digest(), digest);
         jdbc.update("UPDATE lifecycle_journal_head SET revision=?,digest=? WHERE id=1", revision, digest);
-        return new Entry(revision, event, kind, targetId, "DELETE", now, previous.digest(), digest);
+        return new Entry(revision, event, kind, targetId, "DELETE", now, TerminalJournal.RETENTION_POLICY, previous.digest(), digest);
     }
 
     public Page page(long after, Long through, int limit) {
@@ -68,7 +69,7 @@ public final class TerminalJournalStore {
                 TerminalJournalStore::entry, after, upper, limit);
         Watermark start = watermark(after);
         Watermark end = entries.isEmpty() ? start : new Watermark(entries.getLast().revision(), entries.getLast().digest());
-        Page page = new Page(1, start, watermark(upper), entries, end);
+        Page page = new Page(TerminalJournal.SCHEMA_VERSION, start, watermark(upper), entries, end);
         page.validate();
         return page;
     }
@@ -89,8 +90,8 @@ public final class TerminalJournalStore {
                 }
                 if (entry.revision() != current.revision() + 1 || !entry.previousDigest().equals(current.digest()))
                     throw new IllegalArgumentException("Canonical journal is discontinuous");
-                jdbc.update("INSERT INTO lifecycle_terminal_journal VALUES (?,?,?,?,?,?,?)", entry.revision(), entry.eventId(),
-                        entry.targetKind(), entry.targetId(), Timestamp.from(entry.deletedAt()), entry.previousDigest(), entry.digest());
+                jdbc.update("INSERT INTO lifecycle_terminal_journal VALUES (?,?,?,?,?,?,?,?)", entry.revision(), entry.eventId(),
+                        entry.targetKind(), entry.targetId(), Timestamp.from(entry.deletedAt()), entry.retentionPolicy(), entry.previousDigest(), entry.digest());
                 current = new Watermark(entry.revision(), entry.digest());
             }
             jdbc.update("UPDATE lifecycle_journal_head SET revision=?,digest=? WHERE id=1", current.revision(), current.digest());
@@ -149,6 +150,6 @@ public final class TerminalJournalStore {
     }
     private static Entry entry(ResultSet rs, int row) throws SQLException {
         return new Entry(rs.getLong("revision"), rs.getObject("event_id", UUID.class), rs.getString("target_kind"),
-                rs.getObject("target_id", UUID.class), "DELETE", rs.getTimestamp("deleted_at").toInstant(), rs.getString("previous_digest"), rs.getString("digest"));
+                rs.getObject("target_id", UUID.class), "DELETE", rs.getTimestamp("deleted_at").toInstant(), rs.getString("retention_policy"), rs.getString("previous_digest"), rs.getString("digest"));
     }
 }
