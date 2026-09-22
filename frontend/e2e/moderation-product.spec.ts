@@ -52,6 +52,7 @@ test('real moderation, active audio revocation and verified-email appeal', async
         contexts.push(fresh)
         await page.close()
         const home = await fresh.newPage()
+        home.on('pageerror', () => pageErrors.push('Uncaught browser exception'))
         await measure(home, path, name, network)
         await expect(home.getByRole('heading', { level: 1, name: /^Good / })).toBeVisible()
         await home.close()
@@ -180,6 +181,15 @@ test('real moderation, active audio revocation and verified-email appeal', async
       try { return (await fetch(`/livekit/rtc?access_token=${encodeURIComponent(token)}&protocol=16`)).status } catch { return 0 }
     }, sendToken.participantToken)
     expect(reconnectStatus).toBe(403)
+    const reconnect = await sender.evaluate(token => new Promise<{ opened: boolean; closed: boolean; timedOut: boolean }>(resolve => {
+      let opened = false
+      const socket = new WebSocket(`${location.origin.replace('http:', 'ws:')}/livekit/rtc?access_token=${encodeURIComponent(token)}&protocol=16`)
+      const timer = setTimeout(() => { socket.close(); resolve({ opened, closed: false, timedOut: true }) }, 10000)
+      socket.onopen = () => { opened = true; socket.close() }
+      socket.onerror = () => { /* The denial is paired with the explicit HTTP 403 above. */ }
+      socket.onclose = () => { clearTimeout(timer); resolve({ opened, closed: true, timedOut: false }) }
+    }), sendToken.participantToken)
+    expect(reconnect).toEqual({ opened: false, closed: true, timedOut: false })
     expect((await learner.request.post(mediaPath, { headers: learnerHeaders })).status()).toBe(403)
     expect((await learner.request.get('/api/v1/study-servers', { headers: learnerHeaders })).status()).toBe(403)
     // The rendered app may already have cleared its rejected cookie. Replay the actual issued credential.
@@ -187,7 +197,7 @@ test('real moderation, active audio revocation and verified-email appeal', async
       Cookie: `chanter_refresh=${refreshCookie!.value}` } })).status()).toBe(401)
     await info.attach('moderation-media-evidence', { contentType: 'application/json',
       body: Buffer.from(JSON.stringify({ before, after, stable, activeMediaRemoved: true, liveSessionClosed: true,
-        signedUnexpiredReconnectStatus: reconnectStatus, issuedRefreshRejected: true }, null, 2)) })
+        signedUnexpiredReconnectStatus: reconnectStatus, reconnect, issuedRefreshRejected: true }, null, 2)) })
     await receiver.evaluate(() => window.moderationAudio.disconnect())
 
     // Restriction notices carry a non-secret reference; only the delivered appeal link grants submission.
@@ -228,7 +238,7 @@ test('real moderation, active audio revocation and verified-email appeal', async
     await info.attach('moderation-evidence', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
       source: 'Real isolated PostgreSQL, Redis, auth/community/realtime services, Caddy and LiveKit',
       bootstrap: 'Explicit non-web command; fixture account only', network, transfers, before, after, stable,
-      activeMediaRemoved: true, liveSessionClosed: true, signedUnexpiredReconnectStatus: reconnectStatus,
+      activeMediaRemoved: true, liveSessionClosed: true, signedUnexpiredReconnectStatus: reconnectStatus, reconnect,
       verifiedEmailAppealSavedAndReversed: true,
     }, null, 2)) })
   } finally { await Promise.allSettled(contexts.map(context => context.close())) }
