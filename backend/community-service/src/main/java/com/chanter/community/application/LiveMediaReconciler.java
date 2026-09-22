@@ -1,5 +1,6 @@
 package com.chanter.community.application;
 
+import com.chanter.common.recovery.OrdinaryOperation;
 import io.livekit.server.RoomServiceClient;
 import java.io.IOException;
 import java.time.Duration;
@@ -15,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /** The self-hosted server cannot revoke join tokens; ingress handles rejoin, this loop stops current media. */
 @Component
+@OrdinaryOperation
 @Profile("!test")
 public class LiveMediaReconciler {
     private static final Logger log = LoggerFactory.getLogger(LiveMediaReconciler.class);
