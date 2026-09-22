@@ -41,6 +41,25 @@ Issuance and consumption also require the browser's current refresh cookie to id
 
 The account-data UI belongs in the existing settings shell, with one left-aligned title, a readable explanation of archive scope, the current request and its actual source progress, then previous requests. Use Chanter's Instrument Sans and existing ink, muted, blue, border and status colors. Keep the main action adjacent to its scope explanation; put source details in a disclosure rather than seven decorative cards. Mobile uses the same order in one column, with full-width controls where necessary. Pending, unavailable, cancelled and expired work remain distinct. Download feedback says that the browser download was requested, not that a local file was verified. Refresh is user-triggered, and a recent-login requirement explains why signing in again is needed.
 
+The UI palette is ink `#192c46`, muted `#596a80`, line `#dce3ec`, action `#2458d3`, error `#b42332`, success `#197451`. Instrument Sans uses the existing settings heading and body scale. Everything is left aligned. A compact sidebar identifies account settings; the main column keeps explanatory lines below eighty characters. Source progress uses a semantic list inside one disclosure, with text states and a native progress element. This avoids implying independent source actions or billing purchases. The initial plan's separate source cards were removed because seven equal cards would hide the one actual user decision: request or download the archive.
+
+```text
+Desktop: Settings | Account data
+         Account  | What this archive contains
+                  | Request export       Refresh status
+                  | Current request: Preparing / Ready / Unavailable
+                  | > Source details     Download / Cancel
+                  | Previous requests
+Mobile: Account data
+        Scope and expiry explanation
+        Request export
+        Refresh status
+        Current request, source disclosure, actions
+        Previous requests
+```
+
+The download action issues its cookie, then navigates one owned hidden frame to the fixed attachment route. This keeps API failure responses from replacing the application and delegates bytes to the browser. The page reports only that the download was requested and directs the person to their browser's download status. Retrying requests a new grant. Account changes clear the owned frame, cancel pending UI actions and prevent late responses from starting a download. Hosted desktop/mobile browser proof is required; a unit test does not prove download-manager behavior.
+
 Received conversations, available file bytes, notifications containing source content, and saved AI answers use generated entries bound to an owning access scope. The source checks its current conversation/resource/answer permission before and after reading a retained page. A protected entry has no permissive fallback when its owning access checker is unavailable. Revocation after capture makes that archive unavailable; a new export can explain the now-omitted content. Authored records and personal metadata have explicit separate projections so a peer's content never enters an unprotected section.
 
 Protected chunks bind at most one hundred exact source IDs each, with at most ten thousand protected items per snapshot. Current source checks receive batches of at most one hundred IDs. Saved answer and received-content scopes also bind an expected content digest so a later redaction cannot leave older text reachable through an otherwise still-authorized record ID. File scopes bind the verified file digest. The source capture checks its thirty-second work budget between bounded operations and before committing; the source executor also interrupts blocked work at that deadline. Limits produce an explicit failure rather than silently truncating the archive.
@@ -56,6 +75,8 @@ A terminal account or Study Server marker closes access before fan-out. Each par
 Preservation holds are explicit operator actions under #249 authority, with scope, reason, review/expiry information, and immutable audit. A held payload stays restricted and is reported as retained; it must not remain reachable through normal APIs. Billing retention applies only to records that actually exist. No statutory retention period or legal basis is invented by this implementation.
 
 ## Recovery journal contract
+
+Auth recovery applies the canonical journal and participant prefix in one transaction. An ACCOUNT entry revokes its session families, consumes outstanding email verification/reset tokens, cancels retained exports and their download handles, and expires queued email payloads for that account. Identity payload cleanup remains PENDING until the preservation policy and owning cleanup complete. STUDY_SERVER and RESOURCE have no auth-owned payload; their auth participant records terminal authority with COMPLETE cleanup while downstream owners still report their own state. Restored-session invalidation is a separate idempotent operation bound to the exact applied and canonical watermark. Its durable receipt commits with revocation of every restored browser session, refresh token, unused email token and download handle. Recovery must keep public writers closed throughout reapply and invalidation; a receipt does not authorize opening ingress or prove external replication.
 
 Auth owns an append-only terminal journal for ACCOUNT, STUDY_SERVER and RESOURCE targets. Entries contain only a monotonic committed revision, event UUID, validated target UUID/kind, terminal action and timestamp. Bounded private export pins an upper watermark and includes a deterministic digest. Reapply is idempotent and reports each participant's committed watermark. A restore invalidates all browser sessions and pending native requests rather than replaying every historic logout.
 

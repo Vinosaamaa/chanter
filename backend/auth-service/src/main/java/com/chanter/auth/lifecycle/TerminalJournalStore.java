@@ -99,6 +99,15 @@ public final class TerminalJournalStore {
         });
     }
 
+    /** Recovery finalization shares canonical-head-before-participant lock order with import and normal deletion. */
+    public <T> T atHead(Watermark authority, java.util.function.Supplier<T> action) {
+        authority.validate();
+        return tx.execute(status -> {
+            if (!lock().equals(authority)) throw new IllegalArgumentException("Recovery authority differs from canonical head");
+            return action.get();
+        });
+    }
+
     /** The caller owns durable external storage. A matching acknowledgement records its claim, not storage attestation. */
     public Checkpoint acknowledge(Checkpoint checkpoint) {
         checkpoint.validate();

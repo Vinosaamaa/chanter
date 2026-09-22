@@ -10,6 +10,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 public class TerminalJournalConfiguration {
     @Bean TerminalJournalStore terminalJournalStore(JdbcTemplate jdbc, PlatformTransactionManager transactions) {
-        return new TerminalJournalStore(jdbc, new TransactionTemplate(transactions), Clock.systemUTC());
+        var tx = new TransactionTemplate(transactions); tx.setTimeout(30);
+        return new TerminalJournalStore(jdbc, tx, Clock.systemUTC());
+    }
+    @Bean AuthTerminalRecovery authTerminalRecovery(JdbcTemplate jdbc, PlatformTransactionManager transactions,
+            TerminalJournalStore journal, com.chanter.auth.application.RefreshTokenRepository sessions, AccountExportJobs exports) {
+        var tx = new TransactionTemplate(transactions); tx.setTimeout(30);
+        return new AuthTerminalRecovery(jdbc, tx, journal, sessions, exports, Clock.systemUTC());
     }
 }
