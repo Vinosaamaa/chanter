@@ -226,6 +226,57 @@ test.describe('Product critical paths @product', () => {
     }
   })
 
+  test('owner publishes an announcement and member completes its persistent Inbox item', async ({ page }, testInfo) => {
+    const { accessToken: ownerToken } = await openAndSignIn(page, ownerEmail)
+    const serversResponse = await page.request.get('/api/v1/study-servers', {
+      headers: { Authorization: `Bearer ${ownerToken}` },
+    })
+    expect(serversResponse.status()).toBe(200)
+    const servers = await serversResponse.json() as Array<{ id: string; name: string }>
+    const server = servers.find(candidate => candidate.name === 'Workable Product Demo')
+    expect(server).toBeDefined()
+    const title = `Inbox delivery ${testInfo.project.name} ${Date.now()}`
+    await page.goto(`/app/servers/${server!.id}/community/announcements`)
+    await page.getByRole('button', { name: 'Publish', exact: true }).click()
+    const editor = page.getByRole('dialog', { name: 'Publish announcement' })
+    await editor.getByLabel('Title', { exact: true }).fill(title)
+    await editor.getByLabel('Body', { exact: true }).fill('Read this announcement, then mark it done to clear your Inbox.')
+    await editor.getByRole('button', { name: 'Publish', exact: true }).click()
+    await expect(editor).toBeHidden()
+    await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Open account menu' }).click()
+    await page.getByRole('menuitem', { name: 'Sign out' }).click()
+    await expect(page).toHaveURL(/\/sign-in$/)
+    const { accessToken } = await submitCredentials(page, memberEmail)
+    await page.locator('a[href="/app/inbox"]:visible').first().click()
+    const row = page.locator('.inbox-thread-list button').filter({ hasText: title })
+    await expect(row).toBeVisible({ timeout: 30_000 })
+    const read = page.waitForResponse(response => /\/notifications\/[^/]+\/read$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST')
+    await row.click()
+    const readResponse = await read
+    expect(readResponse.status()).toBe(200)
+    const notification = await readResponse.json() as { id: string; unread: boolean; readAt: string | null }
+    expect(notification.unread).toBe(false)
+    expect(notification.readAt).not.toBeNull()
+    await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
+    const done = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/me/notifications/${notification.id}/done` && response.request().method() === 'POST')
+    await page.getByRole('button', { name: 'Mark done', exact: true }).click()
+    const doneResponse = await done
+    expect(doneResponse.status()).toBe(200)
+    expect((await doneResponse.json() as { doneAt: string | null }).doneAt).not.toBeNull()
+    await expect(row).toHaveCount(0)
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Inbox', exact: true })).toBeVisible()
+    await expect(page.getByText('Loading…', { exact: true })).toHaveCount(0)
+    await expect(row).toHaveCount(0)
+    const persisted = await page.request.get('/api/v1/me/notifications?filter=ANNOUNCEMENTS&status=DONE', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    expect(persisted.status()).toBe(200)
+    const result = await persisted.json() as { notifications: Array<{ id: string; unread: boolean; doneAt: string | null }> }
+    expect(result.notifications.find(item => item.id === notification.id)).toMatchObject({ unread: false, doneAt: expect.any(String) })
+  })
+
   test('signed-in home remains content-ready without horizontal overflow @viewport', async ({ page }) => {
     await openAndSignIn(page, ownerEmail)
     await expect(page).toHaveURL(/\/app\/home/, { timeout: 30_000 })
