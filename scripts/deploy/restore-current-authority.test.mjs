@@ -81,6 +81,7 @@ test('authority application preserves attempt identity, private configuration an
   const containers = new Map(), calls = [];
   let rejectSource = false, isolationResult = 'RECOVERY_SOURCE_LISTENERS_PRIVATE', containerTamper = null, schemaFailure = false;
   let originalNameReplaced = false, networkTamper = null, sourceClientCalls = 0, replaceNetworkAfterPin = false, networkReads = 0;
+  let tamperOnFailure = false;
   const networkId = 'f'.repeat(64);
   const inspect = source => ({ image: release.images[source], labels: { 'chanter.recovery': id,
     'com.docker.compose.project': project, 'com.docker.compose.service': source }, networks: { [network]: { NetworkID: networkId } }, ports: {},
@@ -94,7 +95,7 @@ test('authority application preserves attempt identity, private configuration an
       ? { ...inspect('postgres'), id: originalContainerId, networks: {} } : { ...inspect(containers.get(args.at(-1))), ...containerTamper });
     if (args[0] === 'ps') return args.includes(`label=com.docker.compose.project=${project}`) ? [...containers.keys()].join('\n') : '';
     if (args[0] === 'network') {
-      if (args[1] !== 'inspect') return '';
+      if (args[1] !== 'inspect') return containers.size ? network : '';
       networkReads++;
       return JSON.stringify({ id: replaceNetworkAfterPin && networkReads > 1 ? '0'.repeat(64) : networkId,
         name: network, internal: true, labels: { 'chanter.recovery': id,
@@ -118,7 +119,10 @@ test('authority application preserves attempt identity, private configuration an
   const options = { run, loadConfiguration: () => snapshot, repositoryFactory: () => repository,
     clientFactory: ({ source }) => { sourceClientCalls++; return ({ kind: 'fixture', checkpoint: async () => null,
       receipt: async () => ({ schemaVersion: 1, source, authority: GENESIS, pendingTargets: 0, preservedTargets: 0 }),
-      reapply: async () => { if (rejectSource && source === 'message') throw Error('private-failure-canary'); },
+      reapply: async () => { if (rejectSource && source === 'message') {
+        if (tamperOnFailure) containerTamper = { networks: { [network]: { NetworkID: '0'.repeat(64) } } };
+        throw Error('private-failure-canary');
+      } },
       invalidate: async request => ({ schemaVersion: 1, source, ...request, invalidatedAt: '2026-09-22T00:00:00Z',
         scope: source === 'auth' ? 'ALL_BROWSER_SESSIONS' : 'ALL_PENDING_NATIVE_REQUESTS' }) }); } };
   const result = await applyRecoveryAuthority(input, options);
@@ -142,6 +146,11 @@ test('authority application preserves attempt identity, private configuration an
   assert.equal(attempt.recoveryId, result.recoveryId);
   assert.equal(calls.at(-1)[0], 'stop');
   assert.equal(fs.existsSync(path.join(input.destination, '.authority-lock')), false);
+  tamperOnFailure = true; calls.length = 0;
+  await assert.rejects(applyRecoveryAuthority(input, options));
+  assert.equal(calls.filter(args => args[0] === 'stop').at(-1)[1], originalContainerId,
+    'Failure cleanup cannot stop a replacement attached to a different network ID');
+  tamperOnFailure = false; containerTamper = null;
   rejectSource = false;
   for (const result of ['', new Error('Docker execution failed')]) {
     isolationResult = result;

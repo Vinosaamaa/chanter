@@ -56,6 +56,8 @@ export function isolatedRecoveryCompose(release, config, runtimeDir, receipt) {
   postgres.volumes = ['postgres:/var/lib/postgresql/data'];
   postgres.labels = { 'chanter.recovery': receipt.container };
   services.postgres = postgres;
+  // receipt.network belongs to physical pgBackRest recovery. Its container is now detached;
+  // authority reconciliation uses a separately owned, pinned internal network for the seven sources.
   return { name: `chanter-recovery-${receipt.container.slice('chanter-recovery-'.length).replaceAll('-', '')}`, services,
     networks: { application: { name: `${receipt.container}-authority`, internal: true,
       labels: { 'chanter.recovery': receipt.container } } }, volumes: { postgres: { external: true, name: receipt.volume } } };

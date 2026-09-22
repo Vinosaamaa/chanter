@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GENESIS, entryDigest } from './terminal-journal.mjs';
-import { START, ScopeVerifier, scopeStartDigest, validateScopeReceipt } from './deleted-scope.mjs';
+import { START, ScopeVerifier, scopeStartDigest, recoveryScopeBasis, validateScopeReceipt } from './deleted-scope.mjs';
 
 const entry = { revision: 1, eventId: '11111111-1111-4111-8111-111111111111', targetKind: 'STUDY_SERVER',
   targetId: '22222222-2222-4222-8222-222222222222', action: 'DELETE', deletedAt: '2026-09-19T06:00:00.120Z',
@@ -48,4 +48,17 @@ test('empty scope needs an explicit correctly hashed page and receipts bind full
   for (const changed of [{ ...receipt, ready: false }, { ...receipt, scopeDigest: digest },
     { ...receipt, receivedCount: 1 }, { ...receipt, after: ids[0] }, { ...receipt, terminalEventId: entry.targetId }])
     assert.throws(() => validateScopeReceipt(changed, entry, 'COURSE', verifier.result(), true));
+});
+
+test('derived chain matches the owning Java historical-union fixture without replacing current authority', () => {
+  const recovery = { restoreId: '33333333-3333-4333-8333-333333333333', originalScopeDigest: digest };
+  assert.equal(recoveryScopeBasis(recovery.restoreId, entry, 'COURSE', digest),
+    '03327b158e2536a1325cfdef9f19a0feaf58f49e41d8fa549c266db60cbbbc49');
+  const derived = { ...page([ids[0], '00000000-0000-0000-0000-000000000002', ...ids.slice(1)]), totalCount: 5,
+    scopeDigest: 'a3dfbf38520153bfb607a2b163b9de71f4ea5287364b035ade2b8079bd1e9c03' };
+  const verifier = new ScopeVerifier(entry, 'COURSE', recovery); verifier.accept(derived);
+  assert.equal(verifier.result().totalCount, 5);
+  assert.throws(() => new ScopeVerifier(entry, 'COURSE').accept(derived));
+  assert.throws(() => new ScopeVerifier(entry, 'COURSE', { ...recovery, restoreId: entry.targetId }).accept(derived));
+  assert.throws(() => new ScopeVerifier(entry, 'COURSE', { ...recovery, originalScopeDigest: 'a'.repeat(64) }).accept(derived));
 });

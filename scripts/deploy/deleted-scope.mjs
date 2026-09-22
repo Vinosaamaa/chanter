@@ -28,10 +28,28 @@ export function scopeStartDigest(terminalDigest, expectedKind, totalCount) {
   return hash(`deleted-study-server-scope\n1\n${terminalDigest}\n${expectedKind}\n${totalCount}\n`);
 }
 
+export function recoveryScopeBasis(restoreId, entry, expectedKind, originalScopeDigest) {
+  nonzeroUuid(restoreId); kind(expectedKind);
+  if (entry.targetKind !== 'STUDY_SERVER' || entry.digest !== entryDigest(entry) || !HEX.test(originalScopeDigest ?? '')) fail();
+  return hash(`deleted-study-server-recovery-scope\n1\n${restoreId}\n${entry.digest}\n${expectedKind}\n${originalScopeDigest}\n`);
+}
+
+export function recoveryScopeEnvelope(value, nestedField, restoreId, recoveryId, originalScopeDigest) {
+  exactFields(value, ['schemaVersion', 'restoreId', 'recoveryId', 'originalScopeDigest', nestedField]);
+  nonzeroUuid(restoreId); nonzeroUuid(recoveryId);
+  if (value.schemaVersion !== 1 || value.restoreId !== restoreId || value.recoveryId !== recoveryId
+      || value.originalScopeDigest !== originalScopeDigest || !HEX.test(originalScopeDigest ?? '')) fail();
+  return value[nestedField];
+}
+
 /** One bounded page at a time; final count and digest qualify even an explicitly empty scope. */
 export class ScopeVerifier {
-  #entry; #kind; #after = START; #received = 0; #total; #expected; #digest; #complete = false;
-  constructor(entry, expectedKind) { kind(expectedKind); this.#entry = entry; this.#kind = expectedKind; }
+  #entry; #kind; #basis; #after = START; #received = 0; #total; #expected; #digest; #complete = false;
+  constructor(entry, expectedKind, recovery = null) {
+    kind(expectedKind); this.#entry = entry; this.#kind = expectedKind;
+    if (recovery) exactFields(recovery, ['restoreId', 'originalScopeDigest']);
+    this.#basis = recovery ? recoveryScopeBasis(recovery.restoreId, entry, expectedKind, recovery.originalScopeDigest) : entry.digest;
+  }
   get complete() { return this.#complete; }
   get after() { return this.#after; }
   accept(page) {
@@ -42,7 +60,7 @@ export class ScopeVerifier {
         || Buffer.byteLength(JSON.stringify({ entry: this.#entry, page })) > MAX_SCOPE_BYTES) fail();
     if (this.#total === undefined) {
       this.#total = page.totalCount; this.#expected = page.scopeDigest;
-      this.#digest = scopeStartDigest(this.#entry.digest, this.#kind, this.#total);
+      this.#digest = scopeStartDigest(this.#basis, this.#kind, this.#total);
     }
     if (page.totalCount !== this.#total || page.scopeDigest !== this.#expected
         || this.#received + page.ids.length > this.#total
@@ -70,6 +88,7 @@ export function validateScopeReceipt(receipt, entry, expectedKind, expected, req
   bound(receipt, entry, expectedKind); count(receipt.receivedCount);
   if (receipt.totalCount !== expected.totalCount || receipt.scopeDigest !== expected.scopeDigest
       || receipt.receivedCount > receipt.totalCount || typeof receipt.ready !== 'boolean'
+      || (receipt.receivedCount === 0 ? receipt.after !== START : receipt.after === START)
       || (requireReady && !receipt.ready)
       || (receipt.ready && (receipt.receivedCount !== expected.totalCount || receipt.after !== expected.after))) fail();
   return receipt;

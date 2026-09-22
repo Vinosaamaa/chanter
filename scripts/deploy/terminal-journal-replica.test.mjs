@@ -85,6 +85,26 @@ test('corrupt scope readback, missing kind and legacy manifests cannot qualify c
   }
 });
 
+test('large paginated scope counts each complete kind once against aggregate capacity', async () => {
+  const f = fixture(1, 'STUDY_SERVER'), count = 130_000;
+  const id = value => `00000000-0000-0000-0000-${value.toString(16).padStart(12, '0')}`;
+  let digest = scopeStartDigest(f.entries[0].digest, 'COURSE', count);
+  for (let i = 1; i <= count; i++) digest = createHash('sha256').update(`${digest}\n${id(i)}\n`).digest('hex');
+  const source = emptyScopes(), empty = source.scope;
+  source.scope = async (entry, kind, after) => {
+    if (kind === 'CHANNEL') return empty(entry, kind, after);
+    const start = parseInt(after.slice(-12), 16), end = Math.min(start + 256, count);
+    return { schemaVersion: 1, studyServerId: entry.targetId, terminalRevision: entry.revision,
+      terminalEventId: entry.eventId, terminalDigest: entry.digest, kind, after, totalCount: count, scopeDigest: digest,
+      ids: Array.from({ length: end - start }, (_, i) => id(start + i + 1)), nextAfter: end === count ? null : id(end) };
+  };
+  await replicateJournal(f.source, f.repository, source);
+  const value = readCurrentReplica(f.repository).manifest;
+  assert.equal(value.scopes[0].totalCount, count);
+  assert.equal(value.scopes[0].pages.length, Math.ceil(count / 256));
+  assert.equal(f.calls.length, 1);
+});
+
 test('partial write, read-back corruption and changed upper bound never acknowledge', async () => {
   for (const mode of ['write', 'read', 'upper']) {
     const f = fixture(501);

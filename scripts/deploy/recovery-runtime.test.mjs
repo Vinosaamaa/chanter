@@ -25,6 +25,7 @@ test('isolated services have no public listeners, external networking, migration
   const compose = isolatedRecoveryCompose(release(), config, path.resolve('.cache/runtime'), receipt());
   assert.equal(Object.keys(compose.services).length, 8);
   assert.equal(compose.networks.application.internal, true);
+  assert.equal(compose.networks.application.name, `${id}-authority`);
   assert.deepEqual(compose.volumes.postgres, { external: true, name: `${id}-data` });
   for (const [name, service] of Object.entries(compose.services)) {
     assert.equal(service.ports, undefined);

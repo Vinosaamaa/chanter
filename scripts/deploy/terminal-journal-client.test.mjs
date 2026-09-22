@@ -31,9 +31,14 @@ test('scope selectors and import bodies stay on bounded stdin with fixed owning 
   assert.equal(JSON.stringify(calls.map(call => call.args)).includes('scope-canary'), false);
   assert.equal(calls[0].options.input, [entry.targetId, '1', entry.eventId, entry.digest, 'COURSE', START, ''].join('\n'));
   assert.ok(calls[1].options.input.startsWith(entry.targetId + '\n{'));
+  await client.deriveScope({ recoveryId: entry.eventId, entry });
+  await client.recoveryScope({ recoveryId: entry.eventId, entry, kind: 'COURSE', after: START, limit: 256 });
+  assert.ok(calls[2].args.includes('scope-derive')); assert.ok(calls[3].args.includes('scope-recovery-read'));
+  assert.ok(calls.slice(2).every(call => !JSON.stringify(call.args).includes(entry.targetId)));
   await assert.rejects(client.scope(entry, 'http://private', START));
   await assert.rejects(client.importScope({ entry, page: { large: 'x'.repeat(32768) } }));
-  assert.equal(calls.length, 2);
+  await assert.rejects(client.deriveScope({ entry, large: 'x'.repeat(4096) }));
+  assert.equal(calls.length, 4);
 });
 
 test('container failures and invalid output cannot become successful participant receipts', async () => {

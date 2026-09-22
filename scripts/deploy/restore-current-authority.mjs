@@ -49,7 +49,7 @@ function ownedNetwork(compose, receipt, run, expectedId = null) {
   return network.id;
 }
 
-function ownedContainers(compose, receipt, run, networkId = null) {
+function ownedContainers(compose, receipt, run, networkId = null, requireComplete = networkId !== null) {
   const raw = run(['ps', '-a', '--filter', `label=com.docker.compose.project=${compose.name}`, '--format', '{{.ID}}']).trim();
   const ids = raw ? raw.split(/\r?\n/) : [];
   if (ids.length > Object.keys(compose.services).length) fail();
@@ -70,7 +70,7 @@ function ownedContainers(compose, receipt, run, networkId = null) {
           || value.networks[networks[0]].NetworkID !== networkId))) fail();
     seen.add(source);
   }
-  if (networkId !== null && seen.size !== Object.keys(compose.services).length) fail();
+  if (requireComplete && seen.size !== Object.keys(compose.services).length) fail();
   return ids;
 }
 
@@ -88,7 +88,7 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
   const preview = isolatedRecoveryCompose(release, { environment, hostname: 'recovery.invalid', publicIp: '192.0.2.1' }, destination, receipt);
   const lock = path.join(destination, '.authority-lock');
   try { fs.mkdirSync(lock, { mode: 0o700 }); } catch { throw new Error('Current authority recovery is already active; inspect its lock'); }
-  let compose = null, attemptDir = null, attempt = null, ownedAttempt = false;
+  let compose = null, attemptDir = null, attempt = null, ownedAttempt = false, networkId = null;
   try {
     const snapshot = loadConfiguration(bundleDir, settings, environment, receipt.configSnapshot, release.commit);
     if (snapshot?.version !== 1 || !isDeepStrictEqual(snapshot.release, release) || snapshot.config?.environment !== environment
@@ -131,9 +131,12 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
     const command = args => run(['compose', '--project-name', compose.name, '-f', composeFile, ...args], 210_000);
     command(['config', '--quiet']);
     const existingNetwork = run(['network', 'ls', '--filter', `name=^${compose.networks.application.name}$`, '--format', '{{.Name}}']).trim();
-    let networkId = existingNetwork ? ownedNetwork(compose, receipt, run) : null;
-    const prior = ownedContainers(compose, receipt, run);
-    if (prior.length) run(['stop', ...prior], 60_000);
+    networkId = existingNetwork ? ownedNetwork(compose, receipt, run) : null;
+    const prior = ownedContainers(compose, receipt, run, networkId, false);
+    if (prior.length) {
+      if (networkId === null) fail();
+      run(['stop', ...prior], 60_000);
+    }
     run(['stop', restoredContainerId], 30_000);
     attempt.status = 'applying-isolated'; save(path.join(attemptDir, 'attempt.json'), attempt);
     command(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'postgres']);
@@ -151,6 +154,7 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
     const checkpoint = await clients.auth.checkpoint();
     if (checkpoint !== null) { exactFields(checkpoint, ['revision', 'digest', 'checkpointId']); nonzeroUuid(checkpoint.checkpointId); }
     const authorityResult = await recoverCurrentAuthority({ repository, clients, recoveryId: attempt.recoveryId,
+      restoreId: receipt.container.slice('chanter-recovery-'.length),
       requiredAuthority: selected.manifest.authority, restoredCheckpoint: checkpoint && { revision: checkpoint.revision, digest: checkpoint.digest } });
     ownedNetwork(compose, receipt, run, networkId);
     const completed = ownedContainers(compose, receipt, run, networkId);
@@ -164,8 +168,9 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
     fail();
   } finally {
     try {
-      if (compose) {
-        const ids = ownedContainers(compose, receipt, run);
+      if (compose && networkId !== null) {
+        ownedNetwork(compose, receipt, run, networkId);
+        const ids = ownedContainers(compose, receipt, run, networkId, false);
         if (ids.length) run(['stop', ...ids], 60_000);
       }
     } catch { fail(); }

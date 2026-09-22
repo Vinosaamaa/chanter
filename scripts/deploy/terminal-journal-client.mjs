@@ -12,7 +12,10 @@ export function lifecycleClient({ source, environment, composeFile, project = `c
     throw new Error('Invalid private lifecycle execution target');
   const invoke = (operation, body = undefined, args = [], raw = false) => {
     const input = raw ? body : body === undefined ? '' : JSON.stringify(body);
-    if (Buffer.byteLength(input) > (operation === 'reapply' ? MAX_PAGE_BYTES : operation === 'scope-import' ? MAX_SCOPE_BYTES + 37 : 2048))
+    const limit = operation === 'reapply' ? MAX_PAGE_BYTES
+      : ['scope-import', 'scope-recovery-import'].includes(operation) ? MAX_SCOPE_BYTES + 37
+      : ['scope-derive', 'scope-recovery-read'].includes(operation) ? 4096 + 37 : 2048;
+    if (Buffer.byteLength(input) > limit)
       throw new Error('Private lifecycle request exceeds bounded size');
     let output;
     try {
@@ -23,6 +26,12 @@ export function lifecycleClient({ source, environment, composeFile, project = `c
     } catch { throw new Error('Private lifecycle helper execution failed'); }
     try { return JSON.parse(output); }
     catch { throw new Error('Private lifecycle helper returned invalid JSON'); }
+  };
+  const scopePost = (operation, value, maximum) => {
+    nonzeroUuid(value.entry?.targetId);
+    const body = JSON.stringify(value);
+    if (Buffer.byteLength(body) > maximum) throw new Error('Private scope request exceeds bounded size');
+    return invoke(operation, value.entry.targetId + '\n' + body, [], true);
   };
   const auth = () => { if (source !== 'auth') throw new Error('Journal export requires auth'); };
   return Object.freeze({ kind: 'remote',
@@ -44,10 +53,19 @@ export function lifecycleClient({ source, environment, composeFile, project = `c
     },
     importScope: async value => {
       if (source === 'auth') throw new Error('Source has no scope import');
-      nonzeroUuid(value.entry?.targetId);
-      const body = JSON.stringify(value);
-      if (Buffer.byteLength(body) > MAX_SCOPE_BYTES) throw new Error('Private scope import exceeds bounded size');
-      return invoke('scope-import', value.entry.targetId + '\n' + body, [], true);
+      return scopePost('scope-import', value, MAX_SCOPE_BYTES);
+    },
+    deriveScope: async value => {
+      if (source !== 'community') throw new Error('Only community derives restored relationships');
+      return scopePost('scope-derive', value, 4096);
+    },
+    recoveryScope: async value => {
+      if (source !== 'community') throw new Error('Only community exports restored relationships');
+      return scopePost('scope-recovery-read', value, 4096);
+    },
+    importRecoveryScope: async value => {
+      if (['auth', 'community'].includes(source)) throw new Error('Source has no derived scope import');
+      return scopePost('scope-recovery-import', value, MAX_SCOPE_BYTES);
     },
     reapply: async value => invoke('reapply', value), receipt: async () => invoke('receipt'),
     invalidate: async value => {

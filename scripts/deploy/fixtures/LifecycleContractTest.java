@@ -27,6 +27,15 @@ public final class LifecycleContractTest {
         var imported = Lifecycle.prepare(new String[]{"scope-import"}, (id + "\n{}").getBytes(StandardCharsets.UTF_8));
         if (!imported.operation().path().endsWith("/scope/import") || !new String(imported.body(), StandardCharsets.UTF_8).equals("{}"))
             throw new AssertionError();
+        for (String[] route : new String[][]{{"scope-derive", "/scope/recovery/derive", "4096"},
+                {"scope-recovery-read", "/scope/recovery/page", "4096"}, {"scope-recovery-import", "/scope/recovery/import", "32768"}}) {
+            var request = Lifecycle.prepare(new String[]{route[0]}, (id + "\n{}").getBytes(StandardCharsets.UTF_8));
+            if (!request.operation().path().endsWith(route[1]) || !request.operation().method().equals("POST")
+                    || request.operation().inputLimit() != Integer.parseInt(route[2])) throw new AssertionError();
+            try { Lifecycle.prepare(new String[]{route[0]}, (id + "\n" + "x".repeat(Integer.parseInt(route[2]) + 1))
+                    .getBytes(StandardCharsets.UTF_8)); throw new AssertionError(); }
+            catch (IllegalArgumentException expected) {}
+        }
         for (String invalid : new String[]{selector.replace("COURSE", "COURSE&host=evil"), selector.replace(id, "../bad"),
                 selector + "extra", selector.replace("\n1\n", "\n0\n")}) {
             try { Lifecycle.prepare(new String[]{"scope-read"}, invalid.getBytes(StandardCharsets.UTF_8)); throw new AssertionError(); }

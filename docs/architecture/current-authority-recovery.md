@@ -171,9 +171,15 @@ It must preserve the original archive digest and wait for both current kinds to
 be READY before derivation. The operator supplies `CHANTER_RECOVERY_RESTORE_ID`
 only in recovery mode, using the stable UUID of the verified physical restore.
 That identity survives retries against a later pinned journal prefix; per-prefix
-`recoveryId` remains an operation receipt identity. The derived contract and
-actual historical-extra reconciliation are still under integration, so current
-archive import alone cannot qualify complete cleanup or public cutover.
+`recoveryId` remains an operation receipt identity. The relay now validates the
+separate restore-bound digest against #251's Java fixture, streams the original
+archive beside the derived pages to require every original ID, and requires both
+derived kind receipts from all five dependents before invalidation. The 250,000
+ID and 2,048 page limits also apply to the complete derived union. Community
+derives from its database, never a caller-provided ID list. This deployment-side
+sequencing has injected source proof; actual all-source historical-extra
+reconciliation remains under integration. Neither kind of import alone qualifies
+complete cleanup or public cutover.
 
 Each service still listens only on container loopback. The fixed private helper
 reads bounded selectors and pages from stdin and calls only the owning localhost

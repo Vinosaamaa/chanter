@@ -1,6 +1,6 @@
 import { GENESIS, JOURNAL_SCHEMA, exactFields, nonzeroUuid, sameWatermark, validatePage, validateWatermark } from './terminal-journal.mjs';
 import { readCurrentReplica } from './terminal-journal-replica.mjs';
-import { ScopeVerifier, validateScopeReceipt } from './deleted-scope.mjs';
+import { ScopeVerifier, validateScopeReceipt, recoveryScopeEnvelope, MAX_SCOPE_IDS, MAX_SCOPE_PAGES } from './deleted-scope.mjs';
 
 export const SOURCES = Object.freeze(['auth', 'community', 'message', 'media', 'agent', 'notification', 'search']);
 const SCOPES = Object.freeze({ auth: 'ALL_BROWSER_SESSIONS', agent: 'ALL_PENDING_NATIVE_REQUESTS' });
@@ -29,8 +29,8 @@ function invalidationReceipt(receipt, source, recoveryId, authority) {
 }
 
 /** This proves only the authority stage. The owning operator command must independently establish isolation. */
-export async function recoverCurrentAuthority({ repository, clients, recoveryId, requiredAuthority, restoredCheckpoint = null }) {
-  nonzeroUuid(recoveryId); validateWatermark(requiredAuthority); exactFields(clients, SOURCES);
+export async function recoverCurrentAuthority({ repository, clients, recoveryId, restoreId, requiredAuthority, restoredCheckpoint = null }) {
+  nonzeroUuid(recoveryId); nonzeroUuid(restoreId); validateWatermark(requiredAuthority); exactFields(clients, SOURCES);
   const end = performance.now() + 15 * 60_000;
   const within = () => { if (performance.now() > end) fail(); };
   const required = [requiredAuthority];
@@ -66,13 +66,14 @@ export async function recoverCurrentAuthority({ repository, clients, recoveryId,
       for (const ref of group.pages) {
         within();
         const page = verifier.accept(repository.read('scope', ref.snapshotId));
+        if (page.totalCount !== group.totalCount || page.scopeDigest !== group.scopeDigest) fail();
         for (const source of sources) {
           within();
           const receipt = await clients[source].importScope({ entry, page });
           validateScopeReceipt(receipt, entry, group.kind, group, verifier.complete);
         }
       }
-      verifier.result();
+      if (verifier.result().after !== group.after) fail();
     }
   };
   // Community may have no graph at this physical backup point. Import independently retained current scope first.
@@ -81,6 +82,54 @@ export async function recoverCurrentAuthority({ repository, clients, recoveryId,
   await replay(SOURCES.filter(source => source !== 'auth'));
   // Dependents require their original terminal fence before any current-scope import.
   await importScopes(SOURCES.filter(source => !['auth', 'community'].includes(source)));
+  // The current archive is immutable. Extra historical relationships come only from the verified restored owner.
+  let derivedCount = 0, derivedPages = 0;
+  function* originalIds(entry, group) {
+    const verifier = new ScopeVerifier(entry, group.kind);
+    for (const ref of group.pages) {
+      within();
+      const page = verifier.accept(repository.read('scope', ref.snapshotId));
+      if (page.totalCount !== group.totalCount || page.scopeDigest !== group.scopeDigest) fail();
+      yield* page.ids;
+    }
+    if (verifier.result().after !== group.after) fail();
+  }
+  for (const entry of servers.values()) {
+    within();
+    const summaries = await clients.community.deriveScope({ recoveryId, entry });
+    if (!Array.isArray(summaries) || summaries.length !== 2) fail();
+    for (const group of selected.manifest.scopes.filter(value => value.revision === entry.revision)) {
+      const matched = summaries.filter(value => value?.scope?.kind === group.kind);
+      if (matched.length !== 1) fail();
+      const expected = recoveryScopeEnvelope(matched[0], 'scope', restoreId, recoveryId, group.scopeDigest);
+      validateScopeReceipt(expected, entry, group.kind, expected, true);
+      derivedCount += expected.totalCount;
+      if (expected.totalCount < group.totalCount || derivedCount > MAX_SCOPE_IDS) fail();
+      const verifier = new ScopeVerifier(entry, group.kind, { restoreId, originalScopeDigest: group.scopeDigest });
+      const original = originalIds(entry, group);
+      let nextOriginal = original.next();
+      do {
+        within();
+        if (++derivedPages > MAX_SCOPE_PAGES) fail();
+        const response = await clients.community.recoveryScope({ recoveryId, entry, kind: group.kind, after: verifier.after, limit: 256 });
+        const page = verifier.accept(recoveryScopeEnvelope(response, 'page', restoreId, recoveryId, group.scopeDigest));
+        if (page.totalCount !== expected.totalCount || page.scopeDigest !== expected.scopeDigest) fail();
+        for (const id of page.ids) {
+          if (!nextOriginal.done && nextOriginal.value < id) fail();
+          if (!nextOriginal.done && nextOriginal.value === id) nextOriginal = original.next();
+        }
+        if (verifier.complete && !nextOriginal.done) fail();
+        for (const source of SOURCES.filter(value => !['auth', 'community'].includes(value))) {
+          within();
+          const result = await clients[source].importRecoveryScope({ restoreId, recoveryId, originalScopeDigest: group.scopeDigest, entry, page });
+          validateScopeReceipt(recoveryScopeEnvelope(result, 'scope', restoreId, recoveryId, group.scopeDigest),
+            entry, group.kind, expected, verifier.complete);
+        }
+      } while (!verifier.complete);
+      const result = verifier.result();
+      if (result.after !== expected.after) fail();
+    }
+  }
   const receipts = async () => {
     const result = [];
     for (const source of SOURCES) { within(); result.push(participantReceipt(await clients[source].receipt(), source, authority)); }
@@ -96,7 +145,7 @@ export async function recoverCurrentAuthority({ repository, clients, recoveryId,
   if (!sameWatermark(current.manifest.authority, authority)) fail();
   const participants = await receipts();
   within();
-  return { schemaVersion: 1, recoveryId, environment: repository.environment, status: 'authority-receipts-verified',
+  return { schemaVersion: 1, recoveryId, restoreId, environment: repository.environment, status: 'authority-receipts-verified',
     authority, checkpointId: selected.manifest.checkpointId, participants, invalidations,
     isolationVerified: false, publicCutoverAllowed: false };
 }

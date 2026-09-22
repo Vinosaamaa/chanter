@@ -34,6 +34,8 @@ public final class Lifecycle {
             case "invalidate" -> new Operation("POST", base + "recovery/invalidate-sessions", 2048);
             case "scope-read" -> new Operation("GET", "", 2048);
             case "scope-import" -> new Operation("POST", "", 32 * 1024 + 37);
+            case "scope-derive", "scope-recovery-read" -> new Operation("POST", "", 4096 + 37);
+            case "scope-recovery-import" -> new Operation("POST", "", 32 * 1024 + 37);
             default -> throw new IllegalArgumentException();
         };
     }
@@ -58,10 +60,17 @@ public final class Lifecycle {
                     + "&kind=" + fields[4] + "&after=" + uuid(fields[5], true) + "&limit=256";
             return new Request(new Operation("GET", target, 0), new byte[0]);
         }
-        if (args[0].equals("scope-import")) {
+        if (List.of("scope-import", "scope-derive", "scope-recovery-read", "scope-recovery-import").contains(args[0])) {
             if (input.length < 39 || input[36] != '\n') throw new IllegalArgumentException();
             String id = uuid(new String(input, 0, 36, StandardCharsets.US_ASCII), false);
-            return new Request(new Operation("POST", base + id + "/scope/import", 32 * 1024), Arrays.copyOfRange(input, 37, input.length));
+            String route = switch (args[0]) {
+                case "scope-import" -> "/scope/import";
+                case "scope-derive" -> "/scope/recovery/derive";
+                case "scope-recovery-read" -> "/scope/recovery/page";
+                case "scope-recovery-import" -> "/scope/recovery/import";
+                default -> throw new IllegalArgumentException();
+            };
+            return new Request(new Operation("POST", base + id + route, operation.inputLimit() - 37), Arrays.copyOfRange(input, 37, input.length));
         }
         return new Request(operation, input);
     }
