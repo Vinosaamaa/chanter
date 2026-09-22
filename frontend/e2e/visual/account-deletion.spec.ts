@@ -31,6 +31,7 @@ for (const viewport of [{ width: 320, height: 780 }, { width: 390, height: 844 }
     })
     await page.goto(`/app/account-data/delete?job=${id}`)
     await expect(page.getByRole('heading', { name: 'Ready to confirm' })).toBeVisible()
+    await page.screenshot({ path: info.outputPath(`fixture-ui-account-deletion-overview-${viewport.width}.png`), fullPage: true })
     const confirm = page.getByRole('button', { name: 'Permanently delete my account' })
     await expect(confirm).toBeDisabled()
     await page.getByLabel('Type DELETE MY ACCOUNT to confirm').fill('DELETE MY ACCOUNT')
@@ -48,6 +49,11 @@ for (const viewport of [{ width: 320, height: 780 }, { width: 390, height: 844 }
     expect(confirmations).toBe(1)
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
     await page.screenshot({ path: info.outputPath(`fixture-ui-account-deletion-receipt-${viewport.width}.png`), fullPage: true })
+    let refreshRequests = 0
+    page.on('request', request => { if (new URL(request.url()).pathname === '/api/v1/auth/refresh') refreshRequests++ })
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Recovery acknowledgement pending' })).toBeVisible()
+    expect(refreshRequests).toBe(0)
     if (viewport.width === 390) expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze()).violations).toEqual([])
   })
 }

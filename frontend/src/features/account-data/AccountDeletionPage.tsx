@@ -4,8 +4,12 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { ApiError } from '../../lib/api-client'
 import { useAuthStore } from '../../stores/auth-store'
 import { useSignOut } from '../auth/hooks/use-sign-out'
+import { endBrowserSessionLocally } from '../auth/browser-session'
 import { cancelDeletion, confirmDeletion, getDeletion, getDeletionReceipt, prepareDeletion, validDeletionId, type DeletionJob } from './account-deletion-api'
 import './account-deletion.css'
+
+// Navigation state can survive reload; session-closing handoffs cannot.
+const receiptHandoff = crypto.randomUUID()
 
 const states: Record<DeletionJob['state'], [string, string]> = {
   PREPARING: ['Checking ownership', 'No deletion has been confirmed. Refresh status to check whether preparation is ready.'],
@@ -74,12 +78,10 @@ function DeletionRequest({ account, generation }: { account: string; generation:
     client.setQueryData(['account-deletion', account, changed.id], changed)
     setParams({ job: changed.id }, { replace: true })
   }
-  function receipt(jobId: string, uncertain = false) {
+  async function receipt(jobId: string, uncertain = false) {
     if (!current()) return
-    navigate(`/account-deletion/${jobId}${uncertain ? '?uncertain=1' : ''}`, { replace: true })
-    void client.cancelQueries()
-    client.clear()
-    useAuthStore.getState().clearSession()
+    // The receipt clears this generation only after its lazy public route has mounted.
+    await navigate(`/account-deletion/${jobId}${uncertain ? '?uncertain=1' : ''}`, { replace: true, state: { closeSessionGeneration: generation, receiptHandoff } })
   }
   async function run(operation: (signal: AbortSignal) => Promise<void>, fallback: string) {
     if (inFlight.current) return
@@ -106,10 +108,10 @@ function DeletionRequest({ account, generation }: { account: string; generation:
     if (!job || job.state !== 'PREPARED' || phrase !== 'DELETE MY ACCOUNT' || Date.parse(job.preparationExpiresAt) <= Date.now()) return
     try {
       const changed = await confirmDeletion(job.id, signal)
-      if (irreversible(changed.state)) receipt(job.id)
+      if (irreversible(changed.state)) await receipt(job.id)
       else save(changed)
     } catch (failure) {
-      if (!(failure instanceof ApiError) || (failure.status >= 200 && failure.status < 300) || failure.status === 401 || failure.status >= 500) receipt(job.id, true)
+      if (!(failure instanceof ApiError) || (failure.status >= 200 && failure.status < 300) || failure.status === 401 || failure.status >= 500) await receipt(job.id, true)
       else throw failure
     }
   }, 'Could not verify confirmation. Open the receipt to check this request before taking further action.')
@@ -152,6 +154,22 @@ function DeletionRequest({ account, generation }: { account: string; generation:
 export function AccountDeletionReceiptPage() {
   const { jobId = '' } = useParams()
   const [params] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const client = useQueryClient()
+  const closeGeneration: unknown = location.state?.closeSessionGeneration
+  const handoff: unknown = location.state?.receiptHandoff
+  useEffect(() => {
+    if (typeof closeGeneration !== 'number') return
+    if (handoff === receiptHandoff && useAuthStore.getState().generation === closeGeneration) {
+      const privateQueries = { predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[0] !== 'account-deletion-receipt' }
+      void client.cancelQueries(privateQueries)
+      client.removeQueries(privateQueries)
+      try { endBrowserSessionLocally() }
+      catch { /* In-memory credentials clear even if site storage is unavailable. */ }
+    }
+    void navigate(location.pathname + location.search, { replace: true, state: null })
+  }, [client, closeGeneration, handoff, location.pathname, location.search, navigate])
   const valid = validDeletionId(jobId)
   const query = useQuery({ queryKey: ['account-deletion-receipt', jobId], queryFn: ({ signal }) => getDeletionReceipt(jobId, signal), enabled: valid, retry: false, refetchOnWindowFocus: false })
   const job = !query.isError && query.data?.id === jobId ? query.data : undefined

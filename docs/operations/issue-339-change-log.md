@@ -175,3 +175,13 @@ in account-deletion-interaction.md. Twenty-five account/auth checks, lint, build
 and budget checks pass. Thirty-three cross-engine account-data fixture cases are
 listed; their execution and pixel inspection remain pending for this new scope.
 Backend #251 and recovery #342 must land before final actual-service acceptance.
+
+The first hosted account-data run passed 296 cases and failed twelve confirmation
+transitions, consistently redirecting to sign-in before the lazy receipt mounted.
+The mounted receipt now consumes a document-bound session-generation handoff and
+keeps its own query while removing private cache. Startup skips session refresh on
+receipt reload; the existing cross-tab marker closes local access. Real data-router
+regressions cover the transition and an account switch, and stale history state
+cannot sign out another document's session. Export/confirmation screenshots at
+phone, desktop and landscape were independently inspected with no visual blocker.
+The fixed transition and reload still require hosted confirmation.

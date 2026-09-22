@@ -67,3 +67,14 @@ continued reception and new streams still increase the total. The actual test
 continues to require sender disconnect, zero remote participants, a connected
 receiver, stable received bytes and denied reconnect. It does not accept a
 decrease as proof that media stopped. Hosted confirmation remains required.
+
+The first account-data fixture run passed all export/expired-receipt cases but
+failed all twelve confirmation routes. Clearing authentication while the public
+route's lazy import was pending let ProtectedRoute send the user to sign-in. A
+real createMemoryRouter regression reproduced this; awaiting navigation alone
+still failed because the React commit was pending. The mounted receipt now closes
+only the originating auth generation, removes private queries and preserves its
+own in-flight status request. A different account cannot be signed out by the old
+transition. Public receipt startup also skips ordinary session restoration, and
+completion publishes the existing credential-free cross-tab sign-out marker.
+Hosted confirmation and reload remain required after these corrections.

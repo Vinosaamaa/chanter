@@ -15,7 +15,7 @@ describe('ProtectedRoute account transitions', () => {
 
   it('preserves a deletion request when signing in from its receipt', async () => {
     useAuthStore.getState().clearSession()
-    const destination = '/app/account-data/delete?job=b633c892-6762-40ec-a945-b042957a052b'
+    const destination = '/app/account-data/delete?job=b633c892-6762-40ec-a945-b042957a052b#status'
     render(<MemoryRouter initialEntries={[destination]}><Routes>
       <Route path="/app/*" element={<ProtectedRoute><p>Private account data</p></ProtectedRoute>} />
       <Route path="/sign-in" element={<SignInLocationProbe />} />

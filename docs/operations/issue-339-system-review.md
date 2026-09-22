@@ -41,3 +41,11 @@ stay in the unchanged core budget and protected initial route graphs cannot load
 their CSS. Browser fixtures cover narrow phones, landscape, desktop, keyboard
 confirmation, native ZIP downloads, expiry and missing receipt states. They prove
 layout and interaction only. Actual lifecycle/recovery proof remains #251/#342.
+
+The receipt must mount before auth is cleared: resolving a lazy navigation does
+not establish a committed React route. It consumes a credential-free generation
+handoff, clears only that originating session and its private queries, and retains
+its own status fetch. Startup never refreshes a revoked session on this receipt
+route. The existing cross-tab sign-out marker propagates local access closure.
+Hosted confirmation failures reproduced with the actual data router; independent
+account-change and reload regressions guard the correction.

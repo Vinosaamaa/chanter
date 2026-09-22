@@ -1,1 +1,125 @@
-.deletion-page{width:min(100%,860px);margin:0 auto;padding:32px 28px 64px;color:#192c46;background:#fff;line-height:1.6}.deletion-page h1{font-size:32px;line-height:1.2;margin:24px 0 16px}.deletion-page h2{font-size:20px;line-height:1.4;margin:0 0 12px}.deletion-page p{max-width:72ch;margin:12px 0}.deletion-page a{color:#2458d3;text-decoration:underline;text-underline-offset:3px}.deletion-page button,.deletion-page input{min-height:44px;border:1px solid #596a80;border-radius:6px;padding:10px 16px;font:inherit;color:#192c46;background:#fff}.deletion-page button{cursor:pointer}.deletion-page button:disabled{opacity:.6;cursor:default}.deletion-page :is(a,button,input,summary):focus-visible{outline:3px solid #2458d3;outline-offset:3px}.deletion-page [role=alert]{color:#b42332}.deletion-warning,.deletion-status,.deletion-confirm{margin:24px 0;padding:24px 0;border-top:1px solid #dce3ec}.deletion-warning{border-left:3px solid #b42332;padding-left:20px}.deletion-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px}.deletion-confirm{display:grid;justify-items:start;gap:12px}.deletion-confirm input{width:min(100%,420px)}.deletion-page .deletion-danger{background:#b42332;border-color:#b42332;color:#fff}.deletion-status summary{min-height:44px;align-content:center;cursor:pointer}.deletion-status ul{list-style:none;padding:0}.deletion-status li{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #dce3ec;padding:10px 0}.deletion-status li span:last-child{text-align:right;color:#596a80}.deletion-receipt{min-height:100dvh}@media(max-width:600px){.deletion-page{padding:24px 18px 100px}.deletion-actions{align-items:stretch}.deletion-actions button{width:100%}.deletion-confirm{justify-items:stretch}.deletion-confirm button{width:100%}.deletion-status li{flex-wrap:wrap;gap:4px 16px}.deletion-page h1{font-size:28px}}
+.deletion-page {
+  width:min(100%,860px);
+  margin:0 auto;
+  padding:32px 28px 64px;
+  color:#192c46;
+  background:#fff;
+  line-height:1.6
+}
+.deletion-page h1 {
+  font-size:32px;
+  line-height:1.2;
+  margin:24px 0 16px
+}
+.deletion-page h2 {
+  font-size:20px;
+  line-height:1.4;
+  margin:0 0 12px
+}
+.deletion-page p {
+  max-width:72ch;
+  margin:12px 0
+}
+.deletion-page a {
+  color:#2458d3;
+  text-decoration:underline;
+  text-underline-offset:3px
+}
+.deletion-page button,.deletion-page input {
+  min-height:44px;
+  border:1px solid #596a80;
+  border-radius:6px;
+  padding:10px 16px;
+  font:inherit;
+  color:#192c46;
+  background:#fff
+}
+.deletion-page button {
+  cursor:pointer
+}
+.deletion-page button:disabled {
+  opacity:.6;
+  cursor:default
+}
+.deletion-page :is(a,button,input,summary):focus-visible {
+  outline:3px solid #2458d3;
+  outline-offset:3px
+}
+.deletion-page [role=alert] {
+  color:#b42332
+}
+.deletion-warning,.deletion-status,.deletion-confirm {
+  margin:24px 0;
+  padding:24px 0;
+  border-top:1px solid #dce3ec
+}
+.deletion-warning {
+  border-left:3px solid #b42332;
+  padding-left:20px
+}
+.deletion-actions {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:12px
+}
+.deletion-confirm {
+  display:grid;
+  justify-items:start;
+  gap:12px
+}
+.deletion-confirm input {
+  width:min(100%,420px)
+}
+.deletion-page .deletion-danger {
+  background:#b42332;
+  border-color:#b42332;
+  color:#fff
+}
+.deletion-status summary {
+  min-height:44px;
+  align-content:center;
+  cursor:pointer
+}
+.deletion-status ul {
+  list-style:none;
+  padding:0
+}
+.deletion-status li {
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  border-top:1px solid #dce3ec;
+  padding:10px 0
+}
+.deletion-status li span:last-child {
+  text-align:right;
+  color:#596a80
+}
+.deletion-receipt {
+  min-height:100dvh
+}
+@media(max-width:600px) {
+  .deletion-page {
+    padding:24px 18px 100px
+  }
+  .deletion-actions {
+    align-items:stretch
+  }
+  .deletion-actions button {
+    width:100%
+  }
+  .deletion-confirm {
+    justify-items:stretch
+  }
+  .deletion-confirm button {
+    width:100%
+  }
+  .deletion-status li {
+    flex-wrap:wrap;
+    gap:4px 16px
+  }
+  .deletion-page h1 {
+    font-size:28px
+  }
+}

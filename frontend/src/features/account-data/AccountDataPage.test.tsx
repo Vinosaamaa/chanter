@@ -17,7 +17,7 @@ const job: ExportJob = {
 }
 function session(id = 'owner') { useAuthStore.getState().setSession({ accessToken: `${id}-token`, expiresInSeconds: 900, user: { id, email: `${id}@example.test`, displayName: id } }) }
 function open() {
-  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><AccountDataPage /></MemoryRouter></QueryClientProvider>)
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><MemoryRouter><AccountDataPage /></MemoryRouter></QueryClientProvider>)
 }
 describe('account export controls', () => {
   beforeEach(() => { vi.resetAllMocks(); session(); api.listExports.mockResolvedValue([]); vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {}) })

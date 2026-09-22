@@ -26,7 +26,7 @@ function AccountData({ account, generation }: { account: string; generation: num
   const client = useQueryClient()
   const key = ['account-exports', account]
   const query = useQuery({ queryKey: key, queryFn: ({ signal }) => listExports(signal), retry: false, refetchOnWindowFocus: false })
-  const signOut = useSignOut()
+  const signOut = useSignOut('/app/account-data')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')

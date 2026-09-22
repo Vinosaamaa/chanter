@@ -59,3 +59,13 @@ Focused account/auth regressions, lint, production build and budget checks pass.
 Cross-browser responsive fixtures are authored but remain unverified until hosted
 execution and screenshot inspection. Actual export/deletion acceptance requires
 the accepted #251 backend and #342 recovery union, not intercepted fixture APIs.
+
+The first hosted confirmation cases exposed the real router's lazy-loading race.
+The public receipt closes the originating session only after mounting, using a
+generation number and document-lifetime nonce in transient navigation state. It consumes that state, retains
+its own query and removes private cached data. No account identity or credential
+is carried. Receipt reload skips auth restoration; leaving for sign-in restores
+normally when required. This also preserves another account that signed in while
+the public route was loading. Full data-router regressions cover both outcomes.
+The nonce rejects history state surviving reload even if another account reuses
+the same numeric auth generation. It carries no credentials or account identity.

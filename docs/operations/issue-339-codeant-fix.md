@@ -35,3 +35,28 @@ The full review completed for 50fc412313acc4a12635bf64cd97502dd864e933. The earl
 16: retain the mutation callback's controlled cache update in the component fixture; this intentionally simulates successful completion removing the final row. Real persistence now has a separate actual-service journey.
 
 17,18,19: fixed with a single typed audience-copy map for event rows, details and editor descriptions.
+
+## Account-data review and second remediation round
+
+Full review completed at exact 14bfa5f3. Its account-data hosted browser failures
+remain blocking; neither static checks nor this review establishes UI acceptance.
+
+- 4077689414, sign-in fragment: fixed. The return destination preserves pathname,
+  query and fragment. The expanded protected-route regression failed before the
+  correction and passes afterward. Ordinary session-end redirects stay cleared.
+- 4077707182, unused HTTPS listener: not reproduced. The separate CI signed-in
+  journey step passes `PLAYWRIGHT_BASE_URL` with the HTTPS listener. All three
+  real browser engines exercise registration, cookies and recovery there. The
+  moderation audio command intentionally retains its separate existing listener.
+  The script alone does not claim that its audio run verifies HTTPS cookies.
+
+Additional suggestions: export test cache disposal now uses gcTime zero, and both
+account stylesheets are formatted by rule with unchanged tokens. Dedicated action
+hooks, bundle-loop memoization, RTP running-total/retention refactors, browser
+sharding/caching and reduced smoke coverage are deferred. The bounded test has one
+short-lived room and requires old stream counters to remain for its final check.
+Inbox polling remains the minimal fix for a demonstrated delayed-delivery gap;
+there is no accepted realtime invalidation contract to replace it. Existing
+disposable-stack cleanup and strict browser-failure classification remain intact.
+Teaching resets errors at request start; dialogs in this slice open through visible
+controls. No reproduced stale error or deep-link dialog justifies a further change.
