@@ -56,9 +56,13 @@ public class CourseResourceService {
                 storage.put(candidate.storageKey(), upload.path(), upload.sha256());
                 lifecycle.quarantine(id);
             } catch (Exception unavailable) {
-                // A timed-out put may have succeeded. Keep the reservation until a worker confirms deletion.
+                if (unavailable instanceof PrivateResourceStorage.PutFailure failure
+                        && failure.outcome()!=PrivateResourceStorage.WriteOutcome.UNKNOWN) lifecycle.storageWriteSettled(id);
+                // Unknown remote writes must settle before a deletion claim can release their reservation.
                 lifecycle.requestDelete(id);
                 if (unavailable instanceof ResponseStatusException budget) throw budget;
+                if (unavailable instanceof PrivateResourceStorage.PutFailure failure
+                        && failure.getCause() instanceof ResponseStatusException budget) throw budget;
             }
             return lifecycle.find(id).orElseThrow();
         } catch (IOException exception) {

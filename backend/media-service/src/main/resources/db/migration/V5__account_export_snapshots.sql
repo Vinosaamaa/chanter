@@ -33,3 +33,8 @@ CREATE TABLE durable_event_cursor (
     processed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (producer, aggregate_key)
 );
+
+-- Pending pre-upgrade PUTs cannot be assumed quiescent from a lease or timestamp alone.
+ALTER TABLE course_resources ADD COLUMN storage_write_settled BOOLEAN NOT NULL DEFAULT TRUE;
+UPDATE course_resources SET storage_write_settled=FALSE
+WHERE state IN ('STAGING','DELETE_PENDING') OR (storage_backend='legacy' AND migration_key IS NOT NULL);

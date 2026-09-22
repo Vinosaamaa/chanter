@@ -19,7 +19,11 @@ class LocalPrivateResourceStorageTest {
         var successes = new AtomicInteger();
         var calls = java.util.stream.IntStream.range(0, 8).mapToObj(i -> CompletableFuture.runAsync(() -> {
             try { storage.put(key, source, "unused by local adapter"); successes.incrementAndGet(); }
-            catch (java.io.IOException expectedConflict) { assertThat(expectedConflict).isInstanceOf(java.nio.file.FileAlreadyExistsException.class); }
+            catch (java.io.IOException expectedConflict) {
+                assertThat(expectedConflict).isInstanceOfSatisfying(PrivateResourceStorage.PutFailure.class,
+                        failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.FINISHED))
+                        .hasCauseInstanceOf(java.nio.file.FileAlreadyExistsException.class);
+            }
         })).toList(); calls.forEach(CompletableFuture::join);
         assertThat(successes.get()).isEqualTo(1);
         var restarted = new LocalPrivateResourceStorage(directory.resolve("private").toString());

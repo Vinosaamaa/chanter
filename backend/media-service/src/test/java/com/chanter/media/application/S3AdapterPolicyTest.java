@@ -28,7 +28,9 @@ class S3AdapterPolicyTest {
             String key = PrivateResourceStorage.PREFIX + UUID.randomUUID() + "/" + UUID.randomUUID() + "/" + UUID.randomUUID();
             Path content = directory.resolve("fixture.txt"); Files.writeString(content, "fixture");
             assertThatThrownBy(() -> adapter.put(key, content, UploadValidator.checksum(content)))
-                    .isInstanceOf(java.io.IOException.class).hasMessage("Private object storage is unavailable");
+                    .isInstanceOfSatisfying(PrivateResourceStorage.PutFailure.class,
+                            failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.UNKNOWN))
+                    .hasMessage("Private object storage is unavailable");
             assertThatThrownBy(() -> adapter.open(key)).isInstanceOf(java.io.IOException.class);
             assertThatThrownBy(() -> adapter.list(null)).isInstanceOf(java.io.IOException.class);
             assertThatThrownBy(() -> adapter.delete(key)).isInstanceOf(java.io.IOException.class);
@@ -38,7 +40,8 @@ class S3AdapterPolicyTest {
                     .when(lifecycle).countRequest(false);
             assertThatThrownBy(() -> adapter.open(key)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
             assertThatThrownBy(() -> adapter.put(key, content, UploadValidator.checksum(content)))
-                    .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+                    .isInstanceOfSatisfying(PrivateResourceStorage.PutFailure.class,
+                            failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.NOT_STARTED));
             assertThat(counter.get()).isEqualTo(4);
         } finally { adapter.close(); server.stop(0); }
     }
@@ -48,5 +51,28 @@ class S3AdapterPolicyTest {
             assertThatThrownBy(() -> new S3PrivateResourceStorage(lifecycle, endpoint, "region", "fixture-bucket", "key", "secret", true))
                     .isInstanceOf(IllegalArgumentException.class).hasMessage("Invalid private S3 configuration");
         }
+    }
+
+    @Test void definitiveProviderRejectionFinishesTheOnlyWriteAttempt() throws Exception {
+        var counter=new AtomicInteger(); var lifecycle=mock(ResourceLifecycle.class);
+        var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/",exchange -> {
+            counter.incrementAndGet(); exchange.getRequestBody().readAllBytes();
+            byte[] error="<Error><Code>AccessDenied</Code><Message>private detail</Message></Error>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type","application/xml"); exchange.sendResponseHeaders(403,error.length);
+            try(var body=exchange.getResponseBody()) { body.write(error); }
+        }); server.start();
+        var adapter=new S3PrivateResourceStorage(lifecycle,"http://127.0.0.1:"+server.getAddress().getPort(),"us-east-1",
+                "fixture-bucket","fixture-key","fixture-secret",true);
+        try {
+            Path content=directory.resolve("rejected.txt"); Files.writeString(content,"fixture");
+            String key=PrivateResourceStorage.PREFIX+UUID.randomUUID()+"/"+UUID.randomUUID()+"/"+UUID.randomUUID();
+            assertThatThrownBy(() -> adapter.put(key,content,UploadValidator.checksum(content)))
+                    .isInstanceOfSatisfying(PrivateResourceStorage.PutFailure.class,failure -> {
+                        assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.FINISHED);
+                        assertThat(failure.getCause()).isNull();
+                    });
+            assertThat(counter.get()).isEqualTo(1);
+        } finally { adapter.close(); server.stop(0); }
     }
 }

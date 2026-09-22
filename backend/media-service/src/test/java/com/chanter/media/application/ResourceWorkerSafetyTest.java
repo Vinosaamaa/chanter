@@ -142,8 +142,9 @@ class ResourceWorkerSafetyTest {
         verify(storage, times(1)).put(eq(resource.storageKey()), any(), anyString());
     }
 
-    @Test void uncertainPutAndFailedDeleteKeepQuotaAndNeverExposeBytes() throws Exception {
-        doAnswer(call -> { call.callRealMethod(); throw new IOException("response interrupted after write"); }).when(storage).put(anyString(), any(), anyString());
+    @Test void finishedFailedPutCanBeCleanedButFailedDeleteStillKeepsQuota() throws Exception {
+        doAnswer(call -> { call.callRealMethod(); throw new PrivateResourceStorage.PutFailure(PrivateResourceStorage.WriteOutcome.FINISHED,
+                new IOException("local stream closed after write")); }).when(storage).put(anyString(), any(), anyString());
         UUID key = UUID.randomUUID(); var resource = upload(key);
         assertThat(resource.publicStatus()).isEqualTo("FAILED"); notAvailable(resource.id(), 404);
         assertThat(upload(key).id()).isEqualTo(resource.id());
@@ -153,6 +154,45 @@ class ResourceWorkerSafetyTest {
         jdbc.sql("UPDATE course_resources SET retry_at=NULL").update(); worker.runOnce();
         assertThat(service.usage(course, teacher).reservedBytes()).isZero();
         assertThat(upload(key).id()).isEqualTo(resource.id()); verify(storage, times(1)).put(anyString(), any(), anyString());
+    }
+
+    @Test void unknownPutCannotReleaseQuotaBasedOnElapsedTimeOrAnEarlyDelete() throws Exception {
+        doAnswer(call -> { call.callRealMethod(); throw new PrivateResourceStorage.PutFailure(PrivateResourceStorage.WriteOutcome.UNKNOWN,
+                new IOException("lost remote response")); }).when(storage).put(anyString(), any(), anyString());
+        var resource=upload(UUID.randomUUID());
+        jdbc.sql("UPDATE course_resources SET updated_at=TIMESTAMP WITH TIME ZONE '2000-01-01 00:00:00Z',retry_at=NULL,lease_until=NULL").update();
+        for(int attempt=0;attempt<3;attempt++) worker.runOnce();
+        verify(storage,never()).delete(resource.storageKey());
+        assertThat(service.usage(course,teacher).reservedBytes()).isEqualTo(resource.byteSize());
+        assertThat(lifecycle.find(resource.id()).orElseThrow().state()).isEqualTo("DELETE_PENDING");
+        notAvailable(resource.id(),404);
+    }
+
+    @Test void deletionWaitsForAnInFlightPutAndThenRemovesItsActualLateBytes() throws Exception {
+        var entered=new java.util.concurrent.CountDownLatch(1);
+        var release=new java.util.concurrent.CountDownLatch(1);
+        doAnswer(call -> {
+            entered.countDown();
+            if(!release.await(5,java.util.concurrent.TimeUnit.SECONDS)) throw new IOException("fixture timeout");
+            return call.callRealMethod();
+        }).when(storage).put(anyString(),any(),anyString());
+        try(var pool=java.util.concurrent.Executors.newSingleThreadExecutor()) {
+            var uploading=pool.submit(() -> upload(UUID.randomUUID()));
+            assertThat(entered.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            UUID id=jdbc.sql("SELECT id FROM course_resources").query(UUID.class).single();
+            var reserved=lifecycle.find(id).orElseThrow();
+            service.deleteCourseResource(id,teacher);
+            worker.runOnce();
+            verify(storage,never()).delete(reserved.storageKey());
+            assertThat(service.usage(course,teacher).reservedBytes()).isEqualTo(reserved.byteSize());
+            release.countDown();
+            assertThat(uploading.get(5,java.util.concurrent.TimeUnit.SECONDS).state()).isEqualTo("DELETE_PENDING");
+            worker.runOnce();
+            assertThat(lifecycle.find(id).orElseThrow().state()).isEqualTo("DELETED");
+            assertThat(service.usage(course,teacher).reservedBytes()).isZero();
+            assertThatThrownBy(() -> storage.open(reserved.storageKey())).isInstanceOf(IOException.class);
+            assertThat(ingestion.deleteCalls()).containsExactly(id);
+        } finally { release.countDown(); }
     }
 
     @Test void corruptDownloadFailsBeforeReturningContentAndAuthorizationDoesNotReadStorage() throws Exception {
@@ -189,7 +229,8 @@ class ResourceWorkerSafetyTest {
                 .param("now", java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)).update();
         jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=:size").param("size", content.length).update();
         notAvailable(id, 409);
-        doAnswer(call -> { call.callRealMethod(); throw new IOException("lost response"); }).when(storage).put(anyString(), any(), anyString());
+        doAnswer(call -> { call.callRealMethod(); throw new PrivateResourceStorage.PutFailure(PrivateResourceStorage.WriteOutcome.FINISHED,
+                new IOException("local stream finished")); }).when(storage).put(anyString(), any(), anyString());
         var importer = new ResourceWorker(lifecycle, storage, legacy, validator, scanner, ingestion, access, Clock.systemUTC(), false, true);
         importer.runOnce();
         assertThat(lifecycle.find(id).orElseThrow().state()).isEqualTo("QUARANTINED");
@@ -214,6 +255,39 @@ class ResourceWorkerSafetyTest {
         assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
     }
 
+    @Test void expiredMigrationLeaseCannotLetDeletionOvertakeItsActivePut() throws Exception {
+        UUID id=UUID.randomUUID(); byte[] bytes="legacy held write".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        Path original=Path.of("target/media-test",id.toString()); Files.createDirectories(original.getParent()); Files.write(original,bytes);
+        jdbc.sql("""
+                INSERT INTO course_resources (id,course_id,title,file_name,content_type,byte_size,storage_key,ai_approved,uploaded_by_user_id,created_at,updated_at)
+                VALUES (:id,:course,'Legacy','legacy.txt','text/plain',:size,:key,TRUE,:user,:now,:now)
+                """).param("id",id).param("course",course).param("size",bytes.length).param("key",id.toString())
+                .param("user",teacher).param("now",java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)).update();
+        jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=:size").param("size",bytes.length).update();
+        var entered=new java.util.concurrent.CountDownLatch(1); var release=new java.util.concurrent.CountDownLatch(1);
+        doAnswer(call -> {
+            entered.countDown();
+            if(!release.await(5,java.util.concurrent.TimeUnit.SECONDS)) throw new IOException("fixture timeout");
+            return call.callRealMethod();
+        }).when(storage).put(anyString(),any(),anyString());
+        var importer=new ResourceWorker(lifecycle,storage,legacy,validator,scanner,ingestion,access,Clock.systemUTC(),false,true);
+        try(var pool=java.util.concurrent.Executors.newSingleThreadExecutor()) {
+            var migration=pool.submit(importer::runOnce);
+            assertThat(entered.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            String key=jdbc.sql("SELECT migration_key FROM course_resources WHERE id=:id").param("id",id).query(String.class).single();
+            lifecycle.requestDelete(id);
+            jdbc.sql("UPDATE course_resources SET lease_until=TIMESTAMP WITH TIME ZONE '2000-01-01 00:00:00Z' WHERE id=:id").param("id",id).update();
+            worker.runOnce(); verify(storage,never()).delete(key);
+            assertThat(service.usage(course,teacher).reservedBytes()).isEqualTo(bytes.length);
+            release.countDown(); migration.get(5,java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(lifecycle.find(id).orElseThrow().state()).isEqualTo("DELETE_PENDING");
+            worker.runOnce();
+            assertThat(lifecycle.find(id).orElseThrow().state()).isEqualTo("DELETED");
+            assertThat(service.usage(course,teacher).reservedBytes()).isZero();
+            assertThatThrownBy(() -> storage.open(key)).isInstanceOf(IOException.class);
+        } finally { release.countDown(); }
+    }
+
     @Test void deletionKeepsReservationUntilAgentConfirmsItsTerminalFence() {
         var resource = upload(UUID.randomUUID()); worker.runOnce();
         service.deleteCourseResource(resource.id(), teacher);
@@ -232,13 +306,16 @@ class ResourceWorkerSafetyTest {
     }
 
     @Test void requestBudgetFailureIsReportedWhileCleanupKeepsItsReservation() throws Exception {
-        doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
-                "Private storage request budget reached")).when(storage).put(anyString(), any(), anyString());
+        doThrow(new PrivateResourceStorage.PutFailure(PrivateResourceStorage.WriteOutcome.NOT_STARTED,
+                new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                "Private storage request budget reached"))).when(storage).put(anyString(), any(), anyString());
         assertThatThrownBy(() -> upload(UUID.randomUUID())).isInstanceOfSatisfying(ResponseStatusException.class,
                 failure -> assertThat(failure.getStatusCode().value()).isEqualTo(503));
         assertThat(jdbc.sql("SELECT state FROM course_resources").query(String.class).single()).isEqualTo("DELETE_PENDING");
         assertThat(service.usage(course, teacher).reservedBytes()).isPositive();
         assertThat(service.listCourseResources(course, learner)).isEmpty();
+        worker.runOnce();
+        assertThat(service.usage(course,teacher).reservedBytes()).isZero();
     }
 
     @Test void failedLegacyMigrationRetriesMigrationAndPreservesOriginalWhenExhausted() throws Exception {

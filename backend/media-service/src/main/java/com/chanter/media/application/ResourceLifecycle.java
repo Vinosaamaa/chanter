@@ -77,8 +77,8 @@ public class ResourceLifecycle {
         if (r.byteSize() < 1 || r.byteSize() > byteLimit - used) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Course Resource storage quota reached");
         jdbc.sql("""
                 INSERT INTO course_resources (id,course_id,title,file_name,content_type,byte_size,storage_key,ai_approved,
-                  uploaded_by_user_id,created_at,state,sha256,idempotency_key,storage_backend,updated_at,study_server_id)
-                VALUES (:id,:course,:title,:file,:type,:bytes,:object,:ai,:user,:created,'STAGING',:hash,:key,:backend,:created,:server)
+                  uploaded_by_user_id,created_at,state,sha256,idempotency_key,storage_backend,updated_at,study_server_id,storage_write_settled)
+                VALUES (:id,:course,:title,:file,:type,:bytes,:object,:ai,:user,:created,'STAGING',:hash,:key,:backend,:created,:server,FALSE)
                 """).param("id", r.id()).param("course", r.courseId()).param("title", r.title()).param("file", r.fileName())
                 .param("type", r.contentType()).param("bytes", r.byteSize()).param("object", r.storageKey()).param("ai", r.aiApproved())
                 .param("user", r.uploadedByUserId()).param("created", time(r.createdAt())).param("hash", r.sha256())
@@ -114,8 +114,28 @@ public class ResourceLifecycle {
 
     @Transactional
     public void quarantine(UUID id) {
+        storageWriteSettled(id);
         jdbc.sql("UPDATE course_resources SET state='QUARANTINED', updated_at=:now WHERE id=:id AND state='STAGING'")
                 .param("now", now()).param("id", id).update();
+    }
+
+    /** Only an owning completed invocation or a typed definitive adapter failure may settle an active write. */
+    @Transactional
+    public void storageWriteSettled(UUID id) {
+        jdbc.sql("UPDATE course_resources SET storage_write_settled=TRUE WHERE id=:id")
+                .param("id",id).update();
+    }
+
+    @Transactional
+    public void migrationWriteSettled(UUID id,UUID lease) {
+        jdbc.sql("UPDATE course_resources SET storage_write_settled=TRUE WHERE id=:id AND lease_id=:lease")
+                .param("id",id).param("lease",lease).update();
+    }
+
+    @Transactional
+    public boolean beginMigrationWrite(UUID id,UUID lease) {
+        return jdbc.sql("UPDATE course_resources SET storage_write_settled=FALSE WHERE id=:id AND lease_id=:lease AND state='SCANNING' AND storage_write_settled=TRUE")
+                .param("id",id).param("lease",lease).update()==1;
     }
 
     @Transactional
@@ -131,8 +151,12 @@ public class ResourceLifecycle {
     @Transactional
     public Optional<Job> claim(boolean migrateLegacy) {
         Instant instant = clock.instant();
+        // An abandoned unacknowledged upload remains unavailable, with its byte reservation and uncertainty intact.
+        jdbc.sql("UPDATE course_resources SET state='DELETE_PENDING',updated_at=:now WHERE id IN (SELECT id FROM course_resources WHERE state='STAGING' AND storage_write_settled=FALSE AND created_at<:abandoned ORDER BY created_at,id LIMIT 256)")
+                .param("now",time(instant)).param("abandoned",time(instant.minusSeconds(600))).update();
         var row = jdbc.sql("""
                 SELECT * FROM course_resources WHERE
+                  storage_write_settled=TRUE AND
                   (lease_until IS NULL OR lease_until<:now) AND (retry_at IS NULL OR retry_at<=:now)
                   AND (storage_backend<>'legacy' OR :migrate=TRUE OR state='DELETE_PENDING') AND (
                     state IN ('QUARANTINED','SCANNING','DELETE_PENDING')
@@ -163,6 +187,7 @@ public class ResourceLifecycle {
 
     @Transactional
     public void finishMigration(Job job, UploadValidator.ValidatedUpload upload, String backend) {
+        migrationWriteSettled(job.resource().id(),job.leaseId());
         int changed = jdbc.sql("""
                 UPDATE course_resources SET storage_key=:key, storage_backend=:backend, sha256=:hash,
                  file_name=:file,content_type=:type,state='QUARANTINED',ingestion_status='NONE',lease_id=NULL,lease_until=NULL,
@@ -265,7 +290,7 @@ public class ResourceLifecycle {
     public void finishDelete(UUID id, UUID lease) {
         // All quota mutations take this row first, preventing inversion with upload reservations.
         jdbc.sql("SELECT reserved_bytes FROM media_storage_budget WHERE id=1 FOR UPDATE").query(Long.class).single();
-        var row = jdbc.sql("SELECT * FROM course_resources WHERE id=:id AND lease_id=:lease FOR UPDATE")
+        var row = jdbc.sql("SELECT * FROM course_resources WHERE id=:id AND lease_id=:lease AND storage_write_settled=TRUE FOR UPDATE")
                 .param("id", id).param("lease", lease).query((rs, n) -> new Deleted(rs.getLong("byte_size"), rs.getBoolean("byte_reservation"))).optional();
         if (row.isEmpty()) return;
         jdbc.sql("""
