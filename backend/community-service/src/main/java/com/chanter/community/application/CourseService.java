@@ -732,15 +732,15 @@ public class CourseService {
         courseRepository.enrollLearner(cohortId, learnerUserId, learnerUserId, clock.instant());
     }
 
-    public UUID getCohortInviteCode(UUID cohortId, UUID instructorUserId) {
-        return courseRepository.findCohortInviteCodeForInstructor(cohortId, instructorUserId)
+    public UUID getCohortInviteCode(UUID cohortId, UUID viewerUserId) {
+        return courseRepository.findCohortInviteCodeForPeopleManager(cohortId, viewerUserId)
                 .orElseThrow(() -> {
                     if (!courseRepository.cohortExists(cohortId)) {
                         return new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found");
                     }
                     return new ResponseStatusException(
                             HttpStatus.FORBIDDEN,
-                            "Only the Course Instructor can view invite details"
+                            "Only a Course Instructor or Study Server Owner can view invite details"
                     );
                 });
     }
