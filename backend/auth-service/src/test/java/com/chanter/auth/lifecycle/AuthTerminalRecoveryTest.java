@@ -76,9 +76,9 @@ class AuthTerminalRecoveryTest {
         assertThat(recovery.reapply(page)).isEqualTo(receipt);
         assertThat(journal.page(0,null,100)).isEqualTo(page);
         assertThat(journal.checkpoint()).isNull();
-        assertThatThrownBy(() -> sessions.requireActiveAccessSession("Bearer " + account.accessToken())).hasMessageContaining("401");
+        assertThatThrownBy(() -> sessions.requireActiveAccessSession("Bearer " + account.accessToken())).hasMessageContaining("410");
         assertThatThrownBy(() -> sessions.refresh(account.refreshToken())).hasMessageContaining("401");
-        assertThatThrownBy(() -> sessions.login(account.user().email(),"private fixture password 251","Attempt after closure")).hasMessageContaining("401");
+        assertThatThrownBy(() -> sessions.login(account.user().email(),"private fixture password 251","Attempt after closure")).hasMessageContaining("410");
         assertThat(jdbc.queryForObject("SELECT state FROM lifecycle_export_jobs WHERE id=?",String.class,job.id())).isEqualTo("CANCELLED");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM data_export_pages WHERE snapshot_id=?",Integer.class,job.id())).isZero();
         assertThat(jdbc.queryForObject("SELECT used_at IS NOT NULL FROM auth_email_tokens WHERE id=?",Boolean.class,emailToken)).isTrue();

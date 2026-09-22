@@ -103,6 +103,8 @@ Existing placeholder mailboxes, unverified domains, and unsupported effective/re
 
 ## Ownership preparation and terminal allocation
 
+Accepted #249 integration uses its existing live moderation authority for permanent terminal checks. USER maps to canonical ACCOUNT; RESOURCE and STUDY_SERVER retain their exact types. A terminal entry denies legacy and session-bound account access and source batches even after a temporary restriction expires or is revoked. Existing session issuance and deletion retain the same user-row lock order. Moderation reports, evidence and audit records remain preserved independently of this access fence.
+
 Account deletion must serialize against Study Server creation and incoming ownership transfer. A list returned before deletion is only a preview. Community will own a per-account ownership row shared by every ownership mutation and the deletion preparation transaction. An unresolved owned server yields BLOCKED_OWNERSHIP before any terminal journal allocation. The user must complete a mutually accepted ownership transfer or a separate confirmed server deletion first.
 
 When no owned servers remain, the community transaction stores PREPARED for the exact deletion job and emits its receipt through the existing durable outbox. New ownership is then refused. Auth accepts only the current job's preparation receipt, allocates ACCOUNT terminal authority, closes credentials and enqueues participant delivery in its owning transaction. A preparation receipt alone is not a completed deletion. Source cleanup and the current independently replicated journal checkpoint must still finish, with preserved records reported explicitly.
