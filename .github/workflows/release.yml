@@ -126,6 +126,7 @@ jobs:
             release.json images.tar images.sha256 \
             infra/production/postgres-init.sh infra/production/livekit.yaml \
             infra/production/runtime-lock.json infra/production/release-policy.json \
+            infra/production/recovery-policy.json \
             scripts/deploy/host.mjs scripts/deploy/release.mjs scripts/deploy/recovery.mjs scripts/deploy/backup-runner.mjs scripts/deploy/telemetry.mjs scripts/deploy/errors.mjs scripts/deploy/heartbeat.mjs \
             scripts/deploy/configuration-backup.mjs scripts/deploy/restore-isolated.mjs scripts/deploy/restore-current-authority.mjs \
             scripts/deploy/recovery-runtime.mjs scripts/deploy/terminal-journal.mjs scripts/deploy/terminal-journal-storage.mjs \

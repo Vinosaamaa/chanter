@@ -38,7 +38,7 @@ export class JournalRepository {
   #run(args, input, maximum = MAX_MANIFEST_BYTES) {
     try {
       return this.#execute(this.#tool.executable, ['--no-cache', ...args], { input, encoding: 'utf8',
-        timeout: 60000, maxBuffer: maximum, env: this.#tool.env, stdio: ['pipe', 'pipe', 'pipe'] });
+        timeout: 60000, maxBuffer: maximum, env: this.#tool.env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     } catch { throw new Error('Encrypted terminal journal storage failed'); }
   }
   initialize() { this.#run(['init', '--repository-version', '2']); }
