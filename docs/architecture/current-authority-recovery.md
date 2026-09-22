@@ -223,6 +223,14 @@ volume on the new internal network; it does not migrate or create a replacement
 database. Only containers with the exact recovery/project/service labels and
 expected images, mounts and networks can be stopped by the command.
 
+Recovery requires exclusive operation on a trusted Docker host. The original
+database is stopped by its inspected immutable container ID and is never removed;
+its volume reference prevents ordinary volume removal. A changed container name
+cannot select a replacement. Post-start image, mount and network checks run before
+replay and again before the receipt. These checks do not defend against a malicious
+Docker-privileged actor or establish that an original writer on another host is
+fenced. That independent writer-fencing requirement remains a cutover blocker.
+
 Before any source starts, a fixed one-shot helper validates every packaged Flyway
 migration against the restored database. Its connections are read-only, queries
 and process lifetime are bounded, and missing, changed or unexpected migration

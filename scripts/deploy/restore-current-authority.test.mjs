@@ -9,6 +9,7 @@ import { GENESIS, checkpointIdentity } from './terminal-journal.mjs';
 import { SOURCES } from './terminal-journal-recovery.mjs';
 
 const id = 'chanter-recovery-11111111-1111-4111-8111-111111111111';
+const originalContainerId = 'e'.repeat(64);
 const release = { version: 1, commit: 'a'.repeat(40), architecture: process.arch === 'arm64' ? 'arm64' : 'amd64', schemaEpoch: 8,
   recoveryProtocol: { journalSchema: 2, ordinaryWorkIsolation: 1 },
   images: Object.fromEntries(imageNames.map(name => [name, 'sha256:' + 'b'.repeat(64)])) };
@@ -44,11 +45,11 @@ test('foreign architecture rejects before decryption or touching restored state'
 });
 
 test('restored volume ownership, image and network isolation are checked before stopping the database', () => {
-  const valid = { image: receipt.image, labels: { 'chanter.recovery': id }, networks: {}, ports: {},
+  const valid = { id: originalContainerId, image: receipt.image, labels: { 'chanter.recovery': id }, networks: {}, ports: {},
     mounts: [{ Type: 'volume', Name: receipt.volume, Destination: '/var/lib/postgresql/data' }] };
   const calls = [];
   const run = args => { calls.push(args); return JSON.stringify(args[0] === 'volume' ? { 'chanter.recovery': id } : valid); };
-  assert.doesNotThrow(() => verifyRestoredDatabase(receipt, run));
+  assert.equal(verifyRestoredDatabase(receipt, run), originalContainerId);
   assert.ok(calls.every(args => args.includes('inspect')));
   for (const changed of [{ image: 'sha256:' + 'd'.repeat(64) }, { networks: { public: {} } },
     { labels: {} }, { ports: { '5432/tcp': [{}] } }, { mounts: [] },
@@ -79,14 +80,17 @@ test('authority application preserves attempt identity, private configuration an
   const project = 'chanter-recovery-11111111111141118111111111111111', network = `${id}-authority`;
   const containers = new Map(), calls = [];
   let rejectSource = false, isolationResult = 'RECOVERY_SOURCE_LISTENERS_PRIVATE', containerTamper = null, schemaFailure = false;
+  let originalNameReplaced = false;
   const inspect = source => ({ image: release.images[source], labels: { 'chanter.recovery': id,
     'com.docker.compose.project': project, 'com.docker.compose.service': source }, networks: { [network]: {} }, ports: {},
     mounts: source === 'postgres' ? [{ Type: 'volume', Name: receipt.volume, Destination: '/var/lib/postgresql/data' }] : [] });
   const run = args => {
     calls.push(args);
+    if (args[0] === 'stop' && args[1] === originalContainerId && originalNameReplaced)
+      throw Error('The inspected container disappeared; its name now refers to another ID');
     if (args[0] === 'volume') return JSON.stringify({ 'chanter.recovery': id });
     if (args[0] === 'inspect') return JSON.stringify(args.at(-1) === id
-      ? { ...inspect('postgres'), networks: {} } : { ...inspect(containers.get(args.at(-1))), ...containerTamper });
+      ? { ...inspect('postgres'), id: originalContainerId, networks: {} } : { ...inspect(containers.get(args.at(-1))), ...containerTamper });
     if (args[0] === 'ps') return args.includes(`label=com.docker.compose.project=${project}`) ? [...containers.keys()].join('\n') : '';
     if (args[0] === 'network') return args[1] === 'inspect' ? 'true' : '';
     if (args[0] === 'compose' && args.includes('up')) containers.set(crypto.createHash('sha256').update(args.at(-1)).digest('hex').slice(0, 12), args.at(-1));
@@ -113,6 +117,8 @@ test('authority application preserves attempt identity, private configuration an
   assert.equal(result.publicCutoverAllowed, false);
   assert.equal(result.isolationVerified, true);
   assert.equal(result.status, 'current-authority-applied-isolated');
+  assert.ok(calls.some(args => args[0] === 'stop' && args[1] === originalContainerId));
+  assert.equal(calls.some(args => args[0] === 'stop' && args[1] === id), false);
   assert.equal(JSON.stringify(result).includes('private-recovery-canary'), false);
   assert.equal(JSON.stringify(calls).includes('private-recovery-canary'), false);
   assert.equal(calls.filter(args => args.includes('RecoverySchema')).length, 7);
@@ -147,4 +153,9 @@ test('authority application preserves attempt identity, private configuration an
   await assert.rejects(applyRecoveryAuthority(input, options));
   assert.equal(calls.filter(args => args.includes('up') && args.at(-1) !== 'postgres').length, 0,
     'One invalid restored schema must prevent every source application from starting');
+  schemaFailure = false; originalNameReplaced = true; calls.length = 0;
+  await assert.rejects(applyRecoveryAuthority(input, options));
+  assert.equal(calls.some(args => args.includes('up')), false,
+    'Disappearance of the pinned container must stop recovery even if its name was replaced');
+  assert.equal(calls.some(args => args[0] === 'stop' && args[1] === id), false);
 });

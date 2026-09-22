@@ -39,7 +39,11 @@ try {
   const images = { ...release.images };
   for (const source of SOURCES) {
     const name = `${source}-service`, tag = `chanter-recovery-proof-${source}:${token}`;
-    docker(['build', '--build-arg', `BASE_IMAGE=${release.images[name]}`, '--tag', tag, root]);
+    // BuildKit interprets a bare sha256 image ID as a registry name in FROM. Pin a verified local tag first.
+    const base = `chanter-recovery-base-${source}:${token}`;
+    docker(['tag', release.images[name], base]);
+    assert.equal(docker(['image', 'inspect', '--format', '{{.Id}}', base]).trim(), release.images[name]);
+    docker(['build', '--pull=false', '--network=none', '--build-arg', `BASE_IMAGE=${base}`, '--tag', tag, root]);
     images[name] = docker(['image', 'inspect', '--format', '{{.Id}}', tag]).trim();
   }
   // Fixture-only capability allows testing the new activation boundary before enabling release policy.

@@ -18,7 +18,7 @@ const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const runDocker = (args, timeout = 30_000) => execFileSync('docker', args,
   { encoding: 'utf8', timeout, maxBuffer: 512 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
 const fail = () => { throw new Error('Current authority recovery failed; preserve isolated state for private inspection'); };
-const inspectFormat = '{"image":{{json .Image}},"labels":{{json .Config.Labels}},"networks":{{json .NetworkSettings.Networks}},"ports":{{json .HostConfig.PortBindings}},"mounts":{{json .Mounts}}}';
+const inspectFormat = '{"id":{{json .Id}},"image":{{json .Image}},"labels":{{json .Config.Labels}},"networks":{{json .NetworkSettings.Networks}},"ports":{{json .HostConfig.PortBindings}},"mounts":{{json .Mounts}}}';
 const privateWrite = (file, value) => {
   const temporary = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, value, { mode: 0o600 }); fs.renameSync(temporary, file);
@@ -29,12 +29,13 @@ const empty = value => value == null || Object.keys(value).length === 0;
 export function verifyRestoredDatabase(receipt, run = runDocker) {
   const value = JSON.parse(run(['inspect', '--format', inspectFormat, receipt.container]));
   const labels = JSON.parse(run(['volume', 'inspect', '--format', '{{json .Labels}}', receipt.volume]));
-  if (value.image !== receipt.image || value.labels?.['chanter.recovery'] !== receipt.container
+  if (!/^[a-f0-9]{64}$/.test(value.id ?? '') || value.image !== receipt.image || value.labels?.['chanter.recovery'] !== receipt.container
       || labels?.['chanter.recovery'] !== receipt.container || !empty(value.networks) || !empty(value.ports)
       || !Array.isArray(value.mounts) || value.mounts.some(mount => mount.Type !== 'tmpfs'
         && !(mount.Type === 'volume' && mount.Name === receipt.volume && mount.Destination === '/var/lib/postgresql/data'))
       || !value.mounts.some(mount => mount.Type === 'volume'
         && mount.Name === receipt.volume && mount.Destination === '/var/lib/postgresql/data')) fail();
+  return value.id;
 }
 
 function ownedContainers(compose, receipt, run, requireNetwork = false) {
@@ -90,7 +91,7 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
     }
     const repository = repositoryFactory({ bundleDir, environment, env: journalBackupEnvironment(settings, environment) });
     const selected = readCurrentReplica(repository, [requiredAuthority]);
-    verifyRestoredDatabase(receipt, run);
+    const restoredContainerId = verifyRestoredDatabase(receipt, run);
     for (const project of ['chanter-production', 'chanter-staging']) {
       if (run(['ps', '--filter', `label=com.docker.compose.project=${project}`, '--format', '{{.ID}}']).trim()) fail();
     }
@@ -123,7 +124,7 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
     }
     const prior = ownedContainers(compose, receipt, run);
     if (prior.length) run(['stop', ...prior], 60_000);
-    run(['stop', receipt.container], 30_000);
+    run(['stop', restoredContainerId], 30_000);
     attempt.status = 'applying-isolated'; save(path.join(attemptDir, 'attempt.json'), attempt);
     command(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'postgres']);
     for (const source of SOURCES) {
@@ -170,5 +171,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const result = await applyRecoveryAuthority({ bundleDir: path.resolve(bundle), destination: path.resolve(destination),
       settings: readEnv(bootstrap), environment, requiredAuthority: json(minimum) });
     console.log(JSON.stringify(result));
-  }).catch(error => { console.error(error.message); process.exitCode = 1; });
+  }).catch(() => { console.error('Current authority recovery failed; preserve isolated state for private inspection'); process.exitCode = 1; });
 }
