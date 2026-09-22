@@ -43,6 +43,9 @@ export function isolatedRecoveryCompose(release, config, runtimeDir, receipt) {
       OTEL_METRICS_EXPORTER: 'none', OTEL_LOGS_EXPORTER: 'none' });
     if (source === 'agent') Object.assign(service.environment, { CHANTER_NATIVE_COMPANION_ORIGIN: '',
       CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8: '', CHANTER_NATIVE_COMPANION_PUBLIC_KEY_SPKI: '', CHANTER_NATIVE_COMPANION_MODELS: '' });
+    // Existing media constructors require these paths. Empty scratch is not a restored object store or erasure proof.
+    if (source === 'media') service.tmpfs = [...service.tmpfs, ...['/app/resources', '/app/media-spool'].map(directory =>
+      `${directory}:size=16m,mode=0700,uid=10001,gid=10001,noexec,nosuid,nodev`)];
     services[name] = service;
   }
   const postgres = compose.services.postgres;

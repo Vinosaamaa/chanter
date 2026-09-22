@@ -325,6 +325,10 @@ only the seven required sources and restored PostgreSQL on an internal Docker
 network, with no published ports, source HTTP bound to container loopback,
 archiving disabled and no media/scanner volumes. `CHANTER_RECOVERY_MODE=true`
 omits ordinary worker beans while retaining private replay and invalidation.
+Media receives two empty, private 16 MiB scratch filesystems at its existing
+legacy-resource and upload-spool paths because its constructors require them.
+They contain no restored objects and cannot establish absence or physical erasure.
+Production retains its configured S3 client; construction makes no provider call.
 Normal email, outbox, ingestion and media flags are also disabled explicitly.
 External error reporting is disabled and all telemetry exporters are `none`.
 

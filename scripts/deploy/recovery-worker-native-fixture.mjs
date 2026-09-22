@@ -54,6 +54,10 @@ try {
   const receipt = { version: 1, status: 'database-restored-isolated', release: release.commit, image: release.images.postgres,
     container: identity, volume: `${identity}-data`, network: `${identity}-network`, publicCutoverAllowed: false };
   const definition = isolatedRecoveryCompose(fixtureRelease, config, path.join(state, 'runtime'), receipt);
+  const sourceDefinition = JSON.parse(fs.readFileSync(sourceCompose));
+  assert.equal(sourceDefinition.services['media-service'].environment.CHANTER_MEDIA_STORAGE_BACKEND, 'local');
+  // The owned smoke database binds this local namespace. This fixture proves startup only, never object recovery.
+  definition.services['media-service'].environment.CHANTER_MEDIA_STORAGE_BACKEND = 'local';
   // This worker-only phase uses the already migrated fixture database. Full restore uses the owning operator command.
   delete definition.services.postgres; delete definition.volumes;
   definition.networks.application = { external: true, name: network };
@@ -97,7 +101,24 @@ try {
   for (const source of SOURCES) {
     const name = `${source}-service`;
     try { compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', name]); }
-    catch { throw new Error(`Recovery worker fixture failed during ${source} startup`); }
+    catch {
+      // Match the smoke fixture's bounded diagnostics. Free-form messages and runtime settings stay private.
+      const failed = compose(['ps', '--all', '--quiet', name]).trim();
+      if (/^[a-f0-9]{64}$/.test(failed)) {
+        const token = value => typeof value === 'string' && /^[A-Za-z_$][A-Za-z0-9_.$]{0,179}$/.test(value) ? value : 'unknown';
+        for (const line of docker(['logs', '--tail', '80', failed]).split(/\r?\n/)) {
+          let item; try { item = JSON.parse(line); } catch { continue; }
+          if (item.event !== 'application.exception' || !Array.isArray(item.errors)) continue;
+          console.error(JSON.stringify({ errors: item.errors.slice(0, 4).map(error => ({ type: token(error.type),
+            frames: (Array.isArray(error.frames) ? error.frames : []).slice(0, 12).map(frame => ({
+              class: token(frame.class), method: token(frame.method), line: Number.isSafeInteger(frame.line) ? frame.line : 0 })) })) }));
+        }
+        const status = JSON.parse(docker(['inspect', '--format', '{"exit":{{json .State.ExitCode}},"oom":{{json .State.OOMKilled}},"restarts":{{json .RestartCount}}}', failed]));
+        assert.ok(Number.isSafeInteger(status.exit) && typeof status.oom === 'boolean' && Number.isSafeInteger(status.restarts));
+        console.error(JSON.stringify(status));
+      }
+      throw new Error(`Recovery worker fixture failed during ${source} startup`);
+    }
     const id = compose(['ps', '--quiet', name]).trim();
     const output = docker(['logs', '--tail', '100', id]);
     assert.ok(output.includes('RECOVERY_ORDINARY_WORKERS_ABSENT'), 'Actual startup must verify ordinary workers are absent');

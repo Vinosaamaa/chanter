@@ -42,6 +42,10 @@ test('isolated services have no public listeners, external networking, migration
   }
   assert.ok(compose.services.postgres.command.includes('archive_mode=off'));
   assert.equal(compose.services['media-service'].volumes, undefined);
+  for (const directory of ['/app/resources', '/app/media-spool']) {
+    assert.ok(compose.services['media-service'].tmpfs.includes(`${directory}:size=16m,mode=0700,uid=10001,gid=10001,noexec,nosuid,nodev`),
+      'Media startup needs bounded private scratch without mounting retained resource bytes');
+  }
   assert.equal(compose.services['agent-service'].environment.CHANTER_NATIVE_COMPANION_PRIVATE_KEY_PKCS8, '');
 });
 
