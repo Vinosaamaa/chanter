@@ -92,6 +92,16 @@ public final class TerminalReapplyStore {
         return states.getFirst();
     }
 
+    /** A newly verified scope can finish already-applied authority without inventing another journal entry. */
+    public void reconcile(TerminalJournal.Entry entry) {
+        requireTransaction(); entry.validate(); lock();
+        Cleanup previous=cleanup(entry);
+        if(previous!=Cleanup.PENDING) return;
+        Cleanup next=java.util.Objects.requireNonNull(mutation.apply(entry));
+        ExportSourceExecution.check();
+        if(next!=previous && !recordCleanup(entry,previous,next)) throw new IllegalStateException("Terminal reconciliation changed");
+    }
+
     /** Source writes take this lock before their rows, so an in-flight write cannot recreate a terminal target. */
     public void requireWritable(String kind, UUID target) {
         if (!writable(kind, target)) throw new org.springframework.web.server.ResponseStatusException(
