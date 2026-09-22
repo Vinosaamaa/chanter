@@ -1,5 +1,6 @@
 package com.chanter.common.telemetry;
 
+import com.chanter.common.recovery.OrdinaryOperation;
 import ch.qos.logback.classic.LoggerContext;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 
 @AutoConfiguration
+@OrdinaryOperation
 @ConditionalOnClass(LoggerContext.class)
 @ConditionalOnProperty(name = "chanter.errors.enabled", havingValue = "true")
 public class PrivateErrorsConfiguration {

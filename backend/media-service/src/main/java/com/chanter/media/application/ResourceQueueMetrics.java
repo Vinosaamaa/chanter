@@ -1,5 +1,6 @@
 package com.chanter.media.application;
 
+import com.chanter.common.recovery.OrdinaryOperation;
 import com.chanter.common.telemetry.QueueMetricQuery;
 import com.chanter.common.telemetry.QueueMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration(proxyBeanMethods = false)
+@OrdinaryOperation
 @ConditionalOnProperty(name = "chanter.telemetry.enabled", havingValue = "true")
 public class ResourceQueueMetrics {
     @Bean(name = "resourceQueueSampler", initMethod = "start", destroyMethod = "close")

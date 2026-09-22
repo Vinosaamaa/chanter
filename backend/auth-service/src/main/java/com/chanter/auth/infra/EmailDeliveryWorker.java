@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@com.chanter.common.recovery.OrdinaryOperation
 @EnableScheduling
 @ConditionalOnProperty(name = "chanter.email.worker-enabled", havingValue = "true", matchIfMissing = true)
 public class EmailDeliveryWorker {

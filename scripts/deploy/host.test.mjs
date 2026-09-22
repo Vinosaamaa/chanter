@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { initialize, prepareRecovery, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render, configurationSnapshot, configurationFingerprint } from './host.mjs';
+import { initialize, prepareRecovery, readEnv, validateRuntime, stopEnvironment, verifyPublic, verifyMigrationHistory, backupDatabase, render, configurationSnapshot, configurationFingerprint, replicateTerminalJournal } from './host.mjs';
 import { imageNames } from './release.mjs';
+import { GENESIS } from './terminal-journal.mjs';
 
 const scratch = path.resolve('.cache/deploy-tests');
 fs.mkdirSync(scratch, { recursive: true });
@@ -370,4 +371,39 @@ test('scheduled backup verifies real completion, shares the deployment lock and 
   fs.writeFileSync(path.join(root, 'active-environment.json'), JSON.stringify({ stateDir: state, bundleDir: path.join(root, 'failed-release') }));
   assert.throws(() => backupDatabase(state, 'check', run), /verification failed/);
   assert.equal(calls.length, 0);
+});
+
+test('journal replication requires the accepted configuration and shares the deployment lock', async t => {
+  const { root, state } = fixture(t), bundle = path.join(root, 'bundle');
+  fs.mkdirSync(path.join(bundle, 'infra/production'), { recursive: true });
+  const release = { version: 1, commit: 'a'.repeat(40), architecture: 'arm64', schemaEpoch: 8,
+    images: Object.fromEntries(imageNames.map(name => [name, 'sha256:' + 'b'.repeat(64)])) };
+  fs.writeFileSync(path.join(bundle, 'release.json'), JSON.stringify(release));
+  for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.writeFileSync(path.join(bundle, 'infra/production', name), 'fixture');
+  const prepared = render(bundle, state), renderedBefore = fs.readFileSync(prepared.file, 'utf8');
+  fs.writeFileSync(path.join(state, 'current.json'), JSON.stringify({ commit: release.commit, bundleDir: bundle,
+    configurationFingerprint: configurationFingerprint(state, release) }));
+  fs.writeFileSync(path.join(root, 'active-environment.json'), JSON.stringify({ stateDir: state, bundleDir: bundle }));
+  let saved = null, acknowledgements = 0;
+  const options = { run: () => '', repositoryFactory: value => {
+    assert.equal(value.env.RESTIC_REPOSITORY.endsWith('/terminal-journal/staging'), true);
+    return { kind: 'fixture', environment: 'staging', manifests: () => saved ? [{ snapshotId: 'c'.repeat(64), authority: GENESIS }] : [],
+      write: (kind, value) => { saved = value; return 'c'.repeat(64); }, read: () => saved };
+  }, clientFactory: value => {
+    assert.equal(value.composeFile, prepared.file);
+    return { kind: 'fixture', checkpoint: async () => null,
+      page: async () => ({ schemaVersion: 2, after: GENESIS, through: GENESIS, next: GENESIS, entries: [] }),
+      acknowledge: async value => { acknowledgements++; return value; } };
+  } };
+  assert.equal((await replicateTerminalJournal(state, options)).status, 'ok');
+  assert.equal(acknowledgements, 1);
+  assert.equal(fs.readFileSync(prepared.file, 'utf8'), renderedBefore);
+  fs.mkdirSync(path.join(root, '.deploy-lock'));
+  await assert.rejects(replicateTerminalJournal(state, options), /active/);
+  fs.rmdirSync(path.join(root, '.deploy-lock'));
+  fs.appendFileSync(path.join(state, 'runtime/auth-service.env'), 'PENDING_CHANGE=private-canary\n');
+  await assert.rejects(replicateTerminalJournal(state, options), /replication failed/);
+  assert.equal(acknowledgements, 1);
+  assert.equal(fs.readFileSync(path.join(state, 'terminal-journal-status.json'), 'utf8').includes('private-canary'), false);
+  assert.equal(fs.existsSync(path.join(root, '.deploy-lock')), false);
 });

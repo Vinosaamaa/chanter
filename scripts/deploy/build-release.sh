@@ -53,6 +53,8 @@ node scripts/deploy/create-manifest.mjs "$output/release.json" "$architecture"
 mapfile -t images < <(node -e 'console.log(Object.values(require(process.argv[1]).images).join("\n"))' "$output/release.json")
 docker save --output "$output/images.tar" "${images[@]}"
 (cd "$output" && sha256sum images.tar > images.sha256)
-cp scripts/deploy/{host.mjs,release.mjs,recovery.mjs,backup-runner.mjs,telemetry.mjs,errors.mjs,heartbeat.mjs,configuration-backup.mjs,restore-isolated.mjs} "$output/scripts/deploy/"
-cp infra/production/{postgres-init.sh,livekit.yaml,runtime-lock.json,release-policy.json} "$output/infra/production/"
+cp scripts/deploy/{host.mjs,release.mjs,recovery.mjs,recovery-runtime.mjs,backup-runner.mjs,telemetry.mjs,errors.mjs,heartbeat.mjs,configuration-backup.mjs,resource-object-backup.mjs,restore-isolated.mjs,restore-current-authority.mjs} "$output/scripts/deploy/"
+cp scripts/deploy/terminal-journal{,-storage,-replica,-recovery,-client}.mjs "$output/scripts/deploy/"
+cp scripts/deploy/deleted-scope.mjs "$output/scripts/deploy/"
+cp infra/production/{postgres-init.sh,livekit.yaml,runtime-lock.json,release-policy.json,recovery-policy.json} "$output/infra/production/"
 echo "Release bundle prepared for $commit ($architecture); no secrets or registry account required."

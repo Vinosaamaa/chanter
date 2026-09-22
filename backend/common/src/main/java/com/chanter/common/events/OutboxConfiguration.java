@@ -49,6 +49,7 @@ public class OutboxConfiguration {
     }
 
     @Bean
+    @com.chanter.common.recovery.OrdinaryOperation
     @ConditionalOnProperty(name="chanter.events.dispatch-enabled", havingValue="true", matchIfMissing=true)
     DispatchSchedule eventDispatchSchedule(DurableOutbox outbox, ObjectMapper mapper,
             @Value("${SEARCH_SERVICE_URL:http://localhost:8088}") String search,

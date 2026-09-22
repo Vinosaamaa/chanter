@@ -8,7 +8,6 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.server.ResponseStatusException;
 
 /** Immutable scope plus a one-way acceptance claim. Evidence is erased at terminal settlement or expiry. */
@@ -52,7 +51,6 @@ public class NativeRequestRepository {
                 WHERE id=:id AND outcome='ACCEPTING'
                 """).param("outcome", accepted ? "ACCEPTED" : "REJECTED").param("input", input).param("output", output).param("id", id).update();
     }
-    @Scheduled(fixedDelay = 60000)
     public void expire() {
         jdbc.sql("""
                 UPDATE native_companion_requests

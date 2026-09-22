@@ -11,6 +11,9 @@ import { telemetryEnvironment } from './telemetry.mjs';
 import { errorEnvironment, browserErrorConfiguration } from './errors.mjs';
 import { backupHeartbeatUrl, sendBackupHeartbeat } from './heartbeat.mjs';
 import { configurationBackupEnvironment, runConfigurationBackup, verifyConfigurationBackup } from './configuration-backup.mjs';
+import { journalBackupEnvironment, JournalRepository } from './terminal-journal-storage.mjs';
+import { replicateJournal } from './terminal-journal-replica.mjs';
+import { lifecycleClient } from './terminal-journal-client.mjs';
 
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const writePrivateText = (file, value) => {
@@ -23,7 +26,7 @@ const secret = () => crypto.randomBytes(32).toString('hex');
 const recoveryDefaults = () => ({
   backup: { CHANTER_BACKUP_S3_ENDPOINT: '', CHANTER_BACKUP_S3_BUCKET: '', CHANTER_BACKUP_S3_REGION: '',
     CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret(),
-    CHANTER_CONFIG_BACKUP_PASSWORD: secret() },
+    CHANTER_CONFIG_BACKUP_PASSWORD: secret(), CHANTER_TERMINAL_JOURNAL_PASSWORD: secret() },
   telemetry: { CHANTER_TELEMETRY_ENDPOINT: '', CHANTER_TELEMETRY_AUTHORIZATION: '' },
   errors: { CHANTER_ERRORS_DSN: '', CHANTER_BROWSER_ERRORS_DSN: '', CHANTER_BACKUP_HEARTBEAT_URL: '' },
 });
@@ -452,6 +455,44 @@ export function backupDatabase(stateDir, type = 'incr', run = docker, saveConfig
   } finally { fs.rmdirSync(lock); }
 }
 
+export async function replicateTerminalJournal(stateDir, { run = docker,
+    repositoryFactory = options => new JournalRepository(options), clientFactory = lifecycleClient } = {}) {
+  const lock = path.join(path.dirname(stateDir), '.deploy-lock');
+  try { fs.mkdirSync(lock); } catch { throw new Error('Deployment or backup is active; inspect the lock before retrying'); }
+  try {
+    const current = json(path.join(stateDir, 'current.json')), active = json(path.join(path.dirname(stateDir), 'active-environment.json'));
+    if (active.stateDir !== stateDir || active.bundleDir !== current.bundleDir) throw new Error();
+    const release = validateRelease(json(path.join(current.bundleDir, 'release.json')));
+    const config = validateConfig(json(path.join(stateDir, 'config.json')));
+    if (release.commit !== current.commit || current.configurationFingerprint !== configurationFingerprint(stateDir, release)) throw new Error();
+    verifyMigrationHistory(stateDir, release, config.environment, run);
+    const composeFile = path.join(stateDir, 'rendered', release.commit, 'compose.json');
+    if (!fs.existsSync(composeFile)) throw new Error();
+    const repository = repositoryFactory({ bundleDir: current.bundleDir, environment: config.environment,
+      env: journalBackupEnvironment(readEnv(path.join(stateDir, 'runtime/backup.env')), config.environment) });
+    const client = clientFactory({ source: 'auth', environment: config.environment, composeFile });
+    const scopes = clientFactory({ source: 'community', environment: config.environment, composeFile });
+    const result = await replicateJournal(client, repository, scopes);
+    const receipt = { schemaVersion: 1, status: 'ok', checkedAt: new Date().toISOString(), release: release.commit, ...result };
+    writeJson(path.join(stateDir, 'terminal-journal-status.json'), receipt);
+    return receipt;
+  } catch {
+    writeJson(path.join(stateDir, 'terminal-journal-status.json'), { schemaVersion: 1, status: 'failed', checkedAt: new Date().toISOString() });
+    throw new Error('Terminal journal replication failed; inspect private deployment and repository state');
+  } finally { fs.rmdirSync(lock); }
+}
+
+export function initializeTerminalJournal(bundleDir, stateDir) {
+  const lock = path.join(path.dirname(stateDir), '.deploy-lock');
+  try { fs.mkdirSync(lock); } catch { throw new Error('Deployment or backup is active; inspect the lock before retrying'); }
+  try {
+    validateRelease(json(path.join(bundleDir, 'release.json')));
+    const config = validateConfig(json(path.join(stateDir, 'config.json')));
+    new JournalRepository({ bundleDir, environment: config.environment,
+      env: journalBackupEnvironment(readEnv(path.join(stateDir, 'runtime/backup.env')), config.environment) }).initialize();
+  } finally { fs.rmdirSync(lock); }
+}
+
 async function main(args) {
   const [command, first, second, third, fourth] = args;
   if (command === 'init' && first && second && third && fourth) {
@@ -477,6 +518,11 @@ async function main(args) {
   } else if (command === 'prepare-recovery' && first) {
     prepareRecovery(path.resolve(first));
     console.log('Missing recovery settings prepared. Existing runtime secrets retained; configure the private backup repository before deployment.');
+  } else if (command === 'init-terminal-journal' && first && second) {
+    initializeTerminalJournal(path.resolve(first), path.resolve(second));
+    console.log('Encrypted terminal journal repository initialized. Preserve its separate recovery key offline.');
+  } else if (command === 'replicate-terminal-journal' && first) {
+    console.log(JSON.stringify(await replicateTerminalJournal(path.resolve(first))));
   } else if (command === 'init-config-backup' && first && second) {
     const state = path.resolve(second); const config = validateConfig(json(path.join(state, 'config.json')));
     runConfigurationBackup(path.resolve(first), readEnv(path.join(state, 'runtime/backup.env')), config.environment, null, true);
@@ -490,7 +536,7 @@ async function main(args) {
     for (const [name, contents] of Object.entries(units)) writePrivateText(path.join(directory, name), contents);
     console.log('Backup units prepared in the private state systemd directory. Install and enable them using the recovery runbook.');
   } else if (command === 'verify' && first) await verifyPublic(first, second ? path.resolve(second) : undefined);
-  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | prepare-recovery STATE | init-config-backup BUNDLE STATE | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | backup STATE [full|incr|check] | backup-schedule STATE | verify HOST [STATE]');
+  else throw new Error('Usage: host.mjs init STATE ENV HOST IP | prepare-recovery STATE | init-config-backup BUNDLE STATE | init-terminal-journal BUNDLE STATE | replicate-terminal-journal STATE | render BUNDLE STATE | deploy BUNDLE STATE | rollback STATE | stop STATE | backup STATE [full|incr|check] | backup-schedule STATE | verify HOST [STATE]');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

@@ -5,6 +5,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component @Profile("!test")
+@com.chanter.common.recovery.OrdinaryOperation
 public class EmbeddingRebuildWorker {
     private final EmbeddingRebuildJobs jobs;
     private final EmbeddingPipelineService pipeline;

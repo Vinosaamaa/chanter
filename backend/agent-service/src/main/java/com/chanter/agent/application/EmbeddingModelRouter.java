@@ -2,7 +2,6 @@ package com.chanter.agent.application;
 
 import com.chanter.agent.domain.EmbeddingModel;
 import com.chanter.agent.infra.EmbeddingProviders;
-import jakarta.annotation.PostConstruct;
 import java.util.List;
 import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.context.annotation.Primary;
@@ -16,7 +15,7 @@ public class EmbeddingModelRouter implements EmbeddingClient {
     public EmbeddingModelRouter(EmbeddingProviders providers,EmbeddingVersionStore versions) {
         this.providers=providers;this.versions=versions;
     }
-    @PostConstruct void initialize() {
+    void initialize() {
         for(var client:providers.all()) versions.register(client.metadata());
         versions.initializeDefault(providers.defaultClient().metadata());
         for(String id:versions.writableIds()) providers.client(id);
