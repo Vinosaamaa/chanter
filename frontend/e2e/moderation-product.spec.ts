@@ -145,6 +145,9 @@ test('real moderation, active audio revocation and verified-email appeal', async
       socket.onclose = event => { window.moderationSocket.closed = true; window.moderationSocket.code = event.code }
     }, learnerSession.accessToken)
     await expect.poll(() => sender.evaluate(() => window.moderationSocket.open)).toBe(true)
+    const refreshCookie = (await learner.context().cookies(`${origin}/api/v1/auth/refresh`))
+      .find(cookie => cookie.name === 'chanter_refresh')
+    expect(Boolean(refreshCookie?.value)).toBe(true)
 
     const target = operator.getByRole('region', { name: 'Selected report' }).getByRole('combobox', { name: /^Target/ })
     await target.selectOption({ label: 'Author account' })
@@ -176,7 +179,12 @@ test('real moderation, active audio revocation and verified-email appeal', async
     expect(reconnectStatus).toBe(403)
     expect((await learner.request.post(mediaPath, { headers: learnerHeaders })).status()).toBe(403)
     expect((await learner.request.get('/api/v1/study-servers', { headers: learnerHeaders })).status()).toBe(403)
-    expect((await learner.request.post('/api/v1/auth/refresh', { headers: { Origin: origin, 'X-Chanter-CSRF': '1' } })).status()).toBe(401)
+    // The rendered app may already have cleared its rejected cookie. Replay the actual issued credential.
+    expect((await learner.request.post('/api/v1/auth/refresh', { headers: { Origin: origin, 'X-Chanter-CSRF': '1',
+      Cookie: `chanter_refresh=${refreshCookie!.value}` } })).status()).toBe(401)
+    await info.attach('moderation-media-evidence', { contentType: 'application/json',
+      body: Buffer.from(JSON.stringify({ before, after, stable, activeMediaRemoved: true, liveSessionClosed: true,
+        signedUnexpiredReconnectStatus: reconnectStatus, issuedRefreshRejected: true }, null, 2)) })
     await receiver.evaluate(() => window.moderationAudio.disconnect())
 
     // Restriction notices carry a non-secret reference; only the delivered appeal link grants submission.

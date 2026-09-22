@@ -235,15 +235,18 @@ public class AuthSessionService {
         return authUserRepository.findByEmail(normalizeEmail(email)).map(AuthUserProfile::from);
     }
 
+    @Transactional
     public AuthSession issueSessionForUser(AuthUser user) {
         return issueSession(user, "");
     }
 
+    @Transactional
     public AuthSession issueSessionForUser(AuthUser user, String userAgent) {
         return issueSession(user, userAgent);
     }
 
     private AuthSession issueSession(AuthUser user, String userAgent) {
+        refreshTokenRepository.lockUser(user.id());
         moderation.requireActiveAccount(user.id());
         String refreshToken = generateRefreshToken();
         Instant now = Instant.now();

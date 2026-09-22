@@ -20,7 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ActiveProfiles("test")
 class ModerationRestrictionsTest {
     @Autowired JdbcTemplate jdbc;
-    @Autowired ModerationRestrictions restrictions;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean ModerationRestrictions restrictions;
     @Autowired PlatformTransactionManager transactions;
     @Autowired AuthSessionService sessions;
     @Autowired AuthUserRepository users;
@@ -100,6 +100,45 @@ class ModerationRestrictionsTest {
                 .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class,
                         failure -> assertThat(failure.getStatusCode().value()).isEqualTo(409));
         org.mockito.Mockito.verifyNoInteractions(untouchedAudit);
+    }
+
+    @Test void concurrentProviderIssuanceCannotSurviveSuspensionAndReinstatement() throws Exception {
+        UUID user=UUID.randomUUID(),report=UUID.randomUUID(),operation=UUID.randomUUID();
+        jdbc.update("INSERT INTO auth_users(id,email,password_hash,display_name,email_verified,created_at) VALUES(?,?,'unusable-provider-password','Member',TRUE,CURRENT_TIMESTAMP)",
+                user,user+"@suspension-race.test");
+        seedReport(report,user);
+        var account=users.findById(user).orElseThrow();
+        var checked=new java.util.concurrent.CountDownLatch(1);
+        var release=new java.util.concurrent.CountDownLatch(1);
+        var first=new java.util.concurrent.atomic.AtomicBoolean(true);
+        org.mockito.Mockito.doAnswer(call -> {
+            call.callRealMethod();
+            if(first.getAndSet(false)) {
+                checked.countDown();
+                assertThat(release.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            }
+            return null;
+        }).when(restrictions).requireActiveAccount(user);
+        var tx=new TransactionTemplate(transactions);
+        try(var workers=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var issuance=workers.submit(() -> sessions.issueSessionForUser(account));
+            assertThat(checked.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            var suspension=workers.submit(() -> tx.executeWithoutResult(status -> restrictions.add(operation,report,"USER",user,
+                    UUID.randomUUID(),"Confirmed account abuse",Instant.now().plusSeconds(3600),UUID.randomUUID())));
+            try {
+                assertThatThrownBy(() -> suspension.get(200,java.util.concurrent.TimeUnit.MILLISECONDS))
+                        .isInstanceOf(java.util.concurrent.TimeoutException.class);
+            } finally { release.countDown(); }
+            var issued=issuance.get(5,java.util.concurrent.TimeUnit.SECONDS);
+            suspension.get(5,java.util.concurrent.TimeUnit.SECONDS);
+            tx.executeWithoutResult(status -> restrictions.revoke(report,operation,UUID.randomUUID(),"Review reversed",UUID.randomUUID()));
+            assertThatThrownBy(() -> sessions.requireActiveAccessSession("Bearer "+issued.accessToken()))
+                    .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class,
+                            failure -> assertThat(failure.getStatusCode().value()).isEqualTo(401));
+            assertThatThrownBy(() -> sessions.refresh(issued.refreshToken()))
+                    .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class,
+                            failure -> assertThat(failure.getStatusCode().value()).isEqualTo(401));
+        } finally { release.countDown(); }
     }
 
     private void seedReport(UUID report, UUID user) {

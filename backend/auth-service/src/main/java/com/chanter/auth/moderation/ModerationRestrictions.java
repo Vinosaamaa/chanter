@@ -64,6 +64,10 @@ public class ModerationRestrictions {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a restriction duration between one minute and 30 days");
         if (reason == null || reason.isBlank() || reason.length() > 2000)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A reason of at most 2000 characters is required");
+        if (type.equals("USER")) {
+            // Serialize with login, provider issuance and refresh before revoking their sessions.
+            jdbc.query("SELECT id FROM auth_users WHERE id=? FOR UPDATE", (row, index) -> row.getObject(1), target);
+        }
         if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM moderation_restrictions WHERE id=?)", Boolean.class, operation)))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This restriction operation was already recorded");
         boolean previouslyRestricted = isRestricted(type, target, now);
