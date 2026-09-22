@@ -28,7 +28,7 @@ verification: {"state":"verified","evidenceRefs":["scripts/deploy/terminal-journ
 visibility: public-safe
 publicationEligibility: eligible
 issue: 332
-pr: null
+pr: 336
 release: null
 run: null
 ---
