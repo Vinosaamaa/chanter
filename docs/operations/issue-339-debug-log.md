@@ -24,3 +24,29 @@ At 3134d03e, Firefox reported SEC_ERROR_UNKNOWN_ISSUER. The pinned Playwright Fi
 WebKit failures appeared while tests navigated immediately after the login response, before Home bootstrap completed. The helper now awaits four actual successful bootstrap responses and visible Home content. This is not yet a confirmed resolution; hosted execution remains the proof. A broader rule retaining every failed request until a later navigation was rejected because it could mask an earlier unrelated cancellation.
 
 The call focus fixture showed that the real hook uses an ended phase before idle. Close the modal at ended, focus an available heading, and preserve busy/audio errors in the visible page. Two additional component regressions first failed for the missing alert, then passed after the fix.
+
+## Delayed Inbox delivery and navigation ownership
+
+The actual owner/member announcement journey at 50fc4123 found that delivery after
+the initial Inbox request left the list empty indefinitely. The unread badge's
+separate polling did not refresh that list. The OPEN query now refreshes every
+15 seconds while mounted and foregrounded. Its focused regression first returned
+an empty list, then delivered an item; it failed before the change and passes now.
+The real journey also checks persisted read/completion state, but does not force
+delivery to occur after mounting. Hosted execution remains required.
+
+Independent review found that redirecting navigation accidentally took a second
+snapshot of pending requests, admitting requests started after navigation began.
+The redirect-chain regression reproduced that error. Redirects now retain the
+first snapshot, and all five classification tests pass. HTTP/runtime errors and
+ambiguous cancellation ownership remain fatal.
+
+The 50fc4123 fixture suite passed 275 cases. Inspected Teaching screenshots at
+1280 and 390 pixels confirm three-column desktop and two-column phone counts.
+Those images prove layout at that checkpoint, not final integrated service behavior.
+
+The 74d5c0a6 fixture suite passed, including footer scrolling. Its short-landscape
+event screenshot showed the long title entering the absolute close control's
+horizontal area. The event header now reserves space for that control. Browser
+geometry assertions at all three dialog sizes guard the separation; hosted
+confirmation is required for the new spacing.

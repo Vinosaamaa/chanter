@@ -147,3 +147,11 @@ it delivers the notification only after the first empty response. Lint, producti
 build and unchanged asset budgets pass. Hosted browser confirmation is still
 required. The completed list does not poll, and account-scoped cache keys and
 server authorization remain unchanged.
+
+At 74d5c0a6, all 45 actual-service product journeys passed across Chromium,
+Firefox and WebKit, including owner publication and persisted Inbox completion.
+The actual moderation/audio-removal/email-appeal journey also passed. Synthetic
+responsive coverage passed, and independent inspection of six additional phone
+and landscape screenshots found no new blocker. One event-title/close-control
+spacing correction from screenshot review still requires hosted confirmation.
+Final #251 and #342 integration remains open; these results do not authorize launch.

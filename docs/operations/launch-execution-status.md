@@ -1,6 +1,6 @@
 # Chanter launch execution status
 
-Reviewed 2026-09-22 against accepted main `89252221799e5e5cc9fd6d42bcfdce183fe29393`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
+Reviewed 2026-09-22 against accepted main `634b9dd1ee7880bf6f4d6a7a617bd7f4e24530ac`, linked PRs and the owning GitHub issues. PR336 passed its exact-head gates and merged-main application, security and native-boundary checks. In-progress branch changes are identified separately below.
 
 Chanter has substantial local-beta product code. It has no verified public release. The previous audit's DNS and provider observations are historical; this review does not claim that those external systems have been rechecked.
 
@@ -34,6 +34,12 @@ merged-main CI passing. Actual monitoring-provider acceptance remains under #331
 
 PR338 dependency repairs and PR341 owner cohort-invite authorization are merged with passing full review and merged-main checks. The dependency repair passed both native release architectures, and all eight security alerts are fixed. The final combined release remains a separate gate. Existing branches and worktrees are preserved.
 
+PR336 recovery infrastructure is merged after both native release architectures,
+application checks and full review. Its public capability remains disabled.
+#342, a child of #332, owns actual source replay, private-object inventory and
+restore, original-writer closure and the remaining provider guarantees. A worker
+startup fixture is not proof of complete application recovery.
+
 ## Remaining release work
 
 | Issue | Customer or operator outcome | Current state |
@@ -47,8 +53,8 @@ PR338 dependency repairs and PR341 owner cohort-invite authorization are merged 
 | #248 | Evaluated AI safety, usage and cost accounting | PR317/322 merged provider adapters, catalog, accounting and answer controls; final retrieval/evaluations and configured-provider proof remain |
 | #249 | Administration, reports and moderation | PR333 merged with full CI/review, both native stages, real audio revocation/reconnect denial, emailed appeal/reversal and phone/desktop proof; merged-main checks passed; production operator enrollment remains |
 | #250 | Truthful free-beta mode or real paid billing | PR323 merged truthful free-beta mode and limits; final deployed accounting proof remains; paid billing is outside initial free beta |
-| #251 | Export, deletion, retention and accurate policy pages | Draft335 has bounded exports, terminal journal v2 and all seven private source handlers; public coordination, late-event reconciliation, physical cleanup and legal integration remain underway |
-| #252 | Monitoring, alerts, backups and proven restore | PR329 foundation and PR334 monitoring merged; private metrics/reports, source-map upload tooling, backup heartbeat and dashboard queries are tested; draft336 has seven-source recovery isolation proof. Combined release, complete file/deletion recovery and actual provider/operator receipts remain gates |
+| #251 | Export, deletion, retention and accurate policy pages | Draft335 has bounded exports, the terminal journal, seven private source handlers and public account/server/resource request coordination; late-answer reconciliation, final cleanup/progress, real cross-service proof and legal integration remain underway |
+| #252 | Monitoring, alerts, backups and proven restore | PR329 foundation, PR334 monitoring and PR336 recovery infrastructure merged; #342 owns real source/object restore and original-writer closure. Combined release and actual provider/operator receipts remain gates |
 | #253 | Trusted edge, proxy handling and abuse limits | PR328 merged with shared admission and request bounds; actual public proxy/provider proof remains |
 | #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; #339 owns remaining integrated journeys, control review and responsive interaction fixes; final whole-product/mobile/voice checks remain |
 | #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |

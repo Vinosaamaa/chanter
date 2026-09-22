@@ -40,4 +40,19 @@ The real signed-in browser gate previously installed Chromium alone. Firefox and
 
 Design follows learning-desk-v3 and the repository's pinned frontend-design skill. Existing independent core, initial-route and capability bundle budgets remain unchanged. Focus behavior has red-to-green component regressions; final screenshot, hosted, review and combined-release acceptance remain open.
 
-Teaching retains bookmarked Study Server selection, Refresh, dashboard metrics and lifetime free-beta usage while its legacy route becomes a query-preserving alias. Community event titles are keyboard controls; repeated editor/details forms use native modality and restore focus. Event edits preserve the original audience identifiers, correcting a request that always sent HUB. These changes have focused red-to-green regressions. Actual cross-browser acceptance remains open because the first expanded real-browser run exposed a plain-HTTP test origin incompatible with WebKit Secure-cookie persistence.
+Teaching resolves bookmarked Study Server selection against accessible communities, retaining Refresh, dashboard metrics and lifetime free-beta usage while its legacy route becomes a query-preserving alias. Enrollment resolves bookmarked cohorts only after manager authorization. Community event titles are keyboard controls; repeated editor/details forms use native modality, scroll on short screens and restore focus. Event edits preserve the original audience identifiers, correcting a request that always sent HUB. These changes have focused red-to-green regressions.
+
+The first expanded real-browser run exposed a plain-HTTP origin incompatible with
+WebKit Secure-cookie persistence. The hosted stack now uses a trusted ephemeral
+HTTPS origin. Real registration and recovery pass across all three engines;
+production certificate and cookie checks remain intact. Navigation cancellation
+classification retains only the pending requests known before navigation started,
+including across redirects. Ambiguous ownership remains a failure.
+
+The real announcement journey exposed delivery after the mounted Inbox's initial
+fetch. A foreground OPEN list now refreshes every 15 seconds through the existing
+authorized query. User-scoped cache keys and mutation invalidation remain intact;
+completed lists do not poll. A focused regression establishes the delayed-fetch
+case. The service journey checks owner publication and member read/completion
+persistence, but does not force delivery timing. Current-head browser and final
+accepted lifecycle/recovery union checks remain required.

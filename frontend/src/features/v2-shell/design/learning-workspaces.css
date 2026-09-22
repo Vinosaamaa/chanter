@@ -473,6 +473,7 @@
 
 .v2-app-shell .workspace-dialog { width: min(780px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; margin: auto; padding: 0; border: 0; background: transparent; color: var(--ink); }
 .v2-app-shell .workspace-dialog:has(> .event-detail-modal) { width: min(720px, calc(100vw - 24px)); }
+.v2-app-shell .event-detail-modal > header { padding-right: 44px; }
 .v2-app-shell .event-detail-link { border: 0; padding: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 
 @media (max-width: 600px) { .v2-app-shell .teaching-operational-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
