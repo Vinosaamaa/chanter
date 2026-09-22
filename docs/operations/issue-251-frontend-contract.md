@@ -1,6 +1,6 @@
 # Account data frontend integration
 
-Owning issue #251 / PR #335 provides the backend. #339 may implement the account deletion UI against this contract, reusing the committed `features/account-data` export UI and its exact lazy bundle allowance. Do not change backend authority based on fixture responses. Server/resource public progress routes are not yet a stable handoff.
+Owning issue #251 / PR #335 provides the backend. #339 may implement the account deletion UI against this contract, reusing the committed `features/account-data` export UI and its exact lazy bundle allowance. Do not change backend authority based on fixture responses.
 
 ## Account deletion
 
@@ -34,3 +34,11 @@ Reuse `account-data-api.ts` and AccountDataPage. Existing authenticated `/api/v1
 Download uses authenticated, CSRF-protected `POST /{id}/download-authorization`, then a same-origin native anchor navigation to `GET /{id}/download`. The one-use HttpOnly cookie expires in at most 60 seconds and is tied to the live account/session/job. Do not use a JavaScript Blob or URL token. A cancelled/partial download needs new authorization; an anchor click cannot prove completion. The backend checks current source access throughout streaming and omits the successful ZIP ending on failure.
 
 Preserve explicit export omissions/current-authority wording and native UNKNOWN usage provenance. Hosted tests must exercise mobile layout, keyboard/focus, cancel/confirm races, revoked-session receipt access, uncertain confirm, expired receipt and native streaming retry. Keep account-data chunks absent from initial landing/sign-in/Home transfer.
+
+## Study Server and resource deletion progress
+
+The existing owning DELETE routes return 202 with `{jobId,targetId,state:"PENDING"}`. Access is closed immediately; this is not completed erasure. Retain the returned opaque job ID and offer explicit progress refresh. An uncertain response should retry that original target request rather than announce success.
+
+Authenticated `GET /api/v1/auth/account/source-deletions/{jobId}` returns `{jobId,targetKind,targetId,state,replicationPending,parts}`. targetKind is STUDY_SERVER or RESOURCE. Source Part fields/states match the account progress contract. State is ERASING, WAITING_FOR_REPLICA or COMPLETE under the same strict completion rules. No journal digest, user content or credentials are returned. Only the original requester with a live session may read it; another account sees 404 and logout sees 401. The endpoint does not depend on the erased source graph.
+
+The durable request may not have reached auth yet. A 404 after an initial PENDING response therefore means progress is not available yet, not completed or cancelled. Keep the pending job and offer retry/status refresh. If the session is no longer available, ask for sign-in; source jobs do not use the account receipt cookie. Do not promise a completion deadline or turn a failed status fetch into another resource upload/deletion job.

@@ -34,7 +34,7 @@ class SourceDeletionRequestsTest {
         assertThatThrownBy(() -> requests.request(target,UUID.randomUUID(),() -> {})).hasMessageContaining("404");
         var event=outbox.claim().orElseThrow();
         assertThat(event.event().kind()).isEqualTo(AccountDeletionProtocol.SOURCE_REQUEST);
-        assertThat(event.event().payload()).doesNotContain(user.toString());
+        assertThat(new AccountDeletionProtocol(new com.fasterxml.jackson.databind.ObjectMapper()).sourceRequest(event.event()).requesterId()).isEqualTo(user);
         outbox.delivered(event); assertThat(outbox.claim()).isEmpty();
     }
     @Test void concurrentRetriesSerializeAtTheSourceHeadAndProduceOneJob() throws Exception {

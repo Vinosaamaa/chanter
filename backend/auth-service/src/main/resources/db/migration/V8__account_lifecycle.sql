@@ -116,6 +116,7 @@ CREATE TABLE lifecycle_deletion_parts (
 
 CREATE TABLE lifecycle_source_deletions (
     id UUID PRIMARY KEY,
+    requester_id UUID NOT NULL,
     target_kind VARCHAR(16) NOT NULL CHECK(target_kind IN ('STUDY_SERVER','RESOURCE')),
     target_id UUID NOT NULL,
     terminal_revision BIGINT NOT NULL,

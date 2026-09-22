@@ -66,11 +66,12 @@ public final class AccountDeletionProtocol {
     public record Preparation(UUID jobId,UUID accountId) {
         public void validate() { requireId(jobId); TerminalJournal.requireTarget("ACCOUNT",accountId); }
     }
-    public record SourceRequest(UUID jobId,String targetKind,UUID targetId) {
+    public record SourceRequest(UUID jobId,String targetKind,UUID targetId,UUID requesterId) {
         public void validate() {
             requireId(jobId);
             if(targetKind==null || !Set.of("STUDY_SERVER","RESOURCE").contains(targetKind)) throw invalid();
             TerminalJournal.requireTarget(targetKind,targetId);
+            TerminalJournal.requireTarget("ACCOUNT",requesterId);
         }
     }
     public record Terminal(UUID jobId,TerminalJournal.Entry entry) {

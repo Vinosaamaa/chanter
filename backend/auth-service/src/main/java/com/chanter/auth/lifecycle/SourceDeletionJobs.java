@@ -25,13 +25,14 @@ public final class SourceDeletionJobs {
             var existing=jdbc.query("SELECT id FROM lifecycle_source_deletions WHERE target_kind=? AND target_id=?",
                     (rs,n) -> rs.getObject(1,UUID.class),request.targetKind(),request.targetId());
             if(!existing.isEmpty()) {
-                if(!existing.getFirst().equals(request.jobId())) throw invalid();
+                if(!existing.getFirst().equals(request.jobId()) || jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_source_deletions WHERE id=? AND requester_id=?",
+                        Integer.class,request.jobId(),request.requesterId())!=1) throw invalid();
                 return;
             }
             var entry=journal.append(request.targetKind(),request.targetId());
             var own=auth.applyCommitted(entry);
-            jdbc.update("INSERT INTO lifecycle_source_deletions(id,target_kind,target_id,terminal_revision,terminal_digest) VALUES (?,?,?,?,?)",
-                    request.jobId(),entry.targetKind(),entry.targetId(),entry.revision(),entry.digest());
+            jdbc.update("INSERT INTO lifecycle_source_deletions(id,requester_id,target_kind,target_id,terminal_revision,terminal_digest) VALUES (?,?,?,?,?,?)",
+                    request.jobId(),request.requesterId(),entry.targetKind(),entry.targetId(),entry.revision(),entry.digest());
             for(String source:AccountExportJobs.SOURCES) {
                 UUID command=source.equals("auth") ? null : outbox.append("lifecycle-"+source,AccountDeletionProtocol.TERMINAL,
                         AccountDeletionProtocol.key(entry.targetKind(),entry.targetId()),protocol.encode(new AccountDeletionProtocol.Terminal(request.jobId(),entry)));
@@ -63,6 +64,13 @@ public final class SourceDeletionJobs {
         return new Progress(id,header.kind(),header.target(),header.revision(),header.digest(),
                 cleaned ? replicationPending ? "WAITING_FOR_REPLICA" : "COMPLETE" : "ERASING",replicationPending,List.copyOf(parts));
     }
+    public PublicProgress progress(UUID id,UUID requester) {
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_source_deletions WHERE id=? AND requester_id=?",Integer.class,id,requester)!=1)
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"DELETION_NOT_FOUND");
+        var value=progress(id);
+        return new PublicProgress(value.jobId(),value.targetKind(),value.targetId(),value.state(),value.replicationPending(),value.parts());
+    }
+    public record PublicProgress(UUID jobId,String targetKind,UUID targetId,String state,boolean replicationPending,List<AccountDeletionJobs.Part> parts) { }
     private static IllegalArgumentException invalid() { return new IllegalArgumentException("Invalid source deletion authority"); }
     private record Header(String kind,UUID target,long revision,String digest) { }
     public record Progress(UUID jobId,String targetKind,UUID targetId,long terminalRevision,String terminalDigest,

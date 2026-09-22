@@ -42,7 +42,7 @@ public final class SourceDeletionRequests {
                     Integer.class,kind)>=128) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,"DELETION_SOURCE_CAPACITY");
             UUID job=UUID.randomUUID();
             UUID event=outbox.append("lifecycle-auth",AccountDeletionProtocol.SOURCE_REQUEST,AccountDeletionProtocol.key(kind,target),
-                    protocol.encode(new AccountDeletionProtocol.SourceRequest(job,kind,target)));
+                    protocol.encode(new AccountDeletionProtocol.SourceRequest(job,kind,target,requester)));
             jdbc.update("INSERT INTO lifecycle_source_requests(target_id,job_id,requester_id,event_id) VALUES (?,?,?,?)",target,job,requester,event);
             return new Request(job,target,"PENDING");
         });
