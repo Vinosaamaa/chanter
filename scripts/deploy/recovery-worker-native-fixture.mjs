@@ -33,7 +33,10 @@ try {
   original(['stop', ...modules, 'frontend', 'livekit', 'clamav', 'redis']);
   compiler = docker(['create', '--label', `chanter.recovery=${identity}`, release.images['auth-service']]).trim();
   docker(['cp', `${compiler}:/app/lib`, path.join(root, 'lib')]);
-  execute('javac', ['-cp', path.join(root, 'lib/*'), '-d', root, 'scripts/deploy/fixtures/RecoveryApplication.java']);
+  execute('javac', ['-cp', path.join(root, 'lib/*'), '-d', root, 'scripts/deploy/fixtures/RecoveryApplication.java',
+    'infra/production/java/RecoverySchema.java', 'scripts/deploy/fixtures/RecoverySchemaContractTest.java']);
+  assert.equal(execute('java', ['-cp', `${root}:${path.join(root, 'lib/*')}`, 'RecoverySchemaContractTest']).trim(),
+    'RECOVERY_SCHEMA_CONFIG_VERIFIED');
   fs.writeFileSync(path.join(root, '.dockerignore'), '*\n!Dockerfile\n!RecoveryApplication.class\n');
   fs.writeFileSync(path.join(root, 'Dockerfile'), 'ARG BASE_IMAGE\nFROM ${BASE_IMAGE}\nCOPY --chown=10001:10001 RecoveryApplication.class /app/helpers/\nENTRYPOINT ["java","-cp","/app/helpers:/app/classes:/app/lib/*","RecoveryApplication"]\n');
   const images = { ...release.images };

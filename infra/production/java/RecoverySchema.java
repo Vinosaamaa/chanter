@@ -15,13 +15,8 @@ public final class RecoverySchema {
             String database = required("POSTGRES_DB"), user = required("POSTGRES_USER");
             if (!database.matches("chanter_(auth|community|message|media|agent|notification|search)") || !database.equals(user))
                 throw new IllegalStateException();
-            var flyway = Flyway.configure().dataSource("jdbc:postgresql://postgres:5432/" + database + "?connectTimeout=5&socketTimeout=10",
-                            user, required("POSTGRES_PASSWORD"))
-                    .locations("classpath:db/migration", "classpath:db/migration-postgresql")
-                    .cleanDisabled(true).outOfOrder(false).validateMigrationNaming(true)
-                    .ignoreMigrationPatterns(new String[0]).loggers("none").connectRetries(0)
-                    .initSql("SET default_transaction_read_only=on; SET statement_timeout='10s'; SET lock_timeout='2s'")
-                    .load();
+            var flyway = configuration().dataSource("jdbc:postgresql://postgres:5432/" + database + "?connectTimeout=5&socketTimeout=10",
+                            user, required("POSTGRES_PASSWORD")).load();
             flyway.validate();
             var migrations = flyway.info().all();
             if (migrations.length == 0) throw new IllegalStateException();
@@ -31,6 +26,13 @@ public final class RecoverySchema {
             System.err.println("Restored source schema verification failed");
             System.exit(1);
         }
+    }
+
+    static org.flywaydb.core.api.configuration.FluentConfiguration configuration() {
+        return Flyway.configure().locations("classpath:db/migration", "classpath:db/migration-postgresql")
+                .cleanDisabled(true).outOfOrder(false).validateMigrationNaming(true)
+                .ignoreMigrationPatterns(new String[0]).loggers(new String[0]).connectRetries(0)
+                .initSql("SET default_transaction_read_only=on; SET statement_timeout='10s'; SET lock_timeout='2s'");
     }
 
     private static String required(String name) {
