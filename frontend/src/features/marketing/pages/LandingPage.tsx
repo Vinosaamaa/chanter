@@ -103,7 +103,7 @@ export function LandingPage() {
               {' · '}
               <Link to="/privacy">Privacy</Link>
               {' · '}
-              Beta support: support@chanter.example
+              Support contact not yet configured
             </p>
             <p>{new Date().getFullYear()} Chanter</p>
           </div>

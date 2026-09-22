@@ -33,3 +33,10 @@ CREATE TABLE durable_event_cursor (
     PRIMARY KEY (producer, aggregate_key)
 );
 
+
+CREATE TABLE lifecycle_account_ownership (
+    account_id UUID PRIMARY KEY,
+    preparation_job UUID,
+    terminal BOOLEAN NOT NULL DEFAULT FALSE,
+    CHECK (terminal=FALSE OR preparation_job IS NULL)
+);

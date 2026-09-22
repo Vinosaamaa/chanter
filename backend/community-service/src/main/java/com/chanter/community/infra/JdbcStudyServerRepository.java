@@ -32,11 +32,13 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
 
     private final JdbcClient jdbcClient;
     private final DataSource dataSource;
+    private final com.chanter.community.lifecycle.CommunityOwnershipFence ownership;
     private volatile Boolean postgresDatabase;
 
-    public JdbcStudyServerRepository(JdbcClient jdbcClient, DataSource dataSource) {
+    public JdbcStudyServerRepository(JdbcClient jdbcClient, DataSource dataSource, com.chanter.community.lifecycle.CommunityOwnershipFence ownership) {
         this.jdbcClient = jdbcClient;
         this.dataSource = dataSource;
+        this.ownership = ownership;
     }
 
     private boolean usePostgresUpsert() {
@@ -61,6 +63,7 @@ public class JdbcStudyServerRepository implements StudyServerRepository {
     @Override
     @Transactional
     public StudyServer save(StudyServer studyServer) {
+        ownership.requireWritable(studyServer.ownerRole().userId());
         jdbcClient.sql("""
                         INSERT INTO study_servers (
                             id,

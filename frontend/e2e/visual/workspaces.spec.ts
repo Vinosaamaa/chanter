@@ -57,6 +57,11 @@ for (const width of [360, 390, 768, 1280, 1920, 3840]) {
       await page.goto(route)
       await page.waitForLoadState('networkidle')
       await page.evaluate(() => document.fonts.ready)
+      if (name === 'privacy' || name === 'terms') {
+        await expect(page.getByText(/Legal review pending\./)).toBeVisible()
+        await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0)
+        await expect(page.getByText(/Effective July/)).toHaveCount(0)
+      }
       if (name === 'course-questions' && width <= 390) await page.locator('.question-thread-list > button').first().click()
       if (name === 'inbox' && width <= 390) await page.locator('.inbox-thread-list button').first().click()
       await page.screenshot({ path: testInfo.outputPath(`fixture-ui-${name}-${width}.png`) })

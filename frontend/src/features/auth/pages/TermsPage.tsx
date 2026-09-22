@@ -11,7 +11,7 @@ export function TermsPage() {
       </header>
 
       <article>
-        <p className="terms-eyebrow">Effective July 13, 2026</p>
+        <p className="terms-eyebrow">Beta draft. Legal review pending.</p>
         <h1>Terms of Service</h1>
         <p>
           These terms govern your use of Chanter. By creating an account or using the service,
@@ -54,7 +54,7 @@ export function TermsPage() {
         </p>
 
         <h2>Contact</h2>
-        <p>Questions about these terms can be sent to support@chanter.app.</p>
+        <p>A verified support contact and operating organization have not been configured for this deployment. These draft terms have no verified effective date.</p>
       </article>
     </main>
   )

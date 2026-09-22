@@ -96,3 +96,11 @@ Existing placeholder mailboxes, unverified domains, and unsupported effective/re
 2. Add terminal journal and participant lifecycle receipts, integrating #249 live authority and #246/#247 deletion fences after their accepted commits.
 3. Add ownership resolution, recoverable deletion progress, preservation and retention automation, then private export/download and mobile account controls.
 4. Verify cross-service failure/replay, stale writes, binary/index disappearance, restore reapply, current legal disclosures and actual browser pixels. Publish one draft PR with full CI/security/review and retain external gates explicitly.
+
+## Ownership preparation and terminal allocation
+
+Account deletion must serialize against Study Server creation and incoming ownership transfer. A list returned before deletion is only a preview. Community will own a per-account ownership row shared by every ownership mutation and the deletion preparation transaction. An unresolved owned server yields BLOCKED_OWNERSHIP before any terminal journal allocation. The user must complete a mutually accepted ownership transfer or a separate confirmed server deletion first.
+
+When no owned servers remain, the community transaction stores PREPARED for the exact deletion job and emits its receipt through the existing durable outbox. New ownership is then refused. Auth accepts only the current job's preparation receipt, allocates ACCOUNT terminal authority, closes credentials and enqueues participant delivery in its owning transaction. A preparation receipt alone is not a completed deletion. Source cleanup and the current independently replicated journal checkpoint must still finish, with preserved records reported explicitly.
+
+Cancellation is allowed only before terminal allocation. Its durable release identifies the same account and job. A delayed release cannot clear a newer job's preparation or a terminal account fence. A terminal participant mutation closes the community ownership row before source cleanup. Restore reapply reinstates that permanent closure. No expiry may silently reopen a prepared account while auth may already have allocated terminal authority. This protocol uses the existing durable delivery/replay mechanism, not another queue or scheduler.
