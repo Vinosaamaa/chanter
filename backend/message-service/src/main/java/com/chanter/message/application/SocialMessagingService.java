@@ -195,7 +195,10 @@ public class SocialMessagingService {
         ));
     }
 
+    @Transactional
     public List<DirectMessage> findDirectMessages(UUID viewerUserId, UUID peerUserId) {
+        repository.lockPair(viewerUserId, peerUserId);
+        requireActivePair(viewerUserId, peerUserId);
         if (!repository.areFriends(viewerUserId, peerUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Messages require an accepted Friend Request");
         }

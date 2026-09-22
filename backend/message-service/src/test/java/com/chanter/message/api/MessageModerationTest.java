@@ -76,4 +76,29 @@ class MessageModerationTest {
         verify(moderation).allowedSources(user,List.of(new Target("DM",hidden.id())));
         verify(moderation).allowedSources(peer,List.of(new Target("DM",hidden.id())));
     }
+
+    @Test void blockCannotCommitInTheMiddleOfAnAuthorizedHistoryRead() throws Exception {
+        UUID peer=UUID.randomUUID();
+        social.acceptFriendRequest(social.sendFriendRequest(user,peer).id(),peer);
+        social.sendDirectMessage(user,peer,"existing message");
+        var reading=new java.util.concurrent.CountDownLatch(1);
+        var release=new java.util.concurrent.CountDownLatch(1);
+        when(moderation.allowedSources(eq(user),anyList())).thenAnswer(call -> {
+            reading.countDown();
+            assertThat(release.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            return Set.copyOf(call.getArgument(1));
+        });
+        try(var workers=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var history=workers.submit(() -> social.findDirectMessages(user,peer));
+            assertThat(reading.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            var block=workers.submit(() -> social.blockUser(peer,user));
+            try {
+                assertThatThrownBy(() -> block.get(200,java.util.concurrent.TimeUnit.MILLISECONDS))
+                        .isInstanceOf(java.util.concurrent.TimeoutException.class);
+            } finally { release.countDown(); }
+            assertThat(history.get(5,java.util.concurrent.TimeUnit.SECONDS)).hasSize(1);
+            block.get(5,java.util.concurrent.TimeUnit.SECONDS);
+            assertThatThrownBy(() -> social.findDirectMessages(user,peer)).isInstanceOf(ResponseStatusException.class);
+        } finally { release.countDown(); }
+    }
 }

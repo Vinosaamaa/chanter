@@ -67,10 +67,14 @@ public class ModerationRestrictions {
         if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM moderation_restrictions WHERE id=?)", Boolean.class, operation)))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This restriction operation was already recorded");
         boolean previouslyRestricted = isRestricted(type, target, now);
-        jdbc.update("""
+        try {
+            jdbc.update("""
                 INSERT INTO moderation_restrictions(id,report_id,target_type,target_id,actor_id,reason,starts_at,expires_at)
                 VALUES(?,?,?,?,?,?,?,?)
                 """, operation, report, type, target, actor, reason.strip(), now.atOffset(ZoneOffset.UTC), expires.atOffset(ZoneOffset.UTC));
+        } catch (org.springframework.dao.DuplicateKeyException duplicate) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This restriction operation was already recorded");
+        }
         audit.append(actor, "RESTRICTION_CREATED", type+":"+target, reason, correlation,
                 previouslyRestricted ? "RESTRICTED" : "UNRESTRICTED", "RESTRICTED_UNTIL:"+expires);
         if (type.equals("USER")) {

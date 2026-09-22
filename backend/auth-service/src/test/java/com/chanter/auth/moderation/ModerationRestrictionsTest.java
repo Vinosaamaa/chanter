@@ -89,6 +89,19 @@ class ModerationRestrictionsTest {
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
     }
 
+    @Test void operationInsertedAfterThePrecheckReturnsConflictWithoutAppendingAudit() {
+        var racingJdbc=org.mockito.Mockito.mock(JdbcTemplate.class);
+        var untouchedAudit=org.mockito.Mockito.mock(ModerationAudit.class);
+        org.mockito.Mockito.when(racingJdbc.update(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(Object[].class))).thenThrow(new org.springframework.dao.DuplicateKeyException("Concurrent operation"));
+        var service=new ModerationRestrictions(racingJdbc,untouchedAudit);
+        assertThatThrownBy(() -> service.add(UUID.randomUUID(),UUID.randomUUID(),"RESOURCE",UUID.randomUUID(),
+                UUID.randomUUID(),"Confirmed abuse",Instant.now().plusSeconds(3600),UUID.randomUUID()))
+                .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class,
+                        failure -> assertThat(failure.getStatusCode().value()).isEqualTo(409));
+        org.mockito.Mockito.verifyNoInteractions(untouchedAudit);
+    }
+
     private void seedReport(UUID report, UUID user) {
         jdbc.update("""
                 INSERT INTO moderation_reports(id,reporter_id,target_type,target_id,reason,evidence,status,created_at,updated_at)

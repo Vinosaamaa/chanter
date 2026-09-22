@@ -111,6 +111,8 @@ test('real moderation, active audio revocation and verified-email appeal', async
     await operator.getByRole('complementary', { name: 'Report queue' }).getByRole('button').filter({ hasText: reportReason }).click()
     await expect(operator.getByRole('region', { name: 'Selected report' }).getByText('Synthetic moderation evidence. Preserve this message during review.', { exact: true })).toBeVisible()
     await pixels(operator, info, 'operator-case')
+    await info.attach('moderation-route-network', { contentType: 'application/json',
+      body: Buffer.from(JSON.stringify({ network, transfers }, null, 2)) })
 
     const receiver = await newPage()
     const sender = await newPage()

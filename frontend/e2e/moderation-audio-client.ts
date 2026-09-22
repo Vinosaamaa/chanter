@@ -12,11 +12,17 @@ room.on(RoomEvent.Disconnected, () => { status.textContent = 'Disconnected' })
 room.on(RoomEvent.TrackSubscribed, track => { if (track.kind === 'audio') { const element = track.attach(); element.autoplay = true; document.body.append(element) } })
 const proof = {
   async connect(url: string, token: string, publish: boolean) {
-    await room.connect(url, token)
+    await room.connect(url, token, { peerConnectionTimeout: 20000, websocketTimeout: 10000 })
     if (publish) {
       audio = new AudioContext(); oscillator = audio.createOscillator(); signal = audio.createMediaStreamDestination()
       oscillator.frequency.value = 440; oscillator.connect(signal); oscillator.start(); await audio.resume()
-      await room.localParticipant.publishTrack(new LocalAudioTrack(signal.stream.getAudioTracks()[0]), { name: 'synthetic-moderation-proof' })
+      let deadline: ReturnType<typeof setTimeout> | undefined
+      try {
+        await Promise.race([
+          room.localParticipant.publishTrack(new LocalAudioTrack(signal.stream.getAudioTracks()[0]), { name: 'synthetic-moderation-proof' }),
+          new Promise<never>((_, reject) => { deadline = setTimeout(() => reject({ reason: -1 }), 30000) }),
+        ])
+      } finally { clearTimeout(deadline) }
     }
     status.textContent = 'Connected'
   },

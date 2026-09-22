@@ -26,3 +26,8 @@ The second full review adds atomic refresh rotation and current-account checks w
 # Production integration checkpoint
 
 The production proxy now checks signed LiveKit joins through the private community guard before forwarding signaling. A dedicated internal proxy/community network preserves the existing isolated edge identity. Epoch 9 prevents older writers from bypassing moderation. Optional auth-only operator encryption receives runtime validation without making ordinary startup depend on enrollment. All 56 deployment tests pass, including the actual Caddy adapter order and restricted health-token signature/capabilities; packaged AMD64/ARM64 staging remains a hosted gate.
+# Hosted audio and concurrency follow-up
+
+The hosted journey on `efc96f0a` passed real report persistence, operator verification, scoped evidence and responsive/accessibility checks. All five retained Safety/operator images were inspected, including the phone's blocked-account section. Publishing then exposed LiveKit JS 2.20.0's Chromium bundled-codec mismatch. The product and fixture now pin [upstream 2.20.1](https://github.com/livekit/client-sdk-js/releases/tag/v2.20.1), whose canonical codec-parameter fix addresses this exact error. Audio operations have explicit deadlines, and route-network measurements are retained before the media stage. Core budgets remain unchanged and pass; real media removal, reconnect denial and emailed appeal remain unproven until the next hosted run.
+
+The third review also tightened concurrent DM history/block ordering and duplicate restriction-operation responses. Current operator authorization and failure policies remain as documented in the review disposition.
