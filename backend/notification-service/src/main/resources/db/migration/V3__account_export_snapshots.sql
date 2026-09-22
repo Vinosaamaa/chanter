@@ -45,3 +45,21 @@ CREATE TABLE lifecycle_terminal_targets (
     deleted_at TIMESTAMP WITH TIME ZONE NOT NULL, cleanup_state VARCHAR(16) NOT NULL CHECK(cleanup_state IN ('PENDING','PRESERVED','COMPLETE')),
     PRIMARY KEY(target_kind,target_id)
 );
+
+CREATE TABLE lifecycle_scope_imports (
+            study_server_id UUID NOT NULL, scope_kind VARCHAR(8) NOT NULL CHECK(scope_kind IN ('COURSE','CHANNEL')),
+            revision BIGINT NOT NULL, event_id UUID NOT NULL, terminal_digest VARCHAR(64) NOT NULL,
+            total_count BIGINT NOT NULL CHECK(total_count>=0), scope_digest VARCHAR(64) NOT NULL,
+            received_count BIGINT NOT NULL, after_id UUID NOT NULL, rolling_digest VARCHAR(64) NOT NULL, ready BOOLEAN NOT NULL,
+            PRIMARY KEY(study_server_id,scope_kind)
+        );
+        CREATE TABLE lifecycle_scope_import_ids (
+            study_server_id UUID NOT NULL,scope_kind VARCHAR(8) NOT NULL,scope_id UUID NOT NULL,
+            PRIMARY KEY(study_server_id,scope_kind,scope_id),
+            FOREIGN KEY(study_server_id,scope_kind) REFERENCES lifecycle_scope_imports(study_server_id,scope_kind)
+        );
+        CREATE TABLE lifecycle_scope_import_pages (
+            study_server_id UUID NOT NULL,scope_kind VARCHAR(8) NOT NULL,after_id UUID NOT NULL,page_digest VARCHAR(64) NOT NULL,
+            PRIMARY KEY(study_server_id,scope_kind,after_id),
+            FOREIGN KEY(study_server_id,scope_kind) REFERENCES lifecycle_scope_imports(study_server_id,scope_kind)
+        );

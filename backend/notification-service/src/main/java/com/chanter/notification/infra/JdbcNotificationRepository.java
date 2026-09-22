@@ -39,6 +39,13 @@ public class JdbcNotificationRepository implements NotificationRepository {
                 || notification.studyServerId() != null && !terminal.writable("STUDY_SERVER", notification.studyServerId())
                 || "RESOURCE".equalsIgnoreCase(notification.sourceType()) && !terminal.writable("RESOURCE", notification.sourceId()))
             return notification;
+        if(Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
+                SELECT EXISTS(SELECT 1 FROM lifecycle_scope_import_ids s JOIN lifecycle_scope_imports h
+                    ON h.study_server_id=s.study_server_id AND h.scope_kind=s.scope_kind
+                    JOIN lifecycle_terminal_targets t ON t.target_kind='STUDY_SERVER' AND t.target_id=h.study_server_id
+                        AND t.revision=h.revision AND t.event_id=h.event_id AND t.digest=h.terminal_digest
+                    WHERE h.ready=TRUE AND ((s.scope_kind='COURSE' AND s.scope_id=?) OR (s.scope_kind='CHANNEL' AND s.scope_id=?)))
+                """,Boolean.class,notification.courseId(),notification.channelId()))) return notification;
         Optional<Notification> existing = findByUniqueKey(
                 notification.userId(),
                 notification.sourceType(),

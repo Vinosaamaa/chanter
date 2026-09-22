@@ -41,6 +41,7 @@ class NotificationTerminalRecoveryTest {
     @Autowired ExportSnapshotStore snapshots;
     @Autowired NotificationService notifications;
     @Autowired com.chanter.common.lifecycle.AccountDeletionProtocol deletionProtocol;
+    @Autowired com.chanter.common.lifecycle.DeletedScopeStore scopes;
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     com.chanter.notification.application.NotificationVisibility visibility;
 
@@ -52,6 +53,7 @@ class NotificationTerminalRecoveryTest {
         var request=new ExportSnapshotStore.Request(UUID.randomUUID(),owner,now,now.plusSeconds(86400));
         snapshots.capture(request,output -> new NotificationAccountExport(jdbc).capture(owner,output));
         var page=nextPage("ACCOUNT",owner,now);
+        int alreadyPending=terminal.receipt().pendingTargets();
         var tx=new TransactionTemplate(transactions);
         tx.executeWithoutResult(status -> {
             terminal.reapply(page);
@@ -62,7 +64,7 @@ class NotificationTerminalRecoveryTest {
         assertThat(terminal.terminal("ACCOUNT",owner)).isFalse();
         http.perform(post("/api/v1/internal/lifecycle/journal/reapply").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(page)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.pendingTargets").value(0));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.pendingTargets").value(alreadyPending+1));
         assertThat(count(owner)).isZero();
         assertThat(count(other)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM data_export_pages WHERE snapshot_id=?",Integer.class,request.jobId())).isZero();
@@ -99,6 +101,48 @@ class NotificationTerminalRecoveryTest {
         http.perform(post("/api/v1/internal/lifecycle/journal/reapply").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"schemaVersion\":2,\"schemaVersion\":2}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test void finalScopeImportErasesLegacyCourseChannelPreviewsAndFencesDelayedDeliveryWithoutAServerId() throws Exception {
+        UUID owner=UUID.randomUUID(),server=UUID.randomUUID(),course=UUID.randomUUID(),channel=UUID.randomUUID(),source=UUID.randomUUID();
+        var command=new NotificationRepository.CreateCommand(owner,NotificationKind.SUPPORT_QUESTION_ANSWERED,null,
+                "private title","private answer preview",null,"/app/inbox","SUPPORT_QUESTION",source,null,course,null,channel);
+        notifications.create(command);
+        var page=nextPage("STUDY_SERVER",server,Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
+        var entry=page.entries().getFirst();
+        var courseScope=scope(entry,"COURSE",course); var channelScope=scope(entry,"CHANNEL",channel);
+        assertThatThrownBy(() -> scopes.accept(courseScope)).isInstanceOf(IllegalArgumentException.class);
+        terminal.reapply(page);
+        assertThat(count(owner)).isEqualTo(1);
+        scopes.accept(courseScope);
+        var tx=new TransactionTemplate(transactions);
+        tx.executeWithoutResult(status -> { scopes.accept(channelScope); assertThat(count(owner)).isZero(); status.setRollbackOnly(); });
+        assertThat(count(owner)).isEqualTo(1);
+        byte[] body=mapper.writeValueAsBytes(channelScope);
+        http.perform(post("/api/v1/internal/lifecycle/deleted-study-servers/{id}/scope/import",server)
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isUnauthorized());
+        for(int retry=0;retry<2;retry++) http.perform(post("/api/v1/internal/lifecycle/deleted-study-servers/{id}/scope/import",server)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.ready").value(true));
+        assertThat(count(owner)).isZero();
+        var cleanup=tx.execute(status -> terminal.cleanup(entry));
+        assertThat(cleanup).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
+        var payload=mapper.createObjectNode().put("userId",owner.toString()).put("kind","SUPPORT_QUESTION_ANSWERED")
+                .put("title","late private title").put("bodyPreview","late private answer preview").put("href","/app/inbox")
+                .put("sourceType","SUPPORT_QUESTION").put("sourceId",source.toString()).put("courseId",course.toString()).put("channelId",channel.toString());
+        var event=new DurableEvent(UUID.randomUUID(),1,"message",20,"NOTIFICATION",
+                NotificationEventWriter.aggregateKey(owner,"SUPPORT_QUESTION",source,"SUPPORT_QUESTION_ANSWERED"),mapper.writeValueAsString(payload));
+        http.perform(post("/api/v1/internal/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(event))).andExpect(status().isNoContent());
+        notifications.create(command);
+        assertThat(count(owner)).isZero();
+    }
+
+    private static com.chanter.common.lifecycle.DeletedScope.Import scope(TerminalJournal.Entry entry,String kind,UUID id) {
+        String digest=com.chanter.common.lifecycle.DeletedScope.nextDigest(
+                com.chanter.common.lifecycle.DeletedScope.startDigest(entry.digest(),kind,1),id);
+        return new com.chanter.common.lifecycle.DeletedScope.Import(entry,new com.chanter.common.lifecycle.DeletedScope.Page(1,
+                entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),kind,new UUID(0,0),1,digest,List.of(id),null));
     }
 
     @Test void aWriterOverlappingTerminalCommitCannotRecreateNotificationPayload() throws Exception {
@@ -159,7 +203,7 @@ class NotificationTerminalRecoveryTest {
         receipt.validate();
         assertThat(receipt.jobId()).isEqualTo(job);
         assertThat(receipt.terminalDigest()).isEqualTo(digest);
-        assertThat(receipt.state()).isEqualTo("COMPLETE");
+        assertThat(receipt.state()).isEqualTo("PENDING");
         var forged=new DurableEvent(UUID.randomUUID(),1,"community",11,event.kind(),key,event.payload());
         http.perform(post("/api/v1/internal/lifecycle/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(forged))).andExpect(status().isBadRequest());
