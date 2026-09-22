@@ -33,7 +33,7 @@ public class AgentTerminalConfiguration {
                 outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore agentTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,
+            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,AnswerRetractions retractions,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
@@ -41,7 +41,7 @@ public class AgentTerminalConfiguration {
             UUID target=entry.targetId();
             if(entry.targetKind().equals("ACCOUNT")) {
                 snapshots.cancelAccount(target);
-                jdbc.update("DELETE FROM study_assistant_answers WHERE learner_user_id=?",target);
+                retractions.account(target);
                 jdbc.update("DELETE FROM study_assistant_answer_helpful WHERE user_id=?",target);
                 jdbc.update("UPDATE native_companion_requests SET evidence_json=NULL,outcome=CASE WHEN outcome IN ('ISSUED','ACCEPTING') THEN 'REJECTED' ELSE outcome END WHERE user_id=?",target);
                 // Usage and shared installation attribution require their documented retention disposition.
@@ -51,7 +51,7 @@ public class AgentTerminalConfiguration {
             snapshots.invalidateRetained();
             if(entry.targetKind().equals("RESOURCE")) {
                 chunks.deleteByResourceId(target);
-                jdbc.update("DELETE FROM study_assistant_answers WHERE id IN (SELECT answer_id FROM study_assistant_answer_sources WHERE resource_id=?)",target);
+                retractions.resource(target);
                 jdbc.update("DELETE FROM study_assistant_grants WHERE grant_type='COURSE_RESOURCE' AND grant_target_id=?",target);
                 UUID after=new UUID(0,0);
                 while(true) {
@@ -68,10 +68,10 @@ public class AgentTerminalConfiguration {
                     }
                     after=rows.getLast().id();
                 }
-                return TerminalReapplyStore.Cleanup.COMPLETE;
+                return retractions.resourcePending(target) ? TerminalReapplyStore.Cleanup.PENDING : TerminalReapplyStore.Cleanup.COMPLETE;
             }
             if(!entry.targetKind().equals("STUDY_SERVER")) throw new IllegalArgumentException("Unknown terminal target");
-            jdbc.update("DELETE FROM study_assistant_answers WHERE study_server_id=?",target);
+            retractions.server(target);
             jdbc.update("DELETE FROM study_assistant_installs WHERE study_server_id=?",target);
             jdbc.update("UPDATE native_companion_requests SET evidence_json=NULL,outcome=CASE WHEN outcome IN ('ISSUED','ACCEPTING') THEN 'REJECTED' ELSE outcome END WHERE id IN (SELECT id FROM ai_generation_usage WHERE study_server_id=?)",target);
             boolean ready=jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_scope_imports WHERE study_server_id=? AND revision=? AND event_id=? AND terminal_digest=? AND ready=TRUE",
@@ -91,7 +91,7 @@ public class AgentTerminalConfiguration {
                 after=ids.getLast();
             }
             if(ready) {
-                jdbc.update("DELETE FROM study_assistant_answers WHERE channel_id IN (SELECT scope_id FROM "+scope+" WHERE study_server_id=? AND scope_kind='CHANNEL')",target);
+                retractions.serverChannels(target,scope);
                 jdbc.update("UPDATE native_companion_requests SET evidence_json=NULL,outcome=CASE WHEN outcome IN ('ISSUED','ACCEPTING') THEN 'REJECTED' ELSE outcome END WHERE channel_id IN (SELECT scope_id FROM "+scope+" WHERE study_server_id=? AND scope_kind='CHANNEL')",target);
             }
             // Accounting metadata and downstream saved-answer reconciliation remain separate from payload erasure.

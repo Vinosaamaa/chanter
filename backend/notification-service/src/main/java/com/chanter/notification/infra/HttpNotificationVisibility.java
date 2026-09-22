@@ -30,6 +30,7 @@ public class HttpNotificationVisibility implements NotificationVisibility {
     @Override public boolean canView(Notification notification) {
         String path = switch (notification.sourceType()) {
             case "SUPPORT_QUESTION" -> notification.channelId() == null ? null : "/api/v1/course-channels/" + notification.channelId() + "/support-questions/" + notification.sourceId();
+            case "STUDY_ASSISTANT_ANSWER" -> notification.channelId()==null ? null : "/api/v1/course-channels/"+notification.channelId()+"/accepted-answers/"+notification.sourceId();
             case "COMMUNITY_EVENT" -> notification.studyServerId() == null ? null : "/api/v1/study-servers/" + notification.studyServerId() + "/events/" + notification.sourceId();
             case "ANNOUNCEMENT" -> notification.studyServerId() == null ? null : "/api/v1/study-servers/" + notification.studyServerId() + "/announcements/" + notification.sourceId();
             case "OFFICE_HOURS" -> "/api/v1/office-hours/" + notification.sourceId();
@@ -37,7 +38,7 @@ public class HttpNotificationVisibility implements NotificationVisibility {
         };
         if (path == null) return false;
         try {
-            Source source = (notification.sourceType().equals("SUPPORT_QUESTION") ? message : community).get().uri(path)
+            Source source = (java.util.Set.of("SUPPORT_QUESTION","STUDY_ASSISTANT_ANSWER").contains(notification.sourceType()) ? message : community).get().uri(path)
                     .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, token).header(AuthHeaders.USER_ID, notification.userId().toString())
                     .retrieve().body(Source.class);
             return source != null && notification.sourceId().equals(source.id())
@@ -45,7 +46,7 @@ public class HttpNotificationVisibility implements NotificationVisibility {
                         || (Objects.equals(source.courseId(), notification.courseId()) && Objects.equals(source.cohortId(), notification.cohortId())))
                     && !"CANCELLED".equals(source.status()) && !"ARCHIVED".equals(source.status());
         } catch (HttpClientErrorException exception) {
-            if (exception.getStatusCode().value() == 403 || exception.getStatusCode().value() == 404) return false;
+            if (exception.getStatusCode().value() == 403 || exception.getStatusCode().value() == 404 || exception.getStatusCode().value()==410) return false;
             throw unavailable(exception);
         } catch (RestClientException exception) { throw unavailable(exception); }
     }

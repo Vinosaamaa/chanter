@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.chanter.common.auth.AuthHeaders;
 import com.chanter.common.events.AcceptedAnswerStatus;
+import com.chanter.common.events.AnswerRetraction;
 import com.chanter.common.events.DurableEvent;
 import com.chanter.common.events.DurableOutbox;
 import com.chanter.message.application.SupportQuestionRepository;
@@ -44,6 +45,74 @@ class AcceptedAnswerEventTest {
     @Autowired private TestCourseChannelAccessClient access;
     @Autowired private JdbcClient jdbc;
     @MockitoSpyBean private DurableOutbox outbox;
+    @Test void answerNotificationVisibilityRequiresCurrentQuestionAccessAndTheExactBinding() throws Exception {
+        var question=question(); var event=event(question,1,"AI_ANSWERED"); deliver(event).andExpect(status().isNoContent());
+        var change=mapper.readValue(event.payload(),AcceptedAnswerStatus.class);
+        String route="/api/v1/course-channels/"+question.channelId()+"/accepted-answers/"+change.answerId();
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(route)).andExpect(status().isUnauthorized());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(route).header(AuthHeaders.USER_ID,question.senderUserId())
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)).andExpect(status().isOk());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(route).header(AuthHeaders.USER_ID,UUID.randomUUID())
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)).andExpect(status().isForbidden());
+        deliver(retraction(change,2)).andExpect(status().isNoContent());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(route).header(AuthHeaders.USER_ID,question.senderUserId())
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)).andExpect(status().isNotFound());
+    }
+    @Test void retractionWinsOverQueuedAndClaimedAcceptanceButPreservesALaterAnswer() throws Exception {
+        for(boolean deliveredFirst:List.of(false,true)) {
+            var question=question(); var accepted=event(question,10,"AI_ANSWERED");
+            var change=mapper.readValue(accepted.payload(),AcceptedAnswerStatus.class);
+            if(deliveredFirst) deliver(accepted).andExpect(status().isNoContent());
+            var retraction=retraction(change,11);
+            deliver(retraction).andExpect(status().isNoContent());
+            deliver(accepted).andExpect(status().isNoContent()); // Payload retained by an old worker is still harmless.
+            deliver(retraction).andExpect(status().isNoContent());
+            assertThat(current(question)).isEqualTo(SupportQuestionStatus.UNANSWERED);
+            assertThat(jdbc.sql("SELECT COUNT(*) FROM lifecycle_answer_outcomes WHERE question_id=:id").param("id",question.id()).query(Integer.class).single()).isZero();
+            var later=event(question,12,"AI_ANSWERED"); deliver(later).andExpect(status().isNoContent());
+            deliver(retraction).andExpect(status().isNoContent());
+            assertThat(current(question)).isEqualTo(SupportQuestionStatus.AI_ANSWERED);
+            assertThat(jdbc.sql("SELECT answer_id FROM lifecycle_answer_outcomes WHERE question_id=:id").param("id",question.id()).query(UUID.class).single())
+                    .isEqualTo(mapper.readValue(later.payload(),AcceptedAnswerStatus.class).answerId());
+        }
+    }
+    @Test void legacyUnboundStatusIsInvalidatedWithoutGuessingOrChangingHumanAndClosedOutcomes() throws Exception {
+        for(var prior:List.of(SupportQuestionStatus.AI_ANSWERED,SupportQuestionStatus.AI_LOW_CONFIDENCE,SupportQuestionStatus.HUMAN_ANSWERED,
+                SupportQuestionStatus.RESOLVED,SupportQuestionStatus.CANCELLED,SupportQuestionStatus.DUPLICATE)) {
+            var question=question(); repository.updateStatus(question.id(),SupportQuestionStatus.UNANSWERED,prior);
+            var change=new AcceptedAnswerStatus(UUID.randomUUID(),question.id(),question.channelId(),question.senderUserId(),"AI_ANSWERED");
+            deliver(retraction(change,5)).andExpect(status().isNoContent());
+            assertThat(current(question)).isEqualTo(prior==SupportQuestionStatus.AI_ANSWERED || prior==SupportQuestionStatus.AI_LOW_CONFIDENCE
+                    ? SupportQuestionStatus.UNANSWERED : prior);
+        }
+    }
+    @Test void laterAcceptanceDeliveredFirstCannotSuppressTheOlderAnswersRetractionReceipt() throws Exception {
+        var question=question(); var old=event(question,1,"AI_ANSWERED");
+        var oldAnswer=mapper.readValue(old.payload(),AcceptedAnswerStatus.class);
+        var later=event(question,3,"AI_ANSWERED"); deliver(later).andExpect(status().isNoContent());
+        deliver(retraction(oldAnswer,2)).andExpect(status().isNoContent());
+        deliver(retraction(oldAnswer,2)).andExpect(status().isNoContent());
+        deliver(old).andExpect(status().isNoContent());
+        assertThat(current(question)).isEqualTo(SupportQuestionStatus.AI_ANSWERED);
+        assertThat(jdbc.sql("SELECT answer_id FROM lifecycle_answer_outcomes WHERE question_id=:id").param("id",question.id()).query(UUID.class).single())
+                .isEqualTo(mapper.readValue(later.payload(),AcceptedAnswerStatus.class).answerId());
+        assertThat(jdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE kind=:kind AND aggregate_key=:key")
+                .param("kind",AnswerRetraction.NOTIFICATION_KIND).param("key",new AnswerRetraction(oldAnswer.answerId(),oldAnswer.questionId(),oldAnswer.channelId(),oldAnswer.authorId()).notificationKey())
+                .query(Integer.class).single()).isEqualTo(1);
+    }
+    @Test void differentAnswerRetractionDoesNotChangeAnExactBoundOutcomeAndFailureRollsBack() throws Exception {
+        var question=question(); var accepted=event(question,1,"AI_ANSWERED"); deliver(accepted).andExpect(status().isNoContent());
+        var exact=mapper.readValue(accepted.payload(),AcceptedAnswerStatus.class);
+        var other=new AcceptedAnswerStatus(UUID.randomUUID(),question.id(),question.channelId(),question.senderUserId(),"AI_ANSWERED");
+        deliver(retraction(other,2)).andExpect(status().isNoContent()); assertThat(current(question)).isEqualTo(SupportQuestionStatus.AI_ANSWERED);
+        doAnswer(invocation -> { invocation.callRealMethod(); throw new IllegalStateException("Synthetic retraction append failure"); })
+                .when(outbox).append(eq("notification"),eq(AnswerRetraction.NOTIFICATION_KIND),anyString(),anyString());
+        var event=retraction(exact,3);
+        try { assertThatThrownBy(() -> deliver(event)).hasRootCauseInstanceOf(IllegalStateException.class); }
+        finally { reset(outbox); }
+        assertThat(current(question)).isEqualTo(SupportQuestionStatus.AI_ANSWERED);
+        deliver(event).andExpect(status().isNoContent()); assertThat(current(question)).isEqualTo(SupportQuestionStatus.UNANSWERED);
+    }
 
     @Test
     void duplicateAndOutOfOrderDeliveryApplyStatusAndNotificationOnlyOnce() throws Exception {
@@ -135,6 +204,10 @@ class AcceptedAnswerEventTest {
     private DurableEvent envelope(AcceptedAnswerStatus change, long revision) throws Exception {
         return new DurableEvent(UUID.randomUUID(), 1, "agent", revision, AcceptedAnswerStatus.KIND, change.aggregateKey(), mapper.writeValueAsString(change));
     }
+    private DurableEvent retraction(AcceptedAnswerStatus change,long revision) throws Exception {
+        var payload=new AnswerRetraction(change.answerId(),change.questionId(),change.channelId(),change.authorId());
+        return new DurableEvent(UUID.randomUUID(),1,"agent",revision,AnswerRetraction.KIND,payload.aggregateKey(),mapper.writeValueAsString(payload));
+    }
     private ResultActions deliver(DurableEvent event) throws Exception {
         return mvc.perform(post("/api/v1/internal/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN, TOKEN)
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(event)));
@@ -147,7 +220,7 @@ class AcceptedAnswerEventTest {
                 .param("key", "ACCEPTED_ANSWER:" + question.id()).query(Integer.class).single();
     }
     private int notificationCount(SupportQuestion question) {
-        return jdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE destination='notification' AND aggregate_key LIKE :key")
-                .param("key", "%:" + question.id() + ":SUPPORT_QUESTION_ANSWERED").query(Integer.class).single();
+        return jdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE destination='notification' AND kind='NOTIFICATION' AND payload LIKE :key")
+                .param("key", "%questionId=" + question.id() + "%").query(Integer.class).single();
     }
 }

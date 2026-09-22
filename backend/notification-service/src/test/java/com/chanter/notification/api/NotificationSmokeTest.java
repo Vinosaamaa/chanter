@@ -133,7 +133,9 @@ class NotificationSmokeTest {
                         ))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(created.id().toString()))
-                .andExpect(jsonPath("$.title").value("Your question was answered (updated)"));
+                .andExpect(jsonPath("$.title").value("Question update"))
+                .andExpect(jsonPath("$.bodyPreview").doesNotExist())
+                .andExpect(jsonPath("$.courseLabel").doesNotExist());
 
         mockMvc.perform(get("/api/v1/me/notifications/unread-count")
                         .header(AuthHeaders.USER_ID, userId)

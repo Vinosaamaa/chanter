@@ -84,3 +84,9 @@ CREATE TABLE lifecycle_recovery_scopes (
 
 CREATE INDEX lifecycle_scope_import_reverse ON lifecycle_scope_import_ids(scope_kind,scope_id,study_server_id);
 CREATE INDEX lifecycle_recovery_scope_reverse ON lifecycle_recovery_scope_ids(scope_kind,scope_id,study_server_id);
+
+ALTER TABLE lifecycle_terminal_targets ADD COLUMN previous_digest VARCHAR(64) NOT NULL;
+CREATE TABLE lifecycle_terminal_delivery (
+    target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,job_id UUID NOT NULL,reported_state VARCHAR(16) NOT NULL,
+    PRIMARY KEY(target_kind,target_id)
+);

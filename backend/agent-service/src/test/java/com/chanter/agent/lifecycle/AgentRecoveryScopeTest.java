@@ -27,7 +27,10 @@ class AgentRecoveryScopeTest {
         var factory=new org.springframework.beans.factory.support.DefaultListableBeanFactory();
         var chunks=new JdbcResourceChunkRepository(JdbcClient.create(jdbc));
         var config=new AgentTerminalConfiguration();
-        var terminal=config.agentTerminalStore(jdbc,manager,snapshots,chunks,mapper,true,factory.getBeanProvider(RecoveryScopeStore.class));
+        var retractions=new AnswerRetractions(jdbc,new com.chanter.common.events.DurableOutbox(jdbc,tx,"agent",java.time.Clock.systemUTC()),mapper,
+                factory.getBeanProvider(TerminalReapplyStore.class));
+        var terminal=config.agentTerminalStore(jdbc,manager,snapshots,chunks,mapper,retractions,true,factory.getBeanProvider(RecoveryScopeStore.class));
+        factory.registerSingleton("terminal",terminal);
         var current=config.agentDeletedScopeStore(jdbc,manager,terminal);
         UUID restore=UUID.randomUUID(),operation=UUID.randomUUID();
         var historical=config.agentRecoveryScopeStore(jdbc,manager,current,terminal,true,restore.toString());

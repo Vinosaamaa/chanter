@@ -35,9 +35,13 @@ public class JdbcNotificationRepository implements NotificationRepository {
     @Override
     @Transactional
     public Notification upsert(Notification notification) {
+        notification=normalizeLegacyAnswer(notification);
         if (!terminal.writable("ACCOUNT", notification.userId())
                 || notification.studyServerId() != null && !terminal.writable("STUDY_SERVER", notification.studyServerId())
                 || "RESOURCE".equalsIgnoreCase(notification.sourceType()) && !terminal.writable("RESOURCE", notification.sourceId()))
+            return notification;
+        if(com.chanter.common.events.AnswerRetraction.SOURCE_TYPE.equals(notification.sourceType())
+                && jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lifecycle_retracted_answers WHERE answer_id=?",Integer.class,notification.sourceId())>0)
             return notification;
         if(notification.courseId()!=null || notification.channelId()!=null) {
           for(String scopeTable:List.of("lifecycle_scope_import","lifecycle_recovery_scope")) {
@@ -110,6 +114,14 @@ public class JdbcNotificationRepository implements NotificationRepository {
                 notification.doneAt() == null ? null : Timestamp.from(notification.doneAt())
         );
         return notification;
+    }
+
+    /** AI and human previews historically shared this identity. Keep only a neutral update, including on delayed replay. */
+    private static Notification normalizeLegacyAnswer(Notification value) {
+        if(!"SUPPORT_QUESTION".equals(value.sourceType()) || value.kind()!=NotificationKind.SUPPORT_QUESTION_ANSWERED) return value;
+        return new Notification(value.id(),value.userId(),value.kind(),value.filterBucket(),"Question update",null,null,value.href(),
+                value.sourceType(),value.sourceId(),value.studyServerId(),value.courseId(),value.cohortId(),value.channelId(),
+                value.createdAt(),value.readAt(),value.doneAt());
     }
 
     private Optional<Notification> findByUniqueKey(

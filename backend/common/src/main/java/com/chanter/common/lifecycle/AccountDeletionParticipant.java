@@ -19,6 +19,7 @@ public final class AccountDeletionParticipant {
                 || "community".equals(source)!=(ownership!=null)) throw new IllegalArgumentException("Invalid deletion participant");
         this.source=source; this.consumer=consumer; this.outbox=outbox; this.protocol=protocol;
         this.terminal=java.util.Objects.requireNonNull(terminal); this.ownership=ownership;
+        terminal.attachDelivery(source,outbox,protocol);
     }
     public void validate(DurableEvent event) {
         if(AccountDeletionProtocol.TERMINAL.equals(event.kind())) protocol.terminal(event);
@@ -35,6 +36,7 @@ public final class AccountDeletionParticipant {
             if(deleted) {
                 var command=protocol.terminal(event); var entry=command.entry();
                 terminal.applyTerminal(entry);
+                terminal.trackDelivery(command.jobId(),entry);
                 receipt=new AccountDeletionProtocol.Receipt(command.jobId(),source,entry.targetKind(),entry.targetId(),
                         terminal.cleanup(entry).name(),entry.revision(),entry.digest());
             } else {

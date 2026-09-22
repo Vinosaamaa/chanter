@@ -37,13 +37,14 @@ public class StudyAssistantAnswerPersistenceService {
     public void reconcileAnswerStatus(StudyAssistantAnswer answer) {
         // Serialize legacy-answer repair with concurrent readers without emitting duplicate status events.
         jdbc.sql("SELECT id FROM study_assistant_answers WHERE id=:id FOR UPDATE").param("id", answer.id()).query(java.util.UUID.class).single();
-        String key = AcceptedAnswerStatus.KIND + ":" + answer.supportQuestionId();
-        if (jdbc.sql("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key=:key AND kind=:kind")
-                .param("key", key).param("kind", AcceptedAnswerStatus.KIND).query(Integer.class).single() > 0) return;
+        if (jdbc.sql("SELECT COUNT(*) FROM study_assistant_answers WHERE id=:id AND status_event_id IS NOT NULL")
+                .param("id",answer.id()).query(Integer.class).single() > 0) return;
         var status = new AcceptedAnswerStatus(answer.id(), answer.supportQuestionId(), answer.channelId(), answer.learnerUserId(),
                 answer.handoffRecommended() ? "AI_LOW_CONFIDENCE" : "AI_ANSWERED");
         try {
-            outbox.append("message", AcceptedAnswerStatus.KIND, status.aggregateKey(), mapper.writeValueAsString(status));
+            var event=outbox.append("message", AcceptedAnswerStatus.KIND, status.aggregateKey(), mapper.writeValueAsString(status));
+            jdbc.sql("UPDATE study_assistant_answers SET status_event_id=:event WHERE id=:id")
+                    .param("event",event).param("id",answer.id()).update();
         } catch (JsonProcessingException invalid) {
             throw new IllegalArgumentException("Cannot encode accepted answer status", invalid);
         }

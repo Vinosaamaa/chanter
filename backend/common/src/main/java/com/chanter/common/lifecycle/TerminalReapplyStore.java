@@ -16,6 +16,11 @@ public final class TerminalReapplyStore {
             target_kind VARCHAR(16) NOT NULL CHECK(target_kind IN ('ACCOUNT','STUDY_SERVER','RESOURCE')), target_id UUID NOT NULL,
             revision BIGINT NOT NULL UNIQUE CHECK(revision>0), event_id UUID NOT NULL UNIQUE, digest VARCHAR(64) NOT NULL,
             deleted_at TIMESTAMP WITH TIME ZONE NOT NULL, cleanup_state VARCHAR(16) NOT NULL CHECK(cleanup_state IN ('PENDING','PRESERVED','COMPLETE')),
+            previous_digest VARCHAR(64) NOT NULL,
+            PRIMARY KEY(target_kind,target_id)
+        );
+        CREATE TABLE lifecycle_terminal_delivery (
+            target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,job_id UUID NOT NULL,reported_state VARCHAR(16) NOT NULL,
             PRIMARY KEY(target_kind,target_id)
         )
         """;
@@ -23,6 +28,8 @@ public final class TerminalReapplyStore {
     private final TransactionTemplate tx;
     private final String source;
     private final Mutation mutation;
+    private com.chanter.common.events.DurableOutbox deliveryOutbox;
+    private AccountDeletionProtocol deliveryProtocol;
 
     public TerminalReapplyStore(JdbcTemplate jdbc, TransactionTemplate tx, String source, Mutation mutation) {
         if (!AccountExportProtocol.SOURCES.contains(source)) throw new IllegalArgumentException("Unknown terminal source");
@@ -74,8 +81,8 @@ public final class TerminalReapplyStore {
         // The source mutation must establish access denial and durable cleanup before this transaction commits.
         Cleanup cleanup = java.util.Objects.requireNonNull(mutation.apply(entry));
         ExportSourceExecution.check();
-        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES (?,?,?,?,?,?,?)", entry.targetKind(), entry.targetId(),
-                entry.revision(), entry.eventId(), entry.digest(), Timestamp.from(entry.deletedAt()), cleanup.name());
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES (?,?,?,?,?,?,?,?)", entry.targetKind(), entry.targetId(),
+                entry.revision(), entry.eventId(), entry.digest(), Timestamp.from(entry.deletedAt()), cleanup.name(),entry.previousDigest());
     }
 
     public boolean terminal(String kind, UUID target) {
@@ -101,6 +108,29 @@ public final class TerminalReapplyStore {
         ExportSourceExecution.check();
         if(next!=previous && !recordCleanup(entry,previous,next)) throw new IllegalStateException("Terminal reconciliation changed");
     }
+    /** A downstream receipt identifies an already committed local target, never new terminal authority. */
+    public void reconcile(String kind,UUID target) {
+        requireTransaction(); TerminalJournal.requireTarget(kind,target); lock();
+        var rows=jdbc.query("SELECT revision,event_id,digest,deleted_at,previous_digest FROM lifecycle_terminal_targets WHERE target_kind=? AND target_id=?",
+                (rs,n) -> new TerminalJournal.Entry(rs.getLong(1),rs.getObject(2,UUID.class),kind,target,"DELETE",rs.getTimestamp(4).toInstant(),
+                        TerminalJournal.RETENTION_POLICY,rs.getString(5),rs.getString(3)),kind,target);
+        if(rows.size()==1) reconcile(rows.getFirst());
+    }
+    /** Installed once by the owning ordinary deletion participant; recovery-only fixtures need no delivery adapter. */
+    public void attachDelivery(String owner,com.chanter.common.events.DurableOutbox outbox,AccountDeletionProtocol protocol) {
+        if(!source.equals(owner) || deliveryOutbox!=null) throw new IllegalStateException("Terminal delivery owner changed");
+        deliveryOutbox=java.util.Objects.requireNonNull(outbox); deliveryProtocol=java.util.Objects.requireNonNull(protocol);
+    }
+    public void trackDelivery(UUID job,TerminalJournal.Entry entry) {
+        requireTransaction(); lock();
+        var rows=jdbc.query("SELECT job_id FROM lifecycle_terminal_delivery WHERE target_kind=? AND target_id=?",
+                (rs,n) -> rs.getObject(1,UUID.class),entry.targetKind(),entry.targetId());
+        if(!rows.isEmpty()) {
+            if(!rows.getFirst().equals(job)) throw new IllegalArgumentException("Terminal delivery job changed");
+            return;
+        }
+        jdbc.update("INSERT INTO lifecycle_terminal_delivery VALUES (?,?,?,?)",entry.targetKind(),entry.targetId(),job,cleanup(entry).name());
+    }
 
     /** Source writes take this lock before their rows, so an in-flight write cannot recreate a terminal target. */
     public void requireWritable(String kind, UUID target) {
@@ -120,10 +150,20 @@ public final class TerminalReapplyStore {
         if (previous == null || next == null || previous == Cleanup.COMPLETE || previous == next
                 || previous == Cleanup.PRESERVED && next != Cleanup.PENDING)
             throw new IllegalArgumentException("Invalid cleanup transition");
-        return jdbc.update("""
+        boolean changed=jdbc.update("""
                 UPDATE lifecycle_terminal_targets SET cleanup_state=?
                 WHERE target_kind=? AND target_id=? AND revision=? AND event_id=? AND digest=? AND cleanup_state=?
                 """, next.name(), entry.targetKind(), entry.targetId(), entry.revision(), entry.eventId(), entry.digest(), previous.name()) == 1;
+        if(changed && deliveryOutbox!=null) {
+            var jobs=jdbc.query("SELECT job_id FROM lifecycle_terminal_delivery WHERE target_kind=? AND target_id=? AND reported_state<>?",
+                    (rs,n) -> rs.getObject(1,UUID.class),entry.targetKind(),entry.targetId(),next.name());
+            if(!jobs.isEmpty()) {
+                var receipt=new AccountDeletionProtocol.Receipt(jobs.getFirst(),source,entry.targetKind(),entry.targetId(),next.name(),entry.revision(),entry.digest());
+                deliveryOutbox.append("lifecycle-auth",AccountDeletionProtocol.RECEIPT,AccountDeletionProtocol.key(entry.targetKind(),entry.targetId()),deliveryProtocol.encode(receipt));
+                jdbc.update("UPDATE lifecycle_terminal_delivery SET reported_state=? WHERE target_kind=? AND target_id=?",next.name(),entry.targetKind(),entry.targetId());
+            }
+        }
+        return changed;
     }
 
     public Receipt receipt() {

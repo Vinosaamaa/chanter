@@ -44,12 +44,32 @@ class HttpNotificationVisibilityTest {
             assertThat(client.canView(notification)).isFalse();
             response.set("{\"id\":\"" + source + "\",\"status\":\"CANCELLED\"}");
             assertThat(client.canView(notification)).isFalse();
-            for (int code : new int[] {403, 404}) { status.set(code); assertThat(client.canView(notification)).isFalse(); }
+            for (int code : new int[] {403, 404,410}) { status.set(code); assertThat(client.canView(notification)).isFalse(); }
             for (int code : new int[] {401, 503}) {
                 status.set(code);
                 assertThatThrownBy(() -> client.canView(notification)).isInstanceOfSatisfying(ResponseStatusException.class,
                         failure -> assertThat(failure.getStatusCode().value()).isEqualTo(503));
             }
+        } finally { server.stop(0); }
+    }
+    @Test void answerNotificationUsesExactOwningAnswerRouteAndDelegatedViewer() throws Exception {
+        UUID answer=UUID.randomUUID(),channel=UUID.randomUUID(),user=UUID.randomUUID();
+        var response=new AtomicReference<>("{\"id\":\""+answer+"\",\"status\":\"AI_ANSWERED\"}");
+        var received=new AtomicReference<String>();
+        var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/api/v1/course-channels/"+channel+"/accepted-answers/"+answer,exchange -> {
+            received.set(exchange.getRequestHeaders().getFirst(AuthHeaders.USER_ID));
+            byte[] bytes=response.get().getBytes(StandardCharsets.UTF_8); exchange.getResponseHeaders().set("Content-Type","application/json");
+            exchange.sendResponseHeaders(200,bytes.length); try(var output=exchange.getResponseBody()) { output.write(bytes); }
+        });
+        server.start();
+        try {
+            String base="http://127.0.0.1:"+server.getAddress().getPort();
+            var client=new HttpNotificationVisibility("http://127.0.0.1:1",base,"fixture-private-token-long-enough-for-tests");
+            var notification=new Notification(UUID.randomUUID(),user,NotificationKind.SUPPORT_QUESTION_ANSWERED,NotificationFilterBucket.MENTIONS,
+                    "Answer",null,null,"/app/inbox","STUDY_ASSISTANT_ANSWER",answer,null,null,null,channel,Instant.now(),null,null);
+            assertThat(client.canView(notification)).isTrue(); assertThat(received.get()).isEqualTo(user.toString());
+            response.set("{\"id\":\""+UUID.randomUUID()+"\",\"status\":\"AI_ANSWERED\"}"); assertThat(client.canView(notification)).isFalse();
         } finally { server.stop(0); }
     }
 }

@@ -82,3 +82,16 @@ CREATE TABLE lifecycle_erased_content (
     PRIMARY KEY(target_kind,target_id,source_kind,source_id)
 );
 CREATE INDEX lifecycle_erased_content_reverse ON lifecycle_erased_content(source_kind,source_id);
+
+CREATE TABLE lifecycle_answer_outcomes (
+    question_id UUID PRIMARY KEY, answer_id UUID NOT NULL UNIQUE, channel_id UUID NOT NULL,
+    author_id UUID NOT NULL, status VARCHAR(24) NOT NULL CHECK(status IN ('AI_ANSWERED','AI_LOW_CONFIDENCE'))
+);
+CREATE INDEX lifecycle_answer_outcomes_author_idx ON lifecycle_answer_outcomes(author_id,question_id);
+CREATE INDEX lifecycle_answer_outcomes_channel_idx ON lifecycle_answer_outcomes(channel_id,question_id);
+
+ALTER TABLE lifecycle_terminal_targets ADD COLUMN previous_digest VARCHAR(64) NOT NULL;
+CREATE TABLE lifecycle_terminal_delivery (
+    target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,job_id UUID NOT NULL,reported_state VARCHAR(16) NOT NULL,
+    PRIMARY KEY(target_kind,target_id)
+);

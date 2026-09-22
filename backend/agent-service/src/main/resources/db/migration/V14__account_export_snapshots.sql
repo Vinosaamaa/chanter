@@ -77,3 +77,21 @@ CREATE TABLE lifecycle_recovery_scopes (
 
 CREATE INDEX lifecycle_scope_import_reverse ON lifecycle_scope_import_ids(scope_kind,scope_id,study_server_id);
 CREATE INDEX lifecycle_recovery_scope_reverse ON lifecycle_recovery_scope_ids(scope_kind,scope_id,study_server_id);
+
+ALTER TABLE study_assistant_answers ADD COLUMN status_event_id UUID;
+CREATE TABLE lifecycle_answer_retractions (
+    answer_id UUID PRIMARY KEY, question_id UUID NOT NULL, channel_id UUID NOT NULL,
+    author_id UUID NOT NULL, study_server_id UUID NOT NULL, event_id UUID NOT NULL UNIQUE,
+    receipt_state VARCHAR(32) NOT NULL CHECK(receipt_state IN ('PENDING','COMPLETE'))
+);
+CREATE TABLE lifecycle_answer_retraction_resources (
+    answer_id UUID NOT NULL REFERENCES lifecycle_answer_retractions(answer_id), resource_id UUID NOT NULL,
+    PRIMARY KEY(answer_id,resource_id)
+);
+CREATE INDEX lifecycle_answer_retraction_resource_idx ON lifecycle_answer_retraction_resources(resource_id,answer_id);
+
+ALTER TABLE lifecycle_terminal_targets ADD COLUMN previous_digest VARCHAR(64) NOT NULL;
+CREATE TABLE lifecycle_terminal_delivery (
+    target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,job_id UUID NOT NULL,reported_state VARCHAR(16) NOT NULL,
+    PRIMARY KEY(target_kind,target_id)
+);

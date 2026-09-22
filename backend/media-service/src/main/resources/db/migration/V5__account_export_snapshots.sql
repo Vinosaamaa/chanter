@@ -92,3 +92,9 @@ CREATE TABLE lifecycle_source_requests (
     target_id UUID PRIMARY KEY, job_id UUID NOT NULL UNIQUE, requester_id UUID NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, event_id UUID NOT NULL
 );
+
+ALTER TABLE lifecycle_terminal_targets ADD COLUMN previous_digest VARCHAR(64) NOT NULL;
+CREATE TABLE lifecycle_terminal_delivery (
+    target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,job_id UUID NOT NULL,reported_state VARCHAR(16) NOT NULL,
+    PRIMARY KEY(target_kind,target_id)
+);
