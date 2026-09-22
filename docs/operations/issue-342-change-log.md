@@ -19,7 +19,17 @@ transaction before opening another transaction; all six checks pass. Five existi
 media lifecycle/context checks also passed before this boundary change. Native
 PostgreSQL and the actual adapter call-chain proof remain required.
 
-Adapter tracking, coordinated source lifecycle hooks, inventory qualification,
-full object restoration and actual #251 canonical replay are still in progress.
+Both private adapters now require the store and account for every PUT/DELETE,
+including calls from orphan cleanup. Pre-dispatch refusal reports NOT_STARTED;
+remote timeouts/5xx remain UNKNOWN, and only definitive invocation completion
+settles the record. The actual local adapter regression first failed because it
+wrote inside the source transaction, then passed with no file or mutation record.
+Thirteen focused checks pass, including actual loopback S3 failure, adapter/store
+restart, same-key refusal without redispatch, definitive DELETE/404 settlement,
+maintenance refusal and Spring namespace wiring. Fixtures are hermetic and do not
+establish actual provider closure.
+
+Coordinated source lifecycle hooks, inventory qualification, full object
+restoration and actual #251 canonical replay are still in progress.
 The store alone proves no provider closure. No recovery capability, source API,
 provider account or public cutover is enabled by this checkpoint.

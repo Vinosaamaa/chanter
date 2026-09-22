@@ -23,7 +23,7 @@ class S3AdapterPolicyTest {
             exchange.getResponseHeaders().set("Content-Type", "application/xml"); exchange.sendResponseHeaders(500, error.length);
             try (var response = exchange.getResponseBody()) { response.write(error); }
         }); server.start();
-        var adapter = new S3PrivateResourceStorage(lifecycle, "http://127.0.0.1:" + server.getAddress().getPort(), "us-east-1", "fixture-bucket", "fixture-key", "fixture-secret", true);
+        var adapter = new S3PrivateResourceStorage(lifecycle, mock(StorageMutationStore.class), "http://127.0.0.1:" + server.getAddress().getPort(), "us-east-1", "fixture-bucket", "fixture-key", "fixture-secret", true);
         try {
             String key = PrivateResourceStorage.PREFIX + UUID.randomUUID() + "/" + UUID.randomUUID() + "/" + UUID.randomUUID();
             Path content = directory.resolve("fixture.txt"); Files.writeString(content, "fixture");
@@ -38,14 +38,14 @@ class S3AdapterPolicyTest {
                     .when(lifecycle).countRequest(false);
             assertThatThrownBy(() -> adapter.open(key)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
             assertThatThrownBy(() -> adapter.put(key, content, UploadValidator.checksum(content)))
-                    .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+                    .isInstanceOf(PrivateResourceStorage.PutFailure.class);
             assertThat(counter.get()).isEqualTo(4);
         } finally { adapter.close(); server.stop(0); }
     }
     @Test void insecureOrCredentialBearingProviderUrlsAreRejectedBeforeNetworkUse() {
         var lifecycle = mock(ResourceLifecycle.class);
         for (String endpoint : java.util.List.of("http://example.com", "https://user:secret@example.com", "https://example.com/?key=secret")) {
-            assertThatThrownBy(() -> new S3PrivateResourceStorage(lifecycle, endpoint, "region", "fixture-bucket", "key", "secret", true))
+            assertThatThrownBy(() -> new S3PrivateResourceStorage(lifecycle, mock(StorageMutationStore.class), endpoint, "region", "fixture-bucket", "key", "secret", true))
                     .isInstanceOf(IllegalArgumentException.class).hasMessage("Invalid private S3 configuration");
         }
     }

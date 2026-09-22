@@ -21,6 +21,12 @@ timeout, uncertain remote failure or lost completion record remains outstanding
 across restart. Another request for the same key cannot erase that uncertainty.
 This is ownership accounting, not a second dispatch or retry system.
 
+The adapters reject an active source transaction before dispatch. Their accounting
+must commit independently before physical I/O, and suspending a source transaction
+that already holds the same budget lock would deadlock against itself. Only the
+ordinary-work fence check runs inside the source transaction. A lost settlement
+commit leaves an outstanding record even after a successful provider response.
+
 Fencing is durable and has no timer that silently resumes writes. It prevents
 new physical dispatch while allowing an already dispatched operation to record
 its actual outcome. A fence receipt reports outstanding local records only; it
