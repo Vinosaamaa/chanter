@@ -155,3 +155,23 @@ responsive coverage passed, and independent inspection of six additional phone
 and landscape screenshots found no new blocker. One event-title/close-control
 spacing correction from screenshot review still requires hosted confirmation.
 Final #251 and #342 integration remains open; these results do not authorize launch.
+
+## Account-data integration
+
+The accepted-main integration at c58db625 passed full hosted application checks,
+synthetic responsive checks and both native release architectures. The RTP
+observation correction retains counters for ended stream reports without hiding
+continued packet growth; the auth recovery journey waits for successful Home
+bootstrap before leaving the page.
+
+The account menu now opens #251's export page and native ZIP download flow. A
+separate account-deletion route handles preparation, ownership blocks, expiry,
+cancellation, typed irreversible confirmation and post-sign-out read-only status.
+It never treats acceptance or missing status as completed deletion. Recent-login
+navigation retains the opaque request ID. Independent review found cross-job stale
+responses, unreadable 202 confirmation and expired-cookie cached-status issues;
+all are corrected with focused regressions. The design and budget boundaries are
+in account-deletion-interaction.md. Twenty-five account/auth checks, lint, build
+and budget checks pass. Thirty-three cross-engine account-data fixture cases are
+listed; their execution and pixel inspection remain pending for this new scope.
+Backend #251 and recovery #342 must land before final actual-service acceptance.

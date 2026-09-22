@@ -1,6 +1,6 @@
 # System review: integrated product interaction (#339)
 
-The owning behavior is browser navigation. No backend service, schema, credential or authorization contract changes. Focus follows the currently visible pane, using current item identity rather than private content in a selector. The last-item fallback keeps the list accessible when a completed notification disappears. Initial list loads do not steal focus.
+The owning behavior is browser navigation and integration of the #251 account-data contract. No backend service, schema, credential or authorization contract changes. Focus follows the currently visible pane, using current item identity rather than private content in a selector. The last-item fallback keeps the list accessible when a completed notification disappears. Initial list loads do not steal focus.
 
 The native Add friend dialog replaces manual keyboard handling and prevents background interaction. Search and request authorization continue through the existing hooks. Browser cancellation closes only this dialog. Cross-browser keyboard and screenshot evidence is required before acceptance; component tests alone cannot prove native focus containment or visual layout.
 
@@ -25,3 +25,19 @@ polling. This adds at most four list requests per minute per mounted foreground
 query. The completed list remains event/refocus driven. User-scoped cache keys,
 request cancellation and server authorization are unchanged. Real browser delivery
 and persistence must pass before this is considered accepted.
+
+Account export and deletion use separate lazy routes and the existing #251 API.
+Preparation is reversible; typed confirmation closes access and is irreversible.
+The public receipt reads through its path-bound cookie without bearer credentials
+or refresh. Network loss and unreadable accepted confirmations lead to the same
+receipt, never another deletion job. Missing receipts do not establish completion.
+Account/generation/job changes abort and fence prior action responses. Explicit
+reauthentication preserves the opaque job URL; ordinary logout still clears its
+return destination. Failed receipt refresh hides stale current-status claims.
+The independent review's three findings have direct regressions and are fixed.
+
+Export and deletion entry assets receive explicit separate caps; shared imports
+stay in the unchanged core budget and protected initial route graphs cannot load
+their CSS. Browser fixtures cover narrow phones, landscape, desktop, keyboard
+confirmation, native ZIP downloads, expiry and missing receipt states. They prove
+layout and interaction only. Actual lifecycle/recovery proof remains #251/#342.

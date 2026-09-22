@@ -17,7 +17,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       <Navigate
         to="/sign-in"
         replace
-        state={startedAuthenticated ? undefined : { from: location.pathname }}
+        state={startedAuthenticated ? undefined : { from: location.pathname + location.search }}
       />
     )
   }

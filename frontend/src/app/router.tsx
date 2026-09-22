@@ -18,6 +18,7 @@ export function createAppRouter() {
       lazy: async () => ({ Component: (await import('../features/auth/pages/ForgotPasswordPage')).ForgotPasswordPage }),
     },
     { path: '/appeal', lazy: async () => ({ Component: (await import('../features/moderation/AppealPage')).AppealPage }) },
+    { path: '/account-deletion/:jobId', lazy: async () => ({ Component: (await import('../features/account-data/AccountDeletionPage')).AccountDeletionReceiptPage }) },
     { path: '/operator', element: <ProtectedRoute><Outlet /></ProtectedRoute>, children: [{ index: true, lazy: async () => ({ Component: (await import('../features/moderation/OperatorPage')).OperatorPage }) }] },
     {
       path: '/reset-password',
@@ -82,6 +83,8 @@ export function createAppRouter() {
             { path: 'instructor-dashboard', lazy: async () => ({ Component: (await import('../features/instructor-dashboard/components/InstructorDashboardPage')).InstructorDashboardPage }) },
             { path: 'settings/billing', element: <Navigate to="/app/settings/usage" replace /> },
             { path: 'settings/usage', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/UsageSettingsPage')).UsageSettingsPage }) },
+            { path: 'account-data', lazy: async () => ({ Component: (await import('../features/account-data/AccountDataPage')).AccountDataPage }) },
+            { path: 'account-data/delete', lazy: async () => ({ Component: (await import('../features/account-data/AccountDeletionPage')).AccountDeletionPage }) },
             { path: 'friends', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/FriendsPage')).FriendsPage }) },
             { path: 'safety', lazy: async () => ({ Component: (await import('../features/moderation/SafetyPage')).SafetyPage }) },
             {

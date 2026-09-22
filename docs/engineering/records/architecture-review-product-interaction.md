@@ -11,9 +11,9 @@ createdAt: 2026-09-22
 reconstructed: false
 confidence: high
 unknowns: ["Final lifecycle and recovery union", "Hosted cross-browser and visual acceptance", "Manual assistive technology and production performance"]
-modules: ["frontend-friends", "frontend-inbox", "product-browser-tests"]
-interfaces: ["keyboard-list-detail-navigation", "hosted-product-browser-gate"]
-seams: ["visible-pane-to-keyboard-focus", "fixture-to-real-service-evidence"]
+modules: ["frontend-friends", "frontend-inbox", "frontend-account-data", "product-browser-tests"]
+interfaces: ["keyboard-list-detail-navigation", "hosted-product-browser-gate", "account-lifecycle-request-and-receipt"]
+seams: ["visible-pane-to-keyboard-focus", "fixture-to-real-service-evidence", "revoked-session-to-read-only-receipt"]
 adapters: ["playwright"]
 relatedRecords: []
 decisions: []
@@ -38,7 +38,7 @@ Friends and Inbox hid the list on phones while keyboard focus remained on its hi
 
 The real signed-in browser gate previously installed Chromium alone. Firefox and WebKit now run the same product tests against the actual hosted service stack, one worker at a time. Synthetic screenshots remain separate layout evidence. Authentication traces, screenshots and video remain disabled in real account tests. Nothing in this change configures a provider, relaxes authorization or declares public launch.
 
-Design follows learning-desk-v3 and the repository's pinned frontend-design skill. Existing independent core, initial-route and capability bundle budgets remain unchanged. Focus behavior has red-to-green component regressions; final screenshot, hosted, review and combined-release acceptance remain open.
+Design follows learning-desk-v3 and the repository's pinned frontend-design skill. Existing core, initial-route and prior capability budgets remain unchanged. New account export/deletion entries have separate explicit caps; shared code remains in core. Focus behavior has red-to-green component regressions; final screenshot, hosted, review and combined-release acceptance remain open.
 
 Teaching resolves bookmarked Study Server selection against accessible communities, retaining Refresh, dashboard metrics and lifetime free-beta usage while its legacy route becomes a query-preserving alias. Enrollment resolves bookmarked cohorts only after manager authorization. Community event titles are keyboard controls; repeated editor/details forms use native modality, scroll on short screens and restore focus. Event edits preserve the original audience identifiers, correcting a request that always sent HUB. These changes have focused red-to-green regressions.
 
@@ -56,3 +56,13 @@ completed lists do not poll. A focused regression establishes the delayed-fetch
 case. The service journey checks owner publication and member read/completion
 persistence, but does not force delivery timing. Current-head browser and final
 accepted lifecycle/recovery union checks remain required.
+
+The account-data contract comes from #251. Export uses the native browser download
+manager after a short-lived HttpOnly authorization grant. Deletion separates
+preparation and typed irreversible confirmation. A public, cookie-only status
+route remains reachable after ordinary authentication is revoked. Uncertain
+confirmation reads that same receipt; missing authority never implies deletion
+completion. Request controllers are keyed by account, auth generation and job,
+and abort on unmount. Sign-in preserves the explicit opaque job URL. Independent
+review findings have focused regressions; actual erasure and recovery proof stay
+with #251/#342 and cannot be inferred from intercepted browser fixtures.
