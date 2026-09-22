@@ -2,7 +2,7 @@ name: Release package
 
 on:
   pull_request:
-    paths: ['infra/production/**', 'scripts/deploy/**', '.github/workflows/release.yml']
+    paths: ['infra/production/**', 'scripts/deploy/**', 'scripts/upload-source-maps.mjs', 'infra/monitoring/sentry-cli.json', 'frontend/**', '.github/workflows/release.yml']
   workflow_dispatch:
 
 permissions:
@@ -88,6 +88,29 @@ jobs:
         run: bash scripts/deploy/build-release.sh '${{ matrix.architecture }}'
       - name: Run ephemeral staging from the release images
         run: bash scripts/deploy/smoke-release.sh '${{ matrix.architecture }}'
+      - name: Upload exact private source maps when the operator has configured a project
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_URL: ${{ vars.SENTRY_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SENTRY_AUTH_TOKEN" ]; then
+            echo 'Private source-map upload is not configured; browser symbolication remains a launch gate.'
+            exit 0
+          fi
+          count="$(gh run list --workflow CI --commit "$GITHUB_SHA" --event push --branch main --status success --json databaseId --jq length)"
+          test "$count" -gt 0 || { echo 'Exact-commit CI must finish before private source-map upload.' >&2; exit 1; }
+          read -r version binary < <(node --input-type=module -e 'import fs from "node:fs"; const p = JSON.parse(fs.readFileSync("infra/monitoring/sentry-cli.json")); console.log(p.version, p.binaries[`linux-${process.arch}`].name)')
+          mkdir -p .cache/sentry-cli
+          curl --fail --silent --show-error --location --max-time 120 \
+            "https://github.com/getsentry/sentry-cli/releases/download/$version/$binary" -o .cache/sentry-cli/sentry-cli
+          chmod +x .cache/sentry-cli/sentry-cli
+          mapfile -t artifacts < <(find frontend/.cache/private-source-maps -mindepth 1 -maxdepth 1 -type d -name "$GITHUB_SHA-*")
+          test "${#artifacts[@]}" = 1 || { echo 'Expected exactly one private source-map artifact.' >&2; exit 1; }
+          node scripts/upload-source-maps.mjs .cache/sentry-cli/sentry-cli "${artifacts[0]}" frontend/dist "$GITHUB_SHA"
       - name: Publish public release asset after exact-commit CI
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         env:
@@ -103,7 +126,7 @@ jobs:
             release.json images.tar images.sha256 \
             infra/production/postgres-init.sh infra/production/livekit.yaml \
             infra/production/runtime-lock.json infra/production/release-policy.json \
-            scripts/deploy/host.mjs scripts/deploy/release.mjs scripts/deploy/recovery.mjs scripts/deploy/backup-runner.mjs scripts/deploy/telemetry.mjs \
+            scripts/deploy/host.mjs scripts/deploy/release.mjs scripts/deploy/recovery.mjs scripts/deploy/backup-runner.mjs scripts/deploy/telemetry.mjs scripts/deploy/errors.mjs scripts/deploy/heartbeat.mjs \
             scripts/deploy/configuration-backup.mjs scripts/deploy/restore-isolated.mjs tools/restic tools/restic.sha256
           test "$(stat -c %s ".cache/$asset")" -lt 2000000000 || { echo 'Release asset exceeds the free delivery limit.' >&2; exit 1; }
           (cd .cache && sha256sum "$asset" > "$asset.sha256")

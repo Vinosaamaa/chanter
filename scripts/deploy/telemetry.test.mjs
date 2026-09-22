@@ -15,6 +15,7 @@ test('trace export is disabled until both private receiver settings are configur
   assert.equal(env.OTEL_EXPORTER_OTLP_METRICS_HEADERS, env.OTEL_EXPORTER_OTLP_TRACES_HEADERS);
   assert.equal(env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT, 'https://collector.test/otlp/v1/metrics');
   assert.equal(env.OTEL_METRIC_EXPORT_INTERVAL, '60000');
+  assert.equal(env.OTEL_INSTRUMENTATION_MICROMETER_ENABLED, 'true');
   assert.equal(env.OTEL_TRACES_SAMPLER_ARG, '0.05');
   assert.equal(env.OTEL_JAVAAGENT_EXTENSIONS, '/app/telemetry/privacy.jar');
 });

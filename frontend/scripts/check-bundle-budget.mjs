@@ -12,10 +12,13 @@ export const productionBundleBudget = Object.freeze({
     name: 'Moderation', rawBytes: 6_000, gzipBytes: 2_000,
     entries: ['src/features/moderation/SafetyPage.tsx', 'src/features/moderation/OperatorPage.tsx', 'src/features/moderation/AppealPage.tsx'],
   },
-  deferredJs: {
+  deferredJs: [{
     name: 'Moderation', rawBytes: 60_000, gzipBytes: 20_000,
     entries: ['src/features/moderation/SafetyPage.tsx', 'src/features/moderation/OperatorPage.tsx', 'src/features/moderation/AppealPage.tsx'],
-  },
+  }, {
+    name: 'Browser errors', rawBytes: 70_000, gzipBytes: 25_000,
+    entries: ['src/lib/browser-errors-client.ts'],
+  }],
   initialJsGzipBytes: 120_000,
   deferredChunkGzipBytes: 130_000,
   routes: [
@@ -62,21 +65,26 @@ export async function measureImportGraph(distDirectory, manifest, entryKeys, kin
 export async function enforceBundleBudget(distDirectory, budget = productionBundleBudget) {
   const files = await assetFiles(distDirectory)
   const failures = []
-  let deferredJs = null
-  let deferredJsFiles = new Set()
-  if (budget.deferredJs) {
+  const deferredJs = []
+  const deferredJsFiles = new Set()
+  for (const allowance of budget.deferredJs ?? []) {
     const manifest = JSON.parse(await readFile(path.join(distDirectory, '.vite/manifest.json'), 'utf8'))
-    const ownedFiles = [...new Set(budget.deferredJs.entries.map(key => {
+    const ownedFiles = [...new Set(allowance.entries.map(key => {
       if (!manifest[key]?.isDynamicEntry) throw new Error(`Expected a new deferred entry: ${key}`)
       return manifest[key].file
     }))]
-    deferredJs = { ...await measure(ownedFiles.map(file => path.join(distDirectory, file))), files: ownedFiles }
-    deferredJsFiles = new Set(ownedFiles.map(file => path.resolve(distDirectory, file)))
-    if (deferredJs.rawBytes > budget.deferredJs.rawBytes || deferredJs.gzipBytes > budget.deferredJs.gzipBytes)
-      failures.push(`${budget.deferredJs.name} deferred JavaScript exceeds its ${budget.deferredJs.rawBytes} raw / ${budget.deferredJs.gzipBytes} gzip byte cap`)
-    for (const route of budget.routes ?? []) {
+    const measured = { name: allowance.name, ...await measure(ownedFiles.map(file => path.join(distDirectory, file))), files: ownedFiles }
+    deferredJs.push(measured)
+    for (const file of ownedFiles) {
+      const resolved = path.resolve(distDirectory, file)
+      if (deferredJsFiles.has(resolved)) throw new Error(`Duplicate deferred JavaScript allowance: ${file}`)
+      deferredJsFiles.add(resolved)
+    }
+    if (measured.rawBytes > allowance.rawBytes || measured.gzipBytes > allowance.gzipBytes)
+      failures.push(`${allowance.name} deferred JavaScript exceeds its ${allowance.rawBytes} raw / ${allowance.gzipBytes} gzip byte cap`)
+    for (const route of [{ name: 'initial entry', entries: [] }, ...budget.routes ?? []]) {
       const initialJs = await measureImportGraph(distDirectory, manifest, ['index.html', ...route.entries])
-      if (initialJs.files.some(file => ownedFiles.includes(file))) failures.push(`${budget.deferredJs.name} JavaScript is included in ${route.name}`)
+      if (initialJs.files.some(file => ownedFiles.includes(file))) failures.push(`${allowance.name} JavaScript is included in ${route.name}`)
     }
   }
   // Only the exact new entry chunks are separate. Shared/vendor imports remain in the core budget.
@@ -94,7 +102,7 @@ export async function enforceBundleBudget(distDirectory, budget = productionBund
     if (!deferredCss.files.length) failures.push(`${budget.deferredCss.name} CSS must remain a measured route dependency`)
     if (deferredCss.rawBytes > budget.deferredCss.rawBytes || deferredCss.gzipBytes > budget.deferredCss.gzipBytes)
       failures.push(`${budget.deferredCss.name} deferred CSS exceeds its ${budget.deferredCss.rawBytes} raw / ${budget.deferredCss.gzipBytes} gzip byte cap`)
-    for (const route of budget.routes ?? []) {
+    for (const route of [{ name: 'initial entry', entries: [] }, ...budget.routes ?? []]) {
       const initialCss = await measureImportGraph(distDirectory, manifest, ['index.html', ...route.entries], 'css')
       if (initialCss.files.some(file => deferredCss.files.includes(file))) failures.push(`${budget.deferredCss.name} CSS is included in ${route.name}`)
     }
@@ -146,10 +154,10 @@ function formatKiB(bytes) {
 
 async function main() {
   const result = await enforceBundleBudget(path.resolve(process.cwd(), 'dist'))
+  for (const entry of result.deferredJs) console.log(`${entry.name}: ${formatKiB(entry.rawBytes)} raw / ${formatKiB(entry.gzipBytes)} gzip in its separately capped deferred entries; shared dependencies remain in core.`)
   console.log(`Initial JavaScript: ${formatKiB(result.initial.gzipBytes)} gzip; largest deferred chunk: ${formatKiB(result.largestDeferredGzipBytes)} gzip.`)
   for (const route of result.routes) console.log(`${route.name}: ${formatKiB(route.gzipBytes)} JavaScript gzip including shared static dependencies.`)
   if (result.deferredCss) console.log(`Deferred moderation CSS: ${result.deferredCss.rawBytes} raw / ${result.deferredCss.gzipBytes} gzip bytes; excluded from protected initial routes.`)
-  if (result.deferredJs) console.log(`Deferred moderation JavaScript: ${result.deferredJs.rawBytes} raw / ${result.deferredJs.gzipBytes} gzip bytes; shared dependencies remain in core.`)
   console.log(
     `Bundle budget passed: JS ${formatKiB(result.javascript.rawBytes)} raw / ${formatKiB(result.javascript.gzipBytes)} gzip; `
       + `CSS ${formatKiB(result.css.rawBytes)} raw / ${formatKiB(result.css.gzipBytes)} gzip.`,

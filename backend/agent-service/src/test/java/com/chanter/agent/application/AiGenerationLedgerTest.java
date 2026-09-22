@@ -17,11 +17,12 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
 
-@SpringBootTest(properties = "chanter.llm.daily-token-limit=100")
+@SpringBootTest(properties = {"chanter.llm.daily-token-limit=100", "chanter.telemetry.enabled=true"})
 @ActiveProfiles("test")
 class AiGenerationLedgerTest {
     @Autowired AiGenerationLedger ledger;
     @Autowired JdbcClient jdbc;
+    @Autowired io.micrometer.core.instrument.MeterRegistry metrics;
     private UUID server;
     private final Model model = new Model("Fixture", "ollama", "fixture", null, null, 64, 16, Duration.ofSeconds(3), Set.of(), null);
 
@@ -33,20 +34,24 @@ class AiGenerationLedgerTest {
     }
 
     @Test void reservesBeforeWorkAndSettlesMeasuredUsageExactlyOnce() {
+        double initial = count("chanter.ai.settlements", "outcome", "SUCCESS", "usage", "measured");
         UUID ticket = ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model);
         assertThatThrownBy(() -> ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("429");
         ledger.settle(ticket, new LlmUsage(8, 2, null, null, null), "SUCCESS", 12, "fixture", null, model, true);
         ledger.settle(ticket, new LlmUsage(90, 90, null, null, null), "SUCCESS", 12, "fixture", null, model, true);
         assertThat(ledger.summary(server).accountedTokens()).isEqualTo(10);
+        assertThat(count("chanter.ai.settlements", "outcome", "SUCCESS", "usage", "measured")).isEqualTo(initial + 1);
         assertThat(ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model)).isNotNull();
     }
 
     @Test void missingProviderUsageRetainsTheReservationInsteadOfBecomingZero() {
+        double initial = count("chanter.ai.unmeasured_settlements");
         UUID ticket = ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model);
         ledger.settle(ticket, LlmUsage.UNKNOWN, "TIMED_OUT", 30, "fixture", null, model, true);
         assertThat(ledger.summary(server).accountedTokens()).isEqualTo(80);
         assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
+        assertThat(count("chanter.ai.unmeasured_settlements")).isEqualTo(initial + 1);
         assertThatThrownBy(() -> ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model))
                 .isInstanceOf(ResponseStatusException.class);
     }
@@ -105,5 +110,9 @@ class AiGenerationLedgerTest {
         start.await();
         try { ledger.reserve(server, UUID.randomUUID(), UUID.randomUUID(), "local", model); return true; }
         catch (ResponseStatusException e) { if (e.getStatusCode().value() != 429) throw e; return false; }
+    }
+    private double count(String name, String... tags) {
+        var counter = metrics.find(name).tags(tags).counter();
+        return counter == null ? 0 : counter.count();
     }
 }

@@ -1,6 +1,6 @@
 # Chanter launch execution status
 
-Reviewed 2026-09-19 against accepted main `935f6f849ae72c3682ed26d033aa543a9be0b4d8`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
+Reviewed 2026-09-22 against accepted main `b76d32fd1b8e67cd766634b593a810c1b62ec739`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
 
 Chanter has substantial local-beta product code. It has no verified public release. The previous audit's DNS and provider observations are historical; this review does not claim that those external systems have been rechecked.
 
@@ -17,8 +17,9 @@ AI provider and model choice must be configurable. OpenAI, Anthropic, xAI/Grok, 
 The free deployment package now builds, scans, stages and uploads immutable AMD64
 and ARM64 bundles. Actual publication succeeded at main `7d42dd7` after PR326,
 with matching checksum assets. This is a draft release of that commit, not a
-public server or the final launch candidate. Subsequent accepted durable events
-require the reviewed epoch5 package before deployment. Oracle Free Tier account
+public server or the final launch candidate. Accepted semantic retrieval now
+requires epoch8, accepted moderation requires epoch9, and pending account lifecycle
+requires epoch10. Oracle Free Tier account
 signup is the owner's pending identity-verification step; no credentials or
 provider account are fabricated, and paid provisioning remains disabled.
 
@@ -26,6 +27,9 @@ The accepted UI reconstruction is in PR314 and answer controls in PR322.
 Document ingestion PR325, native subscription support PR324 and public-edge
 controls PR328 are merged with passing merged-main checks. All workers are configured as Astra High
 without a fast-mode override. Their issue branches and worktrees are preserved.
+PR329's private telemetry and database/configuration recovery foundation is also
+merged, with passing full application and native release checks plus merged-main
+verification. #331 now owns operational monitoring in a separate worktree.
 
 The open dependency-update PRs and the older environment PR remain separate work. They have not been merged merely because individual test jobs passed. Dependency updates still need exact-head review and Engineering evidence.
 
@@ -38,15 +42,16 @@ The open dependency-update PRs and the older environment PR remain separate work
 | #244 | Durable private resource storage and quarantine | PR318 merged; native scanning passed; real private bucket and off-host restore proof remain |
 | #245 | Durable notifications and search indexing | PR327 merged; main CI, real PostgreSQL and consumer-restart journeys passed; production delivery proof remains |
 | #246 | Truthful supported resource ingestion | PR325 merged; real supported parsers and durable ingestion validated; provider/final release proof remains |
-| #247 | Authorized production vector retrieval | Draft330 implements pinned ONNX embeddings and scoped pgvector; dual-architecture load tests pass at 100,000 chunks; final concurrency, runtime union and release proof remain |
+| #247 | Authorized production vector retrieval | PR330 merged with full checks, dual-architecture packaged release and 100,000-chunk proof with private telemetry within 640 MiB; merged-main checks passed; real production proof remains |
 | #248 | Evaluated AI safety, usage and cost accounting | PR317/322 merged provider adapters, catalog, accounting and answer controls; final retrieval/evaluations and configured-provider proof remain |
-| #249 | Administration, reports and moderation | Active branch implements step-up operator access, reports/appeals and live restrictions; complete database-driven media and responsive UI proof remains |
+| #249 | Administration, reports and moderation | PR333 merged with full CI/review, both native stages, real audio revocation/reconnect denial, emailed appeal/reversal and phone/desktop proof; merged-main checks passed; production operator enrollment remains |
 | #250 | Truthful free-beta mode or real paid billing | PR323 merged truthful free-beta mode and limits; final deployed accounting proof remains; paid billing is outside initial free beta |
-| #251 | Export, deletion, retention and accurate policy pages | Active branch has bounded source exports, durable transport and terminal journal/checkpoint tests; public export/deletion and restore reapply are still underway |
-| #252 | Monitoring, alerts, backups and proven restore | Draft329 supplies private telemetry and encrypted database/configuration recovery; #331 owns remaining operational alerts and #332 complete application recovery; all remain launch gates |
+| #251 | Export, deletion, retention and accurate policy pages | Draft335 has bounded source exports, one-use browser downloads and terminal journal v2; actual source reapply, ownership/deletion and legal integration remain underway |
+| #252 | Monitoring, alerts, backups and proven restore | PR329 merged its foundation; draft334 adds private metrics/reports, source-map upload, backup heartbeat and evaluated dashboards/alerts; draft336 has dual-architecture seven-source recovery isolation proof. Combined release, complete file/deletion recovery and actual provider/operator receipts remain gates |
 | #253 | Trusted edge, proxy handling and abuse limits | PR328 merged with shared admission and request bounds; actual public proxy/provider proof remains |
 | #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; new capability integration and final whole-product/mobile/voice checks remain |
 | #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |
+| #337 | Patched edge and frontend test dependencies | Compatible dependency fixes and the necessary minimal upstream Caddy backport are being verified against actual behavior and both native release architectures |
 
 Native subscription support is tracked separately in #316. Merged PR324 has
 verified Windows/Linux packaging, exact-origin pairing, isolated provider execution

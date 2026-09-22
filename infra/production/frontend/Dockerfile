@@ -10,6 +10,7 @@ FROM ${CADDY_IMAGE}
 RUN rm /usr/bin/caddy && mkdir -p /srv /data/caddy /config/caddy && chown -R 10001:10001 /srv /data /config
 COPY --from=build /caddy /usr/bin/caddy
 COPY --chown=10001:10001 frontend/dist/ /srv/
+RUN test -z "$(find /srv -type f -name '*.map' -print -quit)"
 COPY infra/production/frontend/Caddyfile /etc/caddy/Caddyfile
 USER 10001:10001
 EXPOSE 8080 8443

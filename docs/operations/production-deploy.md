@@ -174,6 +174,67 @@ Optional Google OAuth credentials may be added only to the auth file after confi
 
 No external inference endpoint or paid model is enabled. Agent retrieval uses the pinned local MiniLM semantic model packaged at `/app/models/minilm`; explicit API embedding providers remain operator-configured. Epoch 8 requires agent V13 and prevents downgrade to the former BYTEA embedding schema. See [embedding operations](embedding-versions.md) for model activation, rollback and removal of obsolete hashing/keyword configuration. Optional answer generation belongs to [#248](https://github.com/Vinosaamaa/chanter/issues/248). MinIO and Redpanda are absent because this runtime does not use them. Private Course files use the accepted object-storage and Unix-socket scanner configuration.
 
+## Private backend error reporting
+
+Issue #331 adds disabled error reporting through Sentry Java 8.57.0. For existing
+state, run the new bundle's `host.mjs prepare-recovery STATE_DIRECTORY` before
+rendering; it creates the missing private `runtime/errors.env` while preserving
+existing settings. Initialization already includes the file. Leave
+`CHANTER_ERRORS_DSN=` blank until an account's free quota, retention, access and
+disabled paid overage have been verified. No account is provisioned by this code.
+
+Set only a valid Sentry HTTPS DSN in that private file, then use the ordinary
+reviewed deployment command. The generated `errors.env` enables the reporter for
+Java services. Removing the DSN and redeploying disables it independently of
+metrics/traces. Never paste the file or credentials into tickets or logs.
+
+Reports contain a fixed service/environment, immutable release and bounded
+exception types/application code locations. They exclude messages, request/user
+data, file paths and breadcrumbs. Each process admits five reports per minute;
+the provider's account quota is a separate required control. Outages and excess
+reports may drop events. Use the metric dashboards for aggregate failure rates.
+Actual provider receipt, operator notification and private source-map
+symbolication are still required before public cutover.
+
+Browser reports require a separate `CHANTER_BROWSER_ERRORS_DSN` in the same private
+runtime file. It defaults to blank independently of Java reporting. The renderer
+publishes only that public ingestion key, environment and exact release at
+`/operational-config.json`, with no-store caching. It adds only the receiver's
+exact origin to the browser's connection policy. The backend receiver and provider
+management credentials never enter this document or the frontend container.
+Blanking the browser key and redeploying disables capture independently.
+
+The browser loads its SDK only with valid settings matching its compiled release.
+It reports fixed exception types and at most twelve known compiled locations.
+Messages, user/request context, function names and URL parameters are removed.
+It sends without cookies or referrer and does not follow redirects. Five reports
+per page per minute, a five-request buffer and a 1.5-second deadline bound local
+delivery; these do not enforce an account-wide quota or hide network IP addresses
+from the provider. Review the public privacy disclosure before enabling delivery.
+
+Frontend `npm run build` now leaves matching JavaScript/source-map pairs and a
+hash manifest under ignored `frontend/.cache/private-source-maps/COMMIT-*`.
+Only `dist` enters the frontend image, and its image build rejects `.map` files.
+These private build artifacts are not included in the public deployment archive
+or uploaded to public CI artifacts. Retain/use only the artifact whose manifest
+release and script hashes match the accepted image. A private error-project
+upload and actual symbolication check remain necessary; local generation does
+not prove release linkage. The public `browser-error-assets.json` contains only
+served JavaScript filenames and the release, used to reject fabricated locations.
+
+When the actual private error project has been reviewed, configure repository
+secrets `SENTRY_AUTH_TOKEN`, `SENTRY_ORG` and `SENTRY_PROJECT`. Use a release-upload
+scoped token, never the browser ingestion key. Optional repository variable
+`SENTRY_URL` selects exactly `https://sentry.io/`, `https://us.sentry.io/` or
+`https://de.sentry.io/` for the project's region. Only the main-branch release
+package job uploads; pull requests never receive these credentials. It verifies
+the pinned CLI checksum and each map/script/release before invoking strict upload
+and a bounded processing wait. An unconfigured token leaves the step disabled.
+Failed configured uploads stop package publication without publishing provider
+output. No source maps enter public release assets. After upload, trigger a safe
+test error in the exact accepted release and verify its original source location
+and operator notification privately before accepting browser monitoring.
+
 ## Optional native companion issuer
 
 Native access is disabled while all four issuer values are absent. To provision it after the #316 acceptance gates, add only to the private `agent-service.env`:

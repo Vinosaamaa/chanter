@@ -27,6 +27,10 @@ for (const [key, value] of Object.entries({ CHANTER_BACKUP_S3_ENDPOINT: 'https:/
   backup = backup.replace(new RegExp('^' + key + '=$', 'm'), key + '=' + value);
 }
 fs.writeFileSync(backupFile, backup, { mode: 0o600 });
+// Synthetic public ingestion key: validate enabled rendering without contacting a provider.
+const errorsFile = process.argv[2] + '/runtime/errors.env';
+fs.writeFileSync(errorsFile, fs.readFileSync(errorsFile, 'utf8').replace(/^CHANTER_BROWSER_ERRORS_DSN=$/m,
+  `CHANTER_BROWSER_ERRORS_DSN=https://${'a'.repeat(32)}@o0.ingest.us.sentry.io/0`), { mode: 0o600 });
 JS
 compose_file="$(node scripts/deploy/host.mjs render "$bundle" "$state")"
 node --input-type=module - "$compose_file" <<'JS'
@@ -99,7 +103,25 @@ test "$native_message" = 1 || { echo 'Accepted-answer consumer migration did not
 mapfile -t modules < <(node --input-type=module -e 'import {modules} from "./scripts/deploy/release.mjs"; console.log(modules.join("\n"))')
 for module in "${modules[@]}"; do
   started="$(date +%s)"
-  "${compose[@]}" up -d --no-deps --wait --wait-timeout 180 "$module"
+  if ! "${compose[@]}" up -d --no-deps --wait --wait-timeout 180 "$module"; then
+    # Report only bounded code locations from structured exceptions. Never print
+    # free-form startup messages, runtime settings or container environments.
+    "${compose[@]}" logs --no-log-prefix --tail 80 "$module" | node --input-type=module -e '
+      import readline from "node:readline";
+      for await (const line of readline.createInterface({ input: process.stdin })) {
+        let item; try { item = JSON.parse(line); } catch { continue; }
+        if (item.event !== "application.exception" || !Array.isArray(item.errors)) continue;
+        const token = value => typeof value === "string" && /^[A-Za-z_$][A-Za-z0-9_.$]{0,179}$/.test(value) ? value : "unknown";
+        console.log(JSON.stringify({ errors: item.errors.slice(0, 4).map(error => ({ type: token(error.type),
+          frames: (Array.isArray(error.frames) ? error.frames : []).slice(0, 12).map(frame => ({
+            class: token(frame.class), method: token(frame.method), line: Number.isSafeInteger(frame.line) ? frame.line : 0 })) })) }));
+      }'
+    mapfile -t failed_containers < <("${compose[@]}" ps --all --quiet "$module")
+    if [ "${#failed_containers[@]}" -gt 0 ]; then
+      docker inspect --format 'exit={{.State.ExitCode}} oom={{.State.OOMKilled}} restarts={{.RestartCount}}' "${failed_containers[@]}"
+    fi
+    exit 1
+  fi
   echo "$module became ready in $(($(date +%s) - started)) seconds"
 done
 "${compose[@]}" up -d --no-deps livekit
@@ -125,6 +147,24 @@ test "$livekit_ready" = true || { echo 'LiveKit signaling did not become ready.'
 "${compose[@]}" cp frontend:/data/caddy/pki/authorities/local/root.crt "$state/root.crt"
 printf '127.0.0.1 staging.chanter.test\n' | sudo tee -a /etc/hosts >/dev/null
 NODE_EXTRA_CA_CERTS="$state/root.crt" node scripts/deploy/host.mjs verify staging.chanter.test "$state"
+NODE_EXTRA_CA_CERTS="$state/root.crt" node --input-type=module - "$bundle/release.json" <<'JS'
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const release = JSON.parse(fs.readFileSync(process.argv[2]));
+const config = await fetch('https://staging.chanter.test/operational-config.json');
+assert.equal(config.status, 200); assert.equal(config.headers.get('cache-control'), 'no-store');
+assert.deepEqual(await config.json(), { release: release.commit, environment: 'staging',
+  dsn: `https://${'a'.repeat(32)}@o0.ingest.us.sentry.io/0` });
+assert.ok(config.headers.get('content-security-policy').includes('https://o0.ingest.us.sentry.io'));
+const assets = await fetch('https://staging.chanter.test/browser-error-assets.json');
+assert.equal(assets.status, 200);
+const manifest = await assets.json();
+assert.equal(manifest.release, release.commit); assert.ok(manifest.assets.length > 0);
+assert.ok(manifest.assets.every(asset => /^\/assets\/[A-Za-z0-9_-]+\.js$/.test(asset)));
+const map = await fetch(`https://staging.chanter.test${manifest.assets[0]}.map`);
+assert.equal(map.status, 404);
+console.log('Packaged browser settings, exact release filenames and private maps passed.');
+JS
 # Internal high ports must not leak into public HTTP-to-HTTPS redirects.
 test "$(curl --silent --output /dev/null --write-out '%{redirect_url}' http://staging.chanter.test/sign-in)" = 'https://staging.chanter.test/sign-in'
 echo "Runner processors: $(getconf _NPROCESSORS_ONLN)"

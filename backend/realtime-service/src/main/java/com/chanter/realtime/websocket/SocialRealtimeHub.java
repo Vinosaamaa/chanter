@@ -53,6 +53,9 @@ public class SocialRealtimeHub {
         this.moderation = moderation;
     }
 
+    /** Local authenticated socket count; no per-user telemetry dimensions. */
+    public int connectionCount() { return userBySession.size(); }
+
     public Mono<Void> connect(WebSocketSession session, UUID userId) {
         boolean shouldAnnounceOnline;
         synchronized (sessionLock) {

@@ -1,0 +1,178 @@
+# Operational monitoring and alert delivery
+
+Issue #331 owns the unfinished operational coverage left open by #252. The accepted
+PR329 foundation filters telemetry before private export and proves isolated
+database recovery. It does not yet export the product's business instruments,
+deliver exception reports, or alert an operator during a real outage.
+
+## Application metrics
+
+Reuse the pinned Java agent's Micrometer bridge, which is disabled by default.
+The first acceptance test starts a real Spring Boot application, registers its
+existing email/admission instruments, and decodes their exported metrics. Admit
+only fixed names, units and finite outcome dimensions. Unknown attributes are
+removed before aggregation; invalid residual values reject the metric. Keep
+runtime pool dimensions so distinct gauges do not collapse into an arbitrary
+value. Export must exclude account IDs, content, URLs and exception messages.
+
+Queue metrics belong to their source modules. Collect pending work, failures and
+oldest age with a bounded query outside product request paths. Export collection
+health and sample age separately. An unavailable or stale collector must never
+report a healthy zero queue. Preserve actual failure counts and unknown AI usage;
+an accounting reservation is not measured provider consumption.
+
+The implemented event collector includes pending and claimed events. Email counts
+pending messages and retained expired-message metadata, which the existing worker
+purges after seven days. Resource counts include upload, scan, indexing and cleanup
+work, with scan/index failures shown separately. Resource age is elapsed time
+since the oldest pending row's last update, not its total queue wait or original
+upload age. State/index transitions reset that timestamp; lease-only retries in
+`retryJob` do not. It does not claim to track every worker attempt. No content,
+recipient, resource ID or model name is a metric dimension.
+Legacy resources count as pending only while the existing legacy migration worker
+is enabled. An inactive migration must not create a fictitious backlog.
+
+The real Boot proof keeps the enabled collector and its gauges alive until the
+private test receiver acknowledges a pending database row and successful collection.
+It also checks counter privacy and disabled configuration separately. Native
+PostgreSQL cancellation and the email/resource source queries have passed on both
+hosted architectures. Live WebSocket counting is tested with an authenticated
+socket and removal after disconnect, without account or session labels.
+
+AI instruments describe committed operational observations. `chanter.ai.requests`
+counts committed reservations, including requests later proven not started.
+`chanter.ai.settlements` counts successful settlement writes by fixed outcome and
+measured/unmeasured usage; a later reconciliation of UNKNOWN is another settlement,
+not another request. `chanter.ai.unmeasured_settlements` counts attempted settlements
+without measured input/output usage. It is not a current unresolved balance.
+`chanter.ai.duration` records positive server-observed elapsed time in seconds;
+native client execution with unknown duration contributes no artificial zero.
+The durable usage ledger remains the accounting authority, including reservations
+left by crashes. Telemetry can be lost during process failure, and rollback emits
+no observations. A metrics failure cannot change a committed operation's result.
+
+Critical operations include durable events, transactional email, resource scan
+and ingestion, AI generation, realtime connections and gateway admission. A
+private receiver outage must leave application behavior unchanged, use bounded
+memory and allow process shutdown. Final native load tests must include enabled
+export, not just an attached agent with both exporters disabled.
+
+## Exceptions and operator alerts
+
+Select a supported free error tracker only after verifying its current account
+entitlements. Sentry's published Developer tier is a candidate for exception
+reports, private source maps, one uptime monitor and one backup heartbeat monitor.
+Grafana Cloud is a candidate for existing OTLP metrics/traces and dashboards.
+Neither account nor actual notification delivery exists yet. No paid trial,
+automatic recharge, replay, profiling or content-bearing attachment is required.
+
+Exception transport must rebuild a bounded safe event containing the immutable
+release, exception type and application frames. Remove messages, request bodies,
+headers, identifiers and breadcrumbs. Private source maps must match the release
+and remain absent from publicly served assets. Test canary removal, overload,
+disabled configuration and receiver failure before enabling the integration.
+
+The backend implementation pins Sentry Java 8.57.0 and attaches a Logback appender
+only when explicitly enabled. It constructs a fresh event from ERROR exceptions,
+keeping at most four causes and twelve application frames per cause after scanning
+at most 64 frames. It discards plain messages, filenames, exception text, MDC,
+request/user data and original Throwable objects. The direct SDK client has no
+global scope, default processors or integrations, breadcrumbs, attachments, disk
+cache, replay, profiling, logs or metrics export. Only the immutable release,
+fixed service/environment, exception types and code locations leave this boundary.
+The real SDK envelope test verifies the resulting wire payload.
+
+Each process admits five reports per monotonic minute, then drops additional
+reports until the next window. The transport queue holds at most 32 events with
+one-second connection/read limits and a 1.5-second shutdown limit. This is a local
+overload bound, not an account-wide quota or a guarantee of error completeness.
+The provider must enforce its free quota and disable paid overage. Restarting a
+process resets its allowance. Disabled configuration needs no credentials.
+Production accepts only a validated HTTPS Sentry receiver; the test suite alone
+uses an isolated loopback receiver. This does not prove delivery to a real account.
+
+Check dashboards and alert queries against recorded synthetic measurements. Each
+alert needs a severity, accountable operator, trigger, recovery condition and
+linked action. Independent uptime and missing-backup-heartbeat checks must work
+when the application host is down. Launch requires actual provider-side receipt
+and operator notification, verified free quotas and disabled paid overage.
+
+### Browser exception boundary
+
+The browser integration will load the pinned Sentry Browser 10.75.2 client only
+after an explicit, separate browser receiver is configured. A same-origin JSON
+configuration contains only that public ingestion key, the release and environment.
+It never contains the backend receiver or a provider management token. The served
+release must match the compiled JavaScript release. Disabled or invalid settings
+send nothing. The deployment adds only the exact receiver origin to browser policy.
+
+Use a direct client without automatic integrations, sessions, tracing, replay,
+breadcrumbs, logs or metrics. Build a fresh exception from a fixed error type and
+at most twelve same-origin compiled asset locations from the exact release's
+public filename manifest. Discard messages, function
+names, query strings, document URLs and arbitrary properties. Repeat the allowlist
+at the SDK's final event hook. Global errors, rejected Error promises and React
+root errors use this boundary. Startup failures before configuration arrives may
+be lost; this is operational sampling, not a complete error journal.
+
+Admit five reports per page per monotonic minute, with five queued sends and a
+1.5-second request deadline. Send without cookies, referrer or redirects. These
+limits cannot enforce an account-wide quota or conceal the browser's network IP
+from the receiver. The measured optional SDK entry has its own 70 KB raw / 25 KB
+gzip cap; shared chunks and all existing startup/page limits retain their caps.
+Provider-side quota enforcement and privacy disclosure remain
+launch prerequisites. No private source maps enter public assets or CI artifacts.
+
+## Verification and remaining decisions
+
+The application metric bridge, queue collectors, initial AI/realtime coverage,
+backend/browser error transport, dashboards and incident/rotation runbooks are
+implemented. Exact final combined proof, private source-map publishing and
+provider acceptance remain unfinished. #332 separately owns complete
+application restore with current deletion authority. Neither issue is closed by
+the successful database-only restore in PR329.
+
+Initial importable dashboards and seven alert rules now live in `infra/monitoring`.
+The pinned Prometheus parser validates the actual eighteen dashboard queries;
+synthetic series test alert firing, recovery, unknown collection and environment
+isolation. The [runbook](../operations/monitoring-runbook.md) records their initial
+thresholds and exact limits. Actual provider translation, dashboard rendering,
+notification routing and external uptime/backup monitoring are still gates.
+
+Frontend builds will generate hidden source maps, then move maps and copy their
+matching JavaScript into ignored private build output before public bundle checks
+and image packaging. A manifest binds the source-map and served-script hashes to
+the exact Git release. The frontend image must reject leftover `.map` files.
+These local/runner artifacts are not published as public release assets. Upload
+to a private error project and actual symbolication require that project's
+credentials and matching release receipt; generation alone is not linkage proof.
+
+Private uploads will use checksum-pinned Sentry CLI 3.8.0, with the release and
+`~/assets` prefix matching browser frames. Before any upload, verify every private
+script/map hash, matching served script, exact file inventory and release. Reject
+extra files and symlinks. Use the CLI's strict validation and bounded processing
+wait without source rewriting, so it cannot discover additional local source
+files. Authentication stays in the process environment; capture and discard CLI
+output on failure rather than publishing credentials, source text or local paths.
+Only explicitly configured release jobs perform this operation. Success records
+provider upload processing, not an actual exception's symbolication or notification.
+
+Backup monitoring uses Sentry's documented HTTP heartbeat after the existing
+backup command verifies a fresh completed chain and its encrypted configuration.
+It sends only a random check-in ID, fixed environment and `ok` status to an
+explicitly configured private cron URL. A failed backup sends no success signal.
+The receiver's acceptance is recorded separately from backup success; an outage
+cannot invalidate or repeat the completed backup. A two-second deadline and no
+redirects bound delivery. The external monitor detects missing heartbeats even
+when this host is off. Its grace period must cover the existing three-hour
+exclusive backup operation, during which ten-minute verification jobs cannot
+acquire the deployment lock. Actual missing/recovery notification remains an
+operator acceptance gate, and HTTP acceptance alone cannot prove it.
+
+Primary references:
+
+- [Pinned Java agent supported libraries](https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/v2.31.1/docs/supported-libraries.md)
+- [OpenTelemetry Java instrumentation](https://opentelemetry.io/docs/languages/java/instrumentation/)
+- [Sentry plan capabilities](https://sentry.io/pricing/)
+- [Pinned Sentry Java release](https://github.com/getsentry/sentry-java/releases/tag/8.57.0)
+- [Grafana frontend pricing boundaries](https://grafana.com/docs/grafana-cloud/platform/pricing-and-usage/frontend-observability/)

@@ -9,6 +9,16 @@ import { imageNames } from './release.mjs';
 const scratch = path.resolve('.cache/deploy-tests');
 fs.mkdirSync(scratch, { recursive: true });
 
+test('error receiver changes are preserved in encrypted configuration and invalidate its fingerprint', t => {
+  const { state } = fixture(t);
+  const release = { commit: 'a'.repeat(40), schemaEpoch: 8 };
+  const before = configurationFingerprint(state, release);
+  const dsn = `https://${'a'.repeat(32)}@o1.ingest.us.sentry.io/1`;
+  fs.writeFileSync(path.join(state, 'runtime/errors.env'), `CHANTER_ERRORS_DSN=${dsn}\n`);
+  assert.equal(configurationSnapshot(state, release).runtime.errors.CHANTER_ERRORS_DSN, dsn);
+  assert.notEqual(configurationFingerprint(state, release), before);
+});
+
 test('missing release receipts cannot authorize an older writer against an orphaned database', t => {
   const { state } = fixture(t);
   const release = { schemaEpoch: 5, commit: 'a'.repeat(40) };
@@ -100,6 +110,29 @@ const fixture = t => {
     (_, key) => `${key}=${key === 'CHANTER_BACKUP_S3_ENDPOINT' ? 'https://backup.example' : 'backup-fixture'}`));
   return { root, state, auth };
 };
+
+test('render exposes only the separate browser ingestion key and exact release', t => {
+  const { root, state } = fixture(t);
+  const bundle = path.join(root, 'bundle');
+  fs.mkdirSync(path.join(bundle, 'infra/production'), { recursive: true });
+  const release = { version: 1, commit: 'a'.repeat(40), architecture: 'arm64', schemaEpoch: 8,
+    images: Object.fromEntries(imageNames.map(name => [name, 'sha256:' + 'b'.repeat(64)])) };
+  fs.writeFileSync(path.join(bundle, 'release.json'), JSON.stringify(release));
+  for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.writeFileSync(path.join(bundle, 'infra/production', name), 'fixture');
+  const backendDsn = `https://${'c'.repeat(32)}@o1.ingest.us.sentry.io/1`;
+  const browserDsn = `https://${'d'.repeat(32)}@o2.ingest.us.sentry.io/2`;
+  fs.writeFileSync(path.join(state, 'runtime/errors.env'), `CHANTER_ERRORS_DSN=${backendDsn}\nCHANTER_BROWSER_ERRORS_DSN=${browserDsn}\n`);
+  const prepared = render(bundle, state);
+  const output = path.dirname(prepared.file);
+  const publicConfig = fs.readFileSync(path.join(output, 'frontend-errors.json'), 'utf8');
+  assert.deepEqual(JSON.parse(publicConfig), { dsn: browserDsn, release: release.commit, environment: 'staging' });
+  assert.equal(publicConfig.includes(backendDsn), false);
+  assert.equal(readEnv(path.join(output, 'frontend-errors.env')).CHANTER_BROWSER_ERRORS_ORIGIN, 'https://o2.ingest.us.sentry.io');
+  const frontend = JSON.parse(fs.readFileSync(prepared.file, 'utf8')).services.frontend;
+  assert.equal(JSON.stringify(frontend).includes('errors.env'), true);
+  assert.equal(frontend.env_file.some(file => file.path === './errors.env'), false);
+  assert.equal(frontend.volumes.includes('./frontend-errors.json:/etc/chanter/frontend-errors.json:ro'), true);
+});
 
 test('native signer is absent by default and a complete matching agent-only configuration passes', t => {
   const { state } = fixture(t);
@@ -196,14 +229,17 @@ test('recovery preparation adds missing settings without rotating any existing s
   const authBefore = fs.readFileSync(auth, 'utf8');
   const backup = path.join(state, 'runtime/backup.env');
   const telemetry = path.join(state, 'runtime/telemetry.env');
+  const errors = path.join(state, 'runtime/errors.env');
   const original = readEnv(backup);
   fs.writeFileSync(backup, fs.readFileSync(backup, 'utf8').replace(/^CHANTER_CONFIG_BACKUP_PASSWORD=.*\r?\n/m, ''));
   fs.unlinkSync(telemetry);
+  fs.unlinkSync(errors);
   prepareRecovery(state);
   assert.equal(readEnv(backup).CHANTER_BACKUP_CIPHER_PASS, original.CHANTER_BACKUP_CIPHER_PASS);
   assert.equal(readEnv(backup).CHANTER_BACKUP_S3_SECRET_KEY, original.CHANTER_BACKUP_S3_SECRET_KEY);
   assert.equal(readEnv(backup).CHANTER_CONFIG_BACKUP_PASSWORD.length, 64);
   assert.equal(readEnv(telemetry).CHANTER_TELEMETRY_ENDPOINT, '');
+  assert.equal(readEnv(errors).CHANTER_ERRORS_DSN, '');
   const first = fs.readFileSync(backup, 'utf8');
   prepareRecovery(state);
   assert.equal(fs.readFileSync(backup, 'utf8'), first);
