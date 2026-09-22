@@ -157,6 +157,18 @@ output on failure rather than publishing credentials, source text or local paths
 Only explicitly configured release jobs perform this operation. Success records
 provider upload processing, not an actual exception's symbolication or notification.
 
+Backup monitoring uses Sentry's documented HTTP heartbeat after the existing
+backup command verifies a fresh completed chain and its encrypted configuration.
+It sends only a random check-in ID, fixed environment and `ok` status to an
+explicitly configured private cron URL. A failed backup sends no success signal.
+The receiver's acceptance is recorded separately from backup success; an outage
+cannot invalidate or repeat the completed backup. A two-second deadline and no
+redirects bound delivery. The external monitor detects missing heartbeats even
+when this host is off. Its grace period must cover the existing three-hour
+exclusive backup operation, during which ten-minute verification jobs cannot
+acquire the deployment lock. Actual missing/recovery notification remains an
+operator acceptance gate, and HTTP acceptance alone cannot prove it.
+
 Primary references:
 
 - [Pinned Java agent supported libraries](https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/v2.31.1/docs/supported-libraries.md)

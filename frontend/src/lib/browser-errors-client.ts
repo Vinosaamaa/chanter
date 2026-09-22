@@ -4,6 +4,15 @@ import type { ErrorEvent, StackFrame } from '@sentry/browser'
 type Configuration = { dsn: string; release: string; environment: string }
 const releasePattern = /^[a-f0-9]{40}$/
 const errorTypes = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError', 'AggregateError'])
+const compiledAssetPattern = /^\/assets\/[A-Za-z0-9_-]{1,180}-[A-Za-z0-9_-]{8,}\.js$/
+
+export function readBrowserErrorAssets(value: unknown, release: string): ReadonlySet<string> | null {
+  if (!value || typeof value !== 'object') return null
+  const manifest = value as { release?: unknown; assets?: unknown }
+  if (manifest.release !== release || !Array.isArray(manifest.assets) || manifest.assets.length < 1 || manifest.assets.length > 500
+    || !manifest.assets.every(asset => typeof asset === 'string' && asset.length <= 191 && compiledAssetPattern.test(asset))) return null
+  return new Set<string>(manifest.assets)
+}
 
 export function readBrowserErrorConfiguration(value: unknown, release: string): Configuration | null {
   try {
@@ -25,7 +34,7 @@ function safeFrames(frames: StackFrame[], origin: string, assets: ReadonlySet<st
     try {
       const url = new URL(frame.filename)
       if (url.origin !== origin || url.username || url.password || url.search || url.hash || !assets.has(url.pathname)
-        || !/^\/assets\/[A-Za-z0-9_-]{1,180}-[A-Za-z0-9_-]{8,}\.js$/.test(url.pathname)
+        || !compiledAssetPattern.test(url.pathname)
         || !Number.isSafeInteger(frame.lineno) || frame.lineno! < 1 || frame.lineno! > 10_000_000
         || !Number.isSafeInteger(frame.colno) || frame.colno! < 1 || frame.colno! > 10_000_000) continue
       accepted.push({ filename: `${origin}${url.pathname}`, lineno: frame.lineno, colno: frame.colno, in_app: true })

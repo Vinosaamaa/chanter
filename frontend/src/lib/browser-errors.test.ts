@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getGlobalScope } from '@sentry/browser'
-import { createBrowserReporter, readBrowserErrorConfiguration } from './browser-errors-client'
+import { createBrowserReporter, readBrowserErrorAssets, readBrowserErrorConfiguration } from './browser-errors-client'
 
 const release = 'a'.repeat(40)
 const origin = 'https://chanter.example'
@@ -8,6 +8,12 @@ const config = { dsn: `https://${'b'.repeat(32)}@o1.ingest.us.sentry.io/1`, rele
 const assets = new Set(['/assets/index-AbC_1234.js', '/assets/route-xYz_1234.js'])
 
 describe('private browser errors', () => {
+  it('rejects a manifest that cannot supply valid hashed release frames', () => {
+    expect(readBrowserErrorAssets({ release, assets: [...assets] }, release)).toEqual(assets)
+    expect(readBrowserErrorAssets({ release, assets: ['/assets/unhashed.js'] }, release)).toBeNull()
+    expect(readBrowserErrorAssets({ release, assets: [] }, release)).toBeNull()
+    expect(readBrowserErrorAssets({ release: 'b'.repeat(40), assets: [...assets] }, release)).toBeNull()
+  })
   it('requires an explicit receiver and the exact compiled release', () => {
     expect(readBrowserErrorConfiguration({}, release)).toBeNull()
     expect(readBrowserErrorConfiguration({ ...config, release: 'c'.repeat(40) }, release)).toBeNull()
@@ -69,5 +75,27 @@ describe('private browser errors', () => {
     reporter.capture(error)
     await reporter.close()
     expect(requests).toBe(6)
+  })
+
+  it('bounds the pending transport independently of the per-minute allowance and closes during a hang', async () => {
+    const requests: RequestInit[] = []
+    let now = 0
+    const reporter = createBrowserReporter(config, origin, assets, (_input, options) => {
+      requests.push(options!)
+      return new Promise((_resolve, reject) => {
+        options!.signal!.addEventListener('abort', () => reject(new Error('private-canary timeout')), { once: true })
+      })
+    }, () => now)
+    const error = new Error('private-canary')
+    error.stack = `privateFunction@${origin}/assets/index-AbC_1234.js:1:2`
+    for (let window = 0; window < 10; window++) {
+      now = window * 60_001
+      for (let attempt = 0; attempt < 20; attempt++) reporter.capture(error)
+    }
+    const started = performance.now()
+    await reporter.close()
+    expect(performance.now() - started).toBeLessThan(3000)
+    expect(requests).toHaveLength(5)
+    expect(requests.every(request => request.credentials === 'omit' && request.referrerPolicy === 'no-referrer')).toBe(true)
   })
 })

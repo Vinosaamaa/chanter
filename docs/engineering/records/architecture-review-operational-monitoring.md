@@ -84,6 +84,22 @@ dashboard expressions; synthetic series verify rule delay, firing, recovery,
 environment separation and traffic-volume thresholds. The runbook records the
 metric translation assumptions and separate host/backup notification gates.
 
+Browser reporting is optional and independently configured. A direct pinned SDK
+client receives only a fixed error type and twelve allowlisted compiled locations
+from the exact release. Global SDK context is rebuilt away before transport.
+Actual browser requests and SDK envelopes prove cookies, referrer, messages and
+private context are absent. Startup/page budgets remain unchanged; the optional
+entry has a separate measured cap. Source maps remain private, and upload requires
+matching script/map hashes plus exact merged-main CI. Provider symbolication is
+still unverified.
+
+The backup command emits an optional content-free heartbeat only after verifying
+the current completed database/configuration backup. A silent receiver is bounded
+to two seconds. Failed delivery is separate from backup success, never causes a
+backup retry and cannot claim an operator received anything. The external grace
+period accounts for existing exclusive three-hour backup work. Provider-side
+missed/recovery notification and the independent HTTPS probe remain launch gates.
+
 The [design](../../architecture/operational-monitoring.md) and
 [implementation record](../../operations/issue-331-change-log.md) distinguish this
 tested coverage from the unfinished final combined proof, provider-side dashboard

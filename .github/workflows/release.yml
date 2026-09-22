@@ -126,7 +126,7 @@ jobs:
             release.json images.tar images.sha256 \
             infra/production/postgres-init.sh infra/production/livekit.yaml \
             infra/production/runtime-lock.json infra/production/release-policy.json \
-            scripts/deploy/host.mjs scripts/deploy/release.mjs scripts/deploy/recovery.mjs scripts/deploy/backup-runner.mjs scripts/deploy/telemetry.mjs scripts/deploy/errors.mjs \
+            scripts/deploy/host.mjs scripts/deploy/release.mjs scripts/deploy/recovery.mjs scripts/deploy/backup-runner.mjs scripts/deploy/telemetry.mjs scripts/deploy/errors.mjs scripts/deploy/heartbeat.mjs \
             scripts/deploy/configuration-backup.mjs scripts/deploy/restore-isolated.mjs tools/restic tools/restic.sha256
           test "$(stat -c %s ".cache/$asset")" -lt 2000000000 || { echo 'Release asset exceeds the free delivery limit.' >&2; exit 1; }
           (cd .cache && sha256sum "$asset" > "$asset.sha256")

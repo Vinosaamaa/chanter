@@ -27,6 +27,10 @@ for (const [key, value] of Object.entries({ CHANTER_BACKUP_S3_ENDPOINT: 'https:/
   backup = backup.replace(new RegExp('^' + key + '=$', 'm'), key + '=' + value);
 }
 fs.writeFileSync(backupFile, backup, { mode: 0o600 });
+// Synthetic public ingestion key: validate enabled rendering without contacting a provider.
+const errorsFile = process.argv[2] + '/runtime/errors.env';
+fs.writeFileSync(errorsFile, fs.readFileSync(errorsFile, 'utf8').replace(/^CHANTER_BROWSER_ERRORS_DSN=$/m,
+  `CHANTER_BROWSER_ERRORS_DSN=https://${'a'.repeat(32)}@o0.ingest.us.sentry.io/0`), { mode: 0o600 });
 JS
 compose_file="$(node scripts/deploy/host.mjs render "$bundle" "$state")"
 node --input-type=module - "$compose_file" <<'JS'
@@ -148,7 +152,9 @@ import fs from 'node:fs';
 const release = JSON.parse(fs.readFileSync(process.argv[2]));
 const config = await fetch('https://staging.chanter.test/operational-config.json');
 assert.equal(config.status, 200); assert.equal(config.headers.get('cache-control'), 'no-store');
-assert.deepEqual(await config.json(), {});
+assert.deepEqual(await config.json(), { release: release.commit, environment: 'staging',
+  dsn: `https://${'a'.repeat(32)}@o0.ingest.us.sentry.io/0` });
+assert.ok(config.headers.get('content-security-policy').includes('https://o0.ingest.us.sentry.io'));
 const assets = await fetch('https://staging.chanter.test/browser-error-assets.json');
 assert.equal(assets.status, 200);
 const manifest = await assets.json();

@@ -19,7 +19,7 @@ export async function startBrowserErrors() {
     if (text.length > 1024) return
     const value = JSON.parse(text)
     if (!value || typeof value.dsn !== 'string' || !value.dsn) return
-    const { readBrowserErrorConfiguration, createBrowserReporter } = await import('./browser-errors-client')
+    const { readBrowserErrorConfiguration, readBrowserErrorAssets, createBrowserReporter } = await import('./browser-errors-client')
     const config = readBrowserErrorConfiguration(value, __CHANTER_RELEASE__)
     if (!config) return
     const assetResponse = await fetch('/browser-error-assets.json', {
@@ -28,10 +28,9 @@ export async function startBrowserErrors() {
     if (!assetResponse.ok || !assetResponse.headers.get('content-type')?.includes('application/json')) return
     const assetText = await assetResponse.text()
     if (assetText.length > 65_536) return
-    const manifest = JSON.parse(assetText)
-    if (manifest.release !== config.release || !Array.isArray(manifest.assets) || manifest.assets.length > 500
-      || !manifest.assets.every((asset: unknown) => typeof asset === 'string' && /^\/assets\/[A-Za-z0-9_-]{1,180}\.js$/.test(asset))) return
-    const reporter = createBrowserReporter(config, window.location.origin, new Set<string>(manifest.assets))
+    const assets = readBrowserErrorAssets(JSON.parse(assetText), config.release)
+    if (!assets) return
+    const reporter = createBrowserReporter(config, window.location.origin, assets)
     capture = reporter.capture
     window.addEventListener('error', event => reportBrowserError(event.error))
     window.addEventListener('unhandledrejection', event => reportBrowserError(event.reason))

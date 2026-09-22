@@ -9,6 +9,7 @@ import { modules, databaseModules, validateRelease, validateConfig, composeFor, 
 import { assertMigrationFloor, backupEnvironment, backupUnits, summarizeBackup } from './recovery.mjs';
 import { telemetryEnvironment } from './telemetry.mjs';
 import { errorEnvironment, browserErrorConfiguration } from './errors.mjs';
+import { backupHeartbeatUrl, sendBackupHeartbeat } from './heartbeat.mjs';
 import { configurationBackupEnvironment, runConfigurationBackup, verifyConfigurationBackup } from './configuration-backup.mjs';
 
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -24,7 +25,7 @@ const recoveryDefaults = () => ({
     CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret(),
     CHANTER_CONFIG_BACKUP_PASSWORD: secret() },
   telemetry: { CHANTER_TELEMETRY_ENDPOINT: '', CHANTER_TELEMETRY_AUTHORIZATION: '' },
-  errors: { CHANTER_ERRORS_DSN: '', CHANTER_BROWSER_ERRORS_DSN: '' },
+  errors: { CHANTER_ERRORS_DSN: '', CHANTER_BROWSER_ERRORS_DSN: '', CHANTER_BACKUP_HEARTBEAT_URL: '' },
 });
 const envText = values => Object.entries(values).map(([key, value]) => {
   if (!/^[A-Z][A-Z0-9_]*$/.test(key) || /[\r\n\0]/.test(value)) throw new Error('Invalid environment key or multiline value');
@@ -137,6 +138,7 @@ export function validateRuntime(stateDir) {
     if (name === 'errors') {
       errorEnvironment(env);
       browserErrorConfiguration(env, '0'.repeat(40), config.environment);
+      backupHeartbeatUrl(env);
       continue;
     }
     if (name === 'backup') {
@@ -453,8 +455,14 @@ async function main(args) {
   } else if (command === 'stop' && first) {
     stopEnvironment(path.resolve(first));
     console.log('Environment stopped; persistent volumes and release receipts retained.');
-  } else if (command === 'backup' && first) {
-    console.log(JSON.stringify(backupDatabase(path.resolve(first), second ?? 'incr')));
+    } else if (command === 'backup' && first) {
+      const state = path.resolve(first);
+      const receipt = backupDatabase(state, second ?? 'incr');
+      const heartbeat = await sendBackupHeartbeat(readEnv(path.join(state, 'runtime/errors.env')),
+        json(path.join(state, 'config.json')).environment, receipt);
+      writeJson(path.join(state, 'backup-heartbeat-status.json'), { ...heartbeat, checkedAt: new Date().toISOString() });
+      console.log(JSON.stringify(receipt));
+      if (heartbeat.status === 'unconfirmed') throw new Error('Backup verified; external heartbeat acceptance is unconfirmed');
   } else if (command === 'prepare-recovery' && first) {
     prepareRecovery(path.resolve(first));
     console.log('Missing recovery settings prepared. Existing runtime secrets retained; configure the private backup repository before deployment.');

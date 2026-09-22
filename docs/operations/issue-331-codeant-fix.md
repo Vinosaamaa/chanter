@@ -59,3 +59,24 @@ preflight. That locked, idempotent command creates missing disabled error settin
 without rotating existing secrets. The legacy-state regression now explicitly
 removes and restores `errors.env`. Preflight remains read-only rather than
 silently changing an operator's runtime configuration.
+
+The browser review identified inconsistent filename validation between manifest
+loading and frame filtering. One shared parser now enforces the hashed filename
+format and rejects empty/stale/unhashed manifests. The staged deployment fixture
+also enables a synthetic browser key and checks that the public settings, CSP
+and compiled manifest refer to the same release without contacting any provider.
+A stalled-transport test advances through ten report windows and proves the SDK
+still admits only five pending sends and closes within its bound.
+
+The optional bundle allowance is intentionally an exact entry-file allowance.
+All shared/vendor imports remain counted against the unchanged core budget, and
+the test proves a shared dependency cannot escape that budget. Initial and named
+page import-graph limits remain enforced. It is not described as a complete lazy
+feature transfer cap.
+
+Source-map moves are not failure-atomic. A failed move/build is rejected; the
+private artifact's success manifest is written only after every map has moved.
+The image rejects remaining public maps, and upload separately validates every
+file/hash and the served build. Partial failed build artifacts are preserved for
+inspection and cannot satisfy these gates. No additional rollback/cleanup mechanism
+is required to publish a failed build.

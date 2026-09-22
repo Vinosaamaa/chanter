@@ -130,3 +130,18 @@ builds. Credentials remain in the child environment and provider output is never
 published. Nine release-tool tests pass, and the verifier accepts the actual built
 artifact. The checked-in workflow is disabled without an operator token. No
 provider upload has run and no symbolicated error/notification has been observed.
+
+All 318 frontend unit tests and the full hosted application suite pass at
+`855234db`, including real browser requests from the optional error client and
+disabled-client isolation. The bounded backup heartbeat now follows a verified
+backup/configuration receipt. Sixty deployment tests pass, including an actual
+HTTP receiver, silent-receiver cancellation, stale/failed receipt rejection and
+separation of backup success from unconfirmed monitor acceptance. The release
+bundle includes the heartbeat helper. The external HTTPS probe, free-provider
+configuration and forced missing/recovery operator notifications remain unverified.
+
+Both packaged native release stages also passed at `855234db`. Follow-up review
+unified browser manifest/frame validation and added an independently bounded
+stalled-transport test. Enabled staged configuration now verifies matching public
+settings, CSP and compiled filenames. Fresh exact-head checks cover these final
+changes plus the private upload and backup-heartbeat additions.

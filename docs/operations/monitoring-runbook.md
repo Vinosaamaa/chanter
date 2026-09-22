@@ -45,13 +45,31 @@ traffic is not success. Missing series remain unknown, never green zeros.
    Confirm production rules exclude staging. Verify all ten expected services.
 5. Configure an independent external HTTPS probe and missing-backup-heartbeat
    monitor that run when the host is off. The probe must check the owned hostname,
-   valid certificate and expected success response. A backup heartbeat may be
-   sent only after `host.mjs backup STATE check` verifies a fresh completed backup
-   and matching encrypted configuration. No heartbeat implementation or provider
-   receipt is claimed by the metric rules. Those remain public-launch gates.
+   valid certificate and expected success response. Prefer the public auth
+   verification-options endpoint so the check reaches gateway/auth, rather than
+   measuring only static-file delivery. This is not a full user journey or proof
+   of every source database. Inspect the actual provider's supported assertions.
+6. Create Sentry cron monitor `chanter-backup-verification` with a ten-minute
+   interval and 190-minute grace. The grace covers the existing exclusive
+   three-hour backup deadline plus scheduler delay; it deliberately does not
+   promise immediate failure detection. Configure the operator notification and
+   resolved notice. Copy its HTTPS ingest URL into `CHANTER_BACKUP_HEARTBEAT_URL`
+   in private `runtime/errors.env`, then redeploy. The URL ends in
+   `/api/PROJECT/cron/chanter-backup-verification/PUBLIC_KEY/`; never post it.
+   The owning backup command sends success only after verifying a fresh completed
+   chain and matching encrypted configuration. A failed verification sends no
+   success. A two-second receiver failure preserves the successful backup and
+   records `unconfirmed` in a separate private `backup-heartbeat-status.json`.
+   Ingestion acceptance alone does not prove provider processing or notification.
+7. Force a missed heartbeat in a separate staging monitor and receive its alert
+   and recovery notification. Then prove that the production monitor and HTTPS
+   probe still alert with the host unavailable. Check actual free monitor and
+   environment quotas before configuring both environments. None of those
+   account-side receipts exists yet.
 
 The metric conversion contract is documented by
 [Grafana OTLP format considerations](https://grafana.com/docs/grafana-cloud/observe-and-act/send-data/otlp/otlp-format-considerations/).
+The heartbeat follows [Sentry's HTTP cron integration](https://docs.sentry.io/product/monitors-and-alerts/monitors/crons/getting-started/http/).
 Offline alert fixtures run through the pinned Prometheus `promtool test rules`
 command. They test rule behavior; they do not prove email or provider delivery.
 
