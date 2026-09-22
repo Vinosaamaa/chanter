@@ -38,7 +38,18 @@ export function verifyRestoredDatabase(receipt, run = runDocker) {
   return value.id;
 }
 
-function ownedContainers(compose, receipt, run, requireNetwork = false) {
+function ownedNetwork(compose, receipt, run, expectedId = null) {
+  const network = JSON.parse(run(['network', 'inspect', '--format',
+    '{"id":{{json .Id}},"name":{{json .Name}},"internal":{{json .Internal}},"labels":{{json .Labels}}}', compose.networks.application.name]));
+  if (!/^[a-f0-9]{64}$/.test(network.id ?? '') || (expectedId !== null && network.id !== expectedId)
+      || network.name !== compose.networks.application.name || network.internal !== true
+      || network.labels?.['chanter.recovery'] !== receipt.container
+      || network.labels?.['com.docker.compose.project'] !== compose.name
+      || network.labels?.['com.docker.compose.network'] !== 'application') fail();
+  return network.id;
+}
+
+function ownedContainers(compose, receipt, run, networkId = null) {
   const raw = run(['ps', '-a', '--filter', `label=com.docker.compose.project=${compose.name}`, '--format', '{{.ID}}']).trim();
   const ids = raw ? raw.split(/\r?\n/) : [];
   if (ids.length > Object.keys(compose.services).length) fail();
@@ -54,10 +65,12 @@ function ownedContainers(compose, receipt, run, requireNetwork = false) {
           && mount.Destination === '/var/lib/postgresql/data'))
         || (source === 'postgres' && !value.mounts.some(mount => mount.Name === receipt.volume))) fail();
     const networks = Object.keys(value.networks ?? {});
-    if (networks.some(name => name !== compose.networks.application.name) || (requireNetwork && networks.length !== 1)) fail();
+    if (networks.some(name => name !== compose.networks.application.name)
+        || (networkId !== null && (networks.length !== 1
+          || value.networks[networks[0]].NetworkID !== networkId))) fail();
     seen.add(source);
   }
-  if (requireNetwork && seen.size !== Object.keys(compose.services).length) fail();
+  if (networkId !== null && seen.size !== Object.keys(compose.services).length) fail();
   return ids;
 }
 
@@ -118,22 +131,20 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
     const command = args => run(['compose', '--project-name', compose.name, '-f', composeFile, ...args], 210_000);
     command(['config', '--quiet']);
     const existingNetwork = run(['network', 'ls', '--filter', `name=^${compose.networks.application.name}$`, '--format', '{{.Name}}']).trim();
-    if (existingNetwork) {
-      const network = JSON.parse(run(['network', 'inspect', '--format', '{"internal":{{json .Internal}},"labels":{{json .Labels}}}', compose.networks.application.name]));
-      if (!network.internal || network.labels?.['chanter.recovery'] !== receipt.container) fail();
-    }
+    let networkId = existingNetwork ? ownedNetwork(compose, receipt, run) : null;
     const prior = ownedContainers(compose, receipt, run);
     if (prior.length) run(['stop', ...prior], 60_000);
     run(['stop', restoredContainerId], 30_000);
     attempt.status = 'applying-isolated'; save(path.join(attemptDir, 'attempt.json'), attempt);
     command(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'postgres']);
+    networkId = ownedNetwork(compose, receipt, run, networkId);
     for (const source of SOURCES) {
       if (command(['run', '--rm', '--no-deps', '--entrypoint', 'java', `${source}-service`,
         '-cp', '/app/helpers:/app/classes:/app/lib/*', 'RecoverySchema']).trim() !== 'RECOVERY_SCHEMA_VERIFIED') fail();
     }
     for (const source of SOURCES) command(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', `${source}-service`]);
-    ownedContainers(compose, receipt, run, true);
-    if (run(['network', 'inspect', '--format', '{{json .Internal}}', compose.networks.application.name]).trim() !== 'true') fail();
+    ownedNetwork(compose, receipt, run, networkId);
+    ownedContainers(compose, receipt, run, networkId);
     if (command(['exec', '-T', 'auth-service', 'java', '-cp', '/app/helpers', 'RecoveryIsolation']).trim()
         !== 'RECOVERY_SOURCE_LISTENERS_PRIVATE') fail();
     const clients = Object.fromEntries(SOURCES.map(source => [source, clientFactory({ source, environment, composeFile, project: compose.name })]));
@@ -141,8 +152,8 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
     if (checkpoint !== null) { exactFields(checkpoint, ['revision', 'digest', 'checkpointId']); nonzeroUuid(checkpoint.checkpointId); }
     const authorityResult = await recoverCurrentAuthority({ repository, clients, recoveryId: attempt.recoveryId,
       requiredAuthority: selected.manifest.authority, restoredCheckpoint: checkpoint && { revision: checkpoint.revision, digest: checkpoint.digest } });
-    const completed = ownedContainers(compose, receipt, run, true);
-    if (run(['network', 'inspect', '--format', '{{json .Internal}}', compose.networks.application.name]).trim() !== 'true') fail();
+    ownedNetwork(compose, receipt, run, networkId);
+    const completed = ownedContainers(compose, receipt, run, networkId);
     run(['stop', ...completed], 60_000);
     const result = { ...authorityResult, status: 'current-authority-applied-isolated', isolationVerified: true };
     save(path.join(attemptDir, 'authority-receipt.json'), result);

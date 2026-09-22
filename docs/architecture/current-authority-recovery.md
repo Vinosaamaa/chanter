@@ -149,6 +149,122 @@ during these stages. Necessary terminal cleanup is source-owned recovery work,
 not permission to resume ordinary event dispatch. The #251 handlers must expose
 that distinction. This orchestrator does not manufacture their effects.
 
+## Media-owned object recovery contract
+
+This is the required next contract, not an implemented inventory or permission
+to restore objects. Media owns resource identity and lifecycle. Its current
+`course_resources` rows hold `storage_key`, `byte_size` and `sha256`, but no
+provider version ID. Account export and bucket listing cannot replace this source
+inventory. Account export has viewer scope; bucket listing cannot establish which
+resource owns an object or whether current deletion authority forbids it.
+
+The existing S3 adapter creates keys under
+`resources/v1/<course>/<resource>/<random-object>` with `If-None-Match: *`.
+Ordinary available content therefore has a stable key, size and digest. This
+does not prove that a provider administrator cannot overwrite bytes. Legacy
+migration allocates a different key and changes the source row; an active or
+uncertain migration is not a stable recovery checkpoint. The adapter does not
+capture a provider version ID. The inventory must return that field as explicit
+`null`, meaning unknown, rather than substituting an ETag, timestamp or digest.
+
+Media must expose a private, source-owned inventory with these semantics:
+
+- Bind every page to one inventory identity, exact schema/release and database
+  recovery point, storage namespace fingerprint and applied journal authority.
+  The database backup must reference the completed encrypted inventory manifest.
+- Read canonical rows with stable keyset pagination. Return at most 500 entries
+  and 256 KiB per page, with an explicit continuation and terminal page. An
+  initial 250,000-entry limit and bounded operation deadline reject overflow;
+  the existing byte budget alone does not bound the number of tiny resources.
+- Each extant-object entry names its resource and course, storage backend/key,
+  exact byte size, lowercase SHA-256, nullable provider version ID, original
+  lifecycle state, `storage_write_settled` and explicit recovery disposition.
+  A terminal entry identifies its source fence and journal authority; historical
+  object fields are included only when the source still knows them. Never invent
+  a key or hash for a deleted row. Keep these identifiers inside the encrypted
+  archive and authenticated private protocol, out of operator logs.
+- Distinguish extant bytes, terminally deleted content and unresolved writes.
+  Include private and quarantined resources that still own bytes. Public
+  `AVAILABLE` filtering would silently lose private retained content. A source
+  row that lacks a stable hash/key or has an uncertain dispatched PUT must fail
+  qualification instead of disappearing from the inventory.
+- Terminal fences remain canonical source state even when an old resource row
+  is gone. Apply current RESOURCE, ACCOUNT and STUDY_SERVER authority through
+  the owning participants before deciding which historical objects may return.
+  Unresolved ownership reconciliation blocks the affected recovery. A deleted
+  object is never eligible merely because a backup still contains its bytes.
+
+The first supported capture should use a verified maintenance checkpoint.
+The existing deployment operation lock serializes the operator command, but it
+does not stop application writers. Stop ingress and ordinary workers, settle
+all previously dispatched storage writes, and verify the source remains fenced
+before exporting inventory and taking the linked database backup. An uncertain
+  provider outcome prevents the checkpoint, even after the API process stops.
+  `storage_write_settled` must be true; stopping a process does not prove a
+  dispatched remote write has ended. Capture and verify required object
+bytes while that state remains stable, then publish the backup linkage only
+after every page and object passes read-back. Define and test the exact bounded
+source operation with #251 before enabling it. This choice trades maintenance
+time for a small, testable first contract; no such command is enabled yet.
+
+An online database backup remains database-only evidence until it has a proven
+object-coverage protocol. Capturing inventory before the backup can omit new
+uploads; capturing afterward can omit rows or bytes deleted during the backup.
+A read transaction alone cannot make remote object writes atomic. Do not add a
+second ingestion retry loop or assume a list performed at a convenient time
+solves this. Continuous recovery points would require separate proof that every
+resource reachable at the selected database point has an archived exact copy or
+a current authoritative terminal disposition.
+
+Use the already pinned restic implementation for encrypted object copies in a
+separate configured resource-backup prefix. Stream one object at a time with an
+exact size bound, recompute SHA-256 over the complete bytes, and bind its immutable
+restic snapshot reference to the inventory entry. The current upload ceiling is
+10 MiB per object; a provider that streams extra data must be rejected at that
+bound. Hash the complete decrypted read-back before publishing the manifest.
+ETags, object metadata, successful PUT responses and restic exit status are
+insufficient by themselves. This manifest records backup evidence; it does not
+become a parallel resource catalogue or grant access.
+
+During recovery, replay current authority first and obtain a fresh source-owned
+inventory from the isolated restored database. Every eligible extant object must
+match a retained backup copy by namespace/key, size and digest. Missing copies,
+changed bytes, unexpected duplicate keys or unresolved source dispositions keep
+recovery closed. Restore only those eligible objects into the reviewed private
+destination with create-only writes. If a key already exists, verify its full
+bytes and reject a mismatch; never overwrite it to make the check pass. Re-read
+the restored bytes, recheck source inventory and current authority, and preserve
+the original availability/quarantine state and ordinary live authorization.
+Changing storage namespace needs an explicit source-owned migration because the
+current media budget binds its namespace. No destination remapping is implicit.
+
+Current deletion authority overrides every historical copy and checkpoint.
+`PRESERVE_MODERATION_RECORDS_V1` preserves collected moderation evidence, notes
+and audit, not original resource objects. Retained encrypted backup bytes remain
+subject to the reviewed backup deletion window; they must not be described as
+physically erased while retained. Pruning must preserve copies required by each
+retained, qualified database point without making deleted content restorable to
+users. Its retention policy and independent journal protection are release gates.
+
+Immutable keys plus verified encrypted copies can provide exact-byte recovery
+without paid provider versioning. This is a technical property of the proposed
+protocol, not a verified free-provider capacity claim. The existing 8,000,000,000
+byte live-storage cap does not include retained deleted/replaced copies, database
+chains, WAL, configuration, journal history or repository overhead. Many tiny
+objects also consume request budget. Measure all retained unique bytes, request
+and egress use, recovery host space and deadlines against the actual independent
+provider allocation before enabling capture. Provider accounts, retention and
+capacity are still unconfigured; no free quota or protection promise is assumed.
+
+Required fixture proof includes a private available object, a quarantined object,
+a missing copy, a corrupted copy, a mismatched existing destination, an unknown
+version ID, concurrent upload/delete attempts during capture and a delayed PUT
+whose outcome is unknown. Restore an older database plus a newer RESOURCE and
+parent-scope deletion prefix and prove deleted bytes never become eligible.
+Repeat capture/read-back through actual encrypted local storage and the owning
+PostgreSQL transactions. Provider retention and original-writer fencing still
+require independent operational proof after those fixtures pass.
+
 ## Failure and retention rules
 
 Keep failed recovery state and its owned volumes for inspection. Stop only

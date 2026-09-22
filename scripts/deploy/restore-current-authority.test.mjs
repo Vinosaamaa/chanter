@@ -80,9 +80,10 @@ test('authority application preserves attempt identity, private configuration an
   const project = 'chanter-recovery-11111111111141118111111111111111', network = `${id}-authority`;
   const containers = new Map(), calls = [];
   let rejectSource = false, isolationResult = 'RECOVERY_SOURCE_LISTENERS_PRIVATE', containerTamper = null, schemaFailure = false;
-  let originalNameReplaced = false;
+  let originalNameReplaced = false, networkTamper = null, sourceClientCalls = 0, replaceNetworkAfterPin = false, networkReads = 0;
+  const networkId = 'f'.repeat(64);
   const inspect = source => ({ image: release.images[source], labels: { 'chanter.recovery': id,
-    'com.docker.compose.project': project, 'com.docker.compose.service': source }, networks: { [network]: {} }, ports: {},
+    'com.docker.compose.project': project, 'com.docker.compose.service': source }, networks: { [network]: { NetworkID: networkId } }, ports: {},
     mounts: source === 'postgres' ? [{ Type: 'volume', Name: receipt.volume, Destination: '/var/lib/postgresql/data' }] : [] });
   const run = args => {
     calls.push(args);
@@ -92,7 +93,13 @@ test('authority application preserves attempt identity, private configuration an
     if (args[0] === 'inspect') return JSON.stringify(args.at(-1) === id
       ? { ...inspect('postgres'), id: originalContainerId, networks: {} } : { ...inspect(containers.get(args.at(-1))), ...containerTamper });
     if (args[0] === 'ps') return args.includes(`label=com.docker.compose.project=${project}`) ? [...containers.keys()].join('\n') : '';
-    if (args[0] === 'network') return args[1] === 'inspect' ? 'true' : '';
+    if (args[0] === 'network') {
+      if (args[1] !== 'inspect') return '';
+      networkReads++;
+      return JSON.stringify({ id: replaceNetworkAfterPin && networkReads > 1 ? '0'.repeat(64) : networkId,
+        name: network, internal: true, labels: { 'chanter.recovery': id,
+          'com.docker.compose.project': project, 'com.docker.compose.network': 'application' }, ...networkTamper });
+    }
     if (args[0] === 'compose' && args.includes('up')) containers.set(crypto.createHash('sha256').update(args.at(-1)).digest('hex').slice(0, 12), args.at(-1));
     if (args.includes('RecoverySchema')) {
       if (schemaFailure && args.includes('media-service')) throw Error('Restored checksum mismatch');
@@ -108,11 +115,11 @@ test('authority application preserves attempt identity, private configuration an
   const repository = { kind: 'fixture', environment: 'staging', manifests: () => [{ snapshotId: 'd'.repeat(64), authority: GENESIS }],
     read: () => ({ schemaVersion: 1, environment: 'staging', checkpointId, authority: GENESIS, createdAt: '2026-09-22T00:00:00.000Z', pages: [] }) };
   const options = { run, loadConfiguration: () => snapshot, repositoryFactory: () => repository,
-    clientFactory: ({ source }) => ({ kind: 'fixture', checkpoint: async () => null,
+    clientFactory: ({ source }) => { sourceClientCalls++; return ({ kind: 'fixture', checkpoint: async () => null,
       receipt: async () => ({ schemaVersion: 1, source, authority: GENESIS, pendingTargets: 0, preservedTargets: 0 }),
       reapply: async () => { if (rejectSource && source === 'message') throw Error('private-failure-canary'); },
       invalidate: async request => ({ schemaVersion: 1, source, ...request, invalidatedAt: '2026-09-22T00:00:00Z',
-        scope: source === 'auth' ? 'ALL_BROWSER_SESSIONS' : 'ALL_PENDING_NATIVE_REQUESTS' }) }) };
+        scope: source === 'auth' ? 'ALL_BROWSER_SESSIONS' : 'ALL_PENDING_NATIVE_REQUESTS' }) }); } };
   const result = await applyRecoveryAuthority(input, options);
   assert.equal(result.publicCutoverAllowed, false);
   assert.equal(result.isolationVerified, true);
@@ -153,7 +160,16 @@ test('authority application preserves attempt identity, private configuration an
   await assert.rejects(applyRecoveryAuthority(input, options));
   assert.equal(calls.filter(args => args.includes('up') && args.at(-1) !== 'postgres').length, 0,
     'One invalid restored schema must prevent every source application from starting');
-  schemaFailure = false; originalNameReplaced = true; calls.length = 0;
+  schemaFailure = false;
+  for (const tamper of [{ labels: {} }, { internal: false }, { name: 'foreign' }, { id: '0'.repeat(64) }]) {
+    networkTamper = tamper; sourceClientCalls = 0;
+    await assert.rejects(applyRecoveryAuthority(input, options));
+    assert.equal(sourceClientCalls, 0, 'A substituted network cannot reach participant replay');
+  }
+  networkTamper = null; replaceNetworkAfterPin = true; networkReads = 0; sourceClientCalls = 0;
+  await assert.rejects(applyRecoveryAuthority(input, options));
+  assert.equal(sourceClientCalls, 0, 'A replacement retaining the labels still fails the pinned network identity');
+  replaceNetworkAfterPin = false; originalNameReplaced = true; calls.length = 0;
   await assert.rejects(applyRecoveryAuthority(input, options));
   assert.equal(calls.some(args => args.includes('up')), false,
     'Disappearance of the pinned container must stop recovery even if its name was replaced');
