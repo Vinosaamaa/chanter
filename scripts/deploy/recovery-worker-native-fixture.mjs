@@ -26,8 +26,10 @@ assert.equal(docker(['inspect', '--format', '{{index .Config.Labels "com.docker.
 assert.equal(docker(['inspect', '--format', '{{index .Config.Labels "com.docker.compose.service"}}', postgres]).trim(), 'postgres');
 const network = `${identity}-authority`, project = `chanter-recovery-${token.replaceAll('-', '')}`;
 const file = path.join(root, 'compose.json');
-let compiler, networkCreated = false, connected = false, prepared = false;
+let compiler, networkCreated = false, connected = false, prepared = false, modelWriteGuard = false;
 const compose = args => docker(['compose', '--project-name', project, '-f', file, ...args]);
+const agentSql = statement => original(['exec', '-T', 'postgres', 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'chanter_admin',
+  '-d', 'chanter_agent', '-Atc', statement]).trim();
 try {
   // No original application can change fixture queues while recovery activation is being checked.
   original(['stop', ...modules, 'frontend', 'livekit', 'clamav', 'redis']);
@@ -98,6 +100,20 @@ try {
   } finally { sql("DELETE FROM flyway_schema_history WHERE version='999999'"); }
   assert.equal(validateSchema('auth'), 'RECOVERY_SCHEMA_VERIFIED');
   console.log('All packaged source schemas validate; changed, missing and ahead migrations reject without migration');
+  // Statement triggers reject even a zero-row UPDATE. Startup must not initialize restored model state.
+  agentSql(`BEGIN;
+    CREATE FUNCTION recovery_fixture_no_model_write() RETURNS trigger LANGUAGE plpgsql AS $guard$
+      BEGIN RAISE EXCEPTION 'RECOVERY_MODEL_WRITE_FORBIDDEN'; END; $guard$;
+    CREATE TRIGGER recovery_fixture_model_catalog BEFORE INSERT OR UPDATE OR DELETE OR TRUNCATE
+      ON embedding_models FOR EACH STATEMENT EXECUTE FUNCTION recovery_fixture_no_model_write();
+    CREATE TRIGGER recovery_fixture_model_control BEFORE INSERT OR UPDATE OR DELETE OR TRUNCATE
+      ON embedding_control FOR EACH STATEMENT EXECUTE FUNCTION recovery_fixture_no_model_write();
+    COMMIT;`);
+  modelWriteGuard = true;
+  assert.throws(() => agentSql('UPDATE embedding_control SET active_model_id=active_model_id WHERE id=1'),
+    error => String(error.stderr).includes('RECOVERY_MODEL_WRITE_FORBIDDEN'), 'The actual database must reject ordinary model initialization');
+  assert.throws(() => agentSql('DELETE FROM embedding_models WHERE false'),
+    error => String(error.stderr).includes('RECOVERY_MODEL_WRITE_FORBIDDEN'), 'The model catalog guard must be active');
   for (const source of SOURCES) {
     const name = `${source}-service`;
     try { compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', name]); }
@@ -128,11 +144,17 @@ try {
     assert.equal(Object.keys(ports ?? {}).length, 0);
     console.log(`Recovery mode starts ${source} with no ordinary scheduled worker`);
   }
+  console.log('Recovery agent startup leaves model catalog and control unchanged under database-enforced write denial');
   assert.equal(docker(['network', 'inspect', '--format', '{{json .Internal}}', network]).trim(), 'true');
   assert.equal(compose(['exec', '-T', 'auth-service', 'java', '-cp', '/app/helpers', 'RecoveryIsolation']).trim(),
     'RECOVERY_SOURCE_LISTENERS_PRIVATE', 'A successful helper must establish container-local source HTTP');
 } finally {
   if (prepared) compose(['down', '--remove-orphans']);
+  if (modelWriteGuard) agentSql(`BEGIN;
+    DROP TRIGGER recovery_fixture_model_catalog ON embedding_models;
+    DROP TRIGGER recovery_fixture_model_control ON embedding_control;
+    DROP FUNCTION recovery_fixture_no_model_write();
+    COMMIT;`);
   if (connected) docker(['network', 'disconnect', network, postgres]);
   if (networkCreated) {
     assert.equal(docker(['network', 'inspect', '--format', '{{index .Labels "chanter.recovery"}}', network]).trim(), identity);

@@ -426,6 +426,10 @@ They contain no restored objects and cannot establish absence or physical erasur
 Production retains its configured S3 client; construction makes no provider call.
 Normal email, outbox, ingestion and media flags are also disabled explicitly.
 External error reporting is disabled and all telemetry exporters are `none`.
+The embedding router remains available to source cleanup, but ordinary model
+registration and index initialization are absent in recovery. Native startup
+verification places statement-level write-denial guards on the model catalog
+and control tables, including zero-row updates, before starting the sources.
 
 The Linux-only `restore-current-authority.mjs` command accepts the matching
 bundle, private bootstrap settings, existing isolated restore directory,

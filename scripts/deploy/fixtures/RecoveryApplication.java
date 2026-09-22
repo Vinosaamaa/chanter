@@ -19,8 +19,9 @@ public final class RecoveryApplication {
                 Class<?> type = factory.getType(name, false);
                 if (type == null) continue;
                 if (type.getName().equals("com.chanter.common.telemetry.QueueMetrics")
-                        || type.getName().equals("com.chanter.common.telemetry.PrivateErrorReporter"))
-                    throw new IllegalStateException("External reporting or ordinary queue sampling remains during recovery");
+                        || type.getName().equals("com.chanter.common.telemetry.PrivateErrorReporter")
+                        || type.getName().equals("com.chanter.agent.application.EmbeddingModelInitializer"))
+                    throw new IllegalStateException("Ordinary initialization or reporting remains during recovery");
                 for (var method : ReflectionUtils.getAllDeclaredMethods(type)) {
                     if (AnnotatedElementUtils.hasAnnotation(method, Scheduled.class)
                             || AnnotatedElementUtils.hasAnnotation(method, Schedules.class))
