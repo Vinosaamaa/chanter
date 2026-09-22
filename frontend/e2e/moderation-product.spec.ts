@@ -123,11 +123,15 @@ test('real moderation, active audio revocation and verified-email appeal', async
     const sendToken = await post<Media>(learner, mediaPath, learnerSession)
     expect(new URL(sendToken.serverUrl).origin).toBe(origin.replace('http:', 'ws:'))
     expect(await receiver.evaluate(async media => {
-      try { await window.moderationAudio.connect(media.serverUrl, media.participantToken, false); return true } catch { return false }
-    }, receiveToken)).toBe(true)
+      try { await window.moderationAudio.connect(media.serverUrl, media.participantToken, false); return { connected: true } }
+      catch (error) { const failure = error as { reason?: unknown; status?: unknown }; return { connected: false,
+        reason: typeof failure.reason === 'number' ? failure.reason : null, status: typeof failure.status === 'number' ? failure.status : null } }
+    }, receiveToken)).toEqual({ connected: true })
     expect(await sender.evaluate(async media => {
-      try { await window.moderationAudio.connect(media.serverUrl, media.participantToken, true); return true } catch { return false }
-    }, sendToken)).toBe(true)
+      try { await window.moderationAudio.connect(media.serverUrl, media.participantToken, true); return { connected: true } }
+      catch (error) { const failure = error as { reason?: unknown; status?: unknown }; return { connected: false,
+        reason: typeof failure.reason === 'number' ? failure.reason : null, status: typeof failure.status === 'number' ? failure.status : null } }
+    }, sendToken)).toEqual({ connected: true })
     await expect.poll(async () => (await sender.evaluate(() => window.moderationAudio.stats())).sent, { timeout: 20000 }).toBeGreaterThan(0)
     await expect.poll(async () => (await receiver.evaluate(() => window.moderationAudio.stats())).energy, { timeout: 20000 }).toBeGreaterThan(0)
     const before = await receiver.evaluate(() => window.moderationAudio.stats())
@@ -145,7 +149,9 @@ test('real moderation, active audio revocation and verified-email appeal', async
     await operator.getByLabel('Confirm target reference', { exact: false }).fill(learnerId)
     const restricted = operator.waitForResponse(response => new URL(response.url()).pathname.endsWith(`/reports/${report.id}/restrictions`) && response.request().method() === 'POST')
     await operator.getByRole('button', { name: 'Apply restriction', exact: true }).click()
-    expect((await restricted).ok()).toBe(true)
+    const restrictionResponse = await restricted
+    expect(restrictionResponse.ok()).toBe(true)
+    const restriction = (restrictionResponse.request().postDataJSON() as { operationId: string }).operationId
     await expect(operator.getByText('Restriction saved.', { exact: true })).toBeVisible()
     await expect.poll(() => sender.evaluate(() => window.moderationAudio.stats()), { timeout: 30000 }).toMatchObject({ connected: false })
     await expect.poll(() => receiver.evaluate(() => window.moderationAudio.stats()), { timeout: 10000 }).toMatchObject({ remoteParticipants: 0 })
@@ -170,16 +176,15 @@ test('real moderation, active audio revocation and verified-email appeal', async
     await receiver.evaluate(() => window.moderationAudio.disconnect())
 
     // Restriction notices carry a non-secret reference; only the delivered appeal link grants submission.
-    const notice = await emailText(learner, 'Chanter moderation restriction')
-    const restriction = notice.match(/restriction=([a-f0-9-]{36})/i)?.[1]
-    expect(restriction).toBeDefined()
+    const notice = await emailText(learner, 'Chanter moderation restriction', restriction)
+    expect(notice.includes(`restriction=${restriction}`)).toBe(true)
     const appeal = await newPage()
     await measure(appeal, `/appeal?restriction=${restriction}`, 'appeal', network)
     await appeal.getByLabel('Account email').fill(learnerEmail)
     await pixels(appeal, info, 'appeal-request')
     await appeal.getByRole('button', { name: 'Send appeal link' }).click()
     await expect(appeal.getByRole('status')).toContainText('an appeal link will arrive shortly')
-    const delivered = await emailText(appeal, 'Review your Chanter restriction')
+    const delivered = await emailText(appeal, 'Review your Chanter restriction', restriction)
     const link = delivered.match(/http:\/\/127\.0\.0\.1:9419\/appeal#token=[A-Za-z0-9_-]+/)?.[0]
     expect(Boolean(link)).toBe(true)
     await appeal.evaluate(url => { location.assign(url) }, link!)
@@ -250,6 +255,11 @@ async function pixels(page: Page, info: TestInfo, name: string) {
     const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     expect(audit.violations.map(item => ({ id: item.id, impact: item.impact }))).toEqual([])
     await info.attach(`${name}-${width}`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+    if (name === 'safety') {
+      await page.getByRole('heading', { name: 'Blocked accounts', exact: true }).scrollIntoViewIfNeeded()
+      await info.attach(`${name}-blocked-${width}`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+      await page.getByRole('heading', { level: 1 }).scrollIntoViewIfNeeded()
+    }
   }
   await page.setViewportSize({ width: 1280, height: 900 })
 }
@@ -261,16 +271,17 @@ function totp(secret: string) {
   const digest = createHmac('sha1', key).update(counter).digest(); const offset = digest[digest.length - 1] & 15
   return String((digest.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, '0')
 }
-async function emailText(page: Page, subject: string) {
+async function emailText(page: Page, subject: string, restriction: string) {
   let text = ''
   await expect.poll(async () => {
     const response = await page.request.get('http://127.0.0.1:8025/api/v1/messages?limit=100')
     expect(response.ok()).toBe(true)
     const inbox = await response.json() as { messages: Array<{ ID: string; Subject: string; To: Array<{ Address: string }> }> }
-    const mail = inbox.messages.find(item => item.Subject === subject && item.To.some(to => to.Address === learnerEmail))
-    if (!mail) return false
-    const detail = await (await page.request.get(`http://127.0.0.1:8025/api/v1/message/${encodeURIComponent(mail.ID)}`)).json() as { Text: string }
-    text = detail.Text; return true
+    for (const mail of inbox.messages.filter(item => item.Subject === subject && item.To.some(to => to.Address === learnerEmail))) {
+      const detail = await (await page.request.get(`http://127.0.0.1:8025/api/v1/message/${encodeURIComponent(mail.ID)}`)).json() as { Text: string }
+      if (detail.Text.includes(`Restriction reference: ${restriction}`)) { text = detail.Text; return true }
+    }
+    return false
   }, { timeout: 30000, intervals: [500, 1000] }).toBe(true)
   return text
 }

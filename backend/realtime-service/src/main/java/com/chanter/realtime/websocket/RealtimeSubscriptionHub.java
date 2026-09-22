@@ -86,12 +86,17 @@ public class RealtimeSubscriptionHub {
                         .then(Mono.defer(() -> subscription.session().send(
                                 Mono.just(subscription.session().textMessage(payload))
                         )))
-                        .onErrorResume(error -> {
+                        .onErrorResume(RealtimeSubscriptionHub::isAccessDenial,error -> {
                             removeSubscription(subscription);
                             return Mono.empty();
                         }), 4)
-                .onErrorResume(error -> Mono.empty())
+                .onErrorResume(RealtimeSubscriptionHub::isAccessDenial,error -> Mono.empty())
                 .then();
+    }
+
+    private static boolean isAccessDenial(Throwable failure) {
+        return failure instanceof org.springframework.web.server.ResponseStatusException status
+                && Set.of(401,403,404).contains(status.getStatusCode().value());
     }
 
     private void removeSubscription(Subscription subscription) {

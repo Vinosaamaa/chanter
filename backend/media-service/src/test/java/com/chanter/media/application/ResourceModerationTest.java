@@ -115,4 +115,3 @@ class ResourceModerationTest {
         assertThat(result.getResponse().getContentAsString()).doesNotContain(resource.storageKey(),"storageKey","storageBackend");
     }
 }
-

@@ -176,7 +176,13 @@ public class DirectMessageCallHub {
         return Mono.fromCallable(() -> callStore.findActiveCallForUser(userId))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(call -> call.map(active -> callAuthorizer.requireCallAccess(active.callerUserId(),active.calleeUserId())
-                        .onErrorResume(denied -> endCall(active.callId(),"access_changed"))).orElse(Mono.empty()));
+                        .onErrorResume(failure -> endCall(active.callId(),"access_changed").then(
+                                isAccessDenial(failure) ? Mono.empty() : Mono.error(failure)))).orElse(Mono.empty()));
+    }
+
+    private static boolean isAccessDenial(Throwable failure) {
+        return failure instanceof ResponseStatusException status
+                && java.util.Set.of(401,403,404,409).contains(status.getStatusCode().value());
     }
 
     private Mono<Void> endCall(UUID userId, UUID callId, String reason) {

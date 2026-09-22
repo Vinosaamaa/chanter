@@ -24,6 +24,7 @@ import reactor.core.scheduler.Schedulers;
 
 @Component
 public class SocialRealtimeHub {
+    private static final org.slf4j.Logger log=org.slf4j.LoggerFactory.getLogger(SocialRealtimeHub.class);
 
     private final SocialFriendsClient socialFriendsClient;
     private final DirectMessageClient directMessageClient;
@@ -78,7 +79,7 @@ public class SocialRealtimeHub {
                         return socialSubscribed;
                     }
                     return socialSubscribed.then(
-                            notifyFriendsPresence(userId, "online").onErrorResume(error -> Mono.empty())
+                            notifyFriendsPresence(userId, "online").onErrorResume(SocialRealtimeHub::presenceUnavailable)
                     );
                 })
                 .onErrorResume(error -> disconnect(session).then(Mono.error(error)));
@@ -131,7 +132,7 @@ public class SocialRealtimeHub {
                     if (generation == null || generation.get() != generationAtDisconnect) {
                         return Mono.empty();
                     }
-                    return notifyFriendsPresence(userId, "offline").onErrorResume(error -> Mono.empty());
+                    return notifyFriendsPresence(userId, "offline").onErrorResume(SocialRealtimeHub::presenceUnavailable);
                 }))
                 .doFinally(signal -> {
                     synchronized (sessionLock) {
@@ -206,6 +207,11 @@ public class SocialRealtimeHub {
                 && java.util.Set.of(401,403,404).contains(status.getStatusCode().value());
     }
 
+    private static Mono<Void> presenceUnavailable(Throwable failure) {
+        log.warn("Presence fanout unavailable; current presence snapshots will reconcile");
+        return Mono.empty();
+    }
+
     private Mono<Void> notifyFriendsPresence(UUID userId, String status) {
         return socialFriendsClient.listFriendUserIds(userId)
                 .flatMapMany(Flux::fromIterable)
@@ -228,7 +234,7 @@ public class SocialRealtimeHub {
         return pairAccess.requireCallAccess(viewerUserId,subjectUserId)
                 .thenMany(Flux.fromIterable(sessions))
                 .flatMap(session -> sendJson(session, payload),4)
-                .onErrorResume(error -> Mono.empty())
+                .onErrorResume(SocialRealtimeHub::isAccessDenial,error -> Mono.empty())
                 .then();
     }
 

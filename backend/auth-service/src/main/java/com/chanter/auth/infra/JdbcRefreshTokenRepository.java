@@ -9,7 +9,6 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
@@ -41,7 +40,7 @@ public class JdbcRefreshTokenRepository implements RefreshTokenRepository {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public Optional<SessionRecord> rotate(String tokenHash, UUID replacementId, String replacementHash, Instant now) {
         var identity = tokenIdentity(tokenHash);
         if (identity.isEmpty()) return Optional.empty();

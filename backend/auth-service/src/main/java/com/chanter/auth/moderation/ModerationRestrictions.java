@@ -60,7 +60,7 @@ public class ModerationRestrictions {
     public void add(UUID operation, UUID report, String type, UUID target, UUID actor, String reason, Instant expires, UUID correlation) {
         requireType(type);
         Instant now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
-        if (expires == null || !expires.isAfter(now.plusSeconds(59)) || expires.isAfter(now.plus(Duration.ofDays(30))))
+        if (expires == null || expires.isBefore(now.plusSeconds(60)) || expires.isAfter(now.plus(Duration.ofDays(30))))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a restriction duration between one minute and 30 days");
         if (reason == null || reason.isBlank() || reason.length() > 2000)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A reason of at most 2000 characters is required");

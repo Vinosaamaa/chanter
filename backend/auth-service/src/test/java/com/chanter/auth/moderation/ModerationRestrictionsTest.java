@@ -81,6 +81,14 @@ class ModerationRestrictionsTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_audit WHERE target=?", Integer.class, "USER:"+user)).isZero();
     }
 
+    @Test void aRestrictionShorterThanOneMinuteIsRejected() {
+        UUID report=UUID.randomUUID(),user=UUID.randomUUID(); seedReport(report,user);
+        var tx=new TransactionTemplate(transactions);
+        assertThatThrownBy(() -> tx.executeWithoutResult(status -> restrictions.add(UUID.randomUUID(),report,"USER",user,
+                UUID.randomUUID(),"Review this account",Instant.now().plusMillis(59500),UUID.randomUUID())))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    }
+
     private void seedReport(UUID report, UUID user) {
         jdbc.update("""
                 INSERT INTO moderation_reports(id,reporter_id,target_type,target_id,reason,evidence,status,created_at,updated_at)

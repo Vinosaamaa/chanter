@@ -63,7 +63,8 @@ public class ModerationAppeals {
         jdbc.update("INSERT INTO moderation_appeal_tokens(token_hash,user_id,restriction_id,expires_at) VALUES(?,?,?,?)",
                 OperatorAccess.hash(token), user.id(), restriction, expires.atOffset(ZoneOffset.UTC));
         email.send(user.email(), "Review your Chanter restriction",
-                "Use this one-time link within 20 minutes to submit an appeal. It does not sign you in.\n\n"
+                "Use this one-time link within 20 minutes to submit an appeal. It does not sign you in.\n"
+                        + "Restriction reference: " + restriction + "\n\n"
                         + publicBaseUrl + "/appeal#token=" + token, expires);
     }
 

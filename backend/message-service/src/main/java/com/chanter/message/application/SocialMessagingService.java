@@ -42,8 +42,8 @@ public class SocialMessagingService {
         if (senderUserId.equals(recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot send Friend Requests to themselves");
         }
-        requireActivePair(senderUserId, recipientUserId);
         repository.lockPair(senderUserId, recipientUserId);
+        requireActivePair(senderUserId, recipientUserId);
         if (repository.isBlocked(senderUserId, recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Friend Requests are blocked between these users");
         }
@@ -78,8 +78,8 @@ public class SocialMessagingService {
         FriendRequest friendRequest = requireFriendRequest(friendRequestId);
         requireRecipient(friendRequest, recipientUserId);
 
-        requireActivePair(recipientUserId, friendRequest.senderUserId());
         repository.lockPair(friendRequest.senderUserId(), recipientUserId);
+        requireActivePair(recipientUserId, friendRequest.senderUserId());
         if (repository.isBlocked(friendRequest.senderUserId(), recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Friend Requests are blocked between these users");
         }
@@ -177,8 +177,8 @@ public class SocialMessagingService {
         if (senderUserId.equals(recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot message themselves");
         }
-        requireActivePair(senderUserId, recipientUserId);
         repository.lockPair(senderUserId, recipientUserId);
+        requireActivePair(senderUserId, recipientUserId);
         if (repository.isBlocked(senderUserId, recipientUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Messages are blocked between these users");
         }

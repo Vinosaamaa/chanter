@@ -89,6 +89,33 @@ class RealtimeDeliveryModerationTest {
         } finally { social.disconnect(session).block(Duration.ofSeconds(5)); }
     }
 
+    @Test void channelAuthorityOutagePreservesSubscriptionAndReportsUnconfirmedDelivery() {
+        UUID user=UUID.randomUUID(),channel=UUID.randomUUID(); var received=new ArrayList<String>();
+        var session=session(received);
+        channels.subscribe(session,user,channel,RealtimeChannelScope.COURSE);
+        doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE)).when(channelAccess).requireSubscribeAccess(channel,user,RealtimeChannelScope.COURSE);
+        var message=new PersistedChannelMessage(UUID.randomUUID(),channel,UUID.randomUUID(),"saved message",Instant.now());
+        assertThatThrownBy(() -> channels.publishMessage(message,RealtimeChannelScope.COURSE).block(Duration.ofSeconds(5)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(received).isEmpty();
+        reset(channelAccess);
+        channels.publishMessage(message,RealtimeChannelScope.COURSE).block(Duration.ofSeconds(5));
+        assertThat(received).hasSize(1);
+        channels.unsubscribeAll(session);
+    }
+
+    @Test void presenceSnapshotClearsStaleOnlineStateDuringAuthorityOutage() {
+        UUID viewer=UUID.randomUUID(),subject=UUID.randomUUID(); var received=new ArrayList<String>();
+        var session=session(received);
+        when(friends.listFriendUserIds(viewer)).thenReturn(Mono.just(List.of(subject)));
+        when(presence.isOnline(subject)).thenReturn(true);
+        social.refreshPresence(session,viewer).block(Duration.ofSeconds(5));
+        assertThat(received.getLast()).contains(subject.toString());
+        when(pairAccess.requireCallAccess(viewer,subject)).thenReturn(Mono.error(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE)));
+        social.refreshPresence(session,viewer).block(Duration.ofSeconds(5));
+        assertThat(received.getLast()).contains("presence_snapshot").doesNotContain(subject.toString());
+    }
+
     private static WebSocketSession session(List<String> received) {
         var session=mock(WebSocketSession.class);
         when(session.getId()).thenReturn(UUID.randomUUID().toString());

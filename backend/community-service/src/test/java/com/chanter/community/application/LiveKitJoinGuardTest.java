@@ -25,6 +25,15 @@ class LiveKitJoinGuardTest {
     private final LiveMediaAccess access=mock(LiveMediaAccess.class);
     private final LiveKitJoinGuard guard=new LiveKitJoinGuard(new LiveKitProperties("ws://localhost:7880","test-key",SECRET),access);
 
+    @Test void productIssuedVoiceAndDirectCallTokensPassTheSignalingGuard() {
+        UUID user=UUID.randomUUID(),channel=UUID.randomUUID(),call=UUID.randomUUID();
+        var issuer=new LiveKitTokenIssuer(new LiveKitProperties("ws://localhost:7880","test-key",SECRET));
+        guard.requireJoin(issuer.issueForVoiceChannel(channel,user,true,true).participantToken());
+        guard.requireJoin(issuer.issueForDmCall(call,user).participantToken());
+        verify(access).requireAllowed("voice-"+channel,user);
+        verify(access).requireAllowed("dm-call-"+call,user);
+    }
+
     @Test void theSameSignedTokenIsDeniedOnReconnectAfterAuthorityChanges() throws Exception {
         UUID user=UUID.randomUUID();
         String room="voice-"+UUID.randomUUID();

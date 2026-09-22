@@ -32,4 +32,11 @@ class PlatformModerationSecurityTest {
                 .header("X-Platform-Role", "ADMIN"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test void nullSourceEntryIsAnInvalidRequest() throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/internal/v1/moderation/access")
+                .header(com.chanter.common.auth.AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-auth")
+                .contentType("application/json").content("{\"targets\":[null]}"))
+                .andExpect(status().isBadRequest());
+    }
 }

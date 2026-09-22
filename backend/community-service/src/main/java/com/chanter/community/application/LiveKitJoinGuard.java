@@ -31,7 +31,8 @@ public class LiveKitJoinGuard {
             var claims = verifier.verify(token);
             Instant expiry = claims.getExpiresAtAsInstant();
             Instant notBefore = claims.getNotBeforeAsInstant();
-            if (expiry == null || notBefore == null || !expiry.isAfter(Instant.now())) throw invalid();
+            // The production SDK omits nbf; the verifier still enforces it when present.
+            if (expiry == null || !expiry.isAfter(Instant.now())) throw invalid();
             Map<String, Object> video = claims.getClaim("video").asMap();
             if (video == null || !Boolean.TRUE.equals(video.get("roomJoin"))) throw invalid();
             for (String privilege : new String[]{"roomAdmin", "roomCreate", "roomList", "roomRecord", "ingressAdmin"}) {
@@ -42,7 +43,7 @@ public class LiveKitJoinGuard {
                 String subject = claims.getSubject();
                 if (subject == null || !subject.startsWith("release-health-")) throw invalid();
                 UUID.fromString(subject.substring("release-health-".length()));
-                if (!Boolean.FALSE.equals(video.get("canPublish")) || !Boolean.FALSE.equals(video.get("canSubscribe"))
+                if (notBefore == null || !Boolean.FALSE.equals(video.get("canPublish")) || !Boolean.FALSE.equals(video.get("canSubscribe"))
                         || !Boolean.FALSE.equals(video.get("canPublishData"))
                         || expiry.isAfter(Instant.now().plusSeconds(60))
                         || expiry.isAfter(notBefore.plusSeconds(75))) throw invalid();

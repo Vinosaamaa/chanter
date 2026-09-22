@@ -71,6 +71,19 @@ class BlockingEnforcementTest {
         assertThat(repository.findDirectMessages(first,second)).isEmpty();
     }
 
+    @Test void suspensionWhileWaitingForPairLockPreventsTheMessageWrite() {
+        UUID first=UUID.randomUUID(),second=UUID.randomUUID(); friends(first,second);
+        JdbcSocialMessagingRepository target=org.springframework.test.util.AopTestUtils.getUltimateTargetObject(repository);
+        doAnswer(call -> {
+            call.callRealMethod();
+            doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(moderation).requireAllowed(first,List.of(new Target("USER",second)));
+            return null;
+        }).when(target).lockPair(first,second);
+        assertThatThrownBy(() -> service.sendDirectMessage(first,second,"suspended while waiting"))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(repository.findDirectMessages(first,second)).isEmpty();
+    }
+
     @Test void concurrentBlockCannotCommitBetweenEligibilityReadAndMessageWrite() throws Exception {
         UUID first=UUID.randomUUID(),second=UUID.randomUUID(); friends(first,second);
         var checked=new CountDownLatch(1); var release=new CountDownLatch(1);

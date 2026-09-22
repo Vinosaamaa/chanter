@@ -41,6 +41,7 @@ public class AuthSessionService {
     private final JwtTokenService jwtTokenService;
     private final ProductionAuthService productionAuthService;
     private final ModerationRestrictions moderation;
+    private final org.springframework.transaction.support.TransactionTemplate refreshTransaction;
     private final Duration refreshTokenTtl;
     private final boolean requireEmailVerification;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -53,7 +54,8 @@ public class AuthSessionService {
             ProductionAuthService productionAuthService,
             ModerationRestrictions moderation,
             @Value("${chanter.jwt.refresh-token-ttl:7d}") Duration refreshTokenTtl,
-            @Value("${chanter.auth.require-email-verification:false}") boolean requireEmailVerification
+            @Value("${chanter.auth.require-email-verification:false}") boolean requireEmailVerification,
+            org.springframework.transaction.PlatformTransactionManager transactions
     ) {
         this.authUserRepository = authUserRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -61,6 +63,8 @@ public class AuthSessionService {
         this.jwtTokenService = jwtTokenService;
         this.productionAuthService = productionAuthService;
         this.moderation = moderation;
+        this.refreshTransaction = new org.springframework.transaction.support.TransactionTemplate(transactions);
+        this.refreshTransaction.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.refreshTokenTtl = refreshTokenTtl;
         this.requireEmailVerification = requireEmailVerification;
     }
@@ -154,13 +158,19 @@ public class AuthSessionService {
 
     public AuthSession refresh(String refreshToken) {
         String replacement = generateRefreshToken();
-        var session = refreshTokenRepository.rotate(hashToken(refreshToken), UUID.randomUUID(), hashToken(replacement), Instant.now())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
-        AuthUser user = authUserRepository.findById(session.userId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
-        moderation.requireActiveAccount(user.id());
-        return new AuthSession(jwtTokenService.createAccessToken(user.id(), session.id()), replacement,
-                jwtTokenService.accessTokenTtlSeconds(), AuthUserProfile.from(user), session.expiresAt());
+        var result = refreshTransaction.execute(status -> {
+            var rotated = refreshTokenRepository.rotate(hashToken(refreshToken), UUID.randomUUID(), hashToken(replacement), Instant.now());
+            // Commit replay-family revocation before returning its failure to the HTTP layer.
+            if (rotated.isEmpty()) return null;
+            var session = rotated.orElseThrow();
+            AuthUser user = authUserRepository.findById(session.userId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+            moderation.requireActiveAccount(user.id());
+            return new AuthSession(jwtTokenService.createAccessToken(user.id(), session.id()), replacement,
+                    jwtTokenService.accessTokenTtlSeconds(), AuthUserProfile.from(user), session.expiresAt());
+        });
+        if (result == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+        return result;
     }
 
     public void logout(String refreshToken) {

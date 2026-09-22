@@ -42,6 +42,17 @@ class LiveCallAuthorizationTest {
         verify(calls).endIfPresent(id);
     }
 
+    @Test void authorityOutageStopsMediaButIsNotReportedAsSuccessfulReconciliation() {
+        UUID id=UUID.randomUUID(),caller=UUID.randomUUID(),callee=UUID.randomUUID();
+        var call=new DirectMessageCall(id,caller,callee,DirectMessageCallStatus.ACTIVE,Instant.now());
+        when(calls.findActiveCallForUser(caller)).thenReturn(Optional.of(call));
+        when(authority.requireCallAccess(caller,callee)).thenReturn(Mono.error(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE)));
+        when(calls.endIfPresent(id)).thenReturn(Optional.of(call));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> hub.reconcileUser(caller).block(java.time.Duration.ofSeconds(5)))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(calls).endIfPresent(id);
+    }
+
     @Test void aSavedActiveCallDoesNotBypassANewBlockOrEndedCall() {
         UUID call=UUID.randomUUID(),caller=UUID.randomUUID(),callee=UUID.randomUUID();
         String path="/internal/v1/dm-calls/"+call+"/media-access?userId="+caller;

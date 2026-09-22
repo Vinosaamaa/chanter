@@ -37,7 +37,7 @@ public class InternalModerationController {
         return Map.of("allowed", true);
     }
 
-    record AccessRequest(UUID userId, @NotNull @Size(max=100) List<@Valid Target> targets) { }
+    record AccessRequest(UUID userId, @NotNull @Size(max=100) List<@NotNull @Valid Target> targets) { }
     @PostMapping("/internal/v1/moderation/sources")
     Map<String, Object> sources(@RequestHeader(value=AuthHeaders.INTERNAL_SERVICE_TOKEN,required=false) String presented,
             @Valid @RequestBody AccessRequest request) {
