@@ -10,13 +10,6 @@ import { useThemeStore } from '../../../stores/theme-store'
 
 const topNavItems = [
   { id: 'friends', label: 'Friends', to: '/app/friends', icon: '👥', matchPrefix: true },
-  {
-    id: 'dashboard',
-    label: 'Teaching',
-    to: '/app/teaching',
-    icon: '📊',
-    matchPrefix: false,
-  },
 ] as const
 
 export function AppTopBar() {

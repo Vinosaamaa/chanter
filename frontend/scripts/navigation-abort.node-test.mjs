@@ -39,7 +39,7 @@ test('only successful commit of the current navigation releases old-document abo
   assert.equal(tracker.wasReplaced(currentApi), false)
 })
 
-test('old-document polling during pending navigation needs a successful commit too', () => {
+test('requests arriving during navigation have ambiguous document ownership and stay strict', () => {
   for (const commits of [true, false]) {
     const tracker = navigationAbortTracker(), navigation = {}, poll = {}
     tracker.started(navigation, true)
@@ -47,6 +47,19 @@ test('old-document polling during pending navigation needs a successful commit t
     tracker.failed(poll)
     if (commits) tracker.committed(navigation)
     else tracker.failed(navigation)
-    assert.equal(tracker.wasReplaced(poll), commits)
+    assert.equal(tracker.wasReplaced(poll), false)
   }
+})
+
+test('redirects retain original ownership without adopting requests started during navigation', () => {
+  const tracker = navigationAbortTracker(), oldApi = {}, first = {}, currentApi = {}, redirect = {}
+  tracker.started(oldApi, false)
+  tracker.started(first, true)
+  tracker.started(currentApi, false)
+  tracker.started(redirect, true, first)
+  tracker.failed(oldApi)
+  tracker.failed(currentApi)
+  tracker.committed(redirect)
+  assert.equal(tracker.wasReplaced(oldApi), true)
+  assert.equal(tracker.wasReplaced(currentApi), false)
 })

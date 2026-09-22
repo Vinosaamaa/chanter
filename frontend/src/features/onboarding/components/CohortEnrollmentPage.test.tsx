@@ -14,8 +14,8 @@ vi.mock('../../shell/hooks/use-shell-queries', () => ({ useStudyServerNavigation
 vi.mock('../hooks/use-cohort-enrollments', () => ({ useCohortInvite: mocks.invite, useCohortEnrollments: mocks.roster }))
 vi.mock('../hooks/use-cohort-enrollment', () => ({ useCohortEnrollment: mocks.enrollment }))
 function Destination() { const location = useLocation(); return <p>{location.pathname}{location.search}</p> }
-function renderPage() {
-  return render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/app/servers/study/courses/course/enrollment?cohort=two']}><Routes><Route path="/app/servers/:serverId/courses/:courseId/enrollment" element={<CohortEnrollmentPage />} /><Route path="/app/servers/:serverId/courses/:courseId/people" element={<Destination />} /></Routes></MemoryRouter></QueryClientProvider>)
+function renderPage(query = '?cohort=two') {
+  return render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={[`/app/servers/study/courses/course/enrollment${query}`]}><Routes><Route path="/app/servers/:serverId/courses/:courseId/enrollment" element={<CohortEnrollmentPage />} /><Route path="/app/servers/:serverId/courses/:courseId/people" element={<Destination />} /></Routes></MemoryRouter></QueryClientProvider>)
 }
 beforeEach(() => { mocks.loading = false; mocks.allowed = false; vi.clearAllMocks() })
 afterEach(cleanup)
@@ -37,11 +37,21 @@ it('retains manager pagination, cohort switching, search and custom channel link
   mocks.allowed = true
   const user = userEvent.setup()
   renderPage()
+  expect(screen.getByRole('combobox', { name: 'Cohort' })).toHaveValue('two')
+  expect(mocks.invite).toHaveBeenLastCalledWith('two')
   expect(screen.getByRole('link', { name: 'Preview' })).toHaveAttribute('href', '/app/servers/study/course-channels/custom')
   await user.click(screen.getByRole('button', { name: 'Next' }))
-  expect(mocks.roster).toHaveBeenLastCalledWith('one', { limit: 8, offset: 8, search: undefined })
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Cohort' }), 'two')
-  expect(mocks.roster).toHaveBeenLastCalledWith('two', { limit: 8, offset: 0, search: undefined })
+  expect(mocks.roster).toHaveBeenLastCalledWith('two', { limit: 8, offset: 8, search: undefined })
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Cohort' }), 'one')
+  expect(mocks.roster).toHaveBeenLastCalledWith('one', { limit: 8, offset: 0, search: undefined })
   await user.type(screen.getByRole('textbox', { name: 'Search learners' }), 'learner-123')
-  await waitFor(() => expect(mocks.roster).toHaveBeenLastCalledWith('two', { limit: 8, offset: 0, search: 'learner-123' }))
+  await waitFor(() => expect(mocks.roster).toHaveBeenLastCalledWith('one', { limit: 8, offset: 0, search: 'learner-123' }))
+})
+
+it('resolves an unavailable cohort bookmark before any management request', () => {
+  mocks.allowed = true
+  renderPage('?cohort=missing')
+  expect(screen.getByRole('combobox', { name: 'Cohort' })).toHaveValue('one')
+  expect(mocks.invite).toHaveBeenLastCalledWith('one')
+  expect(mocks.enrollment).toHaveBeenLastCalledWith('one')
 })

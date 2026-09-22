@@ -168,7 +168,7 @@ describe('FriendsPage', () => {
     expect(mocks.relationships.sendRequest).toHaveBeenCalledWith('candidate-priya')
   })
 
-  it('opens the add-friend dialog on its search and closes it with Escape', async () => {
+  it('opens the add-friend dialog on its search and closes it on native cancellation', async () => {
     const user = userEvent.setup()
     renderPage()
 

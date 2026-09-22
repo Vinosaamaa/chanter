@@ -13,11 +13,9 @@ export function navigationAbortTracker() {
   return {
     started(request, mainNavigation, redirectedFrom) {
       if (mainNavigation) {
-        const previous = new Set(pending)
-        if (candidate && candidate.request === redirectedFrom) for (const item of candidate.previous) previous.add(item)
+        const previous = candidate && candidate.request === redirectedFrom
+          ? candidate.previous : new Set(pending)
         candidate = { request, previous }
-      } else if (candidate) {
-        candidate.previous.add(request)
       }
       pending.add(request)
     },

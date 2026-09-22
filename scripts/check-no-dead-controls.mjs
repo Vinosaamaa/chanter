@@ -5,8 +5,9 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const inventoryPath = path.join(root, 'docs/operations/no-dead-controls-inventory.md')
 const inventory = fs.readFileSync(inventoryPath, 'utf8')
 

@@ -15,3 +15,13 @@ The event editor previously submitted HUB regardless of its toggle or prior scop
 Current external browser acceptance is blocked on hosted HTTPS: WebKit did not retain the Secure refresh cookie on the prior HTTP origin. Production cookie attributes must remain intact. Browser cancellation handling must distinguish document replacement from real API/network failures; generic error suppression is not acceptable.
 
 The latest hosted run validates Secure-cookie behavior on WebKit, but real browser acceptance remains open for Firefox trust and navigation health. The patched Firefox policy path is explicit; production TLS is unaffected. Login tests now require complete successful Home bootstrap before further navigation. Busy/audio call errors outlive modal closure and the reset timer; starting or accepting a new call clears them through existing hook behavior.
+
+The review tightened request ownership further: requests beginning during a pending navigation are ambiguous and receive no old-document cancellation allowance. Only the pre-navigation snapshot can qualify after a successful replacement. Enrollment resolves bookmarked cohorts within authorized navigation before mounting manager hooks. Teaching resolves server bookmarks within the accessible-server list before any dashboard request. These do not change backend authorization.
+
+Delayed announcement delivery exposed a mounted Inbox consistency gap. Its OPEN
+list now polls the existing authorized endpoint every 15 seconds; React Query's
+default background behavior and observer lifecycle prevent hidden or unmounted
+polling. This adds at most four list requests per minute per mounted foreground
+query. The completed list remains event/refocus driven. User-scoped cache keys,
+request cancellation and server authorization are unchanged. Real browser delivery
+and persistence must pass before this is considered accepted.

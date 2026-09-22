@@ -141,13 +141,13 @@ test.describe('Product critical paths @product', () => {
     }
   })
 
-  test('inbox and calendar routes load when signed in', async ({ page }) => {
+  test('signed-in navigation opens Inbox and Calendar through their visible links', async ({ page }) => {
     await openAndSignIn(page, ownerEmail)
     await expect(page).toHaveURL(/\/app\//, { timeout: 30_000 })
-    await page.goto('/app/inbox')
+    await page.locator('a[href="/app/inbox"]:visible').first().click()
     await expect(page.getByRole('heading', { level: 1, name: 'Inbox' })).toBeVisible()
     await expect(page.getByText('Loading…')).toHaveCount(0, { timeout: 15_000 })
-    await page.goto('/app/calendar')
+    await page.locator('a[href="/app/calendar"]:visible').first().click()
     await expect(page.getByRole('region', { name: 'Calendar' })).toBeVisible()
     await expect(page.getByText('Loading calendar…')).toHaveCount(0, { timeout: 15_000 })
   })

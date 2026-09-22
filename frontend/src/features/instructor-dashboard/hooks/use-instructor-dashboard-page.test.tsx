@@ -23,3 +23,14 @@ describe('dashboard unavailability', () => {
     expect(result.current.dashboard).toBeNull()
   })
 })
+
+it('replaces an inaccessible server bookmark before requesting its dashboard', async () => {
+  mocks.dashboard.mockReset().mockResolvedValue({ studyServerId: 'server-1' })
+  const select = vi.fn()
+  const { result } = renderHook(() => useInstructorDashboardPage('removed-server', select))
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  expect(select).toHaveBeenCalledWith('server-1')
+  expect(mocks.dashboard).toHaveBeenCalledWith('server-1')
+  expect(mocks.dashboard).not.toHaveBeenCalledWith('removed-server')
+  expect(result.current.selectedServerId).toBe('server-1')
+})

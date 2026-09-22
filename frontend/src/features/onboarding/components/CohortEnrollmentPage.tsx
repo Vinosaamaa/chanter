@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import type { ShellCourse } from '../../shell/types'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -57,12 +57,14 @@ export function CohortEnrollmentPage() {
 
 
   if (!course.capabilities.canManagePeople) return <Navigate to={`/app/servers/${serverId}/courses/${courseId}/people${location.search}`} replace />
-  return <ManagerEnrollment key={course.id} serverId={serverId} course={course} />
+  const requestedCohort = new URLSearchParams(location.search).get('cohort')
+  const selectedCohortId = (course.cohorts.find(item => item.id === requestedCohort) ?? course.cohorts[0]).id
+  return <ManagerEnrollment key={`${course.id}:${selectedCohortId}`} serverId={serverId} course={course} selectedCohortId={selectedCohortId} />
 }
 
-function ManagerEnrollment({ serverId, course }: { serverId: string; course: ShellCourse }) {
+function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: string; course: ShellCourse; selectedCohortId: string }) {
   const queryClient = useQueryClient()
-  const [selectedCohortId, setSelectedCohortId] = useState('')
+  const [, setSearchParams] = useSearchParams()
   const cohort =
     course?.cohorts.find((item) => item.id === selectedCohortId) ?? course?.cohorts[0]
   const [search, setSearch] = useState('')
@@ -130,7 +132,12 @@ function ManagerEnrollment({ serverId, course }: { serverId: string; course: She
             <select
               value={cohort.id}
               onChange={(event) => {
-                setSelectedCohortId(event.target.value)
+                const cohortId = event.target.value
+                setSearchParams(current => {
+                  const next = new URLSearchParams(current)
+                  next.set('cohort', cohortId)
+                  return next
+                })
                 enrollment.reset()
                 setPage(1)
                 setCopyMessage(null)

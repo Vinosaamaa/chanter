@@ -30,7 +30,10 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 
     await event.evaluate(element => element.focus())
     await expect(event).not.toBeFocused()
     await page.screenshot({ path: testInfo.outputPath(`fixture-ui-event-details-${viewport.width}.png`) })
-    await page.keyboard.press('Escape')
+    const close = detail.locator('footer').getByRole('button', { name: 'Close', exact: true })
+    await close.scrollIntoViewIfNeeded()
+    await expect(close).toBeInViewport()
+    await close.click()
     await expect(detail).toBeHidden()
     await expect(event).toBeFocused()
     for (const [button, name] of [['Create event', 'Create event'], ['Invite people', 'Invite people']]) {

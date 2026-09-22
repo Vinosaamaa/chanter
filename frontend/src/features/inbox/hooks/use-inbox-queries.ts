@@ -20,6 +20,7 @@ export function useNotificationsQuery(
     queryKey: [...notificationsQueryKey(filter, status), userId ?? 'anonymous'],
     queryFn: () => fetchNotifications(filter, status),
     enabled: Boolean(userId),
+    refetchInterval: status === 'OPEN' ? 15_000 : false,
   })
 }
 

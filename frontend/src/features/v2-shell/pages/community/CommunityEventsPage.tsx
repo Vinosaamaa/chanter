@@ -21,6 +21,12 @@ import { formatUserFacingApiError } from '../../../../lib/format-api-error'
 import { useV2Community } from '../../layouts/v2-community-context'
 import { WorkspaceDialog } from '../../components/WorkspaceDialog'
 
+const AUDIENCE = {
+  HUB: { label: 'Everyone in this Study Server', short: 'Open to all', description: 'Visible to everyone in this Study Server.' },
+  COURSE: { label: 'Course members', short: 'Course members', description: 'Visible to members of this Course.' },
+  COHORT: { label: 'Cohort members', short: 'Cohort members', description: 'Visible to members of this Cohort.' },
+} as const
+
 const FILTERS: { label: string; value: CommunityEventFilter }[] = [
   { label: 'Upcoming', value: 'UPCOMING' },
   { label: 'Past', value: 'PAST' },
@@ -192,7 +198,7 @@ export function CommunityEventsPage() {
                   {event.location || 'Location TBA'}
                   <b>
                     <UsersRound />
-                    {event.visibility === 'HUB' ? 'Open to all' : event.visibility === 'COURSE' ? 'Course members' : 'Cohort members'}
+                    {AUDIENCE[event.visibility].short}
                   </b>
                 </p>
               </div>
@@ -323,7 +329,7 @@ function EventDetailModal({
         <h3>About this event</h3>
         <p>{event.description || 'No description provided.'}</p>
         <div className="event-tags">
-          <b>{event.visibility === 'HUB' ? 'Everyone in this Study Server' : event.visibility === 'COURSE' ? 'Course members' : 'Cohort members'}</b>
+          <b>{AUDIENCE[event.visibility].label}</b>
           {event.status === 'CANCELLED' ? <b>CANCELLED</b> : null}
         </div>
         <div className="event-going">
@@ -485,7 +491,7 @@ function CreateEventModal({
             <textarea value={description} onChange={(change) => setDescription(change.target.value)} />
           </div>
         </label>
-        <p>{event?.visibility === 'COURSE' ? 'Visible to members of this Course.' : event?.visibility === 'COHORT' ? 'Visible to members of this Cohort.' : 'Visible to everyone in this Study Server.'}</p>
+        <p>{AUDIENCE[event?.visibility ?? 'HUB'].description}</p>
         <footer>
           <button type="button" className="v2-outline-button" onClick={onClose} disabled={saving}>
             Cancel

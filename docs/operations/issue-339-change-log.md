@@ -132,4 +132,18 @@ The prior checkpoint passed both native release stages and the application unit/
 
 The next hosted journey publishes through the actual owner announcement form, signs out, signs in as a member, opens the delivered Inbox item, marks it done and reloads. It checks persisted read/completion state against the real notification service. It uses unique synthetic content in the disposable product stack, with authenticated traces, video and screenshots disabled. Listing discovers the new case in all three product browsers; execution remains required.
 
-Actual Teaching screenshots at390 and1280 showed the six operational counts wrapping as five plus one on desktop. The grid now uses three columns at ordinary desktop widths, six on wide displays and two on phones. The next screenshot set must confirm that adjustment.
+Actual Teaching screenshots at 390 and 1280 showed the six operational counts wrapping as five plus one on desktop. The grid now uses three columns at ordinary desktop widths, six on wide displays and two on phones. The next screenshot set must confirm that adjustment.
+## Review and remaining browser correction
+
+The first full CodeAnt review is recorded in issue-339-codeant-fix.md. It identified cohort/server bookmark resolution and overly broad request ownership; targeted regressions now cover those corrections. The native dialog footer is explicitly scrollable and exercised on short screens. The Inbox test-order claim was checked against actual passing execution and does not reproduce.
+
+At a5485e7d, all 275 synthetic browser cases passed. The real suite passed 40 cases; only Inbox-to-Calendar hard navigation failed on WebKit and retried on Firefox. The journey now follows its visible links, retaining strict failure reporting and the separate reload/deep-link cases. All Firefox trust and real registration/recovery cases passed with certificate validation active. Final current-head and capability-union acceptance remain open.
+
+The new actual-service announcement journey at 50fc4123 exposed delayed delivery:
+an announcement arriving after the Inbox's initial fetch never appeared without a
+reload. The mounted OPEN list now refreshes every 15 seconds while foregrounded.
+An actual QueryClient regression failed before the correction and passes after it;
+it delivers the notification only after the first empty response. Lint, production
+build and unchanged asset budgets pass. Hosted browser confirmation is still
+required. The completed list does not poll, and account-scoped cache keys and
+server authorization remain unchanged.
