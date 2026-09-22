@@ -101,9 +101,8 @@ public class CourseResourceController {
     }
 
     @DeleteMapping("/course-resources/{resourceId}")
-    public ResponseEntity<Void> delete(@PathVariable UUID resourceId, @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user) {
-        courseResourceService.deleteCourseResource(resourceId, user);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<com.chanter.common.lifecycle.SourceDeletionRequests.Request> delete(@PathVariable UUID resourceId, @RequestAttribute(AuthRequestAttributes.USER_ID) UUID user) {
+        return ResponseEntity.accepted().body(courseResourceService.deleteCourseResource(resourceId, user));
     }
 
     @PostMapping("/course-resources/{resourceId}/retry-ingestion")

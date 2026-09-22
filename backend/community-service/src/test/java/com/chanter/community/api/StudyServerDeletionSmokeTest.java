@@ -30,19 +30,29 @@ class StudyServerDeletionSmokeTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired com.chanter.common.lifecycle.AccountDeletionParticipant terminal;
+    @Autowired com.chanter.common.lifecycle.AccountDeletionProtocol protocol;
 
     @Test
     void ownerCanDeleteStudyServer() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
         StudyServerResponse studyServer = createStudyServer(ownerUserId, "Bootcamp Hub");
 
-        mockMvc.perform(delete("/api/v1/study-servers/{studyServerId}", studyServer.id())
+        var accepted=mockMvc.perform(delete("/api/v1/study-servers/{studyServerId}", studyServer.id())
                         .with(asUser(ownerUserId)))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isAccepted()).andReturn().getResponse();
+        UUID job=UUID.fromString(objectMapper.readTree(accepted.getContentAsString()).get("jobId").asText());
+        var repeated=mockMvc.perform(delete("/api/v1/study-servers/{studyServerId}",studyServer.id()).with(asUser(ownerUserId)))
+                .andExpect(status().isAccepted()).andReturn().getResponse();
+        assertThat(objectMapper.readTree(repeated.getContentAsString()).get("jobId").asText()).isEqualTo(job.toString());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,studyServer.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='LIFECYCLE_DELETE_REQUEST' AND aggregate_key=?",Integer.class,
+                com.chanter.common.lifecycle.AccountDeletionProtocol.key("STUDY_SERVER",studyServer.id()))).isEqualTo(1);
 
         mockMvc.perform(get("/api/v1/study-servers/{studyServerId}", studyServer.id())
                         .with(asUser(ownerUserId)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isGone());
 
         MvcResult listResult = mockMvc.perform(get("/api/v1/study-servers").with(asUser(ownerUserId)))
                 .andExpect(status().isOk())
@@ -52,6 +62,16 @@ class StudyServerDeletionSmokeTest {
                 objectMapper.getTypeFactory().constructCollectionType(List.class, AccessibleStudyServerResponse.class)
         );
         assertThat(servers).isEmpty();
+        long revision=jdbc.queryForObject("SELECT COALESCE(MAX(revision),0)+1 FROM lifecycle_terminal_targets",Long.class);
+        UUID event=UUID.randomUUID(); var now=java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+        var entry=new com.chanter.common.lifecycle.TerminalJournal.Entry(revision,event,"STUDY_SERVER",studyServer.id(),"DELETE",now,
+                com.chanter.common.lifecycle.TerminalJournal.RETENTION_POLICY,com.chanter.common.lifecycle.TerminalJournal.GENESIS,
+                com.chanter.common.lifecycle.TerminalJournal.digest(revision,event,"STUDY_SERVER",studyServer.id(),now,com.chanter.common.lifecycle.TerminalJournal.GENESIS));
+        var command=new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,"auth",revision,com.chanter.common.lifecycle.AccountDeletionProtocol.TERMINAL,
+                com.chanter.common.lifecycle.AccountDeletionProtocol.key("STUDY_SERVER",studyServer.id()),protocol.encode(new com.chanter.common.lifecycle.AccountDeletionProtocol.Terminal(job,entry)));
+        terminal.accept(command); terminal.accept(command);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,studyServer.id())).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_deleted_server_scope_digests WHERE study_server_id=?",Integer.class,studyServer.id())).isEqualTo(2);
     }
 
     @Test

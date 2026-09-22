@@ -13,6 +13,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 @Import({SourceTerminalRecoveryController.class,SourceDeletedScopeController.class})
 public class MediaTerminalConfiguration {
+    @Bean SourceDeletionRequests mediaSourceDeletionRequests(JdbcTemplate jdbc,PlatformTransactionManager transactions,
+            com.chanter.common.events.DurableOutbox outbox,AccountDeletionProtocol protocol) {
+        var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
+        return new SourceDeletionRequests("RESOURCE",jdbc,tx,outbox,protocol);
+    }
     @Bean DeletedScopeStore mediaDeletedScopeStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,TerminalReapplyStore terminal) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
         return new DeletedScopeStore(jdbc,tx,entry -> terminal.cleanup(entry),terminal::reconcile);

@@ -13,6 +13,7 @@ public final class AccountDeletionProtocol {
     public static final String RELEASE="ACCOUNT_DELETE_RELEASE";
     public static final String TERMINAL="LIFECYCLE_TERMINAL_DELETE";
     public static final String RECEIPT="ACCOUNT_DELETE_RECEIPT";
+    public static final String SOURCE_REQUEST="LIFECYCLE_DELETE_REQUEST";
     private static final Set<String> COMMANDS=Set.of(PREPARE,RELEASE,TERMINAL);
     private final ObjectMapper mapper;
     public AccountDeletionProtocol(ObjectMapper mapper) {
@@ -41,6 +42,14 @@ public final class AccountDeletionProtocol {
         if(!receipt.source().equals(event.producer()) || !key(receipt.targetKind(),receipt.targetId()).equals(event.aggregateKey())) throw invalid();
         return receipt;
     }
+    public SourceRequest sourceRequest(DurableEvent event) {
+        event.validate();
+        if(!SOURCE_REQUEST.equals(event.kind())) throw invalid();
+        var request=read(event.payload(),SourceRequest.class); request.validate();
+        String owner="STUDY_SERVER".equals(request.targetKind()) ? "community" : "media";
+        if(!owner.equals(event.producer()) || !key(request.targetKind(),request.targetId()).equals(event.aggregateKey())) throw invalid();
+        return request;
+    }
     public String encode(Object value) {
         try { return mapper.writeValueAsString(value); }
         catch(java.io.IOException invalid) { throw invalid(); }
@@ -56,6 +65,13 @@ public final class AccountDeletionProtocol {
 
     public record Preparation(UUID jobId,UUID accountId) {
         public void validate() { requireId(jobId); TerminalJournal.requireTarget("ACCOUNT",accountId); }
+    }
+    public record SourceRequest(UUID jobId,String targetKind,UUID targetId) {
+        public void validate() {
+            requireId(jobId);
+            if(targetKind==null || !Set.of("STUDY_SERVER","RESOURCE").contains(targetKind)) throw invalid();
+            TerminalJournal.requireTarget(targetKind,targetId);
+        }
     }
     public record Terminal(UUID jobId,TerminalJournal.Entry entry) {
         public void validate() { requireId(jobId); if(entry==null) throw invalid(); entry.validate(); }

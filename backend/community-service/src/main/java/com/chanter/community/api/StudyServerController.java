@@ -158,11 +158,11 @@ public class StudyServerController {
     }
 
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteStudyServer(
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public com.chanter.common.lifecycle.SourceDeletionRequests.Request deleteStudyServer(
             @PathVariable UUID id,
             @RequestAttribute(AuthRequestAttributes.USER_ID) UUID requesterUserId
     ) {
-        studyServerService.deleteStudyServer(id, requesterUserId);
+        return studyServerService.deleteStudyServer(id, requesterUserId);
     }
 }

@@ -27,12 +27,15 @@ public class CourseResourceService {
     private final UploadValidator validator;
     private final Clock clock;
     private final ModerationAccess moderation;
+    private final com.chanter.common.lifecycle.SourceDeletionRequests deletions;
     private final Semaphore transfers = new Semaphore(2);
 
     public CourseResourceService(ResourceLifecycle lifecycle, CourseResourceAccessClient accessClient,
-            PrivateResourceStorage storage, UploadValidator validator, Clock clock, ModerationAccess moderation) {
+            PrivateResourceStorage storage, UploadValidator validator, Clock clock, ModerationAccess moderation,
+            com.chanter.common.lifecycle.SourceDeletionRequests deletions) {
         this.lifecycle = lifecycle; this.accessClient = accessClient; this.storage = storage; this.validator = validator; this.clock = clock;
         this.moderation = moderation;
+        this.deletions=deletions;
     }
 
     public CourseResource uploadCourseResource(UUID courseId, UUID userId, String title, boolean aiApproved,
@@ -72,7 +75,7 @@ public class CourseResourceService {
 
     public List<CourseResource> listCourseResources(UUID course, UUID user) {
         var access = requireView(course, user);
-        var resources = lifecycle.list(course, access.canUploadCourseResource()).stream().filter(resource -> !lifecycle.terminalScope(resource)).toList();
+        var resources = lifecycle.list(course, access.canUploadCourseResource()).stream().filter(resource -> !lifecycle.terminalScope(resource) && !deletions.pending(resource.id())).toList();
         var visible = new java.util.ArrayList<CourseResource>();
         for (int offset = 0; offset < resources.size(); offset += 100) {
             var page = resources.subList(offset, Math.min(offset + 100, resources.size()));
@@ -90,11 +93,11 @@ public class CourseResourceService {
         return resource;
     }
 
-    public void deleteCourseResource(UUID id, UUID user) {
+    public com.chanter.common.lifecycle.SourceDeletionRequests.Request deleteCourseResource(UUID id, UUID user) {
         var resource = lifecycle.find(id).orElseThrow(CourseResourceService::missing);
         requireUpload(resource.courseId(), user);
-        requireSource(resource, user);
-        lifecycle.requestDelete(id);
+        moderation.requireAllowed(user,List.of(new Target("STUDY_SERVER",studyServer(resource)),new Target("RESOURCE",id)));
+        return deletions.request(id,user,() -> lifecycle.find(id).orElseThrow(CourseResourceService::missing));
     }
 
     public ResourceLifecycle.Usage usage(UUID course, UUID user) {
@@ -161,6 +164,7 @@ public class CourseResourceService {
     }
 
     private void requireSource(CourseResource resource, UUID user) {
+        deletions.requireOpen(resource.id());
         moderation.requireAllowed(user, List.of(new Target("STUDY_SERVER", studyServer(resource)), new Target("RESOURCE", resource.id())));
     }
 
@@ -197,7 +201,7 @@ public class CourseResourceService {
     }
 
     private CourseResource existing(UUID id) {
-        return lifecycle.find(id).filter(resource -> !List.of("DELETE_PENDING", "DELETED").contains(resource.state()) && !lifecycle.terminalScope(resource))
+        return lifecycle.find(id).filter(resource -> !List.of("DELETE_PENDING", "DELETED").contains(resource.state()) && !lifecycle.terminalScope(resource) && !deletions.pending(id))
                 .orElseThrow(CourseResourceService::missing);
     }
     private CourseResourceAccess requireView(UUID course, UUID user) {

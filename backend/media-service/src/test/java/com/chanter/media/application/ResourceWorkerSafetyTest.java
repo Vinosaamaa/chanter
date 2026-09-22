@@ -27,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 @SpringBootTest
 @ActiveProfiles("test")
 class ResourceWorkerSafetyTest {
+    @Autowired org.springframework.context.ApplicationContext context;
     @Autowired CourseResourceService service;
     @Autowired ResourceWorker worker;
     @Autowired ResourceLifecycle lifecycle;
@@ -110,7 +111,7 @@ class ResourceWorkerSafetyTest {
         var replacement = lifecycle.claim(false).orElseThrow();
         lifecycle.finishIndex(resource.id(), old.leaseId(), new ResourceIngestionClient.Outcome("READY", java.util.Set.of()));
         assertThat(lifecycle.find(resource.id()).orElseThrow().ingestionStatus()).isEqualTo("PROCESSING");
-        service.deleteCourseResource(resource.id(), teacher);
+        deleteWithTerminal(resource.id(), teacher);
         lifecycle.finishIndex(resource.id(), replacement.leaseId(), new ResourceIngestionClient.Outcome("READY", java.util.Set.of()));
         worker.runOnce();
         assertThat(lifecycle.find(resource.id()).orElseThrow().state()).isEqualTo("DELETED");
@@ -181,7 +182,7 @@ class ResourceWorkerSafetyTest {
             assertThat(entered.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
             UUID id=jdbc.sql("SELECT id FROM course_resources").query(UUID.class).single();
             var reserved=lifecycle.find(id).orElseThrow();
-            service.deleteCourseResource(id,teacher);
+            deleteWithTerminal(id,teacher);
             worker.runOnce();
             verify(storage,never()).delete(reserved.storageKey());
             assertThat(service.usage(course,teacher).reservedBytes()).isEqualTo(reserved.byteSize());
@@ -210,11 +211,11 @@ class ResourceWorkerSafetyTest {
         var resource = upload(UUID.randomUUID()); worker.runOnce();
         doAnswer(call -> {
             var input = (java.io.InputStream) call.callRealMethod();
-            service.deleteCourseResource(resource.id(), teacher);
+            deleteWithTerminal(resource.id(), teacher);
             return input;
         }).when(storage).open(resource.storageKey());
         notAvailable(resource.id(), 404);
-        service.deleteCourseResource(resource.id(), teacher); worker.runOnce(); service.deleteCourseResource(resource.id(), teacher);
+        deleteWithTerminal(resource.id(), teacher); worker.runOnce(); deleteWithTerminal(resource.id(), teacher);
         assertThat(service.usage(course, teacher).reservedBytes()).isZero();
         assertThat(ingestion.deleteCalls()).containsExactly(resource.id());
     }
@@ -290,7 +291,7 @@ class ResourceWorkerSafetyTest {
 
     @Test void deletionKeepsReservationUntilAgentConfirmsItsTerminalFence() {
         var resource = upload(UUID.randomUUID()); worker.runOnce();
-        service.deleteCourseResource(resource.id(), teacher);
+        deleteWithTerminal(resource.id(), teacher);
         doThrow(new IllegalStateException("agent deletion not confirmed")).when(ingestion).deleteResourceChunks(resource.id());
         worker.runOnce();
         assertThat(service.usage(course, teacher).reservedBytes()).isEqualTo(resource.byteSize());
@@ -429,5 +430,9 @@ class ResourceWorkerSafetyTest {
             jdbc.sql("UPDATE course_resources SET retry_at=NULL WHERE id=:id").param("id", resource.id()).update();
             assertThat(lifecycle.claim(false)).isPresent();
         } else assertThat(lifecycle.claim(false)).isEmpty();
+    }
+    private void deleteWithTerminal(UUID id,UUID user) {
+        service.deleteCourseResource(id,user);
+        com.chanter.media.lifecycle.TerminalDeletionTestSupport.deliverResource(context,id);
     }
 }

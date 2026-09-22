@@ -15,15 +15,19 @@ import org.springframework.web.server.ResponseStatusException;
 public class InternalCourseScopeController {
     private final CourseRepository courses;
     private final InternalEventAccess access;
-    public InternalCourseScopeController(CourseRepository courses, @Value("${chanter.internal-service-token}") String token) {
-        this.courses = courses; this.access = new InternalEventAccess(token);
+    private final com.chanter.common.lifecycle.SourceDeletionRequests deletions;
+    public InternalCourseScopeController(CourseRepository courses,com.chanter.common.lifecycle.SourceDeletionRequests deletions,
+            @Value("${chanter.internal-service-token}") String token) {
+        this.courses = courses; this.access = new InternalEventAccess(token); this.deletions=deletions;
     }
     @GetMapping("/{courseId}")
     public Scope scope(@PathVariable UUID courseId,
             @RequestHeader(value = AuthHeaders.INTERNAL_SERVICE_TOKEN, required = false) String token) {
         access.require(token);
-        return new Scope(courseId, courses.findStudyServerIdByCourseId(courseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found")));
+        UUID server=courses.findStudyServerIdByCourseId(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        deletions.requireOpen(server);
+        return new Scope(courseId,server);
     }
     public record Scope(UUID courseId, UUID studyServerId) {}
 }

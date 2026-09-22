@@ -30,10 +30,12 @@ public class StudyServerRestrictionInterceptor implements HandlerInterceptor, We
     private final StudyServerRepository servers;
     private final OfficeHoursRepository officeHours;
     private final ModerationAccess moderation;
+    private final com.chanter.common.lifecycle.SourceDeletionRequests deletions;
 
     public StudyServerRestrictionInterceptor(CourseRepository courses, StudyServerRepository servers,
-            OfficeHoursRepository officeHours, ModerationAccess moderation) {
+            OfficeHoursRepository officeHours, ModerationAccess moderation,com.chanter.common.lifecycle.SourceDeletionRequests deletions) {
         this.courses=courses; this.servers=servers; this.officeHours=officeHours; this.moderation=moderation;
+        this.deletions=deletions;
     }
 
     @Override public void addInterceptors(InterceptorRegistry registry) {
@@ -67,7 +69,10 @@ public class StudyServerRestrictionInterceptor implements HandlerInterceptor, We
         } catch(IllegalArgumentException invalid) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid community scope reference");
         }
-        if(server!=null) moderation.requireAllowed(user,List.of(new Target("STUDY_SERVER",server)));
+        if(server!=null) {
+            if(!("DELETE".equals(request.getMethod()) && "/api/v1/study-servers/{id}".equals(route))) deletions.requireOpen(server);
+            moderation.requireAllowed(user,List.of(new Target("STUDY_SERVER",server)));
+        }
         return true;
     }
 

@@ -18,6 +18,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 @Import(SourceTerminalRecoveryController.class)
 public class CommunityTerminalConfiguration {
+    @Bean com.chanter.common.lifecycle.SourceDeletionRequests communitySourceDeletionRequests(JdbcTemplate jdbc,PlatformTransactionManager transactions,
+            DurableOutbox outbox,AccountDeletionProtocol protocol) {
+        var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
+        return new com.chanter.common.lifecycle.SourceDeletionRequests("STUDY_SERVER",jdbc,tx,outbox,protocol);
+    }
     @Bean AccountDeletionParticipant communityDeletionParticipant(JdbcTemplate jdbc,PlatformTransactionManager transactions,
             DurableOutbox outbox,AccountDeletionProtocol protocol,TerminalReapplyStore terminal,CommunityOwnershipFence ownership) {
         var preparation=new AccountDeletionParticipant.OwnershipPreparation() {

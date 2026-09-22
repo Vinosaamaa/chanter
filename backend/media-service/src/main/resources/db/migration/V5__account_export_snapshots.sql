@@ -87,3 +87,8 @@ CREATE TABLE lifecycle_recovery_scopes (
 
 CREATE INDEX lifecycle_scope_import_reverse ON lifecycle_scope_import_ids(scope_kind,scope_id,study_server_id);
 CREATE INDEX lifecycle_recovery_scope_reverse ON lifecycle_recovery_scope_ids(scope_kind,scope_id,study_server_id);
+
+CREATE TABLE lifecycle_source_requests (
+    target_id UUID PRIMARY KEY, job_id UUID NOT NULL UNIQUE, requester_id UUID NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, event_id UUID NOT NULL
+);

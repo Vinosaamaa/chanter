@@ -113,3 +113,19 @@ CREATE TABLE lifecycle_deletion_parts (
     source VARCHAR(16) NOT NULL,state VARCHAR(16) NOT NULL,event_id UUID,
     PRIMARY KEY(job_id,source)
 );
+
+CREATE TABLE lifecycle_source_deletions (
+    id UUID PRIMARY KEY,
+    target_kind VARCHAR(16) NOT NULL CHECK(target_kind IN ('STUDY_SERVER','RESOURCE')),
+    target_id UUID NOT NULL,
+    terminal_revision BIGINT NOT NULL,
+    terminal_digest VARCHAR(64) NOT NULL,
+    UNIQUE(target_kind,target_id)
+);
+CREATE TABLE lifecycle_source_deletion_parts (
+    job_id UUID NOT NULL REFERENCES lifecycle_source_deletions(id),
+    source VARCHAR(32) NOT NULL,
+    state VARCHAR(16) NOT NULL CHECK(state IN ('PENDING','PRESERVED','COMPLETE')),
+    event_id UUID,
+    PRIMARY KEY(job_id,source)
+);

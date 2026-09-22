@@ -37,17 +37,20 @@ public class StudyServerService {
     private final AuthUserDirectoryClient authUserDirectoryClient;
     private final LiveKitTokenIssuer liveKitTokenIssuer;
     private final Clock clock;
+    private final com.chanter.common.lifecycle.SourceDeletionRequests deletions;
 
     public StudyServerService(
             StudyServerRepository repository,
             AuthUserDirectoryClient authUserDirectoryClient,
             LiveKitTokenIssuer liveKitTokenIssuer,
-            Clock clock
+            Clock clock,
+            com.chanter.common.lifecycle.SourceDeletionRequests deletions
     ) {
         this.repository = repository;
         this.authUserDirectoryClient = authUserDirectoryClient;
         this.liveKitTokenIssuer = liveKitTokenIssuer;
         this.clock = clock;
+        this.deletions=deletions;
     }
 
     @Transactional
@@ -329,16 +332,17 @@ public class StudyServerService {
         return repository.findById(id);
     }
 
-    public void deleteStudyServer(UUID studyServerId, UUID requesterUserId) {
-        StudyServer studyServer = repository.findById(studyServerId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
-        if (!studyServer.ownerRole().userId().equals(requesterUserId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Only the Study Server owner can delete this server"
-            );
-        }
-        repository.deleteById(studyServerId);
+    public com.chanter.common.lifecycle.SourceDeletionRequests.Request deleteStudyServer(UUID studyServerId, UUID requesterUserId) {
+        return deletions.request(studyServerId,requesterUserId,() -> {
+            StudyServer studyServer = repository.findById(studyServerId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
+            if (!studyServer.ownerRole().userId().equals(requesterUserId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Only the Study Server owner can delete this server"
+                );
+            }
+        });
     }
 
     public VoicePresence joinVoiceChannel(UUID channelId, UUID memberUserId) {

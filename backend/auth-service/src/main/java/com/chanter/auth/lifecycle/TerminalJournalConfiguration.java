@@ -9,6 +9,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
 public class TerminalJournalConfiguration {
+    @Bean SourceDeletionJobs sourceDeletionJobs(JdbcTemplate jdbc,PlatformTransactionManager transactions,TerminalJournalStore journal,
+            AuthTerminalRecovery auth,com.chanter.common.events.DurableOutbox outbox,com.chanter.common.lifecycle.AccountDeletionProtocol protocol) {
+        var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
+        return new SourceDeletionJobs(jdbc,tx,journal,auth,outbox,protocol);
+    }
     @Bean TerminalJournalStore terminalJournalStore(JdbcTemplate jdbc, PlatformTransactionManager transactions) {
         var tx = new TransactionTemplate(transactions); tx.setTimeout(30);
         return new TerminalJournalStore(jdbc, tx, Clock.systemUTC());
