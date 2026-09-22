@@ -115,6 +115,54 @@ A 20-second whole-process deadline covers stalled stdin and streaming responses;
 the host also imposes a 30-second execution deadline. Container exit success
 is transport evidence only. The orchestrator separately verifies every receipt.
 
+## Current source scope attachments
+
+A current journal entry can name a Study Server created and deleted after the
+selected database recovery point. Restored community then has neither its graph
+nor its captured deletion scope. Missing scope is not a verified empty scope.
+Journal replay alone cannot safely reconcile course/channel-only rows in other
+sources, and the restored public graph cannot supply current authority.
+
+The approved integration extends the existing encrypted journal repository with
+bounded source-owned scope attachments. Community remains the sole authority for
+the original deletion's COURSE and CHANNEL ID sets. Its pages bind the original
+validated journal entry, scope kind, total count, complete-set digest and stable
+cursor. Each page must state its starting cursor; final completion must prove the
+declared count and digest. The archive records the exact owning pages and immutable
+restic references, not a newly inferred scope catalogue. The final HTTP/digest
+contract is being implemented in #251 and must match shared Java/Node fixtures.
+
+Replication must capture both required kinds for every Study Server deletion,
+validate their entire ordered contents and read back the encrypted attachment
+objects before publishing a complete manifest or acknowledging the auth checkpoint.
+Reuse immutable verified attachments for later prefixes. Missing, conflicting,
+truncated or over-limit attachments fail the checkpoint. A journal-only historical
+manifest cannot silently qualify as complete current authority. Preserve the
+attachment references with every retained prefix and database recovery window;
+pruning cannot discard the sole current scope just because the source graph was
+erased. Independent repository freshness and writer fencing remain required.
+
+The coordinated order is auth canonical replay, recovery-only archived scope
+import into community, community replay, other source replay, dependent scope
+relay, then fresh receipts and invalidation. Community accepts staged archived
+scope before its local fence only in recovery mode, binding it to the validated
+original entry. It must not export scope reconstructed from an older restored
+graph as current authority. Each dependent importer requires the exact local
+terminal fence first and stays unready until the final count and digest are verified.
+Completing import must run the owning bounded reconciliation step for that already
+applied target; it cannot depend on an ordinary worker or a new journal append.
+Sources that require both kinds wait for both. READY scope and source cleanup
+receipts remain separate; media's physical object cleanup stays pending.
+
+Each service still listens only on container loopback. The fixed private helper
+reads bounded selectors and pages from stdin and calls only the owning localhost
+route. Source tokens stay in their own service environment. No cross-container
+HTTP exception, arbitrary route/address selection or second retry framework is
+introduced. Exact attachment capacities, import ordering for an absent restored
+community graph and fixture digests must be finalized with #251 before enabling
+this path. Until complete archived-scope capture and actual source restoration
+pass, the release capability and public cutover remain disabled.
+
 ## Isolated recovery stages
 
 1. Use the existing `restore-isolated.mjs` result. Require its owned new volume,
@@ -217,7 +265,7 @@ resource reachable at the selected database point has an archived exact copy or
 a current authoritative terminal disposition.
 
 Use the already pinned restic implementation for encrypted object copies in a
-separate configured resource-backup prefix. Stream one object at a time with an
+separate configured resource-backup prefix. Process one object at a time with an
 exact size bound, recompute SHA-256 over the complete bytes, and bind its immutable
 restic snapshot reference to the inventory entry. The current upload ceiling is
 10 MiB per object; a provider that streams extra data must be rejected at that
@@ -225,6 +273,26 @@ bound. Hash the complete decrypted read-back before publishing the manifest.
 ETags, object metadata, successful PUT responses and restic exit status are
 insufficient by themselves. This manifest records backup evidence; it does not
 become a parallel resource catalogue or grant access.
+
+The independent byte implementation is `resource-object-backup.mjs`. It accepts
+the normalized source tuple and maintenance identity, rejects deleted or unsettled
+entries, and checks supplied bytes before any archive write. One call handles at
+most 10 MiB in bounded binary buffers, then reads the complete immutable snapshot
+back with an exact output cap and checks size and SHA-256. It uses the verified
+restic executable, a separate `resource-objects/<environment>` repository prefix
+and `CHANTER_RESOURCE_BACKUP_PASSWORD`, with one compression worker, a 256 MiB Go
+memory target and a 60-second process deadline. No plaintext spool file, object
+listing, source API or automatic pruning is added.
+
+The private reference binds the inventory identity, storage namespace, authority,
+canonical object tuple and full snapshot ID. Read-back also requires a matching
+supplied extant tuple and namespace. These checks prove bytes only; the supplied
+maintenance fields cannot prove that real writers were fenced or that the tuple
+is current. Those facts belong to the disabled owning source adapter. No host
+configuration generation or recovery command calls this module yet. Fixture
+references are marked separately from remote references, and every reference
+keeps public cutover false. Native fixtures must repeat the actual encrypted
+binary round-trip, same-size substituted-content rejection and wrong-key refusal.
 
 During recovery, replay current authority first and obtain a fresh source-owned
 inventory from the isolated restored database. Every eligible extant object must
