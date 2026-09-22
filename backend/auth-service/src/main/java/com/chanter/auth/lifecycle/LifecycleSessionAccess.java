@@ -23,6 +23,9 @@ public class LifecycleSessionAccess {
         this.sessions = sessions; this.tokens = tokens; this.jdbc = jdbc;
     }
     public UUID require(String authorization, boolean recent) {
+        return requireIdentity(authorization, recent).userId();
+    }
+    public com.chanter.common.auth.JwtTokenService.AccessSession requireIdentity(String authorization, boolean recent) {
         if (!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Lifecycle access requires its owning transaction");
         var token = sessions.requireActiveAccessSession(authorization);
         tokens.lockUser(token.userId());
@@ -37,6 +40,22 @@ public class LifecycleSessionAccess {
             throw new ResponseStatusException(HttpStatus.GONE, "ACCOUNT_DELETED");
         if (recent && (rows.getFirst().isBefore(now.minus(RECENT_LOGIN)) || rows.getFirst().isAfter(now.plusSeconds(5))))
             throw new ResponseStatusException(HttpStatus.PRECONDITION_REQUIRED, "RECENT_LOGIN_REQUIRED");
-        return token.userId();
+        return token;
+    }
+
+    /** A server-issued single-use download handle carries this exact original session scope. */
+    public void requireSession(UUID account, UUID session, Instant accessExpiresAt) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Lifecycle access requires its owning transaction");
+        sessions.requireUser(account);
+        tokens.lockUser(account);
+        var active = jdbc.query("""
+            SELECT expires_at FROM auth_sessions WHERE id=? AND user_id=? AND revoked_at IS NULL AND expires_at>? FOR UPDATE
+            """, (rs, row) -> rs.getTimestamp(1).toInstant(), session, account, Timestamp.from(Instant.now()));
+        Instant now = Instant.now();
+        if (active.isEmpty() || !active.getFirst().isAfter(now) || !accessExpiresAt.isAfter(now))
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "SESSION_INACTIVE");
+        sessions.requireUser(account);
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_terminal_journal WHERE target_kind='ACCOUNT' AND target_id=?", Integer.class, account) > 0)
+            throw new ResponseStatusException(HttpStatus.GONE, "ACCOUNT_DELETED");
     }
 }

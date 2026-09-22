@@ -38,6 +38,11 @@ public class AccountExportConfiguration {
         return new AccountExportJobs(jdbc, tx, access, snapshots, projection, outbox, protocol, Clock.systemUTC());
     }
     @Bean HistoryExpiry lifecycleHistoryExpiry(AccountExportJobs jobs) { return new HistoryExpiry(jobs); }
+    @Bean ExportDownloadHandles exportDownloadHandles(JdbcTemplate jdbc, PlatformTransactionManager transactions,
+            LifecycleSessionAccess access, AccountExportJobs jobs, com.chanter.auth.application.RefreshTokenRepository refreshTokens) {
+        var tx = new TransactionTemplate(transactions); tx.setTimeout(5);
+        return new ExportDownloadHandles(jdbc, tx, access, jobs, refreshTokens);
+    }
     static final class HistoryExpiry {
         private final AccountExportJobs jobs;
         HistoryExpiry(AccountExportJobs jobs) { this.jobs = jobs; }

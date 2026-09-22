@@ -61,6 +61,31 @@ class JwtAuthenticationGlobalFilterPublicAuthPathsTest {
         assertThat(JwtAuthenticationGlobalFilter.isPublicPath("/api/v1/auth/moderation-appeals/admin")).isFalse();
     }
 
+    @Test void onlyExactGetDownloadNavigationDelegatesToAuthAndSpoofedIdentityIsRemoved() {
+        String path = "/api/v1/auth/account/exports/" + UUID.randomUUID() + "/download";
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.get(path).header(AuthHeaders.USER_ID, UUID.randomUUID().toString()).build());
+        var continued = new AtomicBoolean();
+        filter.filter(exchange, forwarded -> {
+            continued.set(true);
+            assertThat(forwarded.getRequest().getHeaders().getFirst(AuthHeaders.USER_ID)).isNull();
+            return Mono.empty();
+        }).block();
+        assertThat(continued).isTrue();
+        for (var method : List.of(org.springframework.http.HttpMethod.POST, org.springframework.http.HttpMethod.PUT,
+                org.springframework.http.HttpMethod.DELETE, org.springframework.http.HttpMethod.HEAD)) {
+            var rejected = MockServerWebExchange.from(MockServerHttpRequest.method(method, path).build());
+            filter.filter(rejected, ignored -> { throw new AssertionError("Wrong method bypassed JWT"); }).block();
+            assertThat(rejected.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+        for (var wrong : List.of(path + "/", path + ";x=1", path + "?accountId=" + UUID.randomUUID(),
+                path + "-authorization", path.replace("/download", "/entries"), path.replace("/download", "%2fdownload"),
+                "/api/v1/auth/account/exports/not-a-uuid/download", "/api/v1/auth/account/exports")) {
+            var rejected = MockServerWebExchange.from(MockServerHttpRequest.get(wrong).header(AuthHeaders.USER_ID, UUID.randomUUID().toString()).build());
+            filter.filter(rejected, ignored -> { throw new AssertionError("Unrelated path bypassed JWT"); }).block();
+            assertThat(rejected.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+    }
+
     @ParameterizedTest
     @MethodSource("publicAuthPaths")
     void unauthenticatedPublicAuthPathsDoNotReturnUnauthorized(String path) {

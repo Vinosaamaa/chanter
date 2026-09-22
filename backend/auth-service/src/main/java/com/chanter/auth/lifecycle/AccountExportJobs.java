@@ -148,6 +148,15 @@ public final class AccountExportJobs {
     /** Rechecked between download pages; cancellation/deletion/logout closes access without a long network transaction. */
     public Job requireDownload(String authorization, UUID id) {
         Job job = get(authorization, id);
+        return requireReady(job);
+    }
+    public Job requireDownload(UUID account, UUID session, Instant accessExpiresAt, UUID id) {
+        return tx.execute(status -> {
+            access.requireSession(account, session, accessExpiresAt);
+            return requireReady(read(id, account));
+        });
+    }
+    private static Job requireReady(Job job) {
         if (!"READY".equals(job.state())) throw rejected(HttpStatus.CONFLICT, "EXPORT_NOT_READY");
         return job;
     }

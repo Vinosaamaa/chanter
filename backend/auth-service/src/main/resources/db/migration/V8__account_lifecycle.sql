@@ -75,3 +75,11 @@ CREATE TABLE lifecycle_export_parts (
     request_event_id UUID, updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
     PRIMARY KEY(job_id,source)
 );
+CREATE TABLE lifecycle_export_downloads (
+    job_id UUID PRIMARY KEY REFERENCES lifecycle_export_jobs(id) ON DELETE CASCADE,
+    account_id UUID NOT NULL, session_id UUID NOT NULL,
+    handle_hash VARCHAR(64) NOT NULL UNIQUE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    access_expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    consumed_at TIMESTAMP WITH TIME ZONE
+);
