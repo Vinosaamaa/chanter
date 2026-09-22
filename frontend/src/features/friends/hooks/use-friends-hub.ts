@@ -108,7 +108,6 @@ export function useFriendsHub(preferredFriendId: string | null = null): UseFrien
     const delayMs = reason === null ? 300 : 1_500
     resetCallTimerRef.current = window.setTimeout(() => {
       setCallState(initialCallState)
-      setCallError(null)
       resetCallTimerRef.current = null
     }, delayMs)
   }, [disconnectLivekit])

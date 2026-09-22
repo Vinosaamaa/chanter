@@ -16,3 +16,11 @@ launch button becomes disabled. Scope the fixture opener to its actual toolbar;
 preserve page focus before the call state disables its control. Add explicit
 fixture readiness/focus checks before dispatching the synthetic incoming frame.
 The hosted rerun remains required.
+
+## Cross-browser follow-through
+
+At 3134d03e, Firefox reported SEC_ERROR_UNKNOWN_ISSUER. The pinned Playwright Firefox provider bypasses distribution policies and reads PLAYWRIGHT_FIREFOX_POLICIES_JSON. Export the generated policy file through the hosted environment. Separate CA and leaf validation remain unchanged.
+
+WebKit failures appeared while tests navigated immediately after the login response, before Home bootstrap completed. The helper now awaits four actual successful bootstrap responses and visible Home content. This is not yet a confirmed resolution; hosted execution remains the proof. A broader rule retaining every failed request until a later navigation was rejected because it could mask an earlier unrelated cancellation.
+
+The call focus fixture showed that the real hook uses an ended phase before idle. Close the modal at ended, focus an available heading, and preserve busy/audio errors in the visible page. Two additional component regressions first failed for the missing alert, then passed after the fix.

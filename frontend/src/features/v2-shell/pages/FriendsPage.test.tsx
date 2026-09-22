@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
     sendMessage: vi.fn().mockResolvedValue(true),
     isSending: false,
     callState: { phase: 'idle', callId: null, peerUserId: null, reason: null },
-    callError: null,
+    callError: null as string | null,
     isMuted: false,
     startCall: vi.fn(),
     acceptCall: vi.fn(),
@@ -106,6 +106,7 @@ describe('FriendsPage', () => {
   })
 
   beforeEach(() => {
+    mocks.hub.callError = null
     vi.clearAllMocks()
     mocks.preferredFriendId = null
     mocks.hub.selectedFriendId = 'friend-alex'
@@ -228,6 +229,31 @@ describe('FriendsPage', () => {
     mocks.hub.callState.phase = 'idle'
     view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
     expect(opener).toHaveFocus()
+  })
+
+  it.each(['Friend is busy on another call', 'Unable to join call audio'])('keeps call failure visible after the modal closes: %s', (message) => {
+    mocks.hub.callError = message
+    mocks.hub.callState.phase = 'ended'
+    const view = renderPage()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(message)
+    mocks.hub.callState.phase = 'idle'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    expect(screen.getByRole('alert')).toHaveTextContent(message)
+  })
+
+  it('returns to the visible heading while the ended call still disables its launch button', async () => {
+    const user = userEvent.setup()
+    const view = renderPage()
+    await user.click(within(screen.getByRole('complementary')).getByRole('button', { name: /Alex Chen/i }))
+    const opener = screen.getByRole('button', { name: 'Start voice call with Alex Chen' })
+    opener.focus()
+    mocks.hub.callState.phase = 'incoming_ringing'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    mocks.hub.callState.phase = 'ended'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    expect(opener).toBeDisabled()
+    expect(screen.getByRole('heading', { name: 'Alex Chen' })).toHaveFocus()
   })
 })
 

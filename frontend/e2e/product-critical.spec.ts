@@ -157,6 +157,7 @@ test.describe('Product critical paths @product', () => {
     await expect(page).toHaveURL(/\/app\//, { timeout: 30_000 })
     await page.goto('/app/teaching')
     await expect(page.getByRole('heading', { level: 1, name: 'Teaching', exact: true })).toBeVisible()
+    await expect(page.getByText('Loading teaching...')).toHaveCount(0, { timeout: 15_000 })
     await expect(page.getByText('Loading dashboard...')).toHaveCount(0, { timeout: 15_000 })
     await page.goto('/app/settings/billing')
     await expect(page).toHaveURL(/\/app\/settings\/usage$/)
@@ -251,10 +252,24 @@ async function submitCredentials(page: Page, email: string) {
   const loginResponse = page.waitForResponse((response) =>
     new URL(response.url()).pathname === '/api/v1/auth/login' && response.request().method() === 'POST',
   )
+  // A login response precedes the Home queries. Finish that visible page before
+  // this journey navigates away, rather than cancelling its bootstrap requests.
+  const homeResponses = Promise.all([
+    '/api/v1/study-servers', '/api/v1/me/home-summary',
+    '/api/v1/study-server-invitations', '/api/v1/me/notifications/unread-count',
+  ].map(path => page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === 'GET')))
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill(demoPassword)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   const response = await loginResponse
   expect(response.status()).toBe(200)
-  return response.json() as Promise<{ accessToken: string }>
+  const login = await response.json() as { accessToken: string }
+  for (const homeResponse of await homeResponses) {
+    expect(homeResponse.status()).toBe(200)
+    expect(await homeResponse.finished()).toBeNull()
+  }
+  await expect(page.getByRole('heading', { level: 1, name: /^Good (morning|afternoon|evening),/ })).toBeVisible()
+  await expect(page.getByText('Loading your courses…')).toHaveCount(0)
+  await expect(page.getByText('Loading courses…', { exact: true })).toHaveCount(0)
+  return login
 }

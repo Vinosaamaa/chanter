@@ -145,11 +145,25 @@ describe('CourseQuestionsPage', () => {
     const user = userEvent.setup()
     render(<CourseQuestionsPage />)
     const question = screen.getByRole('button', { name: /Why does the recursive call stop/ })
-    await user.click(question)
-    expect(question.closest('.questions-layout')).toHaveClass('question-reading-open')
-    await user.click(screen.getByRole('button', { name: 'Back to questions' }))
-    expect(question.closest('.questions-layout')).not.toHaveClass('question-reading-open')
-  })
+      await user.click(question)
+      expect(question.closest('.questions-layout')).toHaveClass('question-reading-open')
+      expect(screen.getByRole('region', { name: 'Question conversation' })).toHaveFocus()
+      await user.click(screen.getByRole('button', { name: 'Back to questions' }))
+      expect(question.closest('.questions-layout')).not.toHaveClass('question-reading-open')
+      expect(question).toHaveFocus()
+    })
+
+    it('opens the learner composer and returns focus to Ask a question', async () => {
+      mocks.workspace.courseCapabilities.canManageQuestions = false
+      mocks.questions.selectedQuestion = null
+      const user = userEvent.setup()
+      render(<CourseQuestionsPage />)
+      const ask = screen.getByRole('button', { name: 'Ask a question' })
+      await user.click(ask)
+      expect(screen.getByRole('textbox', { name: 'Ask a support question' })).toHaveFocus()
+      await user.click(screen.getByRole('button', { name: 'Back to questions' }))
+      expect(ask).toHaveFocus()
+    })
 
   beforeEach(() => {
     vi.clearAllMocks()

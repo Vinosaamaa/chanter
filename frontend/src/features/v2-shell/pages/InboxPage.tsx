@@ -126,7 +126,7 @@ export function InboxPage() {
         </div>
 
         {notificationsQuery.isLoading ? <p className="v2-section-label">Loading…</p> : null}
-        {notificationsQuery.isError ? <p className="v2-section-label">Could not load inbox.</p> : null}
+        {notificationsQuery.isError ? <p className="v2-section-label" role="alert">Could not load inbox. <button type="button" className="v2-outline-button" onClick={() => void notificationsQuery.refetch()}>Retry</button></p> : null}
         {!notificationsQuery.isLoading && !notificationsQuery.isError && notifications.length === 0 ? (
           <p className="v2-section-label">No open notifications.</p>
         ) : null}
@@ -197,6 +197,9 @@ export function InboxPage() {
                 </button>
               </div>
             </header>
+
+            {markDone.isError && markDone.variables === selected.id ? <p className="inline-error" role="alert">Could not mark this notification done. Try Mark done again.</p> : null}
+            {markRead.isError && markRead.variables === selected.id ? <p className="inline-error" role="alert">Could not mark this notification read. <button type="button" className="v2-outline-button" onClick={() => markRead.mutate(selected.id)}>Retry</button></p> : null}
 
             <div className="reading-thread">
               <article className="inbox-message-card compact">

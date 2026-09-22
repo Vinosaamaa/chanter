@@ -265,6 +265,24 @@ test('fixture UI phone Inbox restores its heading when the last notification is 
   await expect(page.getByRole('heading', { name: 'Inbox', exact: true })).toBeFocused()
 })
 
+test('fixture UI phone Inbox reports failed completion and permits retry', async ({ page }) => {
+  let attempts = 0
+  await page.route('**/api/v1/me/notifications/visual-notification/done', route => {
+    attempts += 1
+    return attempts === 1 ? route.fulfill({ status: 503, json: { message: 'Synthetic temporary failure' } }) : route.continue()
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/app/inbox')
+  await page.locator('.inbox-thread-list button').first().click()
+  await page.getByRole('button', { name: 'Mark done', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Could not mark this notification done')
+  await expect(page.getByRole('heading', { name: 'A fresh starting point for this week' })).toBeVisible()
+  await page.getByRole('button', { name: 'Mark done', exact: true }).click()
+  await expect(page.locator('.inbox-thread-pane')).toBeVisible()
+  await expect(page.locator('.inbox-thread-list')).not.toContainText('A fresh starting point for this week')
+  expect(attempts).toBe(2)
+})
+
 for (const width of [390, 1280]) {
   test(`fixture UI phone Friends incoming call uses an inert modal at ${width}`, async ({ page }, testInfo) => {
     const sockets: WebSocketRoute[] = []
@@ -294,7 +312,8 @@ for (const width of [390, 1280]) {
     await page.screenshot({ path: testInfo.outputPath(`fixture-ui-incoming-call-${width}.png`) })
     await dialog.getByRole('button', { name: 'Decline voice call' }).click()
     await expect(dialog).toBeHidden()
-    await expect(previous).toBeFocused()
+    // The actual ended phase keeps its launch button disabled briefly.
+    await expect(page.getByRole('heading', { name: 'Alexandra Montgomery-Williams' })).toBeFocused()
     expect(declined).toEqual(['visual-call'])
   })
 }
@@ -304,8 +323,10 @@ test('fixture UI phone Questions returns from its reading pane', async ({ page }
   await page.goto(`${course}/questions`)
   await page.locator('.question-thread-list > button').first().click()
   await expect(page.locator('.question-detail-pane')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Question conversation' })).toBeFocused()
   await expect(page.locator('.questions-list-pane')).toBeHidden()
   await page.getByRole('button', { name: 'Back to questions' }).click()
+  await expect(page.locator('.question-thread-list > button').first()).toBeFocused()
   await expect(page.locator('.questions-list-pane')).toBeVisible()
   await expect(page.locator('.question-thread-list > button').first()).toBeFocused()
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-question-list-390.png') })

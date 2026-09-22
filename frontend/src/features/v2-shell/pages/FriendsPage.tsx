@@ -67,6 +67,9 @@ export function FriendsPage() {
   const callFriendName = hub.callState.peerUserId
     ? relationships.profilesById[hub.callState.peerUserId]?.displayName ?? 'Friend'
     : active?.name ?? 'Friend'
+  const closedCallError = (hub.callState.phase === 'idle' || hub.callState.phase === 'ended') && hub.callError
+    ? <p className="inline-error" role="alert">{hub.callError}</p>
+    : null
 
   const submitMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -125,6 +128,8 @@ export function FriendsPage() {
           </button>
         </nav>
 
+        {!conversationOpen || !active ? closedCallError : null}
+
         {tab === 'friends' ? (
           <FriendList
             friends={friendRows}
@@ -176,6 +181,8 @@ export function FriendsPage() {
                 {hub.error}
               </p>
             ) : null}
+
+            {conversationOpen ? closedCallError : null}
 
             <div className="dm-message-list">
               <span className="today-divider">Conversation</span>
@@ -235,8 +242,8 @@ export function FriendsPage() {
       {showAdd ? (
         <AddFriendModal relationships={relationships} onClose={() => setShowAdd(false)} />
       ) : null}
-      {hub.callState.phase !== 'idle' ? (
-        <CallModal hub={hub} friendName={callFriendName} lastPageFocus={lastPageFocus} />
+      {hub.callState.phase !== 'idle' && hub.callState.phase !== 'ended' ? (
+        <CallModal hub={hub} friendName={callFriendName} lastPageFocus={lastPageFocus} fallbackFocus={conversationOpen && active ? conversationHeadingRef : listHeadingRef} />
       ) : null}
     </div>
   )
@@ -545,21 +552,23 @@ function AddFriendModal({
 
 type FriendsHook = ReturnType<typeof useFriendsHub>
 
-function CallModal({ hub, friendName, lastPageFocus }: { hub: FriendsHook; friendName: string; lastPageFocus: RefObject<HTMLElement | null> }) {
+function CallModal({ hub, friendName, lastPageFocus, fallbackFocus }: { hub: FriendsHook; friendName: string; lastPageFocus: RefObject<HTMLElement | null>; fallbackFocus: RefObject<HTMLElement | null> }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     // An incoming call disables its launch button before this effect runs.
     // Retain the last focused page control when the browser moves focus to body.
     const previous = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
       ? document.activeElement : lastPageFocus.current
+    const fallback = fallbackFocus.current
     const dialog = dialogRef.current
     dialog?.showModal()
     dialog?.querySelector<HTMLButtonElement>('button')?.focus()
     return () => {
       dialog?.close()
-      if (previous?.isConnected) previous.focus()
+      if (previous?.isConnected && !previous.matches(':disabled')) previous.focus()
+      else if (fallback?.isConnected) fallback.focus()
     }
-  }, [lastPageFocus])
+  }, [lastPageFocus, fallbackFocus])
   const incoming = hub.callState.phase === 'incoming_ringing'
   const inCall = hub.callState.phase === 'in_call'
   return (

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -86,8 +86,23 @@ export function CourseQuestionsPage() {
   const [draft, setDraft] = useState('')
   const [readingOpen, setReadingOpen] = useState(false)
   const selectedRowRef = useRef<HTMLButtonElement | null>(null)
+  const listHeading = useRef<HTMLHeadingElement>(null)
+  const conversation = useRef<HTMLElement>(null)
+  const composer = useRef<HTMLInputElement>(null)
+  const wasReadingOpen = useRef(false)
   const draftVersionRef = useRef(0)
   const selected = questions.selectedQuestion
+  useEffect(() => {
+    if (readingOpen) {
+      if (selected?.id) conversation.current?.focus()
+      else composer.current?.focus()
+    } else if (wasReadingOpen.current) {
+      const previous = selectedRowRef.current
+      if (previous?.isConnected) previous.focus()
+      else listHeading.current?.focus()
+    }
+    wasReadingOpen.current = readingOpen
+  }, [readingOpen, selected?.id])
 
   const updateDraft = (value: string) => {
     draftVersionRef.current += 1
@@ -153,7 +168,7 @@ export function CourseQuestionsPage() {
     <div className={`questions-layout ${manageQuestions ? 'owner-view' : ''}${readingOpen ? ' question-reading-open' : ''}`}>
       <aside className="questions-list-pane">
         <div className="question-list-heading">
-          <h2>Questions</h2>
+          <h2 ref={listHeading} tabIndex={-1}>Questions</h2>
           <button type="button" aria-label="Refresh questions" onClick={() => void questions.refresh()}>
             <RefreshCw />
           </button>
@@ -170,7 +185,7 @@ export function CourseQuestionsPage() {
             </button>
           ))}
         </div>
-        {!manageQuestions ? <button type="button" className="mobile-ask-question" onClick={() => { clearDraft(); questions.selectSupportQuestion(null); setReadingOpen(true) }}><Plus size={16} /> Ask a question</button> : null}
+        {!manageQuestions ? <button type="button" className="mobile-ask-question" onClick={event => { selectedRowRef.current = event.currentTarget; clearDraft(); questions.selectSupportQuestion(null); setReadingOpen(true) }}><Plus size={16} /> Ask a question</button> : null}
         <div className="question-thread-list">
           {questions.isLoadingHistory ? <p className="question-empty-state">Loading questions…</p> : null}
           {!questions.isLoadingHistory && filteredQuestions.length === 0 ? (
@@ -202,8 +217,8 @@ export function CourseQuestionsPage() {
         </div>
       </aside>
 
-      <section className="question-detail-pane">
-        <button type="button" className="mobile-back" aria-label="Back to questions" onClick={() => { setReadingOpen(false); requestAnimationFrame(() => selectedRowRef.current?.focus()) }}><ArrowLeft /> Questions</button>
+      <section className="question-detail-pane" aria-label="Question conversation" tabIndex={-1} ref={conversation}>
+        <button type="button" className="mobile-back" aria-label="Back to questions" onClick={() => setReadingOpen(false)}><ArrowLeft /> Questions</button>
         {manageQuestions ? <h2 className="question-pane-label">Thread</h2> : null}
         {!selected ? (
           <div className="question-detail-empty">
@@ -373,6 +388,7 @@ export function CourseQuestionsPage() {
         {(!manageQuestions || selected) ? (
           <form className="question-composer" onSubmit={submitComposer}>
             <input
+              ref={composer}
               aria-label={manageQuestions ? 'Reply to this question' : 'Ask a support question'}
               value={draft}
               onChange={(event) => updateDraft(event.target.value)}

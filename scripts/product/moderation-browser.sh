@@ -46,15 +46,12 @@ EOF
     certutil -N --empty-password -d "sql:$HOME/.pki/nssdb"
   fi
   certutil -A -d "sql:$HOME/.pki/nssdb" -n 'Chanter hosted browser fixture' -t 'C,,' -i "$state/ca.crt"
-  (cd frontend && node --input-type=module - "$state/ca.crt" <<'JS'
-import { firefox } from 'playwright';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-const distribution = join(dirname(firefox.executablePath()), 'distribution');
-mkdirSync(distribution, { recursive: true });
-writeFileSync(join(distribution, 'policies.json'), JSON.stringify({ policies: { Certificates: { Install: [process.argv[2]] } } }));
+  node --input-type=module - "$state/ca.crt" "$state/firefox-policies.json" <<'JS'
+import { writeFileSync } from 'node:fs';
+writeFileSync(process.argv[3], JSON.stringify({ policies: { Certificates: { Install: [process.argv[2]] } } }));
 JS
-  )
+  # Playwright's patched Firefox loads its explicit policy path, not distribution/.
+  printf 'PLAYWRIGHT_FIREFOX_POLICIES_JSON=%s\n' "$state/firefox-policies.json" >> "$GITHUB_ENV"
   printf 'NODE_EXTRA_CA_CERTS=%s\n' "$state/ca.crt" >> "$GITHUB_ENV"
   cat > "$state/Caddyfile" <<EOF
 {

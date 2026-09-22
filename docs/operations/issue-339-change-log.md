@@ -120,3 +120,11 @@ The fabricated Unassigned column was removed in favor of the actual assignment
 workflow in People. Incoming call focus preserves the last page control when an
 incoming call disables that control before the modal mounts. The related Friends
 and enrollment tests total13 passing; lint/build and unchanged asset caps pass.
+
+## Error feedback and focus follow-through
+
+Questions now focus the conversation or new-question composer and restore the originating control on Back. Inbox failed read/completion actions show an actionable error; a failed completion retains the selected notification for retry. Incoming calls close at the ended phase and focus the visible conversation heading when the prior launch control is disabled. Busy/audio errors remain in the visible pane until the next call attempt, rather than disappearing with the modal or a short reset timer.
+
+Component regressions cover all three pages. The synthetic browser completion test fails its first request and verifies a successful retry. Community screenshots were inspected at phone width and landscape height: forms and event details are readable, with modal scrolling retained. Raw event audience enums were replaced with member-facing labels.
+
+The prior checkpoint passed both native release stages and the application unit/build gates. Synthetic browser coverage passed 266 cases; six incoming-call focus cases require this correction. Real signed-in coverage still failed Firefox certificate trust and WebKit navigation health. Playwright's patched Firefox requires its explicit policy environment variable; the generated policy path is now exported. Login helpers wait for the actual Home bootstrap responses and rendered content before navigating onward. No error class, certificate check or cookie attribute is suppressed. Hosted validation of this checkpoint remains required.

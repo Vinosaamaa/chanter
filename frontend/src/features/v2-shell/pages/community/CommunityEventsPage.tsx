@@ -192,7 +192,7 @@ export function CommunityEventsPage() {
                   {event.location || 'Location TBA'}
                   <b>
                     <UsersRound />
-                    {event.visibility === 'HUB' ? 'Open to all' : event.visibility}
+                    {event.visibility === 'HUB' ? 'Open to all' : event.visibility === 'COURSE' ? 'Course members' : 'Cohort members'}
                   </b>
                 </p>
               </div>
@@ -323,7 +323,7 @@ function EventDetailModal({
         <h3>About this event</h3>
         <p>{event.description || 'No description provided.'}</p>
         <div className="event-tags">
-          <b>{event.visibility}</b>
+          <b>{event.visibility === 'HUB' ? 'Everyone in this Study Server' : event.visibility === 'COURSE' ? 'Course members' : 'Cohort members'}</b>
           {event.status === 'CANCELLED' ? <b>CANCELLED</b> : null}
         </div>
         <div className="event-going">

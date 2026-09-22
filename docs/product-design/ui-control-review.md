@@ -7,11 +7,14 @@ This is the active #254 audit, not a completion certificate. Fixture browser run
 Issue #339 and PR340 own the remaining combined review. The reconstruction evidence
 below is historical; it is not the final lifecycle/recovery release acceptance.
 The current review started from accepted moderation and monitoring main, and now
-includes the accepted dependency update from PR338.
+includes accepted dependency PR338 and owner cohort-invite authorization PR341.
 
 | Surface or capability | Current implementation and evidence boundary |
 | --- | --- |
-| Friends and Inbox phone navigation | #339 reproduces and fixes focus left in hidden panes. Component regressions pass; new three-engine browser cases cover Back, remaining/last notifications and the native Add friend dialog. Hosted acceptance is still running. |
+| Friends and Inbox phone navigation | #339 reproduces and fixes focus left in hidden panes. Component regressions pass; new three-engine browser cases cover Back, remaining/last notifications and the native Add friend dialog. Hosted fixtures passed all but six ended-call focus cases; the correction and persistent busy/audio feedback are awaiting the next browser proof. |
+| Questions | Conversation/composer focus and Back restoration now have focused regressions; final hosted phone proof remains required. |
+| Teaching and legacy enrollment | Teaching preserves dashboard metrics, Refresh and bookmarked Study Server selection; the old dashboard redirects. Enrollment waits for resolved manager authorization before mounting invite/roster hooks and retains pagination and real Preview links. |
+| Community dialogs | Event, announcement and invitation forms use native modality. Phone and landscape screenshots were inspected; hosted modal interaction cases passed at the prior checkpoint. Event edits preserve their restricted audience. |
 | Community members and legacy header | #339 removes unavailable Active/Online filters and the inert Help control. All/Staff/Learners retain real API filtering and expose selected state. |
 | AI answer controls | PR322 accepted explicit model/mode choices, billing notes and persisted answer audit. PR330 accepted scoped semantic retrieval. These do not establish live-provider login, paid entitlement or generated explanation quality. |
 | Course Resources | PR318/325 accepted private storage/quarantine and supported ingestion. Final upload, authorization, processing and deletion journeys must include #251; actual remote bucket acceptance remains open. |

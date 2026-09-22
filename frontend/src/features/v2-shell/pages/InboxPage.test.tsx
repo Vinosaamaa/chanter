@@ -55,6 +55,16 @@ describe('InboxPage', () => {
 
   afterEach(cleanup)
 
+  it('keeps a failed completion visible and lets the user retry it', async () => {
+    hooks.useMarkNotificationDoneMutation.mockReturnValue({ mutate: markDoneMutate, isPending: false, isError: true, variables: 'n1' })
+    const user = userEvent.setup()
+    renderInbox()
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not mark this notification done')
+    await user.click(screen.getByRole('button', { name: 'Mark done' }))
+    expect(markDoneMutate).toHaveBeenCalledWith('n1', expect.objectContaining({ onSuccess: expect.any(Function) }))
+    expect(screen.getByRole('heading', { name: sampleNotification.title })).toBeVisible()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     markDoneMutate.mockReset()
