@@ -24,17 +24,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class JdbcSocialMessagingRepository implements SocialMessagingRepository {
 
     private final JdbcClient jdbcClient;
+    private final com.chanter.message.lifecycle.MessageLifecycleAccess lifecycle;
     private final DataSource dataSource;
     private volatile Boolean postgresDatabase;
 
     public JdbcSocialMessagingRepository(JdbcClient jdbcClient, DataSource dataSource) {
         this.jdbcClient = jdbcClient;
+        this.lifecycle = new com.chanter.message.lifecycle.MessageLifecycleAccess(jdbcClient);
         this.dataSource = dataSource;
     }
 
     @Override
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void lockPair(UUID firstUserId, UUID secondUserId) {
+        lifecycle.lock(); lifecycle.requireAccount(firstUserId); lifecycle.requireAccount(secondUserId);
         UUID first = firstUserId.toString().compareTo(secondUserId.toString()) < 0 ? firstUserId : secondUserId;
         UUID second = first.equals(firstUserId) ? secondUserId : firstUserId;
         String insert = usePostgresUpsert()
@@ -74,6 +77,7 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
     @Override
     @Transactional
     public FriendRequest saveFriendRequest(FriendRequest friendRequest) {
+        lifecycle.lock(); lifecycle.requireAccount(friendRequest.senderUserId()); lifecycle.requireAccount(friendRequest.recipientUserId());
         jdbcClient.sql("""
                         INSERT INTO friend_requests (id, sender_user_id, recipient_user_id, status, created_at)
                         VALUES (:id, :senderUserId, :recipientUserId, :status, :createdAt)
@@ -114,6 +118,7 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
     @Override
     @Transactional
     public Optional<FriendRequest> updateFriendRequestStatus(UUID friendRequestId, FriendRequestStatus status) {
+        lifecycle.lock();
         int updatedRows = jdbcClient.sql("""
                         UPDATE friend_requests
                         SET status = :status
@@ -312,6 +317,7 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
     @Override
     @Transactional
     public void saveUserBlock(UUID blockerUserId, UUID blockedUserId) {
+        lifecycle.lock(); lifecycle.requireAccount(blockerUserId); lifecycle.requireAccount(blockedUserId);
         OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
         if (usePostgresUpsert()) {
             jdbcClient.sql("""
@@ -354,6 +360,7 @@ public class JdbcSocialMessagingRepository implements SocialMessagingRepository 
     @Override
     @Transactional
     public DirectMessage saveDirectMessage(DirectMessage directMessage) {
+        lifecycle.lock(); lifecycle.requireAccount(directMessage.senderUserId()); lifecycle.requireAccount(directMessage.recipientUserId());
         jdbcClient.sql("""
                         INSERT INTO direct_messages (id, sender_user_id, recipient_user_id, body, sent_at)
                         VALUES (:id, :senderUserId, :recipientUserId, :body, :sentAt)

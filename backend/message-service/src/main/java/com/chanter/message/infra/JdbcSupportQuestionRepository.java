@@ -20,14 +20,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class JdbcSupportQuestionRepository implements SupportQuestionRepository {
 
     private final JdbcClient jdbcClient;
+    private final com.chanter.message.lifecycle.MessageLifecycleAccess lifecycle;
 
     public JdbcSupportQuestionRepository(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
+        this.lifecycle = new com.chanter.message.lifecycle.MessageLifecycleAccess(jdbcClient);
     }
 
     @Override
     @Transactional
     public SupportQuestion saveSupportQuestion(SupportQuestion supportQuestion) {
+        lifecycle.lock(); lifecycle.requireAccount(supportQuestion.senderUserId()); lifecycle.requireScope("CHANNEL",supportQuestion.channelId());
         OffsetDateTime createdAt = OffsetDateTime.ofInstant(supportQuestion.createdAt(), ZoneOffset.UTC);
 
         jdbcClient.sql("""
@@ -290,6 +293,7 @@ public class JdbcSupportQuestionRepository implements SupportQuestionRepository 
             SupportQuestionStatus fromStatus,
             SupportQuestionStatus toStatus
     ) {
+        lifecycle.lock();
         return jdbcClient.sql("""
                         UPDATE support_questions
                         SET status = :toStatus
