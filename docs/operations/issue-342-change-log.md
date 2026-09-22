@@ -1,6 +1,6 @@
 # Issue #342 implementation checkpoint
 
-PR #336 is accepted with recovery disabled. This issue owns the remaining real
+Draft PR #343 owns this issue. PR #336 is accepted with recovery disabled. This issue owns the remaining real
 source and private-object recovery proof; the accepted #332 worktree is preserved.
 
 The first slice adds media V6 and an owning storage-mutation store. New physical
@@ -28,6 +28,8 @@ Thirteen focused checks pass, including actual loopback S3 failure, adapter/stor
 restart, same-key refusal without redispatch, definitive DELETE/404 settlement,
 maintenance refusal and Spring namespace wiring. Fixtures are hermetic and do not
 establish actual provider closure.
+
+Full affected media/common Maven verification passes at the adapter checkpoint.
 
 Coordinated source lifecycle hooks, inventory qualification, full object
 restoration and actual #251 canonical replay are still in progress.
