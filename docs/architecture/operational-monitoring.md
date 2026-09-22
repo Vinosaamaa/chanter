@@ -1,6 +1,6 @@
 # Operational monitoring and alert delivery
 
-Issue #331 completes the operational coverage left open by #252. The accepted
+Issue #331 owns the unfinished operational coverage left open by #252. The accepted
 PR329 foundation filters telemetry before private export and proves isolated
 database recovery. It does not yet export the product's business instruments,
 deliver exception reports, or alert an operator during a real outage.
@@ -20,6 +20,20 @@ oldest age with a bounded query outside product request paths. Export collection
 health and sample age separately. An unavailable or stale collector must never
 report a healthy zero queue. Preserve actual failure counts and unknown AI usage;
 an accounting reservation is not measured provider consumption.
+
+The implemented event collector includes pending and claimed events. Email counts
+pending messages and retained expired-message metadata, which the existing worker
+purges after seven days. Resource counts include upload, scan, indexing and cleanup
+work, with scan/index failures shown separately. Resource age is elapsed time
+since the oldest pending row's last update, not its total queue wait or original
+upload age. Retry and claim transitions reset that activity timestamp. No content,
+recipient, resource ID or model name is a metric dimension.
+
+The real Boot proof keeps the enabled collector and its gauges alive until the
+private test receiver acknowledges a pending database row and successful collection.
+It also checks counter privacy and disabled configuration separately. Native
+PostgreSQL cancellation passed on both architectures at the initial draft head;
+the new email/resource queries still require their extended native run.
 
 Critical operations include durable events, transactional email, resource scan
 and ingestion, AI generation, realtime connections and gateway admission. A

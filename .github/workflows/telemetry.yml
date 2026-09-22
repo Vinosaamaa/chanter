@@ -8,6 +8,8 @@ on:
       - 'backend/common/src/**/telemetry/**'
       - 'backend/common/src/**/events/OutboxMetrics*'
       - 'backend/common/src/**/events/OutboxConfiguration.java'
+      - 'backend/auth-service/src/**/EmailQueueMetrics*'
+      - 'backend/media-service/src/**/ResourceQueueMetrics*'
       - 'infra/production/java/**'
       - 'infra/production/runtime-lock.json'
       - 'scripts/deploy/telemetry*'
@@ -53,5 +55,5 @@ jobs:
         env:
           METRIC_TEST_PORT: ${{ job.services.metrics-postgres.ports['5432'] }}
         run: |
-          mvn -B -q -pl telemetry,common -am -DskipTests package
-          mvn -B -q -pl telemetry,common -am -Dtest=SafeSpanExporterTest,SafeMetricExporterTest,SafeLogFormatterTest,NativeTelemetryExportTest,QueueMetricsTest,QueueMetricQueryTest,OutboxMetricsTest,NativeQueueMetricQueryTest -Dsurefire.failIfNoSpecifiedTests=false -Dchanter.telemetry.agent="$GITHUB_WORKSPACE/.cache/telemetry/agent.jar" -Dchanter.telemetry.jdbc="jdbc:postgresql://127.0.0.1:$METRIC_TEST_PORT/metric_test" test
+          mvn -B -q -pl telemetry,common,auth-service,media-service -am -DskipTests package
+          mvn -B -q -pl telemetry,common,auth-service,media-service -am -Dtest=SafeSpanExporterTest,SafeMetricExporterTest,SafeLogFormatterTest,NativeTelemetryExportTest,QueueMetricsTest,QueueMetricQueryTest,OutboxMetricsTest,NativeQueueMetricQueryTest,EmailQueueMetricsTest,ResourceQueueMetricsTest -Dsurefire.failIfNoSpecifiedTests=false -Dchanter.telemetry.agent="$GITHUB_WORKSPACE/.cache/telemetry/agent.jar" -Dchanter.telemetry.jdbc="jdbc:postgresql://127.0.0.1:$METRIC_TEST_PORT/metric_test" test

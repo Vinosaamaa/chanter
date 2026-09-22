@@ -1,0 +1,35 @@
+# Monitoring review dispositions
+
+Full CodeAnt review completed at initial head `853e4fa8` without blocking inline
+findings. The document now says #331 owns unfinished coverage, so its opening
+cannot be mistaken for a completion claim. The test receiver drains discarded
+trace bodies instead of allocating a complete byte array.
+
+Sampler interruption is not JDBC cancellation. Each source statement already has
+a two-second query timeout and three-second socket timeout, with original settings
+restored and the connection returned. PostgreSQL cancellation and absence of a
+remaining active statement passed on both native architectures. Pool acquisition
+uses the application's separate bound. Shutdown unregisters gauges and prevents
+new samples; it does not claim that interrupt instantly cancels database work.
+
+Retain one sampler per bounded source queue so one slow database query cannot
+starve another source. Aggregate queries have hard deadlines; an overloaded or
+unavailable source becomes visibly unhealthy rather than reporting empty. A
+covering index or maintained summary will require measured production query/load
+evidence rather than unverified schema changes across the active migration lanes.
+
+The source-owned SQL helper deliberately exposes only the fixed aggregate result
+contract, exercised with actual schema/state tests. No user input supplies SQL.
+The privacy extension keeps an independent finite operation allowlist to reject
+unknown dimensions. It must not acquire a runtime dependency on gateway code.
+
+H2 fixture databases keep connections between setup and sampling; removing
+`DB_CLOSE_DELAY=-1` would destroy the schema between operations. The timeout test
+uses a real interruptible database query, not a mocked delay. The explicit native
+test selection intentionally spans Maven modules without matching tests in every
+module; individual native assertions prove the selected behavior. Suggested test
+grouping and traversal-helper changes do not resolve a demonstrated defect.
+
+Subsequent collector and gauge proof changes require fresh full review and hosted
+checks before this draft can become ready. No review disposition waives unfinished
+error tracking, operational alerts or actual provider acceptance.

@@ -14,6 +14,12 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.support.TransactionTemplate;
 
 class OutboxMetricsTest {
+    @Test void disabledTelemetryStartsNoCollectorAndRequiresNoDatabaseOrRegistry() {
+        new org.springframework.boot.test.context.runner.ApplicationContextRunner()
+                .withUserConfiguration(OutboxMetrics.class)
+                .withPropertyValues("chanter.telemetry.enabled=false")
+                .run(context -> assertThat(context).hasNotFailed().doesNotHaveBean(com.chanter.common.telemetry.QueueMetrics.class));
+    }
     @Test void claimedWorkRemainsPendingAndDeliveredWorkLeavesTheBacklog() {
         var source = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
         var jdbc = new JdbcTemplate(source); jdbc.execute(DurableOutbox.SCHEMA);

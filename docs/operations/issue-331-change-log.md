@@ -21,6 +21,19 @@ passes; native PostgreSQL cancellation and enabled production application export
 still need hosted proof. Connection acquisition remains bounded by the owning
 pool's configuration rather than the statement timeout.
 
-Email/resource collectors, AI/realtime coverage, dashboard/alert rules, exception
-tracking and actual operator receipt remain unfinished. All workers remain Astra
-High at normal speed.
+Email and resource collectors now pass source-state tests. Email follows actual
+outbox delivery and expiry. Resource monitoring distinguishes active scan/index/
+cleanup, retained failures and completed/deleted rows. Its age is pending-row
+inactivity, since existing retry/claim transitions update the source timestamp.
+Both tests also run against the dedicated hosted PostgreSQL fixture.
+
+The native Boot gauge assertion first reproduced the missing live gauge proof.
+The completed fixture keeps its application open until the receiver acknowledges
+real queue state and business counters. It passes locally with all three actual
+agent/privacy/outage tests. Disabled configuration requires neither database nor
+registry. Initial native PostgreSQL statement cancellation passed on AMD64 and
+ARM64; new collector queries still require their own hosted run.
+
+AI/realtime coverage, dashboard/alert rules, exception tracking and actual operator
+receipt remain unfinished. All workers remain Astra High at normal speed. Work
+resumed on September 22 from preserved branches and interrupted edits.

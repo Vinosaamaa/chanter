@@ -7,6 +7,9 @@
     <description>Privacy boundary loaded only by the pinned OpenTelemetry Java agent</description>
     <properties><opentelemetry.version>1.65.0</opentelemetry.version></properties>
     <dependencies>
+        <dependency><groupId>com.chanter</groupId><artifactId>common</artifactId><version>${project.version}</version><scope>test</scope></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-jdbc</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>test</scope></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId><scope>test</scope></dependency>
         <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-extension-autoconfigure-spi</artifactId><version>1.65.0</version><scope>provided</scope></dependency>
         <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-trace</artifactId><version>1.65.0</version><scope>provided</scope></dependency>

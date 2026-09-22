@@ -10,7 +10,7 @@ capabilityIds: ["production-deployment"]
 createdAt: 2026-09-19
 reconstructed: false
 confidence: high
-unknowns: ["Native PostgreSQL query cancellation and complete source coverage", "Error tracker and private source-map integration", "Actual free-provider quotas, dashboards and operator alert receipt"]
+unknowns: ["Complete source coverage and new source collectors on native PostgreSQL", "Error tracker and private source-map integration", "Actual free-provider quotas, dashboards and operator alert receipt"]
 modules: ["shared-observability", "durable-events", "production-runtime"]
 interfaces: ["private-telemetry-export", "queue-health-measurements"]
 seams: ["source-to-metric-sampler", "application-to-telemetry-provider", "provider-to-operator"]
@@ -46,7 +46,12 @@ collection preserves the prior observation with unhealthy status; observations
 older than 90 seconds become unknown. Successful empty queues remain distinguishable
 from unavailable collectors. The SQL helper sets statement and socket deadlines
 and restores the original connection setting. H2 timeout, connection-return and
-queue transition tests pass. PostgreSQL cancellation requires its added hosted test.
+queue transition tests pass. PostgreSQL cancellation passed on both hosted architectures.
+The real Boot fixture now proves enabled queue-gauge export while its application
+is alive, with a receiver acknowledgement before shutdown. Disabled monitoring is
+tested separately. Email and resource collectors pass their source-state tests;
+their added native query checks remain pending. Resource age describes pending-row
+inactivity because claim and retry transitions reset its existing timestamp.
 
 There are no new public endpoints or authorization grants. Metric names and
 dimension values remain explicitly bounded by the existing private exporter.
@@ -56,7 +61,7 @@ by the SQL statement deadline.
 
 The [design](../../architecture/operational-monitoring.md) and
 [implementation record](../../operations/issue-331-change-log.md) distinguish this
-tested initial coverage from the unfinished email/resource/AI/realtime collectors,
+tested initial coverage from the unfinished AI/realtime collectors,
 dashboards, exception transport, private source maps, operational runbooks and
 actual provider notification. Free quotas and disabled paid overage must be
 verified in the eventual accounts. This proposed system review does not claim

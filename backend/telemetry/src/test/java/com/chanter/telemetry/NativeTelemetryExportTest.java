@@ -20,21 +20,36 @@ import static org.junit.jupiter.api.Assertions.*;
 class NativeTelemetryExportTest {
     @Test void realSpringApplicationExportsBoundedBusinessMetricsWithoutPrivateLabels() throws Exception {
         List<ExportMetricsServiceRequest> received = Collections.synchronizedList(new ArrayList<>());
+        var acknowledgement = Files.createTempDirectory(Path.of("target"), "queue-proof-").resolve("received");
         var collector = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         collector.createContext("/v1/metrics", exchange -> {
-            received.add(ExportMetricsServiceRequest.parseFrom(exchange.getRequestBody()));
+            var request = ExportMetricsServiceRequest.parseFrom(exchange.getRequestBody());
+            received.add(request);
+            var exported = request.getResourceMetricsList().stream().flatMap(resource -> resource.getScopeMetricsList().stream())
+                    .flatMap(scope -> scope.getMetricsList().stream()).toList();
+            if (exported.stream().anyMatch(metric -> metric.getName().equals("chanter.events.pending")
+                    && metric.getGauge().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 1))
+                    && exported.stream().anyMatch(metric -> metric.getName().equals("chanter.events.collection.healthy")
+                    && metric.getGauge().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 1))
+                    && exported.stream().anyMatch(metric -> metric.getName().equals("chanter.auth.email.delivery")
+                    && metric.getSum().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 600))) {
+                Files.writeString(acknowledgement, "received");
+            }
             exchange.sendResponseHeaders(200, -1); exchange.close();
         });
-        collector.createContext("/v1/traces", exchange -> { exchange.getRequestBody().readAllBytes(); exchange.sendResponseHeaders(200, -1); exchange.close(); });
+        collector.createContext("/v1/traces", exchange -> { exchange.getRequestBody().transferTo(java.io.OutputStream.nullOutputStream()); exchange.sendResponseHeaders(200, -1); exchange.close(); });
         collector.start();
         try {
-            runFixture("http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces", ApplicationMetricFixture.class);
+            runFixture("http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces", ApplicationMetricFixture.class, acknowledgement);
             synchronized (received) {
                 assertFalse(received.isEmpty(), "A real Boot registry must reach the configured agent exporter");
                 assertTrue(received.stream().noneMatch(request -> request.toString().contains("private-canary")));
                 var metrics = received.stream().flatMap(request -> request.getResourceMetricsList().stream())
                         .flatMap(resource -> resource.getScopeMetricsList().stream()).flatMap(scope -> scope.getMetricsList().stream()).toList();
                 var deliveries = metrics.stream().filter(metric -> metric.getName().equals("chanter.auth.email.delivery")).toList();
+                assertTrue(metrics.stream().anyMatch(metric -> metric.getName().equals("chanter.events.pending")
+                        && metric.getGauge().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 1)),
+                        "A Boot-enabled collector must export the real pending database row before shutdown");
                 assertFalse(deliveries.isEmpty(), "Existing email delivery counters must survive private export");
                 assertTrue(deliveries.stream().anyMatch(metric -> metric.getSum().getDataPointsCount() == 2
                         && metric.getSum().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 600)
@@ -107,6 +122,9 @@ class NativeTelemetryExportTest {
     }
 
     private static void runFixture(String endpoint, Class<?> fixture) throws Exception {
+        runFixture(endpoint, fixture, null);
+    }
+    private static void runFixture(String endpoint, Class<?> fixture, Path acknowledgement) throws Exception {
         var output = Files.createTempFile(Path.of("target"), "agent-fixture-", ".log");
         var java = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java");
         var builder = new ProcessBuilder(java.toString(), "-javaagent:" + System.getProperty("chanter.telemetry.agent"),
@@ -118,12 +136,16 @@ class NativeTelemetryExportTest {
         env.put("OTEL_INSTRUMENTATION_MICROMETER_ENABLED", "true");
         env.put("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", endpoint.replace("/v1/traces", "/v1/metrics"));
         env.put("OTEL_METRIC_EXPORT_INTERVAL", "60000");
+        if (acknowledgement != null) {
+            env.put("OTEL_METRIC_EXPORT_INTERVAL", "100"); // Test-only live gauge export; production remains 60 seconds.
+            env.put("CHANTER_FIXTURE_ACK", acknowledgement.toAbsolutePath().toString());
+        }
         env.put("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", endpoint); env.put("OTEL_TRACES_SAMPLER", "always_on");
         env.put("OTEL_BSP_SCHEDULE_DELAY", "100"); env.put("OTEL_SERVICE_NAME", "agent-service");
         env.put("OTEL_RESOURCE_ATTRIBUTES", "service.version=" + "a".repeat(40) + ",deployment.environment.name=test,private=private-canary");
         var process = builder.start();
         try {
-            assertTrue(process.waitFor(20, TimeUnit.SECONDS), "Agent process did not stop within the bounded deadline");
+            assertTrue(process.waitFor(acknowledgement == null ? 20 : 30, TimeUnit.SECONDS), "Agent process did not stop within the bounded deadline");
             assertEquals(0, process.exitValue(), () -> "Agent fixture failed; inspect " + output.getFileName());
         } finally { if (process.isAlive()) process.destroyForcibly().waitFor(5, TimeUnit.SECONDS); }
     }
