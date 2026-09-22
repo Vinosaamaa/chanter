@@ -3,7 +3,12 @@ ARG GO_IMAGE
 FROM ${GO_IMAGE} AS build
 WORKDIR /src
 COPY infra/production/frontend/caddy/ ./
-RUN CGO_ENABLED=0 GOTOOLCHAIN=local go build -mod=readonly -trimpath -ldflags='-s -w' -o /caddy .
+RUN GOTOOLCHAIN=local go mod download && GOTOOLCHAIN=local go mod verify \
+    && GOTOOLCHAIN=local go mod vendor \
+    && GOTOOLCHAIN=local go run -mod=readonly ./compat \
+    && CGO_ENABLED=0 GOTOOLCHAIN=local go test -mod=vendor ./... \
+    && CGO_ENABLED=0 GOTOOLCHAIN=local go test -mod=vendor github.com/caddyserver/caddy/v2/modules/caddyhttp -run '^TestMatchExpression' \
+    && CGO_ENABLED=0 GOTOOLCHAIN=local go build -mod=vendor -trimpath -ldflags='-s -w' -o /caddy .
 
 FROM ${CADDY_IMAGE}
 # Build from locked patched dependencies, without privileged-port capabilities.
