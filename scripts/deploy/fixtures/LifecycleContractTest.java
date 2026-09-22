@@ -7,9 +7,12 @@ public final class LifecycleContractTest {
         if (!export.path().equals("/api/v1/internal/lifecycle/journal?after=0&limit=500") || export.inputLimit() != 0)
             throw new AssertionError();
         for (String[] invalid : new String[][]{{"http://private.example"}, {"receipt", "extra"}, {"export", "1&host=x", "-"},
-                {"export", "9007199254740992", "-"}, {"export", "-1", "-"}}) {
+                {"export", "9007199254740992", "-"}, {"export", "-1", "-"}, {"export", "2", "1"}}) {
             try { Lifecycle.operation(invalid); throw new AssertionError(); } catch (IllegalArgumentException expected) {}
         }
+        if (!Lifecycle.operation(new String[]{"export", "2", "2"}).path().endsWith("&through=2")
+                || !Lifecycle.operation(new String[]{"export", "2", "3"}).path().endsWith("&through=3"))
+            throw new AssertionError();
         byte[] bytes = "fixture".getBytes(StandardCharsets.UTF_8);
         if (Lifecycle.bounded(new ByteArrayInputStream(bytes), bytes.length).length != bytes.length) throw new AssertionError();
         try { Lifecycle.bounded(new ByteArrayInputStream(bytes), bytes.length - 1); throw new AssertionError(); }

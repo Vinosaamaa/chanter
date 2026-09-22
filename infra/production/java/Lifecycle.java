@@ -22,7 +22,12 @@ public final class Lifecycle {
         String base = "/api/v1/internal/lifecycle/";
         if (args[0].equals("export") && args.length == 3) {
             long after = revision(args[1]);
-            String upper = args[2].equals("-") ? "" : "&through=" + revision(args[2]);
+            String upper = "";
+            if (!args[2].equals("-")) {
+                long through = revision(args[2]);
+                if (through < after) throw new IllegalArgumentException();
+                upper = "&through=" + through;
+            }
             return new Operation("GET", base + "journal?after=" + after + "&limit=500" + upper, 0);
         }
         if (args.length != 1) throw new IllegalArgumentException();

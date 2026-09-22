@@ -149,19 +149,26 @@ try {
   assert.equal(compose(['exec', '-T', 'auth-service', 'java', '-cp', '/app/helpers', 'RecoveryIsolation']).trim(),
     'RECOVERY_SOURCE_LISTENERS_PRIVATE', 'A successful helper must establish container-local source HTTP');
 } finally {
-  if (prepared) compose(['down', '--remove-orphans']);
-  if (modelWriteGuard) agentSql(`BEGIN;
-    DROP TRIGGER recovery_fixture_model_catalog ON embedding_models;
-    DROP TRIGGER recovery_fixture_model_control ON embedding_control;
-    DROP FUNCTION recovery_fixture_no_model_write();
-    COMMIT;`);
-  if (connected) docker(['network', 'disconnect', network, postgres]);
-  if (networkCreated) {
-    assert.equal(docker(['network', 'inspect', '--format', '{{index .Labels "chanter.recovery"}}', network]).trim(), identity);
-    docker(['network', 'rm', network]);
+  // Each operation retains its own ownership check; one failed cleanup must not skip independent owned resources.
+  let cleanupFailed = false;
+  for (const cleanup of [
+    () => { if (prepared) compose(['down', '--remove-orphans']); },
+    () => { if (modelWriteGuard) agentSql(`BEGIN;
+      DROP TRIGGER recovery_fixture_model_catalog ON embedding_models;
+      DROP TRIGGER recovery_fixture_model_control ON embedding_control;
+      DROP FUNCTION recovery_fixture_no_model_write();
+      COMMIT;`); },
+    () => { if (connected) docker(['network', 'disconnect', network, postgres]); },
+    () => { if (networkCreated) {
+      assert.equal(docker(['network', 'inspect', '--format', '{{index .Labels "chanter.recovery"}}', network]).trim(), identity);
+      docker(['network', 'rm', network]);
+    } },
+    () => { if (compiler) {
+      assert.equal(docker(['inspect', '--format', '{{index .Config.Labels "chanter.recovery"}}', compiler]).trim(), identity);
+      docker(['rm', compiler]);
+    } }
+  ]) {
+    try { cleanup(); } catch { cleanupFailed = true; }
   }
-  if (compiler) {
-    assert.equal(docker(['inspect', '--format', '{{index .Config.Labels "chanter.recovery"}}', compiler]).trim(), identity);
-    docker(['rm', compiler]);
-  }
+  if (cleanupFailed) throw new Error('Owned recovery fixture cleanup failed');
 }
