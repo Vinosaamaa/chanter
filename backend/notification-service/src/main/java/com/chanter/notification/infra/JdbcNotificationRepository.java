@@ -25,14 +25,20 @@ public class JdbcNotificationRepository implements NotificationRepository {
     private static final RowMapper<Notification> ROW_MAPPER = JdbcNotificationRepository::mapRow;
 
     private final JdbcTemplate jdbcTemplate;
+    private final com.chanter.common.lifecycle.TerminalReapplyStore terminal;
 
-    public JdbcNotificationRepository(JdbcTemplate jdbcTemplate) {
+    public JdbcNotificationRepository(JdbcTemplate jdbcTemplate, com.chanter.common.lifecycle.TerminalReapplyStore terminal) {
         this.jdbcTemplate = jdbcTemplate;
+        this.terminal = terminal;
     }
 
     @Override
     @Transactional
     public Notification upsert(Notification notification) {
+        if (!terminal.writable("ACCOUNT", notification.userId())
+                || notification.studyServerId() != null && !terminal.writable("STUDY_SERVER", notification.studyServerId())
+                || "RESOURCE".equalsIgnoreCase(notification.sourceType()) && !terminal.writable("RESOURCE", notification.sourceId()))
+            return notification;
         Optional<Notification> existing = findByUniqueKey(
                 notification.userId(),
                 notification.sourceType(),

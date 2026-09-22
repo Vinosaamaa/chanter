@@ -86,9 +86,14 @@ public final class TerminalReapplyStore {
 
     /** Source writes take this lock before their rows, so an in-flight write cannot recreate a terminal target. */
     public void requireWritable(String kind, UUID target) {
-        requireTransaction(); lock();
-        if (terminal(kind, target)) throw new org.springframework.web.server.ResponseStatusException(
+        if (!writable(kind, target)) throw new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.GONE, "LIFECYCLE_TARGET_DELETED");
+    }
+
+    /** A terminal delayed delivery is acknowledged without recreating its payload. The owning transaction holds this lock. */
+    public boolean writable(String kind, UUID target) {
+        requireTransaction(); lock();
+        return !terminal(kind, target);
     }
 
     /** Called in the transaction that proves cleanup or changes a preservation hold. Completed deletion cannot be undone. */

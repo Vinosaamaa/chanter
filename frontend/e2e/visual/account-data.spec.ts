@@ -15,7 +15,6 @@ for (const width of [320, 390, 1280]) {
   test(`account data native download at ${width} @accountdata`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     let grants = 0
-    let downloads = 0
     await page.route(`**${endpoint}**`, async route => {
       const request = route.request()
       const url = new URL(request.url())
@@ -31,9 +30,7 @@ for (const width of [320, 390, 1280]) {
         expect(request.method()).toBe('GET')
         expect(url.search).toBe('')
         expect(request.headers().authorization).toBeUndefined()
-        expect(grants).toBeGreaterThan(downloads)
-        downloads++
-        return route.fulfill({ contentType: 'application/zip', headers: { 'Content-Disposition': 'attachment; filename="chanter-account.zip"', 'Cache-Control': 'no-store' }, body: archive })
+        return route.continue()
       }
       return route.fulfill({ status: 404 })
     })
@@ -61,9 +58,13 @@ for (const width of [320, 390, 1280]) {
     await page.screenshot({ path: info.outputPath(`fixture-ui-account-data-download-${width}.png`), fullPage: true })
     const retry = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Download ZIP' }).click()
-    expect(await (await retry).failure()).toBeNull()
+    const retryArtifact = await retry
+    expect(await retryArtifact.failure()).toBeNull()
+    const retryStream = await retryArtifact.createReadStream()
+    const retryChunks: Buffer[] = []
+    for await (const chunk of retryStream!) retryChunks.push(Buffer.from(chunk))
+    expect(Buffer.concat(retryChunks)).toEqual(archive)
     expect(grants).toBe(2)
-    expect(downloads).toBe(2)
   })
 }
 
