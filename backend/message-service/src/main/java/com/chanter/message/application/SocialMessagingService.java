@@ -216,10 +216,12 @@ public class SocialMessagingService {
         return List.copyOf(visible);
     }
 
+    @Transactional
     public void requireDirectMessageCallAccess(UUID callerUserId, UUID calleeUserId) {
         if (callerUserId.equals(calleeUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Users cannot call themselves");
         }
+        repository.lockPair(callerUserId, calleeUserId);
         requireActivePair(callerUserId, calleeUserId);
         if (repository.isBlocked(callerUserId, calleeUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Direct Message calls are blocked between these users");

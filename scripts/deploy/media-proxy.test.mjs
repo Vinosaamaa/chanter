@@ -12,6 +12,8 @@ test('actual Caddy adaptation preserves the guard and rejects missing or reorder
   assert.doesNotThrow(() => assertMediaProxy(configuration));
   const missing = JSON.parse(JSON.stringify(configuration).replaceAll('community-service:8080', 'livekit:7880'));
   assert.throws(() => assertMediaProxy(missing));
+  const wrongPath = JSON.parse(JSON.stringify(configuration).replaceAll('/livekit/*', '/api/livekit/*'));
+  assert.throws(() => assertMediaProxy(wrongPath));
   const moved = structuredClone(configuration);
   const reorder = value => {
     if (!value || typeof value !== 'object') return;

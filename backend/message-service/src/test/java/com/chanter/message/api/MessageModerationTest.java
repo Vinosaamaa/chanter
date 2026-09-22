@@ -31,6 +31,8 @@ class MessageModerationTest {
     @Autowired SocialMessagingService social;
     @Autowired TestChannelMessageAccessClient access;
     @MockitoBean ModerationAccess moderation;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    com.chanter.message.application.SocialMessagingRepository socialRepository;
     final UUID user=UUID.randomUUID(), channel=UUID.randomUUID(), server=UUID.randomUUID();
 
     @BeforeEach void setup() {
@@ -99,6 +101,30 @@ class MessageModerationTest {
             assertThat(history.get(5,java.util.concurrent.TimeUnit.SECONDS)).hasSize(1);
             block.get(5,java.util.concurrent.TimeUnit.SECONDS);
             assertThatThrownBy(() -> social.findDirectMessages(user,peer)).isInstanceOf(ResponseStatusException.class);
+        } finally { release.countDown(); }
+    }
+
+    @Test void blockCannotCommitDuringTheCallEligibilityDecision() throws Exception {
+        UUID peer=UUID.randomUUID();
+        social.acceptFriendRequest(social.sendFriendRequest(user,peer).id(),peer);
+        var checking=new java.util.concurrent.CountDownLatch(1);
+        var release=new java.util.concurrent.CountDownLatch(1);
+        doAnswer(call -> {
+            checking.countDown();
+            assertThat(release.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            return call.callRealMethod();
+        }).when(socialRepository).areFriends(user,peer);
+        try(var workers=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var eligibility=workers.submit(() -> social.requireDirectMessageCallAccess(user,peer));
+            assertThat(checking.await(5,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            var block=workers.submit(() -> social.blockUser(peer,user));
+            try {
+                assertThatThrownBy(() -> block.get(200,java.util.concurrent.TimeUnit.MILLISECONDS))
+                        .isInstanceOf(java.util.concurrent.TimeoutException.class);
+            } finally { release.countDown(); }
+            eligibility.get(5,java.util.concurrent.TimeUnit.SECONDS);
+            block.get(5,java.util.concurrent.TimeUnit.SECONDS);
+            assertThatThrownBy(() -> social.requireDirectMessageCallAccess(user,peer)).isInstanceOf(ResponseStatusException.class);
         } finally { release.countDown(); }
     }
 }
