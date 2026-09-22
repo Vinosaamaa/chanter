@@ -32,7 +32,9 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
             "/api/v1/auth/logout",
             "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password",
-            "/api/v1/auth/verify-email"
+            "/api/v1/auth/verify-email",
+            "/api/v1/auth/moderation-appeals/request",
+            "/api/v1/auth/moderation-appeals"
     );
 
     private final JwtTokenService jwtTokenService;

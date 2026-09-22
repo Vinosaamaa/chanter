@@ -9,17 +9,27 @@ const release = () => ({ version: 1, commit: 'a'.repeat(40), architecture: 'arm6
   images: Object.fromEntries(imageNames.map(name => [name, hash('b')])) });
 const config = { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' };
 
-test('semantic vector release policy stamps epoch 8 and blocks downgrade to epoch 7', async () => {
+test('moderation release policy stamps epoch 9 and blocks downgrade to epoch 8', async () => {
   const policy = JSON.parse(readFileSync(new URL('../../infra/production/release-policy.json', import.meta.url), 'utf8'));
-  assert.equal(policy.schemaEpoch, 8);
+  assert.equal(policy.schemaEpoch, 9);
   const current = { ...release(), schemaEpoch: policy.schemaEpoch };
-  const previous = { ...release(), commit: 'c'.repeat(40), schemaEpoch: 7 };
+  const previous = { ...release(), commit: 'c'.repeat(40), schemaEpoch: 8 };
   // A matching historical bundle remains valid in an empty environment.
   assert.doesNotThrow(() => planDeployment(previous, null));
   const actions = [];
   await assert.rejects(executeDeployment(previous, current, async action => actions.push(action)), /schema epoch/);
   assert.deepEqual(actions, []);
   assert.throws(() => planDeployment(previous, current, true), /schema epoch/);
+});
+
+test('media authorization connects only the proxy and community without exposing signaling', () => {
+  const stage = composeFor(release(), config, '/srv/chanter/staging/runtime');
+  assert.deepEqual(stage.networks['media-authorization'], { internal: true });
+  const members = Object.entries(stage.services).filter(([, service]) => Array.isArray(service.networks)
+    ? service.networks.includes('media-authorization') : Object.hasOwn(service.networks, 'media-authorization'));
+  assert.deepEqual(members.map(([name]) => name).sort(), ['community-service', 'frontend']);
+  assert.equal(stage.services.frontend.networks.application, undefined);
+  assert.ok(stage.services.livekit.ports.every(port => !port.includes('7880')));
 });
 
 test('agent uses its packaged semantic model without overriding explicit provider configuration', () => {

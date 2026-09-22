@@ -23,6 +23,58 @@ test('public verification refuses a serving frontend with missing browser securi
   await assert.rejects(verifyPublic('staging.chanter.example'), /security header/);
 });
 
+test('public media verification signs only a short-lived nonparticipating health-room token', async t => {
+  const { state } = fixture(t);
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (url.endsWith('/health')) return Response.json({ service: 'auth-service' });
+    if (url.endsWith('/refresh')) return new Response(null, { status: options.headers.Origin.includes('foreign') ? 403 : 204 });
+    return new Response('<html></html>', { headers: { 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY',
+      'referrer-policy': 'no-referrer', 'strict-transport-security': 'max-age=31536000',
+      'content-security-policy': "frame-ancestors 'none'" } });
+  });
+  let endpoint;
+  const original = globalThis.WebSocket;
+  t.after(() => { globalThis.WebSocket = original; });
+  globalThis.WebSocket = class {
+    constructor(url) { endpoint = url; }
+    addEventListener(event, listener) { if (event === 'open') queueMicrotask(listener); }
+    close() {}
+  };
+  await verifyPublic('staging.chanter.example', state);
+  assert.equal(endpoint.origin, 'wss://staging.chanter.example');
+  assert.equal(endpoint.pathname, '/livekit/rtc');
+  const [header, payload, signature] = endpoint.searchParams.get('access_token').split('.');
+  const claims = JSON.parse(Buffer.from(payload, 'base64url'));
+  const credentials = readEnv(path.join(state, 'runtime/community-service.env'));
+  assert.equal(signature, crypto.createHmac('sha256', credentials.LIVEKIT_API_SECRET).update(`${header}.${payload}`).digest('base64url'));
+  assert.equal(claims.iss, credentials.LIVEKIT_API_KEY);
+  assert.match(claims.sub, /^release-health-[a-f0-9-]{36}$/);
+  assert.deepEqual(claims.video, { roomJoin: true, room: '__chanter_release_health', canPublish: false, canSubscribe: false, canPublishData: false });
+  const now = Math.floor(Date.now() / 1000);
+  assert.ok(claims.nbf <= now && claims.exp > now && claims.exp <= now + 60 && claims.exp - claims.nbf <= 75);
+});
+
+test('operator encryption is optional, auth-only, canonical and distinct from shared credentials', t => {
+  const { state, auth } = fixture(t);
+  assert.ok(!fs.readFileSync(auth, 'utf8').includes('CHANTER_OPERATOR_ENCRYPTION_KEY'));
+  assert.doesNotThrow(() => validateRuntime(state));
+  const original = fs.readFileSync(auth, 'utf8');
+  const key = crypto.randomBytes(32).toString('base64');
+  fs.appendFileSync(auth, `CHANTER_OPERATOR_ENCRYPTION_KEY=${key}\n`);
+  assert.doesNotThrow(() => validateRuntime(state));
+  for (const value of ['invalid', Buffer.alloc(16).toString('base64'), Buffer.from(readEnv(auth).CHANTER_JWT_SECRET).toString('base64')]) {
+    fs.writeFileSync(auth, original + `CHANTER_OPERATOR_ENCRYPTION_KEY=${value}\n`);
+    assert.throws(() => validateRuntime(state), /operator encryption/);
+  }
+  const reused = crypto.randomBytes(32).toString('base64');
+  fs.writeFileSync(auth, original.replace(/^CHANTER_JWT_SECRET=.*$/m, `CHANTER_JWT_SECRET=${reused}`)
+    + `CHANTER_OPERATOR_ENCRYPTION_KEY=${reused}\n`);
+  assert.throws(() => validateRuntime(state), /operator encryption/);
+  fs.writeFileSync(auth, original);
+  fs.appendFileSync(path.join(state, 'runtime/gateway-service.env'), `CHANTER_OPERATOR_ENCRYPTION_KEY=${key}\n`);
+  assert.throws(() => validateRuntime(state), /only in auth-service/);
+});
+
 test('optional challenge credentials must be configured together', t => {
   const { state, auth } = fixture(t);
   fs.appendFileSync(auth, 'CHANTER_TURNSTILE_SITE_KEY=fixture-site\n');
