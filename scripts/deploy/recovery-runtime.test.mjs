@@ -35,6 +35,7 @@ test('isolated services have no public listeners, external networking, migration
     if (name === 'postgres') continue;
     assert.equal(service.environment.SERVER_ADDRESS, '127.0.0.1');
     assert.equal(service.environment.CHANTER_RECOVERY_MODE, 'true');
+    assert.equal(service.environment.CHANTER_RECOVERY_RESTORE_ID, '11111111-1111-4111-8111-111111111111');
     assert.equal(service.environment.SPRING_FLYWAY_ENABLED, 'false');
     for (const flag of ['CHANTER_LLM_ENABLED', 'CHANTER_EVENTS_DISPATCH_ENABLED', 'CHANTER_EMAIL_WORKER_ENABLED',
       'CHANTER_MEDIA_WORKER_ENABLED', 'CHANTER_INGESTION_WORKER_ENABLED', 'CHANTER_TELEMETRY_ENABLED', 'CHANTER_ERRORS_ENABLED']) assert.equal(service.environment[flag], 'false');

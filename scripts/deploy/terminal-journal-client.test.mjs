@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { lifecycleClient } from './terminal-journal-client.mjs';
+import { START } from './deleted-scope.mjs';
 
 test('container transport uses fixed routes, private stdin and bounded execution without host token access', async () => {
   const calls = [];
@@ -16,6 +17,23 @@ test('container transport uses fixed routes, private stdin and bounded execution
   assert.ok(calls.every(call => call.options.timeout === 30000 && call.options.maxBuffer === 256 * 1024));
   await assert.rejects(client.page('0&address=bad', null));
   await assert.rejects(client.reapply({ large: 'x'.repeat(256 * 1024) }));
+});
+
+test('scope selectors and import bodies stay on bounded stdin with fixed owning operations', async () => {
+  const calls = [], entry = { targetId: '22222222-2222-4222-8222-222222222222', revision: 1,
+    eventId: '11111111-1111-4111-8111-111111111111', digest: 'a'.repeat(64) };
+  const client = lifecycleClient({ source: 'community', environment: 'staging', composeFile: path.resolve('.cache/fixture.json'),
+    execute: (exe, args, options) => { calls.push({ args, options }); return '{}'; } });
+  await client.scope(entry, 'COURSE', START);
+  await client.importScope({ entry, page: { private: 'scope-canary' } });
+  assert.ok(calls[0].args.includes('scope-read')); assert.ok(calls[1].args.includes('scope-import'));
+  assert.equal(JSON.stringify(calls.map(call => call.args)).includes(entry.targetId), false);
+  assert.equal(JSON.stringify(calls.map(call => call.args)).includes('scope-canary'), false);
+  assert.equal(calls[0].options.input, [entry.targetId, '1', entry.eventId, entry.digest, 'COURSE', START, ''].join('\n'));
+  assert.ok(calls[1].options.input.startsWith(entry.targetId + '\n{'));
+  await assert.rejects(client.scope(entry, 'http://private', START));
+  await assert.rejects(client.importScope({ entry, page: { large: 'x'.repeat(32768) } }));
+  assert.equal(calls.length, 2);
 });
 
 test('container failures and invalid output cannot become successful participant receipts', async () => {

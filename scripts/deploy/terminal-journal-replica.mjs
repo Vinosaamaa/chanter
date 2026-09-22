@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { GENESIS, JOURNAL_SCHEMA, MAX_ENTRIES, MAX_PAGE, checkpointIdentity, environmentName, exactFields,
   nonzeroUuid, sameWatermark, validatePage, validateWatermark } from './terminal-journal.mjs';
 import { MAX_MANIFEST_BYTES, MAX_MANIFESTS } from './terminal-journal-storage.mjs';
+import { START, SCOPE_KINDS, MAX_SCOPE_IDS, MAX_SCOPE_PAGES, ScopeVerifier } from './deleted-scope.mjs';
 
 const HEX = /^[a-f0-9]{64}$/;
 const MAX_PAGES = Math.ceil(MAX_ENTRIES / MAX_PAGE);
@@ -24,10 +25,11 @@ function checkpoint(value, environment) {
 }
 
 function manifest(value, environment) {
-  exactFields(value, ['schemaVersion', 'environment', 'checkpointId', 'authority', 'createdAt', 'pages']);
+  exactFields(value, ['schemaVersion', 'environment', 'checkpointId', 'authority', 'createdAt', 'pages', 'scopes']);
   validateWatermark(value.authority);
-  if (value.schemaVersion !== 1 || value.environment !== environment
+  if (value.schemaVersion !== 2 || value.environment !== environment
       || value.authority.revision > MAX_ENTRIES || !Array.isArray(value.pages) || value.pages.length > MAX_PAGES
+      || !Array.isArray(value.scopes) || value.scopes.length > MAX_SCOPE_PAGES
       || Buffer.byteLength(JSON.stringify(value)) > MAX_MANIFEST_BYTES
       || typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt))
       || new Date(value.createdAt).toISOString() !== value.createdAt
@@ -37,6 +39,24 @@ function manifest(value, environment) {
     validateWatermark(ref.after); validateWatermark(ref.next);
     if (!HEX.test(ref.snapshotId) || !HEX.test(ref.sha256) || !Number.isInteger(ref.count)
         || ref.count < 1 || ref.count > MAX_PAGE || ref.next.revision - ref.after.revision !== ref.count) fail();
+  }
+  let total = 0, pages = 0;
+  const groups = new Set();
+  for (const group of value.scopes) {
+    exactFields(group, ['revision', 'kind', 'totalCount', 'scopeDigest', 'after', 'pages']);
+    const key = `${group.revision}:${group.kind}`;
+    if (!Number.isSafeInteger(group.revision) || group.revision < 1 || group.revision > value.authority.revision
+        || !SCOPE_KINDS.includes(group.kind) || groups.has(key) || !HEX.test(group.scopeDigest ?? '')
+        || !Number.isSafeInteger(group.totalCount) || group.totalCount < 0
+        || !Array.isArray(group.pages) || !group.pages.length) fail();
+    groups.add(key);
+    if (group.after !== START) nonzeroUuid(group.after);
+    total += group.totalCount; pages += group.pages.length;
+    if (total > MAX_SCOPE_IDS || pages > MAX_SCOPE_PAGES) fail();
+    for (const ref of group.pages) {
+      exactFields(ref, ['snapshotId', 'sha256']);
+      if (!HEX.test(ref.snapshotId ?? '') || !HEX.test(ref.sha256 ?? '')) fail();
+    }
   }
   return value;
 }
@@ -63,12 +83,14 @@ export function readCurrentReplica(repository, required = [], options = {}) {
   }
   const value = manifest(repository.read('manifest', selected.snapshotId), repository.environment);
   if (!sameWatermark(value.authority, selected.authority)) fail();
-  verifyChain(repository, value, expected, end);
+  const servers = verifyChain(repository, value, expected, end);
+  verifyScopes(repository, value, servers, end);
   return { manifest: value, snapshotId: selected.snapshotId };
 }
 
 function verifyChain(repository, value, expected, end) {
   const encountered = new Map([[0, GENESIS.digest]]), targets = new Set(), events = new Set();
+  const servers = new Map();
   let cursor = GENESIS;
   for (const ref of value.pages) {
     within(end);
@@ -81,16 +103,38 @@ function verifyChain(repository, value, expected, end) {
       const target = `${entry.targetKind}:${entry.targetId}`;
       if (targets.has(target) || events.has(entry.eventId)) fail();
       targets.add(target); events.add(entry.eventId); encountered.set(entry.revision, entry.digest);
+      if (entry.targetKind === 'STUDY_SERVER') {
+        servers.set(entry.revision, entry);
+        if (servers.size * SCOPE_KINDS.length > MAX_SCOPE_PAGES) fail();
+      }
     }
     cursor = page.next;
   }
   if (!sameWatermark(cursor, value.authority)) fail();
   for (const [revision, digest] of expected) if (encountered.get(revision) !== digest) fail();
   within(end);
+  return servers;
+}
+
+function verifyScopes(repository, value, servers, end) {
+  if (value.scopes.length !== servers.size * SCOPE_KINDS.length) fail();
+  for (const group of value.scopes) {
+    const entry = servers.get(group.revision);
+    if (!entry) fail();
+    const verifier = new ScopeVerifier(entry, group.kind);
+    for (const ref of group.pages) {
+      within(end);
+      const page = repository.read('scope', ref.snapshotId);
+      if (hash(page) !== ref.sha256) fail();
+      verifier.accept(page);
+    }
+    const result = verifier.result();
+    if (result.totalCount !== group.totalCount || result.scopeDigest !== group.scopeDigest || result.after !== group.after) fail();
+  }
 }
 
 /** No scheduler or retry loop: the existing backup runner owns retries after any failure. */
-export async function replicateJournal(source, repository) {
+export async function replicateJournal(source, repository, scopeSource = null) {
   if (!['remote', 'fixture'].includes(source.kind) || source.kind !== repository.kind)
     throw new Error('Terminal journal source and fixture storage must not be mixed');
   const end = deadline(), acknowledged = await source.checkpoint();
@@ -123,13 +167,37 @@ export async function replicateJournal(source, repository) {
   if (!existing || !sameWatermark(through, existing.manifest.authority)) {
     if (buffer.length) writePage(buffer);
     if (!sameWatermark(cursor, through)) fail();
-    const candidate = manifest({ schemaVersion: 1, environment: repository.environment,
+    const candidate = { schemaVersion: 2, environment: repository.environment,
       checkpointId: checkpointIdentity(repository.environment, through), authority: through,
-      createdAt: new Date().toISOString(), pages: refs }, repository.environment);
+      createdAt: new Date().toISOString(), pages: refs, scopes: [] };
     const expected = new Map();
     for (const value of required) requireMark(expected, value);
     // Malformed source data must not publish a corrupt newest manifest and poison later recovery.
-    verifyChain(repository, candidate, expected, end);
+    const servers = verifyChain(repository, candidate, expected, end);
+    let total = 0, pages = 0;
+    for (const entry of servers.values()) for (const kind of SCOPE_KINDS) {
+      let group = existing?.manifest.scopes.find(value => value.revision === entry.revision && value.kind === kind);
+      if (!group) {
+        if (!scopeSource || scopeSource.kind !== repository.kind) fail();
+        const verifier = new ScopeVerifier(entry, kind), refs = [];
+        do {
+          within(end);
+          if (++pages > MAX_SCOPE_PAGES) fail();
+          const page = verifier.accept(await scopeSource.scope(entry, kind, verifier.after));
+          if (total + page.totalCount > MAX_SCOPE_IDS) fail();
+          const snapshotId = repository.write('scope', page), sha256 = hash(page);
+          // Verify each complete encrypted object before retaining its immutable reference.
+          if (hash(repository.read('scope', snapshotId)) !== sha256) fail();
+          refs.push({ snapshotId, sha256 });
+        } while (!verifier.complete);
+        group = { revision: entry.revision, kind, ...verifier.result(), pages: refs };
+      } else pages += group.pages.length;
+      total += group.totalCount;
+      if (total > MAX_SCOPE_IDS || pages > MAX_SCOPE_PAGES) fail();
+      candidate.scopes.push(group);
+    }
+    manifest(candidate, repository.environment);
+    verifyScopes(repository, candidate, servers, end);
     repository.write('manifest', candidate);
   }
   // Read the complete independently stored prefix, including reused pages, before the only acknowledgement call.

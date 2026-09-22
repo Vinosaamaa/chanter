@@ -129,8 +129,9 @@ the original deletion's COURSE and CHANNEL ID sets. Its pages bind the original
 validated journal entry, scope kind, total count, complete-set digest and stable
 cursor. Each page must state its starting cursor; final completion must prove the
 declared count and digest. The archive records the exact owning pages and immutable
-restic references, not a newly inferred scope catalogue. The final HTTP/digest
-contract is being implemented in #251 and must match shared Java/Node fixtures.
+restic references, not a newly inferred scope catalogue. The schema 1 source
+contract is tested in #251 at `79a6e002`. The Node validator reproduces its exact
+Java digest, including UUID text ordering across the signed 7fff/8000 boundary.
 
 Replication must capture both required kinds for every Study Server deletion,
 validate their entire ordered contents and read back the encrypted attachment
@@ -142,6 +143,14 @@ attachment references with every retained prefix and database recovery window;
 pruning cannot discard the sole current scope just because the source graph was
 erased. Independent repository freshness and writer fencing remain required.
 
+Encrypted manifest schema 2 requires exactly one COURSE and one CHANNEL attachment
+group for every Study Server terminal entry. The original terminal journal stays
+schema 2. One manifest permits at most 250,000 scope IDs and 2,048 scope pages in
+total, with at most 256 IDs and 32 KiB per source import. The existing 1 MiB
+manifest and operation deadline also apply. An explicitly empty kind needs its
+own zero-count, correctly hashed page. The reader rejects journal-only manifest
+schema 1; no existing provider archive or automatic format migration is claimed.
+
 The coordinated order is auth canonical replay, recovery-only archived scope
 import into community, community replay, other source replay, dependent scope
 relay, then fresh receipts and invalidation. Community accepts staged archived
@@ -151,17 +160,29 @@ graph as current authority. Each dependent importer requires the exact local
 terminal fence first and stays unready until the final count and digest are verified.
 Completing import must run the owning bounded reconciliation step for that already
 applied target; it cannot depend on an ordinary worker or a new journal append.
-Sources that require both kinds wait for both. READY scope and source cleanup
-receipts remain separate; media's physical object cleanup stays pending.
+Message, media, agent, search and notification each receive both kinds. Auth needs
+none. READY scope and source cleanup receipts remain separate; media's physical
+object cleanup stays pending.
+
+An older restored graph can also contain historical children absent from the
+current archived scope. #251 owns a separate recovery-derived union of those
+source-verified immutable parent relationships and the original archived IDs.
+It must preserve the original archive digest and wait for both current kinds to
+be READY before derivation. The operator supplies `CHANTER_RECOVERY_RESTORE_ID`
+only in recovery mode, using the stable UUID of the verified physical restore.
+That identity survives retries against a later pinned journal prefix; per-prefix
+`recoveryId` remains an operation receipt identity. The derived contract and
+actual historical-extra reconciliation are still under integration, so current
+archive import alone cannot qualify complete cleanup or public cutover.
 
 Each service still listens only on container loopback. The fixed private helper
 reads bounded selectors and pages from stdin and calls only the owning localhost
 route. Source tokens stay in their own service environment. No cross-container
 HTTP exception, arbitrary route/address selection or second retry framework is
-introduced. Exact attachment capacities, import ordering for an absent restored
-community graph and fixture digests must be finalized with #251 before enabling
-this path. Until complete archived-scope capture and actual source restoration
-pass, the release capability and public cutover remain disabled.
+introduced. The deployment-side capture and ordered relay are implemented and
+tested with injected source responses and actual encrypted restic storage. Until
+actual source restoration and the separate historical union pass, the release
+capability and public cutover remain disabled.
 
 ## Isolated recovery stages
 

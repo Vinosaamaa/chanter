@@ -471,7 +471,8 @@ export async function replicateTerminalJournal(stateDir, { run = docker,
     const repository = repositoryFactory({ bundleDir: current.bundleDir, environment: config.environment,
       env: journalBackupEnvironment(readEnv(path.join(stateDir, 'runtime/backup.env')), config.environment) });
     const client = clientFactory({ source: 'auth', environment: config.environment, composeFile });
-    const result = await replicateJournal(client, repository);
+    const scopes = clientFactory({ source: 'community', environment: config.environment, composeFile });
+    const result = await replicateJournal(client, repository, scopes);
     const receipt = { schemaVersion: 1, status: 'ok', checkedAt: new Date().toISOString(), release: release.commit, ...result };
     writeJson(path.join(stateDir, 'terminal-journal-status.json'), receipt);
     return receipt;

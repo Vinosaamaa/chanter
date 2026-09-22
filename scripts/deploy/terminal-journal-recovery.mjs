@@ -1,5 +1,6 @@
 import { GENESIS, JOURNAL_SCHEMA, exactFields, nonzeroUuid, sameWatermark, validatePage, validateWatermark } from './terminal-journal.mjs';
 import { readCurrentReplica } from './terminal-journal-replica.mjs';
+import { ScopeVerifier, validateScopeReceipt } from './deleted-scope.mjs';
 
 export const SOURCES = Object.freeze(['auth', 'community', 'message', 'media', 'agent', 'notification', 'search']);
 const SCOPES = Object.freeze({ auth: 'ALL_BROWSER_SESSIONS', agent: 'ALL_PENDING_NATIVE_REQUESTS' });
@@ -42,17 +43,44 @@ export async function recoverCurrentAuthority({ repository, clients, recoveryId,
   const selected = readCurrentReplica(repository, required, { deadline: end });
   const authority = selected.manifest.authority;
   // Each page is loaded and validated immediately before replay. Targets never enter the operator receipt.
-  let cursor = GENESIS;
+  const servers = new Map();
   const refs = selected.manifest.pages.length ? selected.manifest.pages : [null];
-  for (const ref of refs) {
-    within();
-    const stored = ref ? repository.read('page', ref.snapshotId)
-      : { schemaVersion: JOURNAL_SCHEMA, after: GENESIS, through: GENESIS, entries: [], next: GENESIS };
-    const page = validatePage({ ...stored, through: authority }, cursor, authority);
-    for (const source of SOURCES) { within(); await clients[source].reapply(page); }
-    cursor = page.next;
-  }
-  if (!sameWatermark(cursor, authority)) fail();
+  const replay = async sources => {
+    let cursor = GENESIS;
+    for (const ref of refs) {
+      within();
+      const stored = ref ? repository.read('page', ref.snapshotId)
+        : { schemaVersion: JOURNAL_SCHEMA, after: GENESIS, through: GENESIS, entries: [], next: GENESIS };
+      const page = validatePage({ ...stored, through: authority }, cursor, authority);
+      for (const entry of page.entries) if (entry.targetKind === 'STUDY_SERVER') servers.set(entry.revision, entry);
+      for (const source of sources) { within(); await clients[source].reapply(page); }
+      cursor = page.next;
+    }
+    if (!sameWatermark(cursor, authority)) fail();
+  };
+  const importScopes = async sources => {
+    for (const group of selected.manifest.scopes) {
+      const entry = servers.get(group.revision);
+      if (!entry) fail();
+      const verifier = new ScopeVerifier(entry, group.kind);
+      for (const ref of group.pages) {
+        within();
+        const page = verifier.accept(repository.read('scope', ref.snapshotId));
+        for (const source of sources) {
+          within();
+          const receipt = await clients[source].importScope({ entry, page });
+          validateScopeReceipt(receipt, entry, group.kind, group, verifier.complete);
+        }
+      }
+      verifier.result();
+    }
+  };
+  // Community may have no graph at this physical backup point. Import independently retained current scope first.
+  await replay(['auth']);
+  await importScopes(['community']);
+  await replay(SOURCES.filter(source => source !== 'auth'));
+  // Dependents require their original terminal fence before any current-scope import.
+  await importScopes(SOURCES.filter(source => !['auth', 'community'].includes(source)));
   const receipts = async () => {
     const result = [];
     for (const source of SOURCES) { within(); result.push(participantReceipt(await clients[source].receipt(), source, authority)); }

@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { journalBackupEnvironment, JournalRepository } from './terminal-journal-storage.mjs';
 import { GENESIS, entryDigest } from './terminal-journal.mjs';
 import { replicateJournal, readCurrentReplica } from './terminal-journal-replica.mjs';
+import { scopeStartDigest } from './deleted-scope.mjs';
 
 const settings = { CHANTER_BACKUP_S3_ENDPOINT: 'https://backup.example.test', CHANTER_BACKUP_S3_BUCKET: 'chanter-backups',
   CHANTER_BACKUP_S3_REGION: 'region-1', CHANTER_BACKUP_S3_ACCESS_KEY: 'private-access-canary',
@@ -65,7 +66,7 @@ test('real restic round trip encrypts and verifies a complete prefix before chec
   const canary = 'terminal-journal-private-target-canary-332';
   const snapshot = repository.write('page', { canary });
   assert.deepEqual(repository.read('page', snapshot), { canary });
-  const entry = { revision: 1, eventId: '11111111-1111-4111-8111-111111111111', targetKind: 'ACCOUNT',
+  const entry = { revision: 1, eventId: '11111111-1111-4111-8111-111111111111', targetKind: 'STUDY_SERVER',
     targetId: '22222222-2222-4222-8222-222222222222', action: 'DELETE', retentionPolicy: 'PRESERVE_MODERATION_RECORDS_V1', deletedAt: '2026-09-19T06:00:00Z', previousDigest: GENESIS.digest };
   entry.digest = entryDigest(entry);
   const authority = { revision: 1, digest: entry.digest };
@@ -73,9 +74,18 @@ test('real restic round trip encrypts and verifies a complete prefix before chec
   await replicateJournal({ kind: 'fixture', checkpoint: async () => null,
     page: async () => ({ schemaVersion: 2, after: GENESIS, through: authority, entries: [entry], next: authority }),
     acknowledge: async value => {
-      assert.deepEqual(readCurrentReplica(repository).manifest.authority, authority);
+      const verified = readCurrentReplica(repository).manifest;
+      assert.deepEqual(verified.authority, authority);
+      assert.deepEqual(verified.scopes.map(scope => scope.totalCount), [1, 0]);
       acknowledged = value; return value;
-    } }, repository);
+    } }, repository, { kind: 'fixture', scope: async (entry, kind, after) => {
+      const ids = kind === 'COURSE' ? ['80000000-0000-0000-0000-000000000000'] : [];
+      let scopeDigest = scopeStartDigest(entry.digest, kind, ids.length);
+      for (const id of ids) scopeDigest = crypto.createHash('sha256').update(`${scopeDigest}\n${id}\n`).digest('hex');
+      return { schemaVersion: 1, studyServerId: entry.targetId, terminalRevision: entry.revision,
+        terminalEventId: entry.eventId, terminalDigest: entry.digest, kind, after, totalCount: ids.length,
+        scopeDigest, ids, nextAfter: null };
+    } });
   assert.equal(acknowledged.revision, 1);
   assert.equal(repository.manifests().length, 1);
   const walk = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry =>

@@ -113,7 +113,8 @@ test('authority application preserves attempt identity, private configuration an
   };
   const checkpointId = checkpointIdentity('staging', GENESIS);
   const repository = { kind: 'fixture', environment: 'staging', manifests: () => [{ snapshotId: 'd'.repeat(64), authority: GENESIS }],
-    read: () => ({ schemaVersion: 1, environment: 'staging', checkpointId, authority: GENESIS, createdAt: '2026-09-22T00:00:00.000Z', pages: [] }) };
+    read: () => ({ schemaVersion: 2, environment: 'staging', checkpointId, authority: GENESIS,
+      createdAt: '2026-09-22T00:00:00.000Z', pages: [], scopes: [] }) };
   const options = { run, loadConfiguration: () => snapshot, repositoryFactory: () => repository,
     clientFactory: ({ source }) => { sourceClientCalls++; return ({ kind: 'fixture', checkpoint: async () => null,
       receipt: async () => ({ schemaVersion: 1, source, authority: GENESIS, pendingTargets: 0, preservedTargets: 0 }),

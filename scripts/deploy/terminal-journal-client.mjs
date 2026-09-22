@@ -1,7 +1,8 @@
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { exactFields, environmentName, MAX_PAGE_BYTES } from './terminal-journal.mjs';
+import { exactFields, environmentName, MAX_PAGE_BYTES, nonzeroUuid, validateWatermark } from './terminal-journal.mjs';
 import { SOURCES } from './terminal-journal-recovery.mjs';
+import { START, SCOPE_KINDS, MAX_SCOPE_BYTES } from './deleted-scope.mjs';
 
 /** Container execution is transport only; callers must validate every returned protocol receipt. */
 export function lifecycleClient({ source, environment, composeFile, project = `chanter-${environment}`, execute = execFileSync }) {
@@ -9,9 +10,9 @@ export function lifecycleClient({ source, environment, composeFile, project = `c
   if (!SOURCES.includes(source) || !path.isAbsolute(composeFile)
       || !/^(?:chanter-(?:staging|production)|chanter-recovery-[a-f0-9]{32})$/.test(project))
     throw new Error('Invalid private lifecycle execution target');
-  const invoke = (operation, body = undefined, args = []) => {
-    const input = body === undefined ? '' : JSON.stringify(body);
-    if (Buffer.byteLength(input) > (operation === 'reapply' ? MAX_PAGE_BYTES : 2048))
+  const invoke = (operation, body = undefined, args = [], raw = false) => {
+    const input = raw ? body : body === undefined ? '' : JSON.stringify(body);
+    if (Buffer.byteLength(input) > (operation === 'reapply' ? MAX_PAGE_BYTES : operation === 'scope-import' ? MAX_SCOPE_BYTES + 37 : 2048))
       throw new Error('Private lifecycle request exceeds bounded size');
     let output;
     try {
@@ -33,6 +34,21 @@ export function lifecycleClient({ source, environment, composeFile, project = `c
       return invoke('export', undefined, [String(after), through === null ? '-' : String(through)]);
     },
     acknowledge: async value => { auth(); return invoke('checkpoint-put', value); },
+    scope: async (entry, kind, after) => {
+      if (source !== 'community' || !SCOPE_KINDS.includes(kind)) throw new Error('Invalid private scope source');
+      nonzeroUuid(entry.targetId); nonzeroUuid(entry.eventId);
+      validateWatermark({ revision: entry.revision, digest: entry.digest });
+      if (entry.revision < 1) throw new Error('Invalid private scope authority');
+      if (after !== START) nonzeroUuid(after);
+      return invoke('scope-read', [entry.targetId, String(entry.revision), entry.eventId, entry.digest, kind, after, ''].join('\n'), [], true);
+    },
+    importScope: async value => {
+      if (source === 'auth') throw new Error('Source has no scope import');
+      nonzeroUuid(value.entry?.targetId);
+      const body = JSON.stringify(value);
+      if (Buffer.byteLength(body) > MAX_SCOPE_BYTES) throw new Error('Private scope import exceeds bounded size');
+      return invoke('scope-import', value.entry.targetId + '\n' + body, [], true);
+    },
     reapply: async value => invoke('reapply', value), receipt: async () => invoke('receipt'),
     invalidate: async value => {
       if (!['auth', 'agent'].includes(source)) throw new Error('Source has no recovery invalidation route');

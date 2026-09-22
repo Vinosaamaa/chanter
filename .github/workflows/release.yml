@@ -130,6 +130,7 @@ jobs:
             scripts/deploy/configuration-backup.mjs scripts/deploy/restore-isolated.mjs scripts/deploy/restore-current-authority.mjs \
             scripts/deploy/recovery-runtime.mjs scripts/deploy/terminal-journal.mjs scripts/deploy/terminal-journal-storage.mjs \
             scripts/deploy/terminal-journal-replica.mjs scripts/deploy/terminal-journal-recovery.mjs scripts/deploy/terminal-journal-client.mjs \
+            scripts/deploy/deleted-scope.mjs \
             scripts/deploy/resource-object-backup.mjs \
             tools/restic tools/restic.sha256
           test "$(stat -c %s ".cache/$asset")" -lt 2000000000 || { echo 'Release asset exceeds the free delivery limit.' >&2; exit 1; }

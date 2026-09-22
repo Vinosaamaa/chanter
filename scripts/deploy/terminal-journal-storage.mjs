@@ -2,11 +2,13 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { configurationBackupEnvironment, verifiedResticTool } from './configuration-backup.mjs';
 import { environmentName, MAX_PAGE_BYTES, validateWatermark } from './terminal-journal.mjs';
+import { MAX_SCOPE_BYTES } from './deleted-scope.mjs';
 
 export const MAX_MANIFEST_BYTES = 1024 * 1024;
 export const MAX_MANIFESTS = 20_000;
 const ID = /^[a-f0-9]{64}$/;
-const kinds = new Set(['page', 'manifest']);
+const kinds = new Set(['page', 'scope', 'manifest']);
+const maximumBytes = kind => kind === 'page' ? MAX_PAGE_BYTES : kind === 'scope' ? MAX_SCOPE_BYTES : MAX_MANIFEST_BYTES;
 
 export function journalBackupEnvironment(settings, environment) {
   const base = configurationBackupEnvironment(settings, environment);
@@ -42,7 +44,7 @@ export class JournalRepository {
   initialize() { this.#run(['init', '--repository-version', '2']); }
   write(kind, value) {
     if (!kinds.has(kind)) throw new Error('Invalid terminal journal object kind');
-    const input = JSON.stringify(value), maximum = kind === 'page' ? MAX_PAGE_BYTES : MAX_MANIFEST_BYTES;
+    const input = JSON.stringify(value), maximum = maximumBytes(kind);
     if (typeof input !== 'string' || Buffer.byteLength(input) > maximum) throw new Error('Terminal journal object exceeds bounded size');
     const tags = ['--tag', `terminal-journal-${kind}-v1`];
     if (kind === 'manifest') {
@@ -59,7 +61,7 @@ export class JournalRepository {
   }
   read(kind, snapshotId) {
     if (!kinds.has(kind) || !ID.test(snapshotId ?? '')) throw new Error('Invalid terminal journal snapshot reference');
-    const output = this.#run(['dump', snapshotId, `terminal-${kind}.json`], undefined, kind === 'page' ? MAX_PAGE_BYTES : MAX_MANIFEST_BYTES);
+    const output = this.#run(['dump', snapshotId, `terminal-${kind}.json`], undefined, maximumBytes(kind));
     try { return JSON.parse(output); }
     catch { throw new Error('Encrypted terminal journal storage returned invalid JSON'); }
   }

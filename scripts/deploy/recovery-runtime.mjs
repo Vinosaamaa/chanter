@@ -36,6 +36,7 @@ export function isolatedRecoveryCompose(release, config, runtimeDir, receipt) {
     service.labels = { 'chanter.recovery': receipt.container };
     delete service.volumes;
     Object.assign(service.environment, { SERVER_ADDRESS: '127.0.0.1', CHANTER_RECOVERY_MODE: 'true',
+      CHANTER_RECOVERY_RESTORE_ID: receipt.container.slice('chanter-recovery-'.length),
       CHANTER_EMAIL_WORKER_ENABLED: 'false', CHANTER_EVENTS_DISPATCH_ENABLED: 'false',
       CHANTER_MEDIA_WORKER_ENABLED: 'false', CHANTER_MEDIA_MIGRATE_LEGACY: 'false',
       CHANTER_INGESTION_WORKER_ENABLED: 'false', CHANTER_LLM_ENABLED: 'false', CHANTER_TELEMETRY_ENABLED: 'false',

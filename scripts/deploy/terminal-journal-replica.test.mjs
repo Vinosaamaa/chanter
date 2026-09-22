@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { GENESIS, entryDigest } from './terminal-journal.mjs';
 import { replicateJournal, readCurrentReplica } from './terminal-journal-replica.mjs';
+import { START, scopeStartDigest } from './deleted-scope.mjs';
 
-function fixture(count = 2) {
+function fixture(count = 2, targetKind = 'ACCOUNT') {
   const entries = [];
   for (let revision = 1; revision <= count; revision++) {
     const id = revision.toString(16).padStart(12, '0');
-    const entry = { revision, eventId: `11111111-1111-4111-8111-${id}`, targetKind: 'ACCOUNT',
+    const entry = { revision, eventId: `11111111-1111-4111-8111-${id}`, targetKind,
       targetId: `22222222-2222-4222-8222-${id}`, action: 'DELETE', retentionPolicy: 'PRESERVE_MODERATION_RECORDS_V1', deletedAt: '2026-09-19T06:00:00Z',
       previousDigest: entries.at(-1)?.digest ?? GENESIS.digest };
     entry.digest = entryDigest(entry); entries.push(entry);
@@ -43,6 +44,45 @@ test('replication verifies complete durable content before acknowledging and ret
   assert.equal(f.manifests.length, 1, 'Unchanged authority must not create another snapshot');
   const verified = readCurrentReplica(f.repository, [f.mark(1), f.mark(500), f.mark(501)]);
   assert.deepEqual(verified.manifest.authority, f.mark(501));
+});
+
+const emptyScopes = () => ({ kind: 'fixture', scope: async (entry, kind, after) => ({ schemaVersion: 1,
+  studyServerId: entry.targetId, terminalRevision: entry.revision, terminalEventId: entry.eventId,
+  terminalDigest: entry.digest, kind, after, totalCount: 0,
+  scopeDigest: scopeStartDigest(entry.digest, kind, 0), ids: [], nextAfter: null }) });
+
+test('every deleted server requires durable verified COURSE and CHANNEL attachments before checkpoint', async () => {
+  const missing = fixture(1, 'STUDY_SERVER');
+  await assert.rejects(replicateJournal(missing.source, missing.repository));
+  assert.equal(missing.calls.length, 0); assert.equal(missing.manifests.length, 0);
+  const f = fixture(1, 'STUDY_SERVER');
+  await replicateJournal(f.source, f.repository, emptyScopes());
+  const manifest = readCurrentReplica(f.repository).manifest;
+  assert.equal(manifest.schemaVersion, 2);
+  assert.deepEqual(manifest.scopes.map(scope => scope.kind), ['COURSE', 'CHANNEL']);
+  assert.equal(f.calls.length, 1);
+  for (const group of manifest.scopes) assert.equal(f.objects.get(group.pages[0].snapshotId).after, START);
+  await replicateJournal(f.source, f.repository, { kind: 'fixture', scope: () => { throw Error('Must reuse verified immutable scopes'); } });
+  assert.equal(f.calls.length, 2);
+  f.objects.delete(manifest.scopes[1].pages[0].snapshotId);
+  assert.throws(() => readCurrentReplica(f.repository));
+  await assert.rejects(replicateJournal(f.source, f.repository, emptyScopes()));
+  assert.equal(f.calls.length, 2);
+});
+
+test('corrupt scope readback, missing kind and legacy manifests cannot qualify current authority', async () => {
+  const f = fixture(1, 'STUDY_SERVER'), read = f.repository.read;
+  f.repository.read = (kind, id) => kind === 'scope' ? { corrupt: true } : read(kind, id);
+  await assert.rejects(replicateJournal(f.source, f.repository, emptyScopes()));
+  assert.equal(f.calls.length, 0); assert.equal(f.manifests.length, 0);
+  for (const mode of ['kind', 'legacy', 'extra']) {
+    const v = fixture(1, 'STUDY_SERVER'); await replicateJournal(v.source, v.repository, emptyScopes());
+    const value = v.objects.get(v.manifests[0].snapshotId);
+    if (mode === 'kind') value.scopes.pop();
+    if (mode === 'legacy') { value.schemaVersion = 1; delete value.scopes; }
+    if (mode === 'extra') value.scopes.push(value.scopes[0]);
+    assert.throws(() => readCurrentReplica(v.repository));
+  }
 });
 
 test('partial write, read-back corruption and changed upper bound never acknowledge', async () => {
