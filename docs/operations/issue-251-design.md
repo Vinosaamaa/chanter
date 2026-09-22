@@ -43,6 +43,8 @@ The account-data UI belongs in the existing settings shell, with one left-aligne
 
 The UI palette is ink `#192c46`, muted `#596a80`, line `#dce3ec`, action `#2458d3`, error `#b42332`, success `#197451`. Instrument Sans uses the existing settings heading and body scale. Everything is left aligned. A compact sidebar identifies account settings; the main column keeps explanatory lines below eighty characters. Source progress uses a semantic list inside one disclosure, with text states and a native progress element. This avoids implying independent source actions or billing purchases. The initial plan's separate source cards were removed because seven equal cards would hide the one actual user decision: request or download the archive.
 
+The approved exact lazy AccountDataPage budget is 16 KiB raw / 6 KiB gzip JavaScript and 3 KiB raw / 1 KiB gzip CSS, implemented as decimal byte ceilings 16000/6000 and 3000/1000. The first production build measured 9340/3400 bytes JavaScript and 2100/710 bytes CSS, rounded to ten bytes. Existing core/shared/vendor and initial-route caps remain unchanged. The final budget union must isolate only this exact entry and prove its absence from actual initial landing, sign-in and Home transfers.
+
 ```text
 Desktop: Settings | Account data
          Account  | What this archive contains
