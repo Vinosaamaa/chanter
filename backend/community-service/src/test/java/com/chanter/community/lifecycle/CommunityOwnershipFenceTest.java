@@ -30,7 +30,9 @@ class CommunityOwnershipFenceTest {
         Flyway.configure().dataSource(data).locations("classpath:db/migration").load().migrate();
         jdbc=new JdbcTemplate(data); tx=new TransactionTemplate(new DataSourceTransactionManager(data));
         fence=new CommunityOwnershipFence(jdbc);
-        servers=new JdbcStudyServerRepository(JdbcClient.create(jdbc),data,fence);
+        var terminal=new com.chanter.common.lifecycle.TerminalReapplyStore(jdbc,tx,"community",
+                entry -> com.chanter.common.lifecycle.TerminalReapplyStore.Cleanup.PENDING);
+        servers=new JdbcStudyServerRepository(JdbcClient.create(jdbc),data,fence,terminal);
     }
     @Test void actualServerCreationPreventsPreparationAndUnresolvedOwnershipNeverFreezesTheOwner() {
         UUID owner=UUID.randomUUID(),job=UUID.randomUUID();

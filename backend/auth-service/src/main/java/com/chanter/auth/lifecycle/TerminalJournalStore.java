@@ -41,10 +41,10 @@ public final class TerminalJournalStore {
         this.jdbc = jdbc; this.tx = tx; this.clock = clock;
     }
 
-    /** Must join the owning terminal mutation. Never publish authority that can outlive a rolled-back deletion. */
+    /** Join auth's coordinator/outbox transaction. Other services apply their terminal mutations in separate transactions. */
     public Entry append(String kind, UUID targetId) {
         TerminalJournal.requireTarget(kind, targetId);
-        if (!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Terminal authority requires a source transaction");
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Terminal authority requires an auth transaction");
         Watermark previous = lock();
         var existing = jdbc.query("SELECT * FROM lifecycle_terminal_journal WHERE target_kind=? AND target_id=?", TerminalJournalStore::entry, kind, targetId);
         if (!existing.isEmpty()) return existing.getFirst();
