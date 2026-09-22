@@ -13,6 +13,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 @Import(SourceTerminalRecoveryController.class)
 public class NotificationTerminalConfiguration {
+    @Bean com.chanter.common.lifecycle.AccountDeletionParticipant notificationDeletionParticipant(
+            JdbcTemplate jdbc,PlatformTransactionManager transactions,com.chanter.common.events.DurableOutbox outbox,
+            com.chanter.common.lifecycle.AccountDeletionProtocol protocol,TerminalReapplyStore terminal) {
+        return new com.chanter.common.lifecycle.AccountDeletionParticipant("notification",
+                new com.chanter.common.events.DurableConsumer(jdbc,new TransactionTemplate(transactions)),outbox,protocol,terminal,null);
+    }
     @Bean TerminalReapplyStore notificationTerminalStore(JdbcTemplate jdbc, PlatformTransactionManager transactions, ExportSnapshotStore snapshots) {
         var tx = new TransactionTemplate(transactions);
         tx.setTimeout(30);

@@ -40,6 +40,7 @@ class NotificationTerminalRecoveryTest {
     @Autowired TerminalReapplyStore terminal;
     @Autowired ExportSnapshotStore snapshots;
     @Autowired NotificationService notifications;
+    @Autowired com.chanter.common.lifecycle.AccountDeletionProtocol deletionProtocol;
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     com.chanter.notification.application.NotificationVisibility visibility;
 
@@ -122,6 +123,46 @@ class NotificationTerminalRecoveryTest {
             assertThat(count(owner)).isZero();
             assertThat(terminal.terminal("ACCOUNT",owner)).isTrue();
         } finally { release.countDown(); }
+    }
+
+    @Test void ordinaryTerminalDeliveryCommitsItsReceiptOnceAndReceiptFailureRollsBackErasure() throws Exception {
+        UUID owner=UUID.randomUUID(),eventId=UUID.randomUUID(),job=UUID.randomUUID();
+        create(owner,UUID.randomUUID(),UUID.randomUUID());
+        Instant now=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+        // Normal delivery may lead the externally replayed prefix. It must not claim missing intervening entries.
+        long revision=10000;
+        String digest=TerminalJournal.digest(revision,eventId,"ACCOUNT",owner,now,TerminalJournal.GENESIS);
+        var entry=new TerminalJournal.Entry(revision,eventId,"ACCOUNT",owner,"DELETE",now,
+                TerminalJournal.RETENTION_POLICY,TerminalJournal.GENESIS,digest);
+        var command=new com.chanter.common.lifecycle.AccountDeletionProtocol.Terminal(job,entry);
+        String key=com.chanter.common.lifecycle.AccountDeletionProtocol.key("ACCOUNT",owner);
+        var event=new DurableEvent(UUID.randomUUID(),1,"auth",10,
+                com.chanter.common.lifecycle.AccountDeletionProtocol.TERMINAL,key,deletionProtocol.encode(command));
+        byte[] body=mapper.writeValueAsBytes(event);
+        var before=terminal.receipt().authority();
+        jdbc.execute("ALTER TABLE durable_outbox ADD CONSTRAINT test_reject_deletion_receipt CHECK(kind<>'ACCOUNT_DELETE_RECEIPT')");
+        try {
+            assertThatThrownBy(() -> http.perform(post("/api/v1/internal/lifecycle/events")
+                    .header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN).contentType(MediaType.APPLICATION_JSON).content(body)))
+                    .hasRootCauseInstanceOf(org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException.class);
+            assertThat(count(owner)).isEqualTo(1);
+            assertThat(terminal.terminal("ACCOUNT",owner)).isFalse();
+        } finally { jdbc.execute("ALTER TABLE durable_outbox DROP CONSTRAINT test_reject_deletion_receipt"); }
+        for(int attempt=0;attempt<2;attempt++) http.perform(post("/api/v1/internal/lifecycle/events")
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isNoContent());
+        assertThat(count(owner)).isZero();
+        assertThat(terminal.receipt().authority()).isEqualTo(before);
+        var receipts=jdbc.query("SELECT payload FROM durable_outbox WHERE aggregate_key=? AND kind='ACCOUNT_DELETE_RECEIPT'",(rs,row)->rs.getString(1),key);
+        assertThat(receipts).hasSize(1);
+        var receipt=mapper.readValue(receipts.getFirst(),com.chanter.common.lifecycle.AccountDeletionProtocol.Receipt.class);
+        receipt.validate();
+        assertThat(receipt.jobId()).isEqualTo(job);
+        assertThat(receipt.terminalDigest()).isEqualTo(digest);
+        assertThat(receipt.state()).isEqualTo("COMPLETE");
+        var forged=new DurableEvent(UUID.randomUUID(),1,"community",11,event.kind(),key,event.payload());
+        http.perform(post("/api/v1/internal/lifecycle/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(forged))).andExpect(status().isBadRequest());
     }
     private com.chanter.notification.domain.Notification create(UUID user,UUID server,UUID resource) {
         return notifications.create(new NotificationRepository.CreateCommand(user,NotificationKind.SUPPORT_QUESTION_CREATED,null,

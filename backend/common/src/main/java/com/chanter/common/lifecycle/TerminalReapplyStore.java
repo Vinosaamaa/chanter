@@ -84,6 +84,14 @@ public final class TerminalReapplyStore {
                 Integer.class, kind, target) != 0;
     }
 
+    public Cleanup cleanup(TerminalJournal.Entry entry) {
+        requireTransaction(); entry.validate();
+        var states=jdbc.query("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_kind=? AND target_id=? AND revision=? AND event_id=? AND digest=?",
+                (rs,row) -> Cleanup.valueOf(rs.getString(1)),entry.targetKind(),entry.targetId(),entry.revision(),entry.eventId(),entry.digest());
+        if(states.size()!=1) throw new IllegalArgumentException("Unknown terminal authority");
+        return states.getFirst();
+    }
+
     /** Source writes take this lock before their rows, so an in-flight write cannot recreate a terminal target. */
     public void requireWritable(String kind, UUID target) {
         if (!writable(kind, target)) throw new org.springframework.web.server.ResponseStatusException(

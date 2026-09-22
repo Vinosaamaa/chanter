@@ -16,8 +16,11 @@ public final class ExportRequestController {
     private final InternalLifecycleAccess access;
     private final AccountExportProtocol protocol;
     private final ExportSourceExecution execution;
-    public ExportRequestController(ExportParticipant participant, AccountExportProtocol protocol, ExportSourceExecution execution, @Value("${chanter.internal-service-token}") String token) {
+    private final org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions;
+    public ExportRequestController(ExportParticipant participant, AccountExportProtocol protocol, ExportSourceExecution execution,
+            org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions, @Value("${chanter.internal-service-token}") String token) {
         this.participant = participant; this.protocol = protocol; this.execution = execution; this.access = new InternalLifecycleAccess(token);
+        this.deletions=deletions;
     }
 
     @PostMapping("/api/v1/internal/lifecycle/events")
@@ -26,8 +29,15 @@ public final class ExportRequestController {
         access.require(token);
         try {
             var event = protocol.event(body);
-            protocol.request(event);
-            execution.deliver(event, () -> participant.accept(event));
+            if(AccountDeletionProtocol.command(event.kind())) {
+                var deletion=deletions.getIfAvailable();
+                if(deletion==null) throw new IllegalArgumentException("Deletion participant unavailable");
+                deletion.validate(event);
+                execution.deliver(event,() -> deletion.accept(event));
+            } else {
+                protocol.request(event);
+                execution.deliver(event, () -> participant.accept(event));
+            }
         }
         catch (IllegalArgumentException failure) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "EXPORT_MESSAGE_REJECTED"); }
         catch (ExportSnapshotStore.ExportFailure failure) { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "EXPORT_SOURCE_UNAVAILABLE"); }
