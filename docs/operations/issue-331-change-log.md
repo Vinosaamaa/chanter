@@ -32,8 +32,23 @@ The completed fixture keeps its application open until the receiver acknowledges
 real queue state and business counters. It passes locally with all three actual
 agent/privacy/outage tests. Disabled configuration requires neither database nor
 registry. Initial native PostgreSQL statement cancellation passed on AMD64 and
-ARM64; new collector queries still require their own hosted run.
+ARM64. Email/resource queries and the live Boot gauge fixture also passed on both
+architectures at `6a903e69`.
 
-AI/realtime coverage, dashboard/alert rules, exception tracking and actual operator
-receipt remain unfinished. All workers remain Astra High at normal speed. Work
-resumed on September 22 from preserved branches and interrupted edits.
+The actual WebSocket regression first failed for a missing meter, then passed
+with the existing connection map exposed as one tag-free gauge. The AI ledger
+regressions first reproduced missing measured/unknown observations. The new helper
+records reservations and successful settlement writes only after commit, ignores
+duplicate settled writes and emits nothing after rollback. Native execution with
+unmeasured usage/latency stays unknown. These measurements do not replace the
+durable accounting ledger or infer provider consumption from reserved tokens.
+
+Real Boot export now verifies unmeasured settlement labels and timer seconds.
+Affected agent/common/telemetry verification passed. The broader realtime suite
+exposed a test ordering race: `next()` could close the socket before its count was
+asserted. Moving the assertion before receive cancellation passed the full suite.
+No production connection behavior changed.
+
+Final combined production proof, dashboard/alert rules, exception tracking and
+actual operator receipt remain unfinished. All workers remain Astra High at
+normal speed. Work resumed on September 22 from preserved branches and interrupted edits.

@@ -59,6 +59,8 @@ class SafeMetricExporterTest {
                     Attributes.builder().put("outcome", "private-canary").build());
             meter.counterBuilder("chanter.gateway.admission").build().add(1,
                     Attributes.builder().put("operation", "private-canary").build());
+            meter.counterBuilder("chanter.ai.settlements").build().add(1,
+                    Attributes.builder().put("usage", "private-canary").build());
             meter.gaugeBuilder("jvm.memory.used").setUnit("By").buildWithCallback(gauge -> gauge.record(100,
                     Attributes.builder().put("jvm.memory.pool.name", "private-canary").build()));
             new SafeMetricExporter(destination).export(reader.collectAllMetrics()).join(1, java.util.concurrent.TimeUnit.SECONDS);

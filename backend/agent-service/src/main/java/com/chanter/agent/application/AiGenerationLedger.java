@@ -21,8 +21,9 @@ public class AiGenerationLedger {
     private final JdbcClient jdbc;
     private final Clock clock;
     private final LlmModelCatalog catalog;
-    public AiGenerationLedger(JdbcClient jdbc, Clock clock, LlmModelCatalog catalog) {
-        this.jdbc = jdbc; this.clock = clock; this.catalog = catalog;
+    private final AiOperationalMetrics metrics;
+    public AiGenerationLedger(JdbcClient jdbc, Clock clock, LlmModelCatalog catalog, AiOperationalMetrics metrics) {
+        this.jdbc = jdbc; this.clock = clock; this.catalog = catalog; this.metrics = metrics;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -52,6 +53,7 @@ public class AiGenerationLedger {
                 .param("id", id).param("server", server).param("question", question).param("user", user)
                 .param("selection", selection).param("provider", model.provider()).param("model", model.model())
                 .param("reserved", reserved).param("now", now).param("price", model.price() == null ? null : model.price().version()).update();
+        metrics.reserved();
         return id;
     }
 
@@ -63,7 +65,7 @@ public class AiGenerationLedger {
             throw new IllegalArgumentException("Invalid AI outcome");
         LlmUsage measured = attempted ? (usage == null ? LlmUsage.UNKNOWN : usage) : new LlmUsage(0, 0, 0, 0, 0);
         // A late provider receipt may reconcile UNKNOWN after a process stall, but cannot overwrite a settled receipt.
-        jdbc.sql("""
+        int changed = jdbc.sql("""
                 UPDATE ai_generation_usage SET input_tokens=:input, output_tokens=:output, cache_read_tokens=:cacheRead,
                     cache_write_tokens=:cacheWrite, reasoning_tokens=:reasoning, measured=:measured, outcome=:outcome,
                     latency_ms=:latency, resolved_model=:resolved, provider_request_id=:request, estimated_cost_usd=:cost, settled_at=:now
@@ -74,6 +76,7 @@ public class AiGenerationLedger {
                 .param("reasoning", measured.reasoningTokens()).param("measured", measured.measured()).param("outcome", attempted ? outcome : "NOT_STARTED")
                 .param("latency", Math.max(0, latencyMs)).param("resolved", safeId(resolvedModel)).param("request", safeId(requestId))
                 .param("cost", cost(measured, model, resolvedModel)).param("now", now()).param("id", reservation).update();
+        if (changed == 1) metrics.settled(attempted ? outcome : "NOT_STARTED", measured.measured(), attempted, Math.max(0, latencyMs));
     }
 
     @Transactional(readOnly = true)

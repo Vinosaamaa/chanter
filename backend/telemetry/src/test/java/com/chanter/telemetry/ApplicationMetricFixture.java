@@ -33,6 +33,9 @@ public class ApplicationMetricFixture {
         try (var context = application.run("--chanter.telemetry.enabled=true")) {
             if (context.getBeansOfType(QueueMetrics.class).size() != 1) throw new IllegalStateException("Enabled monitoring did not start its source collector");
             var metrics = context.getBean(MeterRegistry.class);
+            metrics.counter("chanter.ai.settlements", "outcome", "TIMED_OUT", "usage", "unmeasured").increment(2);
+            metrics.counter("chanter.ai.unmeasured_settlements").increment(2);
+            metrics.timer("chanter.ai.duration", "outcome", "TIMED_OUT").record(20, java.util.concurrent.TimeUnit.MILLISECONDS);
             for (int index = 0; index < 600; index++) {
                 metrics.counter("chanter.auth.email.delivery", "outcome", "accepted", "account", "private-canary-" + index).increment();
             }

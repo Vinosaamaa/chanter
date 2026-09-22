@@ -32,8 +32,21 @@ recipient, resource ID or model name is a metric dimension.
 The real Boot proof keeps the enabled collector and its gauges alive until the
 private test receiver acknowledges a pending database row and successful collection.
 It also checks counter privacy and disabled configuration separately. Native
-PostgreSQL cancellation passed on both architectures at the initial draft head;
-the new email/resource queries still require their extended native run.
+PostgreSQL cancellation and the email/resource source queries have passed on both
+hosted architectures. Live WebSocket counting is tested with an authenticated
+socket and removal after disconnect, without account or session labels.
+
+AI instruments describe committed operational observations. `chanter.ai.requests`
+counts committed reservations, including requests later proven not started.
+`chanter.ai.settlements` counts successful settlement writes by fixed outcome and
+measured/unmeasured usage; a later reconciliation of UNKNOWN is another settlement,
+not another request. `chanter.ai.unmeasured_settlements` counts attempted settlements
+without measured input/output usage. It is not a current unresolved balance.
+`chanter.ai.duration` records positive server-observed elapsed time in seconds;
+native client execution with unknown duration contributes no artificial zero.
+The durable usage ledger remains the accounting authority, including reservations
+left by crashes. Telemetry can be lost during process failure, and rollback emits
+no observations. A metrics failure cannot change a committed operation's result.
 
 Critical operations include durable events, transactional email, resource scan
 and ingestion, AI generation, realtime connections and gateway admission. A
@@ -64,9 +77,9 @@ and operator notification, verified free quotas and disabled paid overage.
 
 ## Verification and remaining decisions
 
-Implementation is beginning with the real application metric bridge. Source
-collectors, dashboards, error transport, source-map publishing, incident/rotation
-runbooks and provider acceptance remain unfinished. #332 separately owns complete
+The application metric bridge, queue collectors and initial AI/realtime coverage
+are implemented. Final combined proof, dashboards, error transport, source-map
+publishing, incident/rotation runbooks and provider acceptance remain unfinished. #332 separately owns complete
 application restore with current deletion authority. Neither issue is closed by
 the successful database-only restore in PR329.
 

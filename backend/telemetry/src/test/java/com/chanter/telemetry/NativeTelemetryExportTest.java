@@ -51,6 +51,13 @@ class NativeTelemetryExportTest {
                         && metric.getGauge().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 1)),
                         "A Boot-enabled collector must export the real pending database row before shutdown");
                 assertFalse(deliveries.isEmpty(), "Existing email delivery counters must survive private export");
+                assertTrue(metrics.stream().anyMatch(metric -> metric.getName().equals("chanter.ai.settlements")
+                        && metric.getSum().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 2
+                        && point.getAttributesList().stream().anyMatch(attribute -> attribute.getKey().equals("usage")
+                        && attribute.getValue().getStringValue().equals("unmeasured")))));
+                assertTrue(metrics.stream().anyMatch(metric -> metric.getName().equals("chanter.ai.duration")
+                        && metric.getHistogram().getDataPointsList().stream().anyMatch(point -> point.getCount() == 1
+                        && Math.abs(point.getSum() - 0.020) < 0.000001)), "Real Micrometer timer durations must export in seconds");
                 assertTrue(deliveries.stream().anyMatch(metric -> metric.getSum().getDataPointsCount() == 2
                         && metric.getSum().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 600)
                         && metric.getSum().getDataPointsList().stream().anyMatch(point -> point.getAsDouble() == 3)),

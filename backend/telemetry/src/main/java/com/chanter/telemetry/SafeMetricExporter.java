@@ -28,12 +28,16 @@ public final class SafeMetricExporter implements MetricExporter {
             "chanter.auth.email.delivery", "chanter.gateway.admission",
             "chanter.resources.pending", "chanter.resources.failed", "chanter.resources.oldest.age",
             "chanter.resources.collection.healthy", "chanter.resources.sample.age",
-            "chanter.ai.requests", "chanter.ai.duration", "chanter.ai.unknown_usage", "chanter.realtime.connections");
+            "chanter.ai.requests", "chanter.ai.duration", "chanter.ai.settlements", "chanter.ai.unmeasured_settlements",
+            "chanter.ai.unknown_usage", "chanter.realtime.connections");
     private static final Set<String> UNITS = Set.of("", "1", "s", "ms", "By", "{thread}", "{class}", "{connection}", "{request}");
     // Preserve bounded runtime dimensions: collapsing asynchronous gauges from
     // distinct memory pools/thread states would keep one value rather than sum.
     private static final Map<String, Set<String>> DIMENSIONS = Map.of(
-            "outcome", Set.of("accepted", "expired", "retry", "limited", "unavailable", "bounded-recovery"),
+            "outcome", Set.of("accepted", "expired", "retry", "limited", "unavailable", "bounded-recovery",
+                    "SUCCESS", "UNAVAILABLE", "RATE_LIMITED", "TIMED_OUT", "CANCELLED", "INVALID_RESPONSE", "REFUSED",
+                    "LIMIT_EXCEEDED", "REJECTED_EVIDENCE", "UNSUPPORTED", "UNKNOWN", "NOT_STARTED"),
+            "usage", Set.of("measured", "unmeasured"),
             "operation", Set.of("READ", "WRITE", "AUTH", "REGISTRATION", "RECOVERY", "LOGOUT", "RECONNECT",
                     "AI", "UPLOAD", "DOWNLOAD", "SEARCH", "MESSAGE", "SENSITIVE"),
             "jvm.memory.type", Set.of("heap", "non_heap"),
