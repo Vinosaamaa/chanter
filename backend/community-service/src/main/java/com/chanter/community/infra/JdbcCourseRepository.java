@@ -571,18 +571,33 @@ public class JdbcCourseRepository implements CourseRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<UUID> findCohortInviteCodeForInstructor(UUID cohortId, UUID instructorUserId) {
+    public Optional<UUID> findCohortInviteCodeForPeopleManager(UUID cohortId, UUID viewerUserId) {
         return jdbcClient.sql("""
                         SELECT c.invite_code
                         FROM cohorts c
-                        JOIN course_roles cr ON cr.course_id = c.course_id
+                        JOIN courses co ON co.id = c.course_id
                         WHERE c.id = :cohortId
-                        AND cr.user_id = :instructorUserId
-                        AND cr.role = :role
+                        AND (
+                            EXISTS (
+                                SELECT 1
+                                FROM course_roles cr
+                                WHERE cr.course_id = c.course_id
+                                AND cr.user_id = :viewerUserId
+                                AND cr.role = :instructorRole
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM study_server_roles ssr
+                                WHERE ssr.study_server_id = co.study_server_id
+                                AND ssr.user_id = :viewerUserId
+                                AND ssr.role = :ownerRole
+                            )
+                        )
                         """)
                 .param("cohortId", cohortId)
-                .param("instructorUserId", instructorUserId)
-                .param("role", CourseRole.INSTRUCTOR.name())
+                .param("viewerUserId", viewerUserId)
+                .param("instructorRole", CourseRole.INSTRUCTOR.name())
+                .param("ownerRole", StudyServerRole.STUDY_SERVER_OWNER.name())
                 .query(UUID.class)
                 .optional();
     }

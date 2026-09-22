@@ -321,9 +321,9 @@ public class CourseController {
     @GetMapping("/cohorts/{cohortId}/invite")
     public CohortInviteResponse getCohortInvite(
             @PathVariable UUID cohortId,
-            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID instructorUserId
+            @RequestAttribute(AuthRequestAttributes.USER_ID) UUID viewerUserId
     ) {
-        UUID inviteCode = courseService.getCohortInviteCode(cohortId, instructorUserId);
+        UUID inviteCode = courseService.getCohortInviteCode(cohortId, viewerUserId);
         return new CohortInviteResponse(cohortId, inviteCode);
     }
 
