@@ -53,9 +53,15 @@ change is needed.
 The initial npm audit reproduced two moderate test-tool findings. The patched
 clean install reports none. Local frontend tests hit three typing failures after
 timeouts under host memory pressure; all three passed in an isolated one-worker
-rerun without changed assertions or timeouts. The native patched Caddy build, security/source checks and upstream expression
+rerun without changed assertions or timeouts. The native patched Caddy build,
+security/source checks and upstream expression
 matcher tests pass. Frontend lint and the production build pass with unchanged
-budgets. All 56 deployment tests pass, including actual Caddy adaptation and
-media guard ordering. Hosted full frontend passes at `70a795e7`; final exact-head
-release and CodeAnt results remain acceptance gates. Issue #337 stays open until
-root records merged-main and required release verification.
+budgets. After integrating accepted monitoring main, all 64 deployment tests
+pass, including actual Caddy adaptation and media guard ordering.
+
+[Full CI](https://github.com/Vinosaamaa/chanter/actions/runs/35782565969) and
+[both native release architectures](https://github.com/Vinosaamaa/chanter/actions/runs/35782565979)
+pass at `70a795e7`, including patched image scans and packaged staging. The branch
+is rebased onto accepted monitoring main `dd6c9002`; final exact-head CI, release
+and CodeAnt results remain acceptance gates. Issue #337 stays open until root
+records merged-main and required release verification.

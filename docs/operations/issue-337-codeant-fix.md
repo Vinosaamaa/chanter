@@ -16,7 +16,8 @@ another copy to maintain. The record instead links the owning issue and describe
 the compatibility decision and behavior test.
 
 Verification covers the native backport/security tests, upstream Caddy expression
-tests, actual Caddy adaptation and all 56 deployment tests. Frontend lint/build,
+tests, actual Caddy adaptation and all 64 deployment tests after the monitoring
+union. Frontend lint/build,
 unchanged budgets and the focused timeout rerun pass; hosted full frontend also
 passes. Final exact-head CI, release staging and review remain required after
 integration with the accepted monitoring baseline.
