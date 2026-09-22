@@ -1,0 +1,8 @@
+{
+  "version": "3.8.0",
+  "binaries": {
+    "linux-x64": { "name": "sentry-cli-Linux-x86_64", "sha256": "13f8cb34ae01a6a272d7d7c22e277a105286615b4020de900ea95a8de47cdbb6" },
+    "linux-arm64": { "name": "sentry-cli-Linux-aarch64", "sha256": "eaea24b5b47b61a96d9a2e353268ea41fd9a8c5b7979694330df614d4af672bf" },
+    "win32-x64": { "name": "sentry-cli-Windows-x86_64.exe", "sha256": "2257cf6805a616f5c3ee291a549ebbba021190048b646adc006beb4e8cdef7fd" }
+  }
+}

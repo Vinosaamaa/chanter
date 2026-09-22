@@ -147,6 +147,16 @@ These local/runner artifacts are not published as public release assets. Upload
 to a private error project and actual symbolication require that project's
 credentials and matching release receipt; generation alone is not linkage proof.
 
+Private uploads will use checksum-pinned Sentry CLI 3.8.0, with the release and
+`~/assets` prefix matching browser frames. Before any upload, verify every private
+script/map hash, matching served script, exact file inventory and release. Reject
+extra files and symlinks. Use the CLI's strict validation and bounded processing
+wait without source rewriting, so it cannot discover additional local source
+files. Authentication stays in the process environment; capture and discard CLI
+output on failure rather than publishing credentials, source text or local paths.
+Only explicitly configured release jobs perform this operation. Success records
+provider upload processing, not an actual exception's symbolication or notification.
+
 Primary references:
 
 - [Pinned Java agent supported libraries](https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/v2.31.1/docs/supported-libraries.md)

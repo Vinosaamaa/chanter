@@ -218,6 +218,19 @@ upload and actual symbolication check remain necessary; local generation does
 not prove release linkage. The public `browser-error-assets.json` contains only
 served JavaScript filenames and the release, used to reject fabricated locations.
 
+When the actual private error project has been reviewed, configure repository
+secrets `SENTRY_AUTH_TOKEN`, `SENTRY_ORG` and `SENTRY_PROJECT`. Use a release-upload
+scoped token, never the browser ingestion key. Optional repository variable
+`SENTRY_URL` selects exactly `https://sentry.io/`, `https://us.sentry.io/` or
+`https://de.sentry.io/` for the project's region. Only the main-branch release
+package job uploads; pull requests never receive these credentials. It verifies
+the pinned CLI checksum and each map/script/release before invoking strict upload
+and a bounded processing wait. An unconfigured token leaves the step disabled.
+Failed configured uploads stop package publication without publishing provider
+output. No source maps enter public release assets. After upload, trigger a safe
+test error in the exact accepted release and verify its original source location
+and operator notification privately before accepting browser monitoring.
+
 ## Optional native companion issuer
 
 Native access is disabled while all four issuer values are absent. To provision it after the #316 acceptance gates, add only to the private `agent-service.env`:

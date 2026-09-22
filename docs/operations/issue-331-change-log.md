@@ -121,3 +121,12 @@ The full frontend suite exposed an existing async navigation assertion in the
 join-cohort test. It waited for API invocation but read the route before the
 following awaited invalidations/navigation completed. The assertion now waits
 for the visible destination; product behavior is unchanged.
+
+Private source-map upload uses checksum-pinned Sentry CLI 3.8.0 after exact
+merged-main CI and release staging. Before invoking it, the script verifies the
+complete private inventory, matching served JavaScript, release and content hashes.
+It rejects extra files, symlinks, foreign receiver configuration and mismatched
+builds. Credentials remain in the child environment and provider output is never
+published. Nine release-tool tests pass, and the verifier accepts the actual built
+artifact. The checked-in workflow is disabled without an operator token. No
+provider upload has run and no symbolicated error/notification has been observed.
