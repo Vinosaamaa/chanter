@@ -1,0 +1,9 @@
+# Issue 251 changes
+
+This draft adds private account export snapshots and actual projections for auth, community, message, media, agent, notification and search. Export scope excludes credentials and operator evidence. Retained shared content requires current source authorization. Auth owns recent-login requests, source progress, cancellation, expiry and streamed ZIP integrity. Existing durable delivery carries requests and receipts.
+
+The browser download route consumes a short-lived, one-use cookie bound to the live account/session/job and current refresh cookie. It has a narrow GET-only gateway exception, repeat authorization during streaming, and no URL secret or JavaScript archive buffer. The account-data page provides request, status, cancellation and native browser download controls. Component tests cover uncertain-request retries and late responses after account changes; hosted visual/download-manager proof is pending.
+
+Auth terminal recovery imports the original canonical chain with session/email-token/export closure and participant receipts in one transaction. Restored-session invalidation has a durable idempotent receipt tied to the exact canonical and participant watermark. Identity cleanup remains PENDING. Focused tests cover rollback, replay, incorrect authority, private credentials and strict JSON. External replication is owned by #332.
+
+Coordinated account/Study Server deletion, preservation holds, ownership resolution, the other six recovery handlers, current #249 authority integration, legal/support disclosure work and final hosted cross-service proof remain incomplete. This issue stays open through delivery and operational verification.
