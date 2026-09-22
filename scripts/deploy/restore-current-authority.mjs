@@ -68,6 +68,7 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
   environmentName(environment); validateWatermark(requiredAuthority);
   const release = json(path.join(bundleDir, 'release.json'));
   requireRecoveryCapability(release); // Old images can ignore the recovery flag. Reject before any decryption or startup.
+  if (release.architecture !== ({ x64: 'amd64', arm64: 'arm64' })[process.arch]) fail();
   if (!path.isAbsolute(destination) || fs.realpathSync(destination) !== destination) fail();
   const receipt = json(path.join(destination, 'recovery.json'));
   const preview = isolatedRecoveryCompose(release, { environment, hostname: 'recovery.invalid', publicIp: '192.0.2.1' }, destination, receipt);
@@ -124,7 +125,12 @@ export async function applyRecoveryAuthority({ bundleDir, destination, settings,
     if (prior.length) run(['stop', ...prior], 60_000);
     run(['stop', receipt.container], 30_000);
     attempt.status = 'applying-isolated'; save(path.join(attemptDir, 'attempt.json'), attempt);
-    for (const name of ['postgres', ...SOURCES.map(source => `${source}-service`)]) command(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', name]);
+    command(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'postgres']);
+    for (const source of SOURCES) {
+      if (command(['run', '--rm', '--no-deps', '--entrypoint', 'java', `${source}-service`,
+        '-cp', '/app/helpers:/app/classes:/app/lib/*', 'RecoverySchema']).trim() !== 'RECOVERY_SCHEMA_VERIFIED') fail();
+    }
+    for (const source of SOURCES) command(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', `${source}-service`]);
     ownedContainers(compose, receipt, run, true);
     if (run(['network', 'inspect', '--format', '{{json .Internal}}', compose.networks.application.name]).trim() !== 'true') fail();
     if (command(['exec', '-T', 'auth-service', 'java', '-cp', '/app/helpers', 'RecoveryIsolation']).trim()

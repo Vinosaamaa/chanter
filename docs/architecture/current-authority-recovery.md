@@ -223,6 +223,13 @@ volume on the new internal network; it does not migrate or create a replacement
 database. Only containers with the exact recovery/project/service labels and
 expected images, mounts and networks can be stopped by the command.
 
+Before any source starts, a fixed one-shot helper validates every packaged Flyway
+migration against the restored database. Its connections are read-only, queries
+and process lifetime are bounded, and missing, changed or unexpected migration
+state rejects recovery. It never calls migration or repair. The native fixture
+checks all source schemas and deliberately changes one checksum to prove refusal
+before startup, then restores that fixture checksum and verifies it again.
+
 Each selected external prefix owns a private attempt directory and durable
 recovery UUID. Retries of the same prefix reuse that identity; a newer external
 prefix gets a distinct attempt and never overwrites the old one. Configuration

@@ -58,6 +58,35 @@ try {
   docker(['network', 'create', '--internal', '--label', `chanter.recovery=${identity}`, network]); networkCreated = true;
   docker(['network', 'connect', '--alias', 'postgres', network, postgres]); connected = true;
   prepared = true;
+  const validateSchema = source => compose(['run', '--rm', '--no-deps', '--entrypoint', 'java', `${source}-service`,
+    '-cp', '/app/helpers:/app/classes:/app/lib/*', 'RecoverySchema']).trim();
+  for (const source of SOURCES) {
+    assert.equal(validateSchema(source), 'RECOVERY_SCHEMA_VERIFIED');
+  }
+  const sql = statement => original(['exec', '-T', 'postgres', 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'chanter_admin',
+    '-d', 'chanter_auth', '-Atc', statement]).trim();
+  const checksum = sql("SELECT checksum FROM flyway_schema_history WHERE version='1'");
+  assert.match(checksum, /^-?[0-9]+$/);
+  try {
+    sql("UPDATE flyway_schema_history SET checksum=CASE WHEN checksum=0 THEN 1 ELSE 0 END WHERE version='1'");
+    assert.throws(() => validateSchema('auth'), 'Changed migration checksum must reject before source startup');
+  } finally { sql(`UPDATE flyway_schema_history SET checksum=${checksum} WHERE version='1'`); }
+  assert.equal(validateSchema('auth'), 'RECOVERY_SCHEMA_VERIFIED');
+  const savedMigration = sql("SELECT row_to_json(history)::text FROM flyway_schema_history history WHERE version='1'");
+  assert.equal(JSON.parse(savedMigration).version, '1');
+  try {
+    sql("DELETE FROM flyway_schema_history WHERE version='1'");
+    assert.throws(() => validateSchema('auth'), 'Missing restored migration must reject');
+  } finally {
+    sql(`INSERT INTO flyway_schema_history SELECT * FROM json_populate_record(NULL::flyway_schema_history, '${savedMigration.replaceAll("'", "''")}')`);
+  }
+  try {
+    sql("INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) "
+      + "SELECT MAX(installed_rank)+1,'999999','Recovery fixture','SQL','V999999__recovery_fixture.sql',0,current_user,0,true FROM flyway_schema_history");
+    assert.throws(() => validateSchema('auth'), 'A database ahead of the packaged release must reject');
+  } finally { sql("DELETE FROM flyway_schema_history WHERE version='999999'"); }
+  assert.equal(validateSchema('auth'), 'RECOVERY_SCHEMA_VERIFIED');
+  console.log('All packaged source schemas validate; changed, missing and ahead migrations reject without migration');
   for (const source of SOURCES) {
     const name = `${source}-service`;
     try { compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', name]); }

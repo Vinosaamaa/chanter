@@ -9,7 +9,7 @@ import { GENESIS, checkpointIdentity } from './terminal-journal.mjs';
 import { SOURCES } from './terminal-journal-recovery.mjs';
 
 const id = 'chanter-recovery-11111111-1111-4111-8111-111111111111';
-const release = { version: 1, commit: 'a'.repeat(40), architecture: 'amd64', schemaEpoch: 8,
+const release = { version: 1, commit: 'a'.repeat(40), architecture: process.arch === 'arm64' ? 'arm64' : 'amd64', schemaEpoch: 8,
   recoveryProtocol: { journalSchema: 2, ordinaryWorkIsolation: 1 },
   images: Object.fromEntries(imageNames.map(name => [name, 'sha256:' + 'b'.repeat(64)])) };
 const receipt = { version: 1, status: 'database-restored-isolated', release: release.commit, image: release.images.postgres,
@@ -31,6 +31,16 @@ test('unsupported historical release rejects before decryption, Docker or source
   await assert.rejects(applyRecoveryAuthority(input, { run: () => { operations++; }, loadConfiguration: () => { operations++; } }), /capability/);
   assert.equal(operations, 0);
   assert.equal(fs.existsSync(path.join(input.destination, 'authority')), false);
+});
+
+test('foreign architecture rejects before decryption or touching restored state', async () => {
+  const input = files();
+  fs.writeFileSync(path.join(input.bundleDir, 'release.json'), JSON.stringify({ ...release,
+    architecture: release.architecture === 'amd64' ? 'arm64' : 'amd64' }));
+  let operations = 0;
+  await assert.rejects(applyRecoveryAuthority(input, { run: () => { operations++; }, loadConfiguration: () => { operations++; } }));
+  assert.equal(operations, 0);
+  assert.equal(fs.existsSync(path.join(input.destination, '.authority-lock')), false);
 });
 
 test('restored volume ownership, image and network isolation are checked before stopping the database', () => {
@@ -68,7 +78,7 @@ test('authority application preserves attempt identity, private configuration an
     runtime: Object.fromEntries(names.map(name => [name, { PRIVATE_FIXTURE: 'private-recovery-canary' }])) };
   const project = 'chanter-recovery-11111111111141118111111111111111', network = `${id}-authority`;
   const containers = new Map(), calls = [];
-  let rejectSource = false, isolationResult = 'RECOVERY_SOURCE_LISTENERS_PRIVATE', containerTamper = null;
+  let rejectSource = false, isolationResult = 'RECOVERY_SOURCE_LISTENERS_PRIVATE', containerTamper = null, schemaFailure = false;
   const inspect = source => ({ image: release.images[source], labels: { 'chanter.recovery': id,
     'com.docker.compose.project': project, 'com.docker.compose.service': source }, networks: { [network]: {} }, ports: {},
     mounts: source === 'postgres' ? [{ Type: 'volume', Name: receipt.volume, Destination: '/var/lib/postgresql/data' }] : [] });
@@ -80,6 +90,10 @@ test('authority application preserves attempt identity, private configuration an
     if (args[0] === 'ps') return args.includes(`label=com.docker.compose.project=${project}`) ? [...containers.keys()].join('\n') : '';
     if (args[0] === 'network') return args[1] === 'inspect' ? 'true' : '';
     if (args[0] === 'compose' && args.includes('up')) containers.set(crypto.createHash('sha256').update(args.at(-1)).digest('hex').slice(0, 12), args.at(-1));
+    if (args.includes('RecoverySchema')) {
+      if (schemaFailure && args.includes('media-service')) throw Error('Restored checksum mismatch');
+      return 'RECOVERY_SCHEMA_VERIFIED';
+    }
     if (args.includes('RecoveryIsolation')) {
       if (isolationResult instanceof Error) throw isolationResult;
       return isolationResult;
@@ -101,6 +115,10 @@ test('authority application preserves attempt identity, private configuration an
   assert.equal(result.status, 'current-authority-applied-isolated');
   assert.equal(JSON.stringify(result).includes('private-recovery-canary'), false);
   assert.equal(JSON.stringify(calls).includes('private-recovery-canary'), false);
+  assert.equal(calls.filter(args => args.includes('RecoverySchema')).length, 7);
+  const firstSourceStart = calls.findIndex(args => args.includes('up') && args.at(-1) === 'auth-service');
+  assert.equal(calls.slice(0, firstSourceStart).filter(args => args.includes('RecoverySchema')).length, 7,
+    'Every restored source schema must validate before the first source starts');
   assert.equal(calls.at(-1)[0], 'stop');
   assert.deepEqual(await applyRecoveryAuthority(input, options), result);
   rejectSource = true;
@@ -125,4 +143,8 @@ test('authority application preserves attempt identity, private configuration an
     assert.equal(calls.some(args => args[0] === 'stop' || args.includes('up')), false,
       'A foreign or exposed container must prevent every stop/start operation');
   }
+  containerTamper = null; schemaFailure = true; calls.length = 0;
+  await assert.rejects(applyRecoveryAuthority(input, options));
+  assert.equal(calls.filter(args => args.includes('up') && args.at(-1) !== 'postgres').length, 0,
+    'One invalid restored schema must prevent every source application from starting');
 });
