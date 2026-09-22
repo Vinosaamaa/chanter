@@ -46,6 +46,10 @@ export function privatizeSourceMaps(distDirectory, privateDirectory, release) {
     scriptSha256: digest(item.scriptBytes), mapSha256: digest(item.mapBytes),
   })) }
   fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
+  // Public code locations only. No source text, local paths or map locations.
+  fs.writeFileSync(path.join(dist, 'browser-error-assets.json'), JSON.stringify({
+    release, assets: manifest.files.map(file => file.publicPath),
+  }) + '\n')
   return manifest
 }
 

@@ -59,6 +59,29 @@ const fixture = t => {
   return { root, state, auth };
 };
 
+test('render exposes only the separate browser ingestion key and exact release', t => {
+  const { root, state } = fixture(t);
+  const bundle = path.join(root, 'bundle');
+  fs.mkdirSync(path.join(bundle, 'infra/production'), { recursive: true });
+  const release = { version: 1, commit: 'a'.repeat(40), architecture: 'arm64', schemaEpoch: 8,
+    images: Object.fromEntries(imageNames.map(name => [name, 'sha256:' + 'b'.repeat(64)])) };
+  fs.writeFileSync(path.join(bundle, 'release.json'), JSON.stringify(release));
+  for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.writeFileSync(path.join(bundle, 'infra/production', name), 'fixture');
+  const backendDsn = `https://${'c'.repeat(32)}@o1.ingest.us.sentry.io/1`;
+  const browserDsn = `https://${'d'.repeat(32)}@o2.ingest.us.sentry.io/2`;
+  fs.writeFileSync(path.join(state, 'runtime/errors.env'), `CHANTER_ERRORS_DSN=${backendDsn}\nCHANTER_BROWSER_ERRORS_DSN=${browserDsn}\n`);
+  const prepared = render(bundle, state);
+  const output = path.dirname(prepared.file);
+  const publicConfig = fs.readFileSync(path.join(output, 'frontend-errors.json'), 'utf8');
+  assert.deepEqual(JSON.parse(publicConfig), { dsn: browserDsn, release: release.commit, environment: 'staging' });
+  assert.equal(publicConfig.includes(backendDsn), false);
+  assert.equal(readEnv(path.join(output, 'frontend-errors.env')).CHANTER_BROWSER_ERRORS_ORIGIN, 'https://o2.ingest.us.sentry.io');
+  const frontend = JSON.parse(fs.readFileSync(prepared.file, 'utf8')).services.frontend;
+  assert.equal(JSON.stringify(frontend).includes('errors.env'), true);
+  assert.equal(frontend.env_file.some(file => file.path === './errors.env'), false);
+  assert.equal(frontend.volumes.includes('./frontend-errors.json:/etc/chanter/frontend-errors.json:ro'), true);
+});
+
 test('native signer is absent by default and a complete matching agent-only configuration passes', t => {
   const { state } = fixture(t);
   const file = path.join(state, 'runtime/agent-service.env');

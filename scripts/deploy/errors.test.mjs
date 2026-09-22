@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { errorEnvironment } from './errors.mjs';
+import { errorEnvironment, browserErrorConfiguration } from './errors.mjs';
+
+test('browser receiver is explicit and independent from private backend settings', () => {
+  const release = 'a'.repeat(40);
+  const dsn = `https://${'b'.repeat(32)}@o1.ingest.us.sentry.io/1`;
+  assert.deepEqual(browserErrorConfiguration({ CHANTER_ERRORS_DSN: dsn }, release, 'production'), { config: {}, origin: '' });
+  assert.deepEqual(browserErrorConfiguration({ CHANTER_BROWSER_ERRORS_DSN: dsn }, release, 'production'), {
+    config: { dsn, release, environment: 'production' }, origin: 'https://o1.ingest.us.sentry.io',
+  });
+  assert.throws(() => browserErrorConfiguration({ CHANTER_BROWSER_ERRORS_DSN: dsn }, 'private-canary', 'production'), /release/);
+  assert.throws(() => browserErrorConfiguration({ CHANTER_BROWSER_ERRORS_DSN: dsn }, release, 'private-canary'), /environment/);
+  assert.throws(() => browserErrorConfiguration({ CHANTER_BROWSER_ERRORS_DSN: dsn + '?private-canary' }, release, 'production'), /valid Sentry/);
+});
 
 test('private errors require an explicit valid receiver without exposing invalid values', () => {
   assert.deepEqual(errorEnvironment({}), { CHANTER_ERRORS_ENABLED: 'false' });

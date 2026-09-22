@@ -189,8 +189,24 @@ exception types/application code locations. They exclude messages, request/user
 data, file paths and breadcrumbs. Each process admits five reports per minute;
 the provider's account quota is a separate required control. Outages and excess
 reports may drop events. Use the metric dashboards for aggregate failure rates.
-Actual provider receipt, operator notification, frontend capture and private
-source maps are still required before public cutover.
+Actual provider receipt, operator notification and private source-map
+symbolication are still required before public cutover.
+
+Browser reports require a separate `CHANTER_BROWSER_ERRORS_DSN` in the same private
+runtime file. It defaults to blank independently of Java reporting. The renderer
+publishes only that public ingestion key, environment and exact release at
+`/operational-config.json`, with no-store caching. It adds only the receiver's
+exact origin to the browser's connection policy. The backend receiver and provider
+management credentials never enter this document or the frontend container.
+Blanking the browser key and redeploying disables capture independently.
+
+The browser loads its SDK only with valid settings matching its compiled release.
+It reports fixed exception types and at most twelve known compiled locations.
+Messages, user/request context, function names and URL parameters are removed.
+It sends without cookies or referrer and does not follow redirects. Five reports
+per page per minute, a five-request buffer and a 1.5-second deadline bound local
+delivery; these do not enforce an account-wide quota or hide network IP addresses
+from the provider. Review the public privacy disclosure before enabling delivery.
 
 Frontend `npm run build` now leaves matching JavaScript/source-map pairs and a
 hash manifest under ignored `frontend/.cache/private-source-maps/COMMIT-*`.
@@ -199,7 +215,8 @@ These private build artifacts are not included in the public deployment archive
 or uploaded to public CI artifacts. Retain/use only the artifact whose manifest
 release and script hashes match the accepted image. A private error-project
 upload and actual symbolication check remain necessary; local generation does
-not authorize enabling frontend reporting or prove release linkage.
+not prove release linkage. The public `browser-error-assets.json` contains only
+served JavaScript filenames and the release, used to reject fabricated locations.
 
 ## Optional native companion issuer
 

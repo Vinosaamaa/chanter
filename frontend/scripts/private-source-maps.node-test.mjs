@@ -30,6 +30,9 @@ test('private map packaging preserves matching bytes and removes all public maps
   assert.equal(manifest.files[0].scriptSha256, createHash('sha256').update(served).digest('hex'))
   assert.equal(fs.readFileSync(path.join(privateOutput, 'assets/index-Abc123.js.map'), 'utf8').includes('private-source-canary'), true)
   assert.equal(JSON.stringify(manifest).includes('private-source-canary'), false)
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dist, 'browser-error-assets.json'), 'utf8')), {
+    release, assets: ['/assets/index-Abc123.js'],
+  })
 })
 
 test('missing script, public map directives and invalid releases fail before packaging', t => {

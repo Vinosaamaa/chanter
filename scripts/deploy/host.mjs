@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { modules, databaseModules, validateRelease, validateConfig, composeFor, executeDeployment } from './release.mjs';
 import { assertMigrationFloor, backupEnvironment, backupUnits, summarizeBackup } from './recovery.mjs';
 import { telemetryEnvironment } from './telemetry.mjs';
-import { errorEnvironment } from './errors.mjs';
+import { errorEnvironment, browserErrorConfiguration } from './errors.mjs';
 import { configurationBackupEnvironment, runConfigurationBackup, verifyConfigurationBackup } from './configuration-backup.mjs';
 
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -24,7 +24,7 @@ const recoveryDefaults = () => ({
     CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret(),
     CHANTER_CONFIG_BACKUP_PASSWORD: secret() },
   telemetry: { CHANTER_TELEMETRY_ENDPOINT: '', CHANTER_TELEMETRY_AUTHORIZATION: '' },
-  errors: { CHANTER_ERRORS_DSN: '' },
+  errors: { CHANTER_ERRORS_DSN: '', CHANTER_BROWSER_ERRORS_DSN: '' },
 });
 const envText = values => Object.entries(values).map(([key, value]) => {
   if (!/^[A-Z][A-Z0-9_]*$/.test(key) || /[\r\n\0]/.test(value)) throw new Error('Invalid environment key or multiline value');
@@ -134,7 +134,11 @@ export function validateRuntime(stateDir) {
     if (process.platform !== 'win32' && (fs.statSync(file).mode & 0o077) !== 0) throw new Error(`Runtime file must be private: ${name}.env`);
     const env = readEnv(file);
     if (name === 'telemetry') { telemetryEnvironment(env); continue; }
-    if (name === 'errors') { errorEnvironment(env); continue; }
+    if (name === 'errors') {
+      errorEnvironment(env);
+      browserErrorConfiguration(env, '0'.repeat(40), config.environment);
+      continue;
+    }
     if (name === 'backup') {
       backupEnvironment(env, json(path.join(stateDir, 'config.json')).environment);
       configurationBackupEnvironment(env, json(path.join(stateDir, 'config.json')).environment);
@@ -195,6 +199,9 @@ export function render(bundleDir, stateDir) {
     readEnv(path.join(stateDir, 'runtime/backup.env')), config.environment)));
   writePrivateText(path.join(output, 'telemetry.env'), envText(telemetryEnvironment(readEnv(path.join(stateDir, 'runtime/telemetry.env')))));
   writePrivateText(path.join(output, 'errors.env'), envText(errorEnvironment(readEnv(path.join(stateDir, 'runtime/errors.env')))));
+  const browserErrors = browserErrorConfiguration(readEnv(path.join(stateDir, 'runtime/errors.env')), release.commit, config.environment);
+  fs.writeFileSync(path.join(output, 'frontend-errors.json'), JSON.stringify(browserErrors.config) + '\n', { mode: 0o644 });
+  writePrivateText(path.join(output, 'frontend-errors.env'), envText({ CHANTER_BROWSER_ERRORS_ORIGIN: browserErrors.origin }));
   writeJson(path.join(output, 'compose.json'), composeFor(release, config, path.join(stateDir, 'runtime')));
   for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.copyFileSync(path.join(bundleDir, 'infra/production', name), path.join(output, name));
   return { release, config, file: path.join(output, 'compose.json') };

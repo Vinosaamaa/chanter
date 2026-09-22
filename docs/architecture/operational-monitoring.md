@@ -97,12 +97,38 @@ linked action. Independent uptime and missing-backup-heartbeat checks must work
 when the application host is down. Launch requires actual provider-side receipt
 and operator notification, verified free quotas and disabled paid overage.
 
+### Browser exception boundary
+
+The browser integration will load the pinned Sentry Browser 10.75.2 client only
+after an explicit, separate browser receiver is configured. A same-origin JSON
+configuration contains only that public ingestion key, the release and environment.
+It never contains the backend receiver or a provider management token. The served
+release must match the compiled JavaScript release. Disabled or invalid settings
+send nothing. The deployment adds only the exact receiver origin to browser policy.
+
+Use a direct client without automatic integrations, sessions, tracing, replay,
+breadcrumbs, logs or metrics. Build a fresh exception from a fixed error type and
+at most twelve same-origin compiled asset locations from the exact release's
+public filename manifest. Discard messages, function
+names, query strings, document URLs and arbitrary properties. Repeat the allowlist
+at the SDK's final event hook. Global errors, rejected Error promises and React
+root errors use this boundary. Startup failures before configuration arrives may
+be lost; this is operational sampling, not a complete error journal.
+
+Admit five reports per page per monotonic minute, with five queued sends and a
+1.5-second request deadline. Send without cookies, referrer or redirects. These
+limits cannot enforce an account-wide quota or conceal the browser's network IP
+from the receiver. The measured optional SDK entry has its own 70 KB raw / 25 KB
+gzip cap; shared chunks and all existing startup/page limits retain their caps.
+Provider-side quota enforcement and privacy disclosure remain
+launch prerequisites. No private source maps enter public assets or CI artifacts.
+
 ## Verification and remaining decisions
 
-The application metric bridge, queue collectors and initial AI/realtime coverage
-and backend error transport are implemented. Final combined proof, dashboards,
-frontend error capture, source-map
-publishing, incident/rotation runbooks and provider acceptance remain unfinished. #332 separately owns complete
+The application metric bridge, queue collectors, initial AI/realtime coverage,
+backend/browser error transport, dashboards and incident/rotation runbooks are
+implemented. Exact final combined proof, private source-map publishing and
+provider acceptance remain unfinished. #332 separately owns complete
 application restore with current deletion authority. Neither issue is closed by
 the successful database-only restore in PR329.
 

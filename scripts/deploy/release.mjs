@@ -124,7 +124,8 @@ export function composeFor(release, config, runtimeDir) {
     volumes: ['./livekit.yaml:/etc/livekit.yaml:ro'], tmpfs: ['/tmp:size=16m,mode=1777'],
     ports: ['7881:7881/tcp', '7882:7882/udp'], networks: ['application', 'edge'] };
   services.frontend = { ...common, image: release.images.frontend, pull_policy: 'never', user: '10001:10001', mem_limit: '128m',
-    environment: { CHANTER_HOSTNAME: config.hostname }, volumes: ['caddy-data:/data', 'caddy-config:/config'],
+    environment: { CHANTER_HOSTNAME: config.hostname }, env_file: [{ path: './frontend-errors.env', format: 'raw' }],
+    volumes: ['caddy-data:/data', 'caddy-config:/config', './frontend-errors.json:/etc/chanter/frontend-errors.json:ro'],
     ports: ['80:8080', '443:8443'], tmpfs: ['/tmp:size=16m,mode=1777'],
     healthcheck: { test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:2019/config/'], interval: '15s', timeout: '5s', retries: 10 },
     networks: { edge: { ipv4_address: `${edgePrefix}.2` } } };

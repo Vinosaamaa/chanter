@@ -142,6 +142,22 @@ test "$livekit_ready" = true || { echo 'LiveKit signaling did not become ready.'
 "${compose[@]}" cp frontend:/data/caddy/pki/authorities/local/root.crt "$state/root.crt"
 printf '127.0.0.1 staging.chanter.test\n' | sudo tee -a /etc/hosts >/dev/null
 NODE_EXTRA_CA_CERTS="$state/root.crt" node scripts/deploy/host.mjs verify staging.chanter.test "$state"
+NODE_EXTRA_CA_CERTS="$state/root.crt" node --input-type=module - "$bundle/release.json" <<'JS'
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const release = JSON.parse(fs.readFileSync(process.argv[2]));
+const config = await fetch('https://staging.chanter.test/operational-config.json');
+assert.equal(config.status, 200); assert.equal(config.headers.get('cache-control'), 'no-store');
+assert.deepEqual(await config.json(), {});
+const assets = await fetch('https://staging.chanter.test/browser-error-assets.json');
+assert.equal(assets.status, 200);
+const manifest = await assets.json();
+assert.equal(manifest.release, release.commit); assert.ok(manifest.assets.length > 0);
+assert.ok(manifest.assets.every(asset => /^\/assets\/[A-Za-z0-9_-]+\.js$/.test(asset)));
+const map = await fetch(`https://staging.chanter.test${manifest.assets[0]}.map`);
+assert.equal(map.status, 404);
+console.log('Packaged browser settings, exact release filenames and private maps passed.');
+JS
 # Internal high ports must not leak into public HTTP-to-HTTPS redirects.
 test "$(curl --silent --output /dev/null --write-out '%{redirect_url}' http://staging.chanter.test/sign-in)" = 'https://staging.chanter.test/sign-in'
 echo "Runner processors: $(getconf _NPROCESSORS_ONLN)"

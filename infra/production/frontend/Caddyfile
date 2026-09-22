@@ -34,8 +34,14 @@
 		X-Frame-Options DENY
 		Referrer-Policy no-referrer
 		Permissions-Policy "camera=(), microphone=(self), geolocation=()"
-		Content-Security-Policy "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' wss://{$CHANTER_HOSTNAME} http://127.0.0.1:43160 https://challenges.cloudflare.com; worker-src 'self' blob:; media-src 'self' blob:; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' wss://{$CHANTER_HOSTNAME} http://127.0.0.1:43160 https://challenges.cloudflare.com {$CHANTER_BROWSER_ERRORS_ORIGIN}; worker-src 'self' blob:; media-src 'self' blob:; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		-Server
+	}
+	handle /operational-config.json {
+		root * /etc/chanter
+		header Cache-Control no-store
+		rewrite * /frontend-errors.json
+		file_server
 	}
 	handle /api/* {
 		request_body {

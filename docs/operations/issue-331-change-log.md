@@ -101,3 +101,23 @@ release, an unmatched map or a public map directive before producing a manifest.
 The real frontend build prepared eighty matching scripts, served no maps and
 remained within all existing bundle budgets. Lint and all six release-tool tests
 pass. No source maps were uploaded and no frontend symbolication is claimed.
+
+The enabled monitoring startup fix passed full application CI and both native
+release staging jobs at `8722e5ff`. Source-map packaging is preserved at `68272dd5`.
+
+Browser reporting now uses an independently configured public ingestion key and
+a lazy pinned Sentry client. Its final event boundary accepts only fixed exception
+types and twelve compiled locations present in the exact release manifest. It
+removes messages, function names, private URLs, cookies, user/request context and
+breadcrumbs. Actual SDK envelopes pass privacy, failed receiver and five-report
+overload tests. The browser sends without cookies/referrer, rejects redirects and
+uses a 1.5-second deadline. A separate exact-entry cap covers the optional SDK;
+initial/page/core budgets remain unchanged. Generated settings expose neither
+the private backend receiver nor management credentials. Deployment tests and
+actual Caddy adaptation pass. Hosted browser and combined release proof remain
+required; no real provider delivery, source-map upload or symbolication is claimed.
+
+The full frontend suite exposed an existing async navigation assertion in the
+join-cohort test. It waited for API invocation but read the route before the
+following awaited invalidations/navigation completed. The assertion now waits
+for the visible destination; product behavior is unchanged.

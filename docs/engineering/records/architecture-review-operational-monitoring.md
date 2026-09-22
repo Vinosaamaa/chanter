@@ -61,7 +61,9 @@ Rollback, duplicate settlement, unavailable metrics and actual Boot timer export
 are tested. The realtime gauge uses the existing local connection map; a real
 authenticated WebSocket test proves connection and disconnect counts.
 
-There are no new public endpoints or authorization grants. Metric names and
+The only new public monitoring documents contain the optional browser ingestion
+key, release/environment and compiled asset names. They confer no product access
+or provider management authority. Metric names and
 dimension values remain explicitly bounded by the existing private exporter.
 The source query accepts only source-owned SQL, never caller-supplied query text.
 Connection acquisition uses the existing pool's bound; its wait is not covered
@@ -85,7 +87,7 @@ metric translation assumptions and separate host/backup notification gates.
 The [design](../../architecture/operational-monitoring.md) and
 [implementation record](../../operations/issue-331-change-log.md) distinguish this
 tested coverage from the unfinished final combined proof, provider-side dashboard
-rendering, frontend exception transport, private source maps, operational drills and
+rendering, private source-map upload/symbolication, operational drills and
 actual provider notification. Free quotas and disabled paid overage must be
 verified in the eventual accounts. This proposed system review does not claim
 operator alert delivery, full recovery or public launch.

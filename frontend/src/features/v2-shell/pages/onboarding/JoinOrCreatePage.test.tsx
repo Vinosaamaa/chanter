@@ -46,7 +46,7 @@ describe('JoinOrCreatePage', () => {
     await waitFor(() => expect(onboardingApi.joinCohort).toHaveBeenCalledWith('cohort-1', 'code-1'))
     expect(queryClient.getQueryState(['study-servers'])?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(['study-server-navigation', 'server-old'])?.isInvalidated).toBe(true)
-    expect(screen.getByTestId('join-location')).toHaveTextContent('/app/home')
+    await waitFor(() => expect(screen.getByTestId('join-location')).toHaveTextContent('/app/home'))
   })
 })
 
