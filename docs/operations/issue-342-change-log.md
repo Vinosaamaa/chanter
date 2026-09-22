@@ -43,6 +43,22 @@ suite reports 95 tests, zero failures/errors and five native-only skips. Indepen
 read-only review found no concrete query/API/migration blocker and preserved the
 explicit source-union, PostgreSQL, bytes and external-closure limitations.
 
+The internal maintenance PUT slice validates the saved snapshot/backup/prefix and
+exact current source tuple, then reserves one mutation while retaining the global
+fence. Three authorization regressions failed against the unimplemented boundary,
+then passed. The adapters clone and verify bounded bytes and use existing
+create-only writes. Actual local and loopback S3 byte read-back, overwrite refusal,
+terminal/changed tuple refusal and UNKNOWN completion tests pass. Full affected
+media/common verification passes with 100 media tests, zero failures/errors and
+five existing native-only skips. No byte HTTP endpoint is enabled.
+
+The existing dual-architecture media workflow now runs the query contracts on
+PostgreSQL and preserves an UNKNOWN DELETE/fence through its actual database
+restart. The new native-only test compiles locally and skips without the hosted
+fixture flag; native execution remains pending. These synthetic source-row
+contracts remain distinct from the actual #251 canonical fixture and full object
+archive/restore orchestration.
+
 Coordinated source lifecycle hooks, physical inventory qualification, full object
 restoration and actual #251 canonical replay are still in progress.
 The store alone proves no provider closure. No recovery capability, source API,

@@ -34,14 +34,26 @@ public class StorageMutationStore {
         java.util.Objects.requireNonNull(operation);
         return tx.execute(status -> {
             if (lock().inventoryId() != null) throw new IllegalStateException("Storage maintenance blocks new physical operations");
-            if (jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations WHERE object_key=?", Integer.class, key) != 0)
-                throw new IllegalStateException("Private object has an unsettled physical operation");
-            if (count() >= MAX_MUTATIONS) throw new IllegalStateException("Outstanding storage operation capacity reached");
-            UUID id = UUID.randomUUID();
-            jdbc.update("INSERT INTO media_storage_mutations(id,object_key,operation,outcome,started_at) VALUES(?,?,?,'ACTIVE',?)",
-                    id, key, operation.name(), Timestamp.from(clock.instant()));
-            return id;
+            return insert(key,operation);
         });
+    }
+
+    /** Only the source inventory calls this after validating its exact current tuple in the same terminal/budget transaction. */
+    UUID beginRecoveryPutLocked(UUID inventory, String key) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Recovery PUT requires its owning source transaction");
+        requireIdentity(inventory); requireKey(key); requireMatching(lock(),inventory);
+        return insert(key,Operation.PUT);
+    }
+
+    private UUID insert(String key, Operation operation) {
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations WHERE object_key=?", Integer.class, key) != 0)
+            throw new IllegalStateException("Private object has an unsettled physical operation");
+        if (count() >= MAX_MUTATIONS) throw new IllegalStateException("Outstanding storage operation capacity reached");
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO media_storage_mutations(id,object_key,operation,outcome,started_at) VALUES(?,?,?,'ACTIVE',?)",
+                id,key,operation.name(),Timestamp.from(clock.instant()));
+        return id;
     }
 
     public void uncertain(UUID mutation) {

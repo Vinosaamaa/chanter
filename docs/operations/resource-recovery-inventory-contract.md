@@ -57,6 +57,16 @@ current prefix. A later prefix, changed namespace, new unknown operation or
 unresolved source state refuses the read. The immutable snapshot and deterministic
 cursor allow bounded restart without replacing or widening the original set.
 
+The internal adapter maintenance PUT path keeps the same global fence active.
+Source authorization verifies snapshot, backup identity, applied prefix, namespace
+and the exact current resource tuple under terminal-before-budget locks, then
+commits one physical mutation before dispatch. Terminal, absent, rejected or
+changed references cannot authorize a write. The adapter clones at most 10 MiB,
+verifies size and SHA-256 against that source tuple, and uses local CREATE_NEW or
+S3 If-None-Match. Uncertain completion keeps the operation outstanding. This path
+has no HTTP endpoint yet, does not release maintenance, and does not itself
+establish encrypted archive provenance or an externally quiescent writer.
+
 The current tests establish query, transaction and disabled-API contracts using
 explicit synthetic rows. They do not establish the real canonical #251 replay.
 Private spool disposition, original-writer and provider closure, exact encrypted

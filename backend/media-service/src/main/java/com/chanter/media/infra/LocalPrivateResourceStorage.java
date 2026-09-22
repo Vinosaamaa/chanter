@@ -3,6 +3,7 @@ package com.chanter.media.infra;
 import com.chanter.media.application.PrivateResourceStorage;
 import com.chanter.media.application.ResourceLifecycle;
 import com.chanter.media.application.StorageMutationStore;
+import com.chanter.media.application.ResourceRecoveryInventory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -20,6 +21,9 @@ import org.springframework.stereotype.Component;
 public class LocalPrivateResourceStorage implements PrivateResourceStorage {
     private final Path root;
     private final StorageMutationStore mutations;
+    private ResourceRecoveryInventory recovery;
+    @Autowired(required=false)
+    public void recoveryInventory(ResourceRecoveryInventory recovery) { this.recovery=java.util.Objects.requireNonNull(recovery); }
     @Autowired
     public LocalPrivateResourceStorage(@Value("${chanter.media.storage-dir}") String root, ResourceLifecycle lifecycle, StorageMutationStore mutations) throws IOException {
         this(root, mutations);
@@ -44,12 +48,25 @@ public class LocalPrivateResourceStorage implements PrivateResourceStorage {
         java.util.UUID mutation;
         try { mutation = mutations.begin(key, StorageMutationStore.Operation.PUT); }
         catch (RuntimeException blocked) { throw new PutFailure(WriteOutcome.NOT_STARTED, blocked); }
+        write(key,content,null,mutation);
+    }
+    @Override public void putForRecovery(ResourceRecoveryInventory.RestoreRequest request,byte[] content) throws IOException {
+        if (recovery==null) throw new IOException("Private object recovery is not enabled");
+        byte[] bytes=PrivateResourceStorage.boundedRecoveryBytes(content);
+        ResourceRecoveryInventory.RestoreMutation restore;
+        try { restore=recovery.beginRestore(request); }
+        catch(RuntimeException blocked) { throw new PutFailure(WriteOutcome.NOT_STARTED,blocked); }
+        try { PrivateResourceStorage.verifyRecoveryBytes(restore.reference(),bytes); }
+        catch(IOException invalid) { mutations.settled(restore.mutationId()); throw new PutFailure(WriteOutcome.NOT_STARTED,invalid); }
+        write(restore.reference().key(),null,bytes,restore.mutationId());
+    }
+    private void write(String key,Path content,byte[] bytes,java.util.UUID mutation) throws IOException {
         try {
             Path target = path(key);
             Files.createDirectories(target.getParent());
             // CREATE_NEW rejects existing keys; a failed synchronous write is closed before settlement.
             try (var out = Files.newOutputStream(target, java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)) {
-                Files.copy(content, out);
+                if (bytes==null) Files.copy(content, out); else out.write(bytes);
             }
         } catch (IOException | RuntimeException failure) {
             mutations.settled(mutation);

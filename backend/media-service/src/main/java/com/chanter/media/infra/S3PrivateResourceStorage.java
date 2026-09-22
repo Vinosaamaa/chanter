@@ -3,6 +3,7 @@ package com.chanter.media.infra;
 import com.chanter.media.application.PrivateResourceStorage;
 import com.chanter.media.application.ResourceLifecycle;
 import com.chanter.media.application.StorageMutationStore;
+import com.chanter.media.application.ResourceRecoveryInventory;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,6 +39,9 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
     private final String bucket;
     private final ResourceLifecycle lifecycle;
     private final StorageMutationStore mutations;
+    private ResourceRecoveryInventory recovery;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void recoveryInventory(ResourceRecoveryInventory recovery) { this.recovery=java.util.Objects.requireNonNull(recovery); }
 
     public S3PrivateResourceStorage(ResourceLifecycle lifecycle, StorageMutationStore mutations,
             @Value("${chanter.media.s3.endpoint}") String endpoint,
@@ -75,13 +79,26 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
         java.util.UUID mutation;
         try { mutation = mutations.begin(key, StorageMutationStore.Operation.PUT); }
         catch (RuntimeException blocked) { throw new PutFailure(WriteOutcome.NOT_STARTED, blocked); }
+        write(key,content,null,sha256,mutation,false);
+    }
+    @Override public void putForRecovery(ResourceRecoveryInventory.RestoreRequest request,byte[] content) throws IOException {
+        if (recovery==null) throw new IOException("Private object recovery is not enabled");
+        byte[] bytes=PrivateResourceStorage.boundedRecoveryBytes(content);
+        ResourceRecoveryInventory.RestoreMutation restore;
+        try { restore=recovery.beginRestore(request); }
+        catch(RuntimeException blocked) { throw new PutFailure(WriteOutcome.NOT_STARTED,blocked); }
+        try { PrivateResourceStorage.verifyRecoveryBytes(restore.reference(),bytes); }
+        catch(IOException invalid) { mutations.settled(restore.mutationId()); throw new PutFailure(WriteOutcome.NOT_STARTED,invalid); }
+        write(restore.reference().key(),null,bytes,restore.reference().sha256(),restore.mutationId(),true);
+    }
+    private void write(String key,Path content,byte[] bytes,String sha256,java.util.UUID mutation,boolean maintenance) throws IOException {
         boolean started = false;
         try {
-            String md5 = Base64.getEncoder().encodeToString(MessageDigest.getInstance("MD5").digest(Files.readAllBytes(content)));
-            lifecycle.countRequest(false);
+            String md5 = Base64.getEncoder().encodeToString(MessageDigest.getInstance("MD5").digest(bytes==null ? Files.readAllBytes(content) : bytes));
+            lifecycle.countRequest(maintenance);
             started = true;
             client.putObject(PutObjectRequest.builder().bucket(bucket).key(key).ifNoneMatch("*").contentMD5(md5)
-                    .contentType("application/octet-stream").metadata(Map.of("sha256", sha256)).build(), RequestBody.fromFile(content));
+                    .contentType("application/octet-stream").metadata(Map.of("sha256", sha256)).build(), bytes==null ? RequestBody.fromFile(content) : RequestBody.fromBytes(bytes));
         } catch (S3Exception response) {
             boolean rejected = definitiveRejection(response);
             complete(mutation, rejected);

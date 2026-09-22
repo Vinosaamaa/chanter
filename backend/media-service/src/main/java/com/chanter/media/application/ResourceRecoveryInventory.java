@@ -26,6 +26,7 @@ public class ResourceRecoveryInventory {
     private final TransactionTemplate tx;
     private final Clock clock;
     private final boolean recovery;
+    private final StorageMutationStore mutations;
     public record Authority(long revision, String digest) {
         public Authority {
             if (revision < 0 || digest == null || !digest.matches("[a-f0-9]{64}")
@@ -38,11 +39,39 @@ public class ResourceRecoveryInventory {
                             String sha256, String resourceState, boolean sourceRetained, boolean terminal,
                             String providerVersionId) { }
     public record Page(int schemaVersion, Snapshot snapshot, int after, List<Reference> references, Integer nextAfter) { }
+    public record RestoreRequest(UUID inventoryId, UUID databaseBackupId, Authority authority, int ordinal) { }
+    public record RestoreMutation(UUID mutationId, Reference reference) { }
 
-    public ResourceRecoveryInventory(JdbcTemplate jdbc, PlatformTransactionManager transactions, Clock clock,
+    public ResourceRecoveryInventory(JdbcTemplate jdbc, PlatformTransactionManager transactions, Clock clock, StorageMutationStore mutations,
             @Value("${chanter.recovery-mode:false}") boolean recovery) {
-        this.jdbc = jdbc; this.clock = clock; this.recovery = recovery;
+        this.jdbc = jdbc; this.clock = clock; this.recovery = recovery; this.mutations = mutations;
         tx = new TransactionTemplate(transactions); tx.setTimeout(30);
+    }
+
+    public RestoreMutation beginRestore(RestoreRequest request) {
+        java.util.Objects.requireNonNull(request); requireIdentity(request.inventoryId()); requireIdentity(request.databaseBackupId());
+        java.util.Objects.requireNonNull(request.authority());
+        if (request.ordinal()<1 || request.ordinal()>MAX_REFERENCES) throw new IllegalArgumentException("Invalid restore reference");
+        requireOutsideTransaction();
+        return tx.execute(status -> {
+            String namespace=qualify(request.inventoryId(),request.authority());
+            Snapshot snapshot=saved();
+            if (snapshot==null || !snapshot.inventoryId().equals(request.inventoryId()) || !snapshot.databaseBackupId().equals(request.databaseBackupId())
+                    || !snapshot.authority().equals(request.authority()) || !snapshot.namespaceSha256().equals(namespace))
+                throw new IllegalStateException("Restore inventory snapshot does not match");
+            var references=jdbc.query("SELECT * FROM media_recovery_inventory_references WHERE inventory_id=? AND ordinal=?",
+                    (rs,n) -> reference(rs),request.inventoryId(),request.ordinal());
+            if (references.size()!=1) throw new IllegalStateException("Restore reference is missing");
+            Reference reference=references.getFirst();
+            if (reference.terminal() || !reference.sourceRetained()
+                    || !java.util.Set.of("AVAILABLE","QUARANTINED","SCAN_FAILED").contains(reference.resourceState()))
+                throw new IllegalStateException("Inventory reference is not restorable");
+            if (jdbc.queryForObject("SELECT COUNT(*) FROM course_resources WHERE id=? AND course_id=? AND sha256=? AND byte_size=?"
+                            + " AND state=? AND byte_reservation=TRUE AND " + (reference.referenceKind().equals("CURRENT") ? "storage_key=?" : "migration_key=?"),
+                    Integer.class,reference.resourceId(),reference.courseId(),reference.sha256(),reference.byteSize(),reference.resourceState(),reference.key())!=1)
+                throw new IllegalStateException("Restore source reference changed");
+            return new RestoreMutation(mutations.beginRecoveryPutLocked(request.inventoryId(),reference.key()),reference);
+        });
     }
 
     public Snapshot capture(UUID inventory, UUID databaseBackup, Authority authority) {
@@ -107,9 +136,7 @@ public class ResourceRecoveryInventory {
             if (snapshot == null || !snapshot.inventoryId().equals(inventory) || !snapshot.authority().equals(authority)
                     || !snapshot.namespaceSha256().equals(namespace) || after > snapshot.referenceCount()) throw new IllegalStateException("Inventory snapshot does not match");
             var rows = jdbc.query("SELECT * FROM media_recovery_inventory_references WHERE inventory_id=? AND ordinal>? ORDER BY ordinal LIMIT ?",
-                    (rs,n) -> new Reference(rs.getInt("ordinal"),rs.getObject("resource_id",UUID.class),rs.getObject("course_id",UUID.class),rs.getString("reference_kind"),
-                            rs.getString("object_key"),rs.getLong("byte_size"),rs.getString("sha256"),rs.getString("resource_state"),
-                            rs.getBoolean("source_retained"),rs.getBoolean("terminal"),null),inventory,after,limit);
+                    (rs,n) -> reference(rs),inventory,after,limit);
             int last = rows.isEmpty() ? after : rows.getLast().ordinal();
             return new Page(1,snapshot,after,List.copyOf(rows),last < snapshot.referenceCount() ? last : null);
         });
@@ -170,6 +197,11 @@ public class ResourceRecoveryInventory {
                 .stream().findFirst().orElse(null);
     }
     private int count(String sql) { return jdbc.queryForObject(sql,Integer.class); }
+    private static Reference reference(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new Reference(rs.getInt("ordinal"),rs.getObject("resource_id",UUID.class),rs.getObject("course_id",UUID.class),rs.getString("reference_kind"),
+                rs.getString("object_key"),rs.getLong("byte_size"),rs.getString("sha256"),rs.getString("resource_state"),
+                rs.getBoolean("source_retained"),rs.getBoolean("terminal"),null);
+    }
     private static void validateReference(String key, UUID course, UUID resource, long size, String digest) {
         requireIdentity(course); requireIdentity(resource);
         PrivateResourceStorage.requireKey(key);
