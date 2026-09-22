@@ -1,5 +1,6 @@
 package com.chanter.auth.infra;
 
+import com.chanter.common.recovery.OrdinaryOperation;
 import com.chanter.common.telemetry.QueueMetricQuery;
 import com.chanter.common.telemetry.QueueMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration(proxyBeanMethods = false)
+@OrdinaryOperation
 @ConditionalOnProperty(name = "chanter.telemetry.enabled", havingValue = "true")
 public class EmailQueueMetrics {
     @Bean(name = "emailQueueSampler", initMethod = "start", destroyMethod = "close")

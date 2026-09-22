@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 /** Provider work is outside database transactions; only the current generation may publish. */
 @Component
+@com.chanter.common.recovery.OrdinaryOperation
 @Profile("!test")
 @EnableScheduling
 public class ResourceIngestionWorker {

@@ -16,15 +16,19 @@ export function configurationBackupEnvironment(settings, environment) {
     GOMAXPROCS: '1', GOMEMLIMIT: '256MiB' };
 }
 
-function configurationTool(bundleDir, settings, environment) {
-  const env = configurationBackupEnvironment(settings, environment);
-  const executable = path.join(bundleDir, 'tools/restic');
+export function verifiedResticTool(bundleDir, env, name = 'restic') {
+  if (!['restic', 'restic.exe'].includes(name)) throw new Error('Invalid backup executable name');
+  const executable = path.join(bundleDir, 'tools', name);
   const checksum = fs.readFileSync(path.join(bundleDir, 'tools/restic.sha256'), 'utf8').trim();
-  if (!/^[a-f0-9]{64}  restic$/.test(checksum)
+  if (!/^[a-f0-9]{64}  restic(?:\.exe)?$/.test(checksum) || !checksum.endsWith(`  ${name}`)
       || crypto.createHash('sha256').update(fs.readFileSync(executable)).digest('hex') !== checksum.slice(0, 64)) {
     throw new Error('Configuration backup executable checksum mismatch');
   }
   return { executable, env: { PATH: process.env.PATH, ...env } };
+}
+
+function configurationTool(bundleDir, settings, environment) {
+  return verifiedResticTool(bundleDir, configurationBackupEnvironment(settings, environment));
 }
 
 export function runConfigurationBackup(bundleDir, settings, environment, snapshot, initialize = false, execute = execFileSync) {
@@ -47,7 +51,8 @@ export function runConfigurationBackup(bundleDir, settings, environment, snapsho
   } catch { throw new Error('Encrypted configuration backup failed; inspect the private repository state'); }
 }
 
-export function verifyConfigurationBackup(bundleDir, settings, environment, snapshotId, expectedRelease, execute = execFileSync) {
+/** Private in-memory configuration for the owning recovery process; never write this value to diagnostics. */
+export function readConfigurationBackup(bundleDir, settings, environment, snapshotId, expectedRelease, execute = execFileSync) {
   if (!/^[a-f0-9]{8,64}$/.test(snapshotId ?? '')) throw new Error('Invalid configuration snapshot reference');
   if (!/^[a-f0-9]{40}$/.test(expectedRelease ?? '')) throw new Error('Invalid database backup release reference');
   const { executable, env } = configurationTool(bundleDir, settings, environment);
@@ -57,6 +62,11 @@ export function verifyConfigurationBackup(bundleDir, settings, environment, snap
     if (snapshot?.version !== 1 || snapshot.config?.environment !== environment
         || snapshot.release?.commit !== expectedRelease || !snapshot.runtime
         || typeof snapshot.runtime !== 'object' || Array.isArray(snapshot.runtime)) throw new Error();
-    return { snapshotId, release: snapshot.release.commit };
+    return snapshot;
   } catch { throw new Error('Encrypted configuration recovery verification failed'); }
+}
+
+export function verifyConfigurationBackup(bundleDir, settings, environment, snapshotId, expectedRelease, execute = execFileSync) {
+  const snapshot = readConfigurationBackup(bundleDir, settings, environment, snapshotId, expectedRelease, execute);
+  return { snapshotId, release: snapshot.release.commit };
 }
