@@ -102,3 +102,27 @@ Integration with accepted moderation keeps separate exact-entry JavaScript caps
 for moderation and browser reporting. Shared/vendor code stays in the unchanged
 core cap. Tests cover both allowances together, independent oversize rejection,
 duplicate ownership rejection and startup dependency refusal.
+
+The complete `7708a517` review adds no confirmed code defect. Its HTTP-200
+heartbeat suggestion conflicts with the [owning Relay endpoint](https://github.com/getsentry/relay/blob/master/relay-server/src/endpoints/monitor.rs),
+which returns 202. Other statuses remain unconfirmed; the verified backup receipt
+is preserved separately. Neither response code proves downstream processing or
+operator notification.
+
+The duplicate-upload suggestion assumes legacy release-file replacement. Pinned
+[CLI 3.8.0 uploads content-addressed artifact bundles](https://github.com/getsentry/sentry-cli/blob/3.8.0/src/utils/file_upload.rs),
+requests missing chunks and treats an already-present bundle as successful after
+processing. Its [strict mode](https://github.com/getsentry/sentry-cli/blob/3.8.0/src/utils/sourcemaps.rs)
+rejects empty local input, not duplicate remote files. Each architecture retains
+its own exact-build validation. Actual repeated uploads and symbolication from
+both served builds remain part of provider acceptance before public cutover.
+
+The two nitpicks are documented limits: failed packaging preserves partial
+artifacts but cannot pass upload/image gates, and errors before optional async
+reporting finishes can be missed. The remaining custom suggestions are deferred
+refactors: downloader caching, Maven selectors, module extraction, documentation
+formatting, repeated import-graph work, test factoring, validator helpers, handler
+disposal, temporary-file cleanup, shared release manifests and streaming hashes.
+The client installs once outside React; no repeated-install API is exposed to
+product flows. Existing byte/count/time bounds and exact native package checks
+remain enforced. No further nonblocking scope is added after remediation rounds.

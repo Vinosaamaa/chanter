@@ -1,6 +1,6 @@
 # Chanter launch execution status
 
-Reviewed 2026-09-22 against accepted main `8a3446d351c7cc7d276ee68e330f67ed7bf78a6c`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
+Reviewed 2026-09-22 against accepted main `b76d32fd1b8e67cd766634b593a810c1b62ec739`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
 
 Chanter has substantial local-beta product code. It has no verified public release. The previous audit's DNS and provider observations are historical; this review does not claim that those external systems have been rechecked.
 
@@ -18,7 +18,8 @@ The free deployment package now builds, scans, stages and uploads immutable AMD6
 and ARM64 bundles. Actual publication succeeded at main `7d42dd7` after PR326,
 with matching checksum assets. This is a draft release of that commit, not a
 public server or the final launch candidate. Accepted semantic retrieval now
-requires epoch8; the pending moderation/lifecycle union has later migration gates. Oracle Free Tier account
+requires epoch8, accepted moderation requires epoch9, and pending account lifecycle
+requires epoch10. Oracle Free Tier account
 signup is the owner's pending identity-verification step; no credentials or
 provider account are fabricated, and paid provisioning remains disabled.
 
@@ -43,14 +44,14 @@ The open dependency-update PRs and the older environment PR remain separate work
 | #246 | Truthful supported resource ingestion | PR325 merged; real supported parsers and durable ingestion validated; provider/final release proof remains |
 | #247 | Authorized production vector retrieval | PR330 merged with full checks, dual-architecture packaged release and 100,000-chunk proof with private telemetry within 640 MiB; merged-main checks passed; real production proof remains |
 | #248 | Evaluated AI safety, usage and cost accounting | PR317/322 merged provider adapters, catalog, accounting and answer controls; final retrieval/evaluations and configured-provider proof remain |
-| #249 | Administration, reports and moderation | Draft333 implements step-up operator access, reports/appeals and live restrictions; source-contract fixes and complete database-driven media/responsive UI proof remain |
+| #249 | Administration, reports and moderation | PR333 merged with full CI/review, both native stages, real audio revocation/reconnect denial, emailed appeal/reversal and phone/desktop proof; merged-main checks passed; production operator enrollment remains |
 | #250 | Truthful free-beta mode or real paid billing | PR323 merged truthful free-beta mode and limits; final deployed accounting proof remains; paid billing is outside initial free beta |
 | #251 | Export, deletion, retention and accurate policy pages | Draft335 has bounded source exports, one-use browser downloads and terminal journal v2; actual source reapply, ownership/deletion and legal integration remain underway |
-| #252 | Monitoring, alerts, backups and proven restore | PR329 merged its foundation; draft334 adds private metrics, bounded backend/browser reports, private map packaging and tested dashboards/alerts; draft336 adds current-authority recovery. Combined release, full application restore, private map upload and actual operator/provider receipts remain gates |
+| #252 | Monitoring, alerts, backups and proven restore | PR329 merged its foundation; draft334 adds private metrics/reports, source-map upload, backup heartbeat and evaluated dashboards/alerts; draft336 has dual-architecture seven-source recovery isolation proof. Combined release, complete file/deletion recovery and actual provider/operator receipts remain gates |
 | #253 | Trusted edge, proxy handling and abuse limits | PR328 merged with shared admission and request bounds; actual public proxy/provider proof remains |
 | #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; new capability integration and final whole-product/mobile/voice checks remain |
 | #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |
-| #337 | Patched edge and frontend test dependencies | Eight current Caddy Go/Vitest dependency findings are tracked for compatible fixes and exact release verification |
+| #337 | Patched edge and frontend test dependencies | Compatible dependency fixes and the necessary minimal upstream Caddy backport are being verified against actual behavior and both native release architectures |
 
 Native subscription support is tracked separately in #316. Merged PR324 has
 verified Windows/Linux packaging, exact-origin pairing, isolated provider execution
