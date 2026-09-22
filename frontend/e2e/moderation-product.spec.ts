@@ -145,9 +145,12 @@ test('real moderation, active audio revocation and verified-email appeal', async
       socket.onclose = event => { window.moderationSocket.closed = true; window.moderationSocket.code = event.code }
     }, learnerSession.accessToken)
     await expect.poll(() => sender.evaluate(() => window.moderationSocket.open)).toBe(true)
-    const refreshCookie = (await learner.context().cookies(`${origin}/api/v1/auth/refresh`))
-      .find(cookie => cookie.name === 'chanter_refresh')
+    // Playwright's URL filter excludes secure 127.0.0.1 cookies on HTTP, unlike Chromium's loopback handling.
+    const refreshCookie = (await learner.context().cookies())
+      .find(cookie => cookie.name === 'chanter_refresh' && cookie.domain === '127.0.0.1' && cookie.path === '/api/v1/auth')
     expect(Boolean(refreshCookie?.value)).toBe(true)
+    expect(refreshCookie?.secure).toBe(true)
+    expect(refreshCookie?.httpOnly).toBe(true)
 
     const target = operator.getByRole('region', { name: 'Selected report' }).getByRole('combobox', { name: /^Target/ })
     await target.selectOption({ label: 'Author account' })
