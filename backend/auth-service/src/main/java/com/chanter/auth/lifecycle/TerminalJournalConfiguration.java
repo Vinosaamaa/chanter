@@ -18,4 +18,10 @@ public class TerminalJournalConfiguration {
         var tx = new TransactionTemplate(transactions); tx.setTimeout(30);
         return new AuthTerminalRecovery(jdbc, tx, journal, sessions, exports, Clock.systemUTC());
     }
+    @Bean AccountDeletionJobs accountDeletionJobs(JdbcTemplate jdbc,PlatformTransactionManager transactions,LifecycleSessionAccess access,
+            TerminalJournalStore journal,AuthTerminalRecovery auth,com.chanter.common.events.DurableOutbox outbox,
+            com.chanter.common.lifecycle.AccountDeletionProtocol protocol) {
+        var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
+        return new AccountDeletionJobs(jdbc,tx,access,journal,auth,outbox,protocol,Clock.systemUTC());
+    }
 }

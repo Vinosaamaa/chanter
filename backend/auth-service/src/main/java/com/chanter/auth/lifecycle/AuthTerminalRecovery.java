@@ -31,6 +31,16 @@ public final class AuthTerminalRecovery {
     }
     public TerminalReapplyStore.Receipt receipt() { return participant.receipt(); }
 
+    /** The coordinator has already appended this exact entry in the same canonical transaction. */
+    public TerminalReapplyStore.Cleanup applyCommitted(TerminalJournal.Entry entry) {
+        if(!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Normal terminal application requires its canonical transaction");
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_terminal_journal WHERE revision=? AND event_id=? AND digest=?",
+                Integer.class,entry.revision(),entry.eventId(),entry.digest())!=1) throw new IllegalArgumentException("Unknown canonical terminal entry");
+        participant.applyTerminal(entry);
+        return participant.cleanup(entry);
+    }
+
     public RecoveryInvalidationStore.Receipt invalidate(RecoveryInvalidationStore.Request request) {
         request.validate();
         return journal.atHead(request.authority(), () -> invalidations.invalidate(request, participant.receipt().authority(), this::invalidateAll));

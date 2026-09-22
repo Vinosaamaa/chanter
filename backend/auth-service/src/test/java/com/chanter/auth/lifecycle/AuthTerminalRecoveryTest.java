@@ -19,7 +19,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.NONE,
-        properties="spring.datasource.url=jdbc:h2:mem:auth-terminal-recovery;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
+        properties={"spring.datasource.url=jdbc:h2:mem:auth-terminal-recovery;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
+                "chanter.recovery-mode=true"})
 @ActiveProfiles("test")
 class AuthTerminalRecoveryTest {
     @Autowired JdbcTemplate jdbc;
@@ -30,6 +31,13 @@ class AuthTerminalRecoveryTest {
     @Autowired PlatformTransactionManager transactions;
     @Autowired AuthTerminalRecoveryController controller;
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
+    @Autowired org.springframework.context.ApplicationContext context;
+
+    @Test void recoveryOmitsOrdinaryLifecycleExpiryBeansButKeepsPrivateAuthorityHandlers() {
+        assertThat(context.containsBean("lifecycleHistoryExpiry")).isFalse();
+        assertThat(context.containsBean("exportExpiry")).isFalse();
+        assertThat(context.getBean(AuthTerminalRecoveryController.class)).isSameAs(controller);
+    }
 
     @Test void privateRoutesRejectMissingCredentialsAmbiguousJsonAndInvalidScopeWithoutMutation() throws Exception {
         var head = recovery.receipt().authority();

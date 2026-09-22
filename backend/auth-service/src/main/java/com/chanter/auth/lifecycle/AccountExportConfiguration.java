@@ -37,7 +37,8 @@ public class AccountExportConfiguration {
         tx.setTimeout(5);
         return new AccountExportJobs(jdbc, tx, access, snapshots, projection, outbox, protocol, Clock.systemUTC());
     }
-    @Bean HistoryExpiry lifecycleHistoryExpiry(AccountExportJobs jobs) { return new HistoryExpiry(jobs); }
+    @Bean @com.chanter.common.recovery.OrdinaryOperation
+    HistoryExpiry lifecycleHistoryExpiry(AccountExportJobs jobs,AccountDeletionJobs deletions) { return new HistoryExpiry(jobs,deletions); }
     @Bean ExportDownloadHandles exportDownloadHandles(JdbcTemplate jdbc, PlatformTransactionManager transactions,
             LifecycleSessionAccess access, AccountExportJobs jobs, com.chanter.auth.application.RefreshTokenRepository refreshTokens) {
         var tx = new TransactionTemplate(transactions); tx.setTimeout(5);
@@ -45,8 +46,9 @@ public class AccountExportConfiguration {
     }
     static final class HistoryExpiry {
         private final AccountExportJobs jobs;
-        HistoryExpiry(AccountExportJobs jobs) { this.jobs = jobs; }
+        private final AccountDeletionJobs deletions;
+        HistoryExpiry(AccountExportJobs jobs,AccountDeletionJobs deletions) { this.jobs = jobs; this.deletions=deletions; }
         @Scheduled(fixedDelayString="${chanter.lifecycle.history-expiry-poll-ms:3600000}")
-        public void expire() { jobs.expireHistory(); }
+        public void expire() { jobs.expireHistory(); deletions.expirePreparations(); }
     }
 }

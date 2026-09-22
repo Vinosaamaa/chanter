@@ -98,3 +98,18 @@ CREATE TABLE lifecycle_recovery_invalidations (
     recovery_id UUID PRIMARY KEY, revision BIGINT NOT NULL, digest VARCHAR(64) NOT NULL,
     invalidated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
+CREATE TABLE lifecycle_deletion_lock (id INT PRIMARY KEY);
+INSERT INTO lifecycle_deletion_lock VALUES (1);
+CREATE TABLE lifecycle_deletion_jobs (
+    id UUID PRIMARY KEY,account_id UUID NOT NULL,state VARCHAR(24) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    prepare_event_id UUID NOT NULL,terminal_revision BIGINT,terminal_digest VARCHAR(64),
+    receipt_hash VARCHAR(64),receipt_expires_at TIMESTAMP WITH TIME ZONE
+);
+CREATE INDEX lifecycle_deletion_jobs_owner ON lifecycle_deletion_jobs(account_id,created_at);
+CREATE INDEX lifecycle_deletion_jobs_expiry ON lifecycle_deletion_jobs(state,expires_at);
+CREATE TABLE lifecycle_deletion_parts (
+    job_id UUID NOT NULL REFERENCES lifecycle_deletion_jobs(id) ON DELETE CASCADE,
+    source VARCHAR(16) NOT NULL,state VARCHAR(16) NOT NULL,event_id UUID,
+    PRIMARY KEY(job_id,source)
+);

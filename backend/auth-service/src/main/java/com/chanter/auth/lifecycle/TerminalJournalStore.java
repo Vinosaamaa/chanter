@@ -74,6 +74,11 @@ public final class TerminalJournalStore {
         return page;
     }
 
+    /** Normal deletion takes canonical authority before user, job and participant locks. */
+    public <T> T withAuthority(java.util.function.Supplier<T> action) {
+        return tx.execute(status -> { lock(); return action.get(); });
+    }
+
     /** Recovery imports original canonical authority and its owning source mutations atomically, before new appends. */
     public <T> T restore(Page page, java.util.function.Supplier<T> sourceMutations) {
         page.validate();

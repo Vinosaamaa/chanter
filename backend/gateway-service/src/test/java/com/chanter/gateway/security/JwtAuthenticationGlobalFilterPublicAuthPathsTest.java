@@ -61,8 +61,11 @@ class JwtAuthenticationGlobalFilterPublicAuthPathsTest {
         assertThat(JwtAuthenticationGlobalFilter.isPublicPath("/api/v1/auth/moderation-appeals/admin")).isFalse();
     }
 
-    @Test void onlyExactGetDownloadNavigationDelegatesToAuthAndSpoofedIdentityIsRemoved() {
-        String path = "/api/v1/auth/account/exports/" + UUID.randomUUID() + "/download";
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"exports","deletions"})
+    void onlyExactGetReceiptOrDownloadDelegatesToAuthAndSpoofedIdentityIsRemoved(String kind) {
+        String leaf=kind.equals("exports") ? "download" : "receipt";
+        String path = "/api/v1/auth/account/"+kind+"/" + UUID.randomUUID() + "/"+leaf;
         var exchange = MockServerWebExchange.from(MockServerHttpRequest.get(path).header(AuthHeaders.USER_ID, UUID.randomUUID().toString()).build());
         var continued = new AtomicBoolean();
         filter.filter(exchange, forwarded -> {
@@ -78,7 +81,7 @@ class JwtAuthenticationGlobalFilterPublicAuthPathsTest {
             assertThat(rejected.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
         for (var wrong : List.of(path + "/", path + ";x=1", path + "?accountId=" + UUID.randomUUID(),
-                path + "-authorization", path.replace("/download", "/entries"), path.replace("/download", "%2fdownload"),
+                path + "-authorization", path.replace("/"+leaf, "/entries"), path.replace("/"+leaf, "%2f"+leaf),
                 "/api/v1/auth/account/exports/not-a-uuid/download", "/api/v1/auth/account/exports")) {
             var rejected = MockServerWebExchange.from(MockServerHttpRequest.get(wrong).header(AuthHeaders.USER_ID, UUID.randomUUID().toString()).build());
             filter.filter(rejected, ignored -> { throw new AssertionError("Unrelated path bypassed JWT"); }).block();

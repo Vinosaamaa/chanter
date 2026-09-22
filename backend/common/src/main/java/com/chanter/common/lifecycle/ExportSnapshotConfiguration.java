@@ -26,7 +26,8 @@ public class ExportSnapshotConfiguration {
     }
     @Bean AccountExportProtocol accountExportProtocol(ObjectMapper mapper) { return new AccountExportProtocol(mapper); }
     @Bean AccountDeletionProtocol accountDeletionProtocol(ObjectMapper mapper) { return new AccountDeletionProtocol(mapper); }
-    @Bean ExportExpiry exportExpiry(ExportSnapshotStore snapshots) { return new ExportExpiry(snapshots); }
+    @Bean @com.chanter.common.recovery.OrdinaryOperation
+    ExportExpiry exportExpiry(ExportSnapshotStore snapshots) { return new ExportExpiry(snapshots); }
     static final class ExportExpiry {
         private final ExportSnapshotStore snapshots;
         ExportExpiry(ExportSnapshotStore snapshots) { this.snapshots = snapshots; }
