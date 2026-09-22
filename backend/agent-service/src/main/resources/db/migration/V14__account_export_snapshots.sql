@@ -24,3 +24,17 @@ CREATE TABLE data_export_pages (
     PRIMARY KEY(snapshot_id, entry_ordinal, ordinal),
     FOREIGN KEY(snapshot_id, entry_ordinal) REFERENCES data_export_entries(snapshot_id, ordinal) ON DELETE CASCADE
 );
+
+CREATE TABLE lifecycle_reapply_head (id INT PRIMARY KEY, revision BIGINT NOT NULL, digest VARCHAR(64) NOT NULL);
+INSERT INTO lifecycle_reapply_head VALUES (1,0,'0000000000000000000000000000000000000000000000000000000000000000');
+CREATE TABLE lifecycle_reapply_entries (revision BIGINT PRIMARY KEY, digest VARCHAR(64) NOT NULL);
+CREATE TABLE lifecycle_terminal_targets (
+    target_kind VARCHAR(16) NOT NULL CHECK(target_kind IN ('ACCOUNT','STUDY_SERVER','RESOURCE')), target_id UUID NOT NULL,
+    revision BIGINT NOT NULL UNIQUE CHECK(revision>0), event_id UUID NOT NULL UNIQUE, digest VARCHAR(64) NOT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE NOT NULL, cleanup_state VARCHAR(16) NOT NULL CHECK(cleanup_state IN ('PENDING','PRESERVED','COMPLETE')),
+    PRIMARY KEY(target_kind,target_id)
+);
+CREATE TABLE lifecycle_recovery_invalidations (
+    recovery_id UUID PRIMARY KEY, revision BIGINT NOT NULL, digest VARCHAR(64) NOT NULL,
+    invalidated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
