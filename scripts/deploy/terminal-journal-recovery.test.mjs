@@ -33,7 +33,8 @@ test('recovery requires all actual participant receipts and both invalidations, 
   const input = { ...f, recoveryId, requiredAuthority: f.authority };
   const result = await recoverCurrentAuthority(input);
   assert.equal(result.publicCutoverAllowed, false);
-  assert.equal(result.status, 'current-authority-applied-isolated');
+  assert.equal(result.status, 'authority-receipts-verified');
+  assert.equal(result.isolationVerified, false);
   assert.equal(result.participants.length, 7);
   assert.equal(result.invalidations.length, 2);
   assert.ok(result.participants.every(receipt => receipt.pendingTargets === 1));

@@ -43,7 +43,7 @@ jobs:
           java -cp .cache/lifecycle-helper LifecycleHttpFixture
       - name: Validate recovery configuration
         run: |
-          node --test scripts/deploy/recovery.test.mjs scripts/deploy/recovery-runtime.test.mjs scripts/deploy/configuration-backup.test.mjs scripts/deploy/host.test.mjs scripts/deploy/restore-isolated.test.mjs
+          node --test scripts/deploy/recovery.test.mjs scripts/deploy/recovery-runtime.test.mjs scripts/deploy/configuration-backup.test.mjs scripts/deploy/host.test.mjs scripts/deploy/restore-isolated.test.mjs scripts/deploy/restore-current-authority.test.mjs
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import { backupUnits } from './scripts/deploy/recovery.mjs';

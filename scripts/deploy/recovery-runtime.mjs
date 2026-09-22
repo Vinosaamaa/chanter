@@ -8,6 +8,8 @@ function protocol(value) {
   return value;
 }
 
+export function requireRecoveryCapability(release) { validateRelease(release); protocol(release.recoveryProtocol); }
+
 /** Build-time switch stays disabled until the accepted source union passes native isolation proof. */
 export function recoveryCapability(policy) {
   if (!policy || Object.keys(policy).length !== 3 || typeof policy.enabled !== 'boolean') throw new Error('Invalid recovery capability policy');
@@ -17,7 +19,7 @@ export function recoveryCapability(policy) {
 
 /** Pure composition only. The executor must still inspect Docker ownership before stopping or mounting the restored database. */
 export function isolatedRecoveryCompose(release, config, runtimeDir, receipt) {
-  validateRelease(release); protocol(release.recoveryProtocol);
+  requireRecoveryCapability(release);
   if (!path.isAbsolute(runtimeDir) || receipt?.version !== 1 || receipt.status !== 'database-restored-isolated'
       || receipt.publicCutoverAllowed !== false || receipt.release !== release.commit || receipt.image !== release.images.postgres
       || !/^chanter-recovery-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(receipt.container)

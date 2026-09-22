@@ -51,7 +51,8 @@ export function runConfigurationBackup(bundleDir, settings, environment, snapsho
   } catch { throw new Error('Encrypted configuration backup failed; inspect the private repository state'); }
 }
 
-export function verifyConfigurationBackup(bundleDir, settings, environment, snapshotId, expectedRelease, execute = execFileSync) {
+/** Private in-memory configuration for the owning recovery process; never write this value to diagnostics. */
+export function readConfigurationBackup(bundleDir, settings, environment, snapshotId, expectedRelease, execute = execFileSync) {
   if (!/^[a-f0-9]{8,64}$/.test(snapshotId ?? '')) throw new Error('Invalid configuration snapshot reference');
   if (!/^[a-f0-9]{40}$/.test(expectedRelease ?? '')) throw new Error('Invalid database backup release reference');
   const { executable, env } = configurationTool(bundleDir, settings, environment);
@@ -61,6 +62,11 @@ export function verifyConfigurationBackup(bundleDir, settings, environment, snap
     if (snapshot?.version !== 1 || snapshot.config?.environment !== environment
         || snapshot.release?.commit !== expectedRelease || !snapshot.runtime
         || typeof snapshot.runtime !== 'object' || Array.isArray(snapshot.runtime)) throw new Error();
-    return { snapshotId, release: snapshot.release.commit };
+    return snapshot;
   } catch { throw new Error('Encrypted configuration recovery verification failed'); }
+}
+
+export function verifyConfigurationBackup(bundleDir, settings, environment, snapshotId, expectedRelease, execute = execFileSync) {
+  const snapshot = readConfigurationBackup(bundleDir, settings, environment, snapshotId, expectedRelease, execute);
+  return { snapshotId, release: snapshot.release.commit };
 }

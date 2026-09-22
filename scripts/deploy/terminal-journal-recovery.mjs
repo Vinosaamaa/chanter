@@ -68,6 +68,7 @@ export async function recoverCurrentAuthority({ repository, clients, recoveryId,
   if (!sameWatermark(current.manifest.authority, authority)) fail();
   const participants = await receipts();
   within();
-  return { schemaVersion: 1, recoveryId, environment: repository.environment, status: 'current-authority-applied-isolated',
-    authority, checkpointId: selected.manifest.checkpointId, participants, invalidations, publicCutoverAllowed: false };
+  return { schemaVersion: 1, recoveryId, environment: repository.environment, status: 'authority-receipts-verified',
+    authority, checkpointId: selected.manifest.checkpointId, participants, invalidations,
+    isolationVerified: false, publicCutoverAllowed: false };
 }

@@ -192,8 +192,8 @@ floor, then replicates through auth's private route under the deployment lock.
 It records only status, release and bounded authority metadata. Errors omit
 provider bodies, tokens, target IDs and local paths.
 
-This checkpoint has no automatic journal timer, isolated application startup or
-public recovery command. The existing backup scheduler will own recurring
+This checkpoint has no automatic journal timer or public cutover command. The
+existing backup scheduler will own recurring
 replication after the actual source routes and bounded provider behavior are
 verified. Injected recovery clients exercise sequencing only. #251's real seven
 participant effects and both durable invalidations, #249 authority rules, matching
@@ -210,6 +210,27 @@ network, with no published ports, source HTTP bound to container loopback,
 archiving disabled and no media/scanner volumes. `CHANTER_RECOVERY_MODE=true`
 omits ordinary worker beans while retaining private replay and invalidation.
 Normal email, outbox, ingestion and media flags are also disabled explicitly.
+External error reporting is disabled and all telemetry exporters are `none`.
+
+The Linux-only `restore-current-authority.mjs` command accepts the matching
+bundle, private bootstrap settings, existing isolated restore directory,
+environment and operator minimum-authority JSON file. It rejects missing release
+capability before configuration decryption or Docker operations. It decrypts the
+exact backup-bound configuration, checks source image identity and verifies the
+old database container and volume labels, mounts, absent published ports and
+detached networking before stopping that database. It uses the same restored
+volume on the new internal network; it does not migrate or create a replacement
+database. Only containers with the exact recovery/project/service labels and
+expected images, mounts and networks can be stopped by the command.
+
+Each selected external prefix owns a private attempt directory and durable
+recovery UUID. Retries of the same prefix reuse that identity; a newer external
+prefix gets a distinct attempt and never overwrites the old one. Configuration
+files stay private. Both success and failure stop only verified owned application
+containers and PostgreSQL, preserving all volumes and attempt state. The latest
+attempt status governs completion; an older receipt never overrides a failed
+retry. The returned authority-stage receipt still denies public cutover. Actual
+runtime/participant proof is pending and the build capability remains disabled.
 
 References: [restic backup and stdin behavior](https://restic.readthedocs.io/en/stable/040_backup.html),
 [repository snapshot operations](https://restic.readthedocs.io/en/stable/045_working_with_repos.html),
