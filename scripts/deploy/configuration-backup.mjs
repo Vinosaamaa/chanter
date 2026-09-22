@@ -16,15 +16,19 @@ export function configurationBackupEnvironment(settings, environment) {
     GOMAXPROCS: '1', GOMEMLIMIT: '256MiB' };
 }
 
-function configurationTool(bundleDir, settings, environment) {
-  const env = configurationBackupEnvironment(settings, environment);
-  const executable = path.join(bundleDir, 'tools/restic');
+export function verifiedResticTool(bundleDir, env, name = 'restic') {
+  if (!['restic', 'restic.exe'].includes(name)) throw new Error('Invalid backup executable name');
+  const executable = path.join(bundleDir, 'tools', name);
   const checksum = fs.readFileSync(path.join(bundleDir, 'tools/restic.sha256'), 'utf8').trim();
-  if (!/^[a-f0-9]{64}  restic$/.test(checksum)
+  if (!/^[a-f0-9]{64}  restic(?:\.exe)?$/.test(checksum) || !checksum.endsWith(`  ${name}`)
       || crypto.createHash('sha256').update(fs.readFileSync(executable)).digest('hex') !== checksum.slice(0, 64)) {
     throw new Error('Configuration backup executable checksum mismatch');
   }
   return { executable, env: { PATH: process.env.PATH, ...env } };
+}
+
+function configurationTool(bundleDir, settings, environment) {
+  return verifiedResticTool(bundleDir, configurationBackupEnvironment(settings, environment));
 }
 
 export function runConfigurationBackup(bundleDir, settings, environment, snapshot, initialize = false, execute = execFileSync) {

@@ -6,6 +6,9 @@ on:
       - 'scripts/deploy/recovery*'
       - 'scripts/deploy/restore-*'
       - 'scripts/deploy/configuration-backup*'
+      - 'scripts/deploy/terminal-journal*'
+      - 'infra/production/java/Lifecycle.java'
+      - 'scripts/deploy/fixtures/Lifecycle*'
       - 'scripts/deploy/download-backup-tool.sh'
       - 'infra/production/tool-lock.json'
       - 'infra/production/runtime-lock.json'
@@ -27,6 +30,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify fixed private lifecycle transport
+        run: |
+          mkdir -p .cache/lifecycle-helper
+          javac -d .cache/lifecycle-helper infra/production/java/Lifecycle.java scripts/deploy/fixtures/LifecycleContractTest.java scripts/deploy/fixtures/LifecycleHttpFixture.java
+          java -cp .cache/lifecycle-helper LifecycleContractTest
+          java -cp .cache/lifecycle-helper LifecycleHttpFixture
       - name: Validate recovery configuration
         run: |
           node --test scripts/deploy/recovery.test.mjs scripts/deploy/configuration-backup.test.mjs scripts/deploy/host.test.mjs scripts/deploy/restore-isolated.test.mjs
@@ -49,3 +62,7 @@ jobs:
           bash scripts/deploy/download-backup-tool.sh "$architecture" "$GITHUB_WORKSPACE/.cache/recovery-tools"
       - name: Restore encrypted data and stop at a real WAL recovery point
         run: bash scripts/deploy/recovery-drill.sh chanter-recovery-drill "$GITHUB_WORKSPACE/.cache/recovery-tools/restic"
+      - name: Verify encrypted deletion authority and fail-closed recovery sequencing
+        env:
+          CHANTER_TEST_RESTIC: ${{ github.workspace }}/.cache/recovery-tools/restic
+        run: node --test scripts/deploy/terminal-journal*.test.mjs
