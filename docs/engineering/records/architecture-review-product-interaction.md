@@ -28,7 +28,7 @@ verification: {"state":"verified", "evidenceRefs":["frontend/src/features/v2-she
 visibility: public-safe
 publicationEligibility: eligible
 issue: 339
-pr: null
+pr: 340
 release: null
 run: null
 ---

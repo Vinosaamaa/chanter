@@ -41,3 +41,8 @@ The first build exceeded the existing core JavaScript budget. Native dialog
 handling and consolidation of its duplicate/obsolete styles remove custom code
 without raising core, CSS or capability allowances. All prior worktrees remain
 preserved; no local preview server was started.
+
+The control inventory also found an inert Help control in the legacy management
+header and unavailable Active/Online member filters. These optional controls are
+removed; the actual All/Staff/Learners filters retain their API behavior and expose
+selected state to assistive technology. No member presence is fabricated.
