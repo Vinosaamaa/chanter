@@ -21,7 +21,7 @@ declare global {
 
 // Deliberately outside @product: run only after the ordinary signed-in journeys.
 // Never retain traces, videos, cookies, authentication responses or factor setup pixels.
-test.use({ baseURL: origin, trace: 'off', video: 'off', screenshot: 'off',
+test.use({ baseURL: origin, trace: 'off', video: 'off', screenshot: 'off', actionTimeout: 15000,
   launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } })
 test.describe.configure({ retries: 0 })
 test('real moderation, active audio revocation and verified-email appeal', async ({ browser }, info) => {
@@ -146,7 +146,9 @@ test('real moderation, active audio revocation and verified-email appeal', async
     }, learnerSession.accessToken)
     await expect.poll(() => sender.evaluate(() => window.moderationSocket.open)).toBe(true)
 
-    await operator.getByLabel('Target', { exact: true }).selectOption(`USER:${learnerId}`)
+    const target = operator.getByRole('region', { name: 'Selected report' }).getByRole('combobox', { name: /^Target/ })
+    await target.selectOption({ label: 'Author account' })
+    await expect(target).toHaveValue(`USER:${learnerId}`)
     await operator.getByLabel('Public action reason').fill('Synthetic safety review: account access paused pending appeal.')
     await operator.getByLabel('Confirm target reference', { exact: false }).fill(learnerId)
     const restricted = operator.waitForResponse(response => new URL(response.url()).pathname.endsWith(`/reports/${report.id}/restrictions`) && response.request().method() === 'POST')
@@ -189,6 +191,8 @@ test('real moderation, active audio revocation and verified-email appeal', async
     const delivered = await emailText(appeal, 'Review your Chanter restriction', restriction)
     const link = delivered.match(/http:\/\/127\.0\.0\.1:9419\/appeal#token=[A-Za-z0-9_-]+/)?.[0]
     expect(Boolean(link)).toBe(true)
+    // A delivered email link opens a fresh route; avoid a same-document hash-only navigation.
+    await appeal.goto('/')
     await appeal.evaluate(url => { location.assign(url) }, link!)
     await expect(appeal.getByLabel('Why should this be reviewed?')).toBeVisible()
     expect(await appeal.evaluate(() => location.pathname === '/appeal' && location.hash === '')).toBe(true)
@@ -200,7 +204,7 @@ test('real moderation, active audio revocation and verified-email appeal', async
     await admin.getByRole('button', { name: 'Review appeals', exact: true }).click()
     await admin.getByRole('button', { name: 'Load appeals', exact: true }).click()
     await admin.getByRole('button', { name: 'Review appeal', exact: true }).click()
-    await admin.getByLabel('Decision', { exact: true }).selectOption('REVERSED')
+    await admin.getByRole('combobox', { name: /^Decision/ }).selectOption('REVERSED')
     await admin.getByLabel('Decision reason sent to the account').fill('Hosted review complete. Restore access; preserve the evidence and audit history.')
     await admin.getByLabel('Confirm restriction reference', { exact: false }).fill(restriction!)
     await pixels(operator, info, 'operator-appeal')
@@ -216,7 +220,7 @@ test('real moderation, active audio revocation and verified-email appeal', async
       activeMediaRemoved: true, liveSessionClosed: true, signedUnexpiredReconnectStatus: reconnectStatus,
       verifiedEmailAppealSavedAndReversed: true,
     }, null, 2)) })
-  } finally { await Promise.all(contexts.map(context => context.close())) }
+  } finally { await Promise.allSettled(contexts.map(context => context.close())) }
 })
 
 function bearer(session: Session) { return { Authorization: `Bearer ${session.accessToken}`, Origin: origin, 'X-Chanter-CSRF': '1' } }
