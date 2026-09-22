@@ -4,6 +4,8 @@ import com.chanter.common.lifecycle.TerminalJournal;
 import com.chanter.common.lifecycle.DeletedScope;
 import com.chanter.common.lifecycle.DeletedScopeStore;
 import com.chanter.common.lifecycle.TerminalReapplyStore;
+import com.chanter.common.lifecycle.RecoveryScope;
+import com.chanter.common.lifecycle.RecoveryScopeStore;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -19,26 +21,93 @@ public class DeletedStudyServerScope {
     private final JdbcTemplate jdbc;
     private final boolean recovery;
     private final DeletedScopeStore imports;
+    private final RecoveryScopeStore historical;
+    private final org.springframework.transaction.support.TransactionTemplate tx;
     private final java.util.function.Supplier<TerminalReapplyStore> terminal;
     @org.springframework.beans.factory.annotation.Autowired
     public DeletedStudyServerScope(JdbcTemplate jdbc,org.springframework.transaction.PlatformTransactionManager transactions,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
+            @org.springframework.beans.factory.annotation.Value("${chanter.recovery-restore-id:${CHANTER_RECOVERY_RESTORE_ID:}}") String restoreId,
             org.springframework.beans.factory.ObjectProvider<TerminalReapplyStore> terminal) {
-        this(jdbc,new org.springframework.transaction.support.TransactionTemplate(transactions),recovery,terminal::getObject);
+        this(jdbc,new org.springframework.transaction.support.TransactionTemplate(transactions),recovery,
+                restoreId.isBlank() ? null : UUID.fromString(restoreId),terminal::getObject);
     }
     DeletedStudyServerScope(JdbcTemplate jdbc,org.springframework.transaction.support.TransactionTemplate tx,boolean recovery,
             java.util.function.Supplier<TerminalReapplyStore> terminal) {
-        this.jdbc=jdbc; this.recovery=recovery; this.terminal=terminal;
+        this(jdbc,tx,recovery,null,terminal);
+    }
+    DeletedStudyServerScope(JdbcTemplate jdbc,org.springframework.transaction.support.TransactionTemplate tx,boolean recovery,UUID restoreId,
+            java.util.function.Supplier<TerminalReapplyStore> terminal) {
+        if(!recovery && restoreId!=null) throw new IllegalArgumentException("Restore identity requires recovery mode");
+        this.jdbc=jdbc; this.recovery=recovery; this.terminal=terminal; this.tx=tx;
         tx.setTimeout(30);
         imports=new DeletedScopeStore(jdbc,tx,entry -> {
             // Only isolated recovery community may stage original archived scope before its own terminal replay.
-            if(!recovery) terminal.get().cleanup(entry);
+            if(!recovery || terminal.get().terminal("STUDY_SERVER",entry.targetId())) terminal.get().cleanup(entry);
         },entry -> {
             if(terminal.get().terminal("STUDY_SERVER",entry.targetId())) terminal.get().reconcile(entry);
         });
+        historical=new RecoveryScopeStore(jdbc,tx,imports,recovery ? restoreId : null,
+                entry -> { if(terminal.get().terminal("STUDY_SERVER",entry.targetId())) terminal.get().cleanup(entry); },
+                entry -> { if(terminal.get().terminal("STUDY_SERVER",entry.targetId())) terminal.get().reconcile(entry); });
     }
 
     public DeletedScope.Receipt importPage(DeletedScope.Import page) { return imports.accept(page); }
+
+    public List<RecoveryScope.Receipt> derive(RecoveryScope.Derive request) {
+        request.validate(); historical.restoreId();
+        return tx.execute(status -> {
+            jdbc.queryForObject("SELECT revision FROM lifecycle_reapply_head WHERE id=1 FOR UPDATE",Long.class);
+            var entry=request.entry();
+            historical.basis(entry,"COURSE"); historical.basis(entry,"CHANNEL");
+            if(terminal.get().terminal("STUDY_SERVER",entry.targetId())) terminal.get().cleanup(entry);
+            jdbc.query("SELECT id FROM study_servers WHERE id=? FOR UPDATE",(rs,row)->rs.getObject(1,UUID.class),entry.targetId());
+            if(Boolean.TRUE.equals(jdbc.queryForObject("""
+                    SELECT EXISTS(SELECT 1 FROM lifecycle_scope_import_ids s JOIN courses c ON c.id=s.scope_id
+                        WHERE s.study_server_id=? AND s.scope_kind='COURSE' AND c.study_server_id<>s.study_server_id)
+                    OR EXISTS(SELECT 1 FROM lifecycle_scope_import_ids s JOIN study_server_channels c ON c.id=s.scope_id
+                        WHERE s.study_server_id=? AND s.scope_kind='CHANNEL' AND c.study_server_id<>s.study_server_id)
+                    OR EXISTS(SELECT 1 FROM lifecycle_scope_import_ids s JOIN course_channels ch ON ch.id=s.scope_id JOIN courses c ON c.id=ch.course_id
+                        WHERE s.study_server_id=? AND s.scope_kind='CHANNEL' AND c.study_server_id<>s.study_server_id)
+                    """,Boolean.class,entry.targetId(),entry.targetId(),entry.targetId())))
+                throw new IllegalArgumentException("Restored child relationship contradicts current authority");
+            for(String kind:List.of("COURSE","CHANNEL")) {
+                if(historical.ready(entry,kind)) continue;
+                String union="SELECT scope_id FROM lifecycle_scope_import_ids WHERE study_server_id=? AND scope_kind='"+kind+"' UNION "+
+                        (kind.equals("COURSE") ? "SELECT id FROM courses WHERE study_server_id=?" :
+                        "SELECT id FROM study_server_channels WHERE study_server_id=? UNION SELECT ch.id FROM course_channels ch JOIN courses c ON c.id=ch.course_id WHERE c.study_server_id=?");
+                int parameters=kind.equals("COURSE") ? 2 : 3;
+                Object[] ids=new Object[parameters]; java.util.Arrays.fill(ids,entry.targetId());
+                long count=jdbc.queryForObject("SELECT COUNT(*) FROM ("+union+") scope",Long.class,ids);
+                String[] digest={DeletedScope.startDigest(historical.basis(entry,kind),kind,count)};
+                jdbc.query("SELECT scope_id FROM ("+union+") scope ORDER BY scope_id",statement -> {
+                    for(int index=1;index<=parameters;index++) statement.setObject(index,entry.targetId());
+                    statement.setFetchSize(MAX_PAGE);
+                },(org.springframework.jdbc.core.RowCallbackHandler) rs -> {
+                    if(Thread.currentThread().isInterrupted()) throw new IllegalStateException("Recovery scope interrupted");
+                    digest[0]=DeletedScope.nextDigest(digest[0],rs.getObject(1,UUID.class));
+                });
+                UUID after=DeletedScope.START;
+                while(true) {
+                    Object[] args=java.util.Arrays.copyOf(ids,parameters+1); args[parameters]=after;
+                    var rows=jdbc.query("SELECT scope_id FROM ("+union+") scope WHERE scope_id>? ORDER BY scope_id LIMIT 257",
+                            (rs,row)->rs.getObject(1,UUID.class),args);
+                    boolean more=rows.size()>MAX_PAGE; var batch=List.copyOf(rows.subList(0,Math.min(MAX_PAGE,rows.size())));
+                    UUID next=more ? batch.getLast() : null;
+                    var page=new DeletedScope.Page(1,entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),kind,after,count,digest[0],batch,next);
+                    historical.accept(new RecoveryScope.Import(historical.restoreId(),request.recoveryId(),imports.scopeDigest(entry,kind),entry,page));
+                    if(!more) break;
+                    after=next;
+                }
+            }
+            return List.of(historical.receipt(request.recoveryId(),entry,"COURSE"),historical.receipt(request.recoveryId(),entry,"CHANNEL"));
+        });
+    }
+
+    public RecoveryScope.Page recoveryPage(RecoveryScope.Read request) {
+        request.validate();
+        return historical.page(request.recoveryId(),request.entry(),request.kind(),request.after(),request.limit());
+    }
 
     /** Called inside the terminal source transaction, before graph erasure and its receipt. */
     public boolean capture(TerminalJournal.Entry entry) {
@@ -46,7 +115,9 @@ public class DeletedStudyServerScope {
         if(!"STUDY_SERVER".equals(entry.targetKind()) || !TransactionSynchronizationManager.isActualTransactionActive())
             throw new IllegalStateException("Study Server scope requires its terminal transaction");
         if(imports.ready(entry,"COURSE") && imports.ready(entry,"CHANNEL")) {
+            if(recovery && (!historical.ready(entry,"COURSE") || !historical.ready(entry,"CHANNEL"))) return false;
             // Never lose the only remaining mapping for historical children absent from the current archived scope.
+            String tables=recovery ? "lifecycle_recovery_scope_ids" : "lifecycle_scope_import_ids";
             return !Boolean.TRUE.equals(jdbc.queryForObject("""
                     SELECT EXISTS(SELECT 1 FROM courses c WHERE c.study_server_id=? AND NOT EXISTS(
                         SELECT 1 FROM lifecycle_scope_import_ids s WHERE s.study_server_id=c.study_server_id AND s.scope_kind='COURSE' AND s.scope_id=c.id))
@@ -54,7 +125,7 @@ public class DeletedStudyServerScope {
                         SELECT 1 FROM lifecycle_scope_import_ids s WHERE s.study_server_id=c.study_server_id AND s.scope_kind='CHANNEL' AND s.scope_id=c.id))
                     OR EXISTS(SELECT 1 FROM course_channels ch JOIN courses c ON c.id=ch.course_id WHERE c.study_server_id=? AND NOT EXISTS(
                         SELECT 1 FROM lifecycle_scope_import_ids s WHERE s.study_server_id=c.study_server_id AND s.scope_kind='CHANNEL' AND s.scope_id=ch.id))
-                    """,Boolean.class,entry.targetId(),entry.targetId(),entry.targetId()));
+                    """.replace("lifecycle_scope_import_ids",tables),Boolean.class,entry.targetId(),entry.targetId(),entry.targetId()));
         }
         // Restored graphs and even their saved scope may precede the current deletion. Only archived scope is authoritative here.
         if(recovery) return false;

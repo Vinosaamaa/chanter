@@ -148,6 +148,7 @@ class DeletedStudyServerScopeTest {
                 .header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN).contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.ready").value(true));
         scopes.importPage(new com.chanter.common.lifecycle.DeletedScope.Import(entry,channelPage));
+        scopes.derive(new com.chanter.common.lifecycle.RecoveryScope.Derive(UUID.randomUUID(),entry));
         http.perform(request(entry,"COURSE").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)).andExpect(status().isConflict());
         terminal.reapply(journal);
         assertThat(read(entry,"COURSE",new UUID(0,0),256)).isEqualTo(coursePage);
@@ -168,17 +169,19 @@ class DeletedStudyServerScopeTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,server)).isEqualTo(1);
         tx.executeWithoutResult(status -> {
             scopes.importPage(new com.chanter.common.lifecycle.DeletedScope.Import(entry,channels));
+            scopes.derive(new com.chanter.common.lifecycle.RecoveryScope.Derive(UUID.randomUUID(),entry));
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,server)).isZero();
             status.setRollbackOnly();
         });
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,server)).isEqualTo(1);
         scopes.importPage(new com.chanter.common.lifecycle.DeletedScope.Import(entry,channels));
+        scopes.derive(new com.chanter.common.lifecycle.RecoveryScope.Derive(UUID.randomUUID(),entry));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,server)).isZero();
         assertThat(read(entry,"COURSE",new UUID(0,0),256)).isEqualTo(courses);
         assertThat(terminal.receipt().authority()).isEqualTo(journal.through());
     }
 
-    @Test void olderHistoricalChildrenMissingFromCurrentArchiveRetainTheirMappingAndPendingCleanup() {
+    @Test void olderHistoricalChildrenReconcileThroughASeparateBoundUnionWithoutChangingCurrentArchive() throws Exception {
         UUID server=UUID.randomUUID(); seed(server,UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID());
         var journal=page(server); var entry=journal.entries().getFirst(); terminal.reapply(journal);
         var courses=read(entry,"COURSE",new UUID(0,0),256); var channels=read(entry,"CHANNEL",new UUID(0,0),256);
@@ -189,10 +192,39 @@ class DeletedStudyServerScopeTest {
         assertThat(terminal.receipt().pendingTargets()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT study_server_id FROM courses WHERE id=?",UUID.class,historicalCourse)).isEqualTo(server);
         assertThat(read(entry,"COURSE",new UUID(0,0),256)).isEqualTo(courses);
+        UUID operation=UUID.randomUUID();
+        var derive=new com.chanter.common.lifecycle.RecoveryScope.Derive(operation,entry);
+        byte[] body=mapper.writeValueAsBytes(derive);
+        http.perform(post("/api/v1/internal/lifecycle/deleted-study-servers/{id}/scope/recovery/derive",server)
+                .contentType("application/json").content(body)).andExpect(status().isUnauthorized());
+        http.perform(post("/api/v1/internal/lifecycle/deleted-study-servers/{id}/scope/recovery/derive",server)
+                .header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN).contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].scope.ready").value(true));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,server)).isZero();
+        var historical=scopes.recoveryPage(new com.chanter.common.lifecycle.RecoveryScope.Read(operation,entry,"COURSE",new UUID(0,0),256));
+        assertThat(historical.originalScopeDigest()).isEqualTo(courses.scopeDigest());
+        assertThat(historical.page().ids()).containsExactlyInAnyOrder(courses.ids().getFirst(),historicalCourse);
+        assertThat(read(entry,"COURSE",new UUID(0,0),256)).isEqualTo(courses);
+        var later=scopes.derive(new com.chanter.common.lifecycle.RecoveryScope.Derive(UUID.randomUUID(),entry));
+        assertThat(later.getFirst().scope().scopeDigest()).isEqualTo(historical.page().scopeDigest());
+    }
+
+    @Test void contradictoryRestoredParentOrOrdinaryModeCannotProduceRecoveryScope() {
+        UUID server=UUID.randomUUID(); seed(server,UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID());
+        var journal=page(server); var entry=journal.entries().getFirst(); terminal.reapply(journal);
+        var courses=read(entry,"COURSE",new UUID(0,0),256); var channels=read(entry,"CHANNEL",new UUID(0,0),256);
+        assertThatThrownBy(() -> scopes.derive(new com.chanter.common.lifecycle.RecoveryScope.Derive(UUID.randomUUID(),entry)))
+                .isInstanceOf(IllegalArgumentException.class);
+        setup(); seed(UUID.randomUUID(),courses.ids().getFirst(),UUID.randomUUID(),UUID.randomUUID()); useRecoveryMode();
+        scopes.importPage(new com.chanter.common.lifecycle.DeletedScope.Import(entry,courses));
+        scopes.importPage(new com.chanter.common.lifecycle.DeletedScope.Import(entry,channels));
+        assertThatThrownBy(() -> scopes.derive(new com.chanter.common.lifecycle.RecoveryScope.Derive(UUID.randomUUID(),entry)))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("contradicts current authority");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_recovery_scopes",Integer.class)).isZero();
     }
 
     private void useRecoveryMode() {
-        scopes=new DeletedStudyServerScope(jdbc,tx,true,() -> terminal);
+        scopes=new DeletedStudyServerScope(jdbc,tx,true,UUID.fromString("33333333-3333-4333-8333-333333333333"),() -> terminal);
         var snapshots=new com.chanter.common.lifecycle.ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"community");
         terminal=new CommunityTerminalConfiguration().communityTerminalStore(jdbc,tx.getTransactionManager(),snapshots,new CommunityOwnershipFence(jdbc),scopes);
         http=MockMvcBuilders.standaloneSetup(new DeletedStudyServerScopeController(scopes,mapper,TOKEN),

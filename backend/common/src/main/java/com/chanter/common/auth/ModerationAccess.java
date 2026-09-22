@@ -43,7 +43,7 @@ public class ModerationAccess {
                     .timeout(Duration.ofSeconds(3)).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, token)
                     .header(AuthHeaders.AUTHORIZATION, authorization).POST(HttpRequest.BodyPublishers.noBody()).build();
             var response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 401 || response.statusCode() == 403)
+            if (response.statusCode() == 401 || response.statusCode() == 403 || response.statusCode() == 410)
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Current session access required");
             if (response.statusCode() != 200) throw unavailable();
             var result = mapper.readTree(response.body());
@@ -86,8 +86,8 @@ public class ModerationAccess {
                     .header(AuthHeaders.INTERNAL_SERVICE_TOKEN, token).header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(new AccessRequest(user, targets)))).build();
             var response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 403 || response.statusCode() == 401)
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access is restricted by moderation");
+            if (response.statusCode() == 403 || response.statusCode() == 401 || response.statusCode() == 410)
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Current account or source access required");
             if (response.statusCode() != 200) throw unavailable();
             var json = mapper.readTree(response.body());
             if (json == null || !json.path("allowed").isBoolean() || !json.path("allowed").booleanValue()) throw unavailable();

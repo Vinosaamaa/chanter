@@ -47,5 +47,29 @@ public class DeletedStudyServerScopeController {
                     .body(scopes.page(id,revision,eventId,digest,kind,after,limit));
         } catch(IllegalArgumentException invalid) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"DELETION_SCOPE_REJECTED"); }
     }
+    @PostMapping("/{id}/scope/recovery/derive")
+    public ResponseEntity<java.util.List<com.chanter.common.lifecycle.RecoveryScope.Receipt>> derive(
+            @RequestHeader(value=AuthHeaders.INTERNAL_SERVICE_TOKEN,required=false) String token,@PathVariable UUID id,@RequestBody String raw) {
+        access.require(token);
+        try {
+            var request=readRecovery(raw,com.chanter.common.lifecycle.RecoveryScope.Derive.class);
+            request.validate(); if(!id.equals(request.entry().targetId())) throw rejected();
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).header("X-Content-Type-Options","nosniff").body(scopes.derive(request));
+        } catch(java.io.IOException | IllegalArgumentException invalid) { throw rejected(); }
+    }
+    @PostMapping("/{id}/scope/recovery/page")
+    public ResponseEntity<com.chanter.common.lifecycle.RecoveryScope.Page> recoveryPage(
+            @RequestHeader(value=AuthHeaders.INTERNAL_SERVICE_TOKEN,required=false) String token,@PathVariable UUID id,@RequestBody String raw) {
+        access.require(token);
+        try {
+            var request=readRecovery(raw,com.chanter.common.lifecycle.RecoveryScope.Read.class);
+            request.validate(); if(!id.equals(request.entry().targetId())) throw rejected();
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).header("X-Content-Type-Options","nosniff").body(scopes.recoveryPage(request));
+        } catch(java.io.IOException | IllegalArgumentException invalid) { throw rejected(); }
+    }
+    private <T> T readRecovery(String raw,Class<T> type) throws java.io.IOException {
+        if(raw.length()>4096 || raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>4096) throw rejected();
+        T request=mapper.readValue(raw,type); if(request==null) throw rejected(); return request;
+    }
     private static ResponseStatusException rejected() { return new ResponseStatusException(HttpStatus.BAD_REQUEST,"DELETION_SCOPE_REJECTED"); }
 }
