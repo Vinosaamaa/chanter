@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { modules, databaseModules, validateRelease, validateConfig, composeFor, executeDeployment } from './release.mjs';
 import { assertMigrationFloor, backupEnvironment, backupUnits, summarizeBackup } from './recovery.mjs';
 import { telemetryEnvironment } from './telemetry.mjs';
+import { errorEnvironment } from './errors.mjs';
 import { configurationBackupEnvironment, runConfigurationBackup, verifyConfigurationBackup } from './configuration-backup.mjs';
 
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -23,6 +24,7 @@ const recoveryDefaults = () => ({
     CHANTER_BACKUP_S3_ACCESS_KEY: '', CHANTER_BACKUP_S3_SECRET_KEY: '', CHANTER_BACKUP_CIPHER_PASS: secret(),
     CHANTER_CONFIG_BACKUP_PASSWORD: secret() },
   telemetry: { CHANTER_TELEMETRY_ENDPOINT: '', CHANTER_TELEMETRY_AUTHORIZATION: '' },
+  errors: { CHANTER_ERRORS_DSN: '' },
 });
 const envText = values => Object.entries(values).map(([key, value]) => {
   if (!/^[A-Z][A-Z0-9_]*$/.test(key) || /[\r\n\0]/.test(value)) throw new Error('Invalid environment key or multiline value');
@@ -127,11 +129,12 @@ function validateNativeConfiguration(env, origin) {
 
 export function validateRuntime(stateDir) {
   const config = validateConfig(json(path.join(stateDir, 'config.json')));
-  for (const name of [...modules, 'postgres', 'redis', 'livekit', 'backup', 'telemetry']) {
+  for (const name of [...modules, 'postgres', 'redis', 'livekit', 'backup', 'telemetry', 'errors']) {
     const file = path.join(stateDir, 'runtime', `${name}.env`);
     if (process.platform !== 'win32' && (fs.statSync(file).mode & 0o077) !== 0) throw new Error(`Runtime file must be private: ${name}.env`);
     const env = readEnv(file);
     if (name === 'telemetry') { telemetryEnvironment(env); continue; }
+    if (name === 'errors') { errorEnvironment(env); continue; }
     if (name === 'backup') {
       backupEnvironment(env, json(path.join(stateDir, 'config.json')).environment);
       configurationBackupEnvironment(env, json(path.join(stateDir, 'config.json')).environment);
@@ -191,6 +194,7 @@ export function render(bundleDir, stateDir) {
   writePrivateText(path.join(output, 'postgres-backup.env'), envText(backupEnvironment(
     readEnv(path.join(stateDir, 'runtime/backup.env')), config.environment)));
   writePrivateText(path.join(output, 'telemetry.env'), envText(telemetryEnvironment(readEnv(path.join(stateDir, 'runtime/telemetry.env')))));
+  writePrivateText(path.join(output, 'errors.env'), envText(errorEnvironment(readEnv(path.join(stateDir, 'runtime/errors.env')))));
   writeJson(path.join(output, 'compose.json'), composeFor(release, config, path.join(stateDir, 'runtime')));
   for (const name of ['postgres-init.sh', 'livekit.yaml']) fs.copyFileSync(path.join(bundleDir, 'infra/production', name), path.join(output, name));
   return { release, config, file: path.join(output, 'compose.json') };

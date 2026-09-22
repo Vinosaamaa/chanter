@@ -170,6 +170,28 @@ Optional Google OAuth credentials may be added only to the auth file after confi
 
 No external inference endpoint or paid model is enabled. Agent retrieval uses the pinned local MiniLM semantic model packaged at `/app/models/minilm`; explicit API embedding providers remain operator-configured. Epoch 8 requires agent V13 and prevents downgrade to the former BYTEA embedding schema. See [embedding operations](embedding-versions.md) for model activation, rollback and removal of obsolete hashing/keyword configuration. Optional answer generation belongs to [#248](https://github.com/Vinosaamaa/chanter/issues/248). MinIO and Redpanda are absent because this runtime does not use them. Private Course files use the accepted object-storage and Unix-socket scanner configuration.
 
+## Private backend error reporting
+
+Issue #331 adds disabled error reporting through Sentry Java 8.57.0. For existing
+state, run the new bundle's `host.mjs prepare-recovery STATE_DIRECTORY` before
+rendering; it creates the missing private `runtime/errors.env` while preserving
+existing settings. Initialization already includes the file. Leave
+`CHANTER_ERRORS_DSN=` blank until an account's free quota, retention, access and
+disabled paid overage have been verified. No account is provisioned by this code.
+
+Set only a valid Sentry HTTPS DSN in that private file, then use the ordinary
+reviewed deployment command. The generated `errors.env` enables the reporter for
+Java services. Removing the DSN and redeploying disables it independently of
+metrics/traces. Never paste the file or credentials into tickets or logs.
+
+Reports contain a fixed service/environment, immutable release and bounded
+exception types/application code locations. They exclude messages, request/user
+data, file paths and breadcrumbs. Each process admits five reports per minute;
+the provider's account quota is a separate required control. Outages and excess
+reports may drop events. Use the metric dashboards for aggregate failure rates.
+Actual provider receipt, operator notification, frontend capture and private
+source maps are still required before public cutover.
+
 ## Optional native companion issuer
 
 Native access is disabled while all four issuer values are absent. To provision it after the #316 acceptance gates, add only to the private `agent-service.env`:

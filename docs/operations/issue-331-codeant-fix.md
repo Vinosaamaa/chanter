@@ -33,3 +33,11 @@ grouping and traversal-helper changes do not resolve a demonstrated defect.
 Subsequent collector and gauge proof changes require fresh full review and hosted
 checks before this draft can become ready. No review disposition waives unfinished
 error tracking, operational alerts or actual provider acceptance.
+
+The full review of `749c221a` identified two actionable gaps. Resource metrics
+omitted claimable LEGACY rows when legacy migration is enabled. The collector now
+follows that exact existing setting; its source-state regression verifies both
+enabled and disabled cases. The telemetry workflow also omitted AI-ledger and
+realtime source paths. Both now trigger the native privacy proof, together with
+the new error-reporting configuration and deployment module. Neither fix changes
+the source worker's scheduling or authorization behavior.

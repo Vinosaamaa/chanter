@@ -45,7 +45,8 @@ export function composeFor(release, config, runtimeDir) {
     const database = databaseModules.includes(name);
     services[name] = { ...common, image: release.images[name], pull_policy: 'never', user: '10001:10001',
       mem_limit: `${memory[name]}m`, tmpfs: ['/tmp:size=64m,mode=1777'],
-      env_file: [{ path: path.join(runtimeDir, `${name}.env`), format: 'raw' }, { path: './telemetry.env', format: 'raw' }],
+      env_file: [{ path: path.join(runtimeDir, `${name}.env`), format: 'raw' }, { path: './telemetry.env', format: 'raw' },
+        { path: './errors.env', format: 'raw' }],
       environment: { ...urls, SERVER_PORT: '8080', SERVER_SHUTDOWN: 'graceful',
         SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: '25s', SPRING_FLYWAY_ENABLED: 'false',
         MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: 'health', MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: 'true',

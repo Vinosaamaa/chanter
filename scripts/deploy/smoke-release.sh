@@ -98,7 +98,25 @@ test "$native_message" = 1 || { echo 'Accepted-answer consumer migration did not
 mapfile -t modules < <(node --input-type=module -e 'import {modules} from "./scripts/deploy/release.mjs"; console.log(modules.join("\n"))')
 for module in "${modules[@]}"; do
   started="$(date +%s)"
-  "${compose[@]}" up -d --no-deps --wait --wait-timeout 180 "$module"
+  if ! "${compose[@]}" up -d --no-deps --wait --wait-timeout 180 "$module"; then
+    # Report only bounded code locations from structured exceptions. Never print
+    # free-form startup messages, runtime settings or container environments.
+    "${compose[@]}" logs --no-log-prefix --tail 80 "$module" | node --input-type=module -e '
+      import readline from "node:readline";
+      for await (const line of readline.createInterface({ input: process.stdin })) {
+        let item; try { item = JSON.parse(line); } catch { continue; }
+        if (item.event !== "application.exception" || !Array.isArray(item.errors)) continue;
+        const token = value => typeof value === "string" && /^[A-Za-z_$][A-Za-z0-9_.$]{0,179}$/.test(value) ? value : "unknown";
+        console.log(JSON.stringify({ errors: item.errors.slice(0, 4).map(error => ({ type: token(error.type),
+          frames: (Array.isArray(error.frames) ? error.frames : []).slice(0, 12).map(frame => ({
+            class: token(frame.class), method: token(frame.method), line: Number.isSafeInteger(frame.line) ? frame.line : 0 })) })) }));
+      }'
+    mapfile -t failed_containers < <("${compose[@]}" ps --all --quiet "$module")
+    if [ "${#failed_containers[@]}" -gt 0 ]; then
+      docker inspect --format 'exit={{.State.ExitCode}} oom={{.State.OOMKilled}} restarts={{.RestartCount}}' "${failed_containers[@]}"
+    fi
+    exit 1
+  fi
   echo "$module became ready in $(($(date +%s) - started)) seconds"
 done
 "${compose[@]}" up -d --no-deps livekit

@@ -25,7 +25,9 @@ class EmailQueueMetricsTest {
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V4__transactional_email_outbox.sql")).execute(source);
         var jdbc = new JdbcTemplate(source);
         var transactions = new DataSourceTransactionManager(source);
-        var now = Instant.now();
+        // The database stores microseconds; a nanosecond fixed clock can precede
+        // the rounded next_attempt_at and make otherwise-due delivery disappear.
+        var now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
         var registry = new SimpleMeterRegistry();
         try (var monitor = new EmailQueueMetrics().emailQueueMetrics(source, registry)) {
             var transport = mock(SmtpEmailTransport.class);
@@ -33,7 +35,7 @@ class EmailQueueMetricsTest {
             first.send("private-canary@example.test", "private-canary", "private-canary");
             monitor.sample();
             assertThat(registry.get("chanter.email.pending").gauge().value()).isEqualTo(1);
-            first.deliverNext();
+            assertThat(first.deliverNext()).isTrue();
             monitor.sample();
             assertThat(registry.get("chanter.email.pending").gauge().value()).isZero();
             assertThat(registry.get("chanter.email.failed").gauge().value()).isZero();

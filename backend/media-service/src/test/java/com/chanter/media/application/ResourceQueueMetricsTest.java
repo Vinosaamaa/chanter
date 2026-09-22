@@ -29,13 +29,20 @@ class ResourceQueueMetricsTest {
         insert(jdbc, "AVAILABLE", "FAILED", true, now.minusSeconds(30));
         insert(jdbc, "REJECTED", "NONE", true, now.minusSeconds(20));
         insert(jdbc, "DELETED", "PENDING", false, now.minusSeconds(100000));
+        insert(jdbc, "LEGACY", "NONE", true, now.minusSeconds(150));
         var registry = new SimpleMeterRegistry();
-        try (var monitor = new ResourceQueueMetrics().resourceQueueMetrics(source, registry)) {
+        try (var monitor = new ResourceQueueMetrics().resourceQueueMetrics(source, registry, false)) {
             monitor.sample();
             assertThat(registry.get("chanter.resources.pending").gauge().value()).isEqualTo(4);
             assertThat(registry.get("chanter.resources.failed").gauge().value()).isEqualTo(2);
             // This is age since the oldest pending row's last update, not its original upload.
             assertThat(registry.get("chanter.resources.oldest.age").gauge().value()).isBetween(120.0, 140.0);
+            var legacyRegistry = new SimpleMeterRegistry();
+            try (var migration = new ResourceQueueMetrics().resourceQueueMetrics(source, legacyRegistry, true)) {
+                migration.sample();
+                assertThat(legacyRegistry.get("chanter.resources.pending").gauge().value()).isEqualTo(5);
+                assertThat(legacyRegistry.get("chanter.resources.oldest.age").gauge().value()).isBetween(150.0, 170.0);
+            } finally { legacyRegistry.close(); }
             jdbc.update("UPDATE course_resources SET state='DELETED', byte_reservation=FALSE, ingestion_status='NONE'");
             monitor.sample();
             assertThat(registry.get("chanter.resources.pending").gauge().value()).isZero();

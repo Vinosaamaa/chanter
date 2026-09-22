@@ -14,7 +14,7 @@ unknowns: ["Final combined production monitoring proof", "Error tracker and priv
 modules: ["shared-observability", "durable-events", "production-runtime"]
 interfaces: ["private-telemetry-export", "queue-health-measurements"]
 seams: ["source-to-metric-sampler", "application-to-telemetry-provider", "provider-to-operator"]
-adapters: ["opentelemetry", "micrometer", "jdbc"]
+adapters: ["opentelemetry", "micrometer", "jdbc", "sentry"]
 relatedRecords: ["architecture-review-observability-and-recovery@1"]
 decisions: []
 incidents: []
@@ -66,10 +66,18 @@ The source query accepts only source-owned SQL, never caller-supplied query text
 Connection acquisition uses the existing pool's bound; its wait is not covered
 by the SQL statement deadline.
 
+The optional backend error client reconstructs safe exceptions before invoking
+the pinned Sentry SDK. It sends no original Throwable, message, request, user,
+MDC, filename or breadcrumb. Four causes and twelve application frames per cause
+bound the payload; five events per monotonic minute and a 32-event asynchronous
+queue bound each process. Receiver and shutdown timeouts preserve application
+behavior during failure. Wire-level canary, overload and outage tests pass;
+account-wide quotas and actual operator notification remain external gates.
+
 The [design](../../architecture/operational-monitoring.md) and
 [implementation record](../../operations/issue-331-change-log.md) distinguish this
-tested coverage from the unfinished final combined proof, dashboards, exception
-transport, private source maps, operational runbooks and
+tested coverage from the unfinished final combined proof, dashboards, frontend
+exception transport, private source maps, operational runbooks and
 actual provider notification. Free quotas and disabled paid overage must be
 verified in the eventual accounts. This proposed system review does not claim
 operator alert delivery, full recovery or public launch.

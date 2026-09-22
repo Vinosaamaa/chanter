@@ -49,6 +49,28 @@ exposed a test ordering race: `next()` could close the socket before its count w
 asserted. Moving the assertion before receive cancellation passed the full suite.
 No production connection behavior changed.
 
-Final combined production proof, dashboard/alert rules, exception tracking and
+Final combined production proof, dashboard/alert rules, frontend exception tracking and
 actual operator receipt remain unfinished. All workers remain Astra High at
 normal speed. Work resumed on September 22 from preserved branches and interrupted edits.
+
+Backend exceptions now use the pinned Sentry SDK through a reconstructed safe
+event. Real HTTP envelopes exclude private canaries, messages, user/request data,
+paths and breadcrumbs. The overload test first reproduced excessive deliveries,
+then passed with five reports per process per minute. Cause/frame bounds, disabled
+and enabled Boot configuration, queue pressure and receiver outage pass locally.
+The deployment initializes a private disabled errors file; it validates configured
+HTTPS receivers and includes the settings module in both release copy and archive
+lists. No external account or actual operator receipt is claimed.
+
+Full CI passed at `749c221a`, but the release gate remains failed. AMD64 reproduced
+a fixed-clock test race caused by database microsecond rounding. The fixture now
+uses whole seconds and asserts successful delivery explicitly. ARM64 reached
+staging and found auth unhealthy; the next smoke emits only bounded exception
+types/code locations and process exit/OOM/restart flags, never free-form logs or
+runtime secrets. Diagnosis and a passing release remain required.
+
+All four local native telemetry tests pass with the pinned Java agent and current
+privacy extension, including simultaneous SDK error delivery. The actual envelope
+still excludes private canaries and forbidden context fields. All 53 deployment
+tests, Bash syntax and workflow validation pass. These isolated tests do not
+substitute for the failed release startup or an actual provider account.

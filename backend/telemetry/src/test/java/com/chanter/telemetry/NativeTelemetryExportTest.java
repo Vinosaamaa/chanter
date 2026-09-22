@@ -18,6 +18,39 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @EnabledIfSystemProperty(named = "chanter.telemetry.agent", matches = ".+")
 class NativeTelemetryExportTest {
+    @Test void actualJavaAgentAndErrorSdkPreserveTheExceptionPrivacyBoundaryTogether() throws Exception {
+        var received = new java.util.concurrent.atomic.AtomicReference<String>();
+        List<ExportTraceServiceRequest> traces = Collections.synchronizedList(new ArrayList<>());
+        var collector = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        collector.createContext("/api/1/envelope/", exchange -> {
+            try (var body = "gzip".equals(exchange.getRequestHeaders().getFirst("Content-Encoding"))
+                    ? new java.util.zip.GZIPInputStream(exchange.getRequestBody()) : exchange.getRequestBody()) {
+                byte[] bytes = body.readNBytes(32769);
+                if (bytes.length > 32768) { exchange.sendResponseHeaders(413, -1); return; }
+                received.set(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+                exchange.sendResponseHeaders(200, -1);
+            } finally { exchange.close(); }
+        });
+        collector.createContext("/v1/traces", exchange -> {
+            traces.add(ExportTraceServiceRequest.parseFrom(exchange.getRequestBody()));
+            exchange.sendResponseHeaders(200, -1); exchange.close();
+        });
+        collector.createContext("/v1/metrics", exchange -> {
+            exchange.getRequestBody().transferTo(java.io.OutputStream.nullOutputStream());
+            exchange.sendResponseHeaders(200, -1); exchange.close();
+        });
+        collector.start();
+        try {
+            runFixture("http://127.0.0.1:" + collector.getAddress().getPort() + "/v1/traces",
+                    com.chanter.common.telemetry.ErrorReportingFixture.class);
+            assertNotNull(received.get(), "The SDK must deliver while the actual Java agent is attached");
+            assertTrue(received.get().contains("IllegalStateException"));
+            assertTrue(received.get().contains("ErrorReportingFixture"));
+            for (String forbidden : List.of("private-canary", "server_name", "breadcrumbs", "threads", "\"request\"", "\"user\""))
+                assertFalse(received.get().contains(forbidden), "The SDK exported an excluded field");
+            synchronized (traces) { assertTrue(traces.stream().noneMatch(trace -> trace.toString().contains("private-canary"))); }
+        } finally { collector.stop(0); }
+    }
     @Test void realSpringApplicationExportsBoundedBusinessMetricsWithoutPrivateLabels() throws Exception {
         List<ExportMetricsServiceRequest> received = Collections.synchronizedList(new ArrayList<>());
         var acknowledgement = Files.createTempDirectory(Path.of("target"), "queue-proof-").resolve("received");
