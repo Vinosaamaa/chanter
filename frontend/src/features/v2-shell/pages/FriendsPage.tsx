@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Ban,
@@ -41,6 +41,7 @@ export function FriendsPage() {
   const listHeadingRef = useRef<HTMLHeadingElement>(null)
   const conversationHeadingRef = useRef<HTMLHeadingElement>(null)
   const wasConversationOpen = useRef(false)
+  const lastPageFocus = useRef<HTMLElement | null>(null)
   const friendRows = useMemo(
     () =>
       hub.friends.map((friend) => ({
@@ -97,7 +98,9 @@ export function FriendsPage() {
   }
 
   return (
-    <div className={`friends-page${conversationOpen && active ? ' conversation-open' : ''}`}>
+    <div className={`friends-page${conversationOpen && active ? ' conversation-open' : ''}`} onFocusCapture={event => {
+      if (!event.target.closest('dialog')) lastPageFocus.current = event.target
+    }}>
       <aside className="friends-list-pane" ref={listPaneRef}>
         <header>
           <h1 ref={listHeadingRef} tabIndex={-1}>Friends</h1>
@@ -233,7 +236,7 @@ export function FriendsPage() {
         <AddFriendModal relationships={relationships} onClose={() => setShowAdd(false)} />
       ) : null}
       {hub.callState.phase !== 'idle' ? (
-        <CallModal hub={hub} friendName={callFriendName} />
+        <CallModal hub={hub} friendName={callFriendName} lastPageFocus={lastPageFocus} />
       ) : null}
     </div>
   )
@@ -542,10 +545,13 @@ function AddFriendModal({
 
 type FriendsHook = ReturnType<typeof useFriendsHub>
 
-function CallModal({ hub, friendName }: { hub: FriendsHook; friendName: string }) {
+function CallModal({ hub, friendName, lastPageFocus }: { hub: FriendsHook; friendName: string; lastPageFocus: RefObject<HTMLElement | null> }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   useEffect(() => {
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    // An incoming call disables its launch button before this effect runs.
+    // Retain the last focused page control when the browser moves focus to body.
+    const previous = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement : lastPageFocus.current
     const dialog = dialogRef.current
     dialog?.showModal()
     dialog?.querySelector<HTMLButtonElement>('button')?.focus()
@@ -553,7 +559,7 @@ function CallModal({ hub, friendName }: { hub: FriendsHook; friendName: string }
       dialog?.close()
       if (previous?.isConnected) previous.focus()
     }
-  }, [])
+  }, [lastPageFocus])
   const incoming = hub.callState.phase === 'incoming_ringing'
   const inCall = hub.callState.phase === 'in_call'
   return (

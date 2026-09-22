@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
+import type { ShellCourse } from '../../shell/types'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '../../../components/ui/button'
@@ -23,9 +24,44 @@ function formatLearnerLabel(userId: string): string {
 
 export function CohortEnrollmentPage() {
   const { serverId, courseId } = useParams()
-  const queryClient = useQueryClient()
+  const location = useLocation()
   const navigationQuery = useStudyServerNavigationQuery(serverId)
   const course = navigationQuery.data?.courses.find((item) => item.id === courseId)
+  if (!serverId || !courseId) {
+    return null
+  }
+
+  if (navigationQuery.isLoading) {
+    return (
+      <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
+        Loading enrollment…
+      </section>
+    )
+  }
+
+  if (navigationQuery.isError) {
+    return (
+      <section className="flex flex-1 items-center justify-center p-6 text-sm text-red-300">
+        Could not load enrollment for this Study Server.
+      </section>
+    )
+  }
+
+  if (!course || course.cohorts.length === 0) {
+    return (
+      <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
+        Course not found on this Study Server.
+      </section>
+    )
+  }
+
+
+  if (!course.capabilities.canManagePeople) return <Navigate to={`/app/servers/${serverId}/courses/${courseId}/people${location.search}`} replace />
+  return <ManagerEnrollment key={course.id} serverId={serverId} course={course} />
+}
+
+function ManagerEnrollment({ serverId, course }: { serverId: string; course: ShellCourse }) {
+  const queryClient = useQueryClient()
   const [selectedCohortId, setSelectedCohortId] = useState('')
   const cohort =
     course?.cohorts.find((item) => item.id === selectedCohortId) ?? course?.cohorts[0]
@@ -50,34 +86,6 @@ export function CohortEnrollmentPage() {
   const pageRows = enrollmentsQuery.data?.enrollments ?? []
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const currentPage = Math.min(page, totalPages)
-
-  if (!serverId || !courseId) {
-    return null
-  }
-
-  if (navigationQuery.isLoading) {
-    return (
-      <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
-        Loading enrollment…
-      </section>
-    )
-  }
-
-  if (navigationQuery.isError) {
-    return (
-      <section className="flex flex-1 items-center justify-center p-6 text-sm text-red-300">
-        Could not load enrollment for this Study Server.
-      </section>
-    )
-  }
-
-  if (!course || !cohort) {
-    return (
-      <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
-        Course not found on this Study Server.
-      </section>
-    )
-  }
 
   const inviteUrl =
     inviteQuery.data != null
@@ -165,26 +173,25 @@ export function CohortEnrollmentPage() {
                 <tr>
                   <th className="px-4 py-3 font-medium">Learner</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Assigned TA</th>
-                  <th className="px-4 py-3 font-medium">Enrolled</th>
+                                    <th className="px-4 py-3 font-medium">Enrolled</th>
                 </tr>
               </thead>
               <tbody>
                 {enrollmentsQuery.isLoading ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-app-muted">
+                    <td colSpan={3} className="px-4 py-6 text-app-muted">
                       Loading learners…
                     </td>
                   </tr>
                 ) : enrollmentsQuery.isError ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-red-300">
+                    <td colSpan={3} className="px-4 py-6 text-red-300">
                       Could not load enrollments.
                     </td>
                   </tr>
                 ) : pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-app-muted">
+                    <td colSpan={3} className="px-4 py-6 text-app-muted">
                       No learners enrolled yet. Use the invite link or enroll manually.
                     </td>
                   </tr>
@@ -195,7 +202,6 @@ export function CohortEnrollmentPage() {
                         {formatLearnerLabel(row.learnerUserId)}
                       </td>
                       <td className="px-4 py-3 text-emerald-300">Enrolled</td>
-                      <td className="px-4 py-3 text-app-muted">Unassigned</td>
                       <td className="px-4 py-3 text-app-muted">
                         {new Date(row.enrolledAt).toLocaleDateString()}
                       </td>
@@ -330,8 +336,7 @@ export function CohortEnrollmentPage() {
           </article>
 
           <p className="text-xs text-app-muted">
-            TA assignment UI is shown for layout parity; assigning TAs requires a follow-up backend
-            slice.
+            <Link to={`/app/servers/${serverId}/courses/${course.id}/people?cohort=${cohort.id}`}>Manage teaching assistant assignments in People</Link>
           </p>
         </aside>
       </div>

@@ -34,7 +34,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 
     await expect(detail).toBeHidden()
     await expect(event).toBeFocused()
     for (const [button, name] of [['Create event', 'Create event'], ['Invite people', 'Invite people']]) {
-      const opener = page.getByRole('button', { name: button, exact: true })
+      const opener = page.locator(button === 'Create event' ? '.community-event-toolbar' : '.community-hub-chrome').getByRole('button', { name: button, exact: true })
       await opener.click()
       const dialog = page.getByRole('dialog', { name, exact: true })
       await expect(dialog).toBeVisible()
@@ -280,7 +280,9 @@ for (const width of [390, 1280]) {
     await page.goto('/app/friends?friend=visual-peer')
     const previous = page.getByRole('button', { name: 'Start voice call with Alexandra Montgomery-Williams' })
     await expect(previous).toBeVisible()
+    await expect(previous).toBeEnabled()
     await previous.focus()
+    await expect(previous).toBeFocused()
     await expect.poll(() => sockets.length).toBeGreaterThan(0)
     for (const socket of sockets) socket.send(JSON.stringify({ type: 'call_ringing', callId: 'visual-call', callerUserId: 'visual-peer', calleeUserId: 'visual-learner', direction: 'incoming' }))
     const dialog = page.getByRole('dialog', { name: 'Voice call with Alexandra Montgomery-Williams' })

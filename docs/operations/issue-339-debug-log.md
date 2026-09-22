@@ -9,3 +9,10 @@ Original component focus failures remain recorded by the focused red-to-green re
 Second hosted fixture pass: 251 passed and five failed. Native dialogs deliberately permit focus to browser chrome while making the rest of the document inert; the test now verifies that boundary and explicit background focus denial. The last-notification fixture targeted the wrong URL: the owning client uses /api/v1/me/notifications. Corrected the fixture interception without changing notification behavior.
 
 Full CI on 20b6de40 passed frontend/backend and both native release architectures. Engineering policy rejected the receipt title, which did not exactly match the PR title; corrected it. The newly enabled real browser projects exposed WebKit rejecting the Secure cookie on the plain-HTTP test origin, plus deliberate navigation cancellations reported as API failures by Firefox. Real cross-browser acceptance remains failed until the hosted HTTPS setup and faithful cancellation handling are verified. No cookie flags or network-error assertions have been weakened.
+
+Hosted fixture1e791560 passed257 cases. New failures were a non-unique Create event
+opener locator and incoming-call focus restoration after its previously focused
+launch button becomes disabled. Scope the fixture opener to its actual toolbar;
+preserve page focus before the call state disables its control. Add explicit
+fixture readiness/focus checks before dispatching the synthetic incoming frame.
+The hosted rerun remains required.

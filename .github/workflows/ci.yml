@@ -175,6 +175,7 @@ jobs:
         env:
           CI: 'true'
           KEEP_STACK: '1'
+          PLAYWRIGHT_BASE_URL: https://127.0.0.1:9420
       - name: Verify moderation, published audio removal, and emailed appeal
         run: bash scripts/product/moderation-browser.sh run
         env:

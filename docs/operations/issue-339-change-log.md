@@ -75,3 +75,48 @@ Course and Cohort identifiers. A regression must fail before this correction.
 Teaching now preserves bookmarked Study Server selection, Refresh, all six operational counts and lifetime free-beta usage. The legacy route forwards its full query to Teaching inside the modern shell. Four Teaching and ten Friends component tests pass. Incoming voice-call dialogs use native modality and restore the prior control; this does not prove audio delivery.
 
 Event title buttons, native community dialogs, future defaults and restricted-audience preservation have three red-to-green component regressions. Nine event/community tests pass. Removed only the inert legacy Mark helpful control; modern saved-answer helpful behavior remains. Lint/build and unchanged bundle caps pass at this checkpoint (core JS 1264.0 KiB raw / 377.8 KiB gzip, CSS 214.4 KiB raw / 34.9 KiB gzip). Additional browser cases cover 390px phone, 1280px desktop and 844px landscape dialogs; hosted proof remains pending.
+## Hosted cross-browser transport correction
+
+The first real WebKit run did not retain the Secure refresh cookie on HTTP and
+failed after reload. Add a second job-owned HTTPS listener to the existing hosted
+Caddy fixture, trust its ephemeral certificate in the actual Chromium/Firefox/
+WebKit environments, and keep HTTPS validation enabled. Set public email links to
+that same origin before Java starts. Preserve the separate HTTP/audio proof and
+check its delivered appeal link against the configured public origin.
+
+Navigation cancellation classification will require an observed replacement
+navigation for an in-flight request from the prior document. Ordinary API failures,
+HTTP errors and connection failures remain fatal. No generic CORS or console-error
+suppression is authorized by this diagnosis.
+## Legacy enrollment boundary
+
+Keep the manager enrollment screen's server pagination, UUID search, enrolled dates,
+selectable invite link and custom-channel Preview links. Resolve navigation and
+canManagePeople before mounting its manager hooks. Visible non-manager Courses
+forward to their contextual People tab with query parameters preserved. Loading or
+unavailable navigation must never issue invite/roster requests. Replace the legacy
+fabricated Unassigned column with a link to the real People assignment workflow.
+## Hosted HTTPS and residual interaction checkpoint
+
+The hosted browser origin now has a separate ephemeral CA and signed server leaf.
+The CA is installed for the actual Chromium NSS database, bundled Firefox policy,
+OS/WebKit trust and Node API clients. Caddy serves HTTPS on9420 while existing9419
+moderation audio remains unchanged. Email links use the configured HTTPS public
+origin; the appeal test verifies that origin without rewriting a delivered link.
+Browser certificate checking and Secure/HttpOnly/Strict cookie assertions remain
+active. Hosted execution is the acceptance gate; local syntax checks prove no TLS
+behavior.
+
+Five browser-health tests pass. Requests interrupted by navigation are classified
+only after the current successful document replacement commits. Failed navigation,
+ordinary API aborts, HTTP errors and real connection failures remain failing. The
+classifier records failures until teardown so event ordering cannot prematurely
+suppress a request.
+
+Three legacy enrollment regressions pass. Manager hooks mount only after resolved
+canManagePeople; non-managers keep their cohort query when sent to People. Manager
+pagination, cohort switching, UUID search and custom-channel Preview links remain.
+The fabricated Unassigned column was removed in favor of the actual assignment
+workflow in People. Incoming call focus preserves the last page control when an
+incoming call disables that control before the modal mounts. The related Friends
+and enrollment tests total13 passing; lint/build and unchanged asset caps pass.

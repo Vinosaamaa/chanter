@@ -210,8 +210,9 @@ test('real moderation, active audio revocation and verified-email appeal', async
     await appeal.getByRole('button', { name: 'Send appeal link' }).click()
     await expect(appeal.getByRole('status')).toContainText('an appeal link will arrive shortly')
     const delivered = await emailText(appeal, 'Review your Chanter restriction', restriction)
-    const link = delivered.match(/http:\/\/127\.0\.0\.1:9419\/appeal#token=[A-Za-z0-9_-]+/)?.[0]
+    const link = delivered.match(/https?:\/\/[^\s<>]+\/appeal#token=[A-Za-z0-9_-]+/)?.[0]
     expect(Boolean(link)).toBe(true)
+    expect(new URL(link!).origin).toBe(new URL(process.env.CHANTER_PUBLIC_BASE_URL ?? origin).origin)
     // A delivered email link opens a fresh route; avoid a same-document hash-only navigation.
     await appeal.goto('/')
     await appeal.evaluate(url => { location.assign(url) }, link!)
