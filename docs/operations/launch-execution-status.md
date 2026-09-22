@@ -1,6 +1,6 @@
 # Chanter launch execution status
 
-Reviewed 2026-09-22 against accepted main `b76d32fd1b8e67cd766634b593a810c1b62ec739`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
+Reviewed 2026-09-22 against accepted main `dd6c900219473e42096937a733ca7b3f04603b20`, linked PRs and the owning GitHub issues. In-progress branch changes are identified separately below.
 
 Chanter has substantial local-beta product code. It has no verified public release. The previous audit's DNS and provider observations are historical; this review does not claim that those external systems have been rechecked.
 
@@ -29,7 +29,8 @@ controls PR328 are merged with passing merged-main checks. All workers are confi
 without a fast-mode override. Their issue branches and worktrees are preserved.
 PR329's private telemetry and database/configuration recovery foundation is also
 merged, with passing full application and native release checks plus merged-main
-verification. #331 now owns operational monitoring in a separate worktree.
+verification. PR334 monitoring is now merged, with both native staging checks and
+merged-main CI passing. Actual monitoring-provider acceptance remains under #331.
 
 The open dependency-update PRs and the older environment PR remain separate work. They have not been merged merely because individual test jobs passed. Dependency updates still need exact-head review and Engineering evidence.
 
@@ -47,9 +48,9 @@ The open dependency-update PRs and the older environment PR remain separate work
 | #249 | Administration, reports and moderation | PR333 merged with full CI/review, both native stages, real audio revocation/reconnect denial, emailed appeal/reversal and phone/desktop proof; merged-main checks passed; production operator enrollment remains |
 | #250 | Truthful free-beta mode or real paid billing | PR323 merged truthful free-beta mode and limits; final deployed accounting proof remains; paid billing is outside initial free beta |
 | #251 | Export, deletion, retention and accurate policy pages | Draft335 has bounded source exports, one-use browser downloads and terminal journal v2; actual source reapply, ownership/deletion and legal integration remain underway |
-| #252 | Monitoring, alerts, backups and proven restore | PR329 merged its foundation; draft334 adds private metrics/reports, source-map upload, backup heartbeat and evaluated dashboards/alerts; draft336 has dual-architecture seven-source recovery isolation proof. Combined release, complete file/deletion recovery and actual provider/operator receipts remain gates |
+| #252 | Monitoring, alerts, backups and proven restore | PR329 foundation and PR334 monitoring merged; private metrics/reports, source-map upload tooling, backup heartbeat and dashboard queries are tested; draft336 has seven-source recovery isolation proof. Combined release, complete file/deletion recovery and actual provider/operator receipts remain gates |
 | #253 | Trusted edge, proxy handling and abuse limits | PR328 merged with shared admission and request bounds; actual public proxy/provider proof remains |
-| #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; new capability integration and final whole-product/mobile/voice checks remain |
+| #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; #339 owns remaining integrated journeys, control review and responsive interaction fixes; final whole-product/mobile/voice checks remain |
 | #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |
 | #337 | Patched edge and frontend test dependencies | Compatible dependency fixes and the necessary minimal upstream Caddy backport are being verified against actual behavior and both native release architectures |
 

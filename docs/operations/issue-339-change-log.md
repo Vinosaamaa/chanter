@@ -1,0 +1,43 @@
+# Integrated product interaction review (#339)
+
+Repository: Vinosaamaa/chanter. Parent: #254. Lane: product integration and UI quality. Writer: root. Branch: codex/339-product-interaction. Intended PR: one draft linked to #339. Base: accepted dd6c900219473e42096937a733ca7b3f04603b20. Existing worktrees remain preserved.
+
+## Acceptance and design
+
+Keep the learning-desk-v3 design and the pinned frontend-design skill. This pass fixes actual interactions within its existing palette, type scale, responsive navigation and touch targets. Phone list/detail navigation must move keyboard focus into the visible pane and restore it to the chosen item on return. View changes must remain understandable without sight. Do not add another visual system or production fixture data.
+
+Review current route controls against their owning API, then exercise real roles and inspect responsive renderings. Fixtures prove layout and interaction with synthetic data only. Actual browser journeys prove the tested service path. Manual screen-reader and browser zoom checks, real-device audio, measured production performance and provider acceptance remain distinct gates.
+
+## Implementation plan
+
+1. Inventory current controls and existing browser coverage. Reproduce concrete defects with focused behavior tests before implementation.
+2. Fix owning components without enlarging initial asset budgets or changing authorization.
+3. Extend hosted real signed-in coverage to Firefox and WebKit as well as Chromium. Preserve anonymous/public coverage and private authenticated artifact boundaries.
+4. Integrate accepted #251, #332 and #337 before final union verification. Worker branches remain independently owned.
+5. Publish one issue-linked PR with a rich engineering record, receipt, implementation notes and system review. Complete exact-head CI, full CodeAnt, required release checks and merged-main verification.
+
+## Initial observations
+
+- The real signed-in CI job installs Chromium only; Firefox/WebKit currently have fixture coverage, not the final real product journey.
+- Friends mobile list/detail buttons change the visible pane without assigning focus to the newly visible pane. Verify with a failing regression before changing behavior.
+- Accepted moderation and monitoring are now on main. Lifecycle and recovery remain in progress. No public deployment is claimed.
+
+## First implementation checkpoint
+
+Friends and Inbox focus regressions failed on the original behavior and now pass:
+opening a detail pane focuses its heading, Back returns to the selected row, and
+completing the last notification focuses Inbox. The focused suite has 12 passing
+tests. Add friend now uses a native modal dialog instead of repeated document-level
+Tab/Escape handlers; synthetic DOM tests cover cancellation, and actual hosted
+browser tests cover focus containment, Escape, restoration and screenshots. The
+offline friend group now states its actual label and count.
+
+The real product configuration enumerates 42 tests across Chromium, Firefox,
+WebKit and existing viewport projects. This listing confirms discovery, not
+execution. CI installs all three engines for the signed-in job. Workflow syntax
+validation passes. Hosted execution and final union verification remain pending.
+
+The first build exceeded the existing core JavaScript budget. Native dialog
+handling and consolidation of its duplicate/obsolete styles remove custom code
+without raising core, CSS or capability allowances. All prior worktrees remain
+preserved; no local preview server was started.

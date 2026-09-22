@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -109,6 +109,8 @@ describe('FriendsPage', () => {
     vi.clearAllMocks()
     mocks.preferredFriendId = null
     mocks.hub.selectedFriendId = 'friend-alex'
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value() { this.setAttribute('open', '') } })
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value() { this.removeAttribute('open') } })
   })
 
   it('renders real friend profiles, exact DM context, and no demo fallback', () => {
@@ -129,8 +131,10 @@ describe('FriendsPage', () => {
     await user.click(within(screen.getByRole('complementary')).getByRole('button', { name: /Alex Chen/i }))
     expect(mocks.preferredFriendId).toBe('friend-alex')
     expect(view.container.querySelector('.friends-page')).toHaveClass('conversation-open')
+    expect(screen.getByRole('heading', { name: 'Alex Chen' })).toHaveFocus()
     await user.click(screen.getByRole('button', { name: 'Back to friends' }))
     expect(view.container.querySelector('.friends-page')).not.toHaveClass('conversation-open')
+    expect(within(screen.getByRole('complementary')).getByRole('button', { name: /Alex Chen/i })).toHaveFocus()
   })
 
   it('keeps the friend list available when a deep link has no active friend', () => {
@@ -169,7 +173,7 @@ describe('FriendsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Add friend' }))
 
     expect(screen.getByRole('textbox', { name: 'Search co-members' })).toHaveFocus()
-    await user.keyboard('{Escape}')
+    fireEvent(screen.getByRole('dialog', { name: 'Add a friend' }), new Event('cancel', { cancelable: true }))
     expect(screen.queryByRole('dialog', { name: 'Add a friend' })).not.toBeInTheDocument()
   })
 

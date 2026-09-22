@@ -57,6 +57,7 @@ describe('InboxPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    markDoneMutate.mockReset()
     useAuthStore.setState({
       accessToken: 'access-token',
       user: { id: 'user-1', email: 'sam@example.com', displayName: 'Sam Lee' },
@@ -89,10 +90,25 @@ describe('InboxPage', () => {
 
     await user.click(screen.getByRole('button', { name: /Your question was answered/i }))
     expect(markReadMutate).toHaveBeenCalledWith('n1')
+    expect(screen.getByRole('heading', { name: 'Your question was answered' })).toHaveFocus()
 
     await user.click(screen.getByRole('button', { name: /Mark done/i }))
     expect(markDoneMutate).toHaveBeenCalledWith('n1', expect.any(Object))
     await user.click(screen.getByRole('button', { name: 'Back to inbox' }))
+    expect(screen.getByRole('region', { name: 'Inbox' })).not.toHaveClass('reading-open')
+    expect(screen.getByRole('button', { name: /Your question was answered/i })).toHaveFocus()
+  })
+
+  it('returns focus to the Inbox heading after completing the last notification', async () => {
+    const user = userEvent.setup()
+    markDoneMutate.mockImplementation((_id, options) => {
+      hooks.useNotificationsQuery.mockReturnValue({ data: { notifications: [] }, isLoading: false, isError: false })
+      options.onSuccess()
+    })
+    renderInbox()
+    await user.click(screen.getByRole('button', { name: /Your question was answered/i }))
+    await user.click(screen.getByRole('button', { name: /Mark done/i }))
+    expect(screen.getByRole('heading', { name: 'Inbox' })).toHaveFocus()
     expect(screen.getByRole('region', { name: 'Inbox' })).not.toHaveClass('reading-open')
   })
 

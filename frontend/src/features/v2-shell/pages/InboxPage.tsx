@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Check, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -50,6 +50,10 @@ export function InboxPage() {
   const [filter, setFilter] = useState<InboxFilter>('All')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [readingOpen, setReadingOpen] = useState(false)
+  const listPaneRef = useRef<HTMLElement>(null)
+  const listHeadingRef = useRef<HTMLHeadingElement>(null)
+  const readingHeadingRef = useRef<HTMLHeadingElement>(null)
+  const wasReadingOpen = useRef(false)
   const notificationsQuery = useNotificationsQuery(FILTER_TO_API[filter], 'OPEN')
   const markRead = useMarkNotificationReadMutation()
   const markDone = useMarkNotificationDoneMutation()
@@ -65,6 +69,18 @@ export function InboxPage() {
   }, [notifications, selectedId])
 
   const activeId = selected?.id ?? null
+  const showingReading = readingOpen && activeId !== null
+
+  useEffect(() => {
+    if (showingReading) {
+      readingHeadingRef.current?.focus()
+    } else if (wasReadingOpen.current) {
+      const selectedRow = listPaneRef.current?.querySelector<HTMLButtonElement>('button[aria-current="true"]')
+      const target = selectedRow ?? listHeadingRef.current
+      target?.focus()
+    }
+    wasReadingOpen.current = showingReading
+  }, [showingReading, activeId])
 
   const todayItems = notifications.filter((item) => !isYesterday(item.createdAt))
   const yesterdayItems = notifications.filter((item) => isYesterday(item.createdAt))
@@ -89,9 +105,9 @@ export function InboxPage() {
   }
 
   return (
-    <section className={`v2-workspace-page inbox-page${readingOpen ? ' reading-open' : ''}`} aria-label="Inbox">
-      <aside className="inbox-thread-pane">
-        <h1>Inbox</h1>
+    <section className={`v2-workspace-page inbox-page${showingReading ? ' reading-open' : ''}`} aria-label="Inbox">
+      <aside className="inbox-thread-pane" ref={listPaneRef}>
+        <h1 ref={listHeadingRef} tabIndex={-1}>Inbox</h1>
         <div className="v2-chip-row" role="group" aria-label="Inbox filters">
           {(['All', 'Mentions', 'Announcements'] as InboxFilter[]).map((item) => (
             <button
@@ -154,7 +170,7 @@ export function InboxPage() {
           <>
             <header className="reading-header">
               <div>
-                <h2>{selected.title}</h2>
+                <h2 ref={readingHeadingRef} tabIndex={-1}>{selected.title}</h2>
                 <p>
                   {selected.courseLabel ? <span>{selected.courseLabel}</span> : <span>Inbox</span>}
                   {' · '}
@@ -218,6 +234,7 @@ function NotificationRow({
     <button
       type="button"
       className={active ? 'active' : undefined}
+      aria-current={active ? 'true' : undefined}
       onClick={() => onSelect(thread.id)}
     >
       <i className={`thread-dot ${toneFor(thread)}${thread.unread ? '' : ' read'}`} />

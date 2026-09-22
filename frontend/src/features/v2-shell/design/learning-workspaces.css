@@ -301,6 +301,8 @@
 }
 
 .v2-app-shell .settings-home-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--blue); font-size: 13px; margin-bottom: 20px; }
+/* Native dialog keeps the background inert and restores the invoking control. */
+.v2-app-shell dialog.add-friend-modal::backdrop { background: rgb(25 44 70 / 40%); }
 /* Refinements from actual phone/desktop browser review. */
 .v2-app-shell .friends-page { gap: 0; padding: 0; }
 .v2-app-shell :is(.friends-list-pane,.dm-pane) { border-radius: 0; border-top: 0; border-bottom: 0; border-left: 0; }

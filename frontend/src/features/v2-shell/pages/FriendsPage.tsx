@@ -37,6 +37,10 @@ export function FriendsPage() {
   const [draft, setDraft] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [conversationOpen, setConversationOpen] = useState(Boolean(searchParams.get('friend')))
+  const listPaneRef = useRef<HTMLElement>(null)
+  const listHeadingRef = useRef<HTMLHeadingElement>(null)
+  const conversationHeadingRef = useRef<HTMLHeadingElement>(null)
+  const wasConversationOpen = useRef(false)
   const friendRows = useMemo(
     () =>
       hub.friends.map((friend) => ({
@@ -48,6 +52,17 @@ export function FriendsPage() {
     [hub.friends, hub.presenceByFriendId, relationships.profilesById],
   )
   const active = friendRows.find((friend) => friend.id === hub.selectedFriendId) ?? null
+  useEffect(() => {
+    const showingConversation = conversationOpen && Boolean(active?.id)
+    if (showingConversation) {
+      conversationHeadingRef.current?.focus()
+    } else if (wasConversationOpen.current) {
+      const selectedFriend = listPaneRef.current?.querySelector<HTMLButtonElement>('button[aria-current="true"]')
+      const target = selectedFriend ?? listHeadingRef.current
+      target?.focus()
+    }
+    wasConversationOpen.current = showingConversation
+  }, [conversationOpen, active?.id])
   const callFriendName = hub.callState.peerUserId
     ? relationships.profilesById[hub.callState.peerUserId]?.displayName ?? 'Friend'
     : active?.name ?? 'Friend'
@@ -83,9 +98,9 @@ export function FriendsPage() {
 
   return (
     <div className={`friends-page${conversationOpen && active ? ' conversation-open' : ''}`}>
-      <aside className="friends-list-pane">
+      <aside className="friends-list-pane" ref={listPaneRef}>
         <header>
-          <h1>Friends</h1>
+          <h1 ref={listHeadingRef} tabIndex={-1}>Friends</h1>
           <button type="button" onClick={() => setShowAdd(true)}>
             Add friend <Plus />
           </button>
@@ -132,7 +147,7 @@ export function FriendsPage() {
                 online={active.online}
               />
               <div>
-                <h2>{active.name}</h2>
+                <h2 ref={conversationHeadingRef} tabIndex={-1}>{active.name}</h2>
                 <ReportLink type="USER" id={active.id} label="Report account" />
                 <p className={active.online ? undefined : 'offline'}>
                   {active.online ? 'Online' : 'Offline'}
@@ -272,7 +287,7 @@ function FriendList({
         />
       ))}
       <h2>
-        All friends <b>{friends.length}</b>
+        Offline <b>{offline.length}</b>
       </h2>
       {offline.map((friend) => (
         <FriendButton
@@ -439,8 +454,7 @@ function AddFriendModal({
   onClose: () => void
 }) {
   const [search, setSearch] = useState('')
-  const dialogRef = useRef<HTMLElement>(null)
-  const searchRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const normalizedSearch = search.trim().toLowerCase()
   const entries = relationships.directoryEntries.filter(
     (entry) =>
@@ -450,44 +464,17 @@ function AddFriendModal({
   )
 
   useEffect(() => {
-    searchRef.current?.focus()
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-        return
-      }
-      if (event.key !== 'Tab') return
-
-      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      )
-      if (!focusable?.length) return
-
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+    const dialog = dialogRef.current
+    dialog?.showModal()
+    return () => dialog?.close()
+  }, [])
 
   return (
-    <div className="v2-modal-backdrop" role="presentation">
-      <section
+      <dialog
         ref={dialogRef}
         className="add-friend-modal"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="add-friend-title"
+        onCancel={onClose}
       >
         <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
           <X />
@@ -496,7 +483,7 @@ function AddFriendModal({
         <h2 id="add-friend-title">Add a friend</h2>
         <p>Connect with someone from a shared Study Server.</p>
         <input
-          ref={searchRef}
+          autoFocus
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search co-members"
@@ -542,8 +529,7 @@ function AddFriendModal({
             {relationships.actionError}
           </p>
         ) : null}
-      </section>
-    </div>
+      </dialog>
   )
 }
 
