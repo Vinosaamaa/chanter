@@ -16,7 +16,9 @@ public class NativeRequestRepository {
     private final JdbcClient jdbc;
     private final Clock clock;
     public NativeRequestRepository(JdbcClient jdbc, Clock clock) { this.jdbc = jdbc; this.clock = clock; }
+    @org.springframework.transaction.annotation.Transactional
     public void issue(Request request) {
+        requireWritable(request);
         expire();
         jdbc.sql("""
                 INSERT INTO native_companion_requests(id,channel_id,question_id,user_id,session_id,installation_id,model,
@@ -27,7 +29,9 @@ public class NativeRequestRepository {
                 .param("model", request.model()).param("evidence", request.evidenceJson()).param("prompt", request.promptHash())
                 .param("hash", request.evidenceHash()).param("until", request.acceptUntil().atOffset(ZoneOffset.UTC)).update();
     }
+    @org.springframework.transaction.annotation.Transactional
     public Request claim(UUID id, UUID channel, UUID question, UUID user, UUID session, UUID installation) {
+        new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbc).require("ACCOUNT",user);
         expire();
         var row = jdbc.sql("SELECT * FROM native_companion_requests WHERE id=:id AND user_id=:user AND session_id=:session")
                 .param("id", id).param("user", user).param("session", session).query((rs, number) -> new Request(
@@ -38,6 +42,7 @@ public class NativeRequestRepository {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Native request not found"));
         if (!row.channel().equals(channel) || !row.question().equals(question) || !row.installation().equals(installation))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Native request scope mismatch");
+        requireWritable(row);
         int changed = jdbc.sql("""
                 UPDATE native_companion_requests SET outcome='ACCEPTING'
                 WHERE id=:id AND outcome='ISSUED' AND accept_until>:now AND evidence_json IS NOT NULL
@@ -62,4 +67,22 @@ public class NativeRequestRepository {
     }
     public record Request(UUID id, UUID channel, UUID question, UUID user, UUID session, UUID installation, String model,
                           String evidenceJson, String promptHash, String evidenceHash, Instant acceptUntil) {}
+
+    private void requireWritable(Request request) {
+        var authority=new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbc);
+        authority.require("ACCOUNT",request.user()); authority.requireScope(null,request.channel());
+        UUID server=jdbc.sql("SELECT study_server_id FROM ai_generation_usage WHERE id=:id AND learner_user_id=:user")
+                .param("id",request.id()).param("user",request.user()).query(UUID.class).optional()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,"Native reservation unavailable"));
+        authority.require("STUDY_SERVER",server);
+        if(request.evidenceJson()==null) throw new ResponseStatusException(HttpStatus.CONFLICT,"Native evidence unavailable");
+        try {
+            var evidence=new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.evidenceJson(),
+                    com.chanter.agent.application.GroundedSupportQuestionService.NativeEvidence.class);
+            if(evidence==null || !server.equals(evidence.studyServerId()) || evidence.citations()==null)
+                throw new IllegalArgumentException("Native evidence scope changed");
+            authority.requireScope(evidence.courseId(),request.channel());
+            evidence.resourceIds().forEach(authority::requireResource);
+        } catch(java.io.IOException invalid) { throw new ResponseStatusException(HttpStatus.CONFLICT,"Native evidence unavailable"); }
+    }
 }

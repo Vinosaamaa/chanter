@@ -37,14 +37,16 @@ class AgentRecoveryInvalidationTest {
         var nativeRequests=new NativeRequestRepository(JdbcClient.create(jdbc),clock);
         var requests=new java.util.ArrayList<NativeRequestRepository.Request>();
         for(String outcome:List.of("ISSUED","ACCEPTING","ACCEPTED")) {
-            UUID id=UUID.randomUUID(),user=UUID.randomUUID(),question=UUID.randomUUID();
+            UUID id=UUID.randomUUID(),user=UUID.randomUUID(),question=UUID.randomUUID(),server=UUID.randomUUID();
             jdbc.update("""
                 INSERT INTO ai_generation_usage(id,study_server_id,support_question_id,learner_user_id,selection_id,provider,requested_model,reserved_tokens,measured,outcome,created_at)
                 VALUES (?,?,?,?,'codex-subscription','codex-native','fixture-model',5000,FALSE,'RESERVED',?)
-                """,id,UUID.randomUUID(),question,user,Timestamp.from(now));
+                """,id,server,question,user,Timestamp.from(now));
+            String evidence=new ObjectMapper().writeValueAsString(new com.chanter.agent.application.GroundedSupportQuestionService.NativeEvidence(
+                    server,UUID.randomUUID(),"private evidence",List.of()));
             var request=new NativeRequestRepository.Request(id,UUID.randomUUID(),question,user,UUID.randomUUID(),UUID.randomUUID(),
-                    "fixture-model","private evidence","a".repeat(64),"b".repeat(64),now.plusSeconds(300));
-            nativeRequests.issue(request);
+                    "fixture-model",evidence,"a".repeat(64),"b".repeat(64),now.plusSeconds(300));
+            new TransactionTemplate(transactions).executeWithoutResult(status -> nativeRequests.issue(request));
             jdbc.update("UPDATE native_companion_requests SET outcome=?,evidence_json=? WHERE id=?",outcome,
                     outcome.equals("ACCEPTED")?null:"private evidence",id);
             requests.add(request);
@@ -61,7 +63,7 @@ class AgentRecoveryInvalidationTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM native_companion_requests WHERE evidence_json IS NOT NULL",Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM native_companion_requests WHERE outcome='REJECTED'",Integer.class)).isEqualTo(2);
         for(var request:requests.subList(0,2)) {
-            assertThatThrownBy(() -> nativeRequests.claim(request.id(),request.channel(),request.question(),request.user(),request.session(),request.installation()))
+            assertThatThrownBy(() -> new TransactionTemplate(transactions).execute(status -> nativeRequests.claim(request.id(),request.channel(),request.question(),request.user(),request.session(),request.installation())))
                     .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
             nativeRequests.finish(request.id(),true,10,20);
         }

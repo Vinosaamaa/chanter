@@ -28,6 +28,8 @@ public class AiGenerationLedger {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UUID reserve(UUID server, UUID question, UUID user, String selection, Model model) {
+        var authority=new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbc);
+        authority.require("ACCOUNT",user); authority.require("STUDY_SERVER",server);
         // One existing installation row serializes all reservations in this Study Server, on PostgreSQL and H2.
         jdbc.sql("SELECT id FROM study_assistant_installs WHERE study_server_id=:server FOR UPDATE")
                 .param("server", server).query(UUID.class).optional()

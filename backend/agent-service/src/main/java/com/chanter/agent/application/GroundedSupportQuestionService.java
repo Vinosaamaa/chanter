@@ -267,6 +267,7 @@ public class GroundedSupportQuestionService {
 
     public record NativeEvidence(UUID studyServerId, UUID courseId, String question, List<SourceCitation> citations) {
         public NativeEvidence { citations = List.copyOf(citations); }
+        public List<UUID> resourceIds() { return citations.stream().map(SourceCitation::resourceId).distinct().toList(); }
     }
 
     private GroundingResult retrieveEvidence(UUID channelId, UUID learnerUserId, SupportQuestionChannelAccess access,

@@ -112,6 +112,7 @@ public class JdbcStudyAssistantAnswerRepository implements StudyAssistantAnswerR
     @Override
     @Transactional
     public boolean markHelpful(UUID answerId, UUID userId) {
+        new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbcClient).require("ACCOUNT",userId);
         if (isHelpfulMarked(answerId, userId)) {
             return true;
         }
@@ -174,6 +175,10 @@ public class JdbcStudyAssistantAnswerRepository implements StudyAssistantAnswerR
             String llmModel,
             boolean llmUsed
     ) {
+        var authority=new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbcClient);
+        authority.require("ACCOUNT",answer.learnerUserId()); authority.require("STUDY_SERVER",answer.studyServerId());
+        authority.requireScope(null,answer.channelId());
+        answer.sources().forEach(source -> authority.requireResource(source.resourceId()));
         try {
             insertAnswer(answer, invocationType, llmProvider, llmModel, llmUsed);
         } catch (DuplicateKeyException exception) {

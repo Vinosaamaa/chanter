@@ -27,6 +27,9 @@ public class ResourceIngestionJobs {
     @Transactional(propagation = Propagation.MANDATORY)
     public void accept(DurableEvent event, ResourceChanged change) {
         change.validate();
+        if(!new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbc).resourceWritable(change.resourceId(),change.courseId(),change.studyServerId())) {
+            chunks.deleteByResourceId(change.resourceId()); return;
+        }
         jdbc.sql("INSERT INTO resource_index_lifecycle(resource_id) VALUES (:id) ON CONFLICT DO NOTHING")
                 .param("id", change.resourceId()).update();
         var previous = jdbc.sql("SELECT * FROM resource_index_lifecycle WHERE resource_id=:id FOR UPDATE")
@@ -58,6 +61,7 @@ public class ResourceIngestionJobs {
 
     @Transactional
     public Optional<Job> claim() {
+        var authority=new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbc); authority.lock();
         var now = now();
         jdbc.sql("""
                 UPDATE resource_index_lifecycle SET generation=generation+1,status='FAILED',job_lease_id=NULL,job_lease_until=NULL
@@ -76,6 +80,9 @@ public class ResourceIngestionJobs {
                         rs.getString("file_name"), rs.getLong("generation") + 1, UUID.randomUUID())).optional();
         if (candidate.isEmpty()) return Optional.empty();
         var job = candidate.get();
+        if(!authority.resourceWritable(job.resourceId(),job.courseId(),job.studyServerId())) {
+            chunks.deleteByResourceId(job.resourceId()); return Optional.empty();
+        }
         jdbc.sql("""
                 UPDATE resource_index_lifecycle SET generation=:generation,status='PROCESSING',job_attempts=job_attempts+1,
                     job_lease_id=:lease,job_lease_until=:until,job_retry_at=NULL WHERE resource_id=:id

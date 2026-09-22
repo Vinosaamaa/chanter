@@ -146,6 +146,15 @@ public final class ExportSnapshotStore {
         });
     }
 
+    /** Source content erasure invalidates bounded temporary copies without permanently deleting unrelated accounts. */
+    public void invalidateRetained() {
+        tx.executeWithoutResult(status -> {
+            lock();
+            jdbc.update("DELETE FROM data_export_entries");
+            jdbc.update("UPDATE data_export_snapshots SET status='CANCELLED',byte_size=0 WHERE status='READY'");
+        });
+    }
+
     /** Cancels one export without deleting the account; rejects a delayed capture with the same job ID. */
     public void cancelJob(Request request) {
         request.validate(clock.instant());

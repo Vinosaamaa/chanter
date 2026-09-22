@@ -32,6 +32,7 @@ public class EmbeddingRebuildJobs {
                 .param("now",now()).update();
     }
     @Transactional public Optional<Job> claim() {
+        new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbc).lock();
         var now=now();
         var models=new ArrayList<>(versions.writableIds());
         String active=versions.active().id();models.remove(active);models.addFirst(active);
@@ -68,6 +69,7 @@ public class EmbeddingRebuildJobs {
         return Optional.empty();
     }
     @Transactional public boolean complete(Job job,List<ResourceChunkEmbedding> prepared) {
+        if(!new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbc).indexedResourceWritable(job.resourceId())) return false;
         var current=jdbc.sql("SELECT generation,deleted,status FROM resource_index_lifecycle WHERE resource_id=:id FOR UPDATE")
                 .param("id",job.resourceId()).query((rs,row)->rs.getLong(1)==job.snapshot().generation() && !rs.getBoolean(2) && "READY".equals(rs.getString(3)))
                 .optional().orElse(false);
