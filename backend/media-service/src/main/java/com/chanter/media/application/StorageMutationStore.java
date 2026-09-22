@@ -93,6 +93,8 @@ public class StorageMutationStore {
         requireIdentity(inventoryId);
         tx.executeWithoutResult(status -> {
             var current = lock(); requireMatching(current, inventoryId);
+            if (jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory", Integer.class) != 0)
+                throw new IllegalStateException("Discard the local inventory snapshot before releasing maintenance");
             jdbc.update("UPDATE media_storage_budget SET maintenance_inventory_id=NULL,maintenance_started_at=NULL WHERE id=1");
         });
     }

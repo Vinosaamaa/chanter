@@ -59,3 +59,13 @@ unverified current authority or incomplete references cannot qualify a restore.
 The accepted encrypted byte archive supplies read-back integrity, not ownership.
 The full canonical source fixture and dual-architecture PostgreSQL/object proof
 remain integration requirements. Recovery and public cutover remain disabled.
+
+The disabled metadata API now captures a temporary source-owned snapshot with
+bounded reference pages. It rejects incomplete source authority, writes, leases,
+namespace and current/derived Study Server scope. Source course identity and
+retained migration references are explicit; source reservation is not described
+as verified physical existence. Both recovery mode and explicit inventory
+activation are necessary to construct it. A snapshot cannot release the global
+fence, authorize a byte write, or substitute for provider/original-writer closure.
+Query and strict-input regressions pass, as does affected-module verification;
+independent review found no concrete blocker in this metadata boundary.

@@ -31,7 +31,19 @@ establish actual provider closure.
 
 Full affected media/common Maven verification passes at the adapter checkpoint.
 
-Coordinated source lifecycle hooks, inventory qualification, full object
+The next disabled metadata slice adds one bounded, temporary source-owned
+inventory snapshot and private fence/capture/page/discard routes. Exact applied
+authority, beyond-prefix targets, unknown mutations/source writes, leases,
+namespace and current/derived server scope are checked in terminal-before-budget
+lock order. Provider version remains null and source reservation is described as
+`sourceRetained`, not physical byte evidence. There is no maintenance release or
+byte-write endpoint. Exact final affected-module verification passes, including
+six inventory, four controller/absence and ten mutation/adapter checks. The media
+suite reports 95 tests, zero failures/errors and five native-only skips. Independent
+read-only review found no concrete query/API/migration blocker and preserved the
+explicit source-union, PostgreSQL, bytes and external-closure limitations.
+
+Coordinated source lifecycle hooks, physical inventory qualification, full object
 restoration and actual #251 canonical replay are still in progress.
 The store alone proves no provider closure. No recovery capability, source API,
 provider account or public cutover is enabled by this checkpoint.

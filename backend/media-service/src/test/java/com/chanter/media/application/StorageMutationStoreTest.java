@@ -151,4 +151,45 @@ class StorageMutationStoreTest {
             } finally { next.close(); }
         } finally { server.stop(0); }
     }
+
+    @Test void lostSuccessfulProviderSettlementNeverBecomesAZeroOutstandingReceipt() throws Exception {
+        var requests = new java.util.concurrent.atomic.AtomicInteger();
+        var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            requests.incrementAndGet(); exchange.getRequestBody().readAllBytes();
+            exchange.sendResponseHeaders(204, -1); exchange.close();
+        }); server.start();
+        var interrupted = org.mockito.Mockito.spy(store);
+        org.mockito.Mockito.doThrow(new IllegalStateException("fixture settlement commit unavailable")).when(interrupted).settled(org.mockito.ArgumentMatchers.any());
+        var adapter = new com.chanter.media.infra.S3PrivateResourceStorage(org.mockito.Mockito.mock(ResourceLifecycle.class), interrupted,
+                "http://127.0.0.1:" + server.getAddress().getPort(), "us-east-1", "fixture-bucket", "fixture-key", "fixture-secret", true);
+        String key = key();
+        try {
+            assertThatThrownBy(() -> adapter.delete(key)).hasMessage("fixture settlement commit unavailable");
+            assertThat(requests.get()).isEqualTo(1);
+            assertThat(restarted().fence(UUID.randomUUID()).unsettledMutations()).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT outcome FROM media_storage_mutations WHERE object_key=?", String.class, key)).isEqualTo("ACTIVE");
+        } finally { adapter.close(); server.stop(0); }
+    }
+
+    @Test void remoteAdapterRejectsSourceTransactionBeforeAnyProviderOrBudgetCall() throws Exception {
+        var requests = new java.util.concurrent.atomic.AtomicInteger();
+        var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> { requests.incrementAndGet(); exchange.sendResponseHeaders(204, -1); exchange.close(); });
+        server.start();
+        var lifecycle = org.mockito.Mockito.mock(ResourceLifecycle.class);
+        var adapter = new com.chanter.media.infra.S3PrivateResourceStorage(lifecycle, store,
+                "http://127.0.0.1:" + server.getAddress().getPort(), "us-east-1", "fixture-bucket", "fixture-key", "fixture-secret", true);
+        try {
+            var tx = new org.springframework.transaction.support.TransactionTemplate(transactions);
+            assertThatThrownBy(() -> tx.executeWithoutResult(status -> {
+                jdbc.queryForObject("SELECT id FROM media_storage_budget WHERE id=1 FOR UPDATE", Integer.class);
+                try { adapter.delete(key()); }
+                catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); }
+            })).hasRootCauseMessage("Physical storage accounting must run outside source transactions");
+            assertThat(requests.get()).isZero();
+            org.mockito.Mockito.verify(lifecycle, org.mockito.Mockito.never()).countRequest(org.mockito.ArgumentMatchers.anyBoolean());
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations", Integer.class)).isZero();
+        } finally { adapter.close(); server.stop(0); }
+    }
 }
