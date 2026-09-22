@@ -455,6 +455,7 @@ function AddFriendModal({
 }) {
   const [search, setSearch] = useState('')
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
   const normalizedSearch = search.trim().toLowerCase()
   const entries = relationships.directoryEntries.filter(
     (entry) =>
@@ -466,24 +467,30 @@ function AddFriendModal({
   useEffect(() => {
     const dialog = dialogRef.current
     dialog?.showModal()
+    searchRef.current?.focus()
     return () => dialog?.close()
   }, [])
+
+  const close = () => {
+    dialogRef.current?.close()
+    onClose()
+  }
 
   return (
       <dialog
         ref={dialogRef}
         className="add-friend-modal"
         aria-labelledby="add-friend-title"
-        onCancel={onClose}
+        onCancel={close}
       >
-        <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
+        <button type="button" className="modal-close" onClick={close} aria-label="Close">
           <X />
         </button>
         <UserPlus />
         <h2 id="add-friend-title">Add a friend</h2>
         <p>Connect with someone from a shared Study Server.</p>
         <input
-          autoFocus
+          ref={searchRef}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search co-members"

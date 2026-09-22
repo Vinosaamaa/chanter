@@ -193,8 +193,22 @@ test('fixture UI phone Inbox marks a notification done and returns to the list',
   expect((await saved).status()).toBe(200)
   await expect(page.locator('.inbox-thread-pane')).toBeVisible()
   await expect(page.locator('.inbox-thread-list')).not.toContainText('A fresh starting point for this week')
-  await expect(page.getByRole('heading', { name: 'Inbox', exact: true })).toBeFocused()
+  await expect(page.locator('.inbox-thread-list').getByRole('button', { name: /Alexandra mentioned you/ })).toBeFocused()
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-inbox-completed-390.png') })
+})
+
+test('fixture UI phone Inbox restores its heading when the last notification is completed', async ({ page }) => {
+  await page.route('**/api/v1/notifications?*', async route => {
+    const response = await route.fetch()
+    const data = await response.json() as { notifications: Array<{ id: string }> }
+    await route.fulfill({ response, json: { ...data, notifications: data.notifications.filter(item => item.id === 'visual-notification') } })
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/app/inbox')
+  await page.locator('.inbox-thread-list button').click()
+  await page.getByRole('button', { name: 'Mark done', exact: true }).click()
+  await expect(page.getByText('No open notifications.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Inbox', exact: true })).toBeFocused()
 })
 
 test('fixture UI phone Questions returns from its reading pane', async ({ page }, testInfo) => {
