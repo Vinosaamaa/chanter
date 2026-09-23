@@ -3,6 +3,7 @@ package com.chanter.community.application;
 import com.chanter.community.domain.AuthUserProfile;
 import com.chanter.community.domain.ChannelKind;
 import com.chanter.community.domain.Cohort;
+import com.chanter.community.domain.CohortEnrollmentPolicy;
 import com.chanter.community.domain.CohortOfficeHoursAccess;
 import com.chanter.community.domain.CohortTaQueueAccess;
 import com.chanter.community.domain.CohortEnrollment;
@@ -70,12 +71,27 @@ public class CourseService {
             String description,
             String cohortName
     ) {
+        return createCourse(studyServerId, ownerUserId, title, description, cohortName, null);
+    }
+
+    public CourseLifecycle createCourse(
+            UUID studyServerId,
+            UUID ownerUserId,
+            String title,
+            String description,
+            String cohortName,
+            CohortEnrollmentPolicy enrollmentPolicy
+    ) {
         requireStudyServerOwner(studyServerId, ownerUserId);
 
         String normalizedTitle = title.trim();
         String normalizedDescription = description == null || description.isBlank() ? null : description.trim();
 
         if (cohortName == null || cohortName.isBlank()) {
+            if (enrollmentPolicy != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Enrollment policy requires a first cohort");
+            }
             return courseRepository.saveDraftCourse(
                     studyServerId,
                     normalizedTitle,
@@ -97,7 +113,8 @@ public class CourseService {
                 clock.instant()
         );
 
-        courseRepository.save(course, normalizedDescription);
+        courseRepository.save(course, normalizedDescription,
+                enrollmentPolicy == null ? CohortEnrollmentPolicy.OPEN : enrollmentPolicy);
         return courseRepository.findCourseLifecycle(courseId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.INTERNAL_SERVER_ERROR,

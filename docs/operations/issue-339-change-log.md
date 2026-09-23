@@ -371,3 +371,11 @@ Roster pagination also now requests the surviving page after a successful respon
 reports fewer learners. Its failing regression passes after correction, including
 preservation of the offset during a failed read. All eight focused enrollment
 cases and focused lint pass. Existing authorization and paging-query keys remain.
+
+Accepted PR347 is integrated from main 2dfb6c30. The first-cohort policy insertion
+and the existing PostgreSQL repeated-enrollment correction merge independently.
+All eight discovery/policy cases and three enrollment smoke cases pass together.
+Actual PostgreSQL invitation, registration and repeat-join proof still awaits the
+new hosted product run. The old pinned account preview remains intentionally
+unusable until its source includes the accepted creation API; its exact changed-path
+guard must not be widened to conceal that dependency.

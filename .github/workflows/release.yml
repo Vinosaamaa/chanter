@@ -2,7 +2,7 @@ name: Release package
 
 on:
   pull_request:
-    paths: ['infra/production/**', 'scripts/deploy/**', 'scripts/upload-source-maps.mjs', 'infra/monitoring/sentry-cli.json', 'frontend/**', '.github/workflows/release.yml']
+    paths: ['backend/**', 'infra/production/**', 'scripts/deploy/**', 'scripts/upload-source-maps.mjs', 'infra/monitoring/sentry-cli.json', 'frontend/**', '.github/workflows/release.yml']
   workflow_dispatch:
     inputs:
       account_lifecycle_preview:

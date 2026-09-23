@@ -75,7 +75,7 @@ The final source/UI/recovery merge and release candidate have not been accepted.
 | #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |
 | #337 | Patched edge and frontend test dependencies | PR338 merged with full review, actual compatibility regressions and both native release architectures passing; no open dependency security alerts at acceptance |
 | #344 | Independent source-branch CI prerequisite | Draft345 extracts retained audio statistics and Teaching consolidation under unchanged budgets; exact-head checks and review remain required |
-| #346 | Explicit course creation access | PR347 validates and persists optional first-cohort enrollment policy; #339 adds the owner choice. Actual outsider invitations require accepted backend/UI integration |
+| #346 | Explicit course creation access | PR347 merged with full browser/review and both native release gates; #339 integrates its owner choice and passes eleven combined backend smoke cases. Actual outsider/repeat invitation and merged-main proof remain |
 
 Native subscription support is tracked separately in #316. Merged PR324 has
 verified Windows/Linux packaging, exact-origin pairing, isolated provider execution
