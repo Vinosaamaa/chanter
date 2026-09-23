@@ -39,6 +39,30 @@ runs against the source tuple before inserting the mutation in the same source
 transaction. Malformed bytes cannot leave a reservation, and no physical dispatch
 occurs. Actual dispatched operations still retain uncertainty on lost settlement.
 
+At `769d3dbb`, full review raised `4077906235` and `4077906240` about failed
+settlement after local cleanup or successful S3 I/O. Keeping the durable record is
+intentional; filesystem absence cannot replace an unconfirmed database commit.
+The raw-exception reporting was improved: both adapters now return typed UNKNOWN
+when completion accounting cannot commit, with the ACTIVE record retained. The
+provider regression first failed against the raw exception; local failed-copy
+cleanup and real remote completion are covered. No retry clears that uncertainty.
+
+The same review's missing `CanonicalLifecycleFixture.java` suggestion refers to
+the ordinary branch before its required source dependency. The explicit preview
+merges the pinned #251 commit containing that exact helper before compiling it.
+Both architectures already passed that union step. Ordinary release runs never
+invoke the helper. This is still a preview, not a claim that #251 was accepted.
+
+Additional preview suggestions are dispositioned as follows: retain independent
+native architecture builds rather than add artifact transfer; preserve canonical
+text UUID ordering and the early capacity bound; retain bounded private byte
+copies so verified bytes cannot change before dispatch; keep explicit disposable
+helper calls and exact source-text anchors for the pinned temporary union. A
+persistent helper/transport or new retry abstraction is not required. The ordinary
+release smoke path calls the fixture only under the explicit preview environment
+flag and never publishes that job. The four deferred participants and exact
+conflict list are named in the preview documentation/script.
+
 The sixteen custom suggestions in `5786511154` were assessed separately from the
 findings. No automatic suppression was added.
 

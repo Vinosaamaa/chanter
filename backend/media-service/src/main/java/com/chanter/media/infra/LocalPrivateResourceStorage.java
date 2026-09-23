@@ -74,14 +74,14 @@ public class LocalPrivateResourceStorage implements PrivateResourceStorage {
                 try { Files.deleteIfExists(target); }
                 catch (IOException | RuntimeException cleanupFailure) {
                     failure.addSuppressed(cleanupFailure);
-                    mutations.uncertain(mutation);
+                    complete(mutation,false);
                     throw new PutFailure(WriteOutcome.UNKNOWN, failure);
                 }
             }
-            mutations.settled(mutation);
-            throw new PutFailure(WriteOutcome.FINISHED, failure);
+            boolean finished=complete(mutation,true);
+            throw new PutFailure(finished ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN, failure);
         }
-        mutations.settled(mutation);
+        if (!complete(mutation,true)) throw new PutFailure(WriteOutcome.UNKNOWN,null);
     }
     @Override public InputStream open(String key) throws IOException {
         Path target = path(key);
@@ -94,10 +94,16 @@ public class LocalPrivateResourceStorage implements PrivateResourceStorage {
         catch (RuntimeException blocked) { throw new DeleteFailure(WriteOutcome.NOT_STARTED, blocked); }
         try { Files.deleteIfExists(path(key)); }
         catch (IOException | RuntimeException failure) {
-            mutations.settled(mutation);
-            throw new DeleteFailure(WriteOutcome.FINISHED, failure);
+            boolean finished=complete(mutation,true);
+            throw new DeleteFailure(finished ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN, failure);
         }
-        mutations.settled(mutation);
+        if (!complete(mutation,true)) throw new DeleteFailure(WriteOutcome.UNKNOWN,null);
+    }
+    private boolean complete(java.util.UUID mutation,boolean settled) {
+        try {
+            if (settled) mutations.settled(mutation); else mutations.uncertain(mutation);
+            return settled;
+        } catch (RuntimeException unconfirmed) { return false; }
     }
     @Override public Page list(String cursor) throws IOException {
         Path prefix = root.resolve(PREFIX);

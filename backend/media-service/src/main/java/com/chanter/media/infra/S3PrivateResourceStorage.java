@@ -98,15 +98,14 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
             client.putObject(PutObjectRequest.builder().bucket(bucket).key(key).ifNoneMatch("*").contentMD5(md5)
                     .contentType("application/octet-stream").metadata(Map.of("sha256", sha256)).build(), bytes==null ? RequestBody.fromFile(content) : RequestBody.fromBytes(bytes));
         } catch (S3Exception response) {
-            boolean rejected = definitiveRejection(response);
-            complete(mutation, rejected);
-            throw new PutFailure(rejected ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN, null);
+            boolean finished = complete(mutation, definitiveRejection(response));
+            throw new PutFailure(finished ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN, null);
         } catch (Exception exception) {
-            complete(mutation, !started);
-            throw new PutFailure(started ? WriteOutcome.UNKNOWN : WriteOutcome.NOT_STARTED,
+            boolean finished = complete(mutation, !started);
+            throw new PutFailure(finished ? WriteOutcome.NOT_STARTED : WriteOutcome.UNKNOWN,
                     exception instanceof ResponseStatusException ? exception : null);
         }
-        mutations.settled(mutation);
+        if (!complete(mutation,true)) throw new PutFailure(WriteOutcome.UNKNOWN,null);
     }
     @Override public InputStream open(String key) throws IOException {
         PrivateResourceStorage.requireKey(key);
@@ -125,16 +124,15 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
             started = true;
             client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
         } catch (S3Exception response) {
-            boolean rejected = definitiveRejection(response);
-            complete(mutation, rejected);
-            if (response.statusCode() == 404) return;
-            throw new DeleteFailure(rejected ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN, null);
+            boolean finished = complete(mutation, definitiveRejection(response));
+            if (response.statusCode() == 404 && finished) return;
+            throw new DeleteFailure(finished ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN, null);
         } catch (Exception exception) {
-            complete(mutation, !started);
-            throw new DeleteFailure(started ? WriteOutcome.UNKNOWN : WriteOutcome.NOT_STARTED,
+            boolean finished = complete(mutation, !started);
+            throw new DeleteFailure(finished ? WriteOutcome.NOT_STARTED : WriteOutcome.UNKNOWN,
                     exception instanceof ResponseStatusException ? exception : null);
         }
-        mutations.settled(mutation);
+        if (!complete(mutation,true)) throw new DeleteFailure(WriteOutcome.UNKNOWN,null);
     }
     @Override public Page list(String cursor) throws IOException {
         lifecycle.countRequest(false);
@@ -148,8 +146,11 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
     private static boolean definitiveRejection(S3Exception response) {
         return response.statusCode() >= 400 && response.statusCode() < 500 && response.statusCode() != 408;
     }
-    private void complete(java.util.UUID mutation, boolean settled) {
-        if (settled) mutations.settled(mutation); else mutations.uncertain(mutation);
+    private boolean complete(java.util.UUID mutation, boolean settled) {
+        try {
+            if (settled) mutations.settled(mutation); else mutations.uncertain(mutation);
+            return settled;
+        } catch (RuntimeException unconfirmed) { return false; }
     }
     @PreDestroy public void close() { client.close(); }
 }

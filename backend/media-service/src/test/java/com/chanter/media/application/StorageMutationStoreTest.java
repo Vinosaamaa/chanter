@@ -134,6 +134,19 @@ class StorageMutationStoreTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations",Integer.class)).isZero();
     }
 
+    @Test void removedLocalPartialStillReportsUnknownWhenSettlementCommitFails(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        var interrupted=org.mockito.Mockito.spy(store);
+        org.mockito.Mockito.doThrow(new IllegalStateException("fixture settlement unavailable")).when(interrupted).settled(org.mockito.ArgumentMatchers.any());
+        var adapter=new com.chanter.media.infra.LocalPrivateResourceStorage(directory.toString(),interrupted);
+        String key=key();
+        assertThatThrownBy(() -> adapter.put(key,directory.resolve("missing"),"a".repeat(64)))
+                .isInstanceOfSatisfying(PrivateResourceStorage.PutFailure.class,
+                        failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.UNKNOWN));
+        assertThat(directory.resolve(key)).doesNotExist();
+        assertThat(restarted().fence(UUID.randomUUID()).unsettledMutations()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT outcome FROM media_storage_mutations WHERE object_key=?",String.class,key)).isEqualTo("ACTIVE");
+    }
+
     @Test void remoteUnknownDeleteSurvivesAdapterRestartAndBlocksRedispatch() throws Exception {
         var requests = new java.util.concurrent.atomic.AtomicInteger();
         var response = new java.util.concurrent.atomic.AtomicInteger(500);
@@ -168,7 +181,7 @@ class StorageMutationStoreTest {
         } finally { server.stop(0); }
     }
 
-    @Test void lostSuccessfulProviderSettlementNeverBecomesAZeroOutstandingReceipt() throws Exception {
+    @Test void lostSuccessfulProviderSettlementNeverBecomesAZeroOutstandingReceipt(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
         var requests = new java.util.concurrent.atomic.AtomicInteger();
         var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
@@ -181,9 +194,14 @@ class StorageMutationStoreTest {
                 "http://127.0.0.1:" + server.getAddress().getPort(), "us-east-1", "fixture-bucket", "fixture-key", "fixture-secret", true);
         String key = key();
         try {
-            assertThatThrownBy(() -> adapter.delete(key)).hasMessage("fixture settlement commit unavailable");
-            assertThat(requests.get()).isEqualTo(1);
-            assertThat(restarted().fence(UUID.randomUUID()).unsettledMutations()).isEqualTo(1);
+            assertThatThrownBy(() -> adapter.delete(key)).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                    failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.UNKNOWN));
+            var content=directory.resolve("fixture"); java.nio.file.Files.writeString(content,"fixture");
+            assertThatThrownBy(() -> adapter.put(key(),content,UploadValidator.checksum(content)))
+                    .isInstanceOfSatisfying(PrivateResourceStorage.PutFailure.class,
+                            failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.UNKNOWN));
+            assertThat(requests.get()).isEqualTo(2);
+            assertThat(restarted().fence(UUID.randomUUID()).unsettledMutations()).isEqualTo(2);
             assertThat(jdbc.queryForObject("SELECT outcome FROM media_storage_mutations WHERE object_key=?", String.class, key)).isEqualTo("ACTIVE");
         } finally { adapter.close(); server.stop(0); }
     }
