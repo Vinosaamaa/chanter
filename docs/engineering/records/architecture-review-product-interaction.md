@@ -113,3 +113,16 @@ After the Teaching readiness correction, the actual account dependency preview
 passed all 48 browser journeys without retries. The source preview now requires
 the corrected post-canonical retry backend checkpoint and identical infrastructure;
 its real-service result remains pending independently of component/browser fixtures.
+
+The pinned source case passed on its first attempt in all three real browser engines;
+one separate registration case retried on an interrupted font load. Intentional
+sign-in navigation now waits for the prior document's font readiness, preserving
+strict health checks. The published head also passed 335 responsive cases and full CI.
+
+Review then exposed a wrong-target reply draft when history replaced a missing
+selected question. Selection initializes only once per session/channel; explicit
+selection survives refresh. Staff drafts retain their question binding and submission
+rejects any mismatch synchronously, even if form submission bypasses the disabled
+button. Removed questions preserve read-only text, and private context changes remount
+the page. Pane focus follows explicit user intent. Six new regressions and independent
+review support the correction; current-head hosted and final union gates remain.

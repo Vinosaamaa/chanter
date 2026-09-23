@@ -241,3 +241,20 @@ there as well. The next manual preview pins #251 backend 5a6e92e0, which fixes t
 post-registration server retry and has unchanged infrastructure. This enables the
 new source case without relaxing its expected 202/same-job contract. Current-head
 source and final union results remain pending.
+
+The source dependency preview at 51726bf6 passed its new real source scenario on the
+first attempt in all three browsers, including scanned bytes, denial after deletion,
+same-job retries after registration and requester status/reload. The broader run had
+50 first-attempt passes and one Firefox registration retry after a font download was
+cancelled during deliberate navigation. Sign-in now waits for the prior document's
+fonts before navigating; strict health errors remain unchanged. At the same published
+head all 335 responsive fixtures and full CI passed; the corrected form was inspected
+at phone, landscape and desktop sizes. Final complete erasure/recovery stays separate.
+
+A further Questions audit exposed a wrong-target staff reply draft after refresh.
+Initial selection is now distinct from explicit selection, and draft submission
+checks the original question synchronously. Missing questions retain read-only text,
+while session/course/channel/cohort changes isolate it. Focus follows explicit pane
+opening. Four pre-fix failures and six total added component/hook cases verify the
+correction; all 397 frontend tests, lint and unchanged build budgets pass. New hosted
+late-history and missing-question regressions still require execution.

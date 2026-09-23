@@ -96,3 +96,29 @@ explicit shared tag and discovery covers all three engines. Keep the small bound
 in-memory archive check (10); it avoids a retained file containing account data and
 rejects oversized input before concatenation. None of these suggestions justifies
 reducing coverage or broadening the preview's publishing authority.
+
+## Post-loop findings and launch-blocking draft correction
+
+Full reviews completed at 435a40b2, 7b66b5a4 and 51726bf6. The three general
+remediation rounds are complete; new non-blocking suggestions are dispositioned
+without extending that loop.
+
+- 4078134824: intentional fail-closed preview scope. Selecting the preview flag on
+  another branch cannot publish or execute the temporary dependency composition.
+  An explanatory invalid-selection job is optional follow-through; do not broaden
+  the preview or allow publication as a fallback. Final integration must retain both
+  preview flags' exclusions from packaging.
+- 4078136936/4078136946: the stated learner text loss was not reproduced. The actual
+  related staff path is blocking: a missing selected question could redirect a
+  retained reply draft to another question. Four regressions reproduced selection
+  takeover, wrong-target submission and hidden draft behavior. Selection now initializes
+  once per session/channel, explicit intent survives history refresh, and a staff
+  draft can only submit to its original question. Missing targets preserve read-only
+  text; session/context changes isolate private drafts. Focus follows explicit pane
+  opening, not asynchronous selected IDs. Independent review found no blocker.
+
+The Inbox rate sentence now says four scheduled refreshes, since retries and focus
+can add requests. The source 204/202 dependency, deeper doc consolidation, temporary
+workflow extraction, browser cache/sharding and other prior non-blocking suggestions
+retain their documented dispositions. No health-error allowance or test-coverage
+reduction is introduced.

@@ -33,6 +33,9 @@ async function deliveredLink(request: APIRequestContext, email: string, subject:
 }
 
 async function signIn(page: Page, email: string, password: string) {
+  // The preceding verification page can still be loading its self-hosted font.
+  // Settle it before this intentional full navigation; real font failures still fail.
+  await page.evaluate(() => document.fonts.ready)
   await page.goto(new URL('/sign-in', appUrl).toString())
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)

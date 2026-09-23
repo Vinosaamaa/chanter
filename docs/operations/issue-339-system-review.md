@@ -21,8 +21,8 @@ The review tightened request ownership further: requests beginning during a pend
 Delayed announcement delivery exposed a mounted Inbox consistency gap. Its OPEN
 list now polls the existing authorized endpoint every 15 seconds; React Query's
 default background behavior and observer lifecycle prevent hidden or unmounted
-polling. This adds at most four list requests per minute per mounted foreground
-query. The completed list remains event/refocus driven. User-scoped cache keys,
+polling. This schedules four periodic refreshes per minute per mounted foreground
+query; retries, focus and invalidation can add requests. The completed list remains event/refocus driven. User-scoped cache keys,
 request cancellation and server authorization are unchanged. Real browser delivery
 and persistence must pass before this is considered accepted.
 
@@ -92,3 +92,12 @@ it must not claim end-to-end dialog-to-registration timing. Browser health remai
 strict, and no transport interception, mocked response or manual database relay is
 used. Pending cleanup must remain pending until the source and recovery owners prove
 completion. Only fresh synthetic accounts/data are used, without credential artifacts.
+
+Post-loop review identified a launch-blocking wrong-target reply path: history refresh
+could replace a missing selected question while preserving a staff draft, then submit
+that draft to another question. The correction must distinguish initial selection
+from explicit selection, preserve intent through refresh and bind staff drafts to
+their account/session/channel/question before submission. It must preserve the text
+without silently reassigning it. This is required interaction correctness, not another
+general cosmetic remediation round. Learner explicit-new-question selection must also
+survive pending history, and asynchronous data changes must not steal composer focus.

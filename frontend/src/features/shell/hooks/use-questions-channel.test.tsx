@@ -94,6 +94,40 @@ describe('useQuestionsChannel', () => {
     })
   })
 
+  it('preserves explicit new-question intent when initial history arrives', async () => {
+    const history = await mocks.listSupportQuestions()
+    let finish!: (value: typeof history) => void
+    mocks.listSupportQuestions.mockReturnValue(new Promise(resolve => { finish = resolve }))
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    act(() => result.current.selectSupportQuestion(null))
+    await act(async () => finish(history))
+    expect(result.current.supportQuestions).toHaveLength(1)
+    expect(result.current.selectedSupportQuestionId).toBeNull()
+    expect(result.current.selectedQuestion).toBeNull()
+  })
+
+  it('does not redirect an existing selection when refresh omits its question', async () => {
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+    const original = result.current.selectedQuestion!
+    mocks.listSupportQuestions.mockResolvedValue({ supportQuestions: [{ ...original, id: 'question-2' }] })
+    await act(async () => result.current.refresh())
+    await waitFor(() => expect(result.current.supportQuestions[0]?.id).toBe('question-2'))
+    expect(result.current.selectedQuestion).toBeNull()
+    expect(result.current.selectedSupportQuestionId).toBe('question-1')
+    mocks.listSupportQuestions.mockResolvedValue({ supportQuestions: [original] })
+    await act(async () => result.current.refresh())
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+  })
+
+  it('initializes selection again for a new session generation', async () => {
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+    act(() => result.current.selectSupportQuestion(null))
+    act(() => useAuthStore.setState(state => ({ generation: state.generation + 1 })))
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+  })
+
   it('streams tokens then stores the complete answer', async () => {
     mocks.streamAssistantAnswer.mockImplementation(async (_channelId, _questionId, handlers) => {
       handlers.onToken('Hello ')

@@ -18,6 +18,68 @@ test.beforeEach(async ({ page }) => {
 const course = '/app/servers/visual-study/courses/visual-course-0'
 const community = '/app/servers/visual-study/community'
 
+test('fixture UI phone Questions keeps a new draft through late history', async ({ page }, testInfo) => {
+  let release!: () => void
+  const ready = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/support-questions', async route => {
+    const response = await route.fetch()
+    await ready
+    await route.fulfill({ response })
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${course}/questions`)
+  await expect(page.getByText('Loading questions…')).toBeVisible()
+  await page.getByRole('button', { name: 'Ask a question', exact: true }).click()
+  const composer = page.getByRole('textbox', { name: 'Ask a support question' })
+  await composer.fill('My new question must stay here')
+  release()
+  await expect(page.getByText('Loading questions…')).toHaveCount(0)
+  await expect(composer).toHaveValue('My new question must stay here')
+  await expect(composer).toBeFocused()
+  await expect(page.getByRole('region', { name: 'Question conversation' }).locator('.question-message')).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-question-late-history-390.png') })
+})
+
+test('fixture UI Questions keeps a staff draft when its question disappears @questions', async ({ page }, testInfo) => {
+  await page.route('**/api/v1/study-servers/visual-study/navigation', async route => {
+    const response = await route.fetch()
+    const data = await response.json()
+    data.courses = data.courses.map((entry: { capabilities: object }) => ({ ...entry, capabilities: { ...entry.capabilities, canManageQuestions: true } }))
+    await route.fulfill({ response, json: data })
+  })
+  let omitted = false
+  await page.route('**/support-questions', async route => {
+    const response = await route.fetch()
+    const data = await response.json()
+    await route.fulfill({ response, json: omitted ? { supportQuestions: data.supportQuestions.map((entry: object) => ({ ...entry, id: 'visual-other-question', body: 'Another learner question' })) } : data })
+  })
+  let replies = 0
+  await page.route('**/replies', route => {
+    if (route.request().method() === 'POST') replies += 1
+    return route.continue()
+  })
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto(`${course}/questions?visual=staff`)
+  const composer = page.getByRole('textbox', { name: 'Reply to this question' })
+  await composer.fill('This reply belongs to the original question')
+  omitted = true
+  await page.getByRole('button', { name: 'Refresh questions' }).click()
+  await expect(page.getByRole('button', { name: /Another learner question/ })).toBeVisible()
+  await expect(composer).toHaveValue('This reply belongs to the original question')
+  await expect(composer).toHaveAttribute('readonly', '')
+  await expect(page.getByRole('button', { name: 'Send reply' })).toBeDisabled()
+  await composer.focus()
+  await composer.press('Enter')
+  expect(replies).toBe(0)
+  await expect(page.getByText('Your reply is kept for its original question. It cannot be sent to another question.')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-question-retained-draft-1280.png') })
+  omitted = false
+  await page.getByRole('button', { name: 'Refresh questions' }).click()
+  await expect(composer).not.toHaveAttribute('readonly', '')
+  await expect(composer).toHaveValue('This reply belongs to the original question')
+  await expect(page.getByRole('button', { name: 'Send reply' })).toBeEnabled()
+})
+
 for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1280, height: 900 }]) {
   test(`fixture UI server home retains owner course actions at ${viewport.width} @serverhome`, async ({ page }, testInfo) => {
     let created: { title: string; cohortName: string } | undefined
