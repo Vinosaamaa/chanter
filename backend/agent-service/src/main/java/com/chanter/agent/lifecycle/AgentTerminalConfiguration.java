@@ -32,7 +32,7 @@ public class AgentTerminalConfiguration {
                 outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore agentTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,AnswerRetractions retractions,ErasedContentDelivery content,AgentAccountRetention retention,AgentResourceCleanup resourceCleanup,
+            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,AnswerRetractions retractions,ErasedContentDelivery content,AgentAccountRetention retention,AgentResourceCleanup resourceCleanup,AgentServerRetention serverRetention,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
@@ -81,8 +81,9 @@ public class AgentTerminalConfiguration {
                 retractions.serverChannels(target,scope);
                 jdbc.update("UPDATE native_companion_requests SET evidence_json=NULL,outcome=CASE WHEN outcome IN ('ISSUED','ACCEPTING') THEN 'REJECTED' ELSE outcome END WHERE channel_id IN (SELECT scope_id FROM "+scope+" WHERE study_server_id=? AND scope_kind='CHANNEL')",target);
             }
-            // Accounting metadata and downstream saved-answer reconciliation remain separate from payload erasure.
-            return TerminalReapplyStore.Cleanup.PENDING;
+            if(!ready) return TerminalReapplyStore.Cleanup.PENDING;
+            serverRetention.erase(target,scope);
+            return retractions.serverPending(target,scope) ? TerminalReapplyStore.Cleanup.PENDING : serverRetention.disposition(target);
         });
     }
 }

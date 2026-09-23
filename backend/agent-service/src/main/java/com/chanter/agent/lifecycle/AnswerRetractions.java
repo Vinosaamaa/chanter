@@ -52,6 +52,10 @@ public final class AnswerRetractions {
     public boolean accountPending(UUID account) {
         return jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_answer_retractions WHERE author_id=? AND receipt_state<>'COMPLETE'",Long.class,account)>0;
     }
+    public boolean serverPending(UUID server,String scope) {
+        if(!java.util.Set.of("lifecycle_scope_import_ids","lifecycle_recovery_scope_ids").contains(scope)) throw new IllegalArgumentException("Invalid server scope");
+        return jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_answer_retractions WHERE receipt_state<>'COMPLETE' AND (study_server_id=? OR channel_id IN (SELECT scope_id FROM "+scope+" WHERE study_server_id=? AND scope_kind='CHANNEL'))",Long.class,server,server)>0;
+    }
     public void acknowledge(AnswerReconciliation receipt) {
         jdbc.queryForObject("SELECT id FROM lifecycle_reapply_head WHERE id=1 FOR UPDATE",Integer.class);
         var answer=receipt.answer();
@@ -66,6 +70,10 @@ public final class AnswerRetractions {
             deletions.getObject().completeResource(resource);
         }
         terminal.getObject().reconcile("ACCOUNT",answer.authorId());
+        var servers=new java.util.HashSet<>(jdbc.query("SELECT study_server_id FROM lifecycle_answer_retractions WHERE answer_id=?",(rs,n)->rs.getObject(1,UUID.class),answer.answerId()));
+        for(String scope:java.util.List.of("lifecycle_scope_import_ids","lifecycle_recovery_scope_ids"))
+            servers.addAll(jdbc.query("SELECT study_server_id FROM "+scope+" WHERE scope_kind='CHANNEL' AND scope_id=?",(rs,n)->rs.getObject(1,UUID.class),answer.channelId()));
+        for(UUID server:servers) terminal.getObject().reconcile("STUDY_SERVER",server);
     }
     private record Saved(AnswerRetraction answer,UUID server) { }
 }

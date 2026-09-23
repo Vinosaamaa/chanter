@@ -127,3 +127,4 @@ CREATE TABLE lifecycle_resource_delete_commands (
     command_id UUID PRIMARY KEY,resource_id UUID NOT NULL,receipt_event_id UUID
 );
 CREATE INDEX lifecycle_resource_delete_pending ON lifecycle_resource_delete_commands(resource_id,receipt_event_id);
+CREATE TABLE lifecycle_agent_server_retention (study_server_id UUID PRIMARY KEY,usage_claims BIGINT NOT NULL);

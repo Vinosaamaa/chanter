@@ -30,7 +30,7 @@ class AgentRecoveryScopeTest {
         var retractions=new AnswerRetractions(jdbc,new com.chanter.common.events.DurableOutbox(jdbc,tx,"agent",java.time.Clock.systemUTC()),mapper,
                 factory.getBeanProvider(TerminalReapplyStore.class),factory.getBeanProvider(ResourceDeletionReconciliation.class));
         var content=new ErasedContentDelivery("agent",jdbc,tx,new com.chanter.common.events.DurableOutbox(jdbc,tx,"agent",java.time.Clock.systemUTC()),mapper,factory.getBeanProvider(TerminalReapplyStore.class));
-        var terminal=config.agentTerminalStore(jdbc,manager,snapshots,chunks,mapper,retractions,content,new AgentAccountRetention(jdbc),new AgentResourceCleanup(chunks,retractions,jdbc,mapper),true,factory.getBeanProvider(RecoveryScopeStore.class));
+        var terminal=config.agentTerminalStore(jdbc,manager,snapshots,chunks,mapper,retractions,content,new AgentAccountRetention(jdbc),new AgentResourceCleanup(chunks,retractions,jdbc,mapper),new AgentServerRetention(jdbc),true,factory.getBeanProvider(RecoveryScopeStore.class));
         factory.registerSingleton("terminal",terminal);
         var current=config.agentDeletedScopeStore(jdbc,manager,terminal);
         UUID restore=UUID.randomUUID(),operation=UUID.randomUUID();
@@ -69,7 +69,7 @@ class AgentRecoveryScopeTest {
         assertThat(jdbc.queryForObject("SELECT deleted FROM resource_index_lifecycle WHERE resource_id=?",Boolean.class,resource)).isTrue();
         assertThatThrownBy(() -> tx.executeWithoutResult(status -> chunks.replaceAllForResource(resource,List.of(chunk))))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
-        assertThat(terminal.reapply(page).pendingTargets()).isEqualTo(1);
+        assertThat(terminal.reapply(page).pendingTargets()).isZero();
     }
     private static DeletedScope.Page scope(TerminalJournal.Entry entry,String kind,List<UUID> ids,String basis) {
         String digest=DeletedScope.startDigest(basis,kind,ids.size()); for(UUID id:ids) digest=DeletedScope.nextDigest(digest,id);

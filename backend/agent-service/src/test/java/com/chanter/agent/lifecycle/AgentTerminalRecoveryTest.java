@@ -44,6 +44,38 @@ class AgentTerminalRecoveryTest {
     @Autowired com.chanter.agent.infra.TestStudyAssistantGrantCandidatesClient grantCandidates;
     private final Model model=new Model("Fixture","ollama","fixture",null,null,64,16,Duration.ofSeconds(3),Set.of(),null);
 
+    @Test void serverDispositionRequiresScopeAndExactAnswerReceiptWhileKeepingConservativeClaims() throws Exception {
+        UUID server=UUID.randomUUID(),user=UUID.randomUUID(),question=UUID.randomUUID(),channel=UUID.randomUUID(),course=UUID.randomUUID();install(server,user);
+        UUID reservation=ledger.reserve(server,question,user,"server-fixture",model);
+        ledger.settle(reservation,LlmUsage.UNKNOWN,"UNKNOWN",0,"fixture","private-provider-id",model,true);
+        var request=new NativeRequestRepository.Request(reservation,channel,question,user,UUID.randomUUID(),UUID.randomUUID(),"fixture",
+                mapper.writeValueAsString(Map.of("studyServerId",server,"courseId",course,"question","private question","citations",List.of())),"a".repeat(64),"b".repeat(64),Instant.now().plusSeconds(120));
+        nativeRequests.issue(request);
+        var answer=new StudyAssistantAnswer(UUID.randomUUID(),question,channel,server,user,"private question","private answer",AnswerConfidence.HIGH,false,List.of(),Instant.now());
+        answers.saveAnswer(answer,InvocationType.GROUNDED_ANSWER);
+        var entry=entry("STUDY_SERVER",server);apply(entry);var tx=new TransactionTemplate(transactions);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        scope.accept(new DeletedScope.Import(entry,page(entry,"COURSE",List.of(course))));
+        var channels=new DeletedScope.Import(entry,page(entry,"CHANNEL",List.of(channel)));
+        tx.executeWithoutResult(s -> {scope.accept(channels);s.setRollbackOnly();});
+        assertThat(jdbc.queryForObject("SELECT learner_user_id FROM ai_generation_usage WHERE id=?",UUID.class,reservation)).isEqualTo(user);
+        scope.accept(channels);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM native_companion_requests WHERE id=?",Integer.class,reservation)).isZero();
+        assertThat(jdbc.queryForObject("SELECT learner_user_id FROM ai_generation_usage WHERE id=?",UUID.class,reservation)).isNull();
+        assertThat(jdbc.queryForObject("SELECT provider_request_id FROM ai_generation_usage WHERE id=?",String.class,reservation)).isNull();
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        ledger.settle(reservation,new LlmUsage(0,0,0,0,0),"CANCELLED",0,"fixture","late-provider-id",model,false);
+        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(80);assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
+        var receipt=new com.chanter.common.events.AnswerReconciliation(new com.chanter.common.events.AnswerRetraction(answer.id(),question,channel,user),"COMPLETE");
+        tx.executeWithoutResult(s -> retractions.acknowledge(receipt));
+        assertThat(jdbc.queryForObject("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_kind='STUDY_SERVER' AND target_id=?",String.class,server)).isEqualTo("PRESERVED");
+        tx.executeWithoutResult(s -> retractions.acknowledge(receipt));
+        assertThatThrownBy(() -> ledger.reserve(server,UUID.randomUUID(),user,"late",model)).isInstanceOf(ResponseStatusException.class);
+        var empty=entry("STUDY_SERVER",UUID.randomUUID());apply(empty);
+        scope.accept(new DeletedScope.Import(empty,page(empty,"COURSE",List.of())));scope.accept(new DeletedScope.Import(empty,page(empty,"CHANNEL",List.of())));
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(empty))).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
+    }
+
     @Test void accountAttributionErasurePreservesUnknownClaimsWithoutLateRefundAndWaitsForFinals() throws Exception {
         UUID server=UUID.randomUUID(),user=UUID.randomUUID(),question=UUID.randomUUID(),channel=UUID.randomUUID(),course=UUID.randomUUID();install(server,user);
         var nativeModel=new Model("Native fixture","codex-native","fixture",null,null,64,16,Duration.ofSeconds(3),Set.of(),null);
@@ -269,7 +301,7 @@ class AgentTerminalRecoveryTest {
         assertThat(chunks.findByResourceId(resource)).isEmpty();
         assertThatThrownBy(() -> ingestion.ingest(course,UUID.randomUUID(),"late.txt",new byte[]{1})).isInstanceOf(ResponseStatusException.class);
         var cleanup=new TransactionTemplate(transactions).execute(status -> terminal.cleanup(entry));
-        assertThat(cleanup).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        assertThat(cleanup).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
     }
 
     @Test void committedAccountFenceRejectsWaitingReservationWhileExistingSettlementRemainsConservative() throws Exception {
