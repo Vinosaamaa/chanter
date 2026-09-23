@@ -3,7 +3,7 @@
 The release workflow has an explicit `source_recovery_preview` dispatch input,
 restricted to the #342 branch. It does not publish an image or release. Its
 disposable runner merges exact source checkpoint
-`c15c955b493f9e0ad65f5b892af0bfa998d2db7a` with the dispatched recovery SHA.
+`7adad182010c1ed5fca456206eb5a7357e170581` with the dispatched recovery SHA.
 The receipt records both inputs and the temporary combined commit. Neither input
 is accepted by this operation. Main and local worktrees are untouched.
 
@@ -23,12 +23,18 @@ read-back must match the owning size and SHA-256. Separate real account,
 resource and server deletion operations must produce the canonical journal.
 Both current server scope chains are verified using the accepted protocol.
 
-Events for the other four participants are retained as pending private fixture
+Events for message, agent, notification and search are retained as pending private fixture
 evidence. The preview never counts them as complete. All helper inputs stay on
 stdin and credentials stay in existing service environments. Responses are
 bounded; exceptions do not print private payloads. The owning smoke EXIT cleanup
 destroys the disposable stack. The existing closed recovery activation proof runs
 after this normal-source phase.
+
+The first preview against `c15c955b` merged successfully on both architectures,
+then stopped at the owning auth HTTP test's obsolete 401 expectation for a
+permanently denied account. Source checkpoint `7adad182` corrects that assertion
+to 410 while retaining login/refresh and unaffected-account checks. The preview
+does not skip that test or continue after its failure.
 
 This first preview is not the complete #342 acceptance drill. Restored-only and
 post-backup graph cases, all seven applied source receipts, invalidation, actual
