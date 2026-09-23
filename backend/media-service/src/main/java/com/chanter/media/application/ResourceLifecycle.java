@@ -30,6 +30,7 @@ public class ResourceLifecycle {
     private final boolean recovery;
     private final com.chanter.common.events.SearchEventWriter searchEvents;
     private final com.chanter.common.events.ResourceEventWriter resourceEvents;
+    private final org.springframework.beans.factory.ObjectProvider<com.chanter.common.lifecycle.TerminalReapplyStore> terminal;
 
     public ResourceLifecycle(JdbcClient jdbc, Clock clock,
             @Value("${chanter.media.byte-limit:8000000000}") long byteLimit,
@@ -37,13 +38,15 @@ public class ResourceLifecycle {
             @Value("${chanter.media.cleanup-request-reserve:4000}") int cleanupReserve,
             @Value("${chanter.recovery-mode:false}") boolean recovery,
             com.chanter.common.events.SearchEventWriter searchEvents,
-            com.chanter.common.events.ResourceEventWriter resourceEvents) {
+            com.chanter.common.events.ResourceEventWriter resourceEvents,
+            org.springframework.beans.factory.ObjectProvider<com.chanter.common.lifecycle.TerminalReapplyStore> terminal) {
         if (byteLimit < 1 || byteLimit > 8_000_000_000L || requestLimit < 1 || requestLimit > 40_000
                 || cleanupReserve < 1 || cleanupReserve >= requestLimit) throw new IllegalArgumentException("Invalid free storage budget");
         this.jdbc = jdbc; this.clock = clock; this.byteLimit = byteLimit; this.requestLimit = requestLimit; this.cleanupReserve = cleanupReserve;
         this.recovery=recovery;
         this.searchEvents = searchEvents;
         this.resourceEvents = resourceEvents;
+        this.terminal=terminal;
     }
 
     @Transactional
@@ -325,6 +328,53 @@ public class ResourceLifecycle {
         if (row.get().reserved()) jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=reserved_bytes-:bytes WHERE id=1")
                 .param("bytes", row.get().bytes()).update();
     }
+
+    public record MaintenanceDeletion(UUID resourceId,String storageBackend,String currentKey,String migrationKey,long byteSize,String sha256) { }
+
+    /** The owning maintenance transaction has already verified every physical closure receipt against current inventory. */
+    @Transactional(propagation=Propagation.MANDATORY)
+    public void finishVerifiedMaintenanceDelete(MaintenanceDeletion proof) {
+        if(proof==null || proof.resourceId()==null || proof.storageBackend()==null || proof.currentKey()==null
+                || proof.byteSize()<0 || proof.sha256()==null || !proof.sha256().matches("[a-f0-9]{64}"))
+            throw new IllegalArgumentException("Invalid maintenance deletion tuple");
+        lockTerminal();
+        jdbc.sql("SELECT reserved_bytes FROM media_storage_budget WHERE id=1 FOR UPDATE").query(Long.class).single();
+        var row=jdbc.sql("SELECT * FROM course_resources WHERE id=:id FOR UPDATE").param("id",proof.resourceId())
+                .query((rs,n) -> new MaintenanceRow(map(rs,n),rs.getString("migration_key"),rs.getObject("lease_id",UUID.class),
+                        rs.getBoolean("storage_write_settled"),rs.getBoolean("byte_reservation"))).optional()
+                .orElseThrow(() -> new IllegalStateException("Maintenance resource is absent"));
+        var resource=row.resource();
+        if(!row.settled() || row.lease()!=null || !terminalScope(resource)
+                || !List.of("DELETE_PENDING","DELETED").contains(resource.state())
+                || !proof.storageBackend().equals(resource.storageBackend()) || !proof.currentKey().equals(resource.storageKey())
+                || !java.util.Objects.equals(proof.migrationKey(),row.migration()) || proof.byteSize()!=resource.byteSize()
+                || !proof.sha256().equals(resource.sha256())) throw new IllegalStateException("Maintenance deletion no longer matches settled terminal source");
+        if(resource.state().equals("DELETED")) {
+            if(row.reserved()) throw new IllegalStateException("Deleted resource still has a reservation");
+        } else {
+            jdbc.sql("UPDATE course_resources SET state='DELETED',byte_reservation=FALSE,retry_at=NULL,updated_at=:now WHERE id=:id")
+                    .param("now",now()).param("id",resource.id()).update();
+            if(row.reserved() && jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=reserved_bytes-:bytes WHERE id=1 AND reserved_bytes>=:bytes")
+                    .param("bytes",resource.byteSize()).update()!=1) throw new IllegalStateException("Storage reservation changed");
+        }
+        reconcileTerminalResource(resource);
+    }
+    private void reconcileTerminalResource(CourseResource resource) {
+        var store=terminal.getObject();
+        store.reconcile("RESOURCE",resource.id());store.reconcile("ACCOUNT",resource.uploadedByUserId());
+        var servers=new java.util.HashSet<UUID>();if(resource.studyServerId()!=null) servers.add(resource.studyServerId());
+        for(String table:List.of("lifecycle_scope_import","lifecycle_recovery_scope")) {
+            servers.addAll(jdbc.sql(("""
+                    SELECT DISTINCT s.study_server_id FROM lifecycle_scope_import_ids s JOIN lifecycle_scope_imports h
+                        ON h.study_server_id=s.study_server_id AND h.scope_kind=s.scope_kind
+                    JOIN lifecycle_terminal_targets t ON t.target_kind='STUDY_SERVER' AND t.target_id=h.study_server_id
+                        AND t.revision=h.revision AND t.event_id=h.event_id AND t.digest=h.terminal_digest
+                    WHERE h.ready=TRUE AND s.scope_kind='COURSE' AND s.scope_id=:course
+                    """).replace("lifecycle_scope_import",table)).param("course",resource.courseId()).query(UUID.class).list());
+        }
+        for(UUID server:servers) store.reconcile("STUDY_SERVER",server);
+    }
+    private record MaintenanceRow(CourseResource resource,String migration,UUID lease,boolean settled,boolean reserved) { }
 
     @Transactional
     public void retryJob(UUID id, UUID lease) {

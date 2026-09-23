@@ -32,6 +32,33 @@ class MediaTerminalRecoveryTest {
         jdbc.update("DELETE FROM course_resources");
         jdbc.update("UPDATE media_storage_budget SET reserved_bytes=0");
     }
+    @Test void verifiedMaintenanceAccountingRequiresAnExactSettledTerminalTupleAndCommitsOnlyOnce() {
+        var resource=resources.reserve(candidate(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID()));
+        var proof=new ResourceLifecycle.MaintenanceDeletion(resource.id(),resource.storageBackend(),resource.storageKey(),null,resource.byteSize(),resource.sha256());
+        var tx=new TransactionTemplate(transactions);
+        assertThatThrownBy(() -> resources.finishVerifiedMaintenanceDelete(proof))
+                .isInstanceOf(org.springframework.transaction.IllegalTransactionStateException.class);
+        assertThatThrownBy(() -> tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof))).isInstanceOf(IllegalStateException.class);
+        var entry=entry("RESOURCE",resource.id());apply(entry);
+        assertThatThrownBy(() -> tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof))).hasMessageContaining("settled terminal source");
+        resources.storageWriteSettled(resource.id());
+        var claimed=resources.claim(false).orElseThrow();
+        assertThatThrownBy(() -> tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof))).hasMessageContaining("settled terminal source");
+        resources.retryJob(resource.id(),claimed.leaseId());
+        var stale=new ResourceLifecycle.MaintenanceDeletion(resource.id(),resource.storageBackend(),resource.storageKey(),"unverified-migration-key",resource.byteSize(),resource.sha256());
+        assertThatThrownBy(() -> tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(stale))).hasMessageContaining("settled terminal source");
+        jdbc.execute("ALTER TABLE media_storage_budget ADD CONSTRAINT fail_release CHECK(reserved_bytes>=10)");
+        try { assertThatThrownBy(() -> tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof))).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class); }
+        finally { jdbc.execute("ALTER TABLE media_storage_budget DROP CONSTRAINT fail_release"); }
+        assertThat(resources.find(resource.id()).orElseThrow().state()).isEqualTo("DELETE_PENDING");
+        assertThat(resources.courseUsage(resource.courseId()).reservedBytes()).isEqualTo(10);
+        tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof));
+        tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof));
+        assertThat(resources.find(resource.id()).orElseThrow().state()).isEqualTo("DELETED");
+        assertThat(resources.courseUsage(resource.courseId()).reservedBytes()).isZero();
+        TerminalReapplyStore.Cleanup remaining=tx.execute(s -> terminal.cleanup(entry));
+        assertThat(remaining).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+    }
     @Test void unknownUploadCannotReleaseBytesAndAccountFenceRejectsAnotherReservation() {
         var resource=resources.reserve(candidate(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID()));
         var entry=entry("ACCOUNT",resource.uploadedByUserId());
