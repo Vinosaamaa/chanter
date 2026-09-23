@@ -242,6 +242,46 @@ class NotificationTerminalRecoveryTest {
         assertThat(jdbc.queryForObject("SELECT body_preview FROM notifications WHERE id=?",String.class,humanRow.id())).isNull();
     }
 
+    @Test void sourceCleanupDoesNotLoseALaterHumanUpdateThatHasNeverReachedAnInbox() throws Exception {
+        var ds=new org.springframework.jdbc.datasource.DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=PostgreSQL;DB_CLOSE_DELAY=-1","sa","");
+        var source=new JdbcTemplate(ds);var tx=new TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(ds));
+        source.execute(com.chanter.common.events.DurableOutbox.SCHEMA);source.execute(com.chanter.common.events.DurableConsumer.SCHEMA);
+        source.execute(TerminalReapplyStore.SCHEMA);
+        source.execute("CREATE TABLE lifecycle_erased_content(target_kind VARCHAR(16),target_id UUID,revision BIGINT,event_id UUID,terminal_digest VARCHAR(64),source_kind VARCHAR(24),source_id UUID,PRIMARY KEY(target_kind,target_id,source_kind,source_id))");
+        source.execute(com.chanter.common.lifecycle.ErasedContentDelivery.SCHEMA);
+        var owner=new TerminalReapplyStore(source,tx,"message",e -> TerminalReapplyStore.Cleanup.PENDING);
+        var beans=new org.springframework.beans.factory.support.DefaultListableBeanFactory();beans.registerSingleton("terminal",owner);
+        var outbox=new com.chanter.common.events.DurableOutbox(source,tx,"message",java.time.Clock.systemUTC());
+        var delivery=new com.chanter.common.lifecycle.ErasedContentDelivery("message",source,tx,outbox,mapper,beans.getBeanProvider(TerminalReapplyStore.class));
+        UUID recipient=UUID.randomUUID(),question=UUID.randomUUID();
+        var page=nextPage("ACCOUNT",UUID.randomUUID(),Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
+        var entry=page.entries().getFirst();terminal.reapply(page);
+        tx.executeWithoutResult(s -> {
+            owner.applyTerminal(entry);
+            source.update("INSERT INTO lifecycle_erased_content(target_kind,target_id,revision,event_id,terminal_digest,source_kind,source_id) VALUES ('ACCOUNT',?,?,?,?,?,?)",
+                    entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),"QUESTION_PREVIEW",question);
+            delivery.start(entry);
+        });
+        // Another author replies after closure but before the old author's advance is delivered.
+        tx.executeWithoutResult(s -> new NotificationEventWriter(outbox,mapper).append(java.util.Map.of("userId",recipient,"kind","SUPPORT_QUESTION_ANSWERED",
+                "title","Later human answer","bodyPreview","later private body","href","/app/inbox","sourceType","SUPPORT_QUESTION","sourceId",question)));
+        var advance=source.queryForObject("SELECT * FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_ADVANCE'",(rs,n)->
+                new DurableEvent(rs.getObject("id",UUID.class),1,"message",rs.getLong("revision"),rs.getString("kind"),rs.getString("aggregate_key"),rs.getString("payload")));
+        delivery.accept(advance);
+        var erase=source.queryForObject("SELECT * FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_ERASE' AND destination='lifecycle-notification'",(rs,n)->
+                new DurableEvent(rs.getObject("id",UUID.class),1,"message",rs.getLong("revision"),rs.getString("kind"),rs.getString("aggregate_key"),rs.getString("payload")));
+        http.perform(post("/api/v1/internal/lifecycle/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN).contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsBytes(erase))).andExpect(status().isNoContent());
+        assertThat(count(recipient)).isZero();
+        var pending=source.queryForObject("SELECT * FROM durable_outbox WHERE kind='NOTIFICATION' AND status='PENDING'",(rs,n)->
+                new DurableEvent(rs.getObject("id",UUID.class),1,"message",rs.getLong("revision"),rs.getString("kind"),rs.getString("aggregate_key"),rs.getString("payload")));
+        http.perform(post("/api/v1/internal/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN).contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsBytes(pending))).andExpect(status().isNoContent());
+        assertThat(count(recipient)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT title FROM notifications WHERE user_id=?",String.class,recipient)).isEqualTo("Question update");
+        assertThat(jdbc.queryForObject("SELECT body_preview FROM notifications WHERE user_id=?",String.class,recipient)).isNull();
+    }
+
     private com.chanter.notification.domain.Notification create(UUID user,UUID server,UUID resource) {
         return notifications.create(new NotificationRepository.CreateCommand(user,NotificationKind.SUPPORT_QUESTION_CREATED,null,
                 "private title","private body",null,"/app/inbox","RESOURCE",resource,server,null,null,null));

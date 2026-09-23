@@ -70,6 +70,11 @@ class StudyServerDeletionSmokeTest {
         var command=new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,"auth",revision,com.chanter.common.lifecycle.AccountDeletionProtocol.TERMINAL,
                 com.chanter.common.lifecycle.AccountDeletionProtocol.key("STUDY_SERVER",studyServer.id()),protocol.encode(new com.chanter.common.lifecycle.AccountDeletionProtocol.Terminal(job,entry)));
         terminal.accept(command); terminal.accept(command);
+        var afterTerminal=mockMvc.perform(delete("/api/v1/study-servers/{id}",studyServer.id()).with(asUser(ownerUserId)))
+                .andExpect(status().isAccepted()).andReturn().getResponse();
+        assertThat(objectMapper.readTree(afterTerminal.getContentAsString()).path("jobId").asText()).isEqualTo(job.toString());
+        mockMvc.perform(delete("/api/v1/study-servers/{id}",studyServer.id()).with(asUser(UUID.randomUUID())))
+                .andExpect(status().isNotFound());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE id=?",Integer.class,studyServer.id())).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_deleted_server_scope_digests WHERE study_server_id=?",Integer.class,studyServer.id())).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='DELETED_SCOPE_ADVANCE' AND aggregate_key LIKE ?",Integer.class,

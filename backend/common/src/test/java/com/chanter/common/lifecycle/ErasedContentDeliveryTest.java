@@ -70,6 +70,41 @@ class ErasedContentDeliveryTest {
         assertThat(source.jdbc.queryForObject("SELECT status FROM durable_outbox WHERE kind='ANNOUNCEMENT'",String.class)).isEqualTo("PENDING");
         source.delivery.accept(advance);assertThat(source.events(ErasedContent.ERASE,null)).hasSize(2);
     }
+    @Test void sharedQuestionPreviewSanitationIsBoundedAndPreservesPendingLaterHumanDelivery() throws Exception {
+        var source=new Node("message");var entry=entry();UUID question=UUID.randomUUID();
+        source.tx.executeWithoutResult(s -> {
+            source.terminal.applyTerminal(entry);
+            source.jdbc.update("INSERT INTO lifecycle_erased_content(target_kind,target_id,revision,event_id,terminal_digest,source_kind,source_id) VALUES ('ACCOUNT',?,?,?,?,?,?)",
+                    entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),"QUESTION_PREVIEW",question);
+            for(int n=0;n<65;n++) {
+                UUID user=UUID.randomUUID();var payload=questionUpdate(user,question);
+                try { source.outbox.append("notification","NOTIFICATION",NotificationEventWriter.aggregateKey(user,"SUPPORT_QUESTION",question,"SUPPORT_QUESTION_ANSWERED"),mapper.writeValueAsString(payload)); }
+                catch(Exception failure) { throw new IllegalStateException(failure); }
+            }
+            source.delivery.start(entry);
+        });
+        var claimed=source.outbox.claim().orElseThrow();
+        assertThat(claimed.event().payload()).contains("private body");
+        var later=questionUpdate(UUID.randomUUID(),question);
+        source.tx.executeWithoutResult(s -> new NotificationEventWriter(source.outbox,mapper).append(later));
+        var lateEvent=source.events("NOTIFICATION",null).getLast();
+        assertThat(later.get("bodyPreview")).isEqualTo("private body");
+        source.delivery.accept(source.events(ErasedContentDelivery.ADVANCE,null).getFirst());
+        assertThat(source.jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_redactions",Integer.class)).isEqualTo(64);
+        assertThat(source.events(ErasedContent.ERASE,null)).isEmpty();
+        source.delivery.accept(source.events(ErasedContentDelivery.ADVANCE,null).getLast());
+        assertThat(source.jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_redactions",Integer.class)).isEqualTo(65);
+        assertThat(source.events(ErasedContent.ERASE,null)).hasSize(2);
+        assertThat(source.events("NOTIFICATION",null)).allSatisfy(e -> assertThat(e.payload()).contains("Question update").doesNotContain("private body","private label"));
+        assertThat(source.jdbc.queryForObject("SELECT status FROM durable_outbox WHERE id=?",String.class,lateEvent.id())).isEqualTo("PENDING");
+        assertThat(source.jdbc.queryForObject("SELECT status FROM durable_outbox WHERE id=?",String.class,claimed.event().id())).isEqualTo("SENDING");
+        source.outbox.failed(claimed,"TRANSIENT_DELIVERY_FAILURE");
+        assertThat(source.jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE id=?",String.class,claimed.event().id())).doesNotContain("private body");
+    }
+    private Map<String,Object> questionUpdate(UUID recipient,UUID question) {
+        return Map.of("userId",recipient,"kind","SUPPORT_QUESTION_ANSWERED","sourceType","SUPPORT_QUESTION","sourceId",question,
+                "title","Answered","bodyPreview","private body","courseLabel","private label","href","/app/inbox");
+    }
     private TerminalJournal.Entry entry() {
         UUID event=UUID.randomUUID(),account=UUID.randomUUID();Instant now=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
         return new TerminalJournal.Entry(1,event,"ACCOUNT",account,"DELETE",now,TerminalJournal.RETENTION_POLICY,TerminalJournal.GENESIS,

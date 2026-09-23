@@ -70,7 +70,10 @@ public class StudyServerRestrictionInterceptor implements HandlerInterceptor, We
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid community scope reference");
         }
         if(server!=null) {
-            if(!("DELETE".equals(request.getMethod()) && "/api/v1/study-servers/{id}".equals(route))) deletions.requireOpen(server);
+            // The owning request transaction checks moderation for a first request, after
+            // resolving an original requester's retry without reading the erased graph.
+            if("DELETE".equals(request.getMethod()) && "/api/v1/study-servers/{id}".equals(route)) return true;
+            deletions.requireOpen(server);
             moderation.requireAllowed(user,List.of(new Target("STUDY_SERVER",server)));
         }
         return true;

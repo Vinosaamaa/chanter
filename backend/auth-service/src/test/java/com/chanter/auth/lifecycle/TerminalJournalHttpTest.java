@@ -30,6 +30,17 @@ class TerminalJournalHttpTest {
     @Autowired PlatformTransactionManager transactions;
     final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
+    private void canonicalServerDeletionIsImmediatelyDeniedByTheRealModerationHttpBoundary() {
+        UUID server=UUID.randomUUID();
+        var access=new com.chanter.common.auth.ModerationAccess(URI.create("http://127.0.0.1:"+port),TOKEN,mapper);
+        var targets=java.util.List.of(new com.chanter.common.auth.ModerationAccess.Target("STUDY_SERVER",server));
+        access.requireAllowed(null,targets);
+        new TransactionTemplate(transactions).execute(status -> journal.append("STUDY_SERVER",server));
+        assertThatThrownBy(() -> access.requireAllowed(null,targets))
+                .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class,
+                        denied -> assertThat(denied.getStatusCode().value()).isEqualTo(403));
+    }
+
     @Test void onlyPrivateRecoveryCallerCanReadOrAcknowledgeTheExactCommittedJournal() throws Exception {
         var entry = new TransactionTemplate(transactions).execute(status -> journal.append("ACCOUNT", UUID.randomUUID()));
         assertThat(get("?after=0", null).statusCode()).isEqualTo(401);
@@ -52,6 +63,7 @@ class TerminalJournalHttpTest {
         assertThat(post(body, TOKEN).statusCode()).isEqualTo(200);
         assertThat(journal.replicated(entry.revision())).isTrue();
         assertThat(get("/checkpoint", TOKEN).body()).contains(checkpoint.checkpointId().toString());
+        canonicalServerDeletionIsImmediatelyDeniedByTheRealModerationHttpBoundary();
     }
     private HttpResponse<String> get(String suffix, String token) throws Exception {
         var request = request(suffix, token);

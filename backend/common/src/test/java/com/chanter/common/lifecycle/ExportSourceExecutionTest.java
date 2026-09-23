@@ -43,9 +43,11 @@ class ExportSourceExecutionTest {
         var sender = new DurableOutbox(senderJdbc, senderTx, "auth", clock);
         var blocked = new java.util.concurrent.atomic.AtomicBoolean(true);
         var cleaned = new CountDownLatch(1);
+        var firstWorker = new java.util.concurrent.atomic.AtomicReference<Thread>();
         var calls = new AtomicInteger();
         var participant = new ExportParticipant("community", snapshots, (user, output) -> {
             calls.incrementAndGet();
+            firstWorker.compareAndSet(null,Thread.currentThread());
             output.jsonLines("owned", rows -> rows.add(Map.of("ok", true)));
             if (blocked.get()) {
                 try { new CountDownLatch(1).await(); }
@@ -82,10 +84,17 @@ class ExportSourceExecutionTest {
             assertThat(calls).hasValue(1);
             assertThat(cleaned.await(3, TimeUnit.SECONDS)).isTrue();
             tx.executeWithoutResult(status -> jdbc.queryForObject("SELECT id FROM data_export_lock WHERE id=1 FOR UPDATE", Integer.class));
+            // The callback's finally precedes task admission release. Wait for that actual worker to exit.
+            assertThat(firstWorker.get().join(Duration.ofSeconds(3))).isTrue();
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox", Integer.class)).isZero();
             blocked.set(false);
-            senderJdbc.update("UPDATE durable_outbox SET available_at=CURRENT_TIMESTAMP");
-            dispatcher.drain();
+            long retryDeadline=System.nanoTime()+Duration.ofSeconds(5).toNanos();
+            do {
+                senderJdbc.update("UPDATE durable_outbox SET available_at=CURRENT_TIMESTAMP");
+                dispatcher.drain();
+                if("DELIVERED".equals(senderJdbc.queryForObject("SELECT status FROM durable_outbox",String.class))) break;
+                Thread.sleep(10);
+            } while(System.nanoTime()<retryDeadline);
             assertThat(senderJdbc.queryForObject("SELECT status FROM durable_outbox", String.class)).isEqualTo("DELIVERED");
             assertThat(calls).hasValue(2);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox", Integer.class)).isEqualTo(1);

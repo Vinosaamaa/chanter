@@ -18,7 +18,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-@SpringBootTest(properties={"chanter.events.dispatch-enabled=false","chanter.ingestion.worker-enabled=false"})
+@SpringBootTest(properties={"chanter.events.dispatch-enabled=false","chanter.ingestion.worker-enabled=false",
+        "spring.datasource.url=jdbc:h2:mem:agent-terminal-recovery;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
 @ActiveProfiles("test")
 class AgentTerminalRecoveryTest {
     @Autowired TerminalReapplyStore terminal;
@@ -59,7 +60,9 @@ class AgentTerminalRecoveryTest {
         var available=jdbc.queryForObject("SELECT available_at FROM durable_outbox WHERE aggregate_key=? AND kind='ACCEPTED_ANSWER'",java.sql.Timestamp.class,
                 "ACCEPTED_ANSWER:"+question).toInstant();
         var claimOutbox=new com.chanter.common.events.DurableOutbox(jdbc,new TransactionTemplate(transactions),"agent",Clock.fixed(available.plusSeconds(1),ZoneOffset.UTC));
+        UUID acceptedEvent=jdbc.queryForObject("SELECT id FROM durable_outbox WHERE aggregate_key=? AND kind='ACCEPTED_ANSWER'",UUID.class,"ACCEPTED_ANSWER:"+question);
         var claimed=claimOutbox.claim().orElseThrow();
+        assertThat(claimed.event().id()).isEqualTo(acceptedEvent);
         assertThat(claimed.event().kind()).isEqualTo(com.chanter.common.events.AcceptedAnswerStatus.KIND);
         UUID reservation=ledger.reserve(server,question,user,"fixture",model);
         String evidence="{\"studyServerId\":\""+server+"\",\"courseId\":\""+course+"\",\"question\":\"private question\",\"citations\":[{\"resourceId\":\""+resource+"\",\"resourceTitle\":\"source.txt\",\"excerpt\":\"private approved evidence\"}]}";

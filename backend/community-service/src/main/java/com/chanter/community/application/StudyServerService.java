@@ -39,6 +39,7 @@ public class StudyServerService {
     private final LiveKitTokenIssuer liveKitTokenIssuer;
     private final Clock clock;
     private final com.chanter.common.lifecycle.SourceDeletionRequests deletions;
+    private final com.chanter.common.auth.ModerationAccess moderation;
 
     public StudyServerService(
             StudyServerRepository repository,
@@ -46,7 +47,8 @@ public class StudyServerService {
             LiveKitTokenIssuer liveKitTokenIssuer,
             Clock clock,
             com.chanter.common.lifecycle.SourceDeletionRequests deletions,
-            com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites
+            com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites,
+            com.chanter.common.auth.ModerationAccess moderation
     ) {
         this.lifecycleWrites=lifecycleWrites;
         this.repository = repository;
@@ -54,6 +56,7 @@ public class StudyServerService {
         this.liveKitTokenIssuer = liveKitTokenIssuer;
         this.clock = clock;
         this.deletions=deletions;
+        this.moderation=moderation;
     }
 
     @Transactional
@@ -344,6 +347,7 @@ public class StudyServerService {
 
     public com.chanter.common.lifecycle.SourceDeletionRequests.Request deleteStudyServer(UUID studyServerId, UUID requesterUserId) {
         return deletions.request(studyServerId,requesterUserId,() -> {
+            moderation.requireAllowed(requesterUserId,List.of(new com.chanter.common.auth.ModerationAccess.Target("STUDY_SERVER",studyServerId)));
             StudyServer studyServer = repository.findById(studyServerId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
             if (!studyServer.ownerRole().userId().equals(requesterUserId)) {
