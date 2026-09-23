@@ -92,12 +92,27 @@ public class LocalPrivateResourceStorage implements PrivateResourceStorage {
         java.util.UUID mutation;
         try { mutation = mutations.begin(key, StorageMutationStore.Operation.DELETE); }
         catch (RuntimeException blocked) { throw new DeleteFailure(WriteOutcome.NOT_STARTED, blocked); }
+        remove(key,mutation,null);
+    }
+    @Override public void deleteForRecovery(ResourceRecoveryInventory.RestoreRequest request) throws IOException {
+        if(recovery==null) throw new IOException("Private object recovery is not enabled");
+        ResourceRecoveryInventory.DeleteMutation deletion;
+        try { deletion=recovery.beginDelete(backend(),request); }
+        catch(RuntimeException blocked) { throw new DeleteFailure(WriteOutcome.NOT_STARTED,blocked); }
+        if(!deletion.alreadyClosed()) remove(deletion.reference().key(),deletion.mutationId(),request);
+    }
+    private void remove(String key,java.util.UUID mutation,ResourceRecoveryInventory.RestoreRequest request) throws IOException {
         try { Files.deleteIfExists(path(key)); }
         catch (IOException | RuntimeException failure) {
             boolean finished=complete(mutation,true);
             throw new DeleteFailure(finished ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN, failure);
         }
-        if (!complete(mutation,true)) throw new DeleteFailure(WriteOutcome.UNKNOWN,null);
+        if(request==null) {
+            if(!complete(mutation,true)) throw new DeleteFailure(WriteOutcome.UNKNOWN,null);
+        } else {
+            try { recovery.completeDelete(request,mutation); }
+            catch(RuntimeException unconfirmed) { throw new DeleteFailure(WriteOutcome.UNKNOWN,null); }
+        }
     }
     private boolean complete(java.util.UUID mutation,boolean settled) {
         try {

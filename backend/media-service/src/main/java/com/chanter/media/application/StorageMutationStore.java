@@ -40,10 +40,16 @@ public class StorageMutationStore {
 
     /** Only the source inventory calls this after validating its exact current tuple in the same terminal/budget transaction. */
     UUID beginRecoveryPutLocked(UUID inventory, String key) {
+        return beginRecoveryLocked(inventory,key,Operation.PUT);
+    }
+    UUID beginRecoveryDeleteLocked(UUID inventory, String key) {
+        return beginRecoveryLocked(inventory,key,Operation.DELETE);
+    }
+    private UUID beginRecoveryLocked(UUID inventory, String key, Operation operation) {
         if (!TransactionSynchronizationManager.isActualTransactionActive())
-            throw new IllegalStateException("Recovery PUT requires its owning source transaction");
+            throw new IllegalStateException("Recovery operation requires its owning source transaction");
         requireIdentity(inventory); requireKey(key); requireMatching(lock(),inventory);
-        return insert(key,Operation.PUT);
+        return insert(key,operation);
     }
 
     private UUID insert(String key, Operation operation) {

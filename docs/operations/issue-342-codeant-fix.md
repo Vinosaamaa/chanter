@@ -30,6 +30,22 @@ The full review at `1e38bdbf` raised four further observations:
   A maintenance physical-closure receipt must likewise require successful deletion,
   not merely a settled invocation. That separate closure path remains unfinished.
 
+Full review at `7386051d` verified the backend fix. `4078237668` concerns the
+pre-union upload caller: #251's source-owned CourseResourceService explicitly
+unwraps a PutFailure whose cause is ResponseStatusException after accounting for
+the typed outcome. The adapter preserves that cause. The source union is required;
+do not copy an older caller or infer production readiness from this branch alone.
+
+`4078239127` correctly warns that equal row counts alone cannot establish a stable
+capture. The actual boundary also holds the terminal head and budget locks while
+the SELECT streams its single statement snapshot. Source insertion, terminal
+transition and approval changes take those locks. Qualification rejects staging,
+scanning, legacy, unsettled writes and every lease; the remaining storage/worker
+callbacks require those excluded states or an exact active lease. Maintenance
+prevents a new claim or reservation. The final count is an additional consistency
+check, not the concurrency mechanism. Actual source-union tests remain required;
+synthetic query tests do not claim to prove every source writer.
+
 - `4077774875`, local partial object: confirmed and fixed. A real failed copy
   regression first left a created object behind. The adapter now removes only
   its own successfully created file after closing the write stream. Failed cleanup

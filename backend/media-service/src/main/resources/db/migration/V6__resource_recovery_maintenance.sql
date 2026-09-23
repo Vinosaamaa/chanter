@@ -27,5 +27,6 @@ CREATE TABLE media_recovery_inventory_references (
     storage_backend VARCHAR(16) NOT NULL CHECK(storage_backend IN ('local','s3')),
     object_key VARCHAR(150) NOT NULL, byte_size BIGINT NOT NULL, sha256 VARCHAR(64) NOT NULL,
     resource_state VARCHAR(32) NOT NULL, source_retained BOOLEAN NOT NULL, terminal BOOLEAN NOT NULL,
+    closure_mutation_id UUID, physical_closed_at TIMESTAMP WITH TIME ZONE,
     PRIMARY KEY(inventory_id,ordinal), UNIQUE(inventory_id,object_key)
 );

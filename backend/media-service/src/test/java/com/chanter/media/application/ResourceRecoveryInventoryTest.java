@@ -170,6 +170,40 @@ class ResourceRecoveryInventoryTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory",Integer.class)).isZero();
     }
 
+    @Test void terminalDeletionClosureCommitsWithItsExactMutationAndSurvivesServiceRecreation() {
+        UUID resource=resource();
+        jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        var deletion=inventories.beginDelete("s3",request);
+        assertThat(deletion.alreadyClosed()).isFalse();
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isEqualTo(1);
+        assertThatThrownBy(() -> inventories.completeDelete(request,UUID.randomUUID())).isInstanceOf(IllegalStateException.class);
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isEqualTo(1);
+        inventories.completeDelete(request,deletion.mutationId());
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+        var restarted=new ResourceRecoveryInventory(jdbc,new DataSourceTransactionManager(jdbc.getDataSource()),clock,mutations,true,restoreId.toString());
+        assertThat(restarted.beginDelete("s3",request).alreadyClosed()).isTrue();
+        assertThat(mutations.receipt(inventory).inventoryId()).isEqualTo(inventory);
+    }
+
+    @Test void rejectedOrUnknownDeletionNeverCreatesPhysicalClosure() {
+        UUID resource=resource();
+        jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        var rejected=inventories.beginDelete("s3",request);
+        mutations.settled(rejected.mutationId());
+        assertThatThrownBy(() -> inventories.completeDelete(request,rejected.mutationId())).isInstanceOf(IllegalStateException.class);
+        var unknown=inventories.beginDelete("s3",request);
+        assertThat(unknown.alreadyClosed()).isFalse();
+        mutations.uncertain(unknown.mutationId());
+        assertThatThrownBy(() -> inventories.beginDelete("s3",request)).hasMessageContaining("unsettled");
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isEqualTo(1);
+    }
+
     @Test void authorizedRestoreOwnsOneMutationWithoutReleasingTheGlobalFence() throws Exception {
         byte[] bytes={1,2,3};
         UUID resource = resource(); exactBytes(resource,bytes); inventories.capture(inventory,backup,authority);
@@ -253,6 +287,133 @@ class ResourceRecoveryInventoryTest {
         assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
         assertThat(mutations.receipt(inventory).inventoryId()).isEqualTo(inventory);
         try(var input=storage.open(key)) { assertThat(input.readAllBytes()).isEqualTo(bytes); }
+    }
+
+    @Test void actualLocalMaintenanceDeleteClosesEachReferenceWithoutReleasingFence(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        UUID resource=resource();
+        jdbc.update("UPDATE course_resources SET state='DELETE_PENDING',storage_backend='local',migration_key=? WHERE id=?",key(resource),resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var references=inventories.page(inventory,authority,0,256).references();
+        for(var reference:references) {
+            var file=directory.resolve(reference.key()); java.nio.file.Files.createDirectories(file.getParent());
+            java.nio.file.Files.write(file,new byte[]{1,2,3});
+        }
+        var storage=new com.chanter.media.infra.LocalPrivateResourceStorage(directory.toString(),mutations); storage.recoveryInventory(inventories);
+        for(var reference:references) {
+            var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,reference.ordinal());
+            storage.deleteForRecovery(request);
+            assertThat(java.nio.file.Files.exists(directory.resolve(reference.key()))).isFalse();
+            assertThat(inventories.beginDelete("local",request).alreadyClosed()).isTrue();
+            storage.deleteForRecovery(request);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory_references WHERE physical_closed_at IS NOT NULL",Integer.class)).isEqualTo(2);
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+        assertThat(mutations.receipt(inventory).inventoryId()).isEqualTo(inventory);
+        assertThat(jdbc.queryForObject("SELECT byte_reservation FROM course_resources WHERE id=?",Boolean.class,resource)).isTrue();
+    }
+
+    @Test void lostPhysicalClosureTransactionRetainsMutationAndPreventsRedispatch(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        UUID resource=resource();
+        jdbc.update("UPDATE course_resources SET state='DELETE_PENDING',storage_backend='local' WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        var reference=inventories.page(inventory,authority,0,1).references().getFirst();
+        var file=directory.resolve(reference.key());java.nio.file.Files.createDirectories(file.getParent());java.nio.file.Files.write(file,new byte[]{1});
+        jdbc.execute("ALTER TABLE media_recovery_inventory_references ADD CONSTRAINT fixture_refuse_closure CHECK(physical_closed_at IS NULL)");
+        var storage=new com.chanter.media.infra.LocalPrivateResourceStorage(directory.toString(),mutations);storage.recoveryInventory(inventories);
+        assertThatThrownBy(() -> storage.deleteForRecovery(request)).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.UNKNOWN));
+        assertThat(java.nio.file.Files.exists(file)).isFalse();
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory_references WHERE physical_closed_at IS NOT NULL",Integer.class)).isZero();
+        assertThatThrownBy(() -> storage.deleteForRecovery(request)).hasRootCauseMessage("Inventory has unsettled physical operations");
+    }
+
+    @Test void localDeleteIoRejectionSettlesInvocationWithoutClaimingErasure(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        UUID resource=resource();jdbc.update("UPDATE course_resources SET state='DELETE_PENDING',storage_backend='local' WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var reference=inventories.page(inventory,authority,0,1).references().getFirst();
+        var target=directory.resolve(reference.key());java.nio.file.Files.createDirectories(target);java.nio.file.Files.write(target.resolve("fixture"),new byte[]{1});
+        var storage=new com.chanter.media.infra.LocalPrivateResourceStorage(directory.toString(),mutations);storage.recoveryInventory(inventories);
+        assertThatThrownBy(() -> storage.deleteForRecovery(new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1)))
+                .isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                        failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.FINISHED));
+        assertThat(java.nio.file.Files.exists(target.resolve("fixture"))).isTrue();
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory_references WHERE physical_closed_at IS NOT NULL",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT byte_reservation FROM course_resources WHERE id=?",Boolean.class,resource)).isTrue();
+    }
+
+    @Test void liveResourceCannotAuthorizePhysicalDeletion() {
+        resource(); inventories.capture(inventory,backup,authority);
+        assertThatThrownBy(() -> inventories.beginDelete("s3",new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1)))
+                .hasMessageContaining("no terminal authority");
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+    }
+
+    @Test void versionlessRemoteClosureRefusesRetainedVersionsAndRequiresDefinitiveAbsence() throws Exception {
+        UUID resource=resource();jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        var versioning=new java.util.concurrent.atomic.AtomicReference<>("Enabled");var deletes=new java.util.concurrent.atomic.AtomicInteger();
+        var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/",exchange -> {
+            if(exchange.getRequestMethod().equals("GET") && "versioning".equals(exchange.getRequestURI().getQuery())) {
+                String status=versioning.get();
+                byte[] xml=("<VersioningConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">"
+                        +(status.isEmpty() ? "" : "<Status>"+status+"</Status>")+"</VersioningConfiguration>").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200,xml.length);try(var body=exchange.getResponseBody()){body.write(xml);}
+            } else {deletes.incrementAndGet();exchange.sendResponseHeaders(404,-1);exchange.close();}
+        });server.start();
+        var storage=new com.chanter.media.infra.S3PrivateResourceStorage(org.mockito.Mockito.mock(ResourceLifecycle.class),mutations,
+                "http://127.0.0.1:"+server.getAddress().getPort(),"us-east-1","fixture-bucket","fixture-key","fixture-secret",true);
+        try {
+            storage.recoveryInventory(inventories);
+            for(String status:java.util.List.of("Enabled","Suspended")) {
+                versioning.set(status);
+                assertThatThrownBy(() -> storage.deleteForRecovery(request)).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                        failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.NOT_STARTED));
+                assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+            }
+            assertThat(deletes.get()).isZero();versioning.set("");
+            storage.deleteForRecovery(request);
+            assertThat(inventories.beginDelete("s3",request).alreadyClosed()).isTrue();
+            assertThat(deletes.get()).isEqualTo(1);
+        } finally {storage.close();server.stop(0);}
+    }
+
+    @Test void remoteDeleteRejectionAndAmbiguousCompletionDoNotClaimPhysicalClosure() throws Exception {
+        UUID resource=resource();jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        var response=new java.util.concurrent.atomic.AtomicInteger(403); var calls=new java.util.concurrent.atomic.AtomicInteger();
+        var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/",exchange -> {
+            if(exchange.getRequestMethod().equals("GET") && "versioning".equals(exchange.getRequestURI().getQuery())) {
+                byte[] xml="<VersioningConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"/>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200,xml.length);try(var body=exchange.getResponseBody()){body.write(xml);}
+            } else {calls.incrementAndGet();exchange.sendResponseHeaders(response.get(),-1);exchange.close();}
+        });server.start();
+        var storage=new com.chanter.media.infra.S3PrivateResourceStorage(org.mockito.Mockito.mock(ResourceLifecycle.class),mutations,
+                "http://127.0.0.1:"+server.getAddress().getPort(),"us-east-1","fixture-bucket","fixture-key","fixture-secret",true);
+        try {
+            storage.recoveryInventory(inventories);
+            assertThatThrownBy(() -> storage.deleteForRecovery(request)).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                    failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.FINISHED));
+            assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+            response.set(500);
+            assertThatThrownBy(() -> storage.deleteForRecovery(request)).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                    failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.UNKNOWN));
+            assertThat(mutations.receipt(inventory).unsettledMutations()).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory_references WHERE physical_closed_at IS NOT NULL",Integer.class)).isZero();
+            assertThatThrownBy(() -> storage.deleteForRecovery(request)).hasRootCauseMessage("Inventory has unsettled physical operations");
+            assertThat(calls.get()).isEqualTo(2);
+        } finally { storage.close(); server.stop(0); }
     }
 
     @Test void actualS3RecoveryUsesConditionalCreationAndRetainsUnknownCompletion() throws Exception {

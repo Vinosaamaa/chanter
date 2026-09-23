@@ -15,6 +15,9 @@ public interface PrivateResourceStorage {
     }
     InputStream open(String key) throws IOException;
     void delete(String key) throws IOException;
+    default void deleteForRecovery(ResourceRecoveryInventory.RestoreRequest request) throws IOException {
+        throw new IOException("Private object recovery is not enabled");
+    }
     Page list(String cursor) throws IOException;
     record ObjectInfo(String key, Instant modifiedAt) { }
     record Page(List<ObjectInfo> objects, String nextCursor) { }

@@ -42,6 +42,60 @@ public class ResourceRecoveryInventory {
     public record Page(int schemaVersion, Snapshot snapshot, int after, List<Reference> references, Integer nextAfter) { }
     public record RestoreRequest(UUID inventoryId, UUID databaseBackupId, Authority authority, int ordinal) { }
     public record RestoreMutation(UUID mutationId, Reference reference) { }
+    public record DeleteMutation(UUID mutationId, Reference reference, boolean alreadyClosed) { }
+
+    public DeleteMutation beginDelete(String backend, RestoreRequest request) {
+        requireDeleteRequest(request); requireOutsideTransaction();
+        return tx.execute(status -> {
+            String namespace=qualify(request.inventoryId(),request.authority());
+            Reference reference=deletionReference(request,namespace);
+            if(!reference.storageBackend().equals(backend)) throw new IllegalStateException("Delete adapter does not match source backend");
+            var closed=jdbc.queryForObject("SELECT physical_closed_at IS NOT NULL FROM media_recovery_inventory_references WHERE inventory_id=? AND ordinal=?",
+                    Boolean.class,request.inventoryId(),request.ordinal());
+            if(Boolean.TRUE.equals(closed)) return new DeleteMutation(null,reference,true);
+            UUID mutation=mutations.beginRecoveryDeleteLocked(request.inventoryId(),reference.key());
+            jdbc.update("UPDATE media_recovery_inventory_references SET closure_mutation_id=? WHERE inventory_id=? AND ordinal=?",
+                    mutation,request.inventoryId(),request.ordinal());
+            return new DeleteMutation(mutation,reference,false);
+        });
+    }
+    /** Only the original successful adapter invocation calls this; failed request settlement is not absence proof. */
+    public void completeDelete(RestoreRequest request, UUID mutation) {
+        requireDeleteRequest(request); requireIdentity(mutation); requireOutsideTransaction();
+        tx.executeWithoutResult(status -> {
+            String namespace=qualify(request.inventoryId(),request.authority(),mutation);
+            Reference reference=deletionReference(request,namespace);
+            if(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations WHERE id=? AND object_key=? AND operation='DELETE' AND outcome='ACTIVE'",
+                    Integer.class,mutation,reference.key())!=1) throw new IllegalStateException("Physical deletion invocation is not active");
+            if(jdbc.update("UPDATE media_recovery_inventory_references SET physical_closed_at=? WHERE inventory_id=? AND ordinal=? AND closure_mutation_id=? AND physical_closed_at IS NULL",
+                    Timestamp.from(clock.instant()),request.inventoryId(),request.ordinal(),mutation)!=1)
+                throw new IllegalStateException("Physical deletion ownership changed");
+            if(jdbc.update("DELETE FROM media_storage_mutations WHERE id=?",mutation)!=1)
+                throw new IllegalStateException("Physical deletion accounting changed");
+        });
+    }
+    private static void requireDeleteRequest(RestoreRequest request) {
+        java.util.Objects.requireNonNull(request); requireIdentity(request.inventoryId()); requireIdentity(request.databaseBackupId());
+        java.util.Objects.requireNonNull(request.authority());
+        if(request.ordinal()<1 || request.ordinal()>MAX_REFERENCES) throw new IllegalArgumentException("Invalid deletion reference");
+    }
+    private Reference deletionReference(RestoreRequest request,String namespace) {
+        Snapshot snapshot=saved();
+        if(snapshot==null || !snapshot.inventoryId().equals(request.inventoryId()) || !snapshot.databaseBackupId().equals(request.databaseBackupId())
+                || !snapshot.authority().equals(request.authority()) || !snapshot.namespaceSha256().equals(namespace))
+            throw new IllegalStateException("Deletion inventory snapshot does not match");
+        var rows=jdbc.query("SELECT * FROM media_recovery_inventory_references WHERE inventory_id=? AND ordinal=?",
+                (rs,n) -> reference(rs),request.inventoryId(),request.ordinal());
+        if(rows.size()!=1) throw new IllegalStateException("Deletion reference is missing");
+        Reference reference=rows.getFirst();
+        if(!reference.terminal()) throw new IllegalStateException("Deletion reference has no terminal authority");
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM course_resources WHERE id=? AND course_id=? AND storage_backend=? AND byte_size=? AND sha256=?"
+                + " AND state IN ('DELETE_PENDING','DELETED') AND storage_write_settled=TRUE AND lease_id IS NULL AND lease_until IS NULL AND "
+                + (reference.referenceKind().equals("CURRENT") ? "storage_key=?" : "migration_key=?"),Integer.class,
+                reference.resourceId(),reference.courseId(),reference.storageBackend(),reference.byteSize(),reference.sha256(),reference.key())!=1)
+            throw new IllegalStateException("Deletion source reference changed");
+        return reference;
+    }
 
     public ResourceRecoveryInventory(JdbcTemplate jdbc, PlatformTransactionManager transactions, Clock clock, StorageMutationStore mutations,
             @Value("${chanter.recovery-mode:false}") boolean recovery,
@@ -169,6 +223,9 @@ public class ResourceRecoveryInventory {
     }
 
     private String qualify(UUID inventory, Authority authority) {
+        return qualify(inventory,authority,null);
+    }
+    private String qualify(UUID inventory, Authority authority, UUID completingMutation) {
         // #251 owns this lock and schema. Missing source integration fails closed before any snapshot writes.
         Authority current = jdbc.queryForObject("SELECT revision,digest FROM lifecycle_reapply_head WHERE id=1 FOR UPDATE",
                 (rs,n) -> new Authority(rs.getLong(1),rs.getString(2)));
@@ -178,7 +235,9 @@ public class ResourceRecoveryInventory {
             return rs.getString(2);
         });
         if (namespace == null || !namespace.matches("[a-f0-9]{64}")) throw new IllegalStateException("Inventory storage namespace is unknown");
-        if (count("SELECT COUNT(*) FROM media_storage_mutations") != 0) throw new IllegalStateException("Inventory has unsettled physical operations");
+        int outstanding=completingMutation==null ? count("SELECT COUNT(*) FROM media_storage_mutations")
+                : jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations WHERE id<>?",Integer.class,completingMutation);
+        if (outstanding != 0) throw new IllegalStateException("Inventory has unsettled physical operations");
         if (count("SELECT COUNT(*) FROM lifecycle_terminal_targets WHERE revision>" + authority.revision()) != 0)
             throw new IllegalStateException("Inventory terminal delivery is ahead of the applied prefix");
         if (count("SELECT COUNT(*) FROM lifecycle_source_requests r WHERE NOT EXISTS(SELECT 1 FROM lifecycle_terminal_targets t WHERE t.target_kind='RESOURCE' AND t.target_id=r.target_id)") != 0)
@@ -224,7 +283,7 @@ public class ResourceRecoveryInventory {
                 + " AND t.event_id=h.event_id AND t.digest=h.terminal_digest WHERE h.ready=TRUE AND s.scope_kind='COURSE' AND s.scope_id=r.course_id)";
     }
     private void flush(ArrayList<Object[]> rows) {
-        if (!rows.isEmpty()) { jdbc.batchUpdate("INSERT INTO media_recovery_inventory_references VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", rows); rows.clear(); }
+        if (!rows.isEmpty()) { jdbc.batchUpdate("INSERT INTO media_recovery_inventory_references(inventory_id,ordinal,resource_id,course_id,reference_kind,storage_backend,object_key,byte_size,sha256,resource_state,source_retained,terminal) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", rows); rows.clear(); }
     }
     private Snapshot saved() {
         return jdbc.query("SELECT * FROM media_recovery_inventory WHERE id=1", (rs,n) -> new Snapshot(1,

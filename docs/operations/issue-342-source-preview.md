@@ -62,6 +62,13 @@ exact claimed event; its full common/agent suite passed. The complete owning UI
 tree above supplies the routing change without increasing the budget. These
 failures still provide no object runtime proof.
 
+The exact preview `1e38bdbf` with source `5a6e92e0` and UI `435a40b2` subsequently
+passed on both AMD64 and ARM64 in Actions run `35805387653`. Both completed logs
+confirm real canonical allocation, fenced source inventory and the encrypted
+object roundtrip. This is the bounded local-volume proof described above. It does
+not cover later backend-guard/deletion changes, a restored database, external S3
+closure or the four deferred participants.
+
 This first preview is not the complete #342 acceptance drill. Restored-only and
 post-backup graph cases, all seven applied source receipts, invalidation, a
 verified database backup bound to the object inventory, external provider and

@@ -81,6 +81,29 @@ S3 If-None-Match. Uncertain completion keeps the operation outstanding. This pat
 has no HTTP endpoint yet, does not release maintenance, and does not itself
 establish encrypted archive provenance or an externally quiescent writer.
 
+The internal maintenance DELETE path uses that same active fence and exact
+inventory/backup/prefix/backend identity. Only a captured terminal reference whose
+current source row is settled and DELETE_PENDING or DELETED may reserve the
+operation. Every current and distinct migration key has its own closure record
+inside the existing temporary snapshot. A successful local deletion or definitive
+remote absence commits that receipt and removes its exact active DELETE mutation
+in one transaction. Repeated closed references return without deleting again.
+The receipt is mutable progress and is separate from the immutable reference hash.
+
+Rejected DELETE calls can settle their invocation without writing a closure
+receipt. Ambiguous provider completion or failed receipt commit retains the
+outstanding operation, blocks retry and cannot release source quota. S3 recovery
+refuses Enabled or Suspended versioning: a versionless request cannot erase
+retained historical versions. The provider must implement the bucket-versioning
+contract, and external configuration/writer fencing remains independently required.
+The loopback tests establish adapter behavior only, not a real provider policy.
+
+Source metadata/quota completion still requires the accepted #251 owning
+`finishVerifiedMaintenanceDelete` hook in the same source transaction after all
+retained keys have exact closure receipts. That final union is not implemented by
+this independent adapter checkpoint. No HTTP deletion endpoint, new retry queue,
+caller-supplied absence flag or fabricated worker lease is introduced.
+
 The current tests establish query, transaction and disabled-API contracts using
 explicit synthetic rows. They do not establish the real canonical #251 replay.
 Private spool disposition, original-writer and provider closure, exact encrypted

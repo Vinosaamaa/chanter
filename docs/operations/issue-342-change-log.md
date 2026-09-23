@@ -3,6 +3,16 @@
 Draft PR #343 owns this issue. PR #336 is accepted with recovery disabled. This issue owns the remaining real
 source and private-object recovery proof; the accepted #332 worktree is preserved.
 
+The independent maintenance DELETE slice now records definitive per-reference
+closure atomically with its exact active mutation. Initial closure tests failed
+before implementation. Actual local current/migration deletion, local I/O refusal,
+receipt rollback, service recreation, and bounded S3 refusal/absence tests pass.
+Enabled and Suspended S3 versioning are refused because the current inventory has
+no version IDs. Full common/media verification passes with 116 media tests and
+zero failures/errors. These tests do not prove external provider or original-writer
+closure. The owning #251 quota/completion hook and full restored-source orchestration
+remain separate integration work; recovery stays OFF.
+
 The first slice adds media V6 and an owning storage-mutation store. New physical
 operations and maintenance fencing serialize on the existing storage-budget row.
 Outstanding operations survive service recreation, unknown deletes block

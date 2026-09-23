@@ -118,21 +118,46 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
         java.util.UUID mutation;
         try { mutation = mutations.begin(key, StorageMutationStore.Operation.DELETE); }
         catch (RuntimeException blocked) { throw new DeleteFailure(WriteOutcome.NOT_STARTED, blocked); }
+        remove(key,mutation,null);
+    }
+    @Override public void deleteForRecovery(ResourceRecoveryInventory.RestoreRequest request) throws IOException {
+        if(recovery==null) throw new IOException("Private object recovery is not enabled");
+        // A versionless DELETE cannot establish erasure when retained object versions may exist.
+        try {
+            lifecycle.countRequest(true);
+            var versioning=client.getBucketVersioning(GetBucketVersioningRequest.builder().bucket(bucket).build());
+            if(versioning.statusAsString()!=null && !versioning.statusAsString().isBlank())
+                throw new IllegalStateException("Versioned object recovery requires explicit version inventory");
+        } catch(Exception unavailable) { throw new DeleteFailure(WriteOutcome.NOT_STARTED,null); }
+        ResourceRecoveryInventory.DeleteMutation deletion;
+        try { deletion=recovery.beginDelete(backend(),request); }
+        catch(RuntimeException blocked) { throw new DeleteFailure(WriteOutcome.NOT_STARTED,blocked); }
+        if(!deletion.alreadyClosed()) remove(deletion.reference().key(),deletion.mutationId(),request);
+    }
+    private void remove(String key,java.util.UUID mutation,ResourceRecoveryInventory.RestoreRequest request) throws IOException {
         boolean started = false;
         try {
             lifecycle.countRequest(true);
             started = true;
             client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
         } catch (S3Exception response) {
+            if(response.statusCode()==404) { deleted(mutation,request); return; }
             boolean finished = complete(mutation, definitiveRejection(response));
-            if (response.statusCode() == 404 && finished) return;
             throw new DeleteFailure(finished ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN, null);
         } catch (Exception exception) {
             boolean finished = complete(mutation, !started);
             throw new DeleteFailure(finished ? WriteOutcome.NOT_STARTED : WriteOutcome.UNKNOWN,
                     exception instanceof ResponseStatusException ? exception : null);
         }
-        if (!complete(mutation,true)) throw new DeleteFailure(WriteOutcome.UNKNOWN,null);
+        deleted(mutation,request);
+    }
+    private void deleted(java.util.UUID mutation,ResourceRecoveryInventory.RestoreRequest request) throws IOException {
+        if(request==null) {
+            if(!complete(mutation,true)) throw new DeleteFailure(WriteOutcome.UNKNOWN,null);
+        } else {
+            try { recovery.completeDelete(request,mutation); }
+            catch(RuntimeException unconfirmed) { throw new DeleteFailure(WriteOutcome.UNKNOWN,null); }
+        }
     }
     @Override public Page list(String cursor) throws IOException {
         lifecycle.countRequest(false);
