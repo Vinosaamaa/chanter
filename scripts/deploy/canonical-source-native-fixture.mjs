@@ -296,17 +296,20 @@ try {
       const scope = call('community', { action: 'current-scope', entry: server, kind, afterId: verifier.after });
       verifier.accept(scope); scopes.push(scope);
     }
-    // The real current archive is empty after the fixture-only historical child removal.
-    // Recovery must derive the older database's course/channels under the same original terminal entry.
-    if (server.targetId === graph.serverId) assert.equal(verifier.result().totalCount, 0);
-    else assert.ok(verifier.result().totalCount > 0);
+    // Removing a course preserves server-level channels. Only the removed course graph must be historical.
+    if (server.targetId === graph.serverId) {
+      if (kind === 'COURSE') assert.equal(verifier.result().totalCount, 0);
+      const removed = new Set(kind === 'COURSE' ? [historical.courseId] : historical.channelIds);
+      assert.ok(scopes.filter(scope => scope.studyServerId === server.targetId && scope.kind === kind)
+        .every(scope => scope.ids.every(id => !removed.has(id))));
+    } else assert.ok(verifier.result().totalCount > 0);
   }
   assert.equal(deferred.length, 0, 'Every owning lifecycle command must reach its actual participant');
   const journalReplica = await databaseDrill.archiveCurrent(page.through);
   compose(['stop', ...sources.map(source => `${source}-service`)]);
   const recoveredAuthority = await databaseDrill.recover(page.through, historical, postBackupGraph, {
     archive, liveArchived, liveObject, quarantineArchived, quarantineObject,
-    archivedNamespace: fence.storageNamespaceSha256, actualBytes,
+    archivedNamespace: fence.storageNamespaceSha256, actualBytes, currentScopes: scopes,
   });
   // Committed delivery is not complete source cleanup or a receipt for replay on a restored database.
   fs.writeFileSync(path.join(root, 'canonical-source.json'), JSON.stringify({ schemaVersion: 1, preview,

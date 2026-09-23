@@ -192,7 +192,13 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.equal(sql(database, 'chanter_community', `SELECT count(*) FROM study_servers WHERE id='${postBackupGraph.serverId}'`), '0');
       assert.equal(historical.courseId, courseId); assert.equal(historical.historicalFixtureOnly, true);
       for (const source of ['community', 'message', 'media', 'agent', 'notification', 'search']) {
-        assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_scope_imports WHERE study_server_id='${historical.serverId}' AND total_count=0 AND ready=TRUE`), '2');
+        for (const kind of ['COURSE', 'CHANNEL']) {
+          const current = objects.currentScopes.find(scope => scope.studyServerId === historical.serverId && scope.kind === kind);
+          assert.ok(current && Number.isSafeInteger(current.totalCount) && current.totalCount >= 0);
+          assert.match(current.scopeDigest, /^[a-f0-9]{64}$/);
+          assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_scope_imports WHERE study_server_id='${historical.serverId}' AND scope_kind='${kind}' AND total_count=${current.totalCount} AND scope_digest='${current.scopeDigest}' AND ready=TRUE`), '1');
+        }
+        assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_scope_import_ids WHERE study_server_id='${historical.serverId}' AND scope_kind='CHANNEL' AND scope_id IN (${historical.channelIds.map(id => `'${id}'`).join(',')})`), '0');
         assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_recovery_scope_ids WHERE study_server_id='${historical.serverId}' AND scope_kind='COURSE' AND scope_id='${courseId}'`), '1');
         assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_recovery_scope_ids WHERE study_server_id='${historical.serverId}' AND scope_kind='CHANNEL' AND scope_id IN (${historical.channelIds.map(id => `'${id}'`).join(',')})`), String(historical.channelIds.length));
         assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_scope_import_ids WHERE study_server_id='${postBackupGraph.serverId}' AND scope_kind='COURSE' AND scope_id='${postBackupGraph.courseId}'`), '1');

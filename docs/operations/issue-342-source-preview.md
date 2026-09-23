@@ -3,7 +3,7 @@
 The release workflow has an explicit `source_recovery_preview` dispatch input,
 restricted to the #342 branch. It does not publish an image or release. Its
 disposable runner merges exact source checkpoint
-`b9145ed2f292d9ca5870fbe0a58639c188bc20ec` with the dispatched recovery SHA.
+`ec91670e44373f69a1f15a010e6529103862e7df` with the dispatched recovery SHA.
 The source branch's earlier frontend exceeds the unchanged JavaScript budget.
 The preview uses the complete owning #339 frontend tree at
 `435a40b2d40a39512973dd3be139e7f1bc7042d2`, after checking its infrastructure
@@ -87,7 +87,7 @@ The actual persisted per-key closure, same-transaction source completion hook an
 repeated once-only quota release were exercised. This result still excluded an
 older database and all-seven delivery, which belong to the next fixture.
 
-The next fixture uses the tested source helper at `b9145ed2`. Its fixed transport
+The next fixture uses the tested source helper at `ec91670e`. Its fixed transport
 also delivers ordinary resource, answer, search and notification events through
 the real owning controllers, including exact resource deletion acknowledgements.
 It takes a real full
@@ -95,7 +95,9 @@ pgBackRest backup with the source inventory and backup identities in its
 annotations, paired with encrypted configuration. A separate fixture bundle
 contains the recovery protocol marker; the production manifest remains unchanged.
 After the backup, the owning fixture removes its synthetic course, then real
-server deletion allocates the canonical entry and current empty scope. All seven
+server deletion allocates the canonical entry and an empty current COURSE scope.
+Server-level channels remain in the current CHANNEL scope; the removed course's
+channel IDs must be absent. All seven
 normal lifecycle consumers run before archiving the actual current journal and
 scope pages. The archive is fully read back before the real auth checkpoint call.
 
@@ -120,8 +122,8 @@ and attempts all owned removals. No public listener or cutover is enabled.
 
 The following unverified extension keeps a second live resource and a third
 settled QUARANTINED upload in the actual backup. After authority replay it checks the restored historical course and
-channel IDs in all six dependent/current scope stores, with the original archived
-scope still empty. It then recaptures the source inventory at the current prefix
+channel IDs in all six dependent/current scope stores, preserving the exact
+original archived count and digest for both kinds. It then recaptures the source inventory at the current prefix
 and restores only those two nonterminal resources from their verified encrypted
 objects into a fresh ownership-labeled local volume. The quarantined resource
 must remain QUARANTINED; the operator byte path never makes it publicly available.
@@ -154,3 +156,10 @@ stopped. The unchanged operator then retries with the same restore/recovery
 identity and original journal authority. Only real subsequent participant and
 invalidation receipts can complete the isolated phase. This new interruption
 case is not yet runtime-proven.
+
+The ARM64 attempt at `ac250406` reached the current scope assertions and rejected
+an incorrect fixture assumption that removing a course also removes server-level
+channels. It did not reach isolated database recovery. The correction keeps the
+empty COURSE check, excludes the actual removed course-channel IDs from current
+scope, and checks the original per-kind count and digest after replay. It does
+not weaken the requirement to recover the older course graph separately.
