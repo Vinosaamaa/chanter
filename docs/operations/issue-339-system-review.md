@@ -109,3 +109,13 @@ separately prove focus and submission behavior. Both current and legacy hook cal
 remount on channel changes, and the shared API client rejects responses after session
 generation changes. The later late-post disclosure suggestion did not reproduce at
 those production boundaries. Final integrated and public acceptance remain open.
+
+Source/account deletion revealed another confirmed privacy defect within the same
+active session: refresh retained removed AI text, citations and replies. Authoritative
+successful reads must retract absent rows even when another endpoint fails. The
+correction keeps the existing mounted-context boundaries and adds only per-load local
+write ownership. It neither invents cross-source completion nor clears content after
+an uncertain read. Independent review found no blocker; six red/green regressions
+and the full 403 frontend tests pass. Phone/desktop fixture execution and final
+accepted-source integration are still required. This is a blocking deletion behavior
+fix beyond the completed general review loop.

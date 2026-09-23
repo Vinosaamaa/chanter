@@ -103,3 +103,14 @@ font-inherit rule overrides layered utilities, inheriting the small label size.
 A narrowly scoped server-home input rule establishes 16px without changing the
 shell-wide cascade. The existing browser assertion remains unchanged and requires
 hosted confirmation; the initial phone course-list screenshot remains readable.
+
+Question Refresh retained a cached answer after GET returned 404 and unconditionally
+merged old replies into new snapshots. Coupling both reads through Promise.all also
+prevented a confirmed deletion from applying if the sibling request failed. Six
+regressions reproduced these cases and older-answer reads overwriting a later Helpful
+result. Each successful read now updates its own cache. A per-load record protects
+only local writes completed during that request; fresh later reads can remove them.
+The existing reply race fixture now uses distinct old/new GET responses, and the
+stream fixture represents a persisted completed answer on its subsequent GET. All
+16 hook cases and the full 403 frontend tests pass; no browser-health exception was
+introduced. Hosted fixture and final source integration proof remain separate.

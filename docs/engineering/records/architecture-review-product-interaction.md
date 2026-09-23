@@ -140,3 +140,12 @@ The real owner setup case passed on its first attempt across all three engines a
 manual enrollment, preserving open invite-copy/join and other wizard-control gates.
 The nullable enrolling-actor field aligns with #251 attribution removal while the
 other learner's enrollment remains intact; it does not change frontend authority.
+
+Refresh now retracts previously displayed AI answers/citations and replies when the
+owning endpoint confirms their absence. Independent reads prevent a sibling failure
+from hiding known erasure. Per-load write protection preserves only later successful
+local changes against an older response, while fresh snapshots remain authoritative.
+Six failing regressions now pass; all 403 frontend tests, lint and unchanged budgets
+pass. Independent review found no blocker. Six synthetic phone/desktop browser cases
+are discovered across three engines and await hosted execution; actual source
+retraction and the final accepted union remain separately required.

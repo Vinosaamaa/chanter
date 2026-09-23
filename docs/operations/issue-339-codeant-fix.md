@@ -147,3 +147,13 @@ pins a partially completed cleanup/recovery backend and deliberately verifies ho
 pending state. Allowing COMPLETE here could conceal premature completion. Keep this
 assertion for the pinned preview. At final accepted union, update it only alongside
 owning source/recovery evidence that establishes valid completion conditions.
+
+## Confirmed stale content after deletion
+
+Independent review reproduced cached AI answer/citation and reply retention after an
+authoritative Refresh. Six regressions failed before the correction. Successful
+answer/reply reads now apply independently, remove absent content, and protect only
+local writes settling after that load began. Later reads can remove those writes.
+Independent diff review found no blocker, and all 403 frontend tests, lint and build
+budgets pass. New hosted phone/desktop fixture execution remains pending. This
+privacy/correctness blocker does not reopen the three general remediation rounds.

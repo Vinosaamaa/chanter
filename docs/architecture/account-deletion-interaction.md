@@ -117,3 +117,14 @@ then opens, refreshes and reloads the requester progress page. Same-target retri
 must return the original job even after canonical registration; non-requesters and
 anonymous clients cannot read its progress. It deliberately does not claim browser
 dialog-to-registration timing, immediate completion, or restored-source proof.
+
+## Previously displayed question content
+
+An authoritative answer 404 removes the cached answer and its citations. A successful
+reply snapshot replaces previous replies, including content from a removed account.
+These reads apply independently, so one failing endpoint cannot retain content that
+the other endpoint has confirmed absent. Failed reads keep their prior state and
+show the existing error. A successful local answer update or reply completed after
+the read began survives that older read; a subsequent fresh read remains authoritative.
+The protection belongs to one active question load and ends when it settles or is
+cancelled. It does not compare timestamps or preserve historical cache rows forever.

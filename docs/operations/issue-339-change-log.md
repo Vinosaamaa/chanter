@@ -287,3 +287,12 @@ The #251 community contract removes deleted instructor attribution from another
 learner's retained enrollment. The frontend now accepts null enrolledByUserId. No
 production display consumes that field, and existing non-null responses remain
 compatible. Typechecking passes; no enrollment authority or rendering changes.
+
+Refresh now removes a saved AI answer after an authoritative 404 and replaces cached
+replies with the current server snapshot. Previously both could remain visible after
+source/account deletion. Independent reads apply even when the sibling endpoint fails;
+only successful local writes completed after that read began survive an older result.
+Six red regressions now pass, and the full 403-test frontend suite, lint and unchanged
+production budgets pass. Independent review found no blocker. Six phone/desktop
+fixture cases are discovered across all three engines; hosted execution is pending.
+The preceding e8957365 full CI, visual checks and both native releases passed.

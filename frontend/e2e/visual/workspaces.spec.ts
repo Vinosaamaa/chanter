@@ -18,6 +18,40 @@ test.beforeEach(async ({ page }) => {
 const course = '/app/servers/visual-study/courses/visual-course-0'
 const community = '/app/servers/visual-study/community'
 
+for (const width of [390, 1280]) {
+  test(`fixture UI removes erased answer and reply after refresh at ${width} @questions`, async ({ page }, testInfo) => {
+    let removed = false
+    await page.route('**/assistant-answer', route => route.fulfill(removed
+      ? { status: 404, json: { message: 'No saved answer' } }
+      : { json: {
+        id: 'visual-erased-answer', supportQuestionId: 'visual-question',
+        answerBody: 'An answer from the removed source.', createdAt: VISUAL_NOW,
+        supportQuestionStatus: 'AI_ANSWERED', handoffRecommended: false,
+        sources: [{ resourceId: 'visual-erased-resource', resourceTitle: 'Removed field notes', excerpt: 'Private excerpt from the removed source.' }],
+      } }))
+    await page.route('**/replies', route => route.fulfill({ json: { replies: removed ? [] : [{
+      id: 'visual-erased-reply', supportQuestionId: 'visual-question', authorUserId: 'visual-peer',
+      body: 'Reply from the removed account.', createdAt: VISUAL_NOW,
+    }] } }))
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto(`${course}/questions`)
+    if (width === 390) await page.locator('.question-thread-list > button').first().click()
+    await expect(page.getByText('An answer from the removed source.', { exact: true })).toBeVisible()
+    await expect(page.getByText('Private excerpt from the removed source.', { exact: true })).toBeVisible()
+    await expect(page.getByText('Reply from the removed account.', { exact: true })).toBeVisible()
+    removed = true
+    if (width === 390) await page.getByRole('button', { name: 'Questions', exact: true }).click()
+    await page.getByRole('button', { name: 'Refresh questions', exact: true }).click()
+    if (width === 390) await page.locator('.question-thread-list > button').first().click()
+    await expect(page.getByText('An answer from the removed source.', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Private excerpt from the removed source.', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Reply from the removed account.', { exact: true })).toHaveCount(0)
+    await expect(page.locator('.question-message').first()).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-question-erased-content-${width}.png`) })
+  })
+}
+
 test('fixture UI phone Questions keeps a new draft through late history', async ({ page }, testInfo) => {
   let release!: () => void
   const ready = new Promise<void>(resolve => { release = resolve })
