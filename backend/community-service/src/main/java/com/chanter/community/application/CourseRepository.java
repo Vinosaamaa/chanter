@@ -6,6 +6,7 @@ import com.chanter.community.domain.CohortEnrollmentList;
 import com.chanter.community.domain.CohortInvitation;
 import com.chanter.community.domain.CohortJoinDetails;
 import com.chanter.community.domain.Cohort;
+import com.chanter.community.domain.CohortEnrollmentPolicy;
 import com.chanter.community.domain.Course;
 import com.chanter.community.domain.CourseLifecycle;
 import com.chanter.community.domain.CourseCatalogCourse;
@@ -25,7 +26,7 @@ import java.util.UUID;
 
 public interface CourseRepository {
 
-    Course save(Course course, String description);
+    Course save(Course course, String description, CohortEnrollmentPolicy enrollmentPolicy);
 
     List<CourseCatalogCourse> findPublishedCourseCatalog(
             UUID studyServerId,

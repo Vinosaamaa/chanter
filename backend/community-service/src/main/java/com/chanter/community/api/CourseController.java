@@ -4,6 +4,7 @@ import com.chanter.common.ServiceInfo;
 import com.chanter.common.auth.AuthRequestAttributes;
 import com.chanter.community.application.CourseService;
 import com.chanter.community.domain.Cohort;
+import com.chanter.community.domain.CohortEnrollmentPolicy;
 import com.chanter.community.domain.CourseLifecycle;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -45,7 +46,8 @@ public class CourseController {
                 actorUserId,
                 request.title(),
                 request.description(),
-                request.cohortName()
+                request.cohortName(),
+                request.enrollmentPolicy() == null ? null : CohortEnrollmentPolicy.valueOf(request.enrollmentPolicy())
         );
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path(ServiceInfo.API_V1_PREFIX + "/courses/{id}")

@@ -32,6 +32,29 @@ class CommunityAccountCleanupTest {
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
     @Autowired org.springframework.context.ConfigurableApplicationContext context;
 
+    @Test void policyAwareCreationAndCompatibilityEntryKeepTerminalAccountAndServerFences() {
+        UUID owner=UUID.randomUUID();
+        var server=servers.createStudyServer("Policy terminal",null,StudyServerType.PERSONAL,List.of(),owner);
+        var course=courses.createCourse(server.id(),owner,"Invite course",null,"Cohort",CohortEnrollmentPolicy.INVITE_ONLY);
+        assertThat(jdbc.queryForObject("SELECT enrollment_policy FROM cohorts WHERE course_id=?",String.class,course.id()))
+                .isEqualTo("INVITE_ONLY");
+        apply(entry(owner));
+        assertThatThrownBy(() -> courses.createCourse(server.id(),owner,"Late policy course",null,"Cohort",CohortEnrollmentPolicy.INVITE_ONLY))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class).hasMessageContaining("410");
+        assertThatThrownBy(() -> courses.createCourse(server.id(),owner,"Late compatible course",null,"Cohort"))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class).hasMessageContaining("410");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM courses WHERE study_server_id=?",Integer.class,server.id())).isEqualTo(1);
+
+        UUID liveOwner=UUID.randomUUID();
+        var deletedServer=servers.createStudyServer("Deleted policy server",null,StudyServerType.PERSONAL,List.of(),liveOwner);
+        apply(entry("STUDY_SERVER",deletedServer.id()));
+        assertThatThrownBy(() -> courses.createCourse(deletedServer.id(),liveOwner,"Late server course",null,"Cohort",CohortEnrollmentPolicy.INVITE_ONLY))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class).hasMessageContaining("410");
+        assertThatThrownBy(() -> courses.createCourse(deletedServer.id(),liveOwner,"Late server draft",null,null))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class).hasMessageContaining("410");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM courses WHERE study_server_id=?",Integer.class,deletedServer.id())).isZero();
+    }
+
     @Test void hostedHistoricalFixtureVerifiesImmutableParentAndDoesNotAllocateTerminalAuthority() throws Exception {
         var source=java.nio.file.Path.of("../../scripts/deploy/fixtures/CanonicalLifecycleFixture.java").toAbsolutePath().normalize();
         var output=java.nio.file.Path.of("target/canonical-community-fixture-test").toAbsolutePath();java.nio.file.Files.createDirectories(output);
@@ -157,10 +180,13 @@ class CommunityAccountCleanupTest {
     }
     private void apply(TerminalJournal.Entry entry) { new TransactionTemplate(transactions).executeWithoutResult(status -> terminal.applyTerminal(entry)); }
     private TerminalJournal.Entry entry(UUID account) {
+        return entry("ACCOUNT",account);
+    }
+    private TerminalJournal.Entry entry(String kind,UUID target) {
         long revision=jdbc.queryForObject("SELECT COALESCE(MAX(revision),0)+1 FROM lifecycle_terminal_targets",Long.class);
         UUID event=UUID.randomUUID(); Instant now=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
-        return new TerminalJournal.Entry(revision,event,"ACCOUNT",account,"DELETE",now,TerminalJournal.RETENTION_POLICY,TerminalJournal.GENESIS,
-                TerminalJournal.digest(revision,event,"ACCOUNT",account,now,TerminalJournal.GENESIS));
+        return new TerminalJournal.Entry(revision,event,kind,target,"DELETE",now,TerminalJournal.RETENTION_POLICY,TerminalJournal.GENESIS,
+                TerminalJournal.digest(revision,event,kind,target,now,TerminalJournal.GENESIS));
     }
     private static void await(CountDownLatch latch) {
         try { if(!latch.await(5,TimeUnit.SECONDS)) throw new IllegalStateException("Fixture latch timeout"); }
