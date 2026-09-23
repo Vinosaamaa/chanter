@@ -85,7 +85,7 @@ public class JdbcCourseRepository implements CourseRepository {
 
     @Override
     @Transactional
-    public Course save(Course course, String description) {
+    public Course save(Course course, String description, CohortEnrollmentPolicy enrollmentPolicy) {
         jdbcClient.sql("""
                         INSERT INTO courses (
                             id,
@@ -124,13 +124,14 @@ public class JdbcCourseRepository implements CourseRepository {
                 .update();
 
         jdbcClient.sql("""
-                        INSERT INTO cohorts (id, course_id, name, invite_code)
-                        VALUES (:id, :courseId, :name, :inviteCode)
+                        INSERT INTO cohorts (id, course_id, name, invite_code, enrollment_policy)
+                        VALUES (:id, :courseId, :name, :inviteCode, :enrollmentPolicy)
                         """)
                 .param("id", course.cohort().id())
                 .param("courseId", course.id())
                 .param("name", course.cohort().name())
                 .param("inviteCode", course.cohort().inviteCode())
+                .param("enrollmentPolicy", enrollmentPolicy.name())
                 .update();
 
         for (CourseChannel channel : course.channels()) {
