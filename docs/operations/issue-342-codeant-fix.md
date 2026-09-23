@@ -260,3 +260,9 @@ published/leaf preservation, ambiguous writes and cleanup failures. Actual resti
 verification additionally checks snapshot disappearance and continued readback of
 the published inventory, and preserves all three snapshots after a deliberately
 lost manifest acknowledgement.
+
+Comment 4078824832 identifies fixture maps keyed only by resource ID. Both capture
+and restored-inventory maps now include reference kind, so CURRENT and MIGRATION
+cannot overwrite or substitute one another. The current native fixture creates
+CURRENT references only; it does not claim a migrated-object end-to-end proof.
+The production capture adapter already resolves each source ordinal separately.

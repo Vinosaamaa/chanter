@@ -227,9 +227,9 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.deepEqual(objects.inventoryArchive, inventoryArchive);
       const archivedObjects = new Map();
       assert.equal(objects.archive.verifyInventory(inventoryArchive, objects.inventory,
-        (source, object) => archivedObjects.set(source.resourceId, object)).referenceCount, 3);
-      assert.deepEqual(archivedObjects.get(objects.liveObject.resourceId), objects.liveArchived);
-      assert.deepEqual(archivedObjects.get(objects.quarantineObject.resourceId), objects.quarantineArchived);
+        (source, object) => archivedObjects.set(`${source.resourceId}:${source.referenceKind}`, object)).referenceCount, 3);
+      assert.deepEqual(archivedObjects.get(`${objects.liveObject.resourceId}:CURRENT`), objects.liveArchived);
+      assert.deepEqual(archivedObjects.get(`${objects.quarantineObject.resourceId}:CURRENT`), objects.quarantineArchived);
       objectCall({ action: 'discard', inventoryId });
       const restoredInventory = objectCall({ action: 'capture', inventoryId, databaseBackupId, authority });
       assert.equal(restoredInventory.referenceCount, 3);

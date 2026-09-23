@@ -228,11 +228,12 @@ try {
   const quarantineArchived = archive.capture(quarantineObject, { inventoryId, storageNamespaceSha256: fence.storageNamespaceSha256,
     authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 }, actualBytes);
   assert.deepEqual(archive.readVerified(quarantineArchived, quarantineObject, fence.storageNamespaceSha256), actualBytes);
-  const leaves = new Map([[available.resourceId, archived], [liveResource.resourceId, liveArchived], [quarantined.resourceId, quarantineArchived]]);
+  const leaves = new Map([[`${available.resourceId}:CURRENT`, archived], [`${liveResource.resourceId}:CURRENT`, liveArchived],
+    [`${quarantined.resourceId}:CURRENT`, quarantineArchived]]);
   const inventoryArchive = archive.publishInventory(inventory, { inventoryId, storageNamespaceSha256: fence.storageNamespaceSha256,
     authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 },
   (after, limit) => objectCall({ action: 'page', inventoryId, authority: GENESIS, after, limit }),
-  source => leaves.get(source.resourceId));
+  source => leaves.get(`${source.resourceId}:${source.referenceKind}`));
   assert.equal(archive.verifyInventory(inventoryArchive, inventory).referenceCount, 3);
   databaseDrill = await sourceDatabaseCheckpoint({ bundle, state, root, release, postgres, project,
     composeFile, sourceCompose, inventoryId, databaseBackupId, resourceId: available.resourceId,
