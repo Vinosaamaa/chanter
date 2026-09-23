@@ -13,9 +13,11 @@ public final class AnswerRetractions {
     private final DurableOutbox outbox;
     private final ObjectMapper mapper;
     private final org.springframework.beans.factory.ObjectProvider<com.chanter.common.lifecycle.TerminalReapplyStore> terminal;
+    private final org.springframework.beans.factory.ObjectProvider<ResourceDeletionReconciliation> deletions;
     public AnswerRetractions(JdbcTemplate jdbc,DurableOutbox outbox,ObjectMapper mapper,
-            org.springframework.beans.factory.ObjectProvider<com.chanter.common.lifecycle.TerminalReapplyStore> terminal) {
-        this.jdbc=jdbc; this.outbox=outbox; this.mapper=mapper; this.terminal=terminal;
+            org.springframework.beans.factory.ObjectProvider<com.chanter.common.lifecycle.TerminalReapplyStore> terminal,
+            org.springframework.beans.factory.ObjectProvider<ResourceDeletionReconciliation> deletions) {
+        this.jdbc=jdbc; this.outbox=outbox; this.mapper=mapper; this.terminal=terminal;this.deletions=deletions;
     }
     public void resource(UUID id) { erase("a.id IN (SELECT answer_id FROM study_assistant_answer_sources WHERE resource_id=?)",id); }
     public void account(UUID id) { erase("a.learner_user_id=?",id); }
@@ -59,7 +61,10 @@ public final class AnswerRetractions {
         if("COMPLETE".equals(rows.getFirst()) && !"COMPLETE".equals(receipt.state())) throw new IllegalArgumentException("Answer reconciliation regressed");
         jdbc.update("UPDATE lifecycle_answer_retractions SET receipt_state=? WHERE answer_id=?",receipt.state(),answer.answerId());
         for(UUID resource:jdbc.query("SELECT resource_id FROM lifecycle_answer_retraction_resources WHERE answer_id=? ORDER BY resource_id",
-                (rs,n)->rs.getObject(1,UUID.class),answer.answerId())) terminal.getObject().reconcile("RESOURCE",resource);
+                (rs,n)->rs.getObject(1,UUID.class),answer.answerId())) {
+            terminal.getObject().reconcile("RESOURCE",resource);
+            deletions.getObject().completeResource(resource);
+        }
         terminal.getObject().reconcile("ACCOUNT",answer.authorId());
     }
     private record Saved(AnswerRetraction answer,UUID server) { }

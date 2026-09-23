@@ -1,7 +1,6 @@
 package com.chanter.agent.lifecycle;
 
 import com.chanter.agent.application.ResourceChunkRepository;
-import com.chanter.agent.application.GroundedSupportQuestionService.NativeEvidence;
 import com.chanter.common.lifecycle.*;
 import java.util.UUID;
 import org.springframework.context.annotation.Bean;
@@ -33,7 +32,7 @@ public class AgentTerminalConfiguration {
                 outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore agentTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,AnswerRetractions retractions,ErasedContentDelivery content,AgentAccountRetention retention,
+            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,AnswerRetractions retractions,ErasedContentDelivery content,AgentAccountRetention retention,AgentResourceCleanup resourceCleanup,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
@@ -55,24 +54,7 @@ public class AgentTerminalConfiguration {
             // At most 16 retained source snapshots; cancel them before removing their canonical content.
             snapshots.invalidateRetained();
             if(entry.targetKind().equals("RESOURCE")) {
-                chunks.deleteByResourceId(target);
-                retractions.resource(target);
-                jdbc.update("DELETE FROM study_assistant_grants WHERE grant_type='COURSE_RESOURCE' AND grant_target_id=?",target);
-                UUID after=new UUID(0,0);
-                while(true) {
-                    if(Thread.currentThread().isInterrupted()) throw new IllegalStateException("Agent terminal cleanup interrupted");
-                    var rows=jdbc.query("SELECT id,evidence_json FROM native_companion_requests WHERE evidence_json IS NOT NULL AND id>? ORDER BY id LIMIT 256",
-                            (rs,row)->new Evidence(rs.getObject(1,UUID.class),rs.getString(2)),after);
-                    if(rows.isEmpty()) break;
-                    for(var row:rows) {
-                        boolean erase;
-                        try { var evidence=mapper.readValue(row.json(),NativeEvidence.class);
-                            erase=evidence==null || evidence.resourceIds().contains(target);
-                        } catch(java.io.IOException | IllegalArgumentException malformed) { erase=true; }
-                        if(erase) jdbc.update("UPDATE native_companion_requests SET evidence_json=NULL,outcome=CASE WHEN outcome IN ('ISSUED','ACCEPTING') THEN 'REJECTED' ELSE outcome END WHERE id=?",row.id());
-                    }
-                    after=rows.getLast().id();
-                }
+                resourceCleanup.erase(target);
                 return retractions.resourcePending(target) ? TerminalReapplyStore.Cleanup.PENDING : TerminalReapplyStore.Cleanup.COMPLETE;
             }
             if(!entry.targetKind().equals("STUDY_SERVER")) throw new IllegalArgumentException("Unknown terminal target");
@@ -103,5 +85,4 @@ public class AgentTerminalConfiguration {
             return TerminalReapplyStore.Cleanup.PENDING;
         });
     }
-    private record Evidence(UUID id,String json) {}
 }

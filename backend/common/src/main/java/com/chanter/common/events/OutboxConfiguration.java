@@ -64,6 +64,7 @@ public class OutboxConfiguration {
                 "search", URI.create(search + "/api/v1/internal/events"),
                 "agent", URI.create(agent + "/api/v1/internal/events"),
                 "message", URI.create(message + "/api/v1/internal/events"),
+                "media", URI.create(media + "/api/v1/internal/events"),
                 "notification", URI.create(notification + "/api/v1/internal/events")));
         Map.of("auth", auth, "community", community, "media", media, "message", message,
                 "agent", agent, "search", search, "notification", notification).forEach((source, base) ->

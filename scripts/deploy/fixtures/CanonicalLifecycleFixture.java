@@ -179,12 +179,16 @@ public final class CanonicalLifecycleFixture {
             }
             case "events" -> {
                 fields(request,"action","afterRevision"); long after=number(request,"afterRevision");
-                yield jdbc.query("SELECT id,revision,kind,aggregate_key,payload,destination FROM durable_outbox WHERE revision>? AND destination LIKE 'lifecycle-%' ORDER BY revision LIMIT 64",
+                yield jdbc.query("SELECT id,revision,kind,aggregate_key,payload,destination FROM durable_outbox WHERE revision>? AND status<>'ERASED' AND (destination LIKE 'lifecycle-%' OR destination IN ('agent','media','message','search','notification')) ORDER BY revision LIMIT 64",
                         (rs,n) -> Map.of("destination",rs.getString(6),"event",new DurableEvent(rs.getObject(1,UUID.class),1,source,rs.getLong(2),rs.getString(3),rs.getString(4),rs.getString(5))),after);
             }
             case "deliver" -> {
                 fields(request,"action","event"); DurableEvent event=mapper.treeToValue(request.get("event"),DurableEvent.class); event.validate();
-                if(source.equals("auth")) {
+                String controller=ordinaryController(event.kind());
+                if(controller!=null) {
+                    String token=context.getEnvironment().getRequiredProperty("chanter.internal-service-token");
+                    invoke(bean(controller),source.equals("media") ? "accept" : "consume",event,token);
+                } else if(source.equals("auth")) {
                     Object protocol=context.getBean(AccountDeletionProtocol.class);
                     if(AccountDeletionProtocol.SOURCE_REQUEST.equals(event.kind())) invoke(bean("com.chanter.auth.lifecycle.SourceDeletionJobs"),"request",event);
                     else {
@@ -208,6 +212,16 @@ public final class CanonicalLifecycleFixture {
                 yield invoke(bean("com.chanter.community.lifecycle.DeletedStudyServerScope"),"page",entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),text(request,"kind"),id(request,"afterId"),256);
             }
             default -> throw new IllegalArgumentException("Unknown fixture action");
+        };
+    }
+    private String ordinaryController(String kind) {
+        return switch(source) {
+            case "agent" -> Set.of("RESOURCE_CHANGED","ANSWER_RECONCILED").contains(kind) ? "com.chanter.agent.api.ResourceEventController" : null;
+            case "media" -> "RESOURCE_DELETE_COMPLETE".equals(kind) ? "com.chanter.media.api.ResourceDeletionEventController" : null;
+            case "message" -> Set.of("ACCEPTED_ANSWER","ANSWER_RETRACTED").contains(kind) ? "com.chanter.message.api.AcceptedAnswerEventController" : null;
+            case "search" -> Set.of("EVENT","ANNOUNCEMENT","FAQ","MESSAGE","RESOURCE").contains(kind) ? "com.chanter.search.api.SearchEventController" : null;
+            case "notification" -> Set.of("NOTIFICATION","ANSWER_NOTIFICATION_RETRACTED").contains(kind) ? "com.chanter.notification.api.NotificationEventController" : null;
+            default -> null;
         };
     }
     private Object bean(String name) throws Exception { return context.getBean(Class.forName(name)); }

@@ -155,8 +155,25 @@ public class ResourceLifecycle {
                 .param("now", now()).param("id", id).update();
         if (changed == 1) {
             publishSearch(id, true);
-            resourceEvents.append(new com.chanter.common.events.ResourceChanged(id, null, null, null, null, false, true));
         }
+        if(jdbc.sql("SELECT COUNT(*) FROM course_resources WHERE id=:id AND state IN ('DELETE_PENDING','DELETED') AND deletion_event_id IS NULL")
+                .param("id",id).query(Integer.class).single()==1) {
+            UUID event=resourceEvents.append(new com.chanter.common.events.ResourceChanged(id,null,null,null,null,false,true));
+            jdbc.sql("UPDATE course_resources SET deletion_event_id=:event,deletion_reconciled=FALSE WHERE id=:id")
+                    .param("event",event).param("id",id).update();
+        }
+    }
+
+    @Transactional(propagation=Propagation.MANDATORY)
+    public void acknowledgeDeletion(com.chanter.common.events.ResourceDeletionReceipt receipt) {
+        lockTerminal();
+        int changed=jdbc.sql("""
+            UPDATE course_resources SET deletion_reconciled=TRUE WHERE id=:id AND deletion_event_id=:event
+              AND state IN ('DELETE_PENDING','DELETED') AND EXISTS(SELECT 1 FROM durable_outbox o WHERE o.id=:event
+                AND o.destination='agent' AND o.kind='RESOURCE_CHANGED' AND o.aggregate_key=:key)
+            """).param("id",receipt.resourceId()).param("event",receipt.commandId()).param("key","RESOURCE:"+receipt.resourceId()).update();
+        if(changed!=1) throw new IllegalArgumentException("Unknown source resource deletion");
+        reconcileTerminalResource(find(receipt.resourceId()).orElseThrow());
     }
 
     @Transactional
@@ -327,6 +344,7 @@ public class ResourceLifecycle {
                 """).param("now", now()).param("id", id).update();
         if (row.get().reserved()) jdbc.sql("UPDATE media_storage_budget SET reserved_bytes=reserved_bytes-:bytes WHERE id=1")
                 .param("bytes", row.get().bytes()).update();
+        reconcileTerminalResource(find(id).orElseThrow());
     }
 
     public record MaintenanceDeletion(UUID resourceId,String storageBackend,String currentKey,String migrationKey,long byteSize,String sha256) { }
@@ -360,6 +378,7 @@ public class ResourceLifecycle {
         reconcileTerminalResource(resource);
     }
     private void reconcileTerminalResource(CourseResource resource) {
+        if(!terminalScope(resource)) return;
         var store=terminal.getObject();
         store.reconcile("RESOURCE",resource.id());store.reconcile("ACCOUNT",resource.uploadedByUserId());
         var servers=new java.util.HashSet<UUID>();if(resource.studyServerId()!=null) servers.add(resource.studyServerId());
@@ -435,7 +454,7 @@ public class ResourceLifecycle {
         String scope=scopePredicate("lifecycle_scope_import","s.scope_id=r.course_id").substring("SELECT ".length());
         String historical=scopePredicate("lifecycle_recovery_scope","s.scope_id=r.course_id").substring("SELECT ".length());
         var ids=jdbc.sql("""
-                SELECT r.id FROM course_resources r WHERE state NOT IN ('DELETE_PENDING','DELETED') AND (
+                SELECT r.id FROM course_resources r WHERE (state NOT IN ('DELETE_PENDING','DELETED') OR deletion_event_id IS NULL) AND (
                     EXISTS(SELECT 1 FROM lifecycle_terminal_targets t WHERE (t.target_kind='RESOURCE' AND t.target_id=r.id)
                         OR (t.target_kind='ACCOUNT' AND t.target_id=r.uploaded_by_user_id)
                         OR (t.target_kind='STUDY_SERVER' AND t.target_id=r.study_server_id))
@@ -455,7 +474,7 @@ public class ResourceLifecycle {
             case "STUDY_SERVER" -> "(study_server_id=:target"+(scoped ? " OR course_id IN (SELECT scope_id FROM "+scopeTable+" WHERE study_server_id=:target AND scope_kind='COURSE')" : "")+")";
             default -> throw new IllegalArgumentException("Unknown terminal target");
         };
-        jdbc.sql("SELECT id FROM course_resources WHERE state NOT IN ('DELETE_PENDING','DELETED') AND "+match+" ORDER BY id LIMIT 256")
+        jdbc.sql("SELECT id FROM course_resources WHERE (state NOT IN ('DELETE_PENDING','DELETED') OR deletion_event_id IS NULL) AND "+match+" ORDER BY id LIMIT 256")
                 .param("target",entry.targetId()).query(UUID.class).list().forEach(this::requestDelete);
     }
 

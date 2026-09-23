@@ -115,6 +115,22 @@ class AgentTerminalRecoveryTest {
             assertThat(jdbc.queryForObject("SELECT provider FROM ai_generation_usage WHERE id=?",String.class,id)).isEqualTo("codex-native");
             assertThat(jdbc.queryForObject("SELECT measured FROM ai_generation_usage WHERE id=?",Boolean.class,id)).isFalse();
             assertThat(jdbc.queryForObject("SELECT evidence_json FROM native_companion_requests WHERE id=?",String.class,id)).contains("Synthetic pending fixture");
+            long before=jdbc.queryForObject("SELECT COALESCE(MAX(revision),0) FROM durable_outbox",Long.class);
+            UUID resource=UUID.randomUUID();
+            var change=new com.chanter.common.events.ResourceChanged(resource,null,null,null,null,false,true);
+            var event=new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,"media",1,"RESOURCE_CHANGED","RESOURCE:"+resource,mapper.writeValueAsString(change));
+            var delivery=mapper.valueToTree(Map.of("action","deliver","event",event));
+            assertThat(mapper.valueToTree(execute.invoke(fixture,delivery)).get("committed").asBoolean()).isTrue();
+            execute.invoke(fixture,delivery);
+            var emitted=mapper.valueToTree(execute.invoke(fixture,mapper.valueToTree(Map.of("action","events","afterRevision",before))));
+            assertThat(emitted.size()).isEqualTo(1);
+            assertThat(emitted.get(0).get("destination").asText()).isEqualTo("media");
+            var receipt=mapper.treeToValue(emitted.get(0).get("event"),com.chanter.common.events.DurableEvent.class);
+            assertThat(mapper.readValue(receipt.payload(),com.chanter.common.events.ResourceDeletionReceipt.class))
+                    .isEqualTo(new com.chanter.common.events.ResourceDeletionReceipt(resource,event.id()));
+            var wrong=new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,"community",2,event.kind(),event.aggregateKey(),event.payload());
+            assertThatThrownBy(() -> execute.invoke(fixture,mapper.valueToTree(Map.of("action","deliver","event",wrong))))
+                    .hasRootCauseInstanceOf(ResponseStatusException.class);
         }
     }
 

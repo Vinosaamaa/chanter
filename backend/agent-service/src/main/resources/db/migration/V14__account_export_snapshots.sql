@@ -123,3 +123,7 @@ CREATE INDEX lifecycle_install_account ON study_assistant_installs(installed_by_
 CREATE TABLE lifecycle_agent_account_retention (
     account_id UUID PRIMARY KEY,usage_claims BIGINT NOT NULL,shared_installs BIGINT NOT NULL
 );
+CREATE TABLE lifecycle_resource_delete_commands (
+    command_id UUID PRIMARY KEY,resource_id UUID NOT NULL,receipt_event_id UUID
+);
+CREATE INDEX lifecycle_resource_delete_pending ON lifecycle_resource_delete_commands(resource_id,receipt_event_id);

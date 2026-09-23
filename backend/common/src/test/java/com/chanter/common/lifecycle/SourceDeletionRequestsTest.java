@@ -17,7 +17,7 @@ class SourceDeletionRequestsTest {
         var data=new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=PostgreSQL;DB_CLOSE_DELAY=-1","sa","");
         jdbc=new JdbcTemplate(data); tx=new TransactionTemplate(new DataSourceTransactionManager(data));
         jdbc.execute(TerminalReapplyStore.SCHEMA); jdbc.execute(DurableOutbox.SCHEMA); jdbc.execute(SourceDeletionRequests.SCHEMA);
-        outbox=new DurableOutbox(jdbc,tx,"community",Clock.systemUTC());
+        outbox=new DurableOutbox(jdbc,tx,"community",Clock.fixed(java.time.Instant.parse("2026-09-22T00:00:00Z"),java.time.ZoneOffset.UTC));
         requests=new SourceDeletionRequests("STUDY_SERVER",jdbc,tx,outbox,new AccountDeletionProtocol(new ObjectMapper()));
     }
     @Test void owningAuthorizationAndOutboxFailureCannotLeaveAnAccessFence() {

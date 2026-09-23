@@ -1,4 +1,6 @@
 CREATE TABLE data_export_lock (id INT PRIMARY KEY);
+ALTER TABLE course_resources ADD COLUMN deletion_event_id UUID;
+ALTER TABLE course_resources ADD COLUMN deletion_reconciled BOOLEAN NOT NULL DEFAULT FALSE;
 INSERT INTO data_export_lock VALUES (1);
 CREATE TABLE data_export_account_tombstones (account_id UUID PRIMARY KEY, deleted_at TIMESTAMP WITH TIME ZONE NOT NULL);
 CREATE TABLE data_export_snapshots (

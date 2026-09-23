@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
         "chanter.media.worker-enabled=false","chanter.events.dispatch-enabled=false","chanter.recovery-mode=true",
         "chanter.recovery-restore-id=33333333-3333-4333-8333-333333333333"})
 @ActiveProfiles("test")
+@org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 class MediaTerminalRecoveryTest {
     @Autowired ResourceLifecycle resources;
     @Autowired com.chanter.media.application.CourseResourceService service;
@@ -27,6 +28,35 @@ class MediaTerminalRecoveryTest {
     @Autowired RecoveryScopeStore historical;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactions;
+    @Autowired org.springframework.test.web.servlet.MockMvc mvc;
+    @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
+
+    @Test void exactAgentDeletionReceiptIsAuthenticatedAtomicAndCannotStandInForPhysicalClosure() throws Exception {
+        var resource=resources.reserve(candidate(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID()));
+        var entry=entry("RESOURCE",resource.id());apply(entry);
+        UUID command=jdbc.queryForObject("SELECT deletion_event_id FROM course_resources WHERE id=?",UUID.class,resource.id());
+        var receipt=new com.chanter.common.events.ResourceDeletionReceipt(resource.id(),command);
+        var event=new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,"agent",77,com.chanter.common.events.ResourceDeletionReceipt.KIND,receipt.key(),mapper.writeValueAsString(receipt));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/internal/events").contentType("application/json").content(mapper.writeValueAsBytes(event)))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isUnauthorized());
+        var wrong=new com.chanter.common.events.ResourceDeletionReceipt(resource.id(),UUID.randomUUID());
+        var forged=new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,"agent",78,event.kind(),wrong.key(),mapper.writeValueAsString(wrong));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/internal/events")
+                .header(com.chanter.common.auth.AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-media")
+                .contentType("application/json").content(mapper.writeValueAsBytes(forged))).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest());
+        jdbc.execute("ALTER TABLE course_resources ADD CONSTRAINT fail_delete_receipt CHECK(deletion_reconciled=FALSE)");
+        try {assertThatThrownBy(() -> mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/internal/events")
+                .header(com.chanter.common.auth.AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-media")
+                .contentType("application/json").content(mapper.writeValueAsBytes(event)))).hasRootCauseInstanceOf(org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException.class);}
+        finally {jdbc.execute("ALTER TABLE course_resources DROP CONSTRAINT fail_delete_receipt");}
+        assertThat(jdbc.queryForObject("SELECT deletion_reconciled FROM course_resources WHERE id=?",Boolean.class,resource.id())).isFalse();
+        for(int retry=0;retry<2;retry++) mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/internal/events")
+                .header(com.chanter.common.auth.AuthHeaders.INTERNAL_SERVICE_TOKEN,"test-internal-service-token-for-media")
+                .contentType("application/json").content(mapper.writeValueAsBytes(event))).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT deletion_reconciled FROM course_resources WHERE id=?",Boolean.class,resource.id())).isTrue();
+        assertThat(resources.find(resource.id()).orElseThrow().state()).isEqualTo("DELETE_PENDING");
+        assertThat(new TransactionTemplate(transactions).<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+    }
 
     @org.junit.jupiter.api.BeforeEach void resetResources() {
         jdbc.update("DELETE FROM course_resources");
