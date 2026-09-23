@@ -166,8 +166,9 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
             throw new IllegalStateException("Versioned object deletion requires explicit version inventory");
     }
     private static boolean versionEvidence(software.amazon.awssdk.http.SdkHttpResponse response) {
-        return response!=null && (response.firstMatchingHeader("x-amz-delete-marker").isPresent()
-                || response.firstMatchingHeader("x-amz-version-id").isPresent());
+        return response!=null && (response.firstMatchingHeader("x-amz-version-id").isPresent()
+                || response.headers().entrySet().stream().filter(header -> header.getKey().equalsIgnoreCase("x-amz-delete-marker"))
+                .flatMap(header -> header.getValue().stream()).anyMatch(value -> !"false".equals(value)));
     }
     private void deleted(java.util.UUID mutation,ResourceRecoveryInventory.RestoreRequest request) throws IOException {
         if(request==null) {

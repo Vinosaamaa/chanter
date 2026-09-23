@@ -198,3 +198,19 @@ both flush boundaries and verifies complete unique pagination. It passes locally
 the existing native media workflow runs the same test against PostgreSQL on both
 architectures. That native result is still required before dispositioning the
 cursor concern. No cursor implementation change or suppression has been made.
+
+Full review at `33243700` completed on September 23 at 03:15 UTC. Comment
+4078731455 questions charging two cleanup requests. These are two actual provider
+calls, GetBucketVersioning and DeleteObject, so both consume the request budget.
+The native integration expectation now includes both calls. Reducing the count
+would understate provider usage rather than remove a duplicate request.
+
+The native media checks exposed a separate delete-response error before reaching
+the 513-reference PostgreSQL test. The pinned S3 fixture returns an explicit
+`x-amz-delete-marker: false` for an unversioned deletion. The adapter incorrectly
+treated the header's presence as a delete marker. A failing regression reproduces
+that refusal; the correction accepts only literal `false`, while true, malformed
+values and any version ID remain UNKNOWN. All 52 focused adapter, mutation and
+inventory tests pass after the correction. Fresh native checks remain required;
+neither this fixture nor the local regression establishes external provider
+retention or writer closure.

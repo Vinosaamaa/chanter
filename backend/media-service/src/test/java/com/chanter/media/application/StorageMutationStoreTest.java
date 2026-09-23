@@ -212,6 +212,7 @@ class StorageMutationStoreTest {
     @Test void ordinaryDeletionCannotClaimVersionedOrUnknownHistoricalBytesErased() throws Exception {
         var versioning=new java.util.concurrent.atomic.AtomicReference<>("Enabled");
         var header=new java.util.concurrent.atomic.AtomicReference<String>();
+        var marker=new java.util.concurrent.atomic.AtomicReference<>("true");
         var response=new java.util.concurrent.atomic.AtomicInteger(204);
         var deletes=new java.util.concurrent.atomic.AtomicInteger();
         var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
@@ -224,7 +225,7 @@ class StorageMutationStoreTest {
                 exchange.sendResponseHeaders(200,xml.length);try(var body=exchange.getResponseBody()){body.write(xml);}
             } else {
                 deletes.incrementAndGet();
-                if(header.get()!=null) exchange.getResponseHeaders().add(header.get(),header.get().equals("x-amz-delete-marker") ? "true" : "fixture-version");
+                if(header.get()!=null) exchange.getResponseHeaders().add(header.get(),header.get().equals("x-amz-delete-marker") ? marker.get() : "fixture-version");
                 exchange.sendResponseHeaders(response.get(),-1);exchange.close();
             }
         });server.start();
@@ -247,6 +248,12 @@ class StorageMutationStoreTest {
             header.set(null);storage.delete(key());
             response.set(204);storage.delete(key());
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations",Integer.class)).isEqualTo(4);
+            header.set("x-amz-delete-marker");marker.set("false");
+            storage.delete(key());response.set(404);storage.delete(key());
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations",Integer.class)).isEqualTo(4);
+            marker.set("malformed");
+            assertThatThrownBy(() -> storage.delete(key())).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                    failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.UNKNOWN));
         } finally {storage.close();server.stop(0);}
     }
 
