@@ -153,6 +153,7 @@ class StorageMutationStoreTest {
         var response = new java.util.concurrent.atomic.AtomicInteger(500);
         var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
+            if(versionlessQuery(exchange)) return;
             requests.incrementAndGet(); exchange.getRequestBody().readAllBytes();
             exchange.sendResponseHeaders(response.get(), -1); exchange.close();
         });
@@ -186,6 +187,7 @@ class StorageMutationStoreTest {
         var requests = new java.util.concurrent.atomic.AtomicInteger();
         var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
+            if(versionlessQuery(exchange)) return;
             requests.incrementAndGet(); exchange.getRequestBody().readAllBytes();
             exchange.sendResponseHeaders(204, -1); exchange.close();
         }); server.start();
@@ -205,6 +207,53 @@ class StorageMutationStoreTest {
             assertThat(restarted().fence(UUID.randomUUID()).unsettledMutations()).isEqualTo(2);
             assertThat(jdbc.queryForObject("SELECT outcome FROM media_storage_mutations WHERE object_key=?", String.class, key)).isEqualTo("ACTIVE");
         } finally { adapter.close(); server.stop(0); }
+    }
+
+    @Test void ordinaryDeletionCannotClaimVersionedOrUnknownHistoricalBytesErased() throws Exception {
+        var versioning=new java.util.concurrent.atomic.AtomicReference<>("Enabled");
+        var header=new java.util.concurrent.atomic.AtomicReference<String>();
+        var response=new java.util.concurrent.atomic.AtomicInteger(204);
+        var deletes=new java.util.concurrent.atomic.AtomicInteger();
+        var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/",exchange -> {
+            if(exchange.getRequestMethod().equals("GET")) {
+                if(versioning.get().equals("UNAVAILABLE")) {exchange.sendResponseHeaders(503,-1);exchange.close();return;}
+                byte[] xml=("<VersioningConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">"
+                        +(versioning.get().isEmpty() ? "" : "<Status>"+versioning.get()+"</Status>")+"</VersioningConfiguration>")
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200,xml.length);try(var body=exchange.getResponseBody()){body.write(xml);}
+            } else {
+                deletes.incrementAndGet();
+                if(header.get()!=null) exchange.getResponseHeaders().add(header.get(),header.get().equals("x-amz-delete-marker") ? "true" : "fixture-version");
+                exchange.sendResponseHeaders(response.get(),-1);exchange.close();
+            }
+        });server.start();
+        var storage=new com.chanter.media.infra.S3PrivateResourceStorage(org.mockito.Mockito.mock(ResourceLifecycle.class),store,
+                "http://127.0.0.1:"+server.getAddress().getPort(),"us-east-1","fixture-bucket","fixture-key","fixture-secret",true);
+        try {
+            for(String status:java.util.List.of("Enabled","Suspended","UNAVAILABLE")) {
+                versioning.set(status);
+                assertThatThrownBy(() -> storage.delete(key())).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                        failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.NOT_STARTED));
+                assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations",Integer.class)).isZero();
+            }
+            assertThat(deletes.get()).isZero();versioning.set("");
+            for(String name:java.util.List.of("x-amz-delete-marker","x-amz-version-id")) for(int status:new int[]{204,404}) {
+                header.set(name);response.set(status);
+                assertThatThrownBy(() -> storage.delete(key())).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                        failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.UNKNOWN));
+            }
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations WHERE outcome='UNKNOWN'",Integer.class)).isEqualTo(4);
+            header.set(null);storage.delete(key());
+            response.set(204);storage.delete(key());
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations",Integer.class)).isEqualTo(4);
+        } finally {storage.close();server.stop(0);}
+    }
+
+    private boolean versionlessQuery(com.sun.net.httpserver.HttpExchange exchange) throws java.io.IOException {
+        if(!exchange.getRequestMethod().equals("GET") || !"versioning".equals(exchange.getRequestURI().getQuery())) return false;
+        byte[] xml="<VersioningConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"/>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(200,xml.length);try(var body=exchange.getResponseBody()){body.write(xml);}return true;
     }
 
     @Test void remoteAdapterRejectsSourceTransactionBeforeAnyProviderOrBudgetCall() throws Exception {

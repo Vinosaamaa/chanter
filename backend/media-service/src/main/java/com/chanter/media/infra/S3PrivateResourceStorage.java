@@ -123,12 +123,8 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
     @Override public void deleteForRecovery(ResourceRecoveryInventory.RestoreRequest request) throws IOException {
         if(recovery==null) throw new IOException("Private object recovery is not enabled");
         // A versionless DELETE cannot establish erasure when retained object versions may exist.
-        try {
-            lifecycle.countRequest(true);
-            var versioning=client.getBucketVersioning(GetBucketVersioningRequest.builder().bucket(bucket).build());
-            if(versioning.statusAsString()!=null && !versioning.statusAsString().isBlank())
-                throw new IllegalStateException("Versioned object recovery requires explicit version inventory");
-        } catch(Exception unavailable) { throw new DeleteFailure(WriteOutcome.NOT_STARTED,null); }
+        try { requireVersionless(); }
+        catch(Exception unavailable) { throw new DeleteFailure(WriteOutcome.NOT_STARTED,null); }
         ResourceRecoveryInventory.DeleteMutation deletion;
         try { deletion=recovery.beginDelete(backend(),request); }
         catch(RuntimeException blocked) { throw new DeleteFailure(WriteOutcome.NOT_STARTED,blocked); }
@@ -137,13 +133,23 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
     private void remove(String key,java.util.UUID mutation,ResourceRecoveryInventory.RestoreRequest request) throws IOException {
         boolean started = false;
         try {
+            if(request==null) requireVersionless();
             lifecycle.countRequest(true);
             started = true;
             var response=client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
-            if(request!=null && (Boolean.TRUE.equals(response.deleteMarker()) || response.versionId()!=null))
+            if(Boolean.TRUE.equals(response.deleteMarker()) || response.versionId()!=null || versionEvidence(response.sdkHttpResponse()))
                 throw new IllegalStateException("Remote deletion did not establish versionless erasure");
         } catch (S3Exception response) {
-            if(response.statusCode()==404) { deleted(mutation,request); return; }
+            if(!started) {
+                boolean finished=complete(mutation,true);
+                throw new DeleteFailure(finished ? WriteOutcome.NOT_STARTED : WriteOutcome.UNKNOWN,null);
+            }
+            if(response.statusCode()==404) {
+                if(response.awsErrorDetails()!=null && versionEvidence(response.awsErrorDetails().sdkHttpResponse())) {
+                    complete(mutation,false);throw new DeleteFailure(WriteOutcome.UNKNOWN,null);
+                }
+                deleted(mutation,request); return;
+            }
             boolean finished = complete(mutation, definitiveRejection(response));
             throw new DeleteFailure(finished ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN, null);
         } catch (Exception exception) {
@@ -152,6 +158,16 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
                     exception instanceof ResponseStatusException ? exception : null);
         }
         deleted(mutation,request);
+    }
+    private void requireVersionless() {
+        lifecycle.countRequest(true);
+        var versioning=client.getBucketVersioning(GetBucketVersioningRequest.builder().bucket(bucket).build());
+        if(versioning.statusAsString()!=null && !versioning.statusAsString().isBlank())
+            throw new IllegalStateException("Versioned object deletion requires explicit version inventory");
+    }
+    private static boolean versionEvidence(software.amazon.awssdk.http.SdkHttpResponse response) {
+        return response!=null && (response.firstMatchingHeader("x-amz-delete-marker").isPresent()
+                || response.firstMatchingHeader("x-amz-version-id").isPresent());
     }
     private void deleted(java.util.UUID mutation,ResourceRecoveryInventory.RestoreRequest request) throws IOException {
         if(request==null) {

@@ -17,7 +17,7 @@ protocol, never operational logs.
 | `/fence` | `inventoryId` | Active maintenance identity, start time, nullable namespace SHA-256, outstanding local mutation count |
 | `/capture` | `inventoryId`, `databaseBackupId`, `authority` | Immutable source catalogue snapshot header |
 | `/page` | `inventoryId`, `authority`, `after`, `limit` | Header plus ordered reference page; limit 1–256, after is the previous ordinal or zero |
-| `/discard` | `inventoryId` | Local snapshot removed, maintenance still active |
+| `/discard` | `inventoryId` | Local snapshot removed only with no outstanding mutations; maintenance still active |
 
 Identities are nonzero UUIDs. Authority is the exact applied `{revision,digest}`.
 The backup identifier is a requested linkage, not proof that any database archive
@@ -92,7 +92,7 @@ The receipt is mutable progress and is separate from the immutable reference has
 
 Rejected DELETE calls can settle their invocation without writing a closure
 receipt. Ambiguous provider completion or failed receipt commit retains the
-outstanding operation, blocks retry and cannot release source quota. S3 recovery
+outstanding operation, blocks retry and cannot release source quota. Both ordinary S3 deletion and recovery
 refuses Enabled or Suspended versioning: a versionless request cannot erase
 retained historical versions. The provider must implement the bucket-versioning
 contract, and external configuration/writer fencing remains independently required.
@@ -100,7 +100,13 @@ The loopback tests establish adapter behavior only, not a real provider policy.
 The provider assumptions follow the documented S3
 [versioning response](https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetBucketVersioning.html)
 and [delete behavior](https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html).
-A delete response carrying a version ID or delete marker also retains uncertainty.
+A delete response carrying a version ID or delete marker also retains uncertainty,
+including an HTTP 404 response. Ordinary deletion checks versioning after reserving
+its mutation but before dispatching DELETE. A refused or unavailable versioning
+query settles that unstarted invocation and cannot complete source deletion.
+Both versioning and DELETE consume the existing cleanup request budget. Missing
+bucket-versioning permission or an unsupported provider API therefore leaves
+deletion pending; it cannot be treated as proof that versioning is disabled.
 
 Source metadata/quota completion still requires the accepted #251 owning
 `finishVerifiedMaintenanceDelete` hook in the same source transaction after all
