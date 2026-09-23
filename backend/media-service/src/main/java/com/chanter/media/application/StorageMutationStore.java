@@ -113,6 +113,7 @@ public class StorageMutationStore {
             var current = lock(); requireMatching(current, inventoryId);
             if (jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory", Integer.class) != 0)
                 throw new IllegalStateException("Discard the local inventory snapshot before releasing maintenance");
+            if(count()!=0) throw new IllegalStateException("Maintenance has unsettled physical operations");
             jdbc.update("UPDATE media_storage_budget SET maintenance_inventory_id=NULL,maintenance_started_at=NULL WHERE id=1");
         });
     }

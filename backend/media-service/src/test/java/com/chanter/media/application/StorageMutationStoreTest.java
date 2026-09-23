@@ -59,8 +59,9 @@ class StorageMutationStoreTest {
         assertThatThrownBy(() -> restarted().begin(key, StorageMutationStore.Operation.PUT)).hasMessageContaining("unsettled");
         UUID inventory = UUID.randomUUID();
         store.fence(inventory);
-        store.release(inventory);
-        assertThatThrownBy(() -> restarted().begin(key, StorageMutationStore.Operation.DELETE)).hasMessageContaining("unsettled");
+        assertThatThrownBy(() -> store.release(inventory)).hasMessageContaining("unsettled");
+        assertThat(restarted().receipt(inventory).unsettledMutations()).isEqualTo(1);
+        assertThatThrownBy(() -> restarted().begin(key, StorageMutationStore.Operation.DELETE)).hasMessageContaining("maintenance");
         assertThat(jdbc.queryForObject("SELECT outcome FROM media_storage_mutations WHERE id=?", String.class, mutation)).isEqualTo("UNKNOWN");
     }
 

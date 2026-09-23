@@ -245,6 +245,8 @@ public class ResourceRecoveryInventory {
         tx.executeWithoutResult(status -> {
             UUID active = jdbc.queryForObject("SELECT maintenance_inventory_id FROM media_storage_budget WHERE id=1 FOR UPDATE", UUID.class);
             if (!inventory.equals(active)) throw new IllegalStateException("Inventory maintenance identity changed");
+            if(count("SELECT COUNT(*) FROM media_storage_mutations")!=0)
+                throw new IllegalStateException("Inventory has unsettled physical operations");
             jdbc.update("DELETE FROM media_recovery_inventory_references WHERE inventory_id=?", inventory);
             jdbc.update("DELETE FROM media_recovery_inventory WHERE inventory_id=?", inventory);
         });

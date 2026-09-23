@@ -183,3 +183,18 @@ uploader becomes null. The regression failed before the query change; all 35
 inventory checks now pass, including seven mismatched identity cases. This uses
 the tested source contract at `ec91670e`; it does not infer physical closure from
 the retained identity or a missing uploader.
+
+Full review at `f957d20d` completed on September 23 at 02:57 UTC. Comment
+4078648000 correctly identified that discard could remove inventory ownership
+while a physical operation was outstanding. The durable mutation itself survived,
+but preserving its inventory reference is necessary for a late owning completion.
+Discard and maintenance release now reject every ACTIVE or UNKNOWN operation
+under the existing budget lock. Two regressions failed before the fix; all 49
+inventory/mutation checks pass afterward.
+
+Comment 4078647995 questions a PostgreSQL streaming cursor while a separate
+statement flushes the captured references. A 513-reference regression now crosses
+both flush boundaries and verifies complete unique pagination. It passes locally;
+the existing native media workflow runs the same test against PostgreSQL on both
+architectures. That native result is still required before dispositioning the
+cursor concern. No cursor implementation change or suppression has been made.

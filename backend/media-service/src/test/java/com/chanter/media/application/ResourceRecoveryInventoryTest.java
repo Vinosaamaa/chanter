@@ -100,6 +100,34 @@ class ResourceRecoveryInventoryTest {
                 .allSatisfy(reference -> assertThat(reference.terminal()).isTrue());
     }
 
+    @Test void captureCrossesTheStreamingBatchBoundaryAndKeepsEveryReference() {
+        for(int i=0;i<513;i++) resource();
+        var snapshot=inventories.capture(inventory,backup,authority);
+        assertThat(snapshot.referenceCount()).isEqualTo(513);
+        var seen=new java.util.HashSet<UUID>();
+        int after=0;
+        do {
+            var page=inventories.page(inventory,authority,after,256);
+            for(var reference:page.references()) assertThat(seen.add(reference.resourceId())).isTrue();
+            if(page.nextAfter()==null) break;
+            after=page.nextAfter();
+        } while(true);
+        assertThat(seen).hasSize(513);
+    }
+
+    @Test void outstandingMutationPreservesInventoryOwnershipUntilDefinitiveSettlement() {
+        UUID resource=resource();
+        jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var mutation=inventories.beginDelete("s3",new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1));
+        assertThatThrownBy(() -> inventories.discard(inventory)).hasMessageContaining("unsettled");
+        mutations.uncertain(mutation.mutationId());
+        assertThatThrownBy(() -> inventories.discard(inventory)).hasMessageContaining("unsettled");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory_references WHERE closure_mutation_id=?",Integer.class,mutation.mutationId())).isEqualTo(1);
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isEqualTo(1);
+    }
+
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings={"target_kind","target_id","revision","event_id","terminal_digest","source_kind","source_id"})
     void unrelatedRetainedIdentityDoesNotInventTerminalAuthority(String changed) {
