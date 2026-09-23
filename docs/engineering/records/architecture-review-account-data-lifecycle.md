@@ -10,7 +10,7 @@ capabilityIds: []
 createdAt: 2026-09-22
 reconstructed: false
 confidence: medium
-unknowns: ["Coordinated deletion, preservation holds and ownership resolution remain incomplete.", "Six source recovery handlers and agent invalidation remain incomplete.", "Hosted browser, PostgreSQL cancellation and final dependency integration are pending.", "External journal replication, retention and reviewed legal contacts require their owning operational evidence."]
+unknowns: ["Final frontend and physical-recovery dependency union remains pending.", "All-seven PostgreSQL completion and older-database recovery proof remain pending.", "Epoch 10 runtime compatibility and final exact-head hosted gates remain pending.", "Actual provider closure, conditional backup expiry and operator legal/contact configuration require owning operational evidence."]
 modules: ["auth-service", "community-service", "message-service", "media-service", "agent-service", "notification-service", "search-service", "common", "gateway-service", "frontend"]
 interfaces: ["backend/common/src/main/java/com/chanter/common/lifecycle/AccountExportProtocol.java", "backend/common/src/main/java/com/chanter/common/lifecycle/TerminalJournal.java", "docs/operations/terminal-journal-contract.md"]
 seams: ["auth-export-to-source-snapshot", "browser-download-to-live-session", "canonical-journal-to-source-terminal-authority", "external-recovery-to-committed-receipt"]
