@@ -95,3 +95,11 @@ CREATE TABLE lifecycle_terminal_delivery (
     target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,job_id UUID NOT NULL,reported_state VARCHAR(16) NOT NULL,
     PRIMARY KEY(target_kind,target_id)
 );
+ALTER TABLE lifecycle_erased_content ADD COLUMN search_event_id UUID;
+ALTER TABLE lifecycle_erased_content ADD COLUMN notification_event_id UUID;
+ALTER TABLE lifecycle_erased_content ADD COLUMN search_ack BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE lifecycle_erased_content ADD COLUMN notification_ack BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE TABLE lifecycle_content_dispatch (account_id UUID PRIMARY KEY,advance_event_id UUID);
+CREATE INDEX lifecycle_content_search_event ON lifecycle_erased_content(search_event_id);
+CREATE INDEX lifecycle_content_notification_event ON lifecycle_erased_content(notification_event_id);
+CREATE INDEX lifecycle_content_pending ON lifecycle_erased_content(target_kind,target_id,search_event_id,source_kind,source_id);

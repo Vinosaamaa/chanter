@@ -114,7 +114,7 @@ class ResourceIngestionSmokeTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(Map.of("courseId", course, "resourceId", resource,
                                 "fileName", "late.txt", "contentBase64", Base64.getEncoder().encodeToString("late text".getBytes(StandardCharsets.UTF_8))))))
-                .andExpect(status().isConflict());
+                .andExpect(status().isGone());
         assertThat(listChunks(resource).get("chunks")).isEmpty();
     }
 

@@ -97,3 +97,8 @@ CREATE TABLE lifecycle_terminal_delivery (
     target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,job_id UUID NOT NULL,reported_state VARCHAR(16) NOT NULL,
     PRIMARY KEY(target_kind,target_id)
 );
+CREATE TABLE lifecycle_erased_content_fences (
+    owner VARCHAR(16) NOT NULL,source_kind VARCHAR(24) NOT NULL,source_id UUID NOT NULL,
+    PRIMARY KEY(owner,source_kind,source_id)
+);
+CREATE INDEX lifecycle_erased_content_reverse ON lifecycle_erased_content_fences(source_kind,source_id);

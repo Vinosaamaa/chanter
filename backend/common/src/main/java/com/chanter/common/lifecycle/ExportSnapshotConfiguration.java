@@ -26,6 +26,19 @@ public class ExportSnapshotConfiguration {
     }
     @Bean AccountExportProtocol accountExportProtocol(ObjectMapper mapper) { return new AccountExportProtocol(mapper); }
     @Bean AccountDeletionProtocol accountDeletionProtocol(ObjectMapper mapper) { return new AccountDeletionProtocol(mapper); }
+    @Bean ErasedContentReceiver erasedContentReceiver(JdbcTemplate jdbc,PlatformTransactionManager transactions,ObjectMapper mapper,
+            com.chanter.common.events.DurableOutbox outbox,@Value("${spring.application.name}") String serviceName,
+            org.springframework.beans.factory.ObjectProvider<TerminalReapplyStore> terminal,
+            org.springframework.beans.factory.ObjectProvider<ErasedContentReceiver.Erase> erase) {
+        var tx=new TransactionTemplate(transactions);tx.setTimeout(30);
+        return new ErasedContentReceiver(serviceName.replace("-service",""),jdbc,tx,outbox,mapper,terminal,erase);
+    }
+    @Bean ErasedContentDelivery erasedContentDelivery(JdbcTemplate jdbc,PlatformTransactionManager transactions,ObjectMapper mapper,
+            com.chanter.common.events.DurableOutbox outbox,@Value("${spring.application.name}") String serviceName,
+            org.springframework.beans.factory.ObjectProvider<TerminalReapplyStore> terminal) {
+        var tx=new TransactionTemplate(transactions);tx.setTimeout(30);
+        return new ErasedContentDelivery(serviceName.replace("-service",""),jdbc,tx,outbox,mapper,terminal);
+    }
     @Bean DeletedScopeDelivery deletedScopeDelivery(JdbcTemplate jdbc,PlatformTransactionManager transactions,ObjectMapper mapper,
             com.chanter.common.events.DurableOutbox outbox,@Value("${spring.application.name}") String serviceName,
             org.springframework.beans.factory.ObjectProvider<DeletedScopeDelivery.Source> source,

@@ -41,6 +41,7 @@ public class JdbcSearchIndexRepository {
         var writableEntries=entries.stream().filter(entry ->
                 (entry.studyServerId()==null || terminal.writable("STUDY_SERVER",entry.studyServerId()))
                 && (entry.documentType()!=SearchDocumentType.RESOURCE || terminal.writable("RESOURCE",entry.sourceId()))
+                && contentWritable(entry.documentType().name(),entry.sourceId())
                 && scopeWritable(entry.courseId(),null)).toList();
         jdbcTemplate.update("""
             DELETE FROM search_index_entries s WHERE study_server_id = ? AND NOT EXISTS
@@ -148,12 +149,17 @@ public class JdbcSearchIndexRepository {
         if (change.studyServerId()!=null && !terminal.writable("STUDY_SERVER",change.studyServerId())) return;
         if (change.type().equals("RESOURCE") && !terminal.writable("RESOURCE",change.sourceId())) return;
         if (!scopeWritable(change.courseId(),change.channelId())) return;
+        if (!contentWritable(change.type(),change.sourceId())) return;
         jdbcTemplate.update("DELETE FROM search_index_entries WHERE document_type=? AND source_id=?", change.type(), change.sourceId());
         if (!change.deleted()) jdbcTemplate.update("""
             INSERT INTO search_index_entries (id, study_server_id, course_id, course_title, document_type, source_id,
                 title, body_text, indexed_at, href, channel_id, channel_scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, UUID.randomUUID(), change.studyServerId(), change.courseId(), "", change.type(), change.sourceId(),
                 truncate(change.title(), 512), truncate(change.body(), 4000), Timestamp.from(Instant.now()), change.href(), change.channelId(), change.channelScope());
+    }
+
+    private boolean contentWritable(String kind,UUID id) {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lifecycle_erased_content_fences WHERE source_kind=? AND source_id=?",Integer.class,kind,id)==0;
     }
 
     private boolean scopeWritable(UUID course,UUID channel) {

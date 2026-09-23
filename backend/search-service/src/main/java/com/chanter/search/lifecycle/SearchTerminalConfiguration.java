@@ -17,6 +17,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 @Import({SourceTerminalRecoveryController.class,com.chanter.common.lifecycle.SourceDeletedScopeController.class})
 public class SearchTerminalConfiguration {
+    @Bean com.chanter.common.lifecycle.ErasedContentReceiver.Erase searchErasedContent(JdbcTemplate jdbc,ExportSnapshotStore snapshots) {
+        return ref -> {
+            snapshots.invalidateRetained();
+            jdbc.update("DELETE FROM search_index_entries WHERE document_type=? AND source_id=?",ref.kind(),ref.id());
+        };
+    }
     @Bean com.chanter.common.lifecycle.DeletedScopeStore searchDeletedScopeStore(JdbcTemplate jdbc,
             PlatformTransactionManager transactions,TerminalReapplyStore terminal) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);

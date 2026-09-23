@@ -32,7 +32,7 @@ public class MessageTerminalConfiguration {
                 outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore messageTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,
+            ExportSnapshotStore snapshots,ErasedContentDelivery content,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
@@ -79,6 +79,7 @@ public class MessageTerminalConfiguration {
             jdbc.update("DELETE FROM ta_queue_items WHERE support_question_id IN ("+retained+")",entry.targetKind(),entry.targetId(),"QUESTION");
             jdbc.update("DELETE FROM support_questions WHERE id IN ("+retained+")",entry.targetKind(),entry.targetId(),"QUESTION");
             jdbc.update("DELETE FROM channel_messages WHERE id IN ("+retained+")",entry.targetKind(),entry.targetId(),"MESSAGE");
+            if(entry.targetKind().equals("ACCOUNT")) content.start(entry);
             // Existing durable payload copies and downstream deletion receipts still require reconciliation.
             return TerminalReapplyStore.Cleanup.PENDING;
         });

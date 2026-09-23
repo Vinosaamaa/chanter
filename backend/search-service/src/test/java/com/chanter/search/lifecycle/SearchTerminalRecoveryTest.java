@@ -106,6 +106,26 @@ class SearchTerminalRecoveryTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM data_export_account_tombstones WHERE account_id=?",Integer.class,account)).isEqualTo(1);
     }
 
+    @Test void accountAuthoredContentErasureFencesClaimedEventsAndLegacyReplacement() throws Exception {
+        UUID server=UUID.randomUUID(),id=UUID.randomUUID();
+        var change=new SearchChange("ANNOUNCEMENT",id,server,null,null,null,null,"author title","author body","/app/servers",false);
+        index.apply(change);
+        var page=nextPage("ACCOUNT",UUID.randomUUID());terminal.reapply(page);
+        var batch=new com.chanter.common.lifecycle.ErasedContent.Batch(page.entries().getFirst(),List.of(new com.chanter.common.lifecycle.ErasedContent.Ref("ANNOUNCEMENT",id)));
+        var event=new DurableEvent(UUID.randomUUID(),1,"community",50,com.chanter.common.lifecycle.ErasedContent.ERASE,batch.key(UUID.randomUUID()),mapper.writeValueAsString(batch));
+        http.perform(post("/api/v1/internal/lifecycle/events").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(event))).andExpect(status().isUnauthorized());
+        for(int attempt=0;attempt<2;attempt++) http.perform(post("/api/v1/internal/lifecycle/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(event))).andExpect(status().isNoContent());
+        var delayed=new DurableEvent(UUID.randomUUID(),1,"community",100,"ANNOUNCEMENT","ANNOUNCEMENT:"+id,mapper.writeValueAsString(change));
+        http.perform(post("/api/v1/internal/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(delayed))).andExpect(status().isNoContent());
+        index.apply(change);
+        index.replaceStudyServerIndex(server,List.of(new JdbcSearchIndexRepository.IndexEntry(UUID.randomUUID(),server,null,"",SearchDocumentType.ANNOUNCEMENT,id,"late","late",Instant.now())));
+        assertThat(count(id)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_ERASED' AND aggregate_key=?",Integer.class,event.aggregateKey())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_id=?",String.class,page.entries().getFirst().targetId())).isEqualTo("PENDING");
+    }
+
     private SearchChange resource(UUID server,UUID resource) {
         return new SearchChange("RESOURCE",resource,server,UUID.randomUUID(),null,null,null,"private title","private text","/app/courses",false);
     }

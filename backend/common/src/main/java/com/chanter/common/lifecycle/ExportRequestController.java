@@ -18,11 +18,15 @@ public final class ExportRequestController {
     private final ExportSourceExecution execution;
     private final org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions;
     private final DeletedScopeDelivery scopes;
+    private final ErasedContentReceiver content;
+    private final ErasedContentDelivery contentDelivery;
     public ExportRequestController(ExportParticipant participant, AccountExportProtocol protocol, ExportSourceExecution execution,
-            org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions,DeletedScopeDelivery scopes, @Value("${chanter.internal-service-token}") String token) {
+            org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions,DeletedScopeDelivery scopes,ErasedContentReceiver content,ErasedContentDelivery contentDelivery, @Value("${chanter.internal-service-token}") String token) {
         this.participant = participant; this.protocol = protocol; this.execution = execution; this.access = new InternalLifecycleAccess(token);
         this.deletions=deletions;
         this.scopes=scopes;
+        this.content=content;
+        this.contentDelivery=contentDelivery;
     }
 
     @PostMapping("/api/v1/internal/lifecycle/events")
@@ -31,7 +35,11 @@ public final class ExportRequestController {
         access.require(token);
         try {
             var event = protocol.event(body);
-            if(DeletedScopeDelivery.command(event.kind())) {
+            if(ErasedContent.ERASE.equals(event.kind())) {
+                execution.deliver(event,() -> content.accept(event));
+            } else if(ErasedContentDelivery.command(event.kind())) {
+                execution.deliver(event,() -> contentDelivery.accept(event));
+            } else if(DeletedScopeDelivery.command(event.kind())) {
                 execution.deliver(event,() -> scopes.accept(event));
             } else if(AccountDeletionProtocol.command(event.kind())) {
                 var deletion=deletions.getIfAvailable();

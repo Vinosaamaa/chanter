@@ -208,6 +208,40 @@ class NotificationTerminalRecoveryTest {
         http.perform(post("/api/v1/internal/lifecycle/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(forged))).andExpect(status().isBadRequest());
     }
+    @Test void authoredPreviewErasureFencesClaimedAndDirectWritesWithoutRemovingLaterHumanUpdate() throws Exception {
+        UUID recipient=UUID.randomUUID(),server=UUID.randomUUID(),announcement=UUID.randomUUID(),question=UUID.randomUUID();
+        var authored=new NotificationRepository.CreateCommand(recipient,NotificationKind.SUPPORT_QUESTION_CREATED,null,
+                "author title","author preview",null,"/app/inbox","ANNOUNCEMENT",announcement,server,null,null,null);
+        notifications.create(authored);
+        var human=new NotificationRepository.CreateCommand(recipient,NotificationKind.SUPPORT_QUESTION_ANSWERED,null,
+                "human answer","private human body","private label","/app/inbox","SUPPORT_QUESTION",question,server,null,null,null);
+        var humanRow=notifications.create(human);
+        jdbc.update("UPDATE notifications SET read_at=CURRENT_TIMESTAMP,done_at=CURRENT_TIMESTAMP WHERE id=?",humanRow.id());
+        var metadata=jdbc.queryForMap("SELECT id,created_at,read_at,done_at FROM notifications WHERE id=?",humanRow.id());
+        var page=nextPage("ACCOUNT",UUID.randomUUID(),Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS));terminal.reapply(page);
+        for(var ref:List.of(new com.chanter.common.lifecycle.ErasedContent.Ref("ANNOUNCEMENT",announcement),new com.chanter.common.lifecycle.ErasedContent.Ref("QUESTION_PREVIEW",question))) {
+            String producer=ref.kind().equals("ANNOUNCEMENT") ? "community" : "message";
+            var batch=new com.chanter.common.lifecycle.ErasedContent.Batch(page.entries().getFirst(),List.of(ref));
+            var event=new DurableEvent(UUID.randomUUID(),1,producer,30,com.chanter.common.lifecycle.ErasedContent.ERASE,batch.key(UUID.randomUUID()),mapper.writeValueAsString(batch));
+            for(int n=0;n<2;n++) http.perform(post("/api/v1/internal/lifecycle/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
+                    .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(event))).andExpect(status().isNoContent());
+        }
+        notifications.create(authored);notifications.create(human);
+        notifications.create(new NotificationRepository.CreateCommand(recipient,NotificationKind.SUPPORT_QUESTION_CREATED,null,
+                "lowercase title","lowercase preview",null,"/app/inbox","announcement",announcement,server,null,null,null));
+        var body=new java.util.LinkedHashMap<String,Object>();body.put("userId",recipient);body.put("kind","SUPPORT_QUESTION_CREATED");
+        body.put("title","claimed title");body.put("bodyPreview","claimed body");body.put("href","/app/inbox");
+        body.put("sourceType","ANNOUNCEMENT");body.put("sourceId",announcement);body.put("studyServerId",server);
+        var delayed=new DurableEvent(UUID.randomUUID(),1,"community",100,"NOTIFICATION",
+                NotificationEventWriter.aggregateKey(recipient,"ANNOUNCEMENT",announcement,"SUPPORT_QUESTION_CREATED"),mapper.writeValueAsString(body));
+        http.perform(post("/api/v1/internal/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(delayed))).andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE source_id=?",Integer.class,announcement)).isZero();
+        assertThat(jdbc.queryForMap("SELECT id,created_at,read_at,done_at FROM notifications WHERE id=?",humanRow.id())).isEqualTo(metadata);
+        assertThat(jdbc.queryForObject("SELECT title FROM notifications WHERE id=?",String.class,humanRow.id())).isEqualTo("Question update");
+        assertThat(jdbc.queryForObject("SELECT body_preview FROM notifications WHERE id=?",String.class,humanRow.id())).isNull();
+    }
+
     private com.chanter.notification.domain.Notification create(UUID user,UUID server,UUID resource) {
         return notifications.create(new NotificationRepository.CreateCommand(user,NotificationKind.SUPPORT_QUESTION_CREATED,null,
                 "private title","private body",null,"/app/inbox","RESOURCE",resource,server,null,null,null));

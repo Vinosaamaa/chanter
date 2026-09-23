@@ -13,6 +13,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration
 @Import({SourceTerminalRecoveryController.class,com.chanter.common.lifecycle.SourceDeletedScopeController.class})
 public class NotificationTerminalConfiguration {
+    @Bean com.chanter.common.lifecycle.ErasedContentReceiver.Erase notificationErasedContent(JdbcTemplate jdbc,ExportSnapshotStore snapshots) {
+        return ref -> {
+            snapshots.invalidateRetained();
+            if(ref.kind().equals("QUESTION_PREVIEW")) {
+                // The legacy row can also contain a later human update. Preserve its identity/read state.
+                jdbc.update("UPDATE notifications SET title='Question update',body_preview=NULL,course_label=NULL WHERE UPPER(source_type)='SUPPORT_QUESTION' AND source_id=? AND kind='SUPPORT_QUESTION_ANSWERED'",ref.id());
+            } else jdbc.update("DELETE FROM notifications WHERE UPPER(source_type)=? AND source_id=?",ref.notificationType(),ref.id());
+        };
+    }
     @Bean com.chanter.common.lifecycle.RecoveryScopeStore notificationRecoveryScopeStore(JdbcTemplate jdbc,
             PlatformTransactionManager transactions,com.chanter.common.lifecycle.DeletedScopeStore current,TerminalReapplyStore terminal,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,

@@ -43,6 +43,13 @@ public class JdbcNotificationRepository implements NotificationRepository {
         if(com.chanter.common.events.AnswerRetraction.SOURCE_TYPE.equals(notification.sourceType())
                 && jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lifecycle_retracted_answers WHERE answer_id=?",Integer.class,notification.sourceId())>0)
             return notification;
+        String erasedKind=switch(notification.sourceType().toUpperCase(java.util.Locale.ROOT)) {
+            case "COMMUNITY_EVENT" -> "EVENT";
+            case "SUPPORT_QUESTION" -> "QUESTION";
+            default -> notification.sourceType().toUpperCase(java.util.Locale.ROOT);
+        };
+        if(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lifecycle_erased_content_fences WHERE source_kind=? AND source_id=?",
+                Integer.class,erasedKind,notification.sourceId())>0) return notification;
         if(notification.courseId()!=null || notification.channelId()!=null) {
           for(String scopeTable:List.of("lifecycle_scope_import","lifecycle_recovery_scope")) {
             if(Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
@@ -118,7 +125,7 @@ public class JdbcNotificationRepository implements NotificationRepository {
 
     /** AI and human previews historically shared this identity. Keep only a neutral update, including on delayed replay. */
     private static Notification normalizeLegacyAnswer(Notification value) {
-        if(!"SUPPORT_QUESTION".equals(value.sourceType()) || value.kind()!=NotificationKind.SUPPORT_QUESTION_ANSWERED) return value;
+        if(!"SUPPORT_QUESTION".equalsIgnoreCase(value.sourceType()) || value.kind()!=NotificationKind.SUPPORT_QUESTION_ANSWERED) return value;
         return new Notification(value.id(),value.userId(),value.kind(),value.filterBucket(),"Question update",null,null,value.href(),
                 value.sourceType(),value.sourceId(),value.studyServerId(),value.courseId(),value.cohortId(),value.channelId(),
                 value.createdAt(),value.readAt(),value.doneAt());

@@ -38,7 +38,8 @@ public class CommunityTerminalConfiguration {
 
     @Bean TerminalReapplyStore communityTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
             ExportSnapshotStore snapshots,CommunityOwnershipFence ownership,DeletedStudyServerScope scopes,
-            com.chanter.common.lifecycle.DeletedScopeDelivery delivery,CommunityAccountCleanup accounts) {
+            com.chanter.common.lifecycle.DeletedScopeDelivery delivery,CommunityAccountCleanup accounts,
+            com.chanter.common.lifecycle.ErasedContentDelivery content) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
         return new TerminalReapplyStore(jdbc,tx,"community",entry -> {
             switch(entry.targetKind()) {
@@ -47,6 +48,7 @@ public class CommunityTerminalConfiguration {
                     snapshots.cancelAccount(entry.targetId());
                     snapshots.invalidateRetained();
                     accounts.erase(entry);
+                    content.start(entry);
                     // Restored pre-transfer ownership, durable payloads and downstream copies still need disposition.
                     return TerminalReapplyStore.Cleanup.PENDING;
                 }

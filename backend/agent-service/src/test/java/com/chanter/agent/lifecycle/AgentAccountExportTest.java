@@ -34,8 +34,9 @@ class AgentAccountExportTest {
         Instant now = Instant.parse("2026-09-19T00:00:00Z"); Timestamp time = Timestamp.from(now);
         UUID owner = UUID.randomUUID(); UUID other = UUID.randomUUID(); UUID id = UUID.randomUUID(); UUID question = UUID.randomUUID();
         UUID channel = UUID.randomUUID(); UUID server = UUID.randomUUID(); UUID session = UUID.randomUUID(); UUID installation = UUID.randomUUID(); UUID usage = UUID.randomUUID();
-        jdbc.update("INSERT INTO study_assistant_answers VALUES (?,?,?,?,?,?,?,?,?,?)", id, question, channel, server, owner, "MY_QUESTION", "CURRENT_AUTHORIZED_ANSWER", "HIGH", false, time);
-        jdbc.update("INSERT INTO study_assistant_answers VALUES (?,?,?,?,?,?,?,?,?,?)", UUID.randomUUID(), UUID.randomUUID(), channel, server, other, "OTHER_PROMPT_CANARY", "OTHER_ANSWER_CANARY", "HIGH", false, time);
+        String answerInsert="INSERT INTO study_assistant_answers(id,support_question_id,channel_id,study_server_id,learner_user_id,question_body,answer_body,confidence,handoff_recommended,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)";
+        jdbc.update(answerInsert, id, question, channel, server, owner, "MY_QUESTION", "CURRENT_AUTHORIZED_ANSWER", "HIGH", false, time);
+        jdbc.update(answerInsert, UUID.randomUUID(), UUID.randomUUID(), channel, server, other, "OTHER_PROMPT_CANARY", "OTHER_ANSWER_CANARY", "HIGH", false, time);
         jdbc.update("""
             INSERT INTO ai_generation_usage(id,study_server_id,support_question_id,learner_user_id,selection_id,provider,requested_model,reserved_tokens,measured,outcome,created_at)
             VALUES (?,?,?,?, 'codex-subscription','codex-native','fixture-model',5000,FALSE,'SUCCESS',?)
