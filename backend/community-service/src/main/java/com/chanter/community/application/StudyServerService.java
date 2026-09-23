@@ -32,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class StudyServerService {
+    private final com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites;
 
     private final StudyServerRepository repository;
     private final AuthUserDirectoryClient authUserDirectoryClient;
@@ -44,8 +45,10 @@ public class StudyServerService {
             AuthUserDirectoryClient authUserDirectoryClient,
             LiveKitTokenIssuer liveKitTokenIssuer,
             Clock clock,
-            com.chanter.common.lifecycle.SourceDeletionRequests deletions
+            com.chanter.common.lifecycle.SourceDeletionRequests deletions,
+            com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites
     ) {
+        this.lifecycleWrites=lifecycleWrites;
         this.repository = repository;
         this.authUserDirectoryClient = authUserDirectoryClient;
         this.liveKitTokenIssuer = liveKitTokenIssuer;
@@ -61,6 +64,7 @@ public class StudyServerService {
             List<String> inviteEmails,
             UUID ownerUserId
     ) {
+        lifecycleWrites.accounts(ownerUserId);
         List<ResolvedInvite> resolvedInvites = resolveInvitees(inviteEmails);
 
         UUID studyServerId = UUID.randomUUID();
@@ -110,6 +114,7 @@ public class StudyServerService {
             String normalizedEmail = normalizeEmail(email);
             AuthUserProfile invitedProfile = authUserDirectoryClient.findByEmail(normalizedEmail)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User email not found"));
+            lifecycleWrites.accounts(invitedProfile.userId());
             resolved.add(new ResolvedInvite(invitedProfile.userId(), normalizedEmail));
         }
         return resolved;
@@ -133,7 +138,10 @@ public class StudyServerService {
                 .toList();
     }
 
+    @Transactional(timeout = 30)
     public void acceptStudyServerInvitation(UUID studyServerId, UUID invitationId, UUID inviteeUserId) {
+        lifecycleWrites.accounts(inviteeUserId);
+        lifecycleWrites.server(studyServerId);
         StudyServerInvitation invitation = repository.findInvitation(studyServerId, invitationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invitation not found"));
         if (!invitation.invitedUserId().equals(inviteeUserId)) {
@@ -151,6 +159,8 @@ public class StudyServerService {
             UUID actorUserId,
             List<String> inviteEmails
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.server(studyServerId);
         StudyServer studyServer = repository.findById(studyServerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
         if (!studyServer.ownerRole().userId().equals(actorUserId)) {
@@ -345,7 +355,10 @@ public class StudyServerService {
         });
     }
 
+    @Transactional(timeout = 30)
     public VoicePresence joinVoiceChannel(UUID channelId, UUID memberUserId) {
+        lifecycleWrites.accounts(memberUserId);
+        lifecycleWrites.serverChannel(channelId);
         StudyServerChannel channel = requireVoiceChannel(channelId);
         requireStudyServerMember(channel.studyServerId(), memberUserId);
 
@@ -359,14 +372,20 @@ public class StudyServerService {
         return repository.findVoicePresences(channelId);
     }
 
+    @Transactional(timeout = 30)
     public void leaveVoiceChannel(UUID channelId, UUID memberUserId) {
+        lifecycleWrites.accounts(memberUserId);
+        lifecycleWrites.serverChannel(channelId);
         StudyServerChannel channel = requireVoiceChannel(channelId);
         requireStudyServerMember(channel.studyServerId(), memberUserId);
 
         repository.deleteVoicePresence(channelId, memberUserId);
     }
 
+    @Transactional(timeout = 30)
     public VoiceMediaToken issueVoiceChannelMediaToken(UUID channelId, UUID memberUserId) {
+        lifecycleWrites.accounts(memberUserId);
+        lifecycleWrites.serverChannel(channelId);
         StudyServerChannel channel = requireVoiceChannel(channelId);
         requireStudyServerMember(channel.studyServerId(), memberUserId);
         VoicePresence presence = repository.saveVoicePresence(channelId, memberUserId);

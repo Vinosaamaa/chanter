@@ -94,10 +94,11 @@ public class CourseResourceService {
     }
 
     public com.chanter.common.lifecycle.SourceDeletionRequests.Request deleteCourseResource(UUID id, UUID user) {
-        var resource = lifecycle.find(id).orElseThrow(CourseResourceService::missing);
-        requireUpload(resource.courseId(), user);
-        moderation.requireAllowed(user,List.of(new Target("STUDY_SERVER",studyServer(resource)),new Target("RESOURCE",id)));
-        return deletions.request(id,user,() -> lifecycle.find(id).orElseThrow(CourseResourceService::missing));
+        return deletions.request(id,user,() -> {
+            var resource = lifecycle.find(id).orElseThrow(CourseResourceService::missing);
+            requireUpload(resource.courseId(), user);
+            moderation.requireAllowed(user,List.of(new Target("STUDY_SERVER",studyServer(resource)),new Target("RESOURCE",id)));
+        });
     }
 
     public ResourceLifecycle.Usage usage(UUID course, UUID user) {

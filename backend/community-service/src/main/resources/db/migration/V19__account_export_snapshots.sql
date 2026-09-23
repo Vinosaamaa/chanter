@@ -120,3 +120,12 @@ CREATE TABLE lifecycle_scope_delivery (
     terminal_digest VARCHAR(64) NOT NULL,scope_digest VARCHAR(64) NOT NULL,total_count BIGINT NOT NULL,
     PRIMARY KEY(study_server_id,scope_kind,source)
 );
+CREATE TABLE lifecycle_erased_content (
+    target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,revision BIGINT NOT NULL,event_id UUID NOT NULL,
+    terminal_digest VARCHAR(64) NOT NULL,source_kind VARCHAR(24) NOT NULL,source_id UUID NOT NULL,
+    PRIMARY KEY(target_kind,target_id,source_kind,source_id)
+);
+CREATE TABLE lifecycle_retained_courses (
+    account_id UUID NOT NULL,course_id UUID NOT NULL,successor_id UUID NOT NULL,
+    PRIMARY KEY(account_id,course_id)
+);

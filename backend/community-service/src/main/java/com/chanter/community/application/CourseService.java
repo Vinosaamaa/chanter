@@ -40,6 +40,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CourseService {
+    private final com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites;
 
     public static final int MAX_COHORT_ENROLLMENT_PAGE_SIZE = 500;
     public static final int DEFAULT_COHORT_ENROLLMENT_PAGE_SIZE = 50;
@@ -55,14 +56,17 @@ public class CourseService {
             CourseRepository courseRepository,
             AuthUserDirectoryClient authUserDirectoryClient,
             LiveKitTokenIssuer liveKitTokenIssuer,
-            Clock clock
+            Clock clock,
+            com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites
     ) {
+        this.lifecycleWrites=lifecycleWrites;
         this.courseRepository = courseRepository;
         this.authUserDirectoryClient = authUserDirectoryClient;
         this.liveKitTokenIssuer = liveKitTokenIssuer;
         this.clock = clock;
     }
 
+    @Transactional(timeout = 30)
     public CourseLifecycle createCourse(
             UUID studyServerId,
             UUID ownerUserId,
@@ -70,6 +74,8 @@ public class CourseService {
             String description,
             String cohortName
     ) {
+        lifecycleWrites.accounts(ownerUserId);
+        lifecycleWrites.server(studyServerId);
         requireStudyServerOwner(studyServerId, ownerUserId);
 
         String normalizedTitle = title.trim();
@@ -105,6 +111,7 @@ public class CourseService {
                 ));
     }
 
+    @Transactional(timeout = 30)
     public Course createCourseWithCohort(
             UUID studyServerId,
             UUID ownerUserId,
@@ -112,6 +119,8 @@ public class CourseService {
             UUID instructorUserId,
             String cohortName
     ) {
+        lifecycleWrites.accounts(ownerUserId,instructorUserId);
+        lifecycleWrites.server(studyServerId);
         CourseLifecycle lifecycle = createCourse(studyServerId, ownerUserId, title, null, cohortName);
         if (!instructorUserId.equals(ownerUserId)) {
             assignCourseInstructor(lifecycle.id(), ownerUserId, instructorUserId, null);
@@ -121,6 +130,8 @@ public class CourseService {
 
     @Transactional
     public Cohort addCohortToCourse(UUID courseId, UUID ownerUserId, String name) {
+        lifecycleWrites.accounts(ownerUserId);
+        lifecycleWrites.course(courseId);
         UUID studyServerId = courseRepository.findStudyServerIdByCourseId(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
         requireStudyServerOwner(studyServerId, ownerUserId);
@@ -152,19 +163,25 @@ public class CourseService {
             UUID instructorUserId,
             String instructorEmail
     ) {
+        lifecycleWrites.accounts(ownerUserId,instructorUserId);
+        lifecycleWrites.course(courseId);
         UUID studyServerId = courseRepository.findStudyServerIdByCourseId(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
         requireStudyServerOwner(studyServerId, ownerUserId);
         UUID resolvedInstructorUserId = resolveInstructorUserId(instructorUserId, instructorEmail);
+        lifecycleWrites.accounts(resolvedInstructorUserId);
         courseRepository.assignCourseInstructor(courseId, resolvedInstructorUserId);
     }
 
+    @Transactional(timeout = 30)
     public CourseLifecycle updateCourseMetadata(
             UUID courseId,
             UUID ownerUserId,
             String title,
             String description
     ) {
+        lifecycleWrites.accounts(ownerUserId);
+        lifecycleWrites.course(courseId);
         requireCourseOwner(courseId, ownerUserId);
         String normalizedTitle = title.trim();
         String normalizedDescription = description == null || description.isBlank() ? null : description.trim();
@@ -173,7 +190,10 @@ public class CourseService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
     }
 
+    @Transactional(timeout = 30)
     public void publishCourse(UUID courseId, UUID ownerUserId) {
+        lifecycleWrites.accounts(ownerUserId);
+        lifecycleWrites.course(courseId);
         requireCourseOwner(courseId, ownerUserId);
         CourseLifecycle lifecycle = courseRepository.findCourseLifecycle(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
@@ -186,12 +206,18 @@ public class CourseService {
         courseRepository.setCoursePublished(courseId, true);
     }
 
+    @Transactional(timeout = 30)
     public void unpublishCourse(UUID courseId, UUID ownerUserId) {
+        lifecycleWrites.accounts(ownerUserId);
+        lifecycleWrites.course(courseId);
         requireCourseOwner(courseId, ownerUserId);
         courseRepository.setCoursePublished(courseId, false);
     }
 
+    @Transactional(timeout = 30)
     public void archiveCourse(UUID courseId, UUID ownerUserId) {
+        lifecycleWrites.accounts(ownerUserId);
+        lifecycleWrites.course(courseId);
         requireCourseOwner(courseId, ownerUserId);
         courseRepository.archiveCourse(courseId, clock.instant());
     }
@@ -284,6 +310,8 @@ public class CourseService {
             String name,
             ChannelKind kind
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.cohort(cohortId);
         requireCohortPeopleManager(
                 cohortId,
                 actorUserId,
@@ -309,6 +337,8 @@ public class CourseService {
 
     @Transactional
     public CourseChannel renameCohortChannel(UUID channelId, UUID actorUserId, String name) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.courseChannel(channelId);
         CourseChannel channel = requireManagedActiveChannel(channelId, actorUserId, "rename");
         String normalizedName = normalizeChannelName(name);
         courseRepository.lockCohortForChannelMutation(channel.cohortId());
@@ -329,13 +359,18 @@ public class CourseService {
 
     @Transactional
     public void archiveCohortChannel(UUID channelId, UUID actorUserId) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.courseChannel(channelId);
         CourseChannel channel = requireManagedActiveChannel(channelId, actorUserId, "archive");
         courseRepository.lockCohortForChannelMutation(channel.cohortId());
         requireManagedActiveChannel(channelId, actorUserId, "archive");
         courseRepository.archiveChannel(channelId, clock.instant());
     }
 
+    @Transactional(timeout = 30)
     public VoicePresence joinCourseVoiceChannel(UUID channelId, UUID memberUserId) {
+        lifecycleWrites.accounts(memberUserId);
+        lifecycleWrites.courseChannel(channelId);
         requireAccessibleVoiceChannel(channelId, memberUserId);
         var joinedAt = clock.instant();
         return courseRepository.saveCourseVoicePresence(
@@ -351,7 +386,10 @@ public class CourseService {
         return courseRepository.findCourseVoicePresences(channelId, clock.instant());
     }
 
+    @Transactional(timeout = 30)
     public void leaveCourseVoiceChannel(UUID channelId, UUID memberUserId) {
+        lifecycleWrites.accounts(memberUserId);
+        lifecycleWrites.courseChannel(channelId);
         CourseChannel channel = courseRepository.findActiveChannelById(channelId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course Channel not found"));
         if (channel.kind() != ChannelKind.VOICE) {
@@ -360,7 +398,10 @@ public class CourseService {
         courseRepository.deleteCourseVoicePresence(channelId, memberUserId);
     }
 
+    @Transactional(timeout = 30)
     public VoiceMediaToken issueCourseVoiceChannelMediaToken(UUID channelId, UUID memberUserId) {
+        lifecycleWrites.accounts(memberUserId);
+        lifecycleWrites.courseChannel(channelId);
         CourseChannel channel = requireAccessibleVoiceChannel(channelId, memberUserId);
         return liveKitTokenIssuer.issueForVoiceChannel(
                 channel.id(),
@@ -370,7 +411,10 @@ public class CourseService {
         );
     }
 
+    @Transactional(timeout = 30)
     public void enrollLearner(UUID cohortId, UUID instructorUserId, UUID learnerUserId) {
+        lifecycleWrites.accounts(instructorUserId,learnerUserId);
+        lifecycleWrites.cohort(cohortId);
         requireCohortPeopleManager(
                 cohortId,
                 instructorUserId,
@@ -379,12 +423,15 @@ public class CourseService {
         courseRepository.enrollLearner(cohortId, learnerUserId, instructorUserId, clock.instant());
     }
 
+    @Transactional(timeout = 30)
     public void enrollLearnerByIdentity(
             UUID cohortId,
             UUID instructorUserId,
             String email,
             UUID learnerUserId
     ) {
+        lifecycleWrites.accounts(instructorUserId,learnerUserId);
+        lifecycleWrites.cohort(cohortId);
         requireCohortPeopleManager(
                 cohortId,
                 instructorUserId,
@@ -404,6 +451,7 @@ public class CourseService {
             }
             resolvedLearnerUserId = learnerUserId;
         }
+        lifecycleWrites.accounts(resolvedLearnerUserId);
         courseRepository.enrollLearner(
                 cohortId,
                 resolvedLearnerUserId,
@@ -485,7 +533,10 @@ public class CourseService {
         );
     }
 
+    @Transactional(timeout = 30)
     public void addTeachingAssistant(UUID cohortId, UUID actorUserId, UUID userId) {
+        lifecycleWrites.accounts(actorUserId,userId);
+        lifecycleWrites.cohort(cohortId);
         requireCohortPeopleManager(
                 cohortId,
                 actorUserId,
@@ -497,7 +548,10 @@ public class CourseService {
         courseRepository.addTeachingAssistant(cohortId, userId);
     }
 
+    @Transactional(timeout = 30)
     public void removeTeachingAssistant(UUID cohortId, UUID actorUserId, UUID userId) {
+        lifecycleWrites.accounts(actorUserId,userId);
+        lifecycleWrites.cohort(cohortId);
         requireCohortPeopleManager(
                 cohortId,
                 actorUserId,
@@ -506,12 +560,16 @@ public class CourseService {
         courseRepository.removeTeachingAssistant(cohortId, userId);
     }
 
+    @Transactional(timeout = 30)
     public void assignTeachingAssistant(
             UUID cohortId,
             UUID actorUserId,
             List<UUID> learnerUserIds,
             UUID teachingAssistantUserId
     ) {
+        lifecycleWrites.accounts(actorUserId,teachingAssistantUserId);
+        learnerUserIds.forEach(id -> lifecycleWrites.accounts(id));
+        lifecycleWrites.cohort(cohortId);
         requireCohortPeopleManager(
                 cohortId,
                 actorUserId,
@@ -532,11 +590,14 @@ public class CourseService {
         );
     }
 
+    @Transactional(timeout = 30)
     public CohortInvitationDetails createCohortInvitation(
             UUID cohortId,
             UUID actorUserId,
             String email
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.cohort(cohortId);
         requireCohortPeopleManager(
                 cohortId,
                 actorUserId,
@@ -545,6 +606,7 @@ public class CourseService {
         String normalizedEmail = normalizeEmail(email);
         AuthUserProfile invitedProfile = authUserDirectoryClient.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User email not found"));
+        lifecycleWrites.accounts(invitedProfile.userId());
         if (courseRepository.cohortHasEnrollments(cohortId, List.of(invitedProfile.userId()))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User is already enrolled in this Cohort");
         }
@@ -560,7 +622,10 @@ public class CourseService {
         return new CohortInvitationDetails(invitation, invitedProfile);
     }
 
+    @Transactional(timeout = 30)
     public void cancelCohortInvitation(UUID cohortId, UUID actorUserId, UUID invitationId) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.cohort(cohortId);
         requireCohortPeopleManager(
                 cohortId,
                 actorUserId,
@@ -569,7 +634,10 @@ public class CourseService {
         courseRepository.cancelInvitation(cohortId, invitationId, clock.instant());
     }
 
+    @Transactional(timeout = 30)
     public void removeEnrollment(UUID cohortId, UUID actorUserId, UUID learnerUserId) {
+        lifecycleWrites.accounts(actorUserId,learnerUserId);
+        lifecycleWrites.cohort(cohortId);
         requireCohortPeopleManager(
                 cohortId,
                 actorUserId,
@@ -702,7 +770,10 @@ public class CourseService {
         return normalizedName;
     }
 
+    @Transactional(timeout = 30)
     public void joinCohort(UUID cohortId, UUID learnerUserId, UUID inviteCode) {
+        lifecycleWrites.accounts(learnerUserId);
+        lifecycleWrites.cohort(cohortId);
         CohortJoinDetails joinDetails = courseRepository.findCohortJoinDetails(cohortId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cohort not found"));
         boolean validInvite = inviteCode != null && joinDetails.inviteCode().equals(inviteCode);

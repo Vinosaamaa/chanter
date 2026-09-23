@@ -135,7 +135,8 @@ class AccountExportJobsHttpTest {
             refreshTokens.revokeAllForUser(owner.user().id(), Instant.now());
             jobs.cancelAccount(owner.user().id());
         });
-        assertThat(send("GET", "/api/v1/auth/account/exports/" + job.id(), null, bearer(owner)).statusCode()).isEqualTo(401);
+        // Permanent account closure is reported before the revoked session is evaluated.
+        assertThat(send("GET", "/api/v1/auth/account/exports/" + job.id(), null, bearer(owner)).statusCode()).isEqualTo(410);
         assertThatThrownBy(() -> sessions.refresh(owner.refreshToken())).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
         assertThatThrownBy(() -> sessions.login(owner.user().email(), "private fixture password 251", "new browser"))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);

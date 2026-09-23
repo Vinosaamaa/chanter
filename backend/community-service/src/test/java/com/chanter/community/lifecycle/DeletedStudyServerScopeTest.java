@@ -42,7 +42,7 @@ class DeletedStudyServerScopeTest {
         var snapshots=new com.chanter.common.lifecycle.ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"community");
         var ownership=new CommunityOwnershipFence(jdbc);
         var config=new CommunityTerminalConfiguration();
-        terminal=config.communityTerminalStore(jdbc,transactions,snapshots,ownership,scopes,recoveryDelivery());
+        terminal=config.communityTerminalStore(jdbc,transactions,snapshots,ownership,scopes,recoveryDelivery(),new CommunityAccountCleanup(jdbc));
         protocol=new com.chanter.common.lifecycle.AccountDeletionProtocol(mapper);
         participant=config.communityDeletionParticipant(jdbc,transactions,
                 new com.chanter.common.events.DurableOutbox(jdbc,tx,"community",java.time.Clock.systemUTC()),protocol,terminal,ownership);
@@ -250,7 +250,7 @@ class DeletedStudyServerScopeTest {
     private void useRecoveryMode() {
         scopes=new DeletedStudyServerScope(jdbc,tx,true,UUID.fromString("33333333-3333-4333-8333-333333333333"),() -> terminal);
         var snapshots=new com.chanter.common.lifecycle.ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"community");
-        terminal=new CommunityTerminalConfiguration().communityTerminalStore(jdbc,tx.getTransactionManager(),snapshots,new CommunityOwnershipFence(jdbc),scopes,recoveryDelivery());
+        terminal=new CommunityTerminalConfiguration().communityTerminalStore(jdbc,tx.getTransactionManager(),snapshots,new CommunityOwnershipFence(jdbc),scopes,recoveryDelivery(),new CommunityAccountCleanup(jdbc));
         http=MockMvcBuilders.standaloneSetup(new DeletedStudyServerScopeController(scopes,mapper,TOKEN),
                 new com.chanter.common.lifecycle.SourceTerminalRecoveryController(terminal,mapper,TOKEN)).build();
     }

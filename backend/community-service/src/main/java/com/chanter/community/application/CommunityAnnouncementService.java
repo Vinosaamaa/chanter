@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CommunityAnnouncementService {
+    private final com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites;
     private final com.chanter.common.events.SearchEventWriter searchEvents;
 
     private final CommunityAnnouncementRepository announcementRepository;
@@ -35,8 +36,10 @@ public class CommunityAnnouncementService {
             AuthUserDirectoryClient authUserDirectoryClient,
             NotificationClient notificationClient,
             Clock clock,
-            com.chanter.common.events.SearchEventWriter searchEvents
+            com.chanter.common.events.SearchEventWriter searchEvents,
+            com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites
     ) {
+        this.lifecycleWrites=lifecycleWrites;
         this.announcementRepository = announcementRepository;
         this.studyServerRepository = studyServerRepository;
         this.courseRepository = courseRepository;
@@ -77,6 +80,8 @@ public class CommunityAnnouncementService {
             String title,
             String body
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.server(studyServerId);
         requireStudyServerOwner(studyServerId, actorUserId);
         Instant now = clock.instant();
         CommunityAnnouncement announcement = new CommunityAnnouncement(
@@ -106,6 +111,8 @@ public class CommunityAnnouncementService {
             String title,
             String body
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.server(studyServerId);
         requireStudyServerOwner(studyServerId, actorUserId);
         announcementRepository.lockById(announcementId);
         CommunityAnnouncement existing = requireAnnouncementOnServer(studyServerId, announcementId, actorUserId);
@@ -137,6 +144,8 @@ public class CommunityAnnouncementService {
             UUID announcementId,
             UUID actorUserId
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.server(studyServerId);
         requireStudyServerOwner(studyServerId, actorUserId);
         announcementRepository.lockById(announcementId);
         CommunityAnnouncement existing = requireAnnouncementOnServer(studyServerId, announcementId, actorUserId);
@@ -157,6 +166,8 @@ public class CommunityAnnouncementService {
             UUID actorUserId,
             boolean liked
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.server(studyServerId);
         requireStudyServerMember(studyServerId, actorUserId);
         announcementRepository.lockById(announcementId);
         CommunityAnnouncement existing = requireAnnouncementOnServer(studyServerId, announcementId, actorUserId);
