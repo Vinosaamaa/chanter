@@ -1,13 +1,46 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../../lib/api-client'
 import { useInstructorDashboardPage } from './use-instructor-dashboard-page'
 
-const mocks = vi.hoisted(() => ({ dashboard: vi.fn() }))
+const mocks = vi.hoisted(() => ({ dashboard: vi.fn(), servers: {
+  isLoading: false, isError: false, error: null as unknown,
+  data: [{ id: 'server-1' }], refetch: vi.fn(),
+} }))
 vi.mock('../../../stores/auth-store', () => ({ useAuthStore: () => 'owner-1' }))
 vi.mock('../../shell/hooks/use-shell-queries', () => ({
-  useAccessibleStudyServersQuery: () => ({ isLoading: false, data: [{ id: 'server-1' }] }),
+  useAccessibleStudyServersQuery: () => mocks.servers,
 }))
+
+beforeEach(() => {
+  mocks.servers.isError = false
+  mocks.servers.error = null
+  mocks.servers.refetch.mockReset()
+})
+
+it('reports server-list failure and retries that authority before requesting any cached or bookmarked server', async () => {
+  mocks.dashboard.mockReset()
+  mocks.servers.isError = true
+  mocks.servers.error = new ApiError('Request failed', 502)
+  mocks.servers.refetch.mockResolvedValue({ isError: true })
+  const select = vi.fn()
+  const { result, rerender } = renderHook(() => useInstructorDashboardPage('removed-server', select))
+  expect(result.current.error).toBe('Usage and teaching information are temporarily unavailable. Please try again.')
+  expect(result.current.dashboard).toBeNull()
+  expect(result.current.selectedServerId).toBeNull()
+  expect(result.current.isOwner).toBe(false)
+  await act(() => result.current.refresh())
+  expect(mocks.servers.refetch).toHaveBeenCalledTimes(1)
+  expect(mocks.dashboard).not.toHaveBeenCalled()
+  expect(select).not.toHaveBeenCalled()
+  mocks.servers.isError = false
+  mocks.servers.error = null
+  mocks.dashboard.mockResolvedValue({ studyServerId: 'server-1' })
+  rerender()
+  await waitFor(() => expect(result.current.dashboard).toEqual({ studyServerId: 'server-1' }))
+  expect(mocks.dashboard).toHaveBeenCalledWith('server-1')
+  expect(mocks.dashboard).not.toHaveBeenCalledWith('removed-server')
+})
 vi.mock('../instructor-dashboard-api', () => ({
   fetchInstructorDashboard: (...args: unknown[]) => mocks.dashboard(...args),
   fetchStudyServerDetails: async () => ({ ownerRole: { userId: 'owner-1' } }),

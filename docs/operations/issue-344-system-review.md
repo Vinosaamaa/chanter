@@ -11,7 +11,9 @@ The actual moderation assertion retains energy/byte and stable reception checks.
 
 Local evidence: four baseline Teaching failures reproduced; all nine extracted
 Teaching tests and three audio regressions pass. Production lint/build pass with
-core JavaScript 1263.8 KiB raw and CSS 214.8 KiB raw; all unchanged limits pass.
+core JavaScript 1263.9 KiB raw and CSS 214.8 KiB raw after the server-list correction;
+all unchanged limits pass. Two additional red-to-green tests cover the owning
+list error/retry and the rendered initial failure without redirecting to Home.
 The first extraction exceeded CSS by 73 bytes. The same three summary rules now
 inherit label size/weight and use their unique component class without redundant
 shell prefixes. No existing global rule or budget changed.

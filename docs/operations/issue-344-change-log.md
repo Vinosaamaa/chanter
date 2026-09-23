@@ -12,7 +12,10 @@ establishes its 1,452-byte overage. Lint/build and hosted results are recorded i
 the system review. Both pass with unchanged budgets after reducing only redundant
 summary typography/shell selectors. No local product or browser server was started.
 
-The hosted fixture adds nine targeted cases across three engines and three sizes.
+The hosted fixture adds twelve targeted cases across three engines and three sizes.
 It checks the old bookmark, summary, unchanged query, Refresh loading without
 cached counts, unavailable state, retry and screenshots. Actual audio proof stays
-in the existing product suite. Integration and release proof remain open.
+in the existing product suite. The first nine cases passed on hosted checkpoint
+2c8a56ec, and representative phone/landscape/desktop images were inspected. The
+list-authority error case and final source correction require fresh hosted proof.
+Integration and release proof remain open.

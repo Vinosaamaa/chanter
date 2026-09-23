@@ -11,6 +11,24 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
+test('fixture UI Teaching retries unavailable server authority @teaching', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  let fail = true
+  let dashboardRequests = 0
+  page.on('request', request => { if (new URL(request.url()).pathname.endsWith('/instructor-dashboard')) dashboardRequests++ })
+  await page.route('**/study-servers', route => fail
+    ? route.fulfill({ status: 502, contentType: 'application/json', body: '{}' })
+    : route.continue())
+  await page.goto('/app/teaching?serverId=removed-server&visual=staff')
+  await expect(page.getByRole('alert')).toHaveText('Usage and teaching information are temporarily unavailable. Please try again.', { timeout: 15000 })
+  expect(dashboardRequests).toBe(0)
+  fail = false
+  await page.getByRole('button', { name: 'Refresh teaching' }).click()
+  await expect(page.getByText('58 runs remaining of the lifetime limit')).toBeVisible()
+  await expect(page).toHaveURL(/serverId=visual-study/)
+  expect(dashboardRequests).toBeGreaterThan(0)
+})
+
 for (const width of [390, 844, 1280]) {
   test(`fixture UI Teaching bookmark and refresh at ${width} @teaching`, async ({ page }, info) => {
     const errors: string[] = []
@@ -35,6 +53,9 @@ for (const width of [390, 844, 1280]) {
     await expect(page.getByText('Office Hours waitlist', { exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({ path: info.outputPath(`fixture-ui-teaching-bookmark-${width}.png`) })
+    await page.locator('.teaching-operational-summary').scrollIntoViewIfNeeded()
+    await expect(page.getByText('Office Hours waitlist', { exact: true })).toBeInViewport()
+    await page.screenshot({ path: info.outputPath(`fixture-ui-teaching-summary-${width}.png`) })
     fail = true
     await page.getByRole('button', { name: 'Refresh teaching' }).click()
     await requested

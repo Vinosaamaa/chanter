@@ -9,6 +9,7 @@ import { InstructorDashboardPage } from '../../instructor-dashboard/components/I
 const mocks = vi.hoisted(() => ({
   access: {
     isLoading: false,
+    isError: false,
     showTeachingNav: true,
   },
   dashboardPage: {
@@ -58,7 +59,9 @@ vi.mock('../hooks/use-v2-sidebar-data', () => ({
 vi.mock('../../instructor-dashboard/hooks/use-instructor-dashboard-page', () => ({
   useInstructorDashboardPage: (serverId: string | null, select: (id: string) => void) => {
     mocks.dashboardSelection(serverId)
-    return { ...mocks.dashboardPage, setSelectedServerId: select }
+    return { ...mocks.dashboardPage, setSelectedServerId: select,
+      ...(mocks.access.isError ? { selectedServerId: null, dashboard: null, error: 'Study Servers are unavailable. Please try again.' } : {}),
+    }
   },
 }))
 
@@ -75,6 +78,8 @@ describe('TeachingPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.access.isError = false
+    mocks.access.showTeachingNav = true
     mocks.dashboardPage.dashboard.courses[0].cohorts = [
       { cohortId: 'cohort-1', name: 'Summer 2026', openTaQueueItems: 1 },
     ]
@@ -90,6 +95,17 @@ describe('TeachingPage', () => {
         createdAt: '2026-07-13T20:00:00.000Z',
       }],
     })
+  })
+
+  it('keeps a visible retry when server authority is unavailable instead of redirecting or disabling it', async () => {
+    mocks.access.isError = true
+    mocks.access.showTeachingNav = false
+    const user = userEvent.setup()
+    render(<MemoryRouter><TeachingPage /></MemoryRouter>)
+    expect(screen.getByRole('alert')).toHaveTextContent('Study Servers are unavailable. Please try again.')
+    await user.click(screen.getByRole('button', { name: 'Refresh teaching' }))
+    expect(mocks.dashboardPage.refresh).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('88 runs remaining of the lifetime limit')).not.toBeInTheDocument()
   })
 
   it('does not claim an empty schedule while Office Hours is pending or unavailable', async () => {

@@ -66,6 +66,7 @@ export function useInstructorDashboardPage(
 ): UseInstructorDashboardPageResult {
   const userId = useAuthStore((state) => state.user?.id ?? null)
   const serversQuery = useAccessibleStudyServersQuery()
+  const { isError: serversUnavailable, refetch: refetchServers } = serversQuery
   const servers = serversQuery.data ?? []
   const selectedServerId = serversQuery.isLoading || serversQuery.isError ? null
     : (servers.find(server => server.id === requestedServerId) ?? servers[0])?.id ?? null
@@ -130,8 +131,12 @@ export function useInstructorDashboardPage(
   }, [requestKey, selectedServerId, userId])
 
   const refresh = useCallback(async () => {
+    if (serversUnavailable) {
+      await refetchServers()
+      return
+    }
     setReloadToken((current) => current + 1)
-  }, [])
+  }, [serversUnavailable, refetchServers])
 
   return {
     servers,
@@ -140,8 +145,9 @@ export function useInstructorDashboardPage(
     dashboard: requestKey !== null && loadedKey === requestKey ? dashboard : null,
     isOwner: requestKey !== null && loadedKey === requestKey && isOwner,
     isLoading,
-    accessDenied,
-    error,
+    accessDenied: requestKey !== null && loadedKey === requestKey && accessDenied,
+    error: serversQuery.isError ? accessErrorMessage(serversQuery.error)
+      : requestKey !== null && loadedKey === requestKey ? error : null,
     refresh,
   }
 }

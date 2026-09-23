@@ -56,7 +56,7 @@ export function TeachingPage() {
       </section>
     )
   }
-  if (!access.showTeachingNav) return <Navigate to="/app/home" replace />
+  if (!access.showTeachingNav && !access.isError) return <Navigate to="/app/home" replace />
   return <TeachingContent />
 }
 
@@ -161,7 +161,7 @@ function TeachingContent() {
             </select>
           </label>
         ) : null}
-        <button type="button" className="v2-outline-button" aria-label="Refresh teaching" disabled={page.isLoading || !serverId} onClick={() => void page.refresh()}>Refresh</button>
+        <button type="button" className="v2-outline-button" aria-label="Refresh teaching" disabled={page.isLoading || (!serverId && !page.error)} onClick={() => void page.refresh()}>Refresh</button>
       </header>
 
       {page.isLoading ? <p className="teaching-state" role="status">Loading dashboard...</p> : null}
