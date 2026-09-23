@@ -9,11 +9,11 @@ const release = () => ({ version: 1, commit: 'a'.repeat(40), architecture: 'arm6
   images: Object.fromEntries(imageNames.map(name => [name, hash('b')])) });
 const config = { environment: 'staging', hostname: 'staging.chanter.example', publicIp: '192.0.2.1' };
 
-test('moderation release policy stamps epoch 9 and blocks downgrade to epoch 8', async () => {
+test('account lifecycle release policy stamps epoch 10 and blocks downgrade to epoch 9', async () => {
   const policy = JSON.parse(readFileSync(new URL('../../infra/production/release-policy.json', import.meta.url), 'utf8'));
-  assert.equal(policy.schemaEpoch, 9);
+  assert.equal(policy.schemaEpoch, 10);
   const current = { ...release(), schemaEpoch: policy.schemaEpoch };
-  const previous = { ...release(), commit: 'c'.repeat(40), schemaEpoch: 8 };
+  const previous = { ...release(), commit: 'c'.repeat(40), schemaEpoch: 9 };
   // A matching historical bundle remains valid in an empty environment.
   assert.doesNotThrow(() => planDeployment(previous, null));
   const actions = [];
