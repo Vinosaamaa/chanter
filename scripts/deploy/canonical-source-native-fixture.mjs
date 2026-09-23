@@ -8,6 +8,7 @@ import { GENESIS, nonzeroUuid, sameWatermark, validatePage } from './terminal-jo
 import { ScopeVerifier, SCOPE_KINDS } from './deleted-scope.mjs';
 import { modules } from './release.mjs';
 import { ResourceObjectArchive } from './resource-object-backup.mjs';
+import { sourceDatabaseCheckpoint } from './source-database-native-fixture.mjs';
 
 assert.equal(process.env.GITHUB_ACTIONS, 'true');
 assert.equal(process.env.CHANTER_SOURCE_RECOVERY_PREVIEW, 'true');
@@ -19,7 +20,7 @@ assert.equal(release.commit, preview.preview);
 assert.equal(preview.accepted, false); assert.equal(preview.publicCutoverAllowed, false);
 const root = fs.mkdtempSync(path.join(state, 'canonical-source-'));
 const composeFile = path.join(root, 'compose.json');
-const sources = ['auth', 'community', 'media'];
+const sources = ['auth', 'community', 'media', 'message', 'agent', 'notification', 'search'];
 function execute(file, args, input, maxBuffer = 1024 * 1024) {
   try { return execFileSync(file, args, { input, encoding: 'utf8', timeout: 180_000, maxBuffer,
     stdio: ['pipe', 'pipe', 'pipe'] }); }
@@ -48,6 +49,7 @@ assert.equal(docker(['inspect', '--format', '{{index .Config.Labels "com.docker.
 assert.equal(docker(['inspect', '--format', '{{index .Config.Labels "com.docker.compose.service"}}', postgres]).trim(), 'postgres');
 const compilers = [];
 let restoreVolume;
+let databaseDrill;
 try {
   original(['stop', ...modules, 'frontend', 'livekit']);
   const compiler = docker(['create', '--label', `chanter.canonical-fixture=${project}`, release.images['auth-service']]).trim();
@@ -120,6 +122,12 @@ try {
   const owner = call('auth', { action: 'auth-seed', alias: ownerAlias }); nonzeroUuid(owner.accountId);
   const graph = call('community', { action: 'community-seed', ownerId: owner.accountId });
   nonzeroUuid(graph.serverId); nonzeroUuid(graph.courseId);
+  const questions = graph.channels.filter(channel => channel.kind === 'TEXT' && channel.name === 'questions');
+  assert.equal(questions.length, 1);
+  const pendingNative = call('agent', { action: 'agent-native-seed', serverId: graph.serverId,
+    channelId: questions[0].id, ownerId: owner.accountId });
+  nonzeroUuid(pendingNative.requestId); assert.equal(pendingNative.outcome, 'ISSUED');
+  assert.equal(pendingNative.syntheticPendingOnly, true);
   const upload = call('media', { action: 'media-upload', courseId: graph.courseId, ownerId: owner.accountId, requestId: crypto.randomUUID() });
   assert.equal(upload.state, 'QUARANTINED'); assert.equal(upload.storageWriteSettled, true);
   const available = call('media', { action: 'media-work-once', resourceId: upload.resourceId });
@@ -176,6 +184,9 @@ try {
     authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 }, actualBytes);
   const decrypted = archive.readVerified(archived, object, fence.storageNamespaceSha256);
   assert.deepEqual(decrypted, actualBytes);
+  databaseDrill = await sourceDatabaseCheckpoint({ bundle, state, root, release, postgres, project,
+    composeFile, sourceCompose, inventoryId, databaseBackupId, resourceId: available.resourceId,
+    courseId: graph.courseId, nativeRequestId: pendingNative.requestId });
   // Restore the same logical local namespace into an owned empty volume. No old object is overwritten or removed.
   restoreVolume = `${project}-object-${crypto.randomUUID()}`;
   assert.ok(!docker(['volume', 'ls', '--format', '{{.Name}}']).split('\n').includes(restoreVolume));
@@ -226,6 +237,9 @@ try {
   assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId: available.resourceId }),
     { state: 'DELETED', sourceRetained: false, reservedBytes: 0, publicCutoverAllowed: false });
   compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', ...sources.map(source => `${source}-service`)]);
+  const historical = call('community', { action: 'community-history-remove-course', serverId: graph.serverId,
+    courseId: graph.courseId, ownerId: owner.accountId });
+  assert.equal(historical.historicalFixtureOnly, true); assert.equal(historical.courseId, graph.courseId);
   call('community', { action: 'server-delete', serverId: graph.serverId, ownerId: owner.accountId }); relay();
   assert.deepEqual(objectCall({ action: 'expect-refusal', request, reason: 'STALE_SOURCE', base64: decrypted.toString('base64') }, destinationFile),
     { refused: 'STALE_SOURCE', publicCutoverAllowed: false });
@@ -243,16 +257,24 @@ try {
       const scope = call('community', { action: 'current-scope', entry: server, kind, afterId: verifier.after });
       verifier.accept(scope); scopes.push(scope);
     }
-    assert.ok(verifier.result().totalCount > 0);
+    // The real current archive is empty after the fixture-only historical child removal.
+    // Recovery must derive the older database's course/channels under the same original terminal entry.
+    assert.equal(verifier.result().totalCount, 0);
   }
-  // Private fixture evidence stays on this disposable host; ordinary source completion is still pending.
+  assert.equal(deferred.length, 0, 'Every owning lifecycle command must reach its actual participant');
+  const journalReplica = await databaseDrill.archiveCurrent(page.through);
+  compose(['stop', ...sources.map(source => `${source}-service`)]);
+  const recoveredAuthority = await databaseDrill.recover(page.through, historical);
+  // Committed delivery is not complete source cleanup or a receipt for replay on a restored database.
   fs.writeFileSync(path.join(root, 'canonical-source.json'), JSON.stringify({ schemaVersion: 1, preview,
     page, scopes, resource: available, inventory, archived, byteReadbackVerified: true, objectRoundtripVerified: true,
-    physicalDeletionVerified: true, databaseBackupVerified: false, deferred, publicCutoverAllowed: false }), { mode: 0o600 });
-  console.log('Real canonical allocation, encrypted object roundtrip and source-owned physical deletion passed; restored-database recovery remains pending.');
+    physicalDeletionVerified: true, databaseBackupVerified: true, journalReplica, recoveredAuthority, historical,
+    deferred, publicCutoverAllowed: false }), { mode: 0o600 });
+  console.log('Real older-database restore, current journal replay and historical scope reconciliation passed; full object recovery and external writer closure remain pending.');
 } finally {
   const failures = [];
-  try { original(['stop', 'auth-service', 'community-service', 'media-service']); } catch { failures.push('source stop'); }
+  try { databaseDrill?.cleanup(); } catch { failures.push('restored database cleanup'); }
+  try { original(['stop', ...sources.map(source => `${source}-service`)]); } catch { failures.push('source stop'); }
   for (const compiler of compilers) try { docker(['rm', compiler]); } catch { failures.push('compiler removal'); }
   if (restoreVolume) try {
     assert.equal(docker(['volume', 'inspect', '--format', '{{index .Labels "chanter.object-fixture"}}', restoreVolume]).trim(), project);

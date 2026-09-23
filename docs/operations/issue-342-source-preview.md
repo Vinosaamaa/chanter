@@ -3,7 +3,7 @@
 The release workflow has an explicit `source_recovery_preview` dispatch input,
 restricted to the #342 branch. It does not publish an image or release. Its
 disposable runner merges exact source checkpoint
-`ca45ffad50aa1a422c5f6691c414ffd140b9fe46` with the dispatched recovery SHA.
+`6c3e7561991fba27d804494828fab8c0c53cbc16` with the dispatched recovery SHA.
 The source branch's earlier frontend exceeds the unchanged JavaScript budget.
 The preview uses the complete owning #339 frontend tree at
 `435a40b2d40a39512973dd3be139e7f1bc7042d2`, after checking its infrastructure
@@ -43,8 +43,11 @@ This new phase remains unproven until its exact hosted preview passes. It uses
 the existing source database and does not claim a restored-database drill or
 complete cleanup of the separately retained encrypted backup.
 
-Events for message, agent, notification and search are retained as pending private fixture
-evidence. The preview never counts them as complete. All helper inputs stay on
+The next relay includes all seven real source contexts, using the owning helper's
+bounded events/deliver actions. No lifecycle command may remain deferred. This
+proves committed normal delivery only, not complete source cleanup or replay on a
+restored database; source pending receipts remain authoritative. The new all-seven
+runtime result is pending. All helper inputs stay on
 stdin and credentials stay in existing service environments. Responses are
 bounded; exceptions do not print private payloads. The owning smoke EXIT cleanup
 destroys the disposable stack. The existing closed recovery activation proof runs
@@ -78,12 +81,34 @@ object roundtrip. This is the bounded local-volume proof described above. It doe
 not cover later backend-guard/deletion changes, a restored database, external S3
 closure or the four deferred participants.
 
-This first preview is not the complete #342 acceptance drill. Restored-only and
-post-backup graph cases, all seven applied source receipts, invalidation, a
-verified database backup bound to the object inventory, external provider and
-original-writer closure, and source spool
-disposition remain required. Capability and public cutover stay OFF. Synthetic
-metadata or a helper success response cannot replace those effects.
-The isolated object phase uses a requested backup identity and explicitly records
-`databaseBackupVerified=false`; it does not claim a restored database or external
-object-version retention. Its local volume closure does not establish S3 closure.
+The next fixture uses the tested source helper at `6c3e7561`. It takes a real full
+pgBackRest backup with the source inventory and backup identities in its
+annotations, paired with encrypted configuration. A separate fixture bundle
+contains the recovery protocol marker; the production manifest remains unchanged.
+After the backup, the owning fixture removes its synthetic course, then real
+server deletion allocates the canonical entry and current empty scope. All seven
+normal lifecycle consumers run before archiving the actual current journal and
+scope pages. The archive is fully read back before the real auth checkpoint call.
+
+The new older-database phase uses the existing isolated restore command and
+current-authority operator. It verifies a before/after WAL marker, old AVAILABLE
+resource, old course, browser sessions and an owning synthetic ISSUED native row
+before replay. It then requires seven exact-prefix receipts, auth and agent
+invalidation, removal of the restored-only historical course, and zero remaining
+unrevoked sessions. The synthetic native row proves invalidation only, not a
+signed ticket or provider execution. These new assertions have not yet passed a
+hosted run.
+
+Only the POSIX repository transport and explicit local media namespace differ
+from the production operator. After WAL replay, the fixture replaces its own
+promoted database process without the temporary repository mount, preserving the
+same owned data volume. The unchanged operator then verifies the exact container,
+mounts and private network. Cleanup checks the exact disposable ownership labels
+and attempts all owned removals. No public listener or cutover is enabled.
+
+This is still not complete #342 acceptance. An object restore against the replayed
+database, post-backup graph cases, external provider and original-writer closure,
+and source spool disposition remain required. Capability and public cutover stay
+OFF. Earlier local object evidence remains separate from new restored-database
+receipts. `objectRestoreVerified=false` prevents the older-database phase from
+claiming that combined proof or external object-version retention.

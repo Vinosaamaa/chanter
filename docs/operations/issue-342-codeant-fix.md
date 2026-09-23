@@ -154,3 +154,23 @@ findings. No automatic suppression was added.
   dispatch, completion, uncertainty, restart and qualification separately. The
   implementation checkpoint and this disposition distinguish proven behavior
   from remaining source, provider and cutover requirements.
+# Recovery PUT tuple concurrency
+
+Full review at `912a067b` completed on September 23 at 01:57 UTC. Comment
+4078334736 proposes a resource-row lock around the pre-dispatch tuple comparison.
+The source-owner audit found no supported tuple-changing callback for a settled,
+unleased AVAILABLE, QUARANTINED or SCAN_FAILED resource. The maintenance fence
+blocks reserve and claim; migration completion requires its matching SCANNING
+lease, which qualification excludes. Capture and PUT reservation already share
+the terminal-head then budget locks with those source transitions.
+
+A row lock released at the end of reservation would not cover later provider
+I/O. Terminal deletion remains intentionally possible after that commit. It
+invalidates the inventory while the durable physical mutation stays outstanding;
+it cannot publish the terminal resource, qualify a new snapshot, or authorize
+quota release. The completion caller separately rechecks the current prefix,
+all retained keys and persisted physical closures while taking the resource lock
+inside the owning deletion transaction. This suggestion is dispositioned against
+those source semantics, not treated as proof of external writer closure. Future
+tuple-changing callbacks must join this boundary. The owning source union and
+hosted proof remain required.
