@@ -36,7 +36,7 @@ it('distinguishes recovery acknowledgement and retained records from completion'
   expect(await screen.findByText('Recovery acknowledgement pending')).toBeVisible()
   expect(screen.queryByText('Deletion completed')).not.toBeInTheDocument()
   await userEvent.setup().click(screen.getByText('Service results'))
-  expect(screen.getByText('Restricted records retained')).toBeVisible()
+  expect(screen.getByText('Some records retained')).toBeVisible()
 })
 
 it('does not retain an old account result after account switch', async () => {

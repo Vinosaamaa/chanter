@@ -162,3 +162,19 @@ failed first and pass after correction; independent review found no blocker. The
 expanded real owner journey covers displayed-link joining and new invited-user
 registration/verification, with hosted acceptance still required. The design records
 same-tab ownership and the separate provider/clipboard limitations.
+
+At 34ba3c90, 347 hosted fixtures and both native releases passed. Fifteen relevant
+screenshots were reviewed across three engines. The follow-up handles actual reload
+by retaining invitation intent until settlement and conditionally clearing only its
+own intent. Repeated PostgreSQL enrollment avoids an aborted uniqueness-conflict
+transaction. The preview composes only that exact owning diff over its pinned source,
+with changed-path and patch checks. All 414 frontend tests, lint, production budgets
+and three local H2 enrollment smoke cases pass; actual repeated PostgreSQL joining
+still requires hosted execution.
+
+Privacy/retention wording now follows #251's tested disposition, with no invented
+contact or configured provider. The public page remains explicitly pre-release.
+Expanded privacy content has a separate 4,500 raw/2,000 gzip lazy-entry cap; this
+adds bounded deferred content while preserving existing core/initial numerical caps
+and counting shared imports in core. Final operator terms, source union and public
+deployment remain unverified.

@@ -27,12 +27,22 @@ jobs:
         run: |
           set -euo pipefail
           source=5a6e92e07b68ab7073e0ed5df48ecd028c29d3b6
+          ui_base=634b9dd1ee7880bf6f4d6a7a617bd7f4e24530ac
+          enrollment=backend/community-service/src/main/java/com/chanter/community/infra/JdbcCourseRepository.java
           git fetch --no-tags origin "$source"
           test "$(git rev-parse FETCH_HEAD)" = "$source"
+          git fetch --no-tags origin "$ui_base"
+          test "$(git rev-parse FETCH_HEAD)" = "$ui_base"
           git diff --exit-code HEAD "$source" -- infra
-          printf 'Dependency preview only. UI/scripts: %s; backend: %s. Not final union acceptance.\n' "$GITHUB_SHA" "$source"
+          test "$(git diff --name-only "$ui_base" HEAD -- backend)" = "$enrollment"
+          git diff --binary "$ui_base" HEAD -- "$enrollment" > "$RUNNER_TEMP/chanter-preview-enrollment.patch"
+          test -s "$RUNNER_TEMP/chanter-preview-enrollment.patch"
+          printf 'Dependency preview only. UI/scripts/enrollment correction: %s; backend: %s; UI base: %s. Not final union acceptance.\n' "$GITHUB_SHA" "$source" "$ui_base"
           git restore --source="$source" --staged --worktree -- backend
           git diff --cached --exit-code "$source" -- backend
+          git apply --check "$RUNNER_TEMP/chanter-preview-enrollment.patch"
+          git apply --index "$RUNNER_TEMP/chanter-preview-enrollment.patch"
+          test "$(git diff --cached --name-only "$source" -- backend)" = "$enrollment"
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin

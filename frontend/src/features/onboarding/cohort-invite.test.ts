@@ -65,7 +65,35 @@ describe('cohort-invite', () => {
     expect(storage.has('chanter:pending-cohort-invite')).toBe(false)
   })
 
-  it('completePendingCohortJoin re-queues only transient failures', async () => {
+  it('keeps an unresolved invitation available after remount and clears it only after success', async () => {
+    rememberCohortInviteFromSearch('?cohort=cohort-1&invite=code-1')
+    let finish!: () => void
+    const pending = completePendingCohortJoin(() => new Promise<void>(resolve => { finish = resolve }))
+    expect(storage.has('chanter:pending-cohort-invite')).toBe(true)
+    finish()
+    await expect(pending).resolves.toBe('success')
+    expect(storage.has('chanter:pending-cohort-invite')).toBe(false)
+  })
+
+  it.each(['success', 'rejected', 'transient'] as const)('does not replace a newer invitation after an older %s result', async (result) => {
+    rememberCohortInviteFromSearch('?cohort=cohort-1&invite=code-1')
+    let finish!: () => void
+    let fail!: (error: Error) => void
+    const pending = completePendingCohortJoin(() => new Promise<void>((resolve, reject) => { finish = resolve; fail = reject }))
+    rememberCohortInviteFromSearch('?cohort=cohort-2&invite=code-2')
+    if (result === 'success') finish()
+    else fail(new ApiError('Join failed', result === 'rejected' ? 403 : 503))
+    await pending
+    expect(storage.get('chanter:pending-cohort-invite')).toBe(JSON.stringify({ cohortId: 'cohort-2', inviteCode: 'code-2' }))
+  })
+
+  it.each([401, 408, 409, 429])('retains an invitation after retryable HTTP %s', async (status) => {
+    rememberCohortInviteFromSearch('?cohort=cohort-1&invite=code-1')
+    await expect(completePendingCohortJoin(vi.fn().mockRejectedValue(new ApiError('Try again', status)))).resolves.toBe('failed')
+    expect(storage.has('chanter:pending-cohort-invite')).toBe(true)
+  })
+
+  it('completePendingCohortJoin retains only transient failures', async () => {
     rememberCohortInviteFromSearch('?cohort=cohort-1&invite=code-1')
     const joinCohort = vi
       .fn()

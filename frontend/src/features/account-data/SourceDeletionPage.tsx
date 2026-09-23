@@ -8,7 +8,7 @@ import './account-deletion.css'
 const descriptions: Record<SourceDeletionJob['state'], [string, string]> = {
   ERASING: ['Cleanup in progress', 'Access is closed. The services are still processing this deletion request.'],
   WAITING_FOR_REPLICA: ['Recovery acknowledgement pending', 'Service cleanup results are recorded. Durable recovery records still need to acknowledge the deletion.'],
-  COMPLETE: ['Deletion completed', 'All required cleanup results and recovery acknowledgements are recorded. Restricted moderation records may remain.'],
+  COMPLETE: ['Deletion completed', 'All required cleanup results and recovery acknowledgements are recorded. Some recovery, accounting, shared-course and moderation records may remain.'],
 }
 const sourceNames: Record<string, string> = { auth: 'Account', community: 'Study Servers and memberships', message: 'Messages and questions', media: 'Course files', agent: 'Assistant history', search: 'Search', notification: 'Notifications' }
 
@@ -37,7 +37,7 @@ function SourceProgress({ account, jobId }: { account: string; jobId: string }) 
       {job.parts.some(part => part.errorCode) ? <p role="alert">A service could not finish. The request needs attention; a delivery failure does not mean deletion completed.</p> : null}
       <details><summary>Service results</summary><ul>{job.parts.map(part => <li key={part.source}>
         <span>{sourceNames[part.source] ?? 'Service'}</span>
-        <span>{part.errorCode ? 'Delivery needs attention' : part.state === 'PRESERVED' ? 'Restricted records retained' : part.state === 'COMPLETE' ? 'Confirmed' : 'Pending'}</span>
+        <span>{part.errorCode ? 'Delivery needs attention' : part.state === 'PRESERVED' ? 'Some records retained' : part.state === 'COMPLETE' ? 'Confirmed' : 'Pending'}</span>
       </li>)}</ul></details>
     </section> : null}
     <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()}>Refresh status</button>

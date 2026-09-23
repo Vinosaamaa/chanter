@@ -128,3 +128,23 @@ show the existing error. A successful local answer update or reply completed aft
 the read began survives that older read; a subsequent fresh read remains authoritative.
 The protection belongs to one active question load and ends when it settles or is
 cancelled. It does not compare timestamps or preserve historical cache rows forever.
+
+## Retention wording
+
+The tested #251 disposition at ec91670e retains more than restricted moderation
+evidence. Public status labels say Some records retained and explain accounting,
+shared-course and recovery records. The privacy page describes removed attribution,
+shared installations, minimal deletion identifiers and retained storage metadata;
+completion never promises every record was erased. Export download expiry is
+24 hours after request, and the receipt cookie expires seven days after preparation.
+
+The previous policy was a placeholder with an unconfigured contact. Its replacement
+describes verified implementation behavior and explicitly leaves operator identity,
+contact, enabled provider details and final retention terms unfinished before public
+launch. It does not assert legal approval or name unconfigured providers.
+
+The expanded PrivacyPage remains a separate lazy route. It now has a 4,500 raw /
+2,000 gzip byte allowance, using the existing exact-entry budget mechanism. This
+increases the permitted deferred privacy content beyond its old placeholder; shared
+imports, core numerical caps and initial/landing/sign-in/Home caps remain unchanged.
+The checker rejects bringing this entry into a protected initial route.

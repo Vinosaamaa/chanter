@@ -127,3 +127,21 @@ after its existing exchange. Shared attempt ownership prevents effect replay fro
 advancing early. Independent review found no blocker in the correction or the real
 registration/join scenario. Cross-tab verification instructions explicitly direct
 the learner back to the original tab; provider and clipboard proof remain open.
+
+Actual reload retains invitation intent until request settlement. An older successful
+or rejected request can clear only its own invitation; uncertain results never replace
+new intent. Repeated PostgreSQL enrollment avoids uniqueness errors inside the open
+transaction and preserves the original row. Local H2 compatibility and real hosted
+PostgreSQL proof must remain separately identified.
+
+The source-verified retention text removes restricted-only labels and unconfigured
+support addresses. Public operator/provider/legal readiness remains explicitly open.
+The lazy privacy route has a separately enforced allowance; core and initial-route
+caps do not change. This new deferred allocation is recorded as a scope increase.
+
+Review found that the temporary account preview's backend replacement would discard
+the PostgreSQL correction. Composition now accepts only the exact enrollment-file
+diff from the recorded UI base, verifies the pinned backend before applying that
+patch, and checks the resulting changed-path set. A temporary-index check proves
+that the patch applies without overwriting #251's other repository changes. Wider
+backend edits fail closed; no publishing permissions or branches are broadened.

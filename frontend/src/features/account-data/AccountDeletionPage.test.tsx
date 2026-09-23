@@ -86,7 +86,7 @@ it('never treats a missing receipt as completion and provides an explicit refres
   expect(screen.queryByText('Deletion completed')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Refresh status' }))
   expect(await screen.findByText('Deletion completed')).toBeVisible()
-  expect(screen.getByText(/Restricted moderation records may remain/)).toBeVisible()
+  expect(screen.getByText(/Some recovery, accounting, shared-course and moderation records may remain/)).toBeVisible()
   expect(api.getDeletion).not.toHaveBeenCalled()
 })
 

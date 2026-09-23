@@ -130,3 +130,19 @@ finished. Pre-auth tab-local retention, shared per-attempt promise ownership and
 common authenticated continuation fix all three focused cases. The first broader
 suite hit five unrelated timing failures while local workers were busy; a bounded
 two-worker rerun retains the original assertions and timeouts.
+
+Review 4078578478 identified actual reload as distinct from effect replay. The helper
+removed the invitation before awaiting its request, so a fresh mount could see none.
+A second regression showed an old transient failure replacing a newer invitation.
+Both failed before retaining storage until settlement and conditionally clearing only
+the matching invitation. Retryable authentication, timing, opening-soon and rate-limit
+responses retain the invitation. PostgreSQL's duplicate enrollment insert also needed
+ON CONFLICT handling before its subsequent invitation update; H2 smoke alone cannot
+prove that production transaction behavior. A real repeated browser join is required.
+
+Expanded privacy text exceeded the aggregate raw JavaScript cap by 2,524 bytes.
+The public-only lazy privacy entry receives its own bounded 4,500/2,000 raw/gzip
+allowance. Existing core and initial-route caps are unchanged, and shared imports
+remain core. The production build passes with the privacy entry at 3.8 KiB raw and
+1.6 KiB gzip. This is an explicit additional deferred-content allocation, not a
+claim that total permitted download size stayed identical.

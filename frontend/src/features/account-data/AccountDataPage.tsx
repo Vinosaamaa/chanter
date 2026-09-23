@@ -103,7 +103,7 @@ function AccountData({ account, generation }: { account: string; generation: num
         <section className="account-data-section" aria-labelledby="export-heading">
           <h2 id="export-heading">Export your data</h2>
           <p>Your archive includes your profile, memberships, authored content, file metadata and available files, and assistant history. Each section explains what it omits.</p>
-          <p>Shared content requires current access. Sources capture their sections separately. Private export copies expire after 24 hours.</p>
+          <p>Shared content requires current access. Sources capture their sections separately. Download access expires 24 hours after the request; cleanup may still be pending.</p>
           <div className="account-data-actions">
             <button type="button" className="v2-primary-button" disabled={busy || query.isPending || query.isError || Boolean(live)} onClick={request}>Request export</button>
             <button type="button" className="v2-secondary-button" disabled={busy || query.isFetching} onClick={refresh}><RefreshCw size={16} aria-hidden="true" /> Refresh status</button>

@@ -312,3 +312,20 @@ contention. Independent review found no blocker. The expanded real owner journey
 adds wizard Close/Back, displayed invitation joining and new invited-user registration
 through real email verification. Hosted execution remains pending. The design is
 docs/architecture/invitation-continuation.md; clipboard and provider proof are separate.
+
+At 34ba3c90 all 347 responsive browser fixtures and both native release architectures
+passed. The nine invitation screenshots and six deleted-content screenshots were
+reviewed across three engines. The current follow-up preserves invitations across
+actual reload and newer intent, and makes repeated PostgreSQL enrollment safe without
+changing its original attribution. All 414 frontend tests and lint pass; three H2
+enrollment smoke cases pass. The real PostgreSQL repeated-join case awaits hosted
+execution. The dependency preview applies only the exact root enrollment patch to
+its pinned source; a separate temporary-index check confirms compatibility.
+
+Retention wording now matches tested #251 ec91670e: accounting, shared-course,
+recovery and moderation records can remain. Export download expiry starts at request,
+and unconfigured support addresses are removed. The factual privacy page explicitly
+leaves operator/provider details unfinished before launch. Its exact lazy entry has
+a new 4,500 raw/2,000 gzip cap; existing core and initial caps stay unchanged. This
+adds a bounded deferred-content allowance, and the production build passes. The
+updated privacy page will be captured in full at all six existing fixture widths.

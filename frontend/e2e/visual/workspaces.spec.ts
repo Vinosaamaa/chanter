@@ -263,7 +263,7 @@ for (const width of [360, 390, 768, 1280, 1920, 3840]) {
       await page.evaluate(() => document.fonts.ready)
       if (name === 'course-questions' && width <= 390) await page.locator('.question-thread-list > button').first().click()
       if (name === 'inbox' && width <= 390) await page.locator('.inbox-thread-list button').first().click()
-      await page.screenshot({ path: testInfo.outputPath(`fixture-ui-${name}-${width}.png`) })
+      await page.screenshot({ path: testInfo.outputPath(`fixture-ui-${name}-${width}.png`), fullPage: name === 'privacy' })
       if (name === 'course-chat' || name === 'community-lounge') await expect(page.locator('.chat-composer')).toBeInViewport()
       expect(pageErrors).toEqual([])
       expect(apiFailures, 'Each route must load its intended fixture instead of an accidental error state').toEqual([])

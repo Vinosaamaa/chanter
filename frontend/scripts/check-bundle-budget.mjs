@@ -33,6 +33,9 @@ export const productionBundleBudget = Object.freeze({
   }, {
     name: 'Source deletion', rawBytes: 8_000, gzipBytes: 3_000,
     entries: ['src/features/account-data/SourceDeletionPage.tsx'],
+  }, {
+    name: 'Privacy information', rawBytes: 4_500, gzipBytes: 2_000,
+    entries: ['src/features/auth/pages/PrivacyPage.tsx'],
   }],
   initialJsGzipBytes: 120_000,
   deferredChunkGzipBytes: 130_000,

@@ -54,7 +54,7 @@ export function TermsPage() {
         </p>
 
         <h2>Contact</h2>
-        <p>Questions about these terms can be sent to support@chanter.app.</p>
+        <p>The operator&apos;s contact details will be published here before public access opens.</p>
       </article>
     </main>
   )

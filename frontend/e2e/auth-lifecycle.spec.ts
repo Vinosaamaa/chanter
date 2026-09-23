@@ -207,6 +207,16 @@ test.describe('Verified account and recovery @product', () => {
     }).toBe(true)
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Practical field observation', exact: true })).toBeVisible()
+    // A previous join may have committed before its response was interrupted.
+    // Retry through the real form against PostgreSQL and preserve access.
+    await page.getByRole('link', { name: 'Join a Course', exact: true }).click()
+    await page.getByLabel('Cohort invite link', { exact: true }).fill(invite.toString())
+    const repeatedJoin = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/cohorts/${course.cohort.id}/join`
+      && response.request().method() === 'POST')
+    await page.getByRole('button', { name: 'Join cohort', exact: true }).click()
+    expect((await repeatedJoin).status()).toBe(204)
+    await expect(page).toHaveURL(/\/app\/home$/)
+    await expect(page.getByRole('heading', { name: 'Practical field observation', exact: true })).toBeVisible()
     await signOut(page)
     await page.goto(invite.toString())
     const registeringEmail = `invited-registration-${randomUUID()}@example.com`

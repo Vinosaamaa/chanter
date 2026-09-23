@@ -57,7 +57,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
       await page.getByRole('button', { name: 'Refresh status' }).click()
       await expect(page.getByRole('heading', { name: 'Recovery acknowledgement pending' })).toBeVisible()
       await page.getByText('Service results', { exact: true }).click()
-      await expect(page.getByText('Restricted records retained')).toBeVisible()
+      await expect(page.getByText('Some records retained')).toBeVisible()
       expect(requests).toBe(1)
       expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
       await page.screenshot({ path: info.outputPath(`fixture-ui-source-progress-${kind}-${viewport.width}.png`), fullPage: true })

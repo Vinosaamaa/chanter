@@ -169,3 +169,14 @@ A separate confirmed onboarding blocker lost cohort invitations through email
 verification and skipped them after OAuth. Three red/green regressions and independent
 review support the bounded continuation fix described in invitation-continuation.md.
 Real hosted registration/join and provider execution remain distinct acceptance gates.
+
+4078578478 is confirmed for a real remount/reload. Pending invitation storage now
+survives until settlement and clears only on a matching successful or definitive
+result. Transient results leave newer intent untouched. Two regressions failed before
+this fix. PostgreSQL's repeated enrollment path also avoids an aborted duplicate-key
+transaction; the expanded hosted journey must verify its repeated 204 result.
+
+4078580889 repeats the previously reviewed cross-session reply allegation. Independent
+review again found only the keyed V2/legacy callers and the API client's post-body
+session guard; no new reachable disclosure was demonstrated. Its prior disposition
+stands without reopening the completed general remediation rounds.

@@ -20,7 +20,7 @@ const states: Record<DeletionJob['state'], [string, string]> = {
   CANCELLED: ['Preparation cancelled', 'This preparation will not delete your account.'],
   ERASING: ['Cleanup in progress', 'Account access is closed. The services are still processing the deletion request.'],
   WAITING_FOR_REPLICA: ['Recovery acknowledgement pending', 'The services have reported their results. Durable recovery records still need to acknowledge this deletion.'],
-  COMPLETE: ['Deletion completed', 'All required service results and recovery acknowledgements are recorded. Restricted moderation records may remain; this does not mean every record was erased.'],
+  COMPLETE: ['Deletion completed', 'All required service results and recovery acknowledgements are recorded. Some recovery, accounting, shared-course and moderation records may remain; completion does not mean every record was erased.'],
 }
 const names: Record<string, string> = { auth: 'Account', community: 'Study Servers and memberships', message: 'Messages and questions', media: 'Course files', agent: 'Assistant history', search: 'Search', notification: 'Notifications' }
 const irreversible = (state: DeletionJob['state']) => ['ERASING', 'WAITING_FOR_REPLICA', 'COMPLETE'].includes(state)
@@ -127,7 +127,7 @@ function DeletionRequest({ account, generation }: { account: string; generation:
     <section className="deletion-warning" aria-label="Before you confirm">
       <h2>Before you confirm</h2>
       <p>Confirmation closes access to your account and starts irreversible cleanup. Export anything you want to keep first.</p>
-      <p>Restricted moderation records may remain. Read the <Link to="/privacy">privacy policy</Link> for the data and retention boundaries. This request does not promise an immediate completion time.</p>
+      <p>Some recovery, accounting, shared-course and moderation records may remain. Read the <Link to="/privacy">privacy information</Link> for the data and retention boundaries. This request does not promise an immediate completion time.</p>
     </section>
     {id && !valid ? <p role="alert">Invalid deletion request link. Return to account data to start again.</p> : null}
     {valid && query.isPending ? <p role="status">Loading deletion request…</p> : null}
@@ -191,6 +191,6 @@ function DeletionStatus({ job }: { job: DeletionJob }) {
   return <section className="deletion-status" aria-label="Current deletion status" aria-live="polite">
     <h2>{copy[0]}</h2><p>{copy[1]}</p>
     {job.preparationError || job.parts.some(part => part.errorCode) ? <p role="alert">A service could not finish. The request needs attention; a delivery failure does not mean deletion completed.</p> : null}
-    <details><summary>Service results</summary><ul>{job.parts.map(part => <li key={part.source}><span>{names[part.source] ?? 'Service'}</span><span>{part.errorCode ? 'Delivery needs attention' : part.state === 'PRESERVED' ? 'Restricted records retained' : part.state === 'COMPLETE' ? 'Confirmed' : 'Pending'}</span></li>)}</ul></details>
+    <details><summary>Service results</summary><ul>{job.parts.map(part => <li key={part.source}><span>{names[part.source] ?? 'Service'}</span><span>{part.errorCode ? 'Delivery needs attention' : part.state === 'PRESERVED' ? 'Some records retained' : part.state === 'COMPLETE' ? 'Confirmed' : 'Pending'}</span></li>)}</ul></details>
   </section>
 }
