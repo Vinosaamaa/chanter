@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
 import { configurationBackupEnvironment, verifiedResticTool } from './configuration-backup.mjs';
@@ -79,17 +79,46 @@ export class ResourceObjectArchive {
 
   initialize() { this.#run(['init', '--repository-version', '2']); }
 
-  #saveInventoryJson(value, name) {
+  #saveInventoryJson(value, name, attempt) {
     const bytes = Buffer.from(JSON.stringify(value));
     if (bytes.length > MAX_INVENTORY_PAGE_BYTES) fail();
     let summaries;
     try { summaries = this.#run(['backup', '--stdin', '--stdin-filename', name, '--host', `chanter-${this.environment}`,
-      '--tag', 'resource-inventory-v1', '--json'], bytes).toString('utf8').trim().split(/\r?\n/)
-      .map(line => JSON.parse(line)).filter(row => row.message_type === 'summary'); } catch { fail(); }
-    if (summaries.length !== 1 || !HEX.test(summaries[0].snapshot_id ?? '')) fail();
+      '--tag', 'resource-inventory-v1', '--tag', attempt.tag, '--json'], bytes).toString('utf8').trim().split(/\r?\n/)
+      .map(line => JSON.parse(line)).filter(row => row.message_type === 'summary'); }
+    catch { attempt.ambiguous=true;fail(); }
+    if (summaries.length !== 1 || !HEX.test(summaries[0].snapshot_id ?? '')
+        || attempt.saved.has(summaries[0].snapshot_id)) {attempt.ambiguous=true;fail();}
     const reference = { snapshotId: summaries[0].snapshot_id, byteSize: bytes.length, sha256: digest(bytes) };
+    attempt.saved.set(reference.snapshotId,name);
     if (!isDeepStrictEqual(this.#readInventoryJson(reference, name), value)) fail();
     return reference;
+  }
+  #unpublishedFailure(attempt) {
+    let status=attempt.saved.size===0&&!attempt.ambiguous?'NONE':'PENDING';
+    if(!attempt.ambiguous&&attempt.saved.size>0) try {
+      const list=()=>{
+        const rows=JSON.parse(this.#run(['snapshots','--json','--tag',attempt.tag],undefined,4*1024*1024).toString('utf8'));
+        if(!Array.isArray(rows)||rows.length>2049)fail();return rows;
+      };
+      const rows=list(), ids=new Set();
+      if(rows.length!==attempt.saved.size)fail();
+      for(const row of rows) {
+        const name=attempt.saved.get(row.id);
+        if(!name||ids.has(row.id)||row.hostname!==`chanter-${this.environment}`
+            ||!isDeepStrictEqual(row.paths,[path.join(path.parse(process.cwd()).root,name)])||!Array.isArray(row.tags)
+            ||row.tags.length!==2||!row.tags.includes('resource-inventory-v1')||!row.tags.includes(attempt.tag))fail();
+        ids.add(row.id);
+      }
+      // Exact IDs only. No leaf, published attempt, retention policy or prune is involved.
+      const owned=[...ids];
+      for(let offset=0;offset<owned.length;offset+=128)this.#run(['forget',...owned.slice(offset,offset+128)]);
+      if(list().length!==0)fail();
+      status='FORGOTTEN';
+    }catch { /* Repository attempt tags and opaque diagnostics preserve unresolved ownership. */ }
+    const error=new Error('Resource inventory publication failed');
+    error.cleanup=Object.freeze({attemptId:attempt.id,status,snapshotIds:Object.freeze([...attempt.saved.keys()])});
+    return error;
   }
   #readInventoryJson(reference, name) {
     exactFields(reference, ['snapshotId', 'byteSize', 'sha256']);
@@ -106,30 +135,33 @@ export class ResourceObjectArchive {
     if (checkpoint.inventoryId !== expected.inventoryId || checkpoint.storageNamespaceSha256 !== expected.namespaceSha256
         || !isDeepStrictEqual(checkpoint.authority, expected.authority) || typeof readPage !== 'function'
         || typeof objectReference !== 'function') fail();
-    const verifier = new InventoryVerifier(expected), pages = [];
-    do {
-      // Fixed size bounds both source parsing and the encrypted page including byte references.
-      const page = structuredClone(readPage(verifier.after, 128));
-      verifier.accept(page);
-      const objects = page.references.map(reference => {
-        if (!inventoryRestorable(reference)) return null;
-        const archived = structuredClone(objectReference(reference));
-        if (archived?.inventoryId !== expected.inventoryId || !isDeepStrictEqual(archived.authority, expected.authority)) fail();
-        this.readVerified(archived, inventoryObject(reference), expected.namespaceSha256);
-        return archived;
-      });
-      if (pages.length >= 2048) fail();
-      pages.push(this.#saveInventoryJson({ schemaVersion: 1, page, objects }, 'resource-inventory-page.json'));
-    } while (!verifier.complete);
-    const current = structuredClone(readPage(expected.referenceCount, 1));
-    this.#requireInventoryEnd(current, expected);
-    const manifest = this.#saveInventoryJson({ schemaVersion: 1, repositoryKind: this.kind, environment: this.environment,
-      snapshot: expected, pages, publicCutoverAllowed: false }, 'resource-inventory.json');
-    const reference = Object.freeze({ schemaVersion: 1, repositoryKind: this.kind, environment: this.environment,
-      snapshot: expected, manifest, publicCutoverAllowed: false });
-    this.verifyInventory(reference, expected);
-    this.#requireInventoryEnd(structuredClone(readPage(expected.referenceCount, 1)), expected);
-    return reference;
+    const id=randomUUID(),attempt={id,tag:`resource-inventory-attempt-${id}`,saved:new Map(),ambiguous:false};
+    try {
+      const verifier = new InventoryVerifier(expected), pages = [];
+      do {
+        // Fixed size bounds both source parsing and the encrypted page including byte references.
+        const page = structuredClone(readPage(verifier.after, 128));
+        verifier.accept(page);
+        const objects = page.references.map(reference => {
+          if (!inventoryRestorable(reference)) return null;
+          const archived = structuredClone(objectReference(reference));
+          if (archived?.inventoryId !== expected.inventoryId || !isDeepStrictEqual(archived.authority, expected.authority)) fail();
+          this.readVerified(archived, inventoryObject(reference), expected.namespaceSha256);
+          return archived;
+        });
+        if (pages.length >= 2048) fail();
+        pages.push(this.#saveInventoryJson({ schemaVersion: 1, page, objects }, 'resource-inventory-page.json',attempt));
+      } while (!verifier.complete);
+      const current = structuredClone(readPage(expected.referenceCount, 1));
+      this.#requireInventoryEnd(current, expected);
+      const manifest = this.#saveInventoryJson({ schemaVersion: 1, repositoryKind: this.kind, environment: this.environment,
+        snapshot: expected, pages, publicCutoverAllowed: false }, 'resource-inventory.json',attempt);
+      const reference = Object.freeze({ schemaVersion: 1, repositoryKind: this.kind, environment: this.environment,
+        snapshot: expected, manifest, publicCutoverAllowed: false });
+      this.verifyInventory(reference, expected);
+      this.#requireInventoryEnd(structuredClone(readPage(expected.referenceCount, 1)), expected);
+      return reference;
+    }catch {throw this.#unpublishedFailure(attempt);}
   }
   #requireInventoryEnd(page, snapshot) {
     exactFields(page, ['schemaVersion', 'snapshot', 'after', 'references', 'nextAfter']);

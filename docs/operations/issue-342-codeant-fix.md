@@ -237,3 +237,26 @@ database. Both then rejected an outdated restart-test call that tried to release
 maintenance while UNKNOWN remained. The test now requires release refusal,
 preserved maintenance identity, and blocked PUT/DELETE; it never fabricates
 settlement. Fresh restart proof remains required.
+
+Full review at `7605ae91` completed on September 23 at 03:39 UTC. Comment
+4078824705 correctly identifies encrypted page snapshots left by failed manifest
+publication. Each publication now uses a unique attempt tag. Only a failed,
+unpublished attempt with an unambiguous exact snapshot set can run `forget`.
+Repository metadata must match every returned ID, attempt tag, fixed filename and
+host before any deletion. Bounded batches contain exact IDs only, and a fresh
+tag-filtered listing must prove absence before the result says FORGOTTEN.
+
+Any ambiguous backup acknowledgement preserves the entire attempt, including its
+known pages. Ownership mismatch, failed forget or failed absence verification
+returns PENDING with opaque attempt/snapshot IDs. The encrypted repository retains
+the attempt tags; the enclosing operator must retain the error's `cleanup` receipt
+in its existing private operation state. The archive does not expose a retry or
+retention command. Caller-supplied leaf snapshots and previously published
+manifests are never cleanup targets. No prune runs, so this correction claims
+neither underlying pack reclamation nor a repository capacity bound.
+
+Five new regressions failed before the correction. They check exact ownership,
+published/leaf preservation, ambiguous writes and cleanup failures. Actual restic
+verification additionally checks snapshot disappearance and continued readback of
+the published inventory, and preserves all three snapshots after a deliberately
+lost manifest acknowledgement.
