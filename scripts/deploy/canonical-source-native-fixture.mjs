@@ -218,9 +218,15 @@ try {
   const quarantineArchived = archive.capture(quarantineObject, { inventoryId, storageNamespaceSha256: fence.storageNamespaceSha256,
     authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 }, actualBytes);
   assert.deepEqual(archive.readVerified(quarantineArchived, quarantineObject, fence.storageNamespaceSha256), actualBytes);
+  const leaves = new Map([[available.resourceId, archived], [liveResource.resourceId, liveArchived], [quarantined.resourceId, quarantineArchived]]);
+  const inventoryArchive = archive.publishInventory(inventory, { inventoryId, storageNamespaceSha256: fence.storageNamespaceSha256,
+    authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 },
+  (after, limit) => objectCall({ action: 'page', inventoryId, authority: GENESIS, after, limit }),
+  source => leaves.get(source.resourceId));
+  assert.equal(archive.verifyInventory(inventoryArchive, inventory).referenceCount, 3);
   databaseDrill = await sourceDatabaseCheckpoint({ bundle, state, root, release, postgres, project,
     composeFile, sourceCompose, inventoryId, databaseBackupId, resourceId: available.resourceId,
-    courseId: graph.courseId, nativeRequestId: pendingNative.requestId, liveGraph, liveOwnerId: owner.accountId });
+    courseId: graph.courseId, nativeRequestId: pendingNative.requestId, liveGraph, liveOwnerId: owner.accountId, inventoryArchive });
   // Restore the same logical local namespace into an owned empty volume. No old object is overwritten or removed.
   restoreVolume = `${project}-object-${crypto.randomUUID()}`;
   assert.ok(!docker(['volume', 'ls', '--format', '{{.Name}}']).split('\n').includes(restoreVolume));
@@ -308,12 +314,12 @@ try {
   const journalReplica = await databaseDrill.archiveCurrent(page.through);
   compose(['stop', ...sources.map(source => `${source}-service`)]);
   const recoveredAuthority = await databaseDrill.recover(page.through, historical, postBackupGraph, {
-    archive, liveArchived, liveObject, quarantineArchived, quarantineObject,
+    archive, liveArchived, liveObject, quarantineArchived, quarantineObject, inventoryArchive, inventory,
     archivedNamespace: fence.storageNamespaceSha256, actualBytes, currentScopes: scopes,
   });
   // Committed delivery is not complete source cleanup or a receipt for replay on a restored database.
   fs.writeFileSync(path.join(root, 'canonical-source.json'), JSON.stringify({ schemaVersion: 1, preview,
-    page, scopes, resource: available, inventory, objectReferences: [archived, liveArchived, quarantineArchived],
+    page, scopes, resource: available, inventory, inventoryArchive, objectReferences: [archived, liveArchived, quarantineArchived],
     byteReadbackVerified: true, objectRoundtripVerified: true,
     physicalDeletionVerified: true, databaseBackupVerified: true, journalReplica, recoveredAuthority, historical,
     deferred, publicCutoverAllowed: false }), { mode: 0o600 });

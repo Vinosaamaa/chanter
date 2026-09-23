@@ -163,3 +163,24 @@ channels. It did not reach isolated database recovery. The correction keeps the
 empty COURSE check, excludes the actual removed course-channel IDs from current
 scope, and checks the original per-kind count and digest after replay. It does
 not weaken the requirement to recover the older course graph separately.
+
+The next independent #342 slice publishes complete inventory evidence in the
+existing encrypted object repository. The source-owned snapshot, database-backup
+identity, exact page order/count/digest and every eligible object's full readback
+must qualify before an immutable manifest is returned. Encrypted pages keep
+memory bounded; the root lists only page references. Terminal or nonretained
+rows remain in the source digest with no restorable byte reference. A final
+source-page qualification checks the same snapshot and maintenance authority
+again. This does not establish external provider quiescence or freshness.
+The slice remains in the existing issue worktree and PR #343. Tests must reject
+partial/duplicate pages, changed identities, omitted eligible objects and corrupt
+readback, and use real local restic for encrypted roundtrip evidence.
+
+The implementation now passes the real local encrypted manifest roundtrip, with
+wrong-key, corrupt-object and incomplete-page refusal. Verification reads every
+eligible object's bytes before delivering any archived reference to the restore
+caller. The hosted fixture links the immutable manifest snapshot to its actual
+pgBackRest backup annotation and verifies the full manifest before restoring
+objects. This new linkage has not yet run on the hosted architectures. The
+operational source adapter and independently protected backup-reference retention
+remain required; the fixture does not establish provider closure or freshness.

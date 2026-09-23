@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
 import { configurationBackupEnvironment, verifiedResticTool } from './configuration-backup.mjs';
 import { environmentName, exactFields, nonzeroUuid, validateWatermark } from './terminal-journal.mjs';
+import { InventoryVerifier, inventorySnapshot, inventoryObject, inventoryRestorable, MAX_INVENTORY_PAGE_BYTES } from './resource-inventory.mjs';
 
 export const MAX_RESOURCE_BYTES = 10 * 1024 * 1024;
 const HEX = /^[a-f0-9]{64}$/;
@@ -77,6 +78,100 @@ export class ResourceObjectArchive {
   }
 
   initialize() { this.#run(['init', '--repository-version', '2']); }
+
+  #saveInventoryJson(value, name) {
+    const bytes = Buffer.from(JSON.stringify(value));
+    if (bytes.length > MAX_INVENTORY_PAGE_BYTES) fail();
+    let summaries;
+    try { summaries = this.#run(['backup', '--stdin', '--stdin-filename', name, '--host', `chanter-${this.environment}`,
+      '--tag', 'resource-inventory-v1', '--json'], bytes).toString('utf8').trim().split(/\r?\n/)
+      .map(line => JSON.parse(line)).filter(row => row.message_type === 'summary'); } catch { fail(); }
+    if (summaries.length !== 1 || !HEX.test(summaries[0].snapshot_id ?? '')) fail();
+    const reference = { snapshotId: summaries[0].snapshot_id, byteSize: bytes.length, sha256: digest(bytes) };
+    if (!isDeepStrictEqual(this.#readInventoryJson(reference, name), value)) fail();
+    return reference;
+  }
+  #readInventoryJson(reference, name) {
+    exactFields(reference, ['snapshotId', 'byteSize', 'sha256']);
+    if (!HEX.test(reference.snapshotId ?? '') || !HEX.test(reference.sha256 ?? '')
+        || !Number.isSafeInteger(reference.byteSize) || reference.byteSize < 1 || reference.byteSize > MAX_INVENTORY_PAGE_BYTES) fail();
+    const bytes = this.#run(['dump', reference.snapshotId, name], undefined, reference.byteSize + 1);
+    if (bytes.length !== reference.byteSize || digest(bytes) !== reference.sha256) fail();
+    try { return JSON.parse(bytes.toString('utf8')); } catch { fail(); }
+  }
+
+  /** The caller owns source/provider closure. No manifest is returned for a partial inventory. */
+  publishInventory(snapshot, maintenance, readPage, objectReference) {
+    const expected = inventorySnapshot(snapshot), checkpoint = maintenanceCheckpoint(maintenance);
+    if (checkpoint.inventoryId !== expected.inventoryId || checkpoint.storageNamespaceSha256 !== expected.namespaceSha256
+        || !isDeepStrictEqual(checkpoint.authority, expected.authority) || typeof readPage !== 'function'
+        || typeof objectReference !== 'function') fail();
+    const verifier = new InventoryVerifier(expected), pages = [];
+    do {
+      // Fixed size bounds both source parsing and the encrypted page including byte references.
+      const page = structuredClone(readPage(verifier.after, 128));
+      verifier.accept(page);
+      const objects = page.references.map(reference => {
+        if (!inventoryRestorable(reference)) return null;
+        const archived = structuredClone(objectReference(reference));
+        if (archived?.inventoryId !== expected.inventoryId || !isDeepStrictEqual(archived.authority, expected.authority)) fail();
+        this.readVerified(archived, inventoryObject(reference), expected.namespaceSha256);
+        return archived;
+      });
+      if (pages.length >= 2048) fail();
+      pages.push(this.#saveInventoryJson({ schemaVersion: 1, page, objects }, 'resource-inventory-page.json'));
+    } while (!verifier.complete);
+    const current = structuredClone(readPage(expected.referenceCount, 1));
+    this.#requireInventoryEnd(current, expected);
+    const manifest = this.#saveInventoryJson({ schemaVersion: 1, repositoryKind: this.kind, environment: this.environment,
+      snapshot: expected, pages, publicCutoverAllowed: false }, 'resource-inventory.json');
+    const reference = Object.freeze({ schemaVersion: 1, repositoryKind: this.kind, environment: this.environment,
+      snapshot: expected, manifest, publicCutoverAllowed: false });
+    this.verifyInventory(reference, expected);
+    this.#requireInventoryEnd(structuredClone(readPage(expected.referenceCount, 1)), expected);
+    return reference;
+  }
+  #requireInventoryEnd(page, snapshot) {
+    exactFields(page, ['schemaVersion', 'snapshot', 'after', 'references', 'nextAfter']);
+    if (page.schemaVersion !== 1 || !isDeepStrictEqual(inventorySnapshot(page.snapshot), snapshot)
+        || page.after !== snapshot.referenceCount || !Array.isArray(page.references) || page.references.length !== 0
+        || page.nextAfter !== null) fail();
+  }
+
+  /** Full source-chain and byte verification precedes delivery of any archived reference. */
+  verifyInventory(reference, snapshot, acceptReference = null) {
+    const expected = inventorySnapshot(snapshot);
+    exactFields(reference, ['schemaVersion', 'repositoryKind', 'environment', 'snapshot', 'manifest', 'publicCutoverAllowed']);
+    if (reference.schemaVersion !== 1 || reference.repositoryKind !== this.kind || reference.environment !== this.environment
+        || reference.publicCutoverAllowed !== false || !isDeepStrictEqual(reference.snapshot, expected)
+        || (acceptReference !== null && typeof acceptReference !== 'function')) fail();
+    const manifest = this.#readInventoryJson(reference.manifest, 'resource-inventory.json');
+    exactFields(manifest, ['schemaVersion', 'repositoryKind', 'environment', 'snapshot', 'pages', 'publicCutoverAllowed']);
+    if (manifest.schemaVersion !== 1 || manifest.repositoryKind !== this.kind || manifest.environment !== this.environment
+        || manifest.publicCutoverAllowed !== false || !isDeepStrictEqual(manifest.snapshot, expected)
+        || !Array.isArray(manifest.pages) || manifest.pages.length < 1 || manifest.pages.length > 2048) fail();
+    const verifier = new InventoryVerifier(expected);
+    for (const stored of manifest.pages) {
+      const envelope = this.#readInventoryJson(stored, 'resource-inventory-page.json');
+      exactFields(envelope, ['schemaVersion', 'page', 'objects']);
+      if (envelope.schemaVersion !== 1 || !Array.isArray(envelope.objects)
+          || envelope.objects.length !== envelope.page?.references?.length) fail();
+      verifier.accept(envelope.page);
+      for (let index = 0; index < envelope.page.references.length; index++) {
+        const source = envelope.page.references[index], object = envelope.objects[index];
+        if (!inventoryRestorable(source)) { if (object !== null) fail(); continue; }
+        if (object?.inventoryId !== expected.inventoryId || !isDeepStrictEqual(object.authority, expected.authority)) fail();
+        this.readVerified(object, inventoryObject(source), expected.namespaceSha256);
+      }
+    }
+    if (!verifier.complete) fail();
+    if (acceptReference) for (const stored of manifest.pages) {
+      const envelope = this.#readInventoryJson(stored, 'resource-inventory-page.json');
+      envelope.page.references.forEach((source, index) => acceptReference(source, envelope.objects[index]));
+    }
+    return Object.freeze({ schemaVersion: 1, inventoryId: expected.inventoryId, databaseBackupId: expected.databaseBackupId,
+      referenceCount: expected.referenceCount, referenceDigest: expected.referenceDigest, publicCutoverAllowed: false });
+  }
 
   capture(entry, maintenance, content) {
     const object = inventoryEntry(entry), checkpoint = maintenanceCheckpoint(maintenance);

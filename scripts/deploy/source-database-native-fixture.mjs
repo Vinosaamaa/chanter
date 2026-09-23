@@ -23,12 +23,15 @@ const json = file => JSON.parse(fs.readFileSync(file));
 const write = (file, value) => fs.writeFileSync(file, JSON.stringify(value), { mode: 0o600 });
 
 export async function sourceDatabaseCheckpoint({ bundle, state, root, release, postgres, project, composeFile, sourceCompose,
-  inventoryId, databaseBackupId, resourceId, courseId, nativeRequestId, liveGraph, liveOwnerId }) {
+  inventoryId, databaseBackupId, resourceId, courseId, nativeRequestId, liveGraph, liveOwnerId, inventoryArchive }) {
   assert.equal(process.env.GITHUB_ACTIONS, 'true');
   assert.equal(process.env.CHANTER_SOURCE_RECOVERY_PREVIEW, 'true');
   assert.match(project, /^chanter-smoke-(amd64|arm64)-[a-z0-9-]+$/);
   for (const id of [inventoryId, databaseBackupId, resourceId, courseId, nativeRequestId,
     liveGraph.serverId, liveGraph.courseId, liveOwnerId]) nonzeroUuid(id);
+  assert.equal(inventoryArchive.snapshot.inventoryId, inventoryId);
+  assert.equal(inventoryArchive.snapshot.databaseBackupId, databaseBackupId);
+  assert.match(inventoryArchive.manifest.snapshotId, /^[a-f0-9]{64}$/);
   const original = JSON.parse(docker(['inspect', postgres]))[0];
   assert.equal(original.Config.Labels['com.docker.compose.project'], project);
   assert.equal(original.Config.Labels['com.docker.compose.service'], 'postgres');
@@ -53,10 +56,11 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
   sql(postgres, 'postgres', 'CREATE TABLE canonical_recovery_fixture_marker(id INT PRIMARY KEY); INSERT INTO canonical_recovery_fixture_marker VALUES (1)');
   docker(['exec', postgres, 'pgbackrest', '--type=full', `--annotation=release=${release.commit}`,
     `--annotation=config-snapshot=${configuration.snapshotId}`, `--annotation=inventory=${inventoryId}`,
-    `--annotation=database-backup=${databaseBackupId}`, 'backup']);
+    `--annotation=database-backup=${databaseBackupId}`, `--annotation=object-inventory=${inventoryArchive.manifest.snapshotId}`, 'backup']);
   const info = JSON.parse(docker(['exec', postgres, 'pgbackrest', '--output=json', 'info']));
   const backup = info.find(value => value.name === 'chanter').backup.at(-1);
   assert.equal(backup.annotation.inventory, inventoryId); assert.equal(backup.annotation['database-backup'], databaseBackupId);
+  assert.equal(backup.annotation['object-inventory'], inventoryArchive.manifest.snapshotId);
   const targetTime = sql(postgres, 'postgres', `SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`);
   assert.equal(new Date(targetTime).toISOString(), targetTime);
   await new Promise(resolve => setTimeout(resolve, 25));
@@ -220,6 +224,12 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
         '-cp', '/opt/canonical-fixture:/app/classes:/app/lib/*', 'ResourceRecoveryFixture'], { input: JSON.stringify(request) }));
       const fence = objectCall({ action: 'fence', inventoryId });
       assert.equal(fence.unsettledMutations, 0); assert.equal(fence.storageNamespaceSha256, objects.archivedNamespace);
+      assert.deepEqual(objects.inventoryArchive, inventoryArchive);
+      const archivedObjects = new Map();
+      assert.equal(objects.archive.verifyInventory(inventoryArchive, objects.inventory,
+        (source, object) => archivedObjects.set(source.resourceId, object)).referenceCount, 3);
+      assert.deepEqual(archivedObjects.get(objects.liveObject.resourceId), objects.liveArchived);
+      assert.deepEqual(archivedObjects.get(objects.quarantineObject.resourceId), objects.quarantineArchived);
       objectCall({ action: 'discard', inventoryId });
       const restoredInventory = objectCall({ action: 'capture', inventoryId, databaseBackupId, authority });
       assert.equal(restoredInventory.referenceCount, 3);

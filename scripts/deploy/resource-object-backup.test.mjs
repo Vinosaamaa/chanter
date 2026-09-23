@@ -20,6 +20,75 @@ const settings = { CHANTER_BACKUP_S3_ENDPOINT: 'https://backup.example.test', CH
   CHANTER_CONFIG_BACKUP_PASSWORD: 'c'.repeat(64), CHANTER_TERMINAL_JOURNAL_PASSWORD: 'j'.repeat(64),
   CHANTER_RESOURCE_BACKUP_PASSWORD: 'r'.repeat(64) };
 
+function sourceInventory(bytes = content) {
+  const snapshot = { schemaVersion: 1, inventoryId: maintenance.inventoryId,
+    databaseBackupId: '55555555-5555-4555-8555-555555555555', authority: maintenance.authority,
+    namespaceSha256: maintenance.storageNamespaceSha256, capturedAt: '2026-09-22T00:00:00Z', referenceCount: 2, referenceDigest: '' };
+  const references = [false, true].map((terminal, index) => {
+    const id = index ? objectId : resourceId;
+    return { ordinal: index + 1, resourceId: id, courseId, referenceKind: 'CURRENT', storageBackend: 'local',
+      key: `resources/v1/${courseId}/${id}/${objectId}`, byteSize: bytes.length, sha256: hash(bytes),
+      resourceState: 'QUARANTINED', sourceRetained: true, terminal, providerVersionId: null };
+  });
+  let digest = hash(`resource-recovery-inventory\n1\n${snapshot.inventoryId}\n${snapshot.databaseBackupId}\n0\n${maintenance.authority.digest}\n${snapshot.namespaceSha256}\n`);
+  for (const row of references) digest = hash(`${digest}\n${row.resourceId}\n${row.referenceKind}\n${row.storageBackend}\n${row.key}\n${row.byteSize}\n${row.sha256}\n${row.resourceState}\n${row.sourceRetained}\n${row.terminal}\n`);
+  snapshot.referenceDigest = digest;
+  const readPage = (after, _limit) => ({ schemaVersion: 1, snapshot: structuredClone(snapshot), after,
+    references: structuredClone(references.slice(after, after + 1)), nextAfter: after + 1 < references.length ? after + 1 : null });
+  return { snapshot, references, readPage };
+}
+
+test('complete encrypted inventory requires every eligible object and full readback before reference delivery', () => {
+  const saved = new Map(), writes = [];
+  const archive = new ResourceObjectArchive({ bundleDir: bundle(), environment: 'staging',
+    env: resourceBackupEnvironment(settings, 'staging'), execute: (_file, args, options) => {
+      if (args.includes('backup')) {
+        const name = args[args.indexOf('--stdin-filename') + 1], bytes = Buffer.from(options.input), id = hash(Buffer.concat([Buffer.from(name), bytes]));
+        writes.push(name); saved.set(id, { name, bytes });
+        return Buffer.from(JSON.stringify({ message_type: 'summary', snapshot_id: id }));
+      }
+      const item = saved.get(args[2]); assert.equal(item?.name, args[3]); return item.bytes;
+    } });
+  const leaf = archive.capture(entry(content), maintenance, content), fixture = sourceInventory();
+  assert.throws(() => archive.publishInventory(fixture.snapshot, maintenance, fixture.readPage, () => null));
+  assert.equal(writes.includes('resource-inventory.json'), false);
+  let requested = 0;
+  const reference = archive.publishInventory(fixture.snapshot, maintenance, fixture.readPage, row => {
+    requested++; assert.equal(row.terminal, false); return leaf;
+  });
+  assert.equal(requested, 1);
+  const delivered = [];
+  assert.equal(archive.verifyInventory(reference, fixture.snapshot, (row, object) => delivered.push([row, object])).referenceCount, 2);
+  assert.deepEqual(delivered.map(([, object]) => object !== null), [true, false]);
+  const before = delivered.length;
+  saved.get(leaf.snapshotId).bytes = Buffer.from('corrupt');
+  assert.throws(() => archive.verifyInventory(reference, fixture.snapshot, () => delivered.push('unsafe')));
+  assert.equal(delivered.length, before);
+  assert.throws(() => archive.verifyInventory(reference, { ...fixture.snapshot, databaseBackupId: maintenance.inventoryId }));
+});
+
+test('incomplete source inventory or changed final qualification cannot publish a usable manifest', () => {
+  const saved = new Map(), writes = [];
+  const archive = new ResourceObjectArchive({ bundleDir: bundle(), environment: 'staging',
+    env: resourceBackupEnvironment(settings, 'staging'), execute: (_file, args, options) => {
+      if (args.includes('backup')) {
+        const name = args[args.indexOf('--stdin-filename') + 1], bytes = Buffer.from(options.input), id = hash(Buffer.concat([Buffer.from(name), bytes]));
+        writes.push(name); saved.set(id, bytes); return Buffer.from(JSON.stringify({ message_type: 'summary', snapshot_id: id }));
+      }
+      return saved.get(args[2]);
+    } });
+  const leaf = archive.capture(entry(content), maintenance, content), fixture = sourceInventory();
+  assert.throws(() => archive.publishInventory(fixture.snapshot, maintenance,
+    after => ({ ...fixture.readPage(after, 1), nextAfter: null }), () => leaf));
+  assert.equal(writes.includes('resource-inventory.json'), false);
+  assert.throws(() => archive.publishInventory(fixture.snapshot, maintenance, (after, limit) => {
+    const page = fixture.readPage(after, limit);
+    if (after === fixture.snapshot.referenceCount) page.snapshot.authority = { revision: 1, digest: 'b'.repeat(64) };
+    return page;
+  }, () => leaf));
+  assert.equal(writes.includes('resource-inventory.json'), false);
+});
+
 function bundle(binary = null) {
   const parent = path.resolve('.cache/resource-object-tests'); fs.mkdirSync(parent, { recursive: true });
   const root = fs.mkdtempSync(path.join(parent, 'run-')); fs.mkdirSync(path.join(root, 'tools'));
@@ -103,6 +172,11 @@ test('actual restic encrypts binary objects and refuses substituted bytes and th
     const bytes = Buffer.concat([canary, crypto.randomBytes(64 * 1024), content]);
     const reference = archive.capture(entry(bytes), maintenance, bytes);
     assert.deepEqual(archive.readVerified(reference, entry(bytes), maintenance.storageNamespaceSha256), bytes);
+    const source = sourceInventory(bytes);
+    const inventory = archive.publishInventory(source.snapshot, maintenance, source.readPage, () => reference);
+    const restored = [];
+    assert.equal(archive.verifyInventory(inventory, source.snapshot, (row, object) => restored.push({ row, object })).referenceCount, 2);
+    assert.equal(restored[0].row.resourceState, 'QUARANTINED'); assert.equal(restored[1].object, null);
     const changed = Buffer.from(bytes); changed[changed.length - 1] ^= 1;
     const changedReference = archive.capture(entry(changed), maintenance, changed);
     assert.throws(() => archive.readVerified({ ...reference, snapshotId: changedReference.snapshotId }, entry(bytes),
@@ -113,4 +187,5 @@ test('actual restic encrypts binary objects and refuses substituted bytes and th
     const wrong = new ResourceObjectArchive({ bundleDir, environment: 'staging', kind: 'fixture', env: { ...env, RESTIC_PASSWORD: 'wrong-key' } });
     assert.throws(() => wrong.readVerified(reference, entry(bytes), maintenance.storageNamespaceSha256),
       /^Error: Resource object archive verification failed$/);
+    assert.throws(() => wrong.verifyInventory(inventory, source.snapshot));
   });
