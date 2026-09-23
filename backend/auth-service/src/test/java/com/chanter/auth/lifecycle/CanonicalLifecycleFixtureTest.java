@@ -54,6 +54,8 @@ class CanonicalLifecycleFixtureTest {
                     .hasRootCauseMessage("Wrong fixture source");
             assertThatThrownBy(() -> execute.invoke(fixture,mapper.valueToTree(Map.of("action","media-work-once","resourceId",job))))
                     .hasRootCauseMessage("Wrong fixture source");
+            assertThatThrownBy(() -> execute.invoke(fixture,mapper.valueToTree(Map.of("action","media-read-fixture","resourceId",job))))
+                    .hasRootCauseMessage("Wrong fixture source");
         }
     }
 }

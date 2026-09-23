@@ -109,6 +109,22 @@ public final class CanonicalLifecycleFixture {
                 invoke(bean("com.chanter.media.application.ResourceWorker"),"runOnce");
                 yield resourceState(((Optional<?>)invoke(lifecycle,"find",resourceId)).orElseThrow());
             }
+            case "media-read-fixture" -> {
+                requireSource("media"); fields(request,"action","resourceId"); UUID resourceId=id(request,"resourceId");
+                Object resource=((Optional<?>)invoke(bean("com.chanter.media.application.ResourceLifecycle"),"find",resourceId)).orElseThrow();
+                byte[] expected=new FixtureUpload().getBytes();
+                String digest=HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(expected));
+                if(!"AVAILABLE".equals(invoke(resource,"state")) || !Long.valueOf(expected.length).equals(invoke(resource,"byteSize"))
+                        || !digest.equals(invoke(resource,"sha256")) || !Boolean.TRUE.equals(jdbc.queryForObject(
+                            "SELECT storage_write_settled FROM course_resources WHERE id=?",Boolean.class,resourceId)))
+                    throw new IllegalStateException("Only the settled exact fixture bytes may be read");
+                byte[] bytes;
+                try(var input=(java.io.InputStream)invoke(bean("com.chanter.media.application.PrivateResourceStorage"),"open",invoke(resource,"storageKey"))) {
+                    bytes=input.readNBytes(expected.length+1);
+                }
+                if(!java.security.MessageDigest.isEqual(expected,bytes)) throw new IllegalStateException("Fixture storage bytes do not match");
+                yield Map.of("resourceId",resourceId,"byteSize",bytes.length,"sha256",digest,"base64",Base64.getEncoder().encodeToString(bytes));
+            }
             case "resource-delete" -> {
                 requireSource("media"); fields(request,"action","resourceId","ownerId");
                 yield invoke(bean("com.chanter.media.application.CourseResourceService"),"deleteCourseResource",id(request,"resourceId"),id(request,"ownerId"));

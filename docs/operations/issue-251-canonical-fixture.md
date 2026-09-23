@@ -16,6 +16,7 @@ Fixed actions and exact input fields:
 | media-seed | media | resourceId, courseId, serverId, ownerId | reserved synthetic metadata, storageWriteSettled=false |
 | media-upload | media | courseId, ownerId, requestId UUIDs | actual upload resourceId/courseId/storageKey/backend/byteSize/sha256/state/storageWriteSettled |
 | media-work-once | media | resourceId | same owning metadata after one real worker operation, requiring QUARANTINED before invocation |
+| media-read-fixture | media | resourceId | base64 of only the exact fixed fixture bytes after current AVAILABLE/settled/size/SHA verification through configured private storage |
 | resource-delete | media | resourceId, ownerId | real pending SourceDeletionRequests result |
 | events | any of these three | afterRevision nonnegative integer | up to 64 original lifecycle destination/event pairs, ordered by revision |
 | deliver | any of these three | original event object | eventId and committed=true after the real owning consumer returns |
@@ -27,6 +28,8 @@ Use a separate account without owned servers for ACCOUNT deletion, and a second 
 Use the zero UUID for the first current-scope cursor. Follow returned page cursors and require READY/count/digest agreement. Read journal pages after owning confirmation/delivery has committed. The runner must retain both COURSE and CHANNEL pages for each server before checkpoint acknowledgement. Canonical source generation is distinct from synthetic `TerminalDeletionTestSupport` entries in unit tests.
 
 `media-upload` sends fixed UTF-8 `fixture.txt` bytes through CourseResourceService with AI approval disabled. Its real current course/owner/moderation checks, validator and configured private storage remain in effect. The fixture must assert QUARANTINED, then invoke `media-work-once` with the real configured scanner. Assert actual AVAILABLE and storageWriteSettled=true before archiving bytes. Run these actions on a fresh isolated fixture queue before adding negative rows; a one-shot worker call does not promise that an arbitrary requested job won the queue. Failed scan, unavailable scanner or another queued job must not be reported as successful availability. No scan verdict, storage key or file content is caller-supplied.
+
+`media-read-fixture` exposes no general byte reader. It requires the fixed text's exact size and SHA-256, current AVAILABLE state and settled physical write, then reads at most that small fixture length plus one byte from the configured storage adapter. Stored bytes must equal the fixed text before a base64 response is produced. The runner can encrypt those bytes without knowing container filesystem paths or placing private storage keys on argv. Other resources and substituted bytes fail closed.
 
 `media-seed` still reserves a STAGING row without writing bytes. It must remain unsettled and cannot prove physical deletion or object restore. #342 owns the native real scanner/object execution. Historical restored-only child rows and a server created after the selected backup must be exercised by the full native orchestration; this helper checkpoint does not claim those journeys passed.
 
