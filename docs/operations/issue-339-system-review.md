@@ -175,3 +175,10 @@ At cce67ae2 all 356 hosted responsive fixtures pass. Phone WebKit, desktop Chrom
 and landscape Firefox enrollment captures were inspected for readable controls,
 feedback and wrapping. Screenshots use synthetic data and do not prove production
 clipboard permissions, public delivery or invitation acceptance.
+
+Roster page correction is guarded by successful query data. Loading or failed
+responses cannot reset pagination using an absent total. The stored page is the
+single source for both request offset and displayed range, and the conditional
+adjustment converges on the next render. The creation-form font override includes
+the form element to outrank the shell reset; the hosted 12px failure is retained
+as evidence that class names alone did not prove the intended 16px rendering.

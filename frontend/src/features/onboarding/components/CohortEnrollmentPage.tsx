@@ -87,7 +87,7 @@ function ManagerEnrollment({ serverId, course, cohort }: { serverId: string; cou
   const totalCount = enrollmentsQuery.data?.totalCount ?? 0
   const pageRows = enrollmentsQuery.data?.enrollments ?? []
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const currentPage = Math.min(page, totalPages)
+  if (enrollmentsQuery.isSuccess && page > totalPages) setPage(totalPages)
 
   const inviteUrl =
     inviteQuery.data != null
@@ -224,14 +224,14 @@ function ManagerEnrollment({ serverId, course, cohort }: { serverId: string; cou
           {totalCount > pageSize ? (
             <div className="flex items-center justify-between text-xs text-app-muted">
               <span>
-                {(currentPage - 1) * pageSize + 1}–
-                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                {(page - 1) * pageSize + 1}–
+                {Math.min(page * pageSize, totalCount)} of {totalCount}
               </span>
               <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={currentPage <= 1}
+                  disabled={page <= 1}
                   onClick={() => setPage((value) => value - 1)}
                 >
                   Previous
@@ -239,7 +239,7 @@ function ManagerEnrollment({ serverId, course, cohort }: { serverId: string; cou
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={currentPage >= totalPages}
+                  disabled={page >= totalPages}
                   onClick={() => setPage((value) => value + 1)}
                 >
                   Next

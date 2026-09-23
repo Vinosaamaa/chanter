@@ -362,3 +362,12 @@ Final actual invitation and repeated-join acceptance still require their union.
 All 44 onboarding tests, lint and the production build pass with the existing
 bundle caps unchanged. Identical form-control styles share one constant, and
 redundant course-card structure is removed to cover the new selector's byte cost.
+
+Hosted 9defbf4b exposed a CSS specificity regression in all nine creation-form
+fixtures: the shell font reset reduced input/select text to 12px. The form-scoped
+rule now outranks that reset without depending on import order. The other 347
+fixtures passed; the changed control sizing still requires its new hosted run.
+Roster pagination also now requests the surviving page after a successful response
+reports fewer learners. Its failing regression passes after correction, including
+preservation of the offset during a failed read. All eight focused enrollment
+cases and focused lint pass. Existing authorization and paging-query keys remain.

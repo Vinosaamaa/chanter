@@ -6,19 +6,21 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { CohortEnrollmentPage } from './CohortEnrollmentPage'
 const mocks = vi.hoisted(() => ({
   loading: false, allowed: false, navigationError: false, inviteError: false, rosterError: false,
+  totalCount: 20,
   retryNavigation: vi.fn(), retryInvite: vi.fn(), retryRoster: vi.fn(),
   invite: vi.fn(() => ({ isError: mocks.inviteError, refetch: mocks.retryInvite, data: { cohortId: 'one', inviteCode: 'test-invite' } })),
-  roster: vi.fn(() => ({ isError: mocks.rosterError, refetch: mocks.retryRoster, data: { totalCount: 20, enrollments: [{ learnerUserId: 'learner-123456789', enrolledAt: '2026-09-20T10:00:00Z' }] } })),
+  roster: vi.fn(() => ({ isSuccess: !mocks.rosterError, isError: mocks.rosterError, refetch: mocks.retryRoster, data: { totalCount: mocks.totalCount, enrollments: [{ learnerUserId: 'learner-123456789', enrolledAt: '2026-09-20T10:00:00Z' }] } })),
   enrollment: vi.fn(() => ({ learnerEmail: '', setLearnerEmail: vi.fn(), enroll: vi.fn(), reset: vi.fn(), isSubmitting: false, error: null, successMessage: null })),
 }))
 vi.mock('../../shell/hooks/use-shell-queries', () => ({ useStudyServerNavigationQuery: () => ({ isLoading: mocks.loading, isError: mocks.navigationError, refetch: mocks.retryNavigation, data: { courses: [{ id: 'course', title: 'Course', capabilities: { canManagePeople: mocks.allowed }, cohorts: [{ id: 'one', name: 'First cohort' }, { id: 'two', name: 'Second cohort' }], channels: [{ id: 'custom', name: 'Project workshop', kind: 'TEXT' }] }] } }) }))
 vi.mock('../hooks/use-cohort-enrollments', () => ({ useCohortInvite: mocks.invite, useCohortEnrollments: mocks.roster }))
 vi.mock('../hooks/use-cohort-enrollment', () => ({ useCohortEnrollment: mocks.enrollment }))
 function Destination() { const location = useLocation(); return <p>{location.pathname}{location.search}</p> }
-function renderPage(query = '?cohort=two') {
-  return render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={[`/app/servers/study/courses/course/enrollment${query}`]}><Routes><Route path="/app/servers/:serverId/courses/:courseId/enrollment" element={<CohortEnrollmentPage />} /><Route path="/app/servers/:serverId/courses/:courseId/people" element={<Destination />} /></Routes></MemoryRouter></QueryClientProvider>)
+function pageTree(query = '?cohort=two') {
+  return <QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={[`/app/servers/study/courses/course/enrollment${query}`]}><Routes><Route path="/app/servers/:serverId/courses/:courseId/enrollment" element={<CohortEnrollmentPage />} /><Route path="/app/servers/:serverId/courses/:courseId/people" element={<Destination />} /></Routes></MemoryRouter></QueryClientProvider>
 }
-beforeEach(() => { mocks.loading = false; mocks.allowed = false; mocks.navigationError = false; mocks.inviteError = false; mocks.rosterError = false; vi.clearAllMocks() })
+function renderPage(query = '?cohort=two') { return render(pageTree(query)) }
+beforeEach(() => { mocks.totalCount = 20; mocks.loading = false; mocks.allowed = false; mocks.navigationError = false; mocks.inviteError = false; mocks.rosterError = false; vi.clearAllMocks() })
 afterEach(cleanup)
 it('does not start management queries before capabilities load', () => {
   mocks.loading = true
@@ -55,6 +57,21 @@ it('resolves an unavailable cohort bookmark before any management request', () =
   expect(screen.getByRole('combobox', { name: 'Cohort' })).toHaveValue('one')
   expect(mocks.invite).toHaveBeenLastCalledWith('one')
   expect(mocks.enrollment).toHaveBeenLastCalledWith('one')
+})
+
+it('requests the surviving first page after the roster shrinks on a later page', async () => {
+  mocks.allowed = true
+  const user = userEvent.setup()
+  const view = renderPage()
+  await user.click(screen.getByRole('button', { name: 'Next' }))
+  expect(mocks.roster).toHaveBeenLastCalledWith('two', { limit: 8, offset: 8, search: undefined })
+  mocks.totalCount = 8
+  mocks.rosterError = true
+  view.rerender(pageTree())
+  expect(mocks.roster).toHaveBeenLastCalledWith('two', { limit: 8, offset: 8, search: undefined })
+  mocks.rosterError = false
+  view.rerender(pageTree())
+  expect(mocks.roster).toHaveBeenLastCalledWith('two', { limit: 8, offset: 0, search: undefined })
 })
 
 it.each([

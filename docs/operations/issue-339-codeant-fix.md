@@ -199,3 +199,16 @@ has no separate loader or lazy dependency. Its mount clears the matching generat
 even when receipt fetching or browser storage fails. Independent review found no
 new reachable failure of the alleged kind; clearing before mount would restore the
 already reproduced ProtectedRoute race. Backend revocation remains authoritative.
+
+4078858404 has no stable production reproduction. Nonmanager course visibility
+comes from enrollment or TA cohort membership, and navigation filters cohorts by
+the same membership. Empty drafts are visible to managers. Inconsistent concurrent
+reads can still yield a missing-context message without any management query or
+authority leak. No launch-blocking permission change is justified.
+
+4078858407 is confirmed: a shrinking roster could leave page-two state requesting
+offset eight while the displayed page was clamped to one and paging controls hidden.
+The stored page now adjusts only after a successful response. Both the next request
+and displayed range use that state. The regression fails with offset eight before
+correction and passes with offset zero afterward; a failed response does not clamp.
+Independent review found no blocker in the correction.
