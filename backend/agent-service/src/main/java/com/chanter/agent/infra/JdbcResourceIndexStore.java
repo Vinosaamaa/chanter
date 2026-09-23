@@ -30,6 +30,7 @@ public class JdbcResourceIndexStore implements ResourceIndexStore {
 
     @Override @Transactional
     public Attempt begin(UUID courseId, UUID resourceId, String fileName, String sourceSha256) {
+        new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbc).requireScope(courseId,null);
         chunks.lockForIndexing(resourceId);
         var state = state(resourceId);
         if (state.sourceEventId() != null) throw conflict("Resource ingestion is managed by durable events");

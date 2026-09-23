@@ -30,7 +30,30 @@ class StudyServerRestrictionTest {
     @Autowired CourseService courses;
     @Autowired StudyServerNavigationService navigation;
     @Autowired MockMvc mvc;
+    @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @MockitoBean ModerationAccess moderation;
+
+    @Test void originalDeletionRetrySurvivesTerminalModerationButCannotAuthorizeAnotherCallerOrRoute() throws Exception {
+        UUID owner=UUID.randomUUID(),stranger=UUID.randomUUID();
+        var server=servers.createStudyServer("Deletion retry","",StudyServerType.SCHOOL,List.of(),owner);
+        var first=mvc.perform(delete("/api/v1/study-servers/"+server.id()).with(asUser(owner)))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();
+        String job=mapper.readTree(first).path("jobId").asText();
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(moderation)
+                .requireAllowed(any(),eq(List.of(new Target("STUDY_SERVER",server.id()))));
+        var retry=mvc.perform(delete("/api/v1/study-servers/"+server.id()).with(asUser(owner)))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readTree(retry).path("jobId").asText()).isEqualTo(job);
+        mvc.perform(delete("/api/v1/study-servers/"+server.id()).with(asUser(stranger))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/study-servers/"+server.id()).with(asUser(owner))).andExpect(status().isGone());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_source_requests WHERE target_id=?",Integer.class,server.id())).isEqualTo(1);
+        var restricted=servers.createStudyServer("Restricted first request","",StudyServerType.SCHOOL,List.of(),owner);
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(moderation)
+                .requireAllowed(owner,List.of(new Target("STUDY_SERVER",restricted.id())));
+        mvc.perform(delete("/api/v1/study-servers/"+restricted.id()).with(asUser(owner))).andExpect(status().isForbidden());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_source_requests WHERE target_id=?",Integer.class,restricted.id())).isZero();
+    }
 
     @Test void directoryFindsAnUppercaseServerReference() throws Exception {
         var server=servers.createStudyServer("Reference search school","",StudyServerType.SCHOOL,List.of(),UUID.randomUUID());

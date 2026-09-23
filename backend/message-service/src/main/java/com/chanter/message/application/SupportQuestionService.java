@@ -113,11 +113,20 @@ public class SupportQuestionService {
     ) {
         return applyAssistantStatus(channelId, supportQuestionId, actorUserId, status, true);
     }
+    @Transactional
+    public SupportQuestion reconcileAcceptedAnswerStatus(UUID channelId,UUID supportQuestionId,UUID actorUserId,
+            SupportQuestionStatus status,UUID answerId) {
+        return applyAssistantStatus(channelId,supportQuestionId,actorUserId,status,true,answerId);
+    }
 
     private SupportQuestion applyAssistantStatus(
             UUID channelId, UUID supportQuestionId, UUID actorUserId, SupportQuestionStatus status,
             boolean preserveRecordedOutcome
     ) {
+        return applyAssistantStatus(channelId,supportQuestionId,actorUserId,status,preserveRecordedOutcome,null);
+    }
+    private SupportQuestion applyAssistantStatus(UUID channelId,UUID supportQuestionId,UUID actorUserId,SupportQuestionStatus status,
+            boolean preserveRecordedOutcome,UUID answerId) {
         CourseChannelAccess access = courseChannelAccessClient.requireAccess(channelId, actorUserId);
         if (!access.canPostSupportQuestion()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only enrolled learners can update Support Question status");
@@ -159,7 +168,9 @@ public class SupportQuestionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Support Question not found"));
 
         if (status == SupportQuestionStatus.AI_ANSWERED) {
-            notifyAuthorAnswered(
+            if(answerId!=null) notificationClient.notifySavedAnswer(answerId,updatedQuestion.senderUserId(),updatedQuestion.id(),
+                    updatedQuestion.channelId(),access.courseId(),"Your question was answered",preview(updatedQuestion.body()),access.channelName());
+            else notifyAuthorAnswered(
                     updatedQuestion,
                     access,
                     "Your question was answered",

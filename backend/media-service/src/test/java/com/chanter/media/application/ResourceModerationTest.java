@@ -38,6 +38,8 @@ class ResourceModerationTest {
     @Autowired ResourceLifecycle lifecycle;
     @Autowired JdbcClient jdbc;
     @Autowired TestCourseResourceAccessClient access;
+    @Autowired com.chanter.common.lifecycle.TerminalReapplyStore terminal;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transactions;
     @MockitoBean ModerationAccess moderation;
     @MockitoBean MalwareScanner scanner;
     @MockitoSpyBean PrivateResourceStorage storage;
@@ -99,6 +101,25 @@ class ResourceModerationTest {
                 failure -> assertThat(failure.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
         doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(moderation).requireAllowed(eq(teacher),anyList());
         assertThatThrownBy(() -> service.usage(course,teacher)).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test void originalRequesterCanRecoverLostDeleteResponseAfterCanonicalTerminalAndMetadataErasure() {
+        var resource=upload();
+        var original=service.deleteCourseResource(resource.id(),teacher);
+        var instant=java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+        long revision=jdbc.sql("SELECT COALESCE(MAX(revision),0)+1 FROM lifecycle_terminal_targets").query(Long.class).single();
+        UUID event=UUID.randomUUID();
+        var entry=new com.chanter.common.lifecycle.TerminalJournal.Entry(revision,event,"RESOURCE",resource.id(),"DELETE",instant,
+                com.chanter.common.lifecycle.TerminalJournal.RETENTION_POLICY,com.chanter.common.lifecycle.TerminalJournal.GENESIS,
+                com.chanter.common.lifecycle.TerminalJournal.digest(revision,event,"RESOURCE",resource.id(),instant,com.chanter.common.lifecycle.TerminalJournal.GENESIS));
+        new org.springframework.transaction.support.TransactionTemplate(transactions).executeWithoutResult(status -> terminal.applyTerminal(entry));
+        jdbc.sql("DELETE FROM course_resources WHERE id=:id").param("id",resource.id()).update();
+        clearInvocations(moderation);
+        doThrow(new ResponseStatusException(HttpStatus.GONE)).when(moderation).requireAllowed(any(),anyList());
+        assertThat(service.deleteCourseResource(resource.id(),teacher)).isEqualTo(original);
+        assertThatThrownBy(() -> service.deleteCourseResource(resource.id(),learner)).isInstanceOfSatisfying(ResponseStatusException.class,
+                failure -> assertThat(failure.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        verify(moderation,never()).requireAllowed(any(),anyList());
     }
 
     @Test void reportEvidenceRequiresInternalAuthenticationAndCurrentSourceScopeWithoutStorageSecrets() throws Exception {

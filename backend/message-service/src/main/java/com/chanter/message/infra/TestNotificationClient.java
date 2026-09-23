@@ -28,6 +28,11 @@ public class TestNotificationClient implements NotificationClient {
     }
 
     private final List<SupportQuestionAnsweredCall> calls = new ArrayList<>();
+    @Override public void notifySavedAnswer(UUID answerId,UUID recipientUserId,UUID supportQuestionId,UUID channelId,UUID courseId,
+            String title,String bodyPreview,String courseLabel) {
+        delegate.notifySavedAnswer(answerId,recipientUserId,supportQuestionId,channelId,courseId,title,bodyPreview,courseLabel);
+        calls.add(new SupportQuestionAnsweredCall(recipientUserId,supportQuestionId,channelId,courseId,title,bodyPreview,courseLabel));
+    }
 
     @Override
     public void notifySupportQuestionAnswered(

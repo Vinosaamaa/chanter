@@ -13,13 +13,17 @@ import org.springframework.stereotype.Repository;
 public class JdbcSupportQuestionReplyRepository implements SupportQuestionReplyRepository {
 
     private final JdbcClient jdbcClient;
+    private final com.chanter.message.lifecycle.MessageLifecycleAccess lifecycle;
 
     public JdbcSupportQuestionReplyRepository(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
+        this.lifecycle = new com.chanter.message.lifecycle.MessageLifecycleAccess(jdbcClient);
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public SupportQuestionReply save(SupportQuestionReply reply) {
+        lifecycle.lock(); lifecycle.requireAccount(reply.authorUserId()); lifecycle.requireQuestion(reply.supportQuestionId());
         jdbcClient.sql("""
                         INSERT INTO support_question_replies (
                             id,

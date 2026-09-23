@@ -106,10 +106,21 @@ test('deferred feature CSS has its own cap and cannot enter a protected initial 
     await writeFile(path.join(root, '.vite/manifest.json'), JSON.stringify(manifest))
     const result = await enforceBundleBudget(root, budget)
     assert.equal(result.css.rawBytes, 80)
-    assert.equal(result.deferredCss.rawBytes, 40)
+    assert.equal(result.deferredCss[0].rawBytes, 40)
+    await writeFile(path.join(root, 'assets/account.css'), 'c'.repeat(30))
+    manifest.account = { file: 'assets/route.js', css: ['assets/account.css'] }
+    await writeFile(path.join(root, '.vite/manifest.json'), JSON.stringify(manifest))
+    const combined = { ...budget, deferredCss: [budget.deferredCss,
+      { name: 'Account data', entries: ['account'], rawBytes: 30, gzipBytes: 1000 }] }
+    assert.equal((await enforceBundleBudget(root, combined)).css.rawBytes, 80)
+    await assert.rejects(enforceBundleBudget(root, { ...combined, cssRawBytes: 79 }), /CSS raw bundle/)
+    await assert.rejects(enforceBundleBudget(root, { ...combined, deferredCss: [...combined.deferredCss,
+      { ...budget.deferredCss, name: 'Duplicate' }] }), /Duplicate deferred CSS allowance/)
+    await assert.rejects(enforceBundleBudget(root, { ...combined, deferredCss: [budget.deferredCss,
+      { ...combined.deferredCss[1], rawBytes: 29 }] }), /Account data deferred CSS/)
     manifest['index.html'].css.push('assets/moderation.css')
     await writeFile(path.join(root, '.vite/manifest.json'), JSON.stringify(manifest))
-    await assert.rejects(enforceBundleBudget(root, budget), /Moderation CSS is included in Home/)
+    await assert.rejects(enforceBundleBudget(root, combined), /Moderation CSS is included in Home/)
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 

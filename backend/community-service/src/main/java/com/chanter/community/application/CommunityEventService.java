@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CommunityEventService {
+    private final com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites;
     private final com.chanter.common.events.SearchEventWriter searchEvents;
 
     private final CommunityEventRepository eventRepository;
@@ -34,8 +35,10 @@ public class CommunityEventService {
             CourseRepository courseRepository,
             NotificationClient notificationClient,
             Clock clock,
-            com.chanter.common.events.SearchEventWriter searchEvents
+            com.chanter.common.events.SearchEventWriter searchEvents,
+            com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites
     ) {
+        this.lifecycleWrites=lifecycleWrites;
         this.eventRepository = eventRepository;
         this.studyServerRepository = studyServerRepository;
         this.courseRepository = courseRepository;
@@ -73,6 +76,8 @@ public class CommunityEventService {
             UUID courseId,
             UUID cohortId
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.server(studyServerId);
         requireStudyServerOwner(studyServerId, actorUserId);
         validateSchedule(startsAt, endsAt);
         validateVisibility(studyServerId, visibility, courseId, cohortId);
@@ -119,6 +124,8 @@ public class CommunityEventService {
             UUID courseId,
             UUID cohortId
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.server(studyServerId);
         requireStudyServerOwner(studyServerId, actorUserId);
         eventRepository.lockById(eventId);
         CommunityEvent existing = requireEventOnServer(studyServerId, eventId, actorUserId);
@@ -156,6 +163,8 @@ public class CommunityEventService {
 
     @Transactional
     public CommunityEvent cancelEvent(UUID studyServerId, UUID eventId, UUID actorUserId) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.server(studyServerId);
         requireStudyServerOwner(studyServerId, actorUserId);
         eventRepository.lockById(eventId);
         CommunityEvent existing = requireEventOnServer(studyServerId, eventId, actorUserId);
@@ -176,6 +185,8 @@ public class CommunityEventService {
             UUID actorUserId,
             CommunityEventRsvpStatus status
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.server(studyServerId);
         requireStudyServerMember(studyServerId, actorUserId);
         CommunityEvent event = requireEventOnServer(studyServerId, eventId, actorUserId);
         requireViewerCanSee(event, actorUserId);

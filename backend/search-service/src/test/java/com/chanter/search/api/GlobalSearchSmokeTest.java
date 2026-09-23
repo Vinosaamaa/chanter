@@ -126,7 +126,7 @@ class GlobalSearchSmokeTest {
     @Test
     void hiddenCandidatesDoNotHideLaterVisibleSearchResults() throws Exception {
         for (int row = 0; row < 51; row++) {
-            index.apply(new com.chanter.common.events.SearchChange("RESOURCE", row == 50 ? RESOURCE_ID : new UUID(0, row),
+            index.apply(new com.chanter.common.events.SearchChange("RESOURCE", row == 50 ? RESOURCE_ID : new UUID(0, row + 1),
                     STUDY_SERVER_ID, COURSE_ID, null, null, null, "Pagination", "Page proof", "/app/resource", false));
         }
         mockMvc.perform(get("/api/v1/study-servers/{id}/search", STUDY_SERVER_ID).param("q", "Pagination")

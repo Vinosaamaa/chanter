@@ -110,9 +110,16 @@ public class ResourceWorker {
         ingestion.purgeResourceChunks(resource.id());
         try (var upload = validator.validateExisting(legacy.legacyPath(resource.id()), resource.fileName(), resource.contentType())) {
             if (upload.byteSize() != resource.byteSize()) throw new IOException("Legacy metadata does not match stored bytes");
+            if (!lifecycle.beginMigrationWrite(resource.id(),job.leaseId())) {
+                lifecycle.retryJob(resource.id(),job.leaseId());
+                return;
+            }
             try { storage.put(job.migrationKey(), upload.path(), upload.sha256()); }
-            catch (IOException uncertainWrite) {
-                // An immutable PUT may have succeeded before its response was interrupted.
+            catch (IOException failedWrite) {
+                if (!(failedWrite instanceof PrivateResourceStorage.PutFailure failure)
+                        || failure.outcome()==PrivateResourceStorage.WriteOutcome.UNKNOWN) throw failedWrite;
+                lifecycle.migrationWriteSettled(resource.id(),job.leaseId());
+                // A finished invocation may have left a complete immutable object. Verify it before publication.
                 Path confirmed = validator.verifiedDownload(storage.open(job.migrationKey()), upload.byteSize(), upload.sha256());
                 Files.deleteIfExists(confirmed);
             }

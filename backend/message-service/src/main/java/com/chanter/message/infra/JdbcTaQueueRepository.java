@@ -17,14 +17,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class JdbcTaQueueRepository implements TaQueueRepository {
 
     private final JdbcClient jdbcClient;
+    private final com.chanter.message.lifecycle.MessageLifecycleAccess lifecycle;
 
     public JdbcTaQueueRepository(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
+        this.lifecycle = new com.chanter.message.lifecycle.MessageLifecycleAccess(jdbcClient);
     }
 
     @Override
     @Transactional
     public TaQueueItem save(TaQueueItem item) {
+        lifecycle.lock(); lifecycle.requireAccount(item.learnerUserId()); lifecycle.requireAccount(item.assignedTaUserId());
+        lifecycle.requireScope("CHANNEL",item.channelId()); lifecycle.requireQuestion(item.supportQuestionId());
         OffsetDateTime createdAt = OffsetDateTime.ofInstant(item.createdAt(), ZoneOffset.UTC);
         OffsetDateTime updatedAt = OffsetDateTime.ofInstant(item.updatedAt(), ZoneOffset.UTC);
 
@@ -142,6 +146,7 @@ public class JdbcTaQueueRepository implements TaQueueRepository {
             TaQueueItemStatus status,
             Instant updatedAt
     ) {
+        lifecycle.lock();
         return jdbcClient.sql("""
                         UPDATE ta_queue_items
                         SET status = :status,
@@ -165,6 +170,7 @@ public class JdbcTaQueueRepository implements TaQueueRepository {
             UUID assignedTaUserId,
             Instant updatedAt
     ) {
+        lifecycle.lock(); lifecycle.requireAccount(assignedTaUserId);
         return jdbcClient.sql("""
                         UPDATE ta_queue_items
                         SET status = :toStatus,

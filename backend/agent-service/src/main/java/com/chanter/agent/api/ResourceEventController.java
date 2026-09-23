@@ -21,10 +21,19 @@ public class ResourceEventController {
     private final InternalEventAccess access;
     private final ResourceIngestionJobs jobs;
     private final ObjectMapper mapper;
+    private final com.chanter.agent.lifecycle.AnswerRetractions retractions;
+    private final com.chanter.agent.lifecycle.ResourceDeletionReconciliation deletions;
+    private final com.fasterxml.jackson.databind.ObjectReader receipts;
     public ResourceEventController(JdbcTemplate jdbc, PlatformTransactionManager transactions,
-            ResourceIngestionJobs jobs, ObjectMapper mapper, @Value("${chanter.internal-service-token}") String token) {
+            ResourceIngestionJobs jobs, ObjectMapper mapper,com.chanter.agent.lifecycle.AnswerRetractions retractions,
+            com.chanter.agent.lifecycle.ResourceDeletionReconciliation deletions, @Value("${chanter.internal-service-token}") String token) {
         this.consumer = new DurableConsumer(jdbc, new TransactionTemplate(transactions));
         this.access = new InternalEventAccess(token); this.jobs = jobs; this.mapper = mapper;
+        this.retractions=retractions;
+        this.deletions=deletions;
+        receipts=mapper.readerFor(AnswerReconciliation.class).with(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .with(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                .with(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
     }
     @PostMapping("/events") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void consume(@RequestBody DurableEvent event,
@@ -32,12 +41,19 @@ public class ResourceEventController {
         access.require(token);
         try {
             event.validate();
+            if(AnswerRetraction.RECEIPT_KIND.equals(event.kind())) {
+                AnswerReconciliation receipt=receipts.readValue(event.payload());
+                if(receipt==null || !"notification".equals(event.producer()) || !receipt.answer().receiptKey().equals(event.aggregateKey())) throw new IllegalArgumentException();
+                consumer.apply(event,false,() -> retractions.acknowledge(receipt));
+                return;
+            }
             var change = mapper.readValue(event.payload(), ResourceChanged.class);
             if (change == null) throw new IllegalArgumentException();
             change.validate();
             if (!event.producer().equals("media") || !event.kind().equals("RESOURCE_CHANGED")
                     || !event.aggregateKey().equals("RESOURCE:" + change.resourceId())) throw new IllegalArgumentException();
-            consumer.apply(event, change.deleted(), () -> jobs.accept(event, change));
+            if(change.deleted()) deletions.accept(event,change);
+            else consumer.apply(event, false, () -> jobs.accept(event, change));
         } catch (JsonProcessingException | IllegalArgumentException invalid) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid resource event");
         }

@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record CohortEnrollmentResponse(
         UUID learnerUserId,
-        UUID enrolledByUserId,
+        UUID enrolledByUserId, // null after the enrolling account's terminal cleanup
         Instant enrolledAt,
         UUID assignedTeachingAssistantUserId
 ) {

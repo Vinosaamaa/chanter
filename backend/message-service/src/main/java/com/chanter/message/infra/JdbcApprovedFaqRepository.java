@@ -15,14 +15,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class JdbcApprovedFaqRepository implements ApprovedFaqRepository {
 
     private final JdbcClient jdbcClient;
+    private final com.chanter.message.lifecycle.MessageLifecycleAccess lifecycle;
 
     public JdbcApprovedFaqRepository(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
+        this.lifecycle = new com.chanter.message.lifecycle.MessageLifecycleAccess(jdbcClient);
     }
 
     @Override
     @Transactional
     public ApprovedFaq save(ApprovedFaq approvedFaq, List<UUID> sourceSupportQuestionIds) {
+        lifecycle.lock(); lifecycle.requireAccount(approvedFaq.approvedByUserId()); lifecycle.requireScope("COURSE",approvedFaq.courseId());
+        sourceSupportQuestionIds.forEach(lifecycle::requireQuestion);
         OffsetDateTime createdAt = OffsetDateTime.ofInstant(approvedFaq.createdAt(), ZoneOffset.UTC);
         OffsetDateTime updatedAt = OffsetDateTime.ofInstant(approvedFaq.updatedAt(), ZoneOffset.UTC);
 
@@ -64,6 +68,8 @@ public class JdbcApprovedFaqRepository implements ApprovedFaqRepository {
     @Override
     @Transactional
     public ApprovedFaq update(ApprovedFaq approvedFaq, List<UUID> sourceSupportQuestionIds) {
+        lifecycle.lock(); lifecycle.requireAccount(approvedFaq.approvedByUserId()); lifecycle.requireScope("COURSE",approvedFaq.courseId());
+        sourceSupportQuestionIds.forEach(lifecycle::requireQuestion);
         OffsetDateTime updatedAt = OffsetDateTime.ofInstant(approvedFaq.updatedAt(), ZoneOffset.UTC);
 
         int updated = jdbcClient.sql("""

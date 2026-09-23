@@ -30,7 +30,9 @@ test('real moderation, active audio revocation and verified-email appeal', async
   const manifest = JSON.parse(readFileSync('dist/.vite/manifest.json', 'utf8')) as Record<string, { file: string; css?: string[] }>
   const owned = Object.entries(manifest).filter(([name]) => /features\/moderation\/(SafetyPage|OperatorPage|AppealPage)\.tsx$/.test(name))
   expect(owned).toHaveLength(3)
-  const deferred = new Set(owned.flatMap(([, item]) => [item.file, ...(item.css ?? [])]))
+  const accountData = manifest['src/features/account-data/AccountDataPage.tsx']
+  expect(accountData).toBeDefined()
+  const deferred = new Set([...owned.map(([, item]) => item), accountData].flatMap(item => [item.file, ...(item.css ?? [])]))
   const network: Record<string, string[]> = {}
   const contexts: BrowserContext[] = []
   const pageErrors: string[] = []

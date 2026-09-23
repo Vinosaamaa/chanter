@@ -15,6 +15,16 @@ public interface PrivateResourceStorage {
     Page list(String cursor) throws IOException;
     record ObjectInfo(String key, Instant modifiedAt) { }
     record Page(List<ObjectInfo> objects, String nextCursor) { }
+    enum WriteOutcome { NOT_STARTED, FINISHED, UNKNOWN }
+    /** Adapter-owned evidence about whether this invocation can still create an object after returning. */
+    final class PutFailure extends IOException {
+        private final WriteOutcome outcome;
+        public PutFailure(WriteOutcome outcome, Throwable cause) {
+            super("Private object storage is unavailable",cause);
+            this.outcome=java.util.Objects.requireNonNull(outcome);
+        }
+        public WriteOutcome outcome() { return outcome; }
+    }
     static void requireKey(String key) {
         if (key == null || !key.matches("resources/v1/[a-f0-9-]{36}/[a-f0-9-]{36}/[a-f0-9-]{36}")) {
             throw new IllegalArgumentException("Invalid private resource key");

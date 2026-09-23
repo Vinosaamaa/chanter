@@ -48,6 +48,7 @@ public class ModerationAppeals {
     public void request(String address, UUID restriction) {
         var user = users.findByEmail(address.strip().toLowerCase(Locale.ROOT)).orElse(null);
         if (user == null || !user.emailVerified() || !ownsRestriction(user.id(), restriction)) return;
+        if (!users.lockActive(user.id())) return;
         jdbc.update("""
                 DELETE FROM moderation_appeal_tokens WHERE token_hash IN (
                     SELECT token_hash FROM moderation_appeal_tokens WHERE expires_at<=CURRENT_TIMESTAMP
@@ -74,6 +75,9 @@ public class ModerationAppeals {
             throw invalid();
         }
         Instant now = Instant.now();
+        var owners=jdbc.query("SELECT user_id FROM moderation_appeal_tokens WHERE token_hash=?",
+                (rs,row) -> rs.getObject(1,UUID.class),OperatorAccess.hash(token));
+        if(owners.isEmpty() || !users.lockActive(owners.getFirst())) throw invalid();
         var credential = jdbc.query("""
                 SELECT user_id,restriction_id,expires_at,consumed_at FROM moderation_appeal_tokens
                 WHERE token_hash=? FOR UPDATE
@@ -138,6 +142,8 @@ public class ModerationAppeals {
         var operator=operators.requireStepUp(authorization,verification); operator.requireAdmin();
         OperatorRoles.requireReason(reason);
         if(!java.util.List.of("UPHELD","REVERSED").contains(status)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Choose uphold or reverse");
+        var owners=jdbc.query("SELECT user_id FROM moderation_appeals WHERE id=?",(rs,row)->rs.getObject(1,UUID.class),id);
+        boolean mayNotify=!owners.isEmpty() && users.lockActive(owners.getFirst());
         var appeal=jdbc.query("""
                 SELECT a.*,r.report_id FROM moderation_appeals a JOIN moderation_restrictions r ON r.id=a.restriction_id
                 WHERE a.id=? FOR UPDATE
@@ -149,7 +155,7 @@ public class ModerationAppeals {
         jdbc.update("UPDATE moderation_appeals SET status=?,resolution=?,resolved_at=?,resolved_by=? WHERE id=?",
                 status,reason.strip(),OffsetDateTime.now(ZoneOffset.UTC),operator.userId(),id);
         audit.append(operator.userId(),"APPEAL_RESOLVED",id.toString(),reason,correlation,"PENDING",status);
-        users.findById(appeal.userId()).filter(user -> user.emailVerified()).ifPresent(user -> email.send(user.email(),
+        if(mayNotify) users.findById(appeal.userId()).filter(user -> user.emailVerified()).ifPresent(user -> email.send(user.email(),
                 "Your Chanter appeal was reviewed","Appeal "+id+" was "+status.toLowerCase(Locale.ROOT)+".\nReason: "+reason
                         +"\nOther active restrictions, if any, still apply."));
     }

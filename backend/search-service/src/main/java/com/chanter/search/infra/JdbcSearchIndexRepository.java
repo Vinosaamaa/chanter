@@ -27,27 +27,35 @@ public class JdbcSearchIndexRepository {
             """;
 
     private final JdbcTemplate jdbcTemplate;
+    private final com.chanter.common.lifecycle.TerminalReapplyStore terminal;
 
-    public JdbcSearchIndexRepository(JdbcTemplate jdbcTemplate) {
+    public JdbcSearchIndexRepository(JdbcTemplate jdbcTemplate, com.chanter.common.lifecycle.TerminalReapplyStore terminal) {
         this.jdbcTemplate = jdbcTemplate;
+        this.terminal = terminal;
     }
 
     @Transactional
     public void replaceStudyServerIndex(UUID studyServerId, List<IndexEntry> entries) {
         jdbcTemplate.queryForObject("SELECT id FROM durable_consumer_lock WHERE id=1 FOR UPDATE", Integer.class);
+        if (!terminal.writable("STUDY_SERVER",studyServerId)) return;
+        var writableEntries=entries.stream().filter(entry ->
+                (entry.studyServerId()==null || terminal.writable("STUDY_SERVER",entry.studyServerId()))
+                && (entry.documentType()!=SearchDocumentType.RESOURCE || terminal.writable("RESOURCE",entry.sourceId()))
+                && contentWritable(entry.documentType().name(),entry.sourceId())
+                && scopeWritable(entry.courseId(),null)).toList();
         jdbcTemplate.update("""
             DELETE FROM search_index_entries s WHERE study_server_id = ? AND NOT EXISTS
             (SELECT 1 FROM durable_event_cursor c WHERE c.aggregate_key=CONCAT(s.document_type, ':', CAST(s.source_id AS VARCHAR)))
             """, studyServerId);
 
-        if (entries.isEmpty()) {
+        if (writableEntries.isEmpty()) {
             return;
         }
 
         jdbcTemplate.batchUpdate(INSERT_ENTRY_SQL, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement preparedStatement, int index) throws SQLException {
-                IndexEntry entry = entries.get(index);
+                IndexEntry entry = writableEntries.get(index);
                 preparedStatement.setObject(1, entry.id());
                 preparedStatement.setObject(2, entry.studyServerId());
                 preparedStatement.setObject(3, entry.courseId());
@@ -62,7 +70,7 @@ public class JdbcSearchIndexRepository {
 
             @Override
             public int getBatchSize() {
-                return entries.size();
+                return writableEntries.size();
             }
         });
     }
@@ -134,13 +142,38 @@ public class JdbcSearchIndexRepository {
         );
     }
 
+    @Transactional
     public void apply(com.chanter.common.events.SearchChange change) {
+        // The caller's durable cursor commits even when an old source event is discarded.
+        jdbcTemplate.queryForObject("SELECT revision FROM lifecycle_reapply_head WHERE id=1 FOR UPDATE",Long.class);
+        if (change.studyServerId()!=null && !terminal.writable("STUDY_SERVER",change.studyServerId())) return;
+        if (change.type().equals("RESOURCE") && !terminal.writable("RESOURCE",change.sourceId())) return;
+        if (!scopeWritable(change.courseId(),change.channelId())) return;
+        if (!contentWritable(change.type(),change.sourceId())) return;
         jdbcTemplate.update("DELETE FROM search_index_entries WHERE document_type=? AND source_id=?", change.type(), change.sourceId());
         if (!change.deleted()) jdbcTemplate.update("""
             INSERT INTO search_index_entries (id, study_server_id, course_id, course_title, document_type, source_id,
                 title, body_text, indexed_at, href, channel_id, channel_scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, UUID.randomUUID(), change.studyServerId(), change.courseId(), "", change.type(), change.sourceId(),
                 truncate(change.title(), 512), truncate(change.body(), 4000), Timestamp.from(Instant.now()), change.href(), change.channelId(), change.channelScope());
+    }
+
+    private boolean contentWritable(String kind,UUID id) {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lifecycle_erased_content_fences WHERE source_kind=? AND source_id=?",Integer.class,kind,id)==0;
+    }
+
+    private boolean scopeWritable(UUID course,UUID channel) {
+        if(course==null && channel==null) return true;
+        for(String scopeTable:List.of("lifecycle_scope_import","lifecycle_recovery_scope")) {
+            if(Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
+                    SELECT EXISTS(SELECT 1 FROM lifecycle_scope_import_ids s JOIN lifecycle_scope_imports h
+                        ON h.study_server_id=s.study_server_id AND h.scope_kind=s.scope_kind
+                        JOIN lifecycle_terminal_targets t ON t.target_kind='STUDY_SERVER' AND t.target_id=h.study_server_id
+                            AND t.revision=h.revision AND t.event_id=h.event_id AND t.digest=h.terminal_digest
+                        WHERE h.ready=TRUE AND ((s.scope_kind='COURSE' AND s.scope_id=?) OR (s.scope_kind='CHANNEL' AND s.scope_id=?)))
+                    """.replace("lifecycle_scope_import",scopeTable),Boolean.class,course,channel))) return false;
+        }
+        return true;
     }
 
     private static String truncate(String value, int limit) {

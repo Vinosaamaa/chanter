@@ -18,7 +18,9 @@ public class JdbcAuthEmailTokenRepository implements AuthEmailTokenRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void save(UUID id, UUID userId, String tokenHash, String purpose, Instant expiresAt) {
+        JdbcAuthUserRepository.requireActiveWrite(jdbcTemplate,userId);
         jdbcTemplate.update(
                 """
                 INSERT INTO auth_email_tokens (id, user_id, token_hash, purpose, expires_at, created_at)
@@ -35,6 +37,10 @@ public class JdbcAuthEmailTokenRepository implements AuthEmailTokenRepository {
 
     @Override
     public Optional<TokenRecord> findActiveByTokenHash(String tokenHash, String purpose, Instant now) {
+        // Discover without locking the token. Deletion and password reset take user before token.
+        var users=jdbcTemplate.query("SELECT user_id FROM auth_email_tokens WHERE token_hash=? AND purpose=?",
+                (rs,row) -> rs.getObject(1,UUID.class),tokenHash,purpose);
+        if(users.isEmpty() || !JdbcAuthUserRepository.lockActiveWrite(jdbcTemplate,users.getFirst())) return Optional.empty();
         return jdbcTemplate.query(
                         """
                         SELECT id, user_id, expires_at

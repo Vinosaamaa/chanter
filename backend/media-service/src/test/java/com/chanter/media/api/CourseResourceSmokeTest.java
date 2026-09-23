@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class CourseResourceSmokeTest {
+    @Autowired org.springframework.context.ApplicationContext context;
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     MalwareScanner scanner;
     @Autowired ResourceWorker worker;
@@ -359,12 +360,14 @@ class CourseResourceSmokeTest {
                 .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isForbidden());
         worker.runOnce();
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/course-resources/{id}", resource.id())
-                .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isNoContent());
+                .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isAccepted());
         mockMvc.perform(get("/api/v1/course-resources/{id}/content", resource.id())
                 .header(AuthHeaders.USER_ID, learner.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isNotFound());
         var usage = mockMvc.perform(get("/api/v1/courses/{course}/course-resources/usage", course)
                 .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk()).andReturn().getResponse();
         assertThat(objectMapper.readTree(usage.getContentAsString()).get("reservedBytes").asLong()).isEqualTo(resource.byteSize());
+        worker.runOnce();
+        com.chanter.media.lifecycle.TerminalDeletionTestSupport.deliverResource(context,resource.id());
         worker.runOnce();
         var deletedUsage = mockMvc.perform(get("/api/v1/courses/{course}/course-resources/usage", course)
                 .header(AuthHeaders.USER_ID, teacher.toString()).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, INTERNAL_TOKEN)).andExpect(status().isOk()).andReturn().getResponse();

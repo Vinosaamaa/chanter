@@ -7,6 +7,8 @@ spring:
     enabled: true
 
 chanter:
+  events:
+    dispatch-enabled: false
   email:
     local-sink: true
     worker-enabled: false

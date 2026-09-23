@@ -24,6 +24,7 @@ public class ModerationRestrictions {
 
     public boolean isRestricted(String type, UUID target, Instant at) {
         requireType(type);
+        if (terminal(type, target)) return true;
         return Boolean.TRUE.equals(jdbc.queryForObject("""
                 SELECT EXISTS(SELECT 1 FROM moderation_restrictions WHERE target_type=? AND target_id=?
                 AND starts_at<=? AND expires_at>? AND revoked_at IS NULL)
@@ -45,15 +46,37 @@ public class ModerationRestrictions {
         }
         String sql="SELECT DISTINCT target_type,target_id FROM moderation_restrictions WHERE starts_at<=? AND expires_at>? AND revoked_at IS NULL AND ("
                 +String.join(" OR ",predicates)+")";
+        var terminalPredicates=new java.util.ArrayList<String>();
+        for(var target:targets) {
+            String kind=terminalKind(target.type());
+            if(kind==null) continue;
+            terminalPredicates.add("(target_kind=? AND target_id=?)");
+            arguments.add(kind); arguments.add(target.id());
+        }
+        if(!terminalPredicates.isEmpty()) sql += " UNION SELECT CASE WHEN target_kind='ACCOUNT' THEN 'USER' ELSE target_kind END,target_id FROM lifecycle_terminal_journal WHERE "
+                +String.join(" OR ",terminalPredicates);
         return Set.copyOf(jdbc.query(sql,(rs,row)->new com.chanter.common.auth.ModerationAccess.Target(
                 rs.getString(1),rs.getObject(2,UUID.class)),arguments.toArray()));
     }
 
     public void requireActiveAccount(UUID user) {
+        if (terminal("USER", user))
+            throw new ResponseStatusException(HttpStatus.GONE, "LIFECYCLE_ACCOUNT_DELETED");
         if (!Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM auth_users WHERE id=?)", Boolean.class, user)))
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account not found");
         if (isRestricted("USER", user, Instant.now()))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account access is suspended; review your appeal options");
+    }
+
+    private boolean terminal(String type, UUID target) {
+        String kind=terminalKind(type);
+        return kind!=null && Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT EXISTS(SELECT 1 FROM lifecycle_terminal_journal WHERE target_kind=? AND target_id=?)",
+                Boolean.class,kind,target));
+    }
+
+    private static String terminalKind(String type) {
+        return switch(type) { case "USER" -> "ACCOUNT"; case "RESOURCE", "STUDY_SERVER" -> type; default -> null; };
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

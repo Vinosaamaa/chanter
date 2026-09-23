@@ -1,0 +1,58 @@
+package com.chanter.common.lifecycle;
+
+import com.chanter.common.auth.AuthHeaders;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
+@RestController
+public final class ExportRequestController {
+    private final ExportParticipant participant;
+    private final InternalLifecycleAccess access;
+    private final AccountExportProtocol protocol;
+    private final ExportSourceExecution execution;
+    private final org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions;
+    private final DeletedScopeDelivery scopes;
+    private final ErasedContentReceiver content;
+    private final ErasedContentDelivery contentDelivery;
+    public ExportRequestController(ExportParticipant participant, AccountExportProtocol protocol, ExportSourceExecution execution,
+            org.springframework.beans.factory.ObjectProvider<AccountDeletionParticipant> deletions,DeletedScopeDelivery scopes,ErasedContentReceiver content,ErasedContentDelivery contentDelivery, @Value("${chanter.internal-service-token}") String token) {
+        this.participant = participant; this.protocol = protocol; this.execution = execution; this.access = new InternalLifecycleAccess(token);
+        this.deletions=deletions;
+        this.scopes=scopes;
+        this.content=content;
+        this.contentDelivery=contentDelivery;
+    }
+
+    @PostMapping("/api/v1/internal/lifecycle/events")
+    public ResponseEntity<Void> accept(@RequestBody String body,
+            @RequestHeader(value=AuthHeaders.INTERNAL_SERVICE_TOKEN, required=false) String token) {
+        access.require(token);
+        try {
+            var event = protocol.event(body);
+            if(ErasedContent.ERASE.equals(event.kind()) || ErasedContent.FINAL.equals(event.kind())) {
+                execution.deliver(event,() -> content.accept(event));
+            } else if(ErasedContentDelivery.command(event.kind())) {
+                execution.deliver(event,() -> contentDelivery.accept(event));
+            } else if(DeletedScopeDelivery.command(event.kind())) {
+                execution.deliver(event,() -> scopes.accept(event));
+            } else if(AccountDeletionProtocol.command(event.kind())) {
+                var deletion=deletions.getIfAvailable();
+                if(deletion==null) throw new IllegalArgumentException("Deletion participant unavailable");
+                deletion.validate(event);
+                execution.deliver(event,() -> deletion.accept(event));
+            } else {
+                protocol.request(event);
+                execution.deliver(event, () -> participant.accept(event));
+            }
+        }
+        catch (IllegalArgumentException failure) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "EXPORT_MESSAGE_REJECTED"); }
+        catch (ExportSnapshotStore.ExportFailure failure) { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "EXPORT_SOURCE_UNAVAILABLE"); }
+        return ResponseEntity.noContent().header("Cache-Control", "no-store").build();
+    }
+}

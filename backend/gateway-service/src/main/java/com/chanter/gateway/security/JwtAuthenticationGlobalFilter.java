@@ -23,6 +23,10 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
     private static final String ACTUATOR_PREFIX = "/actuator/";
     private static final String REALTIME_API_PREFIX = "/api/v1/realtime/";
     private static final String OAUTH_AUTH_PREFIX = "/api/v1/auth/oauth/";
+    private static final java.util.regex.Pattern EXPORT_DOWNLOAD = java.util.regex.Pattern.compile(
+            "/api/v1/auth/account/exports/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/download");
+    private static final java.util.regex.Pattern DELETION_RECEIPT = java.util.regex.Pattern.compile(
+            "/api/v1/auth/account/deletions/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/receipt");
     private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
             "/api/v1/auth/health",
             "/api/v1/auth/verification-options",
@@ -71,6 +75,12 @@ public class JwtAuthenticationGlobalFilter implements GlobalFilter, Ordered {
             return exchange.getResponse().setComplete();
         }
         if (isPublicPath(path)) {
+            return continueWithoutSpoofedUserId(exchange, chain);
+        }
+        // Exact GET routes delegate only to auth's one-use download grant or read-only deletion receipt.
+        if (HttpMethod.GET.equals(exchange.getRequest().getMethod()) && exchange.getRequest().getURI().getRawQuery() == null
+                && (EXPORT_DOWNLOAD.matcher(exchange.getRequest().getURI().getRawPath()).matches()
+                    || DELETION_RECEIPT.matcher(exchange.getRequest().getURI().getRawPath()).matches())) {
             return continueWithoutSpoofedUserId(exchange, chain);
         }
 

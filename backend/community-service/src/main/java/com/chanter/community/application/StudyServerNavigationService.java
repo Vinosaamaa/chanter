@@ -27,15 +27,18 @@ public class StudyServerNavigationService {
     private final CourseRepository courseRepository;
     private final StudyServerRepository studyServerRepository;
     private final ModerationAccess moderation;
+    private final com.chanter.common.lifecycle.SourceDeletionRequests deletions;
 
     public StudyServerNavigationService(
             CourseRepository courseRepository,
             StudyServerRepository studyServerRepository,
-            ModerationAccess moderation
+            ModerationAccess moderation,
+            com.chanter.common.lifecycle.SourceDeletionRequests deletions
     ) {
         this.courseRepository = courseRepository;
         this.studyServerRepository = studyServerRepository;
         this.moderation = moderation;
+        this.deletions=deletions;
     }
 
     public List<AccessibleStudyServer> listAccessibleStudyServers(UUID userId) {
@@ -44,12 +47,13 @@ public class StudyServerNavigationService {
         for(int start=0;start<servers.size();start+=100) {
             var page=servers.subList(start,Math.min(start+100,servers.size()));
             var allowed=moderation.allowedSources(userId,page.stream().map(server -> new Target("STUDY_SERVER",server.id())).toList());
-            page.stream().filter(server -> allowed.contains(new Target("STUDY_SERVER",server.id()))).forEach(visible::add);
+            page.stream().filter(server -> allowed.contains(new Target("STUDY_SERVER",server.id())) && !deletions.pending(server.id())).forEach(visible::add);
         }
         return List.copyOf(visible);
     }
 
     public StudyServerNavigation findNavigation(UUID studyServerId, UUID userId) {
+        deletions.requireOpen(studyServerId);
         StudyServer studyServer = studyServerRepository.findById(studyServerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Study Server not found"));
         if (!studyServerRepository.isStudyServerMember(studyServerId, userId)) {

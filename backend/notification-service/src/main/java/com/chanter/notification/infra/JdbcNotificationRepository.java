@@ -25,14 +25,42 @@ public class JdbcNotificationRepository implements NotificationRepository {
     private static final RowMapper<Notification> ROW_MAPPER = JdbcNotificationRepository::mapRow;
 
     private final JdbcTemplate jdbcTemplate;
+    private final com.chanter.common.lifecycle.TerminalReapplyStore terminal;
 
-    public JdbcNotificationRepository(JdbcTemplate jdbcTemplate) {
+    public JdbcNotificationRepository(JdbcTemplate jdbcTemplate, com.chanter.common.lifecycle.TerminalReapplyStore terminal) {
         this.jdbcTemplate = jdbcTemplate;
+        this.terminal = terminal;
     }
 
     @Override
     @Transactional
     public Notification upsert(Notification notification) {
+        notification=normalizeLegacyAnswer(notification);
+        if (!terminal.writable("ACCOUNT", notification.userId())
+                || notification.studyServerId() != null && !terminal.writable("STUDY_SERVER", notification.studyServerId())
+                || "RESOURCE".equalsIgnoreCase(notification.sourceType()) && !terminal.writable("RESOURCE", notification.sourceId()))
+            return notification;
+        if(com.chanter.common.events.AnswerRetraction.SOURCE_TYPE.equals(notification.sourceType())
+                && jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lifecycle_retracted_answers WHERE answer_id=?",Integer.class,notification.sourceId())>0)
+            return notification;
+        String erasedKind=switch(notification.sourceType().toUpperCase(java.util.Locale.ROOT)) {
+            case "COMMUNITY_EVENT" -> "EVENT";
+            case "SUPPORT_QUESTION" -> "QUESTION";
+            default -> notification.sourceType().toUpperCase(java.util.Locale.ROOT);
+        };
+        if(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lifecycle_erased_content_fences WHERE source_kind=? AND source_id=?",
+                Integer.class,erasedKind,notification.sourceId())>0) return notification;
+        if(notification.courseId()!=null || notification.channelId()!=null) {
+          for(String scopeTable:List.of("lifecycle_scope_import","lifecycle_recovery_scope")) {
+            if(Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
+                SELECT EXISTS(SELECT 1 FROM lifecycle_scope_import_ids s JOIN lifecycle_scope_imports h
+                    ON h.study_server_id=s.study_server_id AND h.scope_kind=s.scope_kind
+                    JOIN lifecycle_terminal_targets t ON t.target_kind='STUDY_SERVER' AND t.target_id=h.study_server_id
+                        AND t.revision=h.revision AND t.event_id=h.event_id AND t.digest=h.terminal_digest
+                    WHERE h.ready=TRUE AND ((s.scope_kind='COURSE' AND s.scope_id=?) OR (s.scope_kind='CHANNEL' AND s.scope_id=?)))
+                """.replace("lifecycle_scope_import",scopeTable),Boolean.class,notification.courseId(),notification.channelId()))) return notification;
+          }
+        }
         Optional<Notification> existing = findByUniqueKey(
                 notification.userId(),
                 notification.sourceType(),
@@ -93,6 +121,14 @@ public class JdbcNotificationRepository implements NotificationRepository {
                 notification.doneAt() == null ? null : Timestamp.from(notification.doneAt())
         );
         return notification;
+    }
+
+    /** AI and human previews historically shared this identity. Keep only a neutral update, including on delayed replay. */
+    private static Notification normalizeLegacyAnswer(Notification value) {
+        if(!"SUPPORT_QUESTION".equalsIgnoreCase(value.sourceType()) || value.kind()!=NotificationKind.SUPPORT_QUESTION_ANSWERED) return value;
+        return new Notification(value.id(),value.userId(),value.kind(),value.filterBucket(),"Question update",null,null,value.href(),
+                value.sourceType(),value.sourceId(),value.studyServerId(),value.courseId(),value.cohortId(),value.channelId(),
+                value.createdAt(),value.readAt(),value.doneAt());
     }
 
     private Optional<Notification> findByUniqueKey(

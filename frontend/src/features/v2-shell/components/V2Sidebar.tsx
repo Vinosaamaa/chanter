@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useParams } from 'react-router-dom'
 import {
   CalendarDays,
+  Download,
   ChevronDown,
   ChartNoAxesColumn,
   GraduationCap,
@@ -248,6 +249,7 @@ export function V2Sidebar({ data, menuOpen, onCloseMenu }: V2SidebarProps) {
               setSessionsOpen(true)
             }}><ShieldCheck />Sessions and devices</button>
             <Link role="menuitem" to="/app/safety" onClick={() => { setAccountOpen(false); onCloseMenu() }}><ShieldCheck />Safety and reports</Link>
+            <Link role="menuitem" to="/app/account-data" onClick={() => { setAccountOpen(false); onCloseMenu() }}><Download />Account data</Link>
             {data.showBillingNav ? (
               <Link
                 role="menuitem"

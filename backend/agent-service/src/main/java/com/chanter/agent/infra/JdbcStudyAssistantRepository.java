@@ -47,6 +47,14 @@ public class JdbcStudyAssistantRepository implements StudyAssistantRepository {
     @Override
     @Transactional
     public StudyAssistantInstall saveInstall(StudyAssistantInstall install, List<ConfirmedGrant> grants) {
+        var authority=new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbcClient);
+        authority.require("ACCOUNT",install.installedByUserId()); authority.require("STUDY_SERVER",install.studyServerId());
+        for(var grant:grants) switch(grant.grantType()) {
+            case COURSE_RESOURCE -> authority.requireResource(grant.grantTargetId());
+            case COURSE -> authority.requireScope(grant.grantTargetId(),null);
+            case STUDY_SERVER_CHANNEL,COURSE_CHANNEL -> authority.requireScope(null,grant.grantTargetId());
+            case COHORT -> { /* The ordinary grant validator owns cohort-to-server access. */ }
+        }
         try {
             jdbcClient.sql("""
                             INSERT INTO study_assistant_installs (

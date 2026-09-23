@@ -69,13 +69,21 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
     @Override public String backend() { return "s3"; }
     @Override public void put(String key, Path content, String sha256) throws IOException {
         PrivateResourceStorage.requireKey(key);
+        boolean started=false;
         try {
             String md5 = Base64.getEncoder().encodeToString(MessageDigest.getInstance("MD5").digest(Files.readAllBytes(content)));
             lifecycle.countRequest(false);
+            started=true;
             client.putObject(PutObjectRequest.builder().bucket(bucket).key(key).ifNoneMatch("*").contentMD5(md5)
                     .contentType("application/octet-stream").metadata(Map.of("sha256", sha256)).build(), RequestBody.fromFile(content));
-        } catch (ResponseStatusException budget) { throw budget; }
-        catch (Exception exception) { throw failure(); }
+        } catch (S3Exception response) {
+            // A definitive rejection with retries disabled finishes this request. Timeouts/5xx remain uncertain.
+            boolean rejected=response.statusCode()>=400 && response.statusCode()<500 && response.statusCode()!=408;
+            throw new PutFailure(rejected ? WriteOutcome.FINISHED : WriteOutcome.UNKNOWN,null);
+        } catch (Exception exception) {
+            throw new PutFailure(started ? WriteOutcome.UNKNOWN : WriteOutcome.NOT_STARTED,
+                    exception instanceof ResponseStatusException ? exception : null);
+        }
     }
     @Override public InputStream open(String key) throws IOException {
         PrivateResourceStorage.requireKey(key);

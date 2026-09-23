@@ -31,6 +31,7 @@ class PrivateStorageIntegrationTest {
     static final UUID LEARNER = UUID.fromString("a0000000-0000-4000-8000-000000000003");
     static final UUID RETRY = UUID.fromString("a0000000-0000-4000-8000-000000000004");
     static final byte[] CLEAN = "Durable private Course Resource".getBytes(StandardCharsets.UTF_8);
+    @Autowired org.springframework.context.ApplicationContext context;
     @Autowired CourseResourceService service;
     @Autowired ResourceWorker worker;
     @Autowired ResourceLifecycle lifecycle;
@@ -120,8 +121,12 @@ class PrivateStorageIntegrationTest {
         var resource = uploadClean();
         assertThat(resource.publicStatus()).isEqualTo("AVAILABLE");
         try (var content = service.downloadCourseResource(resource.id(), LEARNER).content()) { assertThat(content.readAllBytes()).isEqualTo(CLEAN); }
-        service.deleteCourseResource(resource.id(), TEACHER); worker.runOnce();
+        deleteWithTerminal(resource.id(), TEACHER); worker.runOnce();
         assertThat(service.usage(COURSE, TEACHER).reservedBytes()).isZero();
         assertThat(lifecycle.find(resource.id()).orElseThrow().state()).isEqualTo("DELETED");
+    }
+    private void deleteWithTerminal(UUID id,UUID user) {
+        service.deleteCourseResource(id,user);
+        com.chanter.media.lifecycle.TerminalDeletionTestSupport.deliverResource(context,id);
     }
 }

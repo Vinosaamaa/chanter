@@ -88,6 +88,7 @@ public class AuthenticatedUserFilter extends OncePerRequestFilter {
                 || uri.endsWith("/messages")
                 || uri.contains("/messages/")
                 || uri.contains("/support-questions")
+                || uri.contains("/accepted-answers/")
                 || uri.contains("/instructor-dashboard")
                 || uri.contains("/ta-queue")
                 || uri.contains("/faq-candidates")

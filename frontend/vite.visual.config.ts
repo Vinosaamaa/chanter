@@ -25,6 +25,17 @@ export default mergeConfig(base, defineConfig({
       server.middlewares.use(async (request, response, next) => {
         const pathname = new URL(request.url ?? '/', 'http://localhost').pathname
         if (!pathname.startsWith('/api/')) return next()
+        // Browser download managers can bypass page-level request interception. Serve only this fixed synthetic archive.
+        if (pathname === '/api/v1/auth/account/exports/b633c892-6762-40ec-a945-b042957a052b/download') {
+          if (request.method !== 'GET' || request.headers.authorization || new URL(request.url!, 'http://localhost').search) {
+            response.statusCode = 400
+            return response.end()
+          }
+          response.setHeader('Content-Type', 'application/zip')
+          response.setHeader('Content-Disposition', 'attachment; filename="chanter-account.zip"')
+          response.setHeader('Cache-Control', 'no-store')
+          return response.end(Buffer.from('UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==', 'base64'))
+        }
         response.setHeader('Content-Type', 'application/json')
         const session = { accessToken: 'visual-fixture-only', expiresInSeconds: 900, user }
         const send = (body: unknown) => response.end(JSON.stringify(body))

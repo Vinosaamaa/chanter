@@ -34,8 +34,8 @@ public class OutboxConfiguration {
         scheduler.setThreadNamePrefix("durable-events-");
         return scheduler;
     }
-    @Bean NotificationEventWriter notificationEventWriter(DurableOutbox outbox, ObjectMapper mapper) {
-        return new NotificationEventWriter(outbox, mapper);
+    @Bean NotificationEventWriter notificationEventWriter(DurableOutbox outbox, ObjectMapper mapper,JdbcTemplate jdbc) {
+        return new NotificationEventWriter(outbox, mapper,jdbc);
     }
     @Bean SearchEventWriter searchEventWriter(DurableOutbox outbox, ObjectMapper mapper) {
         return new SearchEventWriter(outbox, mapper);
@@ -56,12 +56,20 @@ public class OutboxConfiguration {
             @Value("${NOTIFICATION_SERVICE_URL:http://localhost:8089}") String notification,
             @Value("${AGENT_SERVICE_URL:http://localhost:8085}") String agent,
             @Value("${MESSAGE_SERVICE_URL:http://localhost:8083}") String message,
+            @Value("${AUTH_SERVICE_URL:http://localhost:8081}") String auth,
+            @Value("${COMMUNITY_SERVICE_URL:http://localhost:8082}") String community,
+            @Value("${MEDIA_SERVICE_URL:http://localhost:8084}") String media,
             @Value("${chanter.internal-service-token}") String token) {
-        return new DispatchSchedule(new OutboxDispatcher(outbox, mapper, Map.of(
+        var destinations = new java.util.LinkedHashMap<>(Map.of(
                 "search", URI.create(search + "/api/v1/internal/events"),
                 "agent", URI.create(agent + "/api/v1/internal/events"),
                 "message", URI.create(message + "/api/v1/internal/events"),
-                "notification", URI.create(notification + "/api/v1/internal/events")), token));
+                "media", URI.create(media + "/api/v1/internal/events"),
+                "notification", URI.create(notification + "/api/v1/internal/events")));
+        Map.of("auth", auth, "community", community, "media", media, "message", message,
+                "agent", agent, "search", search, "notification", notification).forEach((source, base) ->
+                destinations.put("lifecycle-" + source, URI.create(base + "/api/v1/internal/lifecycle/events")));
+        return new DispatchSchedule(new OutboxDispatcher(outbox, mapper, destinations, token));
     }
 
     static final class DispatchSchedule {

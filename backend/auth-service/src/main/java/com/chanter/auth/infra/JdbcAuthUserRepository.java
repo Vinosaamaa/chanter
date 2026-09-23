@@ -47,7 +47,9 @@ public class JdbcAuthUserRepository implements AuthUserRepository {
     }
 
     @Override
+    @Transactional
     public AuthUser update(AuthUser user) {
+        requireActiveWrite(jdbcTemplate, user.id());
         jdbcTemplate.update(
                 """
                 UPDATE auth_users
@@ -122,13 +124,32 @@ public class JdbcAuthUserRepository implements AuthUserRepository {
     }
 
     @Override
+    @Transactional
     public void markEmailVerified(UUID userId) {
+        requireActiveWrite(jdbcTemplate, userId);
         jdbcTemplate.update("UPDATE auth_users SET email_verified = TRUE WHERE id = ?", userId);
     }
 
     @Override
+    @Transactional
     public void updatePasswordHash(UUID userId, String passwordHash) {
+        requireActiveWrite(jdbcTemplate, userId);
         jdbcTemplate.update("UPDATE auth_users SET password_hash = ? WHERE id = ?", passwordHash, userId);
+    }
+
+    @Override
+    public boolean lockActive(UUID id) { return lockActiveWrite(jdbcTemplate, id); }
+
+    static boolean lockActiveWrite(JdbcTemplate jdbc, UUID id) {
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Account writes require an owning transaction");
+        if (jdbc.query("SELECT id FROM auth_users WHERE id=? FOR UPDATE", (rs,row) -> rs.getObject(1), id).isEmpty()) return false;
+        return !Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM lifecycle_terminal_journal WHERE target_kind='ACCOUNT' AND target_id=?)", Boolean.class, id));
+    }
+
+    static void requireActiveWrite(JdbcTemplate jdbc, UUID id) {
+        if (!lockActiveWrite(jdbc,id)) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.GONE,"Account is unavailable");
     }
 
     private static AuthUser mapRow(ResultSet resultSet) throws SQLException {

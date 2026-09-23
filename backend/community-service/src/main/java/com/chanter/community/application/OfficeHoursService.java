@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OfficeHoursService {
+    private final com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites;
 
     private static final int MAX_FANOUT = 200;
 
@@ -39,8 +40,10 @@ public class OfficeHoursService {
             StudyServerRepository studyServerRepository,
             LiveKitTokenIssuer liveKitTokenIssuer,
             NotificationClient notificationClient,
-            Clock clock
+            Clock clock,
+            com.chanter.community.lifecycle.CommunityLifecycleWrites lifecycleWrites
     ) {
+        this.lifecycleWrites=lifecycleWrites;
         this.officeHoursRepository = officeHoursRepository;
         this.courseRepository = courseRepository;
         this.studyServerRepository = studyServerRepository;
@@ -56,6 +59,8 @@ public class OfficeHoursService {
             Instant startsAt,
             Instant endsAt
     ) {
+        lifecycleWrites.accounts(instructorUserId);
+        lifecycleWrites.cohort(cohortId);
         CohortOfficeHoursAccess access = requireOfficeHoursAccess(cohortId, instructorUserId);
         if (!access.canScheduleOfficeHours()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the Course Instructor can schedule Office Hours");
@@ -108,6 +113,8 @@ public class OfficeHoursService {
             Instant startsAt,
             Instant endsAt
     ) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         requireManageAccess(session.cohortId(), actorUserId);
         if (session.status() != OfficeHoursSessionStatus.SCHEDULED) {
@@ -121,6 +128,8 @@ public class OfficeHoursService {
 
     @Transactional
     public OfficeHoursParticipant joinSession(UUID sessionId, UUID userId) {
+        lifecycleWrites.accounts(userId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         CohortOfficeHoursAccess access = requireOfficeHoursAccess(session.cohortId(), userId);
         if (!access.canJoinOfficeHours() && !access.canManageOfficeHours()) {
@@ -149,6 +158,8 @@ public class OfficeHoursService {
 
     @Transactional
     public OfficeHoursParticipant updateHandRaised(UUID sessionId, UUID userId, boolean raised) {
+        lifecycleWrites.accounts(userId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         requireOfficeHoursAccess(session.cohortId(), userId);
         requireLiveSession(session);
@@ -171,6 +182,8 @@ public class OfficeHoursService {
             UUID actorUserId,
             boolean canSpeak
     ) {
+        lifecycleWrites.accounts(participantUserId,actorUserId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         requireManageAccess(session.cohortId(), actorUserId);
         requireLiveSession(session);
@@ -190,6 +203,8 @@ public class OfficeHoursService {
 
     @Transactional
     public void leaveSession(UUID sessionId, UUID userId) {
+        lifecycleWrites.accounts(userId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         requireOfficeHoursAccess(session.cohortId(), userId);
         officeHoursRepository.deactivateParticipant(sessionId, userId, clock.instant());
@@ -198,6 +213,8 @@ public class OfficeHoursService {
 
     @Transactional
     public OfficeHoursWaitlistEntry joinWaitlist(UUID sessionId, UUID learnerUserId) {
+        lifecycleWrites.accounts(learnerUserId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         CohortOfficeHoursAccess access = requireOfficeHoursAccess(session.cohortId(), learnerUserId);
         if (!access.canJoinOfficeHours()) {
@@ -238,6 +255,8 @@ public class OfficeHoursService {
 
     @Transactional
     public OfficeHoursWaitlistEntry admitNextLearner(UUID sessionId, UUID actorUserId) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         requireManageAccess(session.cohortId(), actorUserId);
         requireOpenWindow(session);
@@ -253,6 +272,8 @@ public class OfficeHoursService {
 
     @Transactional
     public VoicePresence joinVoiceAsManager(UUID sessionId, UUID actorUserId) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         requireManageAccess(session.cohortId(), actorUserId);
         requireOpenWindow(session);
@@ -263,6 +284,8 @@ public class OfficeHoursService {
 
     @Transactional
     public VoicePresence joinVoiceAsAdmittedLearner(UUID sessionId, UUID learnerUserId) {
+        lifecycleWrites.accounts(learnerUserId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         CohortOfficeHoursAccess access = requireOfficeHoursAccess(session.cohortId(), learnerUserId);
         if (!access.canJoinOfficeHours()) {
@@ -285,6 +308,8 @@ public class OfficeHoursService {
 
     @Transactional
     public VoiceMediaToken issueOfficeHoursMediaToken(UUID sessionId, UUID userId) {
+        lifecycleWrites.accounts(userId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         CohortOfficeHoursAccess access = requireOfficeHoursAccess(session.cohortId(), userId);
         requireLiveSession(session);
@@ -316,6 +341,8 @@ public class OfficeHoursService {
 
     @Transactional
     public OfficeHoursSession startSession(UUID sessionId, UUID actorUserId) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         requireManageAccess(session.cohortId(), actorUserId);
         if (session.status() == OfficeHoursSessionStatus.LIVE) {
@@ -332,6 +359,8 @@ public class OfficeHoursService {
 
     @Transactional
     public OfficeHoursSession cancelSession(UUID sessionId, UUID actorUserId) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         requireManageAccess(session.cohortId(), actorUserId);
         if (session.status() == OfficeHoursSessionStatus.CANCELLED) {
@@ -345,6 +374,8 @@ public class OfficeHoursService {
 
     @Transactional
     public OfficeHoursSession endSession(UUID sessionId, UUID actorUserId) {
+        lifecycleWrites.accounts(actorUserId);
+        lifecycleWrites.session(sessionId);
         OfficeHoursSession session = requireSession(sessionId);
         requireManageAccess(session.cohortId(), actorUserId);
 

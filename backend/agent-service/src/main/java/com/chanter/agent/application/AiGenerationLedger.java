@@ -28,6 +28,8 @@ public class AiGenerationLedger {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UUID reserve(UUID server, UUID question, UUID user, String selection, Model model) {
+        var authority=new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbc);
+        authority.require("ACCOUNT",user); authority.require("STUDY_SERVER",server);
         // One existing installation row serializes all reservations in this Study Server, on PostgreSQL and H2.
         jdbc.sql("SELECT id FROM study_assistant_installs WHERE study_server_id=:server FOR UPDATE")
                 .param("server", server).query(UUID.class).optional()
@@ -64,12 +66,12 @@ public class AiGenerationLedger {
                 "LIMIT_EXCEEDED", "REJECTED_EVIDENCE", "UNSUPPORTED", "UNKNOWN").contains(outcome))
             throw new IllegalArgumentException("Invalid AI outcome");
         LlmUsage measured = attempted ? (usage == null ? LlmUsage.UNKNOWN : usage) : new LlmUsage(0, 0, 0, 0, 0);
-        // A late provider receipt may reconcile UNKNOWN after a process stall, but cannot overwrite a settled receipt.
+        // A late receipt may reconcile UNKNOWN, but cannot overwrite a settled receipt or restore erased attribution.
         int changed = jdbc.sql("""
                 UPDATE ai_generation_usage SET input_tokens=:input, output_tokens=:output, cache_read_tokens=:cacheRead,
                     cache_write_tokens=:cacheWrite, reasoning_tokens=:reasoning, measured=:measured, outcome=:outcome,
                     latency_ms=:latency, resolved_model=:resolved, provider_request_id=:request, estimated_cost_usd=:cost, settled_at=:now
-                WHERE id=:id AND outcome IN ('RESERVED','UNKNOWN')
+                WHERE id=:id AND outcome IN ('RESERVED','UNKNOWN') AND learner_user_id IS NOT NULL
                 """)
                 .param("input", measured.inputTokens()).param("output", measured.outputTokens())
                 .param("cacheRead", measured.cacheReadTokens()).param("cacheWrite", measured.cacheWriteTokens())

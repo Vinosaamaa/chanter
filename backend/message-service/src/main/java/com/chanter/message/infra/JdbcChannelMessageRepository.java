@@ -15,13 +15,17 @@ import org.springframework.stereotype.Repository;
 public class JdbcChannelMessageRepository implements ChannelMessageRepository {
 
     private final JdbcClient jdbcClient;
+    private final com.chanter.message.lifecycle.MessageLifecycleAccess lifecycle;
 
     public JdbcChannelMessageRepository(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
+        this.lifecycle = new com.chanter.message.lifecycle.MessageLifecycleAccess(jdbcClient);
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public ChannelMessage save(ChannelMessage message) {
+        lifecycle.lock(); lifecycle.requireAccount(message.senderUserId()); lifecycle.requireScope("CHANNEL",message.channelId());
         jdbcClient.sql("""
                         INSERT INTO channel_messages (id, channel_id, sender_user_id, body, created_at)
                         VALUES (:id, :channelId, :senderUserId, :body, :createdAt)

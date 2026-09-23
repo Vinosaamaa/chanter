@@ -38,6 +38,7 @@ public class JdbcOAuthAccountRepository implements OAuthAccountRepository {
     @Override
     @Transactional(propagation = Propagation.NESTED)
     public void link(UUID id, UUID userId, String provider, String providerSubject) {
+        JdbcAuthUserRepository.requireActiveWrite(jdbcTemplate,userId);
         jdbcTemplate.update(
                 """
                 INSERT INTO auth_oauth_accounts (id, user_id, provider, provider_subject, created_at)

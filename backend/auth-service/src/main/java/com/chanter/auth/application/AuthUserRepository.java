@@ -11,6 +11,9 @@ public interface AuthUserRepository {
 
     AuthUser update(AuthUser user);
 
+    /** Holds the account write lock until the caller's transaction ends; deleted accounts return false. */
+    boolean lockActive(UUID id);
+
     Optional<AuthUser> findByEmail(String email);
 
     Optional<AuthUser> findById(UUID id);

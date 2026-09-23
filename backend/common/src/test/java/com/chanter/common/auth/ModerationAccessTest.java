@@ -34,6 +34,12 @@ class ModerationAccessTest {
             assertThatThrownBy(() -> access.requireSession("Bearer session-test",UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
             status.set(401);
             assertThatThrownBy(() -> access.requireSession("Bearer session-test",user)).isInstanceOf(ResponseStatusException.class);
+            status.set(410);
+            assertThatThrownBy(() -> access.requireSession("Bearer session-test",user)).isInstanceOfSatisfying(ResponseStatusException.class,
+                    error -> assertThat(error.getStatusCode().value()).isEqualTo(403));
+            status.set(503);
+            assertThatThrownBy(() -> access.requireSession("Bearer session-test",user)).isInstanceOfSatisfying(ResponseStatusException.class,
+                    error -> assertThat(error.getStatusCode().value()).isEqualTo(503));
             status.set(200); reply.set("{}");
             assertThatThrownBy(() -> access.requireSession("Bearer session-test",user)).isInstanceOf(ResponseStatusException.class);
         } finally { server.stop(0); }
@@ -84,7 +90,10 @@ class ModerationAccessTest {
             status.set(503);
             assertThatThrownBy(() -> access.requireAccount(user)).isInstanceOf(ResponseStatusException.class)
                     .satisfies(error -> assertThat(((ResponseStatusException)error).getStatusCode().value()).isEqualTo(503));
-            assertThat(calls).hasValue(3);
+            status.set(410);
+            assertThatThrownBy(() -> access.requireAccount(user)).isInstanceOfSatisfying(ResponseStatusException.class,
+                    error -> assertThat(error.getStatusCode().value()).isEqualTo(403));
+            assertThat(calls).hasValue(4);
         } finally { server.stop(0); }
     }
 

@@ -13,6 +13,15 @@ import org.springframework.stereotype.Component;
 public class DurableNotificationClient implements NotificationClient {
     private final NotificationEventWriter writer;
     public DurableNotificationClient(NotificationEventWriter writer) { this.writer = writer; }
+    @Override public void notifySavedAnswer(UUID answerId,UUID recipientUserId,UUID supportQuestionId,UUID channelId,UUID courseId,
+            String title,String bodyPreview,String courseLabel) {
+        Map<String,Object> body=new LinkedHashMap<>();
+        body.put("userId",recipientUserId); body.put("kind","SUPPORT_QUESTION_ANSWERED");
+        body.put("title",title); body.put("bodyPreview",bodyPreview); body.put("courseLabel",courseLabel);
+        body.put("href","/app/inbox?channelId="+channelId+"&questionId="+supportQuestionId);
+        body.put("sourceType",com.chanter.common.events.AnswerRetraction.SOURCE_TYPE); body.put("sourceId",answerId);
+        body.put("courseId",courseId); body.put("channelId",channelId); writer.append(body);
+    }
 
     @Override
     public void notifySupportQuestionAnswered(

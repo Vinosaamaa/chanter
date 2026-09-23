@@ -27,6 +27,8 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     @Transactional
     public void replaceAllForResource(UUID resourceId, List<ResourceChunk> chunks) {
         lockForIndexing(resourceId);
+        var authority=new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbcClient);
+        chunks.stream().map(ResourceChunk::courseId).distinct().forEach(course -> authority.requireScope(course,null));
         if (chunks.stream().anyMatch(chunk -> !resourceId.equals(chunk.resourceId()))) {
             throw new IllegalArgumentException("Chunk resource does not match replacement target");
         }
@@ -111,6 +113,7 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     }
 
     private boolean lockResource(UUID resourceId) {
+        new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbcClient).lock();
         // The row survives content deletion. Concurrent first ingestion/deletion also serialize.
         jdbcClient.sql("INSERT INTO resource_index_lifecycle (resource_id) VALUES (:resourceId) ON CONFLICT DO NOTHING")
                 .param("resourceId", resourceId).update();
@@ -121,6 +124,7 @@ public class JdbcResourceChunkRepository implements ResourceChunkRepository {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockForIndexing(UUID resourceId) {
+        new com.chanter.agent.lifecycle.AgentLifecycleAccess(jdbcClient).requireResource(resourceId);
         requireLive(lockResource(resourceId));
     }
 

@@ -1,0 +1,30 @@
+# Verified behavior for privacy copy
+
+This is the implementation handoff for #251 and the frontend owner. It is not a legal policy approval or a claim that a production provider is configured. The final UI must describe the accepted union, and launch still needs a real operator identity, contact and reviewed legal basis.
+
+## Account export and deletion
+
+- Exports contain the account's authored data and metadata. Received/shared content and source excerpts require current access during capture and download. Inaccessible file bytes and other omissions are described in the archive. Credentials, storage keys, operator-only evidence and other people's unrestricted account data are excluded.
+- Creating an export or confirming deletion requires an actual recent login. Refreshing a session does not count as logging in again. An export expires 24 hours after its request. This is an access deadline; source cleanup can still be pending. Expired export job metadata has a separate bounded cleanup policy, so expiry must not be described as immediate erasure of every record.
+- Downloads use the browser's file download path and a short-lived, single-use cookie bound to the job and live session. Credentials are not put in a URL. Revoked access stops the stream; an incomplete transfer needs a fresh authorization and is not a successful ZIP.
+- Account deletion first checks ownership obligations. Preparation can be cancelled or expire. Confirmation closes account access and coordinates source erasure asynchronously. An accepted request does not mean deletion finished. Source progress and failures remain visible through a read-only, job-bound receipt cookie for seven days; that cookie cannot sign the user in or change the job.
+- Overall completion requires all seven sources to report their required disposition and the current terminal authority to be acknowledged by the external journal boundary. No elapsed-time promise replaces those receipts. Pending physical writes, unresolved ownership, missing scope or failed delivery keep work pending.
+
+## Records retained after disposition
+
+- Minimal opaque deletion, command and content identities remain to reject replay and reapply deletions after restore. A source marked COMPLETE can retain these enforcement records.
+- Shared course content can remain under its actual current server owner. Deleted instructor/enrollment-actor attribution is removed or reassigned under that ownership rule. Independently authored instructor FAQ and later human replies are preserved; there is no reliable provenance allowing the system to guess copied reply authorship.
+- Conservative or observed AI accounting and per-question attempt claims remain without the removed account/provider-request attribution. Shared assistant installations can remain server-owned. Desktop-reported execution remains CLIENT_REPORTED, and unobserved token usage remains UNKNOWN. A server-observed configured provider response is not external cryptographic proof of execution.
+- After both physical closure and exact downstream answer reconciliation, media retains immutable resource/course/server IDs and storage backend, current/migration keys, byte size and hash needed for recovery and replay. User title, file-name/type fields, uploader/idempotency attribution and obsolete producer payloads are cleared. These retained storage records produce PRESERVED, not a claim that every record was erased. Unknown physical writes and missing restored RESOURCE metadata are not deletion evidence.
+- Existing restricted moderation records and immutable evidence remain under the fixed preservation rule. The implementation does not invent a legal hold authority, legal basis or universal retention deadline. The operator must establish the lawful basis and actual schedule before launch.
+
+## Backups and operational providers
+
+- The accepted backup design retains two successful weekly full database chains and required transaction-log history. Expiry depends on successful replacement and retention execution; it is not a guaranteed fourteen-day deletion deadline. Configuration archives remain retained until reviewed pruning is implemented. Encrypted terminal/scope history supports deletion reapplication, and a restored database alone does not preserve newer deletions.
+- Authentication, email, hosting, private storage and AI processing depend on the deployment's configured providers. Name only providers actually selected and enabled by the operator. A code adapter or successful synthetic fixture does not establish a production account, delivery or contractual arrangement.
+- Optional Sentry reporting is disabled until configured. Backend reports reconstruct bounded exception type/code/release/service data without messages, account/request/content data or private paths. Optional browser reporting sends fixed error types and matching release-asset locations; it excludes message/user/request/cookie/referrer content, but its receiver necessarily observes browser network metadata such as the IP address. No actual Sentry account, delivery or source-map upload is established by the code tests.
+- Provider retention, subprocessors, location/transfers, legal identity and privacy contact remain operator configuration and review gaps. Do not publish a made-up contact or describe an example address as working support. Notification/incident delivery and actual recovery/object closure also require their owning production verification.
+
+## Evidence boundary
+
+The owning implementations are `AccountExportJobs`, `ExportSnapshotStore`, `AccountDeletionJobs`, source terminal cleanup/disposition classes, and the exact content and answer receipt protocols. Backup and telemetry behavior is documented in `backup-and-recovery.md` and the #331 change record. Source-local tests prove transaction/replay behavior; they do not prove provider retention, physical erasure outside the owning storage evidence, or final all-source production completion. #342 owns actual storage and recovery verification; final #251 acceptance includes the full source/UI union.

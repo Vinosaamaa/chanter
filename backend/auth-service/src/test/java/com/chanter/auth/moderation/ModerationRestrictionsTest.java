@@ -24,6 +24,39 @@ class ModerationRestrictionsTest {
     @Autowired PlatformTransactionManager transactions;
     @Autowired AuthSessionService sessions;
     @Autowired AuthUserRepository users;
+    @Autowired com.chanter.auth.lifecycle.TerminalJournalStore journal;
+
+    @Test void terminalAuthorityOutlivesRestrictionReversalAndBlocksEveryAccountAndSourceEntryPoint() {
+        UUID user=UUID.randomUUID(),report=UUID.randomUUID(),operation=UUID.randomUUID();
+        jdbc.update("INSERT INTO auth_users(id,email,password_hash,display_name,email_verified,created_at) VALUES(?,?,'unusable-test-password','Member',TRUE,CURRENT_TIMESTAMP)",
+                user,user+"@terminal.test");
+        var account=users.findById(user).orElseThrow();
+        var session=sessions.issueSessionForUser(account);
+        seedReport(report,user);
+        var tx=new TransactionTemplate(transactions);
+        tx.executeWithoutResult(status -> restrictions.add(operation,report,"USER",user,UUID.randomUUID(),
+                "Confirmed abuse",Instant.now().plusSeconds(3600),UUID.randomUUID()));
+        UUID resource=UUID.randomUUID(),server=UUID.randomUUID();
+        tx.executeWithoutResult(status -> {
+            journal.append("ACCOUNT",user); journal.append("RESOURCE",resource); journal.append("STUDY_SERVER",server);
+            restrictions.revoke(report,operation,UUID.randomUUID(),"Temporary restriction reversed",UUID.randomUUID());
+        });
+        var accountTarget=new com.chanter.common.auth.ModerationAccess.Target("USER",user);
+        var resourceTarget=new com.chanter.common.auth.ModerationAccess.Target("RESOURCE",resource);
+        var serverTarget=new com.chanter.common.auth.ModerationAccess.Target("STUDY_SERVER",server);
+        assertThat(restrictions.restrictedSources(java.util.List.of(accountTarget,resourceTarget,serverTarget,
+                new com.chanter.common.auth.ModerationAccess.Target("MESSAGE",resource),
+                new com.chanter.common.auth.ModerationAccess.Target("DM",user)),Instant.now().plusSeconds(7200)))
+                .containsExactlyInAnyOrder(accountTarget,resourceTarget,serverTarget);
+        assertThat(restrictions.isRestricted("USER",user,Instant.now().plusSeconds(7200))).isTrue();
+        assertThatThrownBy(() -> restrictions.requireActiveAccount(user)).hasMessageContaining("410").hasMessageContaining("LIFECYCLE_ACCOUNT_DELETED");
+        assertThatThrownBy(() -> sessions.requireUserIdFromAccessToken("Bearer "+session.accessToken()))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        assertThatThrownBy(() -> sessions.issueSessionForUser(account)).hasMessageContaining("410");
+        assertThatThrownBy(() -> sessions.refresh(session.refreshToken())).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_reports WHERE id=?",Integer.class,report)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_audit WHERE target=?",Integer.class,"USER:"+user)).isEqualTo(2);
+    }
 
     @Test void suspensionBlocksExistingAccessRefreshAndNewProviderSession() {
         UUID user = UUID.randomUUID();

@@ -307,6 +307,7 @@ class GroundedSupportQuestionSmokeTest {
         String key = "ACCEPTED_ANSWER:" + question;
         // Represent an answer saved before atomic outbox integration.
         nativeJdbc.sql("DELETE FROM durable_outbox WHERE aggregate_key=:key").param("key", key).update();
+        nativeJdbc.sql("UPDATE study_assistant_answers SET status_event_id=NULL WHERE id=:id").param("id",UUID.fromString(answerId)).update();
         var failRepair = new java.util.concurrent.atomic.AtomicBoolean(true);
         org.mockito.Mockito.doAnswer(call -> {
             Object event = call.callRealMethod();

@@ -38,11 +38,15 @@ public class LocalPrivateResourceStorage implements PrivateResourceStorage {
         return target;
     }
     @Override public void put(String key, Path content, String checksum) throws IOException {
-        Path target = path(key);
-        Files.createDirectories(target.getParent());
-        // CREATE_NEW atomically rejects existing keys; the DB keeps partial writes quarantined until cleanup.
-        try (var out = Files.newOutputStream(target, java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)) {
-            Files.copy(content, out);
+        try {
+            Path target = path(key);
+            Files.createDirectories(target.getParent());
+            // The synchronous stream closes before either success or failure returns.
+            try (var out = Files.newOutputStream(target, java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)) {
+                Files.copy(content, out);
+            }
+        } catch (IOException failure) {
+            throw new PutFailure(WriteOutcome.FINISHED,failure);
         }
     }
     @Override public InputStream open(String key) throws IOException {
