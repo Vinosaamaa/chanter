@@ -31,6 +31,16 @@ establish actual provider closure.
 
 Full affected media/common Maven verification passes at the adapter checkpoint.
 
+The hosted-only object fixture now uses the actual source inventory and configured
+adapter after proving all holders of the fixture's local volume are stopped. It
+adds encrypted restic read-back and restoration into a separate owned empty
+volume, with typed corruption, overwrite and stale-source refusal receipts.
+The helper compiles against the actual media classpath. Nineteen focused Node
+checks pass; the native source/object path remains unproven until its hosted
+preview completes. It records an unverified database-backup identity explicitly
+and cannot enable recovery. The ordinary CI and native media query/restart checks
+remain separate from this dependency preview.
+
 The next disabled metadata slice adds one bounded, temporary source-owned
 inventory snapshot and private fence/capture/page/discard routes. Exact applied
 authority, beyond-prefix targets, unknown mutations/source writes, leases,

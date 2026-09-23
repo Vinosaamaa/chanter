@@ -53,6 +53,13 @@ merges the pinned #251 commit containing that exact helper before compiling it.
 Both architectures already passed that union step. Ordinary release runs never
 invoke the helper. This is still a preview, not a claim that #251 was accepted.
 
+Review `4077906468` correctly found that ordinary auth/community composition has
+no volume array. The fixture now initializes each service's volume list before
+adding its read-only helper mount. Inspection also found that moving the compose
+file into a private child directory would change relative environment and bind
+paths; those existing paths are resolved against the original compose directory.
+No credential values are read into the generated compose definition.
+
 Additional preview suggestions are dispositioned as follows: retain independent
 native architecture builds rather than add artifact transfer; preserve canonical
 text UUID ordering and the early capacity bound; retain bounded private byte
