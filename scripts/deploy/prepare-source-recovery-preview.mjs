@@ -57,7 +57,18 @@ replace('public Optional<Job> claim(boolean migrateLegacy) {\n        lockTermin
 replace('public boolean beginMigrationWrite(UUID id,UUID lease) {',
   'public boolean beginMigrationWrite(UUID id,UUID lease) {\n        lockTerminal();\n        if (!mutations.ordinaryWorkAllowed()) return false;');
 fs.writeFileSync(lifecycle, code);
-git(['add', '--', ...conflicts, lifecycle]);
+// Source-owner-approved fixed maximum upload, unshipped and only in this exact dependency preview.
+const canonical='scripts/deploy/fixtures/CanonicalLifecycleFixture.java';
+let fixture=fs.readFileSync(canonical,'utf8');
+for(const [before,after] of [
+  ['case "media-upload" -> {','case "media-upload", "media-upload-max" -> {'],
+  ['"Synthetic recovery bytes",false,new FixtureUpload(),id(request,"requestId"),null)',
+    '"Synthetic recovery bytes",false,new FixtureUpload(action.equals("media-upload-max")),id(request,"requestId"),null)'],
+  ['private final byte[] bytes="Chanter canonical recovery fixture. These are synthetic private resource bytes.\\n"\n                .getBytes(java.nio.charset.StandardCharsets.UTF_8);',
+    'private final byte[] bytes;\n        FixtureUpload() { this(false); }\n        FixtureUpload(boolean maximum) {\n            bytes=maximum?new byte[10*1024*1024]:"Chanter canonical recovery fixture. These are synthetic private resource bytes.\\n".getBytes(java.nio.charset.StandardCharsets.UTF_8);\n            if(maximum)Arrays.fill(bytes,(byte)\'x\');\n        }'],
+]) {assert.equal(fixture.split(before).length,2,'Pinned canonical byte fixture changed');fixture=fixture.replace(before,after);}
+fs.writeFileSync(canonical,fixture);
+git(['add', '--', ...conflicts, lifecycle, canonical]);
 assert.equal(git(['diff', '--name-only', '--diff-filter=U']), '');
 // Use the complete owning lazy-route UI tree, never just its budget checker.
 git(['restore', '--source', frontend, '--staged', '--worktree', '--', 'frontend']);

@@ -12,6 +12,7 @@ import { JournalRepository } from './terminal-journal-storage.mjs';
 import { replicateJournal } from './terminal-journal-replica.mjs';
 import { lifecycleClient } from './terminal-journal-client.mjs';
 import { checkpointIdentity, nonzeroUuid, sameWatermark } from './terminal-journal.mjs';
+import { withResourceRecoveryHttp } from './resource-object-http-native-fixture.mjs';
 
 const execute = (file, args, options = {}) => {
   try { return execFileSync(file, args, { encoding: 'utf8', timeout: 600_000,
@@ -252,21 +253,29 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.deepEqual(objectCall({ action: 'expect-refusal', request: terminalRequest, reason: 'STALE_SOURCE', base64: bytes.toString('base64') }),
         { refused: 'STALE_SOURCE', publicCutoverAllowed: false });
       assert.equal(objectCall({ action: 'fence', inventoryId }).unsettledMutations, 0);
-      const restoredBytes = objectCall({ action: 'restore', request: restoreRequest, base64: bytes.toString('base64') });
-      assert.deepEqual(Buffer.from(restoredBytes.base64, 'base64'), bytes);
-      assert.equal(restoredBytes.resourceId, live.resourceId); assert.equal(restoredBytes.sha256, live.sha256);
       const quarantineBytes = objects.archive.readVerified(objects.quarantineArchived, objects.quarantineObject, fence.storageNamespaceSha256);
-      assert.deepEqual(quarantineBytes, objects.actualBytes);
+      assert.deepEqual(quarantineBytes, objects.quarantineBytes);
+      assert.equal(quarantineBytes.length,10*1024*1024);
       const quarantineRequest = { inventoryId, databaseBackupId, authority, ordinal: quarantined.ordinal };
-      assert.deepEqual(Buffer.from(objectCall({ action: 'restore', request: quarantineRequest, base64: quarantineBytes.toString('base64') }).base64, 'base64'), quarantineBytes);
+      const httpRestoration=withResourceRecoveryHttp({definition:objectCompose,root:attempt,project:recovered.name},client=>{
+        assert.throws(()=>client.put(terminalRequest,bytes));
+        assert.equal(client.fence(inventoryId).unsettledMutations,0);
+        client.put(restoreRequest,bytes);
+        client.put(quarantineRequest,quarantineBytes);
+        assert.deepEqual(client.read(restoreRequest),bytes);
+        assert.deepEqual(client.read(quarantineRequest),quarantineBytes);
+        assert.throws(()=>client.put(quarantineRequest,quarantineBytes));
+        assert.equal(client.fence(inventoryId).unsettledMutations,0);
+        client.delete(terminalRequest);
+        const finish={inventoryId,databaseBackupId,authority,resourceId};
+        assert.equal(client.finish(finish).sourceAccountingCommitted,true);
+        assert.equal(client.finish(finish).sourceAccountingCommitted,true);
+        assert.deepEqual(client.read(quarantineRequest),quarantineBytes);
+        return {maximumQuarantineBytes:quarantineBytes.length,actualSourceCompletion:true};
+      });
       assert.equal(sql(database, 'chanter_media', `SELECT state FROM course_resources WHERE id='${quarantined.resourceId}'`), 'QUARANTINED');
-      assert.deepEqual(objectCall({ action: 'delete', request: terminalRequest }),
-        { physicallyClosed: true, outstandingMutations: 0, publicCutoverAllowed: false });
-      const completed = { state: 'DELETED', sourceRetained: false, reservedBytes: live.byteSize + quarantined.byteSize, publicCutoverAllowed: false };
-      assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId }), completed);
-      assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId }), completed);
-      assert.deepEqual(Buffer.from(objectCall({ action: 'read', request: restoreRequest }).base64, 'base64'), bytes);
-      assert.deepEqual(Buffer.from(objectCall({ action: 'read', request: quarantineRequest }).base64, 'base64'), quarantineBytes);
+      assert.equal(sql(database,'chanter_media',`SELECT state || ':' || byte_reservation::text FROM course_resources WHERE id='${resourceId}'`),'DELETED:false');
+      assert.equal(sql(database,'chanter_media','SELECT reserved_bytes FROM media_storage_budget WHERE id=1'),String(live.byteSize+quarantined.byteSize));
       const mediaReceipt = objectCall({ action: 'receipt' });
       assert.equal(mediaReceipt.source, 'media'); assert.equal(mediaReceipt.schemaVersion, 1);
       assert.ok(sameWatermark(mediaReceipt.authority, authority));
@@ -274,7 +283,7 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       return { ...result, databaseBackupVerified: true, restoredSessionsInvalidated: true,
         restoredPendingNativeInvalidated: true, historicalCourseReconciled: true, objectRestoreVerified: true,
         postBackupServerReconciled: true,
-        quarantineStatePreserved: true,
+        quarantineStatePreserved: true,httpRestoration,
         interruptedParticipantRetryVerified: true,
         mediaReceiptAfterObjectClosure: mediaReceipt, terminalObjectRestorationRefused: true,
         externalProviderClosureVerified: false };

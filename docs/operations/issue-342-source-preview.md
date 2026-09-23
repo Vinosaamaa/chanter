@@ -195,3 +195,32 @@ the same packaged checkpoint helper immediately after source startup, before
 synthetic setup or backup. The disposable UI union permits only these two reviewed
 helper/build files to differ from the pinned UI infrastructure; it still restores
 only the complete frontend tree. A fresh native run is required.
+# Actual private HTTP and maximum object extension
+
+The next preview preserves the pinned source and UI inputs and the three-resource
+fixture. Its existing QUARANTINED upload becomes exactly 10 MiB of fixed synthetic
+text through the actual CourseResourceService. The AVAILABLE resource still uses
+the real scanner path. The owning upload supplies byte size, hash and reservation;
+the fixture verifies each against its deterministic input.
+
+An unshipped startup class adds only the real source Completion binding to the
+packaged media application. The private READ/PUT/DELETE/finish routes, shipped
+Lifecycle helper and host client then execute normally. Restored source completion
+uses the existing MANDATORY hook in ResourceRecoveryObjects.finish's transaction;
+the fixture reads the resulting resource and aggregate reservation to verify it.
+No SQL substitutes for completion.
+
+Both source capture and restored-object phases keep the existing 512 MiB media
+container and two-CPU limit. The helper executes inside that same container.
+The fixture reads cgroup memory.peak/memory.events and requires zero OOM events,
+zero restarts and a live service after all maximum-size transfers. It preserves
+the recovery network, restore identity, source namespace and exact volume bindings.
+These assertions are implemented and the source fixtures compile, but the new
+combined HTTP/memory proof remains unverified until the hosted preview passes.
+The separate 64 MiB helper test is not a substitute for this combined result.
+
+Root reviewed the earlier disabled production adapter and the separate c141e0b7
+unpublished-manifest cleanup without finding a blocker. Actual provider closure,
+operator persistence of pending cleanup diagnostics, retained-pack capacity and
+accepted source integration remain required. Production recovery capability stays
+OFF regardless of fixture success.

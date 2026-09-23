@@ -10,6 +10,7 @@ import { modules } from './release.mjs';
 import { ResourceObjectArchive } from './resource-object-backup.mjs';
 import { sourceDatabaseCheckpoint } from './source-database-native-fixture.mjs';
 import { lifecycleClient } from './terminal-journal-client.mjs';
+import { withResourceRecoveryHttp } from './resource-object-http-native-fixture.mjs';
 
 assert.equal(process.env.GITHUB_ACTIONS, 'true');
 assert.equal(process.env.CHANTER_SOURCE_RECOVERY_PREVIEW, 'true');
@@ -62,9 +63,9 @@ try {
   assert.match(mediaCompiler, /^[a-f0-9]{64}$/); compilers.push(mediaCompiler);
   docker(['cp', `${mediaCompiler}:/app/classes`, path.join(root, 'media-classes')]);
   execute('javac', ['-cp', `${path.join(root, 'media-classes')}:${path.join(root, 'lib/*')}`, '-d', root,
-    'scripts/deploy/fixtures/ResourceRecoveryFixture.java']);
+    'scripts/deploy/fixtures/ResourceRecoveryFixture.java','scripts/deploy/fixtures/ResourceRecoveryHttpFixture.java']);
   fs.chmodSync(root, 0o755);
-  for (const name of fs.readdirSync(root).filter(name => /^(?:CanonicalLifecycleFixture(?:\$[A-Za-z]+)?|ResourceRecoveryFixture)\.class$/.test(name)))
+  for (const name of fs.readdirSync(root).filter(name => /^(?:CanonicalLifecycleFixture(?:\$[A-Za-z]+)?|ResourceRecovery(?:Http)?Fixture(?:\$[A-Za-z]+)?)\.class$/.test(name)))
     fs.chmodSync(path.join(root, name), 0o644);
   for (const source of sources) {
     const service = definition.services[`${source}-service`];
@@ -160,10 +161,12 @@ try {
   const liveResource = call('media', { action: 'media-work-once', resourceId: liveUpload.resourceId });
   assert.equal(liveResource.state, 'AVAILABLE'); assert.equal(liveResource.storageWriteSettled, true);
   assert.equal(liveResource.byteSize, actualBytes.length); assert.equal(liveResource.sha256, available.sha256);
-  const quarantined = call('media', { action: 'media-upload', courseId: liveGraph.courseId,
+  const quarantined = call('media', { action: 'media-upload-max', courseId: liveGraph.courseId,
     ownerId: owner.accountId, requestId: crypto.randomUUID() });
   assert.equal(quarantined.state, 'QUARANTINED'); assert.equal(quarantined.storageWriteSettled, true);
-  assert.equal(quarantined.byteSize, actualBytes.length); assert.equal(quarantined.sha256, available.sha256);
+  const quarantineBytes=Buffer.alloc(10*1024*1024,'x');
+  assert.equal(quarantined.byteSize,quarantineBytes.length);
+  assert.equal(quarantined.sha256,crypto.createHash('sha256').update(quarantineBytes).digest('hex'));
   const retainedBytes = liveResource.byteSize + quarantined.byteSize;
   // Own the entire local object namespace before qualifying bytes. This says nothing about an external provider.
   compose(['stop', ...sources.map(source => `${source}-service`)]);
@@ -221,13 +224,17 @@ try {
     authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 }, actualBytes);
   assert.deepEqual(archive.readVerified(liveArchived, liveObject, fence.storageNamespaceSha256), actualBytes);
   const quarantineRequest = { inventoryId, databaseBackupId, authority: GENESIS, ordinal: quarantineReference.ordinal };
-  assert.deepEqual(Buffer.from(objectCall({ action: 'read', request: quarantineRequest }).base64, 'base64'), actualBytes);
+  const httpCapture=withResourceRecoveryHttp({definition,root,project},client=>{
+    assert.deepEqual(client.read(request),actualBytes);
+    assert.deepEqual(client.read(quarantineRequest),quarantineBytes);
+    return {maximumQuarantineBytes:quarantineBytes.length};
+  });
   const quarantineObject = { resourceId: quarantineReference.resourceId, courseId: quarantineReference.courseId, key: quarantineReference.key,
     byteSize: quarantineReference.byteSize, sha256: quarantineReference.sha256, providerVersionId: quarantineReference.providerVersionId,
     disposition: 'EXTANT', storageWriteSettled: true };
   const quarantineArchived = archive.capture(quarantineObject, { inventoryId, storageNamespaceSha256: fence.storageNamespaceSha256,
-    authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 }, actualBytes);
-  assert.deepEqual(archive.readVerified(quarantineArchived, quarantineObject, fence.storageNamespaceSha256), actualBytes);
+    authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 }, quarantineBytes);
+  assert.deepEqual(archive.readVerified(quarantineArchived, quarantineObject, fence.storageNamespaceSha256), quarantineBytes);
   const leaves = new Map([[`${available.resourceId}:CURRENT`, archived], [`${liveResource.resourceId}:CURRENT`, liveArchived],
     [`${quarantined.resourceId}:CURRENT`, quarantineArchived]]);
   const inventoryArchive = archive.publishInventory(inventory, { inventoryId, storageNamespaceSha256: fence.storageNamespaceSha256,
@@ -326,13 +333,13 @@ try {
   compose(['stop', ...sources.map(source => `${source}-service`)]);
   const recoveredAuthority = await databaseDrill.recover(page.through, historical, postBackupGraph, {
     archive, liveArchived, liveObject, quarantineArchived, quarantineObject, inventoryArchive, inventory,
-    archivedNamespace: fence.storageNamespaceSha256, actualBytes, currentScopes: scopes,
+    archivedNamespace: fence.storageNamespaceSha256, actualBytes, quarantineBytes, currentScopes: scopes,
   });
   // Committed delivery is not complete source cleanup or a receipt for replay on a restored database.
   fs.writeFileSync(path.join(root, 'canonical-source.json'), JSON.stringify({ schemaVersion: 1, preview,
     page, scopes, resource: available, inventory, inventoryArchive, objectReferences: [archived, liveArchived, quarantineArchived],
     byteReadbackVerified: true, objectRoundtripVerified: true,
-    physicalDeletionVerified: true, databaseBackupVerified: true, journalReplica, recoveredAuthority, historical,
+    physicalDeletionVerified: true, databaseBackupVerified: true, journalReplica, recoveredAuthority, historical,httpCapture,
     deferred, publicCutoverAllowed: false }), { mode: 0o600 });
   console.log('Real older-database restore, current authority, historical scope and private object reconstruction passed; external provider and original-writer closure remain pending.');
 } finally {
