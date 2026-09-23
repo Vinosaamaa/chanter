@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { type APIRequestContext, type BrowserContext, type Page } from '@playwright/test'
 import { expect, test } from './release-test'
@@ -186,5 +187,123 @@ test.describe('Verified account and recovery @product', () => {
     await context.clearCookies()
     await signIn(page, email, newPassword)
     await assertCredentialBoundary(page, context)
+  })
+
+  test('export, cancel preparation, confirm deletion and reload the signed-out receipt', async ({ page, context, request }) => {
+    test.skip(!process.env.PLAYWRIGHT_LIFECYCLE_PREVIEW, 'Requires the pinned account-backend dependency preview until final union acceptance')
+    test.setTimeout(180_000)
+    const email = `lifecycle-e2e-${randomUUID()}@example.com`
+    const password = `Chanter-${randomUUID()}`
+    const headers = { Origin: new URL(appUrl).origin, 'X-Chanter-CSRF': '1' }
+    const registration = await request.post(new URL('/api/v1/auth/register', appUrl).toString(), {
+      headers, data: { email, password, displayName: 'Account data learner' },
+    })
+    expect(registration.status()).toBe(202)
+    await page.goto(await deliveredLink(request, email, 'Verify your Chanter email', '/verify-email'))
+    await expect(page.getByRole('status')).toContainText(/verified/i)
+    await signIn(page, email, password)
+    const sessionCookie = await assertCredentialBoundary(page, context)
+    await page.getByRole('button', { name: 'Open account menu' }).click()
+    await page.getByRole('menuitem', { name: 'Account data', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Account data', exact: true, level: 1 })).toBeVisible()
+    const exportCreated = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/auth/account/exports' && response.request().method() === 'POST')
+    await page.getByRole('button', { name: 'Request export' }).click()
+    const exportResponse = await exportCreated
+    expect(exportResponse.status()).toBe(202)
+    const exportJobId = (await exportResponse.json()).id as string
+    expect(/^[a-f0-9-]{36}$/.test(exportJobId)).toBe(true)
+    await expect(page.getByText('Export requested. Refresh status to check its progress.')).toBeVisible()
+    await expect.poll(async () => {
+      await page.getByRole('button', { name: 'Refresh status' }).click()
+      await expect(page.getByRole('button', { name: 'Refresh status' })).toBeEnabled()
+      return page.getByRole('button', { name: 'Download ZIP' }).count()
+    }, { timeout: 60_000, intervals: [1000, 2000, 3000] }).toBe(1)
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Download ZIP' }).click()
+    const archive = await downloading
+    const nativeUrl = new URL(archive.url())
+    expect(nativeUrl.origin === new URL(appUrl).origin && nativeUrl.pathname === `/api/v1/auth/account/exports/${exportJobId}/download` && nativeUrl.search === '' && nativeUrl.hash === '').toBe(true)
+    expect(archive.suggestedFilename()).toMatch(/^chanter-account-[a-f0-9-]+\.zip$/)
+    expect(await archive.failure()).toBeNull()
+    const stream = await archive.createReadStream()
+    expect(stream).not.toBeNull()
+    const chunks: Buffer[] = []
+    let bytes = 0
+    for await (const chunk of stream!) {
+      const buffer = Buffer.from(chunk)
+      bytes += buffer.length
+      expect(bytes).toBeLessThan(5 * 1024 * 1024)
+      chunks.push(buffer)
+    }
+    // Fresh synthetic account only. Validate ZIP ending, CRCs and seven-source coverage
+    // without writing or printing the archive, account data or credential values.
+    const checked = spawnSync('python3', ['-c', `
+import io, json, sys, zipfile
+try:
+    with zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read())) as archive:
+        entries = archive.infolist()
+        assert len(entries) < 200 and sum(e.file_size for e in entries) < 10 * 1024 * 1024
+        assert archive.testzip() is None
+        manifest = json.loads(archive.read('manifest.json'))
+        assert manifest['schemaVersion'] == 1
+        assert {item['source'] for item in manifest['sources']} == {'auth', 'community', 'message', 'media', 'agent', 'search', 'notification'}
+except Exception:
+    sys.exit(2)
+`], { input: Buffer.concat(chunks), timeout: 10_000, maxBuffer: 1024 })
+    expect(checked.status, 'Downloaded export must be a complete valid seven-source ZIP').toBe(0)
+    await archive.delete()
+    await page.getByRole('link', { name: 'Review account deletion' }).click()
+    await page.getByRole('button', { name: 'Prepare deletion' }).click()
+    await expect.poll(async () => {
+      await page.getByRole('button', { name: 'Refresh status' }).click()
+      await expect(page.getByRole('button', { name: 'Refresh status' })).toBeEnabled()
+      return page.getByRole('heading', { name: 'Ready to confirm' }).count()
+    }, { timeout: 30_000, intervals: [1000, 2000] }).toBe(1)
+    const firstJob = new URL(page.url()).searchParams.get('job')
+    await page.getByRole('button', { name: 'Cancel preparation' }).click()
+    await expect.poll(async () => {
+      await page.getByRole('button', { name: 'Refresh status' }).click()
+      await expect(page.getByRole('button', { name: 'Refresh status' })).toBeEnabled()
+      return page.getByRole('heading', { name: 'Preparation cancelled' }).count()
+    }, { timeout: 30_000, intervals: [1000, 2000] }).toBe(1)
+    await page.getByRole('button', { name: 'Prepare a new request' }).click()
+    await expect.poll(async () => {
+      await page.getByRole('button', { name: 'Refresh status' }).click()
+      await expect(page.getByRole('button', { name: 'Refresh status' })).toBeEnabled()
+      return page.getByRole('heading', { name: 'Ready to confirm' }).count()
+    }, { timeout: 30_000, intervals: [1000, 2000] }).toBe(1)
+    const job = new URL(page.url()).searchParams.get('job')
+    expect(job).not.toBe(firstJob)
+    const receiptPath = `/api/v1/auth/account/deletions/${job}/receipt`
+    const receiptCookie = (await context.cookies()).find(cookie => cookie.path === receiptPath)
+    expect(Boolean(receiptCookie)).toBe(true)
+    expect({ httpOnly: receiptCookie?.httpOnly, secure: receiptCookie?.secure, sameSite: receiptCookie?.sameSite }).toEqual({ httpOnly: true, secure: true, sameSite: 'Strict' })
+    const confirm = page.getByRole('button', { name: 'Permanently delete my account' })
+    await expect(confirm).toBeDisabled()
+    await page.getByLabel('Type DELETE MY ACCOUNT to confirm').fill('DELETE MY ACCOUNT')
+    const receipt = page.waitForResponse(response => new URL(response.url()).pathname === receiptPath)
+    await confirm.click()
+    const receiptResponse = await receipt
+    expect(receiptResponse.status()).toBe(200)
+    expect(receiptResponse.request().method()).toBe('GET')
+    expect(receiptResponse.request().headers().authorization === undefined).toBe(true)
+    expect(['ERASING', 'WAITING_FOR_REPLICA', 'COMPLETE']).toContain((await receiptResponse.json()).state)
+    await expect(page).toHaveURL(new RegExp(`/account-deletion/${job}$`))
+    await expect(page.getByRole('heading', { name: 'Deletion status', exact: true })).toBeVisible()
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('chanter-session-change')?.startsWith('signed-out:'))).toBe(true)
+    const revoked = await request.post(new URL('/api/v1/auth/refresh', appUrl).toString(), {
+      headers: { ...headers, Cookie: `chanter_refresh=${sessionCookie.value}` },
+    })
+    expect(revoked.status()).toBe(401)
+    const restoredReceipt = page.waitForResponse(response => new URL(response.url()).pathname === receiptPath)
+    const refreshRequests: string[] = []
+    page.on('request', req => { if (new URL(req.url()).pathname === '/api/v1/auth/refresh') refreshRequests.push(req.method()) })
+    await page.reload()
+    const reloaded = await restoredReceipt
+    expect(reloaded.status()).toBe(200)
+    expect(reloaded.request().method()).toBe('GET')
+    expect(reloaded.request().headers().authorization === undefined).toBe(true)
+    await expect(page.getByRole('heading', { name: 'Deletion status', exact: true })).toBeVisible()
+    expect(refreshRequests).toEqual([])
   })
 })

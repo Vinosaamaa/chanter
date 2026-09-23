@@ -86,3 +86,13 @@ the resource page's local state by account, auth generation, server and course
 discards old modal state and aborts the old dialog's request. The confirmation also
 needed the existing padded modal surface inside its transparent native container.
 Its browser fixture now checks the actual bearer contract for source DELETE routes.
+
+The first hosted source run passed 311 cases and failed 15 new cases. Resource
+fixtures advertised source upload access but retained learner course capabilities;
+the scenario now explicitly supplies its manager course capability. The initial
+missing-status fixture changed after one request, so development remounts could
+consume it before the assertion. It now stays missing until the explicit refresh.
+Screenshot inspection also exposed the picker still mounting the legacy shell.
+Moving that route into the existing responsive shell supplies the intended modal
+surface, mobile navigation and button styles. Browser checks assert that shell and
+the opaque white dialog surface before interaction screenshots.

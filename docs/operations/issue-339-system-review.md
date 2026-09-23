@@ -58,3 +58,11 @@ bind to the opening account/generation/target; course navigation discards pendin
 resource modal state. Same-target retry depends on the backend returning the original
 request after terminal access closure. Review identified that dependency in media;
 #251 must prove it before integrated acceptance. Browser fixtures cannot establish it.
+
+The hosted account dependency preview restores the exact pinned backend tree only
+after proving infrastructure agreement. It has read-only repository permission,
+explicit branch/input gates, no artifact upload and no publishing path. Selecting
+the preview input also excludes the main release-package job. Its native download
+check reads a bounded archive in memory and validates ending, CRCs and seven-source
+manifest coverage without printing data. Credential assertions project only safe
+flags or booleans. Final accepted-union verification remains separate.

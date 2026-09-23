@@ -100,3 +100,13 @@ server or course change, preventing an old confirmation from reopening after ret
 Two parent-context regressions reproduced this defect before the correction.
 Source deletion browser fixtures remain synthetic, with actual requester/retry and
 cleanup proof required from the combined #251/#342 backend.
+
+Before final integration, a manually dispatched hosted dependency preview composes
+the current UI/scripts with the entire backend at the explicitly pinned #251 commit
+7adad182010c1ed5fca456206eb5a7357e170581. It verifies the infrastructure trees agree,
+uses no production secrets, publishes no release, and leaves ordinary exact-head
+checks unchanged. This narrower preview can prove export, cancellation, authority
+revocation and receipt reload while source cleanup remains ERASING. It is not the
+final #251/#342 union. The browser scenario stays preview-gated until that union is
+accepted, and validates a complete seven-source ZIP without logging its contents
+or cookie values. Existing trace/video/screenshot restrictions apply.

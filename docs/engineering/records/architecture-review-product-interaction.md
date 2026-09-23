@@ -76,3 +76,12 @@ it shares existing deletion CSS, and dialog dependencies stay within core limits
 The prior account receipt checkpoint passed all 308 hosted responsive cases, full
 application checks and both native release architectures. Source progress fixtures
 and final real-service union acceptance are still outstanding.
+
+The Study Server picker now mounts the existing responsive shell, correcting
+legacy-shell modal styling exposed by hosted screenshots. A manually gated hosted
+dependency preview combines this UI with an exact #251 backend tree and requires
+identical infrastructure. It proves a narrower real account journey without
+publishing or replacing final union acceptance. Archive validation is bounded and
+checks its central directory, CRCs and seven-source coverage; receipt assertions
+cannot print credential values. The preview remains excluded from ordinary checks
+until the lifecycle backend is accepted.

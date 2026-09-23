@@ -4,11 +4,67 @@ on:
   pull_request:
     paths: ['infra/production/**', 'scripts/deploy/**', 'scripts/upload-source-maps.mjs', 'infra/monitoring/sentry-cli.json', 'frontend/**', '.github/workflows/release.yml']
   workflow_dispatch:
+    inputs:
+      account_lifecycle_preview:
+        description: 'Run the pinned account-backend/UI dependency preview without publishing'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  account-lifecycle-preview:
+    if: github.event_name == 'workflow_dispatch' && inputs.account_lifecycle_preview == true && github.ref == 'refs/heads/codex/339-product-interaction'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Compose explicitly pinned backend dependency in disposable checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          source=7adad182010c1ed5fca456206eb5a7357e170581
+          git fetch --no-tags origin "$source"
+          test "$(git rev-parse FETCH_HEAD)" = "$source"
+          git diff --exit-code HEAD "$source" -- infra
+          printf 'Dependency preview only. UI/scripts: %s; backend: %s. Not final union acceptance.\n' "$GITHUB_SHA" "$source"
+          git restore --source="$source" --staged --worktree -- backend
+          git diff --cached --exit-code "$source" -- backend
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '21.0.12+8.0.LTS'
+          cache: maven
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium firefox webkit
+        working-directory: frontend
+      - run: command -v lsof >/dev/null || sudo apt-get install --yes lsof
+      - run: make product-env
+      - run: bash scripts/product/moderation-browser.sh prepare
+      - name: Verify actual account lifecycle and existing product journeys
+        run: make product-e2e
+        env:
+          CI: 'true'
+          KEEP_STACK: '1'
+          PLAYWRIGHT_BASE_URL: https://127.0.0.1:9420
+          PLAYWRIGHT_LIFECYCLE_PREVIEW: '1'
+      # Do not upload account archives, cookies, browser traces or service logs.
+      - name: Tear down disposable dependency preview
+        if: always()
+        run: |
+          bash scripts/product/moderation-browser.sh stop || true
+          make product-down || true
+          if test -f .env; then docker compose -f infra/docker-compose.yml --env-file .env --profile product down --volumes || true; fi
+
   validate:
     if: github.event.repository.private == false && github.event_name == 'pull_request'
     strategy:
@@ -46,7 +102,7 @@ jobs:
       - name: Run ephemeral staging
         run: bash scripts/deploy/smoke-release.sh '${{ matrix.architecture }}'
   package:
-    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && inputs.account_lifecycle_preview != true && github.ref == 'refs/heads/main'
     concurrency:
       group: release-package-${{ github.sha }}-${{ matrix.architecture }}
       cancel-in-progress: false

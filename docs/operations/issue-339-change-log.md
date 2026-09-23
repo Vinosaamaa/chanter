@@ -196,3 +196,12 @@ old confirmations. Independent review corrected the dialog surface and the test'
 incorrect CSRF expectation for bearer-authorized source routes. Full frontend tests
 passed 385 cases before the added context regressions; current source browser
 execution and actual backend acceptance remain required.
+
+Hosted screenshot review caught the Study Server picker still using the legacy
+shell; its route now shares the responsive product shell. Source fixtures correct
+their manager capability and persistent missing-status setup. A separate manual
+hosted account dependency preview combines the explicitly pinned #251 backend with
+this UI, without changing exact-head checks or publishing. Its actual browser
+journey validates ZIP integrity and seven-source coverage, cancellation, irreversible
+confirmation, revoked refresh and cookie-only receipt reload. It remains gated
+until final backend integration, and does not require cleanup to be complete.
