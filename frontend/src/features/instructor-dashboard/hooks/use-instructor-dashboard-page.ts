@@ -65,7 +65,9 @@ export function useInstructorDashboardPage(
   onSelectServerId: (serverId: string) => void,
 ): UseInstructorDashboardPageResult {
   const userId = useAuthStore((state) => state.user?.id ?? null)
-  const serversQuery = useAccessibleStudyServersQuery()
+  // The shell already owns initial loading. Mounting this child after an error
+  // must not restart that query and make the shell unmount us again.
+  const serversQuery = useAccessibleStudyServersQuery({ refetchOnMount: false, retryOnMount: false })
   const { isError: serversUnavailable, refetch: refetchServers } = serversQuery
   const servers = serversQuery.data ?? []
   const selectedServerId = serversQuery.isLoading || serversQuery.isError ? null
