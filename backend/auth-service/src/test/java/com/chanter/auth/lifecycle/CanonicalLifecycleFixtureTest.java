@@ -50,6 +50,10 @@ class CanonicalLifecycleFixtureTest {
             assertThat(events.get(0).get("event").get("producer").asText()).isEqualTo("auth");
             assertThatThrownBy(() -> execute.invoke(fixture,mapper.valueToTree(Map.of("action","journal","afterRevision",0,"extra",true))))
                     .hasRootCauseMessage("Unexpected fixture fields");
+            assertThatThrownBy(() -> execute.invoke(fixture,mapper.valueToTree(Map.of("action","media-upload","courseId",job,"ownerId",account,"requestId",alias))))
+                    .hasRootCauseMessage("Wrong fixture source");
+            assertThatThrownBy(() -> execute.invoke(fixture,mapper.valueToTree(Map.of("action","media-work-once","resourceId",job))))
+                    .hasRootCauseMessage("Wrong fixture source");
         }
     }
 }

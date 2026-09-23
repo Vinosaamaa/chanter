@@ -95,6 +95,20 @@ public final class CanonicalLifecycleFixture {
                 // No physical write is claimed. This row must remain unsettled/PENDING in recovery.
                 yield Map.of("resourceId",resource,"storageWriteSettled",false);
             }
+            case "media-upload" -> {
+                requireSource("media"); fields(request,"action","courseId","ownerId","requestId");
+                Object resource=invoke(bean("com.chanter.media.application.CourseResourceService"),"uploadCourseResource",
+                        id(request,"courseId"),id(request,"ownerId"),"Synthetic recovery bytes",false,new FixtureUpload(),id(request,"requestId"),null);
+                yield resourceState(resource);
+            }
+            case "media-work-once" -> {
+                requireSource("media"); fields(request,"action","resourceId"); UUID resourceId=id(request,"resourceId");
+                Object lifecycle=bean("com.chanter.media.application.ResourceLifecycle");
+                Object before=((Optional<?>)invoke(lifecycle,"find",resourceId)).orElseThrow();
+                if(!"QUARANTINED".equals(invoke(before,"state"))) throw new IllegalStateException("Expected quarantined fixture resource");
+                invoke(bean("com.chanter.media.application.ResourceWorker"),"runOnce");
+                yield resourceState(((Optional<?>)invoke(lifecycle,"find",resourceId)).orElseThrow());
+            }
             case "resource-delete" -> {
                 requireSource("media"); fields(request,"action","resourceId","ownerId");
                 yield invoke(bean("com.chanter.media.application.CourseResourceService"),"deleteCourseResource",id(request,"resourceId"),id(request,"ownerId"));
@@ -131,6 +145,24 @@ public final class CanonicalLifecycleFixture {
         };
     }
     private Object bean(String name) throws Exception { return context.getBean(Class.forName(name)); }
+    private Map<String,Object> resourceState(Object resource) throws Exception {
+        UUID id=(UUID)invoke(resource,"id");
+        return Map.of("resourceId",id,"courseId",invoke(resource,"courseId"),"storageKey",invoke(resource,"storageKey"),
+                "backend",invoke(resource,"storageBackend"),"byteSize",invoke(resource,"byteSize"),"sha256",invoke(resource,"sha256"),
+                "state",invoke(resource,"state"),"storageWriteSettled",jdbc.queryForObject("SELECT storage_write_settled FROM course_resources WHERE id=?",Boolean.class,id));
+    }
+    private static final class FixtureUpload implements org.springframework.web.multipart.MultipartFile {
+        private final byte[] bytes="Chanter canonical recovery fixture. These are synthetic private resource bytes.\n"
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        public String getName() { return "file"; }
+        public String getOriginalFilename() { return "fixture.txt"; }
+        public String getContentType() { return "text/plain"; }
+        public boolean isEmpty() { return false; }
+        public long getSize() { return bytes.length; }
+        public byte[] getBytes() { return bytes.clone(); }
+        public java.io.InputStream getInputStream() { return new java.io.ByteArrayInputStream(bytes); }
+        public void transferTo(java.io.File destination) throws java.io.IOException { Files.write(destination.toPath(),bytes); }
+    }
     private void requireSource(String expected) { if(!source.equals(expected)) throw new IllegalArgumentException("Wrong fixture source"); }
     private static String email(UUID alias) { return "lifecycle-"+alias+"@example.test"; }
     private static UUID id(JsonNode value,String field) {
@@ -151,7 +183,7 @@ public final class CanonicalLifecycleFixture {
         if(target==null) throw new IllegalStateException("Missing fixture result");
         var matches=Arrays.stream(target.getClass().getMethods()).filter(method -> method.getName().equals(name) && method.getParameterCount()==args.length)
                 .filter(method -> { var types=method.getParameterTypes(); for(int i=0;i<types.length;i++) {
-                    Class<?> type=types[i]==long.class ? Long.class : types[i]==int.class ? Integer.class : types[i];
+                    Class<?> type=types[i]==long.class ? Long.class : types[i]==int.class ? Integer.class : types[i]==boolean.class ? Boolean.class : types[i];
                     if(args[i]!=null && !type.isInstance(args[i])) return false;
                 } return true; }).toList();
         if(matches.size()!=1) throw new IllegalStateException("Ambiguous owning fixture operation");
