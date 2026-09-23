@@ -15,6 +15,8 @@ The join switch and enrollment persistence are unchanged.
 Verification: all eight CourseDiscoverySmokeTest cases pass against real MockMvc,
 service and migrated H2. This includes correct/wrong/missing outsider invite,
 OPEN member/outsider distinction, both unavailable policies, invalid input and
-owner authorization. Full affected-module and hosted checks are pending. The
+owner authorization. Full common/community Maven verify also passes: 161 cases,
+zero failures/errors, three environment-dependent cases skipped. Hosted checks
+remain pending. The
 real #339 browser flow remains a separate integration gate, with no claim of
 PostgreSQL repeated-join or production acceptance from these component tests.
