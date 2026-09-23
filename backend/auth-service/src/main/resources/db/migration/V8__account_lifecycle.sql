@@ -52,6 +52,8 @@ CREATE TABLE durable_outbox (
     last_error VARCHAR(80), delivered_at TIMESTAMP WITH TIME ZONE,
     replay_count INT NOT NULL DEFAULT 0, replayed_at TIMESTAMP WITH TIME ZONE
 );
+CREATE INDEX idx_outbox_delivery ON durable_outbox(status, available_at, revision);
+CREATE INDEX idx_outbox_expired_lease ON durable_outbox(status, lease_until, revision);
 
 CREATE TABLE durable_consumer_lock (id INT PRIMARY KEY);
 INSERT INTO durable_consumer_lock VALUES (1);
