@@ -47,6 +47,7 @@ class ResourceRecoveryInventoryTest {
         jdbc.update("INSERT INTO lifecycle_reapply_head VALUES(1,?,?)",authority.revision(),authority.digest());
         jdbc.execute("CREATE TABLE lifecycle_terminal_targets(target_kind VARCHAR(16),target_id UUID,revision BIGINT,event_id UUID,digest VARCHAR(64))");
         jdbc.execute("CREATE TABLE lifecycle_source_requests(target_id UUID)");
+        jdbc.execute("CREATE TABLE lifecycle_erased_content(target_kind VARCHAR(16),target_id UUID,revision BIGINT,event_id UUID,terminal_digest VARCHAR(64),source_kind VARCHAR(40),source_id UUID)");
         for (String prefix : java.util.List.of("lifecycle_scope_import","lifecycle_recovery_scope")) {
             jdbc.execute("CREATE TABLE "+prefix+"s(study_server_id UUID,scope_kind VARCHAR(8),revision BIGINT,event_id UUID,terminal_digest VARCHAR(64),ready BOOLEAN,scope_digest VARCHAR(64),basis_digest VARCHAR(64))");
             jdbc.execute("CREATE TABLE "+prefix+"_ids(study_server_id UUID,scope_kind VARCHAR(8),scope_id UUID)");
@@ -87,6 +88,35 @@ class ResourceRecoveryInventoryTest {
         inventories.discard(inventory);
         assertThat(mutations.receipt(inventory).inventoryId()).isEqualTo(inventory);
         mutations.release(inventory);
+    }
+
+    @Test void retainedAccountAuthoritySurvivesUploaderUnlinkForEveryPhysicalReference() {
+        UUID resource=resource(), account=UUID.randomUUID(), event=UUID.randomUUID();
+        jdbc.update("UPDATE course_resources SET uploaded_by_user_id=NULL,state='DELETED',byte_reservation=FALSE,migration_key=? WHERE id=?",key(resource),resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('ACCOUNT',?,?,?,?)",account,1,event,authority.digest());
+        jdbc.update("INSERT INTO lifecycle_erased_content VALUES('ACCOUNT',?,1,?,?,'RESOURCE',?)",account,event,authority.digest(),resource);
+        inventories.capture(inventory,backup,authority);
+        assertThat(inventories.page(inventory,authority,0,256).references()).hasSize(2)
+                .allSatisfy(reference -> assertThat(reference.terminal()).isTrue());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"target_kind","target_id","revision","event_id","terminal_digest","source_kind","source_id"})
+    void unrelatedRetainedIdentityDoesNotInventTerminalAuthority(String changed) {
+        UUID resource=resource(), account=UUID.randomUUID(), event=UUID.randomUUID();
+        jdbc.update("UPDATE course_resources SET uploaded_by_user_id=NULL WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('ACCOUNT',?,?,?,?)",account,1,event,authority.digest());
+        jdbc.update("INSERT INTO lifecycle_erased_content VALUES('ACCOUNT',?,1,?,?,'RESOURCE',?)",account,event,authority.digest(),resource);
+        Object value=switch(changed) {
+            case "target_kind" -> "RESOURCE";
+            case "source_kind" -> "MESSAGE";
+            case "revision" -> 2L;
+            case "terminal_digest" -> "f".repeat(64);
+            default -> UUID.randomUUID();
+        };
+        jdbc.update("UPDATE lifecycle_erased_content SET "+changed+"=?",value);
+        inventories.capture(inventory,backup,authority);
+        assertThat(inventories.page(inventory,authority,0,256).references().getFirst().terminal()).isFalse();
     }
 
     @Test void missingCurrentOrHistoricalScopeCannotTurnNullServerRowsIntoRestorableObjects() {

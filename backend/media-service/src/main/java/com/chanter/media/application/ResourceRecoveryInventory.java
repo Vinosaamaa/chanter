@@ -188,6 +188,10 @@ public class ResourceRecoveryInventory {
             String terminal = "EXISTS(SELECT 1 FROM lifecycle_terminal_targets t WHERE (t.target_kind='RESOURCE' AND t.target_id=r.id)"
                     + " OR (t.target_kind='ACCOUNT' AND t.target_id=r.uploaded_by_user_id)"
                     + " OR (t.target_kind='STUDY_SERVER' AND t.target_id=r.study_server_id))"
+                    + " OR EXISTS(SELECT 1 FROM lifecycle_erased_content c JOIN lifecycle_terminal_targets t"
+                    + " ON t.target_kind=c.target_kind AND t.target_id=c.target_id AND t.revision=c.revision"
+                    + " AND t.event_id=c.event_id AND t.digest=c.terminal_digest"
+                    + " WHERE c.target_kind='ACCOUNT' AND c.source_kind='RESOURCE' AND c.source_id=r.id)"
                     + " OR " + scoped("lifecycle_scope_import") + " OR " + scoped("lifecycle_recovery_scope");
             jdbc.query(connection -> {
                 var query = connection.prepareStatement("SELECT r.*, (" + terminal + ") AS terminal FROM course_resources r ORDER BY CAST(r.id AS VARCHAR)");

@@ -174,3 +174,12 @@ inside the owning deletion transaction. This suggestion is dispositioned against
 those source semantics, not treated as proof of external writer closure. Future
 tuple-changing callbacks must join this boundary. The owning source union and
 hosted proof remain required.
+
+The source owner subsequently added uploader unlinking after definitive physical
+state and exact downstream acknowledgement. Inventory capture now also joins the
+retained ACCOUNT-to-RESOURCE identity to its exact terminal target, revision,
+event and digest. Both current and migration references stay terminal after the
+uploader becomes null. The regression failed before the query change; all 35
+inventory checks now pass, including seven mismatched identity cases. This uses
+the tested source contract at `ec91670e`; it does not infer physical closure from
+the retained identity or a missing uploader.
