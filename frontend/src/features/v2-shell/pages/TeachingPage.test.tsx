@@ -1,16 +1,19 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 
 import { TeachingPage } from './TeachingPage'
+import { InstructorDashboardPage } from '../../instructor-dashboard/components/InstructorDashboardPage'
 
 const mocks = vi.hoisted(() => ({
   access: {
     isLoading: false,
+    isError: false,
     showTeachingNav: true,
   },
   dashboardPage: {
+    refresh: vi.fn(),
     servers: [{ id: 'server-1', name: 'Systems Guild' }],
     selectedServerId: 'server-1',
     setSelectedServerId: vi.fn(),
@@ -46,6 +49,7 @@ const mocks = vi.hoisted(() => ({
     error: null,
   },
   listOfficeHoursSessions: vi.fn(),
+  dashboardSelection: vi.fn(),
 }))
 
 vi.mock('../hooks/use-v2-sidebar-data', () => ({
@@ -53,7 +57,12 @@ vi.mock('../hooks/use-v2-sidebar-data', () => ({
 }))
 
 vi.mock('../../instructor-dashboard/hooks/use-instructor-dashboard-page', () => ({
-  useInstructorDashboardPage: () => mocks.dashboardPage,
+  useInstructorDashboardPage: (serverId: string | null, select: (id: string) => void) => {
+    mocks.dashboardSelection(serverId)
+    return { ...mocks.dashboardPage, setSelectedServerId: select,
+      ...(mocks.access.isError ? { selectedServerId: null, dashboard: null, error: 'Study Servers are unavailable. Please try again.' } : {}),
+    }
+  },
 }))
 
 vi.mock('../../support-operations/office-hours-api', () => ({
@@ -69,6 +78,8 @@ describe('TeachingPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.access.isError = false
+    mocks.access.showTeachingNav = true
     mocks.dashboardPage.dashboard.courses[0].cohorts = [
       { cohortId: 'cohort-1', name: 'Summer 2026', openTaQueueItems: 1 },
     ]
@@ -84,6 +95,29 @@ describe('TeachingPage', () => {
         createdAt: '2026-07-13T20:00:00.000Z',
       }],
     })
+  })
+
+  it('keeps a visible retry when server authority is unavailable instead of redirecting or disabling it', async () => {
+    mocks.access.isError = true
+    mocks.access.showTeachingNav = false
+    const user = userEvent.setup()
+    render(<MemoryRouter><TeachingPage /></MemoryRouter>)
+    expect(screen.getByRole('alert')).toHaveTextContent('Study Servers are unavailable. Please try again.')
+    await user.click(screen.getByRole('button', { name: 'Refresh teaching' }))
+    expect(mocks.dashboardPage.refresh).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('88 runs remaining of the lifetime limit')).not.toBeInTheDocument()
+  })
+
+  it('does not claim an empty schedule while Office Hours is pending or unavailable', async () => {
+    let reject!: (error: Error) => void
+    mocks.listOfficeHoursSessions.mockReturnValue(new Promise((_, failed) => { reject = failed }))
+    render(<MemoryRouter><TeachingPage /></MemoryRouter>)
+    expect(screen.getByRole('status', { name: 'Loading Office Hours' })).toBeVisible()
+    expect(screen.queryByText('Not scheduled')).not.toBeInTheDocument()
+    await act(async () => reject(new Error('Schedule unavailable')))
+    expect(screen.queryByRole('status', { name: 'Loading Office Hours' })).not.toBeInTheDocument()
+    expect(screen.getByText('Unavailable', { exact: true })).toBeVisible()
+    expect(screen.queryByText('Not scheduled')).not.toBeInTheDocument()
   })
 
   it('renders real course metrics and deep-links to the exact question and Office Hours contexts', async () => {
@@ -132,5 +166,26 @@ describe('TeachingPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent(
       '/app/servers/server-1/courses/course-1/questions?cohort=cohort-2',
     )
+  })
+
+  it('preserves bookmarked Study Server context and offers refresh with lifetime usage', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter initialEntries={['/app/teaching?serverId=bookmarked-server']}><TeachingPage /></MemoryRouter>)
+    expect(mocks.dashboardSelection).toHaveBeenCalledWith('bookmarked-server')
+    await user.click(screen.getByRole('button', { name: 'Refresh teaching' }))
+    expect(mocks.dashboardPage.refresh).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('88 runs remaining of the lifetime limit')).toBeInTheDocument()
+    expect(screen.getByText('Low-confidence handoffs').parentElement).toHaveTextContent('1')
+    expect(screen.getByText('Approved FAQs').parentElement).toHaveTextContent('3')
+  })
+
+  it('forwards legacy dashboard bookmarks to Teaching without losing Study Server context', async () => {
+    render(<MemoryRouter initialEntries={['/app/instructor-dashboard?serverId=server-2']}>
+      <Routes>
+        <Route path="/app/instructor-dashboard" element={<InstructorDashboardPage />} />
+        <Route path="/app/teaching" element={<LocationProbe />} />
+      </Routes>
+    </MemoryRouter>)
+    expect(await screen.findByTestId('location')).toHaveTextContent('/app/teaching?serverId=server-2')
   })
 })

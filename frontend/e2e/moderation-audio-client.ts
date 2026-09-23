@@ -1,6 +1,8 @@
 // Hosted test client using the same real SDK and user-issued join tokens as the app.
 import { LocalAudioTrack, Room, RoomEvent } from 'livekit-client'
+import { audioStatsAccumulator } from './moderation-audio-stats.mjs'
 const room = new Room()
+const audioStats = audioStatsAccumulator()
 const status = document.getElementById('status')!
 const peers: RTCPeerConnection[] = []
 const NativePeer = window.RTCPeerConnection
@@ -27,13 +29,8 @@ const proof = {
     status.textContent = 'Connected'
   },
   async stats() {
-    let sent = 0, received = 0, energy = 0
-    for (const peer of peers) for (const item of (await peer.getStats()).values()) {
-      if (item.kind !== 'audio') continue
-      if (item.type === 'outbound-rtp') sent += item.bytesSent ?? 0
-      if (item.type === 'inbound-rtp') { received += item.bytesReceived ?? 0; energy += item.totalAudioEnergy ?? 0 }
-    }
-    return { sent, received, energy, connected: room.state === 'connected', remoteParticipants: room.remoteParticipants.size }
+    for (const peer of peers) audioStats.record(peer, (await peer.getStats()).values())
+    return { ...audioStats.totals(), connected: room.state === 'connected', remoteParticipants: room.remoteParticipants.size }
   },
   async disconnect() { oscillator?.stop(); signal?.stream.getTracks().forEach(track => track.stop()); await audio?.close(); await room.disconnect() },
 }

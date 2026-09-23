@@ -11,12 +11,13 @@ export const studyServerNavigationQueryKey = (
   studyServerId: string | undefined,
 ) => ['study-server-navigation', userId ?? 'anonymous', studyServerId ?? 'none'] as const
 
-export function useAccessibleStudyServersQuery() {
+export function useAccessibleStudyServersQuery(options: { refetchOnMount?: boolean; retryOnMount?: boolean } = {}) {
   const userId = useAuthStore((state) => state.user?.id)
   return useQuery({
     queryKey: accessibleStudyServersQueryKey(userId),
     queryFn: fetchAccessibleStudyServers,
     enabled: Boolean(userId),
+    ...options,
   })
 }
 
