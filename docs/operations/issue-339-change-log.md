@@ -276,3 +276,14 @@ and owner enrollment form, then checks that the learner has enrolled navigation 
 the refreshed visible learner count is one. It uses fresh synthetic verified users,
 no interception and no credential artifacts. Hosted execution of this new journey
 is required before its result can be accepted.
+
+At 2904c3f9, the real owner creation/enrollment case passed on its first attempt in
+Chromium, Firefox and WebKit. Full CI passed: 48 ordinary signed-in journeys passed,
+with six lifecycle/source cases intentionally restricted to the separate dependency
+preview. The standalone moderation/audio/appeal journey also passed. All 341 visual
+fixtures passed. This is actual visible-form proof, not API-only setup.
+
+The #251 community contract removes deleted instructor attribution from another
+learner's retained enrollment. The frontend now accepts null enrolledByUserId. No
+production display consumes that field, and existing non-null responses remain
+compatible. Typechecking passes; no enrollment authority or rendering changes.

@@ -1,6 +1,7 @@
 # Current route and control review (#339)
 
-Reviewed against the router and control owners at `8914546`. This replaces the
+Reviewed against the router and control owners at `8914546`, with actual owner
+setup added at `2904c3f9`. This replaces the
 historical #103 list for launch review. A route being present or a screenshot
 passing does not establish that every mutation works against deployed services.
 The final accepted lifecycle/recovery union and public environment remain open.
@@ -30,9 +31,9 @@ the authorized server, course, channel or job selected by the current account.
 | `/oauth/callback/google` | Completes the configured Google authorization flow. | Provider configuration and actual provider login remain open; no OAuth success is inferred from password sign-in. |
 | `/terms`, `/privacy` | Public policy content and navigation. | Responsive fixture coverage. Final wording must agree with #251 retention and the deployed providers. |
 | `home`, `welcome`, `picker` | Authorized server/course navigation and onboarding entry points. | Real owner/member/learner Home and navigation; responsive populated/empty fixtures. |
-| `onboarding/join-or-create`, `onboarding/create-study-server` | Join by code; create-server wizard, Back and Close use onboarding APIs. | Responsive route fixtures; copied-invite joining has component coverage. A new real visible-control create journey awaits hosted execution; final invite/join acceptance remains open. |
-| `servers/:serverId/home` | Create arbitrary course/cohort names, open course channel and manage enrollment for non-enrolled owners. | Nine three-engine owner fixtures cover submission, results and preserved links. Real source setup creates a server/course through APIs, not this form. |
-| `servers/:serverId/courses/:courseId/enrollment` | Authorized enrollment, invite copy, cohort selection and teaching-assistant link. | Permission lookup occurs before mounting manager requests; component regression and accepted owner invite authorization. Final browser invite/copy/join remains open. |
+| `onboarding/join-or-create`, `onboarding/create-study-server` | Join by code; create-server wizard, Back and Close use onboarding APIs. | Responsive route fixtures; copied-invite joining has component coverage. Actual server creation passes in all three engines. Team invitations, Back/Close and final invite/join acceptance remain distinct. |
+| `servers/:serverId/home` | Create arbitrary course/cohort names, open course channel and manage enrollment for non-enrolled owners. | Nine three-engine owner fixtures cover submission, results and preserved links. Actual course/cohort form submission and its resulting card pass in all three engines. |
+| `servers/:serverId/courses/:courseId/enrollment` | Authorized enrollment, invite copy, cohort selection and teaching-assistant link. | Actual owner manual enrollment, refreshed roster and learner access pass in all three engines. Capability/URL tests and accepted owner invite authorization remain separate. Final browser invite/copy/join remains open. |
 | `teaching`, `instructor-dashboard` | Server selection, Refresh, operational counts, course and queue links. Legacy bookmark redirects with its query. | Component and fixture bookmark coverage; real Usage journey waits for the Office Hours lookup. Loading and failure cannot masquerade as an empty schedule. |
 | `inbox` | Open/Done lists, detail, completion, Back, retry and foreground refresh. | Real announcement delivery and persistent completion; phone focus, disappearing final item and failed-completion retry fixtures. |
 | `calendar` | Previous/next month, Today, filters, keyboard day selection, event RSVP and destination links. | Component behavior and six-width fixtures; real navigation smoke. Full real event/RSVP lifecycle remains an integrated acceptance item. |

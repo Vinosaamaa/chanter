@@ -134,3 +134,9 @@ separates actual service evidence, synthetic fixtures and manual/provider gaps.
 A further owner-setup browser case exercises the actual wizard, course/cohort form
 and enrollment form; it must prove visible results and learner access through the
 real owning API before that gap is marked accepted.
+
+The real owner setup case passed on its first attempt across all three engines at
+2904c3f9. The updated inventory records its scope as server/course creation and
+manual enrollment, preserving open invite-copy/join and other wizard-control gates.
+The nullable enrolling-actor field aligns with #251 attribution removal while the
+other learner's enrollment remains intact; it does not change frontend authority.

@@ -139,3 +139,11 @@ screenshots were inspected across Chromium, Firefox and WebKit: phone drafts and
 focus remain visible above navigation; desktop retained text, explanation and
 disabled action remain readable. Interaction assertions separately verify focus,
 read-only state and blocked wrong-target submission.
+
+## Pinned source completion assertion
+
+4078302931 proposes accepting COMPLETE during the source progress poll. The preview
+pins a partially completed cleanup/recovery backend and deliberately verifies honest
+pending state. Allowing COMPLETE here could conceal premature completion. Keep this
+assertion for the pinned preview. At final accepted union, update it only alongside
+owning source/recovery evidence that establishes valid completion conditions.
