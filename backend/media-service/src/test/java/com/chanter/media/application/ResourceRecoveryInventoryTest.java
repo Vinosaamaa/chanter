@@ -142,14 +142,15 @@ class ResourceRecoveryInventoryTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory",Integer.class)).isZero();
     }
 
-    @Test void authorizedRestoreOwnsOneMutationWithoutReleasingTheGlobalFence() {
-        UUID resource = resource(); inventories.capture(inventory,backup,authority);
+    @Test void authorizedRestoreOwnsOneMutationWithoutReleasingTheGlobalFence() throws Exception {
+        byte[] bytes={1,2,3};
+        UUID resource = resource(); exactBytes(resource,bytes); inventories.capture(inventory,backup,authority);
         var request = new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
-        var restore = inventories.beginRestore(request);
+        var restore = inventories.beginRestore(request,bytes);
         assertThat(restore.reference().resourceId()).isEqualTo(resource);
         assertThat(mutations.receipt(inventory).unsettledMutations()).isEqualTo(1);
         assertThatThrownBy(() -> mutations.begin(key(resource),StorageMutationStore.Operation.PUT)).hasMessageContaining("maintenance");
-        assertThatThrownBy(() -> inventories.beginRestore(request)).hasMessageContaining("unsettled");
+        assertThatThrownBy(() -> inventories.beginRestore(request,bytes)).hasMessageContaining("unsettled");
         mutations.settled(restore.mutationId());
         assertThat(mutations.receipt(inventory).inventoryId()).isEqualTo(inventory);
     }
@@ -158,7 +159,7 @@ class ResourceRecoveryInventoryTest {
         UUID resource = resource();
         jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
         inventories.capture(inventory,backup,authority);
-        assertThatThrownBy(() -> inventories.beginRestore(new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1)))
+        assertThatThrownBy(() -> inventories.beginRestore(new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1),new byte[]{1}))
                 .hasMessageContaining("not restorable");
         assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
     }
@@ -166,9 +167,23 @@ class ResourceRecoveryInventoryTest {
     @Test void changedSourceTupleCannotAuthorizeAWrongObjectUnderAnOldSnapshot() {
         UUID resource = resource(); inventories.capture(inventory,backup,authority);
         jdbc.update("UPDATE course_resources SET storage_key=? WHERE id=?",key(resource),resource);
-        assertThatThrownBy(() -> inventories.beginRestore(new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1)))
+        assertThatThrownBy(() -> inventories.beginRestore(new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1),new byte[]{1}))
                 .hasMessageContaining("source reference changed");
         assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+    }
+
+    @Test void invalidRecoveryBytesNeverReserveAnOperationRequiringLaterSettlement(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        byte[] bytes="expected fixture".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        UUID resource=resource(); exactBytes(resource,bytes); inventories.capture(inventory,backup,authority);
+        var failedSettlement=org.mockito.Mockito.spy(mutations);
+        org.mockito.Mockito.doThrow(new IllegalStateException("fixture settlement unavailable"))
+                .when(failedSettlement).settled(org.mockito.ArgumentMatchers.any());
+        var storage=new com.chanter.media.infra.LocalPrivateResourceStorage(directory.toString(),failedSettlement);
+        storage.recoveryInventory(inventories);
+        assertThatThrownBy(() -> storage.putForRecovery(new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1),new byte[]{1}))
+                .isInstanceOf(PrivateResourceStorage.PutFailure.class).hasRootCauseMessage("Private recovery byte integrity mismatch");
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+        org.mockito.Mockito.verify(failedSettlement,org.mockito.Mockito.never()).settled(org.mockito.ArgumentMatchers.any());
     }
 
     @Test void actualLocalRecoveryVerifiesBytesAndNeverOverwritesOrReleasesMaintenance(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {

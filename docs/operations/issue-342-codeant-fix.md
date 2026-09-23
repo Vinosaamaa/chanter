@@ -31,6 +31,14 @@ remove those dependencies.
 
 ## Custom suggestions
 
+The subsequent full review at `ead6625e847c17cf366dc789a8e885b408816bcc`
+confirmed the local residue fix and raised `4077832514`: malformed recovery bytes
+could need a settlement write after their mutation had already been reserved.
+The failed-settlement regression reproduced that path. Size/hash validation now
+runs against the source tuple before inserting the mutation in the same source
+transaction. Malformed bytes cannot leave a reservation, and no physical dispatch
+occurs. Actual dispatched operations still retain uncertainty on lost settlement.
+
 The sixteen custom suggestions in `5786511154` were assessed separately from the
 findings. No automatic suppression was added.
 
