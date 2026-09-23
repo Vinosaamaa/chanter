@@ -95,9 +95,12 @@ current-authority operator. It verifies a before/after WAL marker, old AVAILABLE
 resource, old course, browser sessions and an owning synthetic ISSUED native row
 before replay. It then requires seven exact-prefix receipts, auth and agent
 invalidation, removal of the restored-only historical course, and zero remaining
-unrevoked sessions. The synthetic native row proves invalidation only, not a
-signed ticket or provider execution. These new assertions have not yet passed a
-hosted run.
+unrevoked sessions. The native row belongs to a separate surviving server and
+actor. The fixture verifies it is still ISSUED with evidence after all terminal
+replay, and changes to REJECTED with no evidence only across the actual global
+invalidation call. It also requires no matching terminal target and a surviving
+course graph. The synthetic row proves invalidation only, not a signed ticket or
+provider execution. These new assertions have not yet passed a hosted run.
 
 Only the POSIX repository transport and explicit local media namespace differ
 from the production operator. After WAL replay, the fixture replaces its own

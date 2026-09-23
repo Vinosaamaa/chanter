@@ -122,9 +122,12 @@ try {
   const owner = call('auth', { action: 'auth-seed', alias: ownerAlias }); nonzeroUuid(owner.accountId);
   const graph = call('community', { action: 'community-seed', ownerId: owner.accountId });
   nonzeroUuid(graph.serverId); nonzeroUuid(graph.courseId);
-  const questions = graph.channels.filter(channel => channel.kind === 'TEXT' && channel.name === 'questions');
+  const liveGraph = call('community', { action: 'community-seed', ownerId: owner.accountId });
+  nonzeroUuid(liveGraph.serverId); nonzeroUuid(liveGraph.courseId);
+  assert.notEqual(liveGraph.serverId, graph.serverId);
+  const questions = liveGraph.channels.filter(channel => channel.kind === 'TEXT' && channel.name === 'questions');
   assert.equal(questions.length, 1);
-  const pendingNative = call('agent', { action: 'agent-native-seed', serverId: graph.serverId,
+  const pendingNative = call('agent', { action: 'agent-native-seed', serverId: liveGraph.serverId,
     channelId: questions[0].id, ownerId: owner.accountId });
   nonzeroUuid(pendingNative.requestId); assert.equal(pendingNative.outcome, 'ISSUED');
   assert.equal(pendingNative.syntheticPendingOnly, true);
@@ -186,7 +189,7 @@ try {
   assert.deepEqual(decrypted, actualBytes);
   databaseDrill = await sourceDatabaseCheckpoint({ bundle, state, root, release, postgres, project,
     composeFile, sourceCompose, inventoryId, databaseBackupId, resourceId: available.resourceId,
-    courseId: graph.courseId, nativeRequestId: pendingNative.requestId });
+    courseId: graph.courseId, nativeRequestId: pendingNative.requestId, liveGraph, liveOwnerId: owner.accountId });
   // Restore the same logical local namespace into an owned empty volume. No old object is overwritten or removed.
   restoreVolume = `${project}-object-${crypto.randomUUID()}`;
   assert.ok(!docker(['volume', 'ls', '--format', '{{.Name}}']).split('\n').includes(restoreVolume));
@@ -249,6 +252,7 @@ try {
     `ACCOUNT:${account.accountId}`, `RESOURCE:${available.resourceId}`, `STUDY_SERVER:${graph.serverId}`,
   ].sort());
   const server = page.entries.find(entry => entry.targetKind === 'STUDY_SERVER');
+  assert.ok(!page.entries.some(entry => entry.targetId === liveGraph.serverId || entry.targetId === owner.accountId));
   const scopes = [];
   for (const kind of SCOPE_KINDS) {
     const verifier = new ScopeVerifier(server, kind);

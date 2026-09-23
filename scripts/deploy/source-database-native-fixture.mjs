@@ -23,11 +23,12 @@ const json = file => JSON.parse(fs.readFileSync(file));
 const write = (file, value) => fs.writeFileSync(file, JSON.stringify(value), { mode: 0o600 });
 
 export async function sourceDatabaseCheckpoint({ bundle, state, root, release, postgres, project, composeFile, sourceCompose,
-  inventoryId, databaseBackupId, resourceId, courseId, nativeRequestId }) {
+  inventoryId, databaseBackupId, resourceId, courseId, nativeRequestId, liveGraph, liveOwnerId }) {
   assert.equal(process.env.GITHUB_ACTIONS, 'true');
   assert.equal(process.env.CHANTER_SOURCE_RECOVERY_PREVIEW, 'true');
   assert.match(project, /^chanter-smoke-(amd64|arm64)-[a-z0-9-]+$/);
-  for (const id of [inventoryId, databaseBackupId, resourceId, courseId, nativeRequestId]) nonzeroUuid(id);
+  for (const id of [inventoryId, databaseBackupId, resourceId, courseId, nativeRequestId,
+    liveGraph.serverId, liveGraph.courseId, liveOwnerId]) nonzeroUuid(id);
   const original = JSON.parse(docker(['inspect', postgres]))[0];
   assert.equal(original.Config.Labels['com.docker.compose.project'], project);
   assert.equal(original.Config.Labels['com.docker.compose.service'], 'postgres');
@@ -104,6 +105,8 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.equal(sql(restored.container, 'postgres', 'SELECT string_agg(id::text, chr(44) ORDER BY id) FROM canonical_recovery_fixture_marker'), '1');
       assert.equal(sql(restored.container, 'chanter_auth', 'SELECT revision FROM lifecycle_journal_head WHERE id=1'), '0');
       assert.equal(sql(restored.container, 'chanter_media', `SELECT state FROM course_resources WHERE id='${resourceId}'`), 'AVAILABLE');
+      assert.equal(sql(restored.container, 'chanter_media', 'SELECT inventory_id::text || chr(58) || database_backup_id::text || chr(58) || authority_revision::text FROM media_recovery_inventory WHERE id=1'),
+        `${inventoryId}:${databaseBackupId}:0`);
       assert.equal(sql(restored.container, 'chanter_community', `SELECT count(*) FROM courses WHERE id='${courseId}'`), '1');
       assert.equal(sql(restored.container, 'chanter_agent', `SELECT outcome FROM native_companion_requests WHERE id='${nativeRequestId}'`), 'ISSUED');
       assert.ok(Number(sql(restored.container, 'chanter_auth', 'SELECT count(*) FROM auth_sessions WHERE revoked_at IS NULL')) > 0);
@@ -132,7 +135,19 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
         },
         loadConfiguration: (...args) => readConfigurationBackup(...args, configurationExecute),
         repositoryFactory: () => journal,
-        clientFactory: options => ({ ...lifecycleClient(options), kind: 'fixture' }),
+        clientFactory: options => {
+          const client = lifecycleClient(options);
+          return { ...client, kind: 'fixture', invalidate: async request => {
+            const database = docker(['compose', '--project-name', options.project, '-f', options.composeFile, 'ps', '--quiet', 'postgres']).trim();
+            if (options.source === 'agent') {
+              assert.equal(sql(database, 'chanter_agent', `SELECT outcome || ':' || (evidence_json IS NOT NULL)::text FROM native_companion_requests WHERE id='${nativeRequestId}'`), 'ISSUED:true');
+              assert.equal(sql(database, 'chanter_agent', `SELECT count(*) FROM lifecycle_terminal_targets WHERE target_id IN ('${liveGraph.serverId}','${liveOwnerId}')`), '0');
+            }
+            const receipt = await client.invalidate(request);
+            if (options.source === 'agent') assert.equal(sql(database, 'chanter_agent', `SELECT outcome || ':' || (evidence_json IS NULL)::text FROM native_companion_requests WHERE id='${nativeRequestId}'`), 'REJECTED:true');
+            return receipt;
+          } };
+        },
       });
       assert.equal(result.publicCutoverAllowed, false); assert.equal(result.isolationVerified, true);
       assert.equal(result.participants.length, 7); assert.equal(result.invalidations.length, 2);
@@ -145,6 +160,7 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.equal(sql(database, 'chanter_auth', 'SELECT count(*) FROM auth_sessions WHERE revoked_at IS NULL'), '0');
       assert.equal(sql(database, 'chanter_agent', `SELECT outcome || ':' || (evidence_json IS NULL)::text FROM native_companion_requests WHERE id='${nativeRequestId}'`), 'REJECTED:true');
       assert.equal(sql(database, 'chanter_community', `SELECT count(*) FROM courses WHERE id='${courseId}'`), '0');
+      assert.equal(sql(database, 'chanter_community', `SELECT count(*) FROM courses WHERE id='${liveGraph.courseId}' AND study_server_id='${liveGraph.serverId}'`), '1');
       assert.equal(historical.courseId, courseId); assert.equal(historical.historicalFixtureOnly, true);
       return { ...result, databaseBackupVerified: true, restoredSessionsInvalidated: true,
         restoredPendingNativeInvalidated: true, historicalCourseReconciled: true, objectRestoreVerified: false };
