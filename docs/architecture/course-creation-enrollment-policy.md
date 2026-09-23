@@ -1,8 +1,7 @@
 # Course creation enrollment policy
 
 Repository: Vinosaamaa/chanter. Issue #346, prerequisite for #339 and #254;
-related roster scope #136. Backend lane, worktree
-`C:/Users/johns/Projects/.worktrees/chanter-346-course-enrollment-policy`, branch
+related roster scope #136. Backend lane, registered issue-346 worktree, branch
 `codex/346-course-enrollment-policy`, one issue-linked prerequisite PR.
 
 The actual invitation journey creates an OPEN cohort. OPEN deliberately admits

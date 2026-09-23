@@ -20,3 +20,9 @@ zero failures/errors, three environment-dependent cases skipped. Hosted checks
 remain pending. The
 real #339 browser flow remains a separate integration gate, with no claim of
 PostgreSQL repeated-join or production acceptance from these component tests.
+
+The existing native release validation trigger omitted backend-only PRs, while
+manual packaging is intentionally restricted to main. Add backend/** to the PR
+path filter so these actual application changes run the existing two-architecture
+build, scan and staging checks. Dispatch, publication and runtime guards remain
+unchanged. No frontend change is used to manufacture a trigger.
