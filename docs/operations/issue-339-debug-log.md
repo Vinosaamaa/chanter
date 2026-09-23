@@ -146,3 +146,19 @@ allowance. Existing core and initial-route caps are unchanged, and shared import
 remain core. The production build passes with the privacy entry at 3.8 KiB raw and
 1.6 KiB gzip. This is an explicit additional deferred-content allocation, not a
 claim that total permitted download size stayed identical.
+
+The expanded owner journey at 34ba3c90 passed creation and manual enrollment but
+failed in all three engines at sign-out. Its captured enrollment page has a direct
+header button, while the helper selected the V2 account menu. The helper now takes
+an explicit header control for that route; logout response, cookie and navigation
+assertions remain. No timeout extension or API bypass was introduced.
+
+Review 4078703105's recent-login claim was incorrect: that requirement returns 428.
+Independent inspection found a different real failure. A confirmation 401 followed
+by failed refresh cleared auth generation before receipt navigation, and the guard
+redirected to bare sign-in. Two actual-client/router regressions reproduced lost
+PREPARED and ERASING receipts. Confirmation now disables only automatic 401 refresh
+and retry, retaining generation/abort guards. Both router regressions pass. Nine
+malformed saved-invitation cases also failed before validation and now make no
+join request, clearing the corrupt value. All 66 focused account/invite/client
+tests and lint pass; renewed hosted acceptance remains required.

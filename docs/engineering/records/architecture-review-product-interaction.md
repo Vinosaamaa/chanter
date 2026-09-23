@@ -178,3 +178,14 @@ Expanded privacy content has a separate 4,500 raw/2,000 gzip lazy-entry cap; thi
 adds bounded deferred content while preserving existing core/initial numerical caps
 and counting shared imports in core. Final operator terms, source union and public
 deployment remain unverified.
+
+Confirmation now disables automatic unauthorized-response refresh/retry while
+retaining account-change and abort guards. This preserves the exact cookie-bound
+receipt when expired-session recovery would otherwise discard its job navigation.
+Two real-client/router regressions failed before correction and now pass for
+prepared and committed outcomes. Nine malformed saved-invitation regressions and
+one confirmation-retry regression also pass after failing first. The existing
+hosted owner journey's captured legacy header supplies its explicit sign-out
+selector; response, cookie and navigation assertions stay intact. All 66 focused
+account/invite/client cases and lint pass; current hosted and final union acceptance
+remain separate.

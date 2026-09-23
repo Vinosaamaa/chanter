@@ -56,6 +56,14 @@ describe('cohort-invite', () => {
     expect(joinCohort).not.toHaveBeenCalled()
   })
 
+  it.each(['{', 'null', '[]', '"invite"', '{}', '{"cohortId":7,"inviteCode":"code"}', '{"cohortId":"cohort","inviteCode":false}', '{"cohortId":" ","inviteCode":"code"}', '{"cohortId":"cohort","inviteCode":""}'])('discards malformed saved invitation %s without making a join request', async (raw) => {
+    storage.set('chanter:pending-cohort-invite', raw)
+    const joinCohort = vi.fn()
+    await expect(completePendingCohortJoin(joinCohort)).resolves.toBe('none')
+    expect(joinCohort).not.toHaveBeenCalled()
+    expect(storage.has('chanter:pending-cohort-invite')).toBe(false)
+  })
+
   it('completePendingCohortJoin succeeds and clears pending invite', async () => {
     rememberCohortInviteFromSearch('?cohort=cohort-1&invite=code-1')
     const joinCohort = vi.fn().mockResolvedValue(undefined)

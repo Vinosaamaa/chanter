@@ -3,7 +3,7 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, Link, MemoryRouter, Route, RouterProvider, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { ApiError } from '../../lib/api-client'
+import { ApiError, configureApiAuth } from '../../lib/api-client'
 import { useAuthStore } from '../../stores/auth-store'
 import type { DeletionJob } from './account-deletion-api'
 import { AccountDeletionPage, AccountDeletionReceiptPage } from './AccountDeletionPage'
@@ -23,7 +23,7 @@ function open(path = '/app/account-data/delete') {
   </Routes></MemoryRouter></QueryClientProvider>)
 }
 beforeEach(() => { vi.resetAllMocks(); localStorage.clear(); session(); api.getDeletion.mockResolvedValue(prepared); api.prepareDeletion.mockImplementation(async (requestId: string) => ({ ...prepared, id: requestId, state: 'PREPARING' })) })
-afterEach(() => cleanup())
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 it('preparation never claims deletion and an uncertain request reuses its UUID', async () => {
   api.prepareDeletion.mockRejectedValueOnce(new Error('connection lost'))
@@ -185,4 +185,34 @@ it('does not close a new document session from persisted receipt navigation stat
   expect(await screen.findByText('Cleanup in progress')).toBeVisible()
   expect(useAuthStore.getState().user?.id).toBe('owner')
   expect(localStorage.getItem('chanter-session-change')).toBeNull()
+})
+
+it.each(['PREPARED', 'ERASING'] as const)('preserves the exact receipt after a real confirmation 401 with %s outcome', async state => {
+  const actual = await vi.importActual<typeof import('./account-deletion-api')>('./account-deletion-api')
+  api.confirmDeletion.mockImplementation(actual.confirmDeletion)
+  api.getDeletionReceipt.mockResolvedValue({ ...prepared, state })
+  const refresh = vi.fn(async () => { useAuthStore.getState().clearSession(); return false })
+  configureApiAuth({ getAccessToken: () => useAuthStore.getState().accessToken,
+    getSessionGeneration: () => useAuthStore.getState().generation, refreshSession: refresh })
+  const fetchMock = vi.fn(async () => new Response('', { status: 401 }))
+  vi.stubGlobal('fetch', fetchMock)
+  const router = createMemoryRouter([
+    { path: '/app/account-data/delete', element: <ProtectedRoute><AccountDeletionPage /></ProtectedRoute> },
+    { path: '/account-deletion/:jobId', element: <AccountDeletionReceiptPage /> },
+    { path: '/sign-in', element: <h1>Sign in</h1> },
+  ], { initialEntries: [`/app/account-data/delete?job=${id}`] })
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><RouterProvider router={router} /></QueryClientProvider>)
+  try {
+    const user = userEvent.setup()
+    await user.type(await screen.findByLabelText('Type DELETE MY ACCOUNT to confirm'), 'DELETE MY ACCOUNT')
+    await user.click(screen.getByRole('button', { name: 'Permanently delete my account' }))
+    expect(await screen.findByRole('heading', { name: 'Deletion status' })).toBeVisible()
+    expect(await screen.findByText(state === 'PREPARED' ? 'Ready to confirm' : 'Cleanup in progress')).toBeVisible()
+    expect(router.state.location.pathname).toBe(`/account-deletion/${id}`)
+    expect(router.state.location.search).toBe('?uncertain=1')
+    expect(useAuthStore.getState().user).toBeNull()
+    expect(refresh).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    if (state === 'PREPARED') expect(screen.getByRole('link', { name: 'Sign in to manage preparation' })).toHaveAttribute('href', `/app/account-data/delete?job=${id}`)
+  } finally { router.dispose() }
 })

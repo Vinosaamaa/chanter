@@ -20,6 +20,8 @@ type ApiAuthConfig = {
 
 export type ApiFetchInit = RequestInit & {
   skipAuthRefresh?: boolean
+  /** Disable automatic 401 refresh/retry while retaining account-change guards. */
+  refreshOnUnauthorized?: boolean
 }
 
 let apiAuthConfig: ApiAuthConfig | null = null
@@ -131,7 +133,7 @@ async function fetchWithAuth(
   })
   checkSession()
 
-  if (response.status === 401 && !skipAuthRefresh && apiAuthConfig) {
+  if (response.status === 401 && !skipAuthRefresh && init?.refreshOnUnauthorized !== false && apiAuthConfig) {
     const refreshed = accessToken !== apiAuthConfig.getAccessToken() || await refreshApiSession()
     checkSession()
     if (refreshed) {

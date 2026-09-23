@@ -23,7 +23,9 @@ export function prepareDeletion(id: string, signal?: AbortSignal) {
 export function getDeletion(id: string, signal?: AbortSignal) { return apiFetch<DeletionJob>(jobPath(id), { signal }) }
 export function cancelDeletion(id: string, signal?: AbortSignal) { return apiFetch<DeletionJob>(jobPath(id), { method: 'DELETE', signal }) }
 export function confirmDeletion(id: string, signal?: AbortSignal) {
-  return apiFetch<DeletionJob>(`${jobPath(id)}/confirm`, { method: 'POST', body: JSON.stringify({ confirmation: 'DELETE MY ACCOUNT' }), signal })
+  // Confirmation can revoke this session. Inspect its cookie-bound receipt on 401
+  // before a failed refresh can erase the current job's navigation context.
+  return apiFetch<DeletionJob>(`${jobPath(id)}/confirm`, { method: 'POST', body: JSON.stringify({ confirmation: 'DELETE MY ACCOUNT' }), signal, refreshOnUnauthorized: false })
 }
 export async function getDeletionReceipt(id: string, signal?: AbortSignal): Promise<DeletionJob> {
   const url = new URL(`${getApiBase()}${jobPath(id)}/receipt`, window.location.origin)

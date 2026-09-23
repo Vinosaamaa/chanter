@@ -329,3 +329,13 @@ leaves operator/provider details unfinished before launch. Its exact lazy entry 
 a new 4,500 raw/2,000 gzip cap; existing core and initial caps stay unchanged. This
 adds a bounded deferred-content allowance, and the production build passes. The
 updated privacy page will be captured in full at all six existing fixture widths.
+
+At 48d70f73, all 347 hosted responsive fixtures pass. Full-page privacy captures
+at 360, 768 and 1280 pixels were inspected with readable content and no clipping.
+The older expanded owner journey exposed a wrong sign-out selector on the legacy
+enrollment route; its explicit header action now retains the original logout
+assertions. Confirmation recovery now preserves the same receipt after HTTP 401
+without automatic auth refresh/retry, and malformed saved invitations are removed
+without enrollment requests. Twelve new failing regressions pass after correction;
+the late-account guard regression also passes. Hosted owner and final union proof
+remain open.

@@ -17,6 +17,10 @@ generates one opaque UUID, also the job ID, and reuses it after an uncertain
 response. Keep this ID in the URL for reload recovery; store no credentials.
 Only the authenticated preparation screen can request, confirm or cancel.
 Confirmation requires the exact phrase DELETE MY ACCOUNT and a recent login.
+Confirmation never automatically refreshes or retries after HTTP 401. The same
+request's cookie-bound receipt must remain reachable before ordinary auth recovery
+can clear its navigation context. This exception retains account-generation and
+abort guards. HTTP 428 still asks for a recent sign-in, preserving the job ID.
 Show irreversible access closure and possible restricted-record retention before
 the confirmation action. A 202 response means accepted, never completed.
 

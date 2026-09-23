@@ -39,9 +39,18 @@ export function storePendingCohortInvite(invite: PendingCohortInvite): void {
 function readPendingCohortInvite(): PendingCohortInvite | null {
   try {
     const raw = sessionStorage.getItem(PENDING_COHORT_INVITE_KEY)
-    if (raw) {
-      return JSON.parse(raw) as PendingCohortInvite
+    if (!raw) return null
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object' && 'cohortId' in parsed && 'inviteCode' in parsed
+        && typeof parsed.cohortId === 'string' && parsed.cohortId.trim()
+        && typeof parsed.inviteCode === 'string' && parsed.inviteCode.trim()) {
+        return { cohortId: parsed.cohortId.trim(), inviteCode: parsed.inviteCode.trim() }
+      }
+    } catch {
+      // A corrupt saved value must not keep intercepting future sign-ins.
     }
+    sessionStorage.removeItem(PENDING_COHORT_INVITE_KEY)
     return null
   } catch {
     return null

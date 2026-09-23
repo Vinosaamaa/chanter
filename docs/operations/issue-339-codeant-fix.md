@@ -180,3 +180,15 @@ transaction; the expanded hosted journey must verify its repeated 204 result.
 review again found only the keyed V2/legacy callers and the API client's post-body
 session guard; no new reachable disclosure was demonstrated. Its prior disposition
 stands without reopening the completed general remediation rounds.
+
+4078702616 is confirmed: malformed JSON or missing/non-string/blank invitation
+fields could remain in tab storage or issue undefined join requests. Nine failing
+cases now pass after narrow shape validation and corrupt-value removal.
+
+4078703105 misidentifies the recent-login response, which is 428 and already keeps
+the preparation/relogin path. Independent review found the related real blocker:
+confirmation 401 followed by failed automatic refresh clears auth generation before
+receipt navigation. Confirmation now disables only that automatic refresh/retry.
+Generation/abort guards and credentialed CSRF protection remain. One API regression
+and two actual-client/router cases failed first and pass after correction, preserving
+the exact PREPARED or ERASING receipt without claiming an uncertain result succeeded.

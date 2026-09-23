@@ -145,3 +145,11 @@ diff from the recorded UI base, verifies the pinned backend before applying that
 patch, and checks the resulting changed-path set. A temporary-index check proves
 that the patch applies without overwriting #251's other repository changes. Wider
 backend edits fail closed; no publishing permissions or branches are broadened.
+
+Confirmation needs a narrower auth policy than sign-in: disable automatic 401
+refresh/retry while still rejecting late responses after an account change.
+The new request option separates these concerns. Read-only receipt authority is
+unchanged, PREPARED still links to the exact preparation, and uncertain confirmation
+never declares success. Actual-client/router regressions demonstrate both prepared
+and committed outcomes. Saved invitation values now require two nonblank strings;
+corrupt tab storage cannot issue undefined join requests or persist indefinitely.

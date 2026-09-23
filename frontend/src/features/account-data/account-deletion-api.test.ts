@@ -38,3 +38,23 @@ it('rejects receipt path injection before network access', async () => {
   await expect(getDeletionReceipt(`${id}/../other`)).rejects.toThrow('Invalid deletion')
   expect(fetchMock).not.toHaveBeenCalled()
 })
+
+it('returns confirmation unauthorized without refreshing or retrying the destructive request', async () => {
+  fetchMock.mockResolvedValue(new Response('', { status: 401 }))
+  refresh.mockResolvedValue(true)
+  await expect(confirmDeletion(id)).rejects.toMatchObject({ status: 401 })
+  expect(refresh).not.toHaveBeenCalled()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+it('rejects a late confirmation response after the account changes', async () => {
+  let generation = 1
+  configureApiAuth({ getAccessToken: () => 'ordinary-token', getSessionGeneration: () => generation, refreshSession: refresh })
+  let finish!: (response: Response) => void
+  fetchMock.mockImplementation(() => new Promise<Response>(resolve => { finish = resolve }))
+  const result = confirmDeletion(id)
+  generation = 2
+  finish(new Response('{}', { status: 202 }))
+  await expect(result).rejects.toMatchObject({ name: 'AbortError' })
+  expect(refresh).not.toHaveBeenCalled()
+})
