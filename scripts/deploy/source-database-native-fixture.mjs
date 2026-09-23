@@ -11,7 +11,7 @@ import { applyRecoveryAuthority } from './restore-current-authority.mjs';
 import { JournalRepository } from './terminal-journal-storage.mjs';
 import { replicateJournal } from './terminal-journal-replica.mjs';
 import { lifecycleClient } from './terminal-journal-client.mjs';
-import { nonzeroUuid, sameWatermark } from './terminal-journal.mjs';
+import { checkpointIdentity, nonzeroUuid, sameWatermark } from './terminal-journal.mjs';
 
 const execute = (file, args, options = {}) => {
   try { return execFileSync(file, args, { encoding: 'utf8', timeout: 600_000,
@@ -83,8 +83,9 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.ok(sameWatermark(replica.authority, authority));
       return replica;
     },
-    async recover(authority, historical, objects) {
+    async recover(authority, historical, postBackupGraph, objects) {
       nonzeroUuid(historical.serverId);
+      nonzeroUuid(postBackupGraph.serverId); nonzeroUuid(postBackupGraph.courseId);
       assert.ok(Array.isArray(historical.channelIds) && historical.channelIds.length > 0 && historical.channelIds.length <= 64);
       for (const id of historical.channelIds) nonzeroUuid(id);
       // No original application process may still write the source fixture database or objects.
@@ -112,6 +113,8 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.equal(sql(restored.container, 'chanter_media', 'SELECT inventory_id::text || chr(58) || database_backup_id::text || chr(58) || authority_revision::text FROM media_recovery_inventory WHERE id=1'),
         `${inventoryId}:${databaseBackupId}:0`);
       assert.equal(sql(restored.container, 'chanter_community', `SELECT count(*) FROM courses WHERE id='${courseId}'`), '1');
+      assert.equal(sql(restored.container, 'chanter_community', `SELECT count(*) FROM study_servers WHERE id='${postBackupGraph.serverId}'`), '0');
+      assert.equal(sql(restored.container, 'chanter_community', `SELECT count(*) FROM courses WHERE id='${postBackupGraph.courseId}'`), '0');
       assert.equal(sql(restored.container, 'chanter_agent', `SELECT outcome FROM native_companion_requests WHERE id='${nativeRequestId}'`), 'ISSUED');
       assert.ok(Number(sql(restored.container, 'chanter_auth', 'SELECT count(*) FROM auth_sessions WHERE revoked_at IS NULL')) > 0);
       // POSIX WAL replay needed the read-only repository mount. Recreate only this owned, promoted fixture
@@ -124,8 +127,10 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
         '--volume', `${restored.volume}:/var/lib/postgresql/data`, '--entrypoint', 'postgres', release.images.postgres,
         '-D', '/var/lib/postgresql/data', '-c', 'archive_mode=off', '-c', 'listen_addresses=', '-c', 'shared_buffers=192MB', '-c', 'work_mem=2MB']);
       docker(['network', 'disconnect', restored.network, restored.container]);
-      const result = await applyRecoveryAuthority({ bundleDir: fixtureBundle, destination, settings,
-        environment: 'staging', requiredAuthority: authority }, {
+      const recoveryOptions = { bundleDir: fixtureBundle, destination, settings,
+        environment: 'staging', requiredAuthority: authority };
+      let interruptMessage = true, interruptionObserved = false, invalidationCalls = 0;
+      const recoveryDependencies = {
         run: (args, timeout) => {
           if (args[0] === 'compose') {
             const file = args[args.indexOf('-f') + 1];
@@ -141,7 +146,15 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
         repositoryFactory: () => journal,
         clientFactory: options => {
           const client = lifecycleClient(options);
-          return { ...client, kind: 'fixture', invalidate: async request => {
+          return { ...client, kind: 'fixture', reapply: async page => {
+            // Simulate loss of one participant transport after real auth/community replay.
+            // The operator must preserve the attempt and stop every owned process before retry.
+            if (options.source === 'message' && interruptMessage) {
+              interruptionObserved = true; throw new Error('Hosted participant interruption');
+            }
+            return client.reapply(page);
+          }, invalidate: async request => {
+            invalidationCalls++;
             const database = docker(['compose', '--project-name', options.project, '-f', options.composeFile, 'ps', '--quiet', 'postgres']).trim();
             if (options.source === 'agent') {
               assert.equal(sql(database, 'chanter_agent', `SELECT outcome || ':' || (evidence_json IS NOT NULL)::text FROM native_companion_requests WHERE id='${nativeRequestId}'`), 'ISSUED:true');
@@ -152,10 +165,21 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
             return receipt;
           } };
         },
-      });
+      };
+      await assert.rejects(() => applyRecoveryAuthority(recoveryOptions, recoveryDependencies),
+        /Current authority recovery failed/);
+      assert.equal(interruptionObserved, true); assert.equal(invalidationCalls, 0);
+      const attempt = path.join(destination, `authority-${checkpointIdentity('staging', authority)}`);
+      const interrupted = json(path.join(attempt, 'attempt.json'));
+      assert.equal(interrupted.status, 'failed-preserved'); assert.equal(interrupted.publicCutoverAllowed, false);
+      assert.equal(fs.existsSync(path.join(attempt, 'authority-receipt.json')), false);
+      assert.equal(docker(['ps', '--filter', `label=chanter.recovery=${restored.container}`, '--format', '{{.ID}}']).trim(), '');
+      interruptMessage = false;
+      const result = await applyRecoveryAuthority(recoveryOptions, recoveryDependencies);
+      assert.equal(result.recoveryId, interrupted.recoveryId); assert.equal(invalidationCalls, 2);
       assert.equal(result.publicCutoverAllowed, false); assert.equal(result.isolationVerified, true);
       assert.equal(result.participants.length, 7); assert.equal(result.invalidations.length, 2);
-      const attempt = path.join(destination, `authority-${result.checkpointId}`), recoveredCompose = path.join(attempt, 'compose.json');
+      const recoveredCompose = path.join(attempt, 'compose.json');
       const recovered = json(recoveredCompose);
       // Operator stopped every source. Start only the restored PostgreSQL process for read-only owning-row checks.
       docker(['compose', '--project-name', recovered.name, '-f', recoveredCompose, 'up', '-d', '--no-deps', '--wait', 'postgres']);
@@ -165,11 +189,14 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.equal(sql(database, 'chanter_agent', `SELECT outcome || ':' || (evidence_json IS NULL)::text FROM native_companion_requests WHERE id='${nativeRequestId}'`), 'REJECTED:true');
       assert.equal(sql(database, 'chanter_community', `SELECT count(*) FROM courses WHERE id='${courseId}'`), '0');
       assert.equal(sql(database, 'chanter_community', `SELECT count(*) FROM courses WHERE id='${liveGraph.courseId}' AND study_server_id='${liveGraph.serverId}'`), '1');
+      assert.equal(sql(database, 'chanter_community', `SELECT count(*) FROM study_servers WHERE id='${postBackupGraph.serverId}'`), '0');
       assert.equal(historical.courseId, courseId); assert.equal(historical.historicalFixtureOnly, true);
       for (const source of ['community', 'message', 'media', 'agent', 'notification', 'search']) {
         assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_scope_imports WHERE study_server_id='${historical.serverId}' AND total_count=0 AND ready=TRUE`), '2');
         assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_recovery_scope_ids WHERE study_server_id='${historical.serverId}' AND scope_kind='COURSE' AND scope_id='${courseId}'`), '1');
         assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_recovery_scope_ids WHERE study_server_id='${historical.serverId}' AND scope_kind='CHANNEL' AND scope_id IN (${historical.channelIds.map(id => `'${id}'`).join(',')})`), String(historical.channelIds.length));
+        assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_scope_import_ids WHERE study_server_id='${postBackupGraph.serverId}' AND scope_kind='COURSE' AND scope_id='${postBackupGraph.courseId}'`), '1');
+        assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_recovery_scope_ids WHERE study_server_id='${postBackupGraph.serverId}' AND scope_kind='COURSE' AND scope_id='${postBackupGraph.courseId}'`), '1');
       }
       // Object reconstruction is a separate, stopped-source phase on this same restored database.
       // It preserves the exact private network and uses a fresh owned local namespace, never an external S3 claim.
@@ -220,6 +247,8 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.equal(docker(['ps', '--filter', `volume=${objectVolume}`, '--format', '{{.ID}}']).trim(), '');
       return { ...result, databaseBackupVerified: true, restoredSessionsInvalidated: true,
         restoredPendingNativeInvalidated: true, historicalCourseReconciled: true, objectRestoreVerified: true,
+        postBackupServerReconciled: true,
+        interruptedParticipantRetryVerified: true,
         mediaReceiptAfterObjectClosure: mediaReceipt, terminalObjectRestorationRefused: true,
         externalProviderClosureVerified: false };
     },

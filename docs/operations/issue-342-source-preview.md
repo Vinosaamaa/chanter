@@ -134,3 +134,18 @@ remains separate from new restored-database receipts. Only a successful combined
 run can record `objectRestoreVerified=true`; it still records
 `externalProviderClosureVerified=false` and does not establish provider-version
 retention or complete source cleanup.
+
+A further unverified case creates a second terminal server after the actual
+database backup, then deletes it through the real source path. Its canonical
+current scope is nonempty, while the restored database must have neither server
+nor course. Replay must retain those authoritative current IDs and the matching
+derived course ID at every dependent source without inventing an older graph.
+This complements the historical-only child case; both await hosted evidence.
+
+The fixture also interrupts the actual operator at the first message-source
+replay call, after auth and community have run. It requires a failed-preserved
+attempt, no success receipt, no credential invalidation and every owned process
+stopped. The unchanged operator then retries with the same restore/recovery
+identity and original journal authority. Only real subsequent participant and
+invalidation receipts can complete the isolated phase. This new interruption
+case is not yet runtime-proven.

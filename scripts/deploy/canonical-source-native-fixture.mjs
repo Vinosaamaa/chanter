@@ -230,6 +230,8 @@ try {
   assert.deepEqual(Buffer.from(objectCall({ action: 'read', request }, destinationFile).base64, 'base64'), actualBytes);
   assert.equal(objectCall({ action: 'fence', inventoryId }).unsettledMutations, 0);
   compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', ...sources.map(source => `${source}-service`)]);
+  const postBackupGraph = call('community', { action: 'community-seed', ownerId: owner.accountId });
+  nonzeroUuid(postBackupGraph.serverId); nonzeroUuid(postBackupGraph.courseId);
   const jobId = crypto.randomUUID();
   call('auth', { action: 'account-prepare', alias: deletedAlias, jobId }); relay();
   call('auth', { action: 'account-confirm', alias: deletedAlias, jobId }); relay();
@@ -261,17 +263,18 @@ try {
     courseId: graph.courseId, ownerId: owner.accountId });
   assert.equal(historical.historicalFixtureOnly, true); assert.equal(historical.courseId, graph.courseId);
   call('community', { action: 'server-delete', serverId: graph.serverId, ownerId: owner.accountId }); relay();
+  call('community', { action: 'server-delete', serverId: postBackupGraph.serverId, ownerId: owner.accountId }); relay();
   assert.deepEqual(objectCall({ action: 'expect-refusal', request, reason: 'STALE_SOURCE', base64: decrypted.toString('base64') }, destinationFile),
     { refused: 'STALE_SOURCE', publicCutoverAllowed: false });
   const page = call('auth', { action: 'journal', afterRevision: 0 }); validatePage(page, GENESIS);
   assert.ok(sameWatermark(page.next, page.through));
   assert.deepEqual(page.entries.map(entry => `${entry.targetKind}:${entry.targetId}`).sort(), [
     `ACCOUNT:${account.accountId}`, `RESOURCE:${available.resourceId}`, `STUDY_SERVER:${graph.serverId}`,
+    `STUDY_SERVER:${postBackupGraph.serverId}`,
   ].sort());
-  const server = page.entries.find(entry => entry.targetKind === 'STUDY_SERVER');
   assert.ok(!page.entries.some(entry => entry.targetId === liveGraph.serverId || entry.targetId === owner.accountId));
   const scopes = [];
-  for (const kind of SCOPE_KINDS) {
+  for (const server of page.entries.filter(entry => entry.targetKind === 'STUDY_SERVER')) for (const kind of SCOPE_KINDS) {
     const verifier = new ScopeVerifier(server, kind);
     for (let index = 0; !verifier.complete; index++) {
       assert.ok(index < 8, 'Synthetic canonical fixture scope unexpectedly large');
@@ -280,12 +283,13 @@ try {
     }
     // The real current archive is empty after the fixture-only historical child removal.
     // Recovery must derive the older database's course/channels under the same original terminal entry.
-    assert.equal(verifier.result().totalCount, 0);
+    if (server.targetId === graph.serverId) assert.equal(verifier.result().totalCount, 0);
+    else assert.ok(verifier.result().totalCount > 0);
   }
   assert.equal(deferred.length, 0, 'Every owning lifecycle command must reach its actual participant');
   const journalReplica = await databaseDrill.archiveCurrent(page.through);
   compose(['stop', ...sources.map(source => `${source}-service`)]);
-  const recoveredAuthority = await databaseDrill.recover(page.through, historical, {
+  const recoveredAuthority = await databaseDrill.recover(page.through, historical, postBackupGraph, {
     archive, liveArchived, liveObject, archivedNamespace: fence.storageNamespaceSha256, actualBytes,
   });
   // Committed delivery is not complete source cleanup or a receipt for replay on a restored database.
