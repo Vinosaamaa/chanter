@@ -234,3 +234,10 @@ requester progress. It separately checks stranger denial and same-job retries af
 durable registration. This case cannot pass until #251 fixes the observed server
 retry denial after canonical registration; it does not claim dialog timing or
 completed erasure. Discovery covers this case in all three engines.
+
+The renewed account preview at 435a40b2 passed all 48 real browser journeys on their
+first attempts, including the previously retried WebKit usage case. Full CI passed
+there as well. The next manual preview pins #251 backend 5a6e92e0, which fixes the
+post-registration server retry and has unchanged infrastructure. This enables the
+new source case without relaxing its expected 202/same-job contract. Current-head
+source and final union results remain pending.

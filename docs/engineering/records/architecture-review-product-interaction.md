@@ -108,3 +108,8 @@ retry, and requester progress/reload with separate actors. It waits for registra
 through the real API before browser navigation and explicitly excludes dialog timing.
 This preserves strict browser-health checks and cannot hide the known post-canonical
 server retry defect. No mocked response or manual source relay establishes success.
+
+After the Teaching readiness correction, the actual account dependency preview
+passed all 48 browser journeys without retries. The source preview now requires
+the corrected post-canonical retry backend checkpoint and identical infrastructure;
+its real-service result remains pending independently of component/browser fixtures.

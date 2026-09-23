@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          source=7adad182010c1ed5fca456206eb5a7357e170581
+          source=5a6e92e07b68ab7073e0ed5df48ecd028c29d3b6
           git fetch --no-tags origin "$source"
           test "$(git rev-parse FETCH_HEAD)" = "$source"
           git diff --exit-code HEAD "$source" -- infra

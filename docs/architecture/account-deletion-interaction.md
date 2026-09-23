@@ -103,10 +103,17 @@ cleanup proof required from the combined #251/#342 backend.
 
 Before final integration, a manually dispatched hosted dependency preview composes
 the current UI/scripts with the entire backend at the explicitly pinned #251 commit
-7adad182010c1ed5fca456206eb5a7357e170581. It verifies the infrastructure trees agree,
+5a6e92e07b68ab7073e0ed5df48ecd028c29d3b6. It verifies the infrastructure trees agree,
 uses no production secrets, publishes no release, and leaves ordinary exact-head
 checks unchanged. This narrower preview can prove export, cancellation, authority
 revocation and receipt reload while source cleanup remains ERASING. It is not the
 final #251/#342 union. The browser scenario stays preview-gated until that union is
 accepted, and validates a complete seven-source ZIP without logging its contents
 or cookie values. Existing trace/video/screenshot restrictions apply.
+
+A separate source case uploads a real scanned file and verifies its bytes for the
+owner and enrolled member. It submits API deletion, waits for durable registration,
+then opens, refreshes and reloads the requester progress page. Same-target retries
+must return the original job even after canonical registration; non-requesters and
+anonymous clients cannot read its progress. It deliberately does not claim browser
+dialog-to-registration timing, immediate completion, or restored-source proof.
