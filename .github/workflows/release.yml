@@ -4,11 +4,55 @@ on:
   pull_request:
     paths: ['infra/production/**', 'scripts/deploy/**', 'scripts/upload-source-maps.mjs', 'infra/monitoring/sentry-cli.json', 'frontend/**', '.github/workflows/release.yml']
   workflow_dispatch:
+    inputs:
+      source_recovery_preview:
+        description: 'Run the pinned disposable #251 + #342 source recovery dependency preview'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  source-recovery-preview:
+    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && inputs.source_recovery_preview == true && github.ref == 'refs/heads/codex/342-source-object-recovery'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    env:
+      CHANTER_SOURCE_RECOVERY_PREVIEW: 'true'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.19.0'
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '21.0.12+8.0.LTS'
+      - name: Union only the pinned dependency in this disposable checkout
+        run: node scripts/deploy/prepare-source-recovery-preview.mjs
+      - name: Verify combined source and recovery code
+        run: |
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml verify -Dproject.build.outputTimestamp="$SOURCE_DATE_EPOCH"
+          node --test scripts/deploy/*.test.mjs
+          npm --prefix frontend ci
+          npm --prefix frontend run build
+      - name: Build and scan the disposable dependency images
+        run: bash scripts/deploy/build-release.sh '${{ matrix.architecture }}'
+      - name: Exercise real canonical source generation and recovery isolation
+        run: bash scripts/deploy/smoke-release.sh '${{ matrix.architecture }}'
   validate:
     if: github.event.repository.private == false && github.event_name == 'pull_request'
     strategy:
@@ -46,7 +90,7 @@ jobs:
       - name: Run ephemeral staging
         run: bash scripts/deploy/smoke-release.sh '${{ matrix.architecture }}'
   package:
-    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.source_recovery_preview != true
     concurrency:
       group: release-package-${{ github.sha }}-${{ matrix.architecture }}
       cancel-in-progress: false
