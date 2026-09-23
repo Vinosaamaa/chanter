@@ -54,10 +54,18 @@ five existing native-only skips. No byte HTTP endpoint is enabled.
 
 The existing dual-architecture media workflow now runs the query contracts on
 PostgreSQL and preserves an UNKNOWN DELETE/fence through its actual database
-restart. The new native-only test compiles locally and skips without the hosted
-fixture flag; native execution remains pending. These synthetic source-row
+restart. Both native architectures passed at `96d807c9`, including the query
+contracts and actual PostgreSQL restart. These synthetic source-row
 contracts remain distinct from the actual #251 canonical fixture and full object
 archive/restore orchestration.
+
+The completed full CodeAnt review at `96d807c9` found a local failed-copy residue.
+The regression reproduced an object remaining after its input could not be read.
+The adapter now removes only the file it successfully created for that invocation,
+after stream closure. Cleanup failure retains UNKNOWN; an existing-key conflict
+cannot delete another object. The regression then passed with the affected
+inventory and adapter tests. Review dispositions and outstanding source-union
+blockers are recorded in `issue-342-codeant-fix.md`.
 
 Coordinated source lifecycle hooks, physical inventory qualification, full object
 restoration and actual #251 canonical replay are still in progress.

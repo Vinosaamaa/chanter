@@ -61,14 +61,25 @@ public class LocalPrivateResourceStorage implements PrivateResourceStorage {
         write(restore.reference().key(),null,bytes,restore.mutationId());
     }
     private void write(String key,Path content,byte[] bytes,java.util.UUID mutation) throws IOException {
+        Path target=null;
+        boolean created=false;
         try {
-            Path target = path(key);
+            target = path(key);
             Files.createDirectories(target.getParent());
-            // CREATE_NEW rejects existing keys; a failed synchronous write is closed before settlement.
+            // Only this invocation's CREATE_NEW file may be removed after the stream closes.
             try (var out = Files.newOutputStream(target, java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)) {
+                created=true;
                 if (bytes==null) Files.copy(content, out); else out.write(bytes);
             }
         } catch (IOException | RuntimeException failure) {
+            if (created) {
+                try { Files.deleteIfExists(target); }
+                catch (IOException | RuntimeException cleanupFailure) {
+                    failure.addSuppressed(cleanupFailure);
+                    mutations.uncertain(mutation);
+                    throw new PutFailure(WriteOutcome.UNKNOWN, failure);
+                }
+            }
             mutations.settled(mutation);
             throw new PutFailure(WriteOutcome.FINISHED, failure);
         }

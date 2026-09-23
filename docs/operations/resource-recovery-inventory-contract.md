@@ -27,11 +27,17 @@ or declares provider quiescence.
 
 Capture takes the source terminal lock before the existing budget lock. It
 requires the exact applied prefix and rejects individual terminal deliveries
-beyond that prefix, source deletion requests lacking canonical authority, unknown
+beyond that prefix, source deletion requests without an applied permanent RESOURCE
+target for the same resource, unknown
 storage namespace, unsettled physical mutations, unsettled source writes, any
 remaining worker lease and legacy references. Every deleted Study Server requires
 matching READY current and restore-derived COURSE and CHANNEL scope in recovery
 mode. Resource rows with no Study Server ID still match through their course.
+
+The source request's `event_id` identifies the request outbox event. It is not the
+canonical journal event ID. The permanent target comes from #251's validated
+canonical import/delivery and must be within the exact applied prefix. This check
+does not prove normal job acknowledgement or physical deletion completion.
 
 One temporary snapshot exists inside media at a time. It contains at most 250,000
 references and is created atomically using bounded batches. It includes the

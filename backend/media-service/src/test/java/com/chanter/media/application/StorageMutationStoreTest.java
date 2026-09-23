@@ -118,6 +118,22 @@ class StorageMutationStoreTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations", Integer.class)).isZero();
     }
 
+    @Test void failedLocalCopyRemovesOnlyItsOwnCreatedObjectAndAllowsRetry(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        var root=directory.resolve("private");
+        var adapter=new com.chanter.media.infra.LocalPrivateResourceStorage(root.toString(),store);
+        String key=key();
+        assertThatThrownBy(() -> adapter.put(key,directory.resolve("missing-input"),"a".repeat(64)))
+                .isInstanceOf(PrivateResourceStorage.PutFailure.class);
+        assertThat(root.resolve(key)).doesNotExist();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations",Integer.class)).isZero();
+        var content=directory.resolve("content"); java.nio.file.Files.writeString(content,"complete fixture");
+        adapter.put(key,content,UploadValidator.checksum(content));
+        assertThatThrownBy(() -> adapter.put(key,directory.resolve("missing-input"),"a".repeat(64)))
+                .isInstanceOf(PrivateResourceStorage.PutFailure.class);
+        assertThat(root.resolve(key)).hasContent("complete fixture");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations",Integer.class)).isZero();
+    }
+
     @Test void remoteUnknownDeleteSurvivesAdapterRestartAndBlocksRedispatch() throws Exception {
         var requests = new java.util.concurrent.atomic.AtomicInteger();
         var response = new java.util.concurrent.atomic.AtomicInteger(500);
