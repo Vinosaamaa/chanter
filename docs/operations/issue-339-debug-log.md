@@ -162,3 +162,23 @@ and retry, retaining generation/abort guards. Both router regressions pass. Nine
 malformed saved-invitation cases also failed before validation and now make no
 join request, clearing the corrupt value. All 66 focused account/invite/client
 tests and lint pass; renewed hosted acceptance remains required.
+
+The captured enrollment route also exposed a remaining UI reconstruction gap.
+Moving it into the existing responsive shell removes the need for its legacy
+sign-out selector. Review found a supported 80-character channel name could push
+Preview out of the row; wrapping and a nonshrinking link address that case. The
+synthetic navigation response requires explicit canManagePeople for this owner
+scenario; visual=staff alone does not grant it. Capability denial tests stay intact.
+Initial added styles exceeded the unchanged raw CSS cap by 301 bytes. Reusing
+existing layout utilities removed the duplicate rules. A following build exceeded
+raw JavaScript by 8 bytes; passing the already resolved cohort into its child removes
+duplicate selection and optional fallbacks. The resulting build passes both caps.
+
+The e30c6ce4 hosted owner journey then reached invitation joining and received 403
+in all three engines, while the other 45 ordinary cases passed. This is a real
+product contract gap: course creation defaults to OPEN, which intentionally requires
+existing Study Server membership even with a valid invitation. No production creation
+field currently chooses INVITE_ONLY. Preserve that security boundary; a separately
+owned backend prerequisite will add an explicit creation policy with omitted-field
+compatibility, then the owner UI can choose invitation access. Do not make the test
+silently seed membership or alter policy directly in the database.

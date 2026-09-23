@@ -153,3 +153,11 @@ unchanged, PREPARED still links to the exact preparation, and uncertain confirma
 never declares success. Actual-client/router regressions demonstrate both prepared
 and committed outcomes. Saved invitation values now require two nonblank strings;
 corrupt tab storage cannot issue undefined join requests or persist indefinitely.
+
+Enrollment's responsive-shell move keeps the same outer authentication boundary
+and manager gate before management reads. The parent resolves one valid cohort and
+passes that exact object to the keyed child; changing cohorts still remounts form,
+search and pagination state. Retries call only their owning read. No API permission
+or role changes. Independent review caught the long-name layout and synthetic owner
+capability omissions before hosted verification. Final visual/real-service evidence
+must use the actual responsive route, not the earlier legacy-header screenshots.

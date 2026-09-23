@@ -189,3 +189,11 @@ hosted owner journey's captured legacy header supplies its explicit sign-out
 selector; response, cookie and navigation assertions stay intact. All 66 focused
 account/invite/client cases and lint pass; current hosted and final union acceptance
 remain separate.
+
+Enrollment management joins the responsive shell under its existing authentication
+and manager checks. Its already resolved cohort is passed directly to the keyed
+controller, preserving switching and fallback without duplicate selection. Explicit
+read retries, long-name wrapping and accessible input/action sizes address the
+remaining management-page gap. Forty-one onboarding tests and unchanged production
+budgets pass; nine new three-engine fixtures await hosted execution. The owning
+design is docs/architecture/enrollment-management.md.

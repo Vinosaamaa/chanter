@@ -9,6 +9,7 @@ import { courseChannelPath } from '../../shell/shell-routes'
 
 import { useCohortEnrollments, useCohortInvite } from '../hooks/use-cohort-enrollments'
 import { useCohortEnrollment } from '../hooks/use-cohort-enrollment'
+import './cohort-enrollment.css'
 
 const pageSize = 8
 
@@ -41,8 +42,9 @@ export function CohortEnrollmentPage() {
 
   if (navigationQuery.isError) {
     return (
-      <section className="flex flex-1 items-center justify-center p-6 text-sm text-red-300">
-        Could not load enrollment for this Study Server.
+      <section className="enrollment-error flex flex-1 flex-col items-center justify-center gap-3 p-6 text-sm" role="alert">
+        <p>Could not load enrollment for this Study Server.</p>
+        <Button type="button" variant="secondary" onClick={() => void navigationQuery.refetch()} disabled={navigationQuery.isFetching}>Retry enrollment</Button>
       </section>
     )
   }
@@ -58,21 +60,19 @@ export function CohortEnrollmentPage() {
 
   if (!course.capabilities.canManagePeople) return <Navigate to={`/app/servers/${serverId}/courses/${courseId}/people${location.search}`} replace />
   const requestedCohort = new URLSearchParams(location.search).get('cohort')
-  const selectedCohortId = (course.cohorts.find(item => item.id === requestedCohort) ?? course.cohorts[0]).id
-  return <ManagerEnrollment key={`${course.id}:${selectedCohortId}`} serverId={serverId} course={course} selectedCohortId={selectedCohortId} />
+  const cohort = course.cohorts.find(item => item.id === requestedCohort) ?? course.cohorts[0]
+  return <ManagerEnrollment key={`${course.id}:${cohort.id}`} serverId={serverId} course={course} cohort={cohort} />
 }
 
-function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: string; course: ShellCourse; selectedCohortId: string }) {
+function ManagerEnrollment({ serverId, course, cohort }: { serverId: string; course: ShellCourse; cohort: ShellCourse['cohorts'][number] }) {
   const queryClient = useQueryClient()
   const [, setSearchParams] = useSearchParams()
-  const cohort =
-    course?.cohorts.find((item) => item.id === selectedCohortId) ?? course?.cohorts[0]
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
-  const enrollment = useCohortEnrollment(cohort?.id ?? '')
-  const inviteQuery = useCohortInvite(cohort?.id)
-  const enrollmentsQuery = useCohortEnrollments(cohort?.id, {
+  const enrollment = useCohortEnrollment(cohort.id)
+  const inviteQuery = useCohortInvite(cohort.id)
+  const enrollmentsQuery = useCohortEnrollments(cohort.id, {
     limit: pageSize,
     offset: (page - 1) * pageSize,
     search: debouncedSearch || undefined,
@@ -108,14 +108,14 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
 
   const onEnroll = async () => {
     const enrolled = await enrollment.enroll()
-    if (enrolled && cohort) {
+    if (enrolled) {
       await queryClient.invalidateQueries({ queryKey: ['cohort-enrollments', cohort.id] })
     }
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-app-bg">
-      <header className="border-b border-app-border px-6 py-5">
+    <section className="enrollment-page flex min-w-0 flex-1 flex-col overflow-y-auto bg-app-bg">
+      <header className="break-words border-b border-app-border px-4 py-5 sm:px-6">
         <p className="text-xs text-app-muted">
           <Link to={`/app/servers/${serverId}/home`} className="hover:text-app-text">
             Study Server home
@@ -156,8 +156,8 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
         )}
       </header>
 
-      <div className="grid flex-1 gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
+      <div className="grid w-full gap-6 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_320px]" style={{ maxWidth: 1440 }}>
+        <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-app-text">Learners ({totalCount})</h2>
             <label className="flex w-full max-w-xs flex-col gap-1 text-xs text-app-muted">
@@ -174,13 +174,14 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
             </label>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-app-border bg-app-surface">
+          <div className="max-w-full overflow-x-auto rounded-xl border border-app-border bg-app-surface">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-app-border bg-app-elevated text-xs uppercase tracking-wide text-app-muted">
+              <caption className="sr-only">Enrolled learners</caption>
+              <thead className="border-b border-app-border bg-app-elevated text-xs text-app-muted">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Learner</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                                    <th className="px-4 py-3 font-medium">Enrolled</th>
+                  <th className="px-2 py-3 sm:px-4 font-medium">Learner</th>
+                  <th className="px-2 py-3 sm:px-4 font-medium">Status</th>
+                  <th className="px-2 py-3 sm:px-4 font-medium">Enrolled</th>
                 </tr>
               </thead>
               <tbody>
@@ -192,8 +193,9 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
                   </tr>
                 ) : enrollmentsQuery.isError ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-6 text-red-300">
-                      Could not load enrollments.
+                    <td colSpan={3} className="enrollment-error px-4 py-6" role="alert">
+                      <p>Could not load enrollments.</p>
+                      <Button type="button" variant="secondary" onClick={() => void enrollmentsQuery.refetch()} disabled={enrollmentsQuery.isFetching}>Retry learner list</Button>
                     </td>
                   </tr>
                 ) : pageRows.length === 0 ? (
@@ -205,11 +207,11 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
                 ) : (
                   pageRows.map((row) => (
                     <tr key={row.learnerUserId} className="border-t border-app-border/70">
-                      <td className="px-4 py-3 font-medium text-app-text">
+                      <td className="px-2 py-3 sm:px-4 font-medium text-app-text">
                         {formatLearnerLabel(row.learnerUserId)}
                       </td>
-                      <td className="px-4 py-3 text-emerald-300">Enrolled</td>
-                      <td className="px-4 py-3 text-app-muted">
+                      <td className="enrollment-success px-2 py-3 sm:px-4">Enrolled</td>
+                      <td className="px-2 py-3 sm:px-4 text-app-muted">
                         {new Date(row.enrolledAt).toLocaleDateString()}
                       </td>
                     </tr>
@@ -247,7 +249,7 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
           ) : null}
 
           <form
-            className="rounded-xl border border-app-border bg-app-surface p-5"
+            className="rounded-xl border border-app-border bg-app-surface p-4"
             onSubmit={(event) => {
               event.preventDefault()
               void onEnroll()
@@ -269,12 +271,12 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
               />
             </label>
             {enrollment.error ? (
-              <p role="alert" className="mt-3 text-sm text-red-300">
+              <p role="alert" className="enrollment-error mt-3 text-sm">
                 {enrollment.error}
               </p>
             ) : null}
             {enrollment.successMessage ? (
-              <p role="status" className="mt-3 text-sm text-emerald-200">
+              <p role="status" className="enrollment-success mt-3 text-sm">
                 {enrollment.successMessage}
               </p>
             ) : null}
@@ -284,8 +286,8 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
           </form>
         </div>
 
-        <aside className="space-y-4">
-          <article className="rounded-xl border border-app-border bg-app-surface p-5">
+        <aside className="min-w-0 space-y-4">
+          <article className="rounded-xl border border-app-border bg-app-surface p-4">
             <h2 className="text-sm font-semibold text-app-text">Invite link</h2>
             <p className="mt-1 text-xs text-app-muted">
               Share this link so learners can sign in and join this cohort.
@@ -293,14 +295,14 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
             {inviteQuery.isLoading ? (
               <p className="mt-3 text-xs text-app-muted">Loading invite link…</p>
             ) : inviteQuery.isError || !inviteUrl ? (
-              <p className="mt-3 text-xs text-red-300">Could not load invite link.</p>
+              <div role="alert" className="enrollment-error mt-3 text-xs"><p>Could not load invite link.</p><Button type="button" variant="secondary" onClick={() => void inviteQuery.refetch()} disabled={inviteQuery.isFetching}>Retry invite link</Button></div>
             ) : (
               <>
                 <p className="mt-3 break-all rounded-lg border border-app-border bg-app-bg px-3 py-2 text-xs text-app-text">
                   {inviteUrl}
                 </p>
                 {copyMessage ? (
-                  <p role="status" className="mt-2 text-xs text-emerald-200">
+                  <p role="status" className="mt-2 text-xs">
                     {copyMessage}
                   </p>
                 ) : null}
@@ -316,24 +318,24 @@ function ManagerEnrollment({ serverId, course, selectedCohortId }: { serverId: s
             )}
           </article>
 
-          <article className="rounded-xl border border-app-border bg-app-surface p-5">
+          <article className="rounded-xl border border-app-border bg-app-surface p-4">
             <h2 className="text-sm font-semibold text-app-text">Course channels access</h2>
             <p className="mt-1 text-xs text-app-muted">
               Enrolled learners can access these course channels.
             </p>
-            <ul className="mt-4 space-y-2 text-sm">
+            <ul className="enrollment-channels mt-4 space-y-2 text-sm">
               {course.channels.map((channel) => (
                 <li
                   key={channel.id}
-                  className="flex items-center justify-between rounded-lg border border-app-border/70 px-3 py-2"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-app-border/70 px-3 py-2"
                 >
-                  <span className="text-app-text">
+                  <span className="enrollment-channel-name min-w-0 text-app-text">
                     {channel.kind === 'VOICE' ? '>' : '#'}
                     {channel.name}
                   </span>
                   <Link
                     to={courseChannelPath(serverId, channel.id)}
-                    className="text-xs text-app-accent hover:underline"
+                    className="shrink-0 text-xs text-app-accent hover:underline"
                   >
                     Preview
                   </Link>

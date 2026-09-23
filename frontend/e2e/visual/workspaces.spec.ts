@@ -18,6 +18,60 @@ test.beforeEach(async ({ page }) => {
 const course = '/app/servers/visual-study/courses/visual-course-0'
 const community = '/app/servers/visual-study/community'
 
+for (const viewport of [{ width: 320, height: 740 }, { width: 844, height: 390 }, { width: 1280, height: 900 }]) {
+  test(`fixture UI enrollment preserves owner actions at ${viewport.width} @enrollment`, async ({ page }, testInfo) => {
+    let enrolled = false
+    const submissions: unknown[] = []
+    await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('Fixture clipboard permission denied') } } }))
+    await page.route('**/api/v1/study-servers/visual-study/navigation', async route => {
+      const response = await route.fetch()
+      const data = await response.json()
+      data.courses[0].capabilities = { ...data.courses[0].capabilities, canManagePeople: true }
+      data.courses[0].channels.push({ id: 'visual-long-channel', name: 'x'.repeat(80), kind: 'TEXT' })
+      await route.fulfill({ response, json: data })
+    })
+    await page.route('**/api/v1/cohorts/visual-cohort/invite', route => route.fulfill({ json: { cohortId: 'visual-cohort', inviteCode: 'synthetic-enrollment-invitation' } }))
+    await page.route('**/api/v1/cohorts/visual-cohort/enrollments**', async route => {
+      if (route.request().method() === 'POST') {
+        submissions.push(route.request().postDataJSON())
+        if (submissions.length === 1) return route.fulfill({ status: 503, json: { message: 'Enrollment temporarily unavailable' } })
+        enrolled = true
+        return route.fulfill({ status: 201, json: {} })
+      }
+      await route.fulfill({ json: { enrollments: [{ learnerUserId: 'visual-enrolled-learner', enrolledAt: VISUAL_NOW }, ...(enrolled ? [{ learnerUserId: 'visual-new-learner', enrolledAt: VISUAL_NOW }] : [])], totalCount: enrolled ? 2 : 1, limit: 8, offset: 0 } })
+    })
+    await page.setViewportSize(viewport)
+    await page.goto(`${course}/enrollment?visual=staff`)
+    await expect(page.locator('.v2-app-shell')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Learners (1)', exact: true })).toBeVisible()
+    await expect(page.getByRole('table', { name: 'Enrolled learners' })).toBeVisible()
+    const email = page.getByRole('textbox', { name: 'Learner email', exact: true })
+    await email.fill('new-learner@example.test')
+    expect(await email.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+    expect(await email.evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16)
+    await page.getByRole('button', { name: 'Enroll learner', exact: true }).click()
+    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Learners (1)', exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-enrollment-error-${viewport.width}.png`) })
+    await page.getByRole('button', { name: 'Enroll learner', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Learners (2)', exact: true })).toBeVisible()
+    await expect(page.getByRole('status')).toContainText('Learner enrolled.')
+    expect(submissions).toEqual([{ email: 'new-learner@example.test' }, { email: 'new-learner@example.test' }])
+    await page.getByRole('button', { name: 'Copy invite link', exact: true }).click()
+    await expect(page.getByText('Unable to copy invite link.', { exact: true })).toBeVisible()
+    await expect(page.getByText(/\/sign-in\?cohort=visual-cohort&invite=synthetic-enrollment-invitation/)).toBeVisible()
+    const longChannel = page.locator('.enrollment-channels li').filter({ hasText: 'x'.repeat(80) })
+    await expect(longChannel.getByRole('link', { name: 'Preview' })).toHaveAttribute('href', '/app/servers/visual-study/course-channels/visual-long-channel')
+    expect(await longChannel.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-enrollment-invite-${viewport.width}.png`) })
+    if (viewport.width === 1280) {
+      const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze()
+      expect(violations.map(({ id, nodes }) => ({ id, targets: nodes.map(node => node.target) }))).toEqual([])
+    }
+  })
+}
+
 for (const width of [390, 1280]) {
   test(`fixture UI removes erased answer and reply after refresh at ${width} @questions`, async ({ page }, testInfo) => {
     let removed = false

@@ -192,3 +192,10 @@ receipt navigation. Confirmation now disables only that automatic refresh/retry.
 Generation/abort guards and credentialed CSRF protection remain. One API regression
 and two actual-client/router cases failed first and pass after correction, preserving
 the exact PREPARED or ERASING receipt without claiming an uncertain result succeeded.
+
+4078784261 alleges a later receipt-chunk failure leaves the account signed in.
+Both production routes import the same already evaluated module, and the receipt
+has no separate loader or lazy dependency. Its mount clears the matching generation
+even when receipt fetching or browser storage fails. Independent review found no
+new reachable failure of the alleged kind; clearing before mount would restore the
+already reproduced ProtectedRoute race. Backend revocation remains authoritative.

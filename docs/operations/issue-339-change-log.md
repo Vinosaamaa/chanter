@@ -339,3 +339,14 @@ without automatic auth refresh/retry, and malformed saved invitations are remove
 without enrollment requests. Twelve new failing regressions pass after correction;
 the late-account guard regression also passes. Hosted owner and final union proof
 remain open.
+
+Enrollment management now uses the responsive shell, including the normal account
+menu, rather than the retired header. Existing manager authorization, cohort query,
+pagination, search, invite and custom channel links remain. Scoped styles provide
+16px inputs, 44px actions, readable feedback and long-channel wrapping. Failed
+navigation, roster and invitation reads have explicit retry controls. All 41
+onboarding tests pass, including three focused retries, and production budgets pass
+without a cap increase. Nine additional three-engine fixtures cover 320px phone,
+short landscape and desktop enrollment failures/retry, roster updates, clipboard
+denial and the supported 80-character channel name. Hosted visual and actual owner
+acceptance are still required. Design: docs/architecture/enrollment-management.md.

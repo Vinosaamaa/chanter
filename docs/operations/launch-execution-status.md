@@ -40,6 +40,21 @@ application checks and full review. Its public capability remains disabled.
 restore, original-writer closure and the remaining provider guarantees. A worker
 startup fixture is not proof of complete application recovery.
 
+The current #251 source checkpoint is `21830727`, with independently reviewed
+cleanup and retained-record boundaries. #342 now includes encrypted object and
+inventory-manifest checks, ordinary S3 deletion safeguards and actual PostgreSQL
+pagination proof. Its earlier full recovery rehearsal failed before database
+restore because the packaged helper sent the wrong private-auth header. That
+header is corrected at `7605ae91`; renewed restore proof and the disabled production
+byte adapter remain outstanding. Neither partial proof authorizes cutover.
+
+#339 preserves deletion receipts after expired confirmation sessions and invitation
+intent through verification/reload. Responsive enrollment management is being
+verified alongside the existing reconstructed pages. #344 / PR345 extracts the
+independent audio-evidence and Teaching corrections needed for source branches to
+pass their existing CI, without importing unfinished account UI or raising budgets.
+The final source/UI/recovery merge and release candidate have not been accepted.
+
 ## Remaining release work
 
 | Issue | Customer or operator outcome | Current state |
@@ -53,12 +68,13 @@ startup fixture is not proof of complete application recovery.
 | #248 | Evaluated AI safety, usage and cost accounting | PR317/322 merged provider adapters, catalog, accounting and answer controls; final retrieval/evaluations and configured-provider proof remain |
 | #249 | Administration, reports and moderation | PR333 merged with full CI/review, both native stages, real audio revocation/reconnect denial, emailed appeal/reversal and phone/desktop proof; merged-main checks passed; production operator enrollment remains |
 | #250 | Truthful free-beta mode or real paid billing | PR323 merged truthful free-beta mode and limits; final deployed accounting proof remains; paid billing is outside initial free beta |
-| #251 | Export, deletion, retention and accurate policy pages | Draft335 has bounded exports, the terminal journal, seven private source handlers and public account/server/resource request coordination; late-answer reconciliation, final cleanup/progress, real cross-service proof and legal integration remain underway |
+| #251 | Export, deletion, retention and accurate policy pages | Draft335 implements bounded exports, terminal fences, seven private source handlers, late-answer retraction and retained-record cleanup; final source/recovery union, deployed proof and operator/legal details remain |
 | #252 | Monitoring, alerts, backups and proven restore | PR329 foundation, PR334 monitoring and PR336 recovery infrastructure merged; #342 owns real source/object restore and original-writer closure. Combined release and actual provider/operator receipts remain gates |
 | #253 | Trusted edge, proxy handling and abuse limits | PR328 merged with shared admission and request bounds; actual public proxy/provider proof remains |
 | #254 | Modern responsive UI and complete interactions | PR314 reconstruction and PR322 answer UI merged; #339 owns remaining integrated journeys, control review and responsive interaction fixes; final whole-product/mobile/voice checks remain |
 | #255 | Release-candidate proof and public cutover | Not launched; requires implementation gates plus actual accounts, public services, recovery and release proof |
 | #337 | Patched edge and frontend test dependencies | PR338 merged with full review, actual compatibility regressions and both native release architectures passing; no open dependency security alerts at acceptance |
+| #344 | Independent source-branch CI prerequisite | Draft345 extracts retained audio statistics and Teaching consolidation under unchanged budgets; exact-head checks and review remain required |
 
 Native subscription support is tracked separately in #316. Merged PR324 has
 verified Windows/Linux packaging, exact-origin pairing, isolated provider execution

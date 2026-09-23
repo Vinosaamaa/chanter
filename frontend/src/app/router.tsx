@@ -82,6 +82,7 @@ export function createAppRouter() {
             { path: 'teaching', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/TeachingPage')).TeachingPage }) },
             { path: 'picker', lazy: async () => ({ Component: (await import('../features/shell/components/StudyServerPickerPage')).StudyServerPickerPage }) },
             { path: 'servers/:serverId/home', lazy: async () => ({ Component: (await import('../features/onboarding/components/StudyServerHomePage')).StudyServerHomePage }) },
+            { path: 'servers/:serverId/courses/:courseId/enrollment', lazy: async () => ({ Component: (await import('../features/onboarding/components/CohortEnrollmentPage')).CohortEnrollmentPage }) },
             { path: 'instructor-dashboard', lazy: async () => ({ Component: (await import('../features/instructor-dashboard/components/InstructorDashboardPage')).InstructorDashboardPage }) },
             { path: 'settings/billing', element: <Navigate to="/app/settings/usage" replace /> },
             { path: 'settings/usage', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/UsageSettingsPage')).UsageSettingsPage }) },
@@ -120,10 +121,6 @@ export function createAppRouter() {
         {
           lazy: async () => ({ Component: (await import('../features/shell/layouts/AppShellLayout')).AppShellLayout }),
           children: [
-            {
-              path: 'servers/:serverId/courses/:courseId/enrollment',
-              lazy: async () => ({ Component: (await import('../features/onboarding/components/CohortEnrollmentPage')).CohortEnrollmentPage }),
-            },
             {
               path: 'servers/:serverId',
               lazy: async () => ({ Component: (await import('../features/shell/pages/AppServerRedirectPage')).AppServerRedirectPage }),

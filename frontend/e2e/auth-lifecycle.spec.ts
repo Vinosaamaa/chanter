@@ -54,11 +54,11 @@ async function signIn(page: Page, email: string, password: string) {
   await expect(page.getByText('Loading courses…', { exact: true })).toHaveCount(0)
 }
 
-async function signOut(page: Page, control: 'account-menu' | 'header' = 'account-menu') {
-  if (control === 'account-menu') await page.getByRole('button', { name: 'Open account menu' }).click()
+async function signOut(page: Page) {
+  await page.getByRole('button', { name: 'Open account menu' }).click()
   const completed = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/v1/auth/logout'
     && response.request().method() === 'POST')
-  await page.getByRole(control === 'header' ? 'button' : 'menuitem', { name: 'Sign out', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click()
   const response = await completed
   expect(response.status()).toBe(204)
   // Chromium may never emit a completion event for a bodyless 204. Verify the browser effect instead.
@@ -189,7 +189,7 @@ test.describe('Verified account and recovery @product', () => {
     expect(Boolean(inviteText?.trim())).toBe(true)
     const invite = new URL(inviteText!.trim())
     expect(invite.origin === new URL(appUrl).origin && invite.searchParams.get('cohort') === course.cohort.id).toBe(true)
-    await signOut(page, 'header')
+    await signOut(page)
     await signIn(page, inviteLearner.email, inviteLearner.password)
     await page.getByRole('link', { name: 'Join a Course', exact: true }).click()
     await page.getByLabel('Cohort invite link', { exact: true }).fill(invite.toString())
