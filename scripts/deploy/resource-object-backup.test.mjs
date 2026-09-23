@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { ResourceObjectArchive, resourceBackupEnvironment, MAX_RESOURCE_BYTES } from './resource-object-backup.mjs';
+import { captureResourceInventory } from './resource-recovery-client.mjs';
 
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const courseId = '11111111-1111-4111-8111-111111111111';
@@ -19,6 +21,139 @@ const settings = { CHANTER_BACKUP_S3_ENDPOINT: 'https://backup.example.test', CH
   CHANTER_BACKUP_S3_SECRET_KEY: 'private-secret-canary', CHANTER_BACKUP_CIPHER_PASS: 'd'.repeat(64),
   CHANTER_CONFIG_BACKUP_PASSWORD: 'c'.repeat(64), CHANTER_TERMINAL_JOURNAL_PASSWORD: 'j'.repeat(64),
   CHANTER_RESOURCE_BACKUP_PASSWORD: 'r'.repeat(64) };
+
+function sourceInventory(bytes = content) {
+  const snapshot = { schemaVersion: 1, inventoryId: maintenance.inventoryId,
+    databaseBackupId: '55555555-5555-4555-8555-555555555555', authority: maintenance.authority,
+    namespaceSha256: maintenance.storageNamespaceSha256, capturedAt: '2026-09-22T00:00:00Z', referenceCount: 2, referenceDigest: '' };
+  const references = [false, true].map((terminal, index) => {
+    const id = index ? objectId : resourceId;
+    return { ordinal: index + 1, resourceId: id, courseId, referenceKind: 'CURRENT', storageBackend: 'local',
+      key: `resources/v1/${courseId}/${id}/${objectId}`, byteSize: bytes.length, sha256: hash(bytes),
+      resourceState: 'QUARANTINED', sourceRetained: true, terminal, providerVersionId: null };
+  });
+  let digest = hash(`resource-recovery-inventory\n1\n${snapshot.inventoryId}\n${snapshot.databaseBackupId}\n0\n${maintenance.authority.digest}\n${snapshot.namespaceSha256}\n`);
+  for (const row of references) digest = hash(`${digest}\n${row.resourceId}\n${row.referenceKind}\n${row.storageBackend}\n${row.key}\n${row.byteSize}\n${row.sha256}\n${row.resourceState}\n${row.sourceRetained}\n${row.terminal}\n`);
+  snapshot.referenceDigest = digest;
+  const readPage = (after, _limit) => ({ schemaVersion: 1, snapshot: structuredClone(snapshot), after,
+    references: structuredClone(references.slice(after, after + 1)), nextAfter: after + 1 < references.length ? after + 1 : null });
+  return { snapshot, references, readPage };
+}
+
+function attemptFixture(mode = '') {
+  const saved=new Map(), forgotten=[], calls=[];let writes=0;
+  const archive=new ResourceObjectArchive({bundleDir:bundle(),environment:'staging',
+    env:resourceBackupEnvironment(settings,'staging'),execute:(_file,args,options)=>{
+      calls.push(args);
+      if(args.includes('backup')) {
+        const name=args[args.indexOf('--stdin-filename')+1], bytes=Buffer.from(options.input), id=hash(String(++writes));
+        const tags=args.flatMap((arg,index)=>arg==='--tag'?[args[index+1]]:[]);
+        saved.set(id,{id,name,bytes,tags,hostname:'chanter-staging',paths:[path.join(path.parse(process.cwd()).root,name)]});
+        if(mode==='ambiguous'&&name==='resource-inventory.json')throw Error('private failure');
+        return Buffer.from(JSON.stringify({message_type:'summary',snapshot_id:id}));
+      }
+      if(args.includes('snapshots')) {
+        const tag=args[args.indexOf('--tag')+1];
+        let rows=[...saved.values()].filter(row=>row.tags.includes(tag));
+        if(mode==='ownership')rows=rows.map(row=>({...row,hostname:'other-owner'}));
+        return Buffer.from(JSON.stringify(rows));
+      }
+      if(args.includes('forget')) {
+        const ids=args.slice(args.indexOf('forget')+1);forgotten.push(...ids);
+        if(mode==='forget-fails')throw Error('private failure');
+        if(mode!=='absence-fails')ids.forEach(id=>saved.delete(id));
+        return Buffer.from('');
+      }
+      return saved.get(args[2]).bytes;
+    }});
+  return {archive,saved,forgotten,calls};
+}
+
+test('failed unpublished inventory forgets only exact uniquely owned page/root snapshots and verifies absence',()=>{
+  const fixture=attemptFixture(), source=sourceInventory();
+  const leaf=fixture.archive.capture(entry(content),maintenance,content);
+  const published=fixture.archive.publishInventory(source.snapshot,maintenance,source.readPage,()=>leaf);
+  const protectedIds=[...fixture.saved.keys()];let end=0,error;
+  try {fixture.archive.publishInventory(source.snapshot,maintenance,(after,limit)=>{
+    const page=source.readPage(after,limit);
+    if(after===source.snapshot.referenceCount&&++end===2)throw Error('source changed');
+    return page;
+  },()=>leaf);}catch(failure){error=failure;}
+  assert.equal(error?.cleanup?.status,'FORGOTTEN');
+  assert.equal(fixture.forgotten.length,3);
+  assert.deepEqual(new Set(fixture.forgotten),new Set(error.cleanup.snapshotIds));
+  for(const id of protectedIds)assert.ok(fixture.saved.has(id));
+  fixture.archive.verifyInventory(published,source.snapshot);
+  assert.equal(fixture.calls.some(args=>args.includes('--prune')||args.includes('prune')),false);
+});
+
+for(const mode of ['ambiguous','ownership','forget-fails','absence-fails'])
+  test(`unpublished inventory retains pending diagnostics for ${mode}`,()=>{
+    const fixture=attemptFixture(mode), source=sourceInventory();
+    const leaf=fixture.archive.capture(entry(content),maintenance,content);let end=0,error;
+    try {fixture.archive.publishInventory(source.snapshot,maintenance,(after,limit)=>{
+      const page=source.readPage(after,limit);
+      if(after===source.snapshot.referenceCount&&++end===2)throw Error('source changed');
+      return page;
+    },()=>leaf);}catch(failure){error=failure;}
+    assert.equal(error?.cleanup?.status,'PENDING');
+    assert.match(error.cleanup.attemptId,/^[a-f0-9-]{36}$/);
+    assert.equal(String(error).includes('private failure'),false);
+    assert.ok(fixture.saved.has(leaf.snapshotId));
+    if(mode==='ambiguous'||mode==='ownership')assert.deepEqual(fixture.forgotten,[]);
+    assert.equal(fixture.calls.some(args=>args.includes('--prune')||args.includes('prune')),false);
+  });
+
+test('complete encrypted inventory requires every eligible object and full readback before reference delivery', () => {
+  const saved = new Map(), writes = [];
+  const archive = new ResourceObjectArchive({ bundleDir: bundle(), environment: 'staging',
+    env: resourceBackupEnvironment(settings, 'staging'), execute: (_file, args, options) => {
+      if (args.includes('backup')) {
+        const name = args[args.indexOf('--stdin-filename') + 1], bytes = Buffer.from(options.input), id = hash(Buffer.concat([Buffer.from(name), bytes]));
+        writes.push(name); saved.set(id, { name, bytes });
+        return Buffer.from(JSON.stringify({ message_type: 'summary', snapshot_id: id }));
+      }
+      const item = saved.get(args[2]); assert.equal(item?.name, args[3]); return item.bytes;
+    } });
+  const leaf = archive.capture(entry(content), maintenance, content), fixture = sourceInventory();
+  assert.throws(() => archive.publishInventory(fixture.snapshot, maintenance, fixture.readPage, () => null));
+  assert.equal(writes.includes('resource-inventory.json'), false);
+  let requested = 0;
+  const reference = archive.publishInventory(fixture.snapshot, maintenance, fixture.readPage, row => {
+    requested++; assert.equal(row.terminal, false); return leaf;
+  });
+  assert.equal(requested, 1);
+  const delivered = [];
+  assert.equal(archive.verifyInventory(reference, fixture.snapshot, (row, object) => delivered.push([row, object])).referenceCount, 2);
+  assert.deepEqual(delivered.map(([, object]) => object !== null), [true, false]);
+  const before = delivered.length;
+  saved.get(leaf.snapshotId).bytes = Buffer.from('corrupt');
+  assert.throws(() => archive.verifyInventory(reference, fixture.snapshot, () => delivered.push('unsafe')));
+  assert.equal(delivered.length, before);
+  assert.throws(() => archive.verifyInventory(reference, { ...fixture.snapshot, databaseBackupId: maintenance.inventoryId }));
+});
+
+test('incomplete source inventory or changed final qualification cannot publish a usable manifest', () => {
+  const saved = new Map(), writes = [];
+  const archive = new ResourceObjectArchive({ bundleDir: bundle(), environment: 'staging',
+    env: resourceBackupEnvironment(settings, 'staging'), execute: (_file, args, options) => {
+      if (args.includes('backup')) {
+        const name = args[args.indexOf('--stdin-filename') + 1], bytes = Buffer.from(options.input), id = hash(Buffer.concat([Buffer.from(name), bytes]));
+        writes.push(name); saved.set(id, bytes); return Buffer.from(JSON.stringify({ message_type: 'summary', snapshot_id: id }));
+      }
+      return saved.get(args[2]);
+    } });
+  const leaf = archive.capture(entry(content), maintenance, content), fixture = sourceInventory();
+  assert.throws(() => archive.publishInventory(fixture.snapshot, maintenance,
+    after => ({ ...fixture.readPage(after, 1), nextAfter: null }), () => leaf));
+  assert.equal(writes.includes('resource-inventory.json'), false);
+  assert.throws(() => archive.publishInventory(fixture.snapshot, maintenance, (after, limit) => {
+    const page = fixture.readPage(after, limit);
+    if (after === fixture.snapshot.referenceCount) page.snapshot.authority = { revision: 1, digest: 'b'.repeat(64) };
+    return page;
+  }, () => leaf));
+  assert.equal(writes.includes('resource-inventory.json'), false);
+});
 
 function bundle(binary = null) {
   const parent = path.resolve('.cache/resource-object-tests'); fs.mkdirSync(parent, { recursive: true });
@@ -103,6 +238,44 @@ test('actual restic encrypts binary objects and refuses substituted bytes and th
     const bytes = Buffer.concat([canary, crypto.randomBytes(64 * 1024), content]);
     const reference = archive.capture(entry(bytes), maintenance, bytes);
     assert.deepEqual(archive.readVerified(reference, entry(bytes), maintenance.storageNamespaceSha256), bytes);
+    const source = sourceInventory(bytes);
+    let reads=0;
+    const client={
+      fence:id=>({inventoryId:id,storageNamespaceSha256:maintenance.storageNamespaceSha256,unsettledMutations:0}),
+      capture:request=>{assert.equal(request.databaseBackupId,source.snapshot.databaseBackupId);return source.snapshot;},
+      page:request=>source.readPage(request.after,request.limit),
+      read:request=>{assert.equal(request.ordinal,1);reads++;return bytes;},
+    };
+    assert.throws(()=>captureResourceInventory(client,archive,{databaseBackupId:source.snapshot.databaseBackupId,
+      maintenance:{...maintenance,writers:'UNKNOWN'}}));assert.equal(reads,0);
+    const inventory=captureResourceInventory(client,archive,{databaseBackupId:source.snapshot.databaseBackupId,maintenance});
+    assert.equal(reads,1);
+    const restored = [];
+    assert.equal(archive.verifyInventory(inventory, source.snapshot, (row, object) => restored.push({ row, object })).referenceCount, 2);
+    assert.equal(restored[0].row.resourceState, 'QUARANTINED'); assert.equal(restored[1].object, null);
+    const snapshotIds=()=>JSON.parse(execFileSync(process.env.CHANTER_TEST_RESTIC,['--no-cache','snapshots','--json'],
+      {env,encoding:'utf8',windowsHide:true})).map(row=>row.id).sort();
+    const beforeFailure=snapshotIds();let finalRead=0, failed;
+    try {archive.publishInventory(source.snapshot,maintenance,(after,limit)=>{
+      if(after===source.snapshot.referenceCount&&++finalRead===2)throw Error('changed source');
+      return source.readPage(after,limit);
+    },()=>reference);}catch(error){failed=error;}
+    assert.equal(failed?.cleanup?.status,'FORGOTTEN');
+    assert.equal(failed.cleanup.snapshotIds.length,3);
+    assert.deepEqual(snapshotIds(),beforeFailure);
+    archive.verifyInventory(inventory,source.snapshot);
+    const ambiguous=new ResourceObjectArchive({bundleDir,environment:'staging',kind:'fixture',env,
+      execute:(file,args,options)=>{
+        const result=execFileSync(file,args,options);
+        if(args.includes('backup')&&args.includes('resource-inventory.json'))throw Error('lost acknowledgement');
+        assert.equal(args.includes('forget'),false);
+        return result;
+      }});
+    assert.throws(()=>ambiguous.publishInventory(source.snapshot,maintenance,source.readPage,()=>reference),error=>{
+      assert.equal(error.cleanup.status,'PENDING');assert.equal(error.cleanup.snapshotIds.length,2);return true;
+    });
+    assert.equal(snapshotIds().length,beforeFailure.length+3);
+    archive.verifyInventory(inventory,source.snapshot);
     const changed = Buffer.from(bytes); changed[changed.length - 1] ^= 1;
     const changedReference = archive.capture(entry(changed), maintenance, changed);
     assert.throws(() => archive.readVerified({ ...reference, snapshotId: changedReference.snapshotId }, entry(bytes),
@@ -113,4 +286,5 @@ test('actual restic encrypts binary objects and refuses substituted bytes and th
     const wrong = new ResourceObjectArchive({ bundleDir, environment: 'staging', kind: 'fixture', env: { ...env, RESTIC_PASSWORD: 'wrong-key' } });
     assert.throws(() => wrong.readVerified(reference, entry(bytes), maintenance.storageNamespaceSha256),
       /^Error: Resource object archive verification failed$/);
+    assert.throws(() => wrong.verifyInventory(inventory, source.snapshot));
   });

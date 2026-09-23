@@ -54,6 +54,8 @@ jobs:
         run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl media-service -am test -Dtest=PrivateStorageIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false
       - name: Verify PostgreSQL indexing and terminal deletion serialization
         run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service -am test -Dtest=PostgresResourceIndexDeletionFenceTest,PostgresDurableResourceIngestionTest -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Verify source inventory queries and persist uncertain physical-operation fixture
+        run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl media-service -am test -Dtest=ResourceRecoveryInventoryTest,PostgresStorageMutationRestartTest -Dsurefire.failIfNoSpecifiedTests=false
       - name: Restart database and storage processes while preserving their volumes
         run: |
           docker compose -f infra/media-security/compose.yml restart postgres s3 clamav
@@ -66,6 +68,10 @@ jobs:
         env:
           MEDIA_RESTART_PHASE: 'true'
         run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl agent-service -am test -Dtest=PostgresResourceIndexDeletionFenceTest,PostgresDurableResourceIngestionTest -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Verify uncertain DELETE still prevents mutation after PostgreSQL restart
+        env:
+          MEDIA_RESTART_PHASE: 'true'
+        run: scripts/java21.sh mvn -B -s backend/.mvn/settings.xml -f backend/pom.xml -pl media-service -am test -Dtest=PostgresStorageMutationRestartTest -Dsurefire.failIfNoSpecifiedTests=false
       - name: Capture resource limits and actual container use
         if: always()
         run: |

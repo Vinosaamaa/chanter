@@ -113,7 +113,7 @@ class PrivateStorageIntegrationTest {
         storage.delete(key);
         assertThatThrownBy(() -> storage.open(key)).isInstanceOf(java.io.IOException.class);
         assertThat(jdbc.sql("SELECT foreground_requests FROM media_storage_budget WHERE id=1").query(Integer.class).single() - normalBefore).isEqualTo(5);
-        assertThat(jdbc.sql("SELECT maintenance_requests FROM media_storage_budget WHERE id=1").query(Integer.class).single() - deletesBefore).isEqualTo(1);
+        assertThat(jdbc.sql("SELECT maintenance_requests FROM media_storage_budget WHERE id=1").query(Integer.class).single() - deletesBefore).isEqualTo(2);
     }
     @Test @Order(5) @EnabledIfEnvironmentVariable(named = "MEDIA_RESTART_PHASE", matches = "true")
     void databaseObjectStoreAndApplicationRestartPreserveIdentityAndContent() throws Exception {

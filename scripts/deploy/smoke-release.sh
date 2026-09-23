@@ -172,4 +172,7 @@ grep '^MemTotal:' /proc/meminfo
 mapfile -t containers < <("${compose[@]}" ps --quiet)
 docker stats --no-stream --format '{{.Name}} CPU={{.CPUPerc}} RAM={{.MemUsage}} PIDs={{.PIDs}}' "${containers[@]}"
 echo 'Container health, migrations, TLS routing, static frontend and secure auth bootstrap passed.'
+if [ "${CHANTER_SOURCE_RECOVERY_PREVIEW:-false}" = true ]; then
+  node scripts/deploy/canonical-source-native-fixture.mjs "$bundle" "$state" "$compose_file" "$project"
+fi
 node scripts/deploy/recovery-worker-native-fixture.mjs "$bundle" "$state" "$compose_file" "$project"

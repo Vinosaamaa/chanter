@@ -20,6 +20,7 @@ class StorageNamespaceTest {
     private static final HttpServer SERVER = server();
     private static final String ENDPOINT = "http://127.0.0.1:" + SERVER.getAddress().getPort();
     @Autowired ResourceLifecycle lifecycle;
+    @Autowired StorageMutationStore mutations;
     @Autowired S3PrivateResourceStorage configured;
     private static HttpServer server() {
         try {
@@ -41,13 +42,13 @@ class StorageNamespaceTest {
     @AfterAll static void stop() { SERVER.stop(0); }
     @Test void changedBucketOrEndpointCannotStartOrMakeAnyObjectRequest() {
         for (String[] changed : new String[][] {{ENDPOINT, "different-private-bucket"}, {ENDPOINT.replace("127.0.0.1", "localhost"), "original-private-bucket"}}) {
-            assertThatThrownBy(() -> new S3PrivateResourceStorage(lifecycle, changed[0], "us-east-1", changed[1], "fixture-access", "fixture-secret", true))
+            assertThatThrownBy(() -> new S3PrivateResourceStorage(lifecycle, mutations, changed[0], "us-east-1", changed[1], "fixture-access", "fixture-secret", true))
                     .isInstanceOf(IllegalStateException.class).hasMessageContaining("namespace");
         }
         assertThat(REQUESTS.get()).isZero();
     }
     @Test void credentialRotationAndNormalizedEndpointKeepTheSameBinding() {
-        var rotated = new S3PrivateResourceStorage(lifecycle, ENDPOINT + "/", "us-east-1", "original-private-bucket", "rotated-access", "rotated-secret", true);
+        var rotated = new S3PrivateResourceStorage(lifecycle, mutations, ENDPOINT + "/", "us-east-1", "original-private-bucket", "rotated-access", "rotated-secret", true);
         rotated.close(); assertThat(REQUESTS.get()).isZero();
     }
 }

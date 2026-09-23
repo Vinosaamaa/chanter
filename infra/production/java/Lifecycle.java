@@ -10,11 +10,15 @@ import java.time.Duration;
 import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import com.chanter.common.auth.AuthHeaders;
 
 /** Fixed private routes inside the owning container. Credentials and bodies never enter argv or diagnostics. */
 public final class Lifecycle {
     static final int PAGE_LIMIT = 256 * 1024;
-    record Operation(String method, String path, int inputLimit) {}
+    static final int OBJECT_LIMIT = 10 * 1024 * 1024;
+    record Operation(String method, String path, int inputLimit, int outputLimit, boolean binaryInput, boolean binaryOutput) {
+        Operation(String method,String path,int inputLimit) {this(method,path,inputLimit,PAGE_LIMIT,false,false);}
+    }
     record Request(Operation operation, byte[] body) {}
 
     static Operation operation(String[] args) {
@@ -41,6 +45,12 @@ public final class Lifecycle {
             case "scope-import" -> new Operation("POST", "", 32 * 1024 + 37);
             case "scope-derive", "scope-recovery-read" -> new Operation("POST", "", 4096 + 37);
             case "scope-recovery-import" -> new Operation("POST", "", 32 * 1024 + 37);
+            case "inventory-fence", "inventory-capture", "inventory-page", "inventory-discard" ->
+                new Operation("POST", "/api/v1/internal/resource-recovery/inventory/" + args[0].substring(10), 4096);
+            case "object-read" -> new Operation("POST", "/api/v1/internal/resource-recovery/objects/read",4096,OBJECT_LIMIT,false,true);
+            case "object-put" -> new Operation("POST", "/api/v1/internal/resource-recovery/objects/put",4+4096+OBJECT_LIMIT,PAGE_LIMIT,true,false);
+            case "object-delete", "object-finish-delete" ->
+                new Operation("POST", "/api/v1/internal/resource-recovery/objects/" + args[0].substring(7),4096);
             default -> throw new IllegalArgumentException();
         };
     }
@@ -107,8 +117,9 @@ public final class Lifecycle {
                 throw new IllegalArgumentException();
             byte[] body = prepared.body();
             var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:8080" + operation.path()))
-                    .timeout(Duration.ofSeconds(15)).header("X-Internal-Service-Token", token)
-                    .header("Content-Type", "application/json").header("Accept", "application/json")
+                    .timeout(Duration.ofSeconds(15)).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, token)
+                    .header("Content-Type", operation.binaryInput() ? "application/octet-stream" : "application/json")
+                    .header("Accept", operation.binaryOutput() ? "application/octet-stream" : "application/json")
                     .header("Cache-Control", "no-store")
                     .method(operation.method(), body.length == 0 ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofByteArray(body))
                     .build();
@@ -119,9 +130,10 @@ public final class Lifecycle {
                     }).build()) {
                 var response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
                 try (var input = response.body()) {
+                    String contentType=operation.binaryOutput() ? "application/octet-stream" : "application/json";
                     if (response.statusCode() != 200 || !response.headers().firstValue("Content-Type").orElse("")
-                            .matches("(?i)application/json(?:;.*)?")) throw new IllegalArgumentException();
-                    byte[] result = bounded(input, PAGE_LIMIT);
+                            .matches("(?i)"+contentType+"(?:;.*)?")) throw new IllegalArgumentException();
+                    byte[] result = bounded(input, operation.outputLimit());
                     System.out.write(result);
                 }
             }

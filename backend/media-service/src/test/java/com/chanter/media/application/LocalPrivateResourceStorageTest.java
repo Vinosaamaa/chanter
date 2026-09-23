@@ -13,16 +13,16 @@ import org.junit.jupiter.api.io.TempDir;
 class LocalPrivateResourceStorageTest {
     @TempDir Path directory;
     @Test void immutableCreationIsAtomicAndBytesSurviveAdapterRestart() throws Exception {
-        var storage = new LocalPrivateResourceStorage(directory.resolve("private").toString());
+        var storage = new LocalPrivateResourceStorage(directory.resolve("private").toString(), org.mockito.Mockito.mock(StorageMutationStore.class));
         Path source = directory.resolve("source.txt"); Files.writeString(source, "immutable bytes");
         String key = PrivateResourceStorage.PREFIX + UUID.randomUUID() + "/" + UUID.randomUUID() + "/" + UUID.randomUUID();
         var successes = new AtomicInteger();
         var calls = java.util.stream.IntStream.range(0, 8).mapToObj(i -> CompletableFuture.runAsync(() -> {
             try { storage.put(key, source, "unused by local adapter"); successes.incrementAndGet(); }
-            catch (java.io.IOException expectedConflict) { assertThat(expectedConflict).isInstanceOf(java.nio.file.FileAlreadyExistsException.class); }
+            catch (java.io.IOException expectedConflict) { assertThat(expectedConflict).isInstanceOf(PrivateResourceStorage.PutFailure.class).hasCauseInstanceOf(java.nio.file.FileAlreadyExistsException.class); }
         })).toList(); calls.forEach(CompletableFuture::join);
         assertThat(successes.get()).isEqualTo(1);
-        var restarted = new LocalPrivateResourceStorage(directory.resolve("private").toString());
+        var restarted = new LocalPrivateResourceStorage(directory.resolve("private").toString(), org.mockito.Mockito.mock(StorageMutationStore.class));
         try (var content = restarted.open(key)) { assertThat(new String(content.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)).isEqualTo("immutable bytes"); }
         assertThatThrownBy(() -> storage.open("../../source.txt")).isInstanceOf(IllegalArgumentException.class);
         storage.delete(key); storage.delete(key);
