@@ -82,3 +82,13 @@ either course or source management permission discards the selected file before 
 later permission restoration. Three regressions reproduced these gaps before their
 fixes. Server-home keeps its original API and owner actions under the existing v3
 tokens and responsive shell; no catalog or enrollment authorization is broadened.
+
+The next bounded source acceptance case uses actual upload/scanning, source DELETE
+and requester/stranger APIs, then opens and reloads the real progress page. It waits
+for durable registration through API polling before browser navigation because an
+immediate progress GET may legitimately be absent. This proves the real status
+contract and access closure separately from the fixture-confirmed dialog submission;
+it must not claim end-to-end dialog-to-registration timing. Browser health remains
+strict, and no transport interception, mocked response or manual database relay is
+used. Pending cleanup must remain pending until the source and recovery owners prove
+completion. Only fresh synthetic accounts/data are used, without credential artifacts.

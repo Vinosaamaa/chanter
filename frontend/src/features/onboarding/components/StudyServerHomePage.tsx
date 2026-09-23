@@ -74,7 +74,7 @@ export function StudyServerHomePage() {
   const canManage = navigation?.capabilities.canCreateCourse ?? false
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-app-bg">
+    <section className="study-server-home flex min-w-0 flex-1 flex-col overflow-y-auto bg-app-bg">
       <header className="border-b border-app-border px-6 py-6">
         <div className="flex flex-wrap items-start gap-4">
           <StudyServerIcon serverId={serverId} size="md" />

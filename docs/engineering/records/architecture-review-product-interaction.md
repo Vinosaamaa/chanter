@@ -100,3 +100,11 @@ because it removed those actions. Receipt status requires renewed cookie authori
 before showing cached completion, and permission loss discards pending source
 confirmation. Focused regressions reproduced the stale cases before correction;
 independent review found no blocker in the resulting diff.
+
+The server-home browser regression exposed the inherited input font overriding a
+layered utility. A scoped rule repairs it without changing the shell-wide cascade.
+The next actual source case verifies real scanned bytes, access closure, original-job
+retry, and requester progress/reload with separate actors. It waits for registration
+through the real API before browser navigation and explicitly excludes dialog timing.
+This preserves strict browser-health checks and cannot hide the known post-canonical
+server retry defect. No mocked response or manual source relay establishes success.

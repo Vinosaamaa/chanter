@@ -224,3 +224,13 @@ regressions. These changes still require current-head hosted visual verification
 All 391 frontend tests, lint and the production build passed locally; the existing
 core and deferred-route budgets passed unchanged. Independent review found no
 blocking regression. Local browser servers remain unused; visual execution is hosted.
+
+The new hosted server-home cases then exposed inherited 12px input type in all nine
+engine/viewport combinations. A scoped rule corrects the shell cascade; the test's
+16px assertion stays intact. All 326 existing responsive cases passed at that head.
+A further dependency-preview case uploads and scans a fresh file, verifies owner
+and member bytes, checks API deletion/access closure, then reads and reloads real
+requester progress. It separately checks stranger denial and same-job retries after
+durable registration. This case cannot pass until #251 fixes the observed server
+retry denial after canonical registration; it does not claim dialog timing or
+completed erasure. Discovery covers this case in all three engines.

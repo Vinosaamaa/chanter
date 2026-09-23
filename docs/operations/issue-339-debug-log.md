@@ -96,3 +96,10 @@ Screenshot inspection also exposed the picker still mounting the legacy shell.
 Moving that route into the existing responsive shell supplies the intended modal
 surface, mobile navigation and button styles. Browser checks assert that shell and
 the opaque white dialog surface before interaction screenshots.
+
+At 435a40b2 all 326 existing visual cases passed, but the nine new server-home cases
+found 12px input text despite its 16px utility class. The responsive shell's unlayered
+font-inherit rule overrides layered utilities, inheriting the small label size.
+A narrowly scoped server-home input rule establishes 16px without changing the
+shell-wide cascade. The existing browser assertion remains unchanged and requires
+hosted confirmation; the initial phone course-list screenshot remains readable.

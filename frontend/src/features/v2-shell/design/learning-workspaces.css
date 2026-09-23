@@ -478,3 +478,4 @@
 
 @media (max-width: 600px) { .v2-app-shell .teaching-operational-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (min-width: 1600px) { .v2-app-shell .teaching-operational-summary { grid-template-columns: repeat(6,minmax(0,1fr)); } }
+.v2-app-shell .study-server-home input { font-size: 16px; }

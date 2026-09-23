@@ -81,6 +81,26 @@ async function assertCredentialBoundary(page: Page, context: BrowserContext) {
   return cookie!
 }
 
+async function sourceTestActor(request: APIRequestContext, role: string) {
+  const email = `source-${role}-${randomUUID()}@example.com`
+  const password = `Chanter-${randomUUID()}`
+  const headers = { Origin: new URL(appUrl).origin, 'X-Chanter-CSRF': '1' }
+  const registered = await request.post(new URL('/api/v1/auth/register', appUrl).toString(), {
+    headers, data: { email, password, displayName: `Source cleanup ${role}` },
+  })
+  expect(registered.status()).toBe(202)
+  const verification = new URL(await deliveredLink(request, email, 'Verify your Chanter email', '/verify-email'))
+  const verified = await request.post(new URL('/api/v1/auth/verify-email', appUrl).toString(), {
+    headers, data: { token: verification.searchParams.get('token') },
+  })
+  expect(verified.status()).toBe(200)
+  const login = await request.post(new URL('/api/v1/auth/login', appUrl).toString(), { headers, data: { email, password } })
+  expect(login.status()).toBe(200)
+  const accessToken: unknown = (await login.json()).accessToken
+  expect(typeof accessToken === 'string' && accessToken.length > 0).toBe(true)
+  return { email, password, headers: { Authorization: `Bearer ${accessToken}` } }
+}
+
 test.describe('Verified account and recovery @product', () => {
   test.skip(!process.env.PLAYWRIGHT_PRODUCT, 'Requires product services and the local SMTP inbox')
 
@@ -305,5 +325,95 @@ except Exception:
     expect(reloaded.request().headers().authorization === undefined).toBe(true)
     await expect(page.getByRole('heading', { name: 'Deletion status', exact: true })).toBeVisible()
     expect(refreshRequests).toEqual([])
+  })
+
+  test('real source deletion closes access and preserves requester progress after reload', async ({ page, request, playwright }) => {
+    test.skip(!process.env.PLAYWRIGHT_LIFECYCLE_PREVIEW, 'Requires the pinned source-lifecycle dependency preview until final union acceptance')
+    test.setTimeout(180_000)
+    const owner = await sourceTestActor(request, 'owner')
+    const member = await sourceTestActor(request, 'member')
+    const anonymous = await playwright.request.newContext({ baseURL: appUrl })
+    try {
+      const created = await request.post(new URL('/api/v1/study-servers', appUrl).toString(), {
+        headers: owner.headers, data: { name: `Source cleanup ${randomUUID()}` },
+      })
+      expect(created.status()).toBe(201)
+      const server = await created.json() as { id: string }
+      const createdCourse = await request.post(new URL(`/api/v1/study-servers/${server.id}/courses`, appUrl).toString(), {
+        headers: owner.headers, data: { title: 'Field observation', cohortName: 'Weekend field group' },
+      })
+      expect(createdCourse.status()).toBe(201)
+      const course = await createdCourse.json() as { id: string; cohort: { id: string } }
+      const enrolled = await request.post(new URL(`/api/v1/cohorts/${course.cohort.id}/enrollments`, appUrl).toString(), {
+        headers: owner.headers, data: { email: member.email },
+      })
+      expect(enrolled.status()).toBe(201)
+      const bytes = Buffer.from('Synthetic field notes for source-deletion acceptance.\n')
+      const uploaded = await request.post(new URL(`/api/v1/courses/${course.id}/course-resources`, appUrl).toString(), {
+        headers: owner.headers, multipart: { title: 'Field notes', aiApproved: 'false', file: { name: 'field-notes.txt', mimeType: 'text/plain', buffer: bytes } },
+      })
+      expect(uploaded.status()).toBe(202)
+      const resource = await uploaded.json() as { id: string }
+      const resourcePath = `/api/v1/course-resources/${resource.id}`
+      await expect.poll(async () => {
+        const response = await request.get(new URL(resourcePath, appUrl).toString(), { headers: owner.headers })
+        expect(response.status()).toBe(200)
+        const metadata = await response.json()
+        expect(metadata.aiApproved).toBe(false)
+        return metadata.status
+      }, { timeout: 60_000, intervals: [1000, 2000] }).toBe('AVAILABLE')
+      for (const actor of [owner, member]) {
+        const downloaded = await request.get(new URL(`${resourcePath}/content`, appUrl).toString(), { headers: actor.headers })
+        expect(downloaded.status()).toBe(200)
+        expect((await downloaded.body()).equals(bytes)).toBe(true)
+      }
+      await signIn(page, owner.email, owner.password)
+
+      for (const target of [
+        { kind: 'RESOURCE', id: resource.id, path: resourcePath, closedPath: `${resourcePath}/content`, closedStatus: 404, heading: 'Course file deletion' },
+        { kind: 'STUDY_SERVER', id: server.id, path: `/api/v1/study-servers/${server.id}`, closedPath: `/api/v1/study-servers/${server.id}/navigation`, closedStatus: 410, heading: 'Study Server deletion' },
+      ]) {
+        const deleted = await request.delete(new URL(target.path, appUrl).toString(), { headers: owner.headers })
+        expect(deleted.status()).toBe(202)
+        const accepted = await deleted.json() as { jobId: string; targetId: string; state: string }
+        expect(accepted.targetId).toBe(target.id)
+        expect(accepted.state).toBe('PENDING')
+        expect(/^[a-f0-9-]{36}$/.test(accepted.jobId)).toBe(true)
+        const statusPath = `/api/v1/auth/account/source-deletions/${accepted.jobId}`
+        // SOURCE_REQUEST is durably dispatched before auth can read it. This proves
+        // registered status/reload, not dialog-to-registration timing. No interception.
+        await expect.poll(async () => {
+          const response = await request.get(new URL(statusPath, appUrl).toString(), { headers: owner.headers })
+          expect([200, 404]).toContain(response.status())
+          if (response.status() !== 200) return false
+          const job = await response.json()
+          expect(job.targetKind).toBe(target.kind)
+          expect(job.targetId).toBe(target.id)
+          expect(['ERASING', 'WAITING_FOR_REPLICA']).toContain(job.state)
+          return true
+        }, { timeout: 30_000, intervals: [500, 1000, 2000] }).toBe(true)
+        const retry = await request.delete(new URL(target.path, appUrl).toString(), { headers: owner.headers })
+        expect(retry.status()).toBe(202)
+        expect((await retry.json()).jobId).toBe(accepted.jobId)
+        const denied = await request.get(new URL(target.closedPath, appUrl).toString(), { headers: member.headers })
+        expect(denied.status()).toBe(target.closedStatus)
+        if (target.kind === 'RESOURCE') {
+          const metadata = await request.get(new URL(target.path, appUrl).toString(), { headers: owner.headers })
+          expect(metadata.status()).toBe(404)
+        }
+        const stranger = await request.get(new URL(statusPath, appUrl).toString(), { headers: member.headers })
+        expect(stranger.status()).toBe(404)
+        expect((await anonymous.get(statusPath)).status()).toBe(401)
+        await page.goto(new URL(`/app/deletions/${accepted.jobId}`, appUrl).toString())
+        await expect(page.getByRole('heading', { level: 1, name: target.heading })).toBeVisible()
+        await expect(page.getByRole('region', { name: 'Current deletion status' })).toContainText(/Cleanup in progress|Recovery acknowledgement pending/)
+        await page.getByRole('button', { name: 'Refresh status' }).click()
+        await expect(page.getByRole('button', { name: 'Refresh status' })).toBeEnabled()
+        await page.reload()
+        await expect(page.getByRole('heading', { level: 1, name: target.heading })).toBeVisible()
+        await expect(page.getByRole('region', { name: 'Current deletion status' })).toContainText(/Cleanup in progress|Recovery acknowledgement pending/)
+        expect(await page.getByText('Deletion completed', { exact: true }).count()).toBe(0)
+      }
+    } finally { await anonymous.dispose() }
   })
 })
