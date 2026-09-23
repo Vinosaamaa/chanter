@@ -161,3 +161,17 @@ search and pagination state. Retries call only their owning read. No API permiss
 or role changes. Independent review caught the long-name layout and synthetic owner
 capability omissions before hosted verification. Final visual/real-service evidence
 must use the actual responsive route, not the earlier legacy-header screenshots.
+
+Creation policy is explicit at the UI/API boundary. Missing API input still omits
+the field for compatibility; the owner form sends INVITE_ONLY or OPEN from its
+native select. The backend prerequisite validates and persists it under existing
+owner authorization. This fixes the actual outsider-invitation failure without
+weakening OPEN membership checks. No existing cohort is rewritten. Three new
+regressions failed before the UI/API change and pass after it. Final browser proof
+must include the actual backend change; synthetic fixture responses cannot prove
+invitation authorization.
+
+At cce67ae2 all 356 hosted responsive fixtures pass. Phone WebKit, desktop Chromium
+and landscape Firefox enrollment captures were inspected for readable controls,
+feedback and wrapping. Screenshots use synthetic data and do not prove production
+clipboard permissions, public delivery or invitation acceptance.

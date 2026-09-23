@@ -350,3 +350,15 @@ without a cap increase. Nine additional three-engine fixtures cover 320px phone,
 short landscape and desktop enrollment failures/retry, roster updates, clipboard
 denial and the supported 80-character channel name. Hosted visual and actual owner
 acceptance are still required. Design: docs/architecture/enrollment-management.md.
+
+The cce67ae2 hosted run passes all 356 responsive fixtures; enrollment captures at
+320, 844 and 1280 pixels were visually reviewed across the three engines. The
+actual invitation failure is traced to intentionally member-only OPEN cohorts.
+The creation form now defaults explicitly to invitation access and offers existing
+Study Server membership as the other choice. The API preserves omitted-field
+compatibility. Three new UI/API regressions fail before correction and pass after;
+backend policy persistence and authorization are independently owned by #346 / PR347.
+Final actual invitation and repeated-join acceptance still require their union.
+All 44 onboarding tests, lint and the production build pass with the existing
+bundle caps unchanged. Identical form-control styles share one constant, and
+redundant course-card structure is removed to cover the new selector's byte cost.

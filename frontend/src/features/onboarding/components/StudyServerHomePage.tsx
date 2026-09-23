@@ -11,6 +11,8 @@ import { StudyServerIcon } from '../../shell/components/StudyServerIcon'
 
 import { createCourse } from '../onboarding-api'
 
+const courseInputClass = 'min-h-11 rounded-lg border border-app-border bg-app-bg px-3 py-2 text-base text-app-text'
+
 function courseAccent(title: string): string {
   const palette = ['#7c6cff', '#3ecf8e', '#4da3ff', '#f5a623', '#ff6b8a']
   let hash = 0
@@ -40,6 +42,8 @@ export function StudyServerHomePage() {
     event.preventDefault()
     const title = courseTitle.trim()
     const cohort = cohortName.trim()
+    const enrollmentPolicy = new FormData(event.currentTarget).get('enrollmentPolicy') === 'OPEN'
+      ? 'OPEN' : 'INVITE_ONLY'
     if (!title || !cohort) {
       setCourseError('Course title and cohort name are required.')
       return
@@ -50,7 +54,7 @@ export function StudyServerHomePage() {
     setCourseMessage(null)
 
     try {
-      await createCourse(serverId, { title, cohortName: cohort })
+      await createCourse(serverId, { title, cohortName: cohort, enrollmentPolicy })
       setCourseTitle('')
       setCohortName('')
       setCourseMessage(`Created ${title} (${cohort}).`)
@@ -84,7 +88,7 @@ export function StudyServerHomePage() {
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-app-muted">
               {canManage
-                ? 'Create courses and open enrollment for your cohorts.'
+                ? 'Create courses and invite learners.'
                 : 'Your enrolled courses on this Study Server.'}
             </p>
           </div>
@@ -123,17 +127,12 @@ export function StudyServerHomePage() {
                 >
                   <div className="h-1.5" style={{ background: accent }} />
                   <div className="space-y-3 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h2 className="text-lg font-semibold text-app-text">{course.title}</h2>
-                        {course.cohorts[0] ? (
-                          <p className="mt-1 text-sm text-app-muted">{course.cohorts[0].name}</p>
-                        ) : null}
-                      </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-app-text">{course.title}</h2>
+                      {course.cohorts[0] ? (
+                        <p className="mt-1 text-sm text-app-muted">{course.cohorts[0].name}</p>
+                      ) : null}
                     </div>
-                    <p className="text-xs text-app-muted">
-                      {course.channels.length} channel{course.channels.length === 1 ? '' : 's'}
-                    </p>
                     <div className="flex flex-wrap gap-2">
                       {firstTextChannel ? (
                         <Link
@@ -174,9 +173,6 @@ export function StudyServerHomePage() {
             className="max-w-xl rounded-xl border border-app-border bg-app-surface p-5"
           >
             <h2 className="text-sm font-semibold text-app-text">Create course + cohort</h2>
-            <p className="mt-1 text-xs text-app-muted">
-              Adds #announcements, #questions, and #resources channels for the cohort.
-            </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-app-muted">
                 Course title
@@ -185,7 +181,7 @@ export function StudyServerHomePage() {
                   onChange={(event) => setCourseTitle(event.target.value)}
                   required
                   disabled={isCreatingCourse}
-                  className="min-h-11 rounded-lg border border-app-border bg-app-bg px-3 py-2 text-base text-app-text"
+                  className={courseInputClass}
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-app-muted">
@@ -195,9 +191,20 @@ export function StudyServerHomePage() {
                   onChange={(event) => setCohortName(event.target.value)}
                   required
                   disabled={isCreatingCourse}
-                  placeholder="e.g. September cohort"
-                  className="min-h-11 rounded-lg border border-app-border bg-app-bg px-3 py-2 text-base text-app-text"
+                  className={courseInputClass}
                 />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-app-muted sm:col-span-2">
+                Who can join
+                <select
+                  name="enrollmentPolicy"
+                  defaultValue="INVITE_ONLY"
+                  disabled={isCreatingCourse}
+                  className={courseInputClass}
+                >
+                  <option value="INVITE_ONLY">Anyone with an invite link</option>
+                  <option value="OPEN">Study Server members</option>
+                </select>
               </label>
             </div>
             {courseError ? (

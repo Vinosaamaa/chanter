@@ -90,6 +90,14 @@ describe('onboarding-api', () => {
     })
   })
 
+  it('preserves explicit invitation access when creating the first cohort', async () => {
+    mockedApiFetch.mockResolvedValue({ id: 'course-1' })
+    await createCourse('server-1', { title: 'Field work', cohortName: 'Weekend', enrollmentPolicy: 'INVITE_ONLY' })
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/study-servers/server-1/courses', {
+      method: 'POST', body: JSON.stringify({ title: 'Field work', cohortName: 'Weekend', enrollmentPolicy: 'INVITE_ONLY' }),
+    })
+  })
+
   it('joinCohort posts invite code to the learner self-enroll endpoint', async () => {
     mockedApiFetch.mockResolvedValue(undefined)
 

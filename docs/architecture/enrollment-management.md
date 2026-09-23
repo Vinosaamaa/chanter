@@ -26,4 +26,22 @@ real owner enrollment and invitation journeys pass with the responsive account
 menu; three-engine phone, landscape and desktop fixtures prove shell, input size,
 roster/error/retry rendering, invitation copy failure and manual-enrollment results.
 Actual clipboard permission remains a separate real-browser/device limitation.
-No endpoint, role, deletion or billing behavior changes.
+No management endpoint, role, deletion or billing behavior changes.
+
+## Course creation access
+
+The real owner journey reached a valid invitation but received HTTP 403. Existing
+OPEN cohorts require Study Server membership; an invitation must not bypass that
+boundary. Backend prerequisite #346 / PR347 adds an optional creation policy and
+preserves OPEN for callers that omit it. The owner creation form explicitly sends
+INVITE_ONLY by default. A native "Who can join" select also offers "Study Server
+members" for OPEN. Owners can understand the distinction before creating a cohort;
+there is no hidden membership change or post-creation policy mutation.
+
+Keep the choice in the existing creation form, spanning both form columns above
+the submit action. Use the same readable 16px, 44px controls on phone, landscape
+and desktop. Simplify redundant card wrappers and share the identical control
+class string to retain existing production bundle limits. Form tests cover both
+choices; browser fixtures inspect the select and submitted payload. Actual
+outsider joining and repeated PostgreSQL joining still require the accepted
+backend prerequisite and final composed release.

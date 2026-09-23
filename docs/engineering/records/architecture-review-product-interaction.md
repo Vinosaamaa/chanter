@@ -197,3 +197,12 @@ read retries, long-name wrapping and accessible input/action sizes address the
 remaining management-page gap. Forty-one onboarding tests and unchanged production
 budgets pass; nine new three-engine fixtures await hosted execution. The owning
 design is docs/architecture/enrollment-management.md.
+
+At cce67ae2 the 356 hosted responsive cases pass, including all nine enrollment
+cases. Representative phone, landscape and desktop captures were inspected.
+Actual joining exposed the distinction between OPEN membership and INVITE_ONLY
+access. The owner form now makes that choice explicit, with invitation access as
+its default, while the API retains omitted-field compatibility. Three new failing
+UI/API regressions pass after correction. The independent backend prerequisite
+is #346 / PR347; actual authorization and repeat joining remain a composed-release
+gate. Existing cohort policies and membership rules are unchanged.

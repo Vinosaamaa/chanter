@@ -170,7 +170,7 @@ test('fixture UI Questions keeps a staff draft when its question disappears @que
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1280, height: 900 }]) {
   test(`fixture UI server home retains owner course actions at ${viewport.width} @serverhome`, async ({ page }, testInfo) => {
-    let created: { title: string; cohortName: string } | undefined
+    let created: { title: string; cohortName: string; enrollmentPolicy: string } | undefined
     const submissions: unknown[] = []
     await page.route('**/api/v1/study-servers/visual-study/courses', async route => {
       expect(route.request().method()).toBe('POST')
@@ -196,9 +196,13 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
     await page.screenshot({ path: testInfo.outputPath(`fixture-ui-server-home-${viewport.width}.png`) })
     const title = page.getByRole('textbox', { name: 'Course title' })
     const cohort = page.getByRole('textbox', { name: 'Cohort name' })
+    const policy = page.getByRole('combobox', { name: 'Who can join' })
+    await expect(policy).toHaveValue('INVITE_ONLY')
+    const enrollmentPolicy = viewport.width === 844 ? 'OPEN' : 'INVITE_ONLY'
+    await policy.selectOption(enrollmentPolicy)
     await title.fill('Practical field observation')
     await cohort.fill('Weekend field group')
-    for (const input of [title, cohort]) {
+    for (const input of [title, cohort, policy]) {
       expect(await input.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
       expect(await input.evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16)
     }
@@ -207,7 +211,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
     await page.getByRole('button', { name: 'Create course', exact: true }).click()
     await expect(page.getByRole('status')).toHaveText('Created Practical field observation (Weekend field group).')
     await expect(page.getByRole('heading', { name: 'Practical field observation', exact: true })).toBeVisible()
-    expect(submissions).toEqual([{ title: 'Practical field observation', cohortName: 'Weekend field group' }])
+    expect(submissions).toEqual([{ title: 'Practical field observation', cohortName: 'Weekend field group', enrollmentPolicy }])
     await expect(title).toHaveValue('')
     await expect(cohort).toHaveValue('')
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)

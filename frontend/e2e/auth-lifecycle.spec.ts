@@ -159,6 +159,7 @@ test.describe('Verified account and recovery @product', () => {
     await expect(page.getByRole('heading', { level: 1, name: serverName })).toBeVisible()
     await page.getByRole('textbox', { name: 'Course title', exact: true }).fill('Practical field observation')
     await page.getByRole('textbox', { name: 'Cohort name', exact: true }).fill('Weekend field group')
+    await expect(page.getByRole('combobox', { name: 'Who can join' })).toHaveValue('INVITE_ONLY')
     const courseCreation = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/study-servers/${server.id}/courses`
       && response.request().method() === 'POST')
     await page.getByRole('button', { name: 'Create course', exact: true }).click()
