@@ -65,7 +65,7 @@ public class MediaAccountExport implements AccountExportProjection, ExportSnapsh
     }
     private CourseResource current(UUID account, UUID id) {
         var resource = resources.getCourseResource(id, account);
-        if (!resource.id().equals(id) || !resource.uploadedByUserId().equals(account) || !resource.state().equals("AVAILABLE") || resource.sha256() == null)
+        if (!resource.id().equals(id) || !account.equals(resource.uploadedByUserId()) || !resource.state().equals("AVAILABLE") || resource.sha256() == null)
             throw denied();
         return resource;
     }

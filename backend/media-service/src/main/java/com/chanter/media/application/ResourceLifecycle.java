@@ -380,7 +380,10 @@ public class ResourceLifecycle {
     private void reconcileTerminalResource(CourseResource resource) {
         if(!terminalScope(resource)) return;
         var store=terminal.getObject();
-        store.reconcile("RESOURCE",resource.id());store.reconcile("ACCOUNT",resource.uploadedByUserId());
+        store.reconcile("RESOURCE",resource.id());
+        var accounts=new java.util.HashSet<>(retainedTerminalAccounts(resource.id()));
+        if(resource.uploadedByUserId()!=null) accounts.add(resource.uploadedByUserId());
+        for(UUID account:accounts) store.reconcile("ACCOUNT",account);
         var servers=new java.util.HashSet<UUID>();if(resource.studyServerId()!=null) servers.add(resource.studyServerId());
         for(String table:List.of("lifecycle_scope_import","lifecycle_recovery_scope")) {
             servers.addAll(jdbc.sql(("""
@@ -422,7 +425,7 @@ public class ResourceLifecycle {
     /** Current source access is closed even while physical deletion or a later cleanup page is pending. */
     public boolean terminalScope(CourseResource resource) {
         if(terminalTarget("RESOURCE",resource.id()) || terminalTarget("ACCOUNT",resource.uploadedByUserId())
-                || terminalTarget("STUDY_SERVER",resource.studyServerId())) return true;
+                || terminalTarget("STUDY_SERVER",resource.studyServerId()) || !retainedTerminalAccounts(resource.id()).isEmpty()) return true;
         for(String table:List.of("lifecycle_scope_import","lifecycle_recovery_scope")) {
             if(jdbc.sql(scopePredicate(table,"s.scope_id=:course")).param("course",resource.courseId()).query(Boolean.class).single()) return true;
         }
@@ -432,6 +435,14 @@ public class ResourceLifecycle {
     private boolean terminalTarget(String kind,UUID id) {
         return id!=null && jdbc.sql("SELECT COUNT(*) FROM lifecycle_terminal_targets WHERE target_kind=:kind AND target_id=:id")
                 .param("kind",kind).param("id",id).query(Integer.class).single()!=0;
+    }
+    private List<UUID> retainedTerminalAccounts(UUID resource) {
+        return jdbc.sql("""
+            SELECT c.target_id FROM lifecycle_erased_content c JOIN lifecycle_terminal_targets t
+              ON t.target_kind=c.target_kind AND t.target_id=c.target_id AND t.revision=c.revision
+                AND t.event_id=c.event_id AND t.digest=c.terminal_digest
+            WHERE c.target_kind='ACCOUNT' AND c.source_kind='RESOURCE' AND c.source_id=:resource
+            """).param("resource",resource).query(UUID.class).list();
     }
     private void requireWritable(CourseResource resource) {
         if(terminalScope(resource)) throw new ResponseStatusException(HttpStatus.GONE,"LIFECYCLE_TARGET_DELETED");

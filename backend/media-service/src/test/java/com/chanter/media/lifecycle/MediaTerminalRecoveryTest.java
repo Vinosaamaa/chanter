@@ -30,6 +30,76 @@ class MediaTerminalRecoveryTest {
     @Autowired PlatformTransactionManager transactions;
     @Autowired org.springframework.test.web.servlet.MockMvc mvc;
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
+    @Autowired ErasedContentDelivery content;
+    @Autowired com.chanter.common.events.DurableOutbox outbox;
+
+    @Test void physicalClosureAndExactAnswerReceiptErasePayloadAtomicallyButPreserveRecoveryTuple() {
+        var resource=resources.reserve(candidate(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID()));
+        var entry=entry("RESOURCE",resource.id());apply(entry);resources.storageWriteSettled(resource.id());
+        var proof=new ResourceLifecycle.MaintenanceDeletion(resource.id(),resource.storageBackend(),resource.storageKey(),null,resource.byteSize(),resource.sha256());
+        var tx=new TransactionTemplate(transactions);tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof));
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        UUID command=jdbc.queryForObject("SELECT deletion_event_id FROM course_resources WHERE id=?",UUID.class,resource.id());
+        var receipt=new com.chanter.common.events.ResourceDeletionReceipt(resource.id(),command);
+        UUID lease=UUID.randomUUID();
+        jdbc.update("UPDATE durable_outbox SET status='SENDING',lease_token=? WHERE id=?",lease,command);
+        var claimed=new com.chanter.common.events.DurableOutbox.Delivery(jdbc.queryForObject(
+                "SELECT revision,kind,aggregate_key,payload FROM durable_outbox WHERE id=?",(rs,n) -> new com.chanter.common.events.DurableEvent(command,1,"media",rs.getLong(1),rs.getString(2),rs.getString(3),rs.getString(4)),command),"agent",lease,1);
+        jdbc.execute("ALTER TABLE course_resources ADD CONSTRAINT keep_fixture_title CHECK(id<>'"+resource.id()+"' OR title<>'Deleted resource')");
+        try {assertThatThrownBy(() -> tx.executeWithoutResult(s -> resources.acknowledgeDeletion(receipt))).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);}
+        finally {jdbc.execute("ALTER TABLE course_resources DROP CONSTRAINT keep_fixture_title");}
+        assertThat(jdbc.queryForObject("SELECT deletion_reconciled FROM course_resources WHERE id=?",Boolean.class,resource.id())).isFalse();
+        assertThat(jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE id=?",String.class,command)).isNotEqualTo("{}");
+        tx.executeWithoutResult(s -> resources.acknowledgeDeletion(receipt));
+        tx.executeWithoutResult(s -> resources.acknowledgeDeletion(receipt));
+        tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof));
+        outbox.failed(claimed,"LATE_FAILURE");outbox.delivered(claimed);
+        assertThat(jdbc.queryForObject("SELECT status FROM durable_outbox WHERE id=?",String.class,command)).isEqualTo("ERASED");
+        var retained=resources.find(resource.id()).orElseThrow();
+        assertThat(retained.title()).isEqualTo("Deleted resource");assertThat(retained.fileName()).isEqualTo("deleted");
+        assertThat(retained.uploadedByUserId()).isNull();assertThat(retained.idempotencyKey()).isNull();
+        assertThat(retained.storageKey()).isEqualTo(resource.storageKey());assertThat(retained.sha256()).isEqualTo(resource.sha256());
+        assertThat(retained.byteSize()).isEqualTo(resource.byteSize());assertThat(retained.storageBackend()).isEqualTo(resource.storageBackend());
+        assertThat(jdbc.queryForList("SELECT DISTINCT payload FROM durable_outbox WHERE aggregate_key=?",String.class,"RESOURCE:"+resource.id())).containsExactly("{}");
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PRESERVED);
+        var missing=entry("RESOURCE",UUID.randomUUID());apply(missing);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(missing))).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+    }
+
+    @Test void accountWaitsForBothContentFinalsAndRetainsItsFenceAfterUploaderUnlink() throws Exception {
+        var resource=resources.reserve(candidate(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID()));
+        var entry=entry("ACCOUNT",resource.uploadedByUserId());apply(entry);resources.storageWriteSettled(resource.id());
+        var proof=new ResourceLifecycle.MaintenanceDeletion(resource.id(),resource.storageBackend(),resource.storageKey(),null,resource.byteSize(),resource.sha256());
+        var tx=new TransactionTemplate(transactions);tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof));
+        UUID command=jdbc.queryForObject("SELECT deletion_event_id FROM course_resources WHERE id=?",UUID.class,resource.id());
+        tx.executeWithoutResult(s -> resources.acknowledgeDeletion(new com.chanter.common.events.ResourceDeletionReceipt(resource.id(),command)));
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        assertThat(resources.find(resource.id()).orElseThrow().uploadedByUserId()).isEqualTo(entry.targetId());
+        acknowledgeContent(entry);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PRESERVED);
+        var retained=resources.find(resource.id()).orElseThrow();assertThat(retained.uploadedByUserId()).isNull();
+        assertThat(resources.terminalScope(retained)).isTrue();
+        tx.executeWithoutResult(s -> resources.finishVerifiedMaintenanceDelete(proof));
+        assertThatThrownBy(() -> resources.reserve(retained)).isInstanceOf(ResponseStatusException.class);
+        var empty=entry("ACCOUNT",UUID.randomUUID());apply(empty);acknowledgeContent(empty);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(empty))).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
+    }
+
+    private void acknowledgeContent(TerminalJournal.Entry entry) throws Exception {
+        var advance=jdbc.query("SELECT id,revision,payload FROM durable_outbox WHERE kind=? AND aggregate_key=?",(rs,n) ->
+                new com.chanter.common.events.DurableEvent(rs.getObject(1,UUID.class),1,"media",rs.getLong(2),ErasedContentDelivery.ADVANCE,"ACCOUNT_CONTENT_ADVANCE:"+entry.eventId(),rs.getString(3)),
+                ErasedContentDelivery.ADVANCE,"ACCOUNT_CONTENT_ADVANCE:"+entry.eventId());
+        for(var event:advance) content.accept(event);
+        var batches=jdbc.query("SELECT id,revision,destination,aggregate_key,payload FROM durable_outbox WHERE kind=? AND aggregate_key LIKE ?",(rs,n) ->
+                new com.chanter.common.events.DurableEvent(rs.getObject(1,UUID.class),1,rs.getString(3).substring(10),rs.getLong(2),ErasedContent.ERASE,rs.getString(4),rs.getString(5)),ErasedContent.ERASE,"ACCOUNT_CONTENT:"+entry.eventId()+":%");
+        for(var command:batches) content.accept(new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,command.producer(),command.revision(),ErasedContent.RECEIPT,command.aggregateKey(),
+                mapper.writeValueAsString(new ErasedContent.Receipt("media",command.id(),mapper.readValue(command.payload(),ErasedContent.Batch.class)))));
+        var finals=jdbc.query("SELECT id,revision,destination,aggregate_key,payload FROM durable_outbox WHERE kind=? AND aggregate_key=?",(rs,n) ->
+                new com.chanter.common.events.DurableEvent(rs.getObject(1,UUID.class),1,rs.getString(3).substring(10),rs.getLong(2),ErasedContent.FINAL,rs.getString(4),rs.getString(5)),ErasedContent.FINAL,"ACCOUNT_CONTENT_FINAL:"+entry.eventId()+":media");
+        assertThat(finals).hasSize(2);
+        for(var command:finals) content.accept(new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,command.producer(),command.revision(),ErasedContent.COMPLETE,command.aggregateKey(),
+                mapper.writeValueAsString(new ErasedContent.FinalReceipt(command.id(),mapper.readValue(command.payload(),ErasedContent.Completion.class)))));
+    }
 
     @Test void exactAgentDeletionReceiptIsAuthenticatedAtomicAndCannotStandInForPhysicalClosure() throws Exception {
         var resource=resources.reserve(candidate(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID()));
@@ -89,7 +159,7 @@ class MediaTerminalRecoveryTest {
         TerminalReapplyStore.Cleanup remaining=tx.execute(s -> terminal.cleanup(entry));
         assertThat(remaining).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
     }
-    @Test void unknownUploadCannotReleaseBytesAndAccountFenceRejectsAnotherReservation() {
+    @Test void unknownUploadCannotReleaseBytesAndAccountFenceRejectsAnotherReservation() throws Exception {
         var resource=resources.reserve(candidate(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID()));
         var entry=entry("ACCOUNT",resource.uploadedByUserId());
         new TransactionTemplate(transactions).executeWithoutResult(status -> { terminal.applyTerminal(entry); status.setRollbackOnly(); });
@@ -101,6 +171,8 @@ class MediaTerminalRecoveryTest {
                 resource.uploadedByUserId(),resource.id())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_ADVANCE' AND aggregate_key=?",Integer.class,"ACCOUNT_CONTENT_ADVANCE:"+entry.eventId())).isEqualTo(1);
         assertThat(resources.terminalScope(resource)).isTrue();
+        acknowledgeContent(entry);
+        assertThat(content.complete(entry)).isTrue();
         assertThat(resources.claim(false)).isEmpty();
         assertThat(resources.courseUsage(resource.courseId()).reservedBytes()).isEqualTo(10);
         assertThatThrownBy(() -> resources.reserve(candidate(resource.uploadedByUserId(),resource.courseId(),resource.studyServerId())))

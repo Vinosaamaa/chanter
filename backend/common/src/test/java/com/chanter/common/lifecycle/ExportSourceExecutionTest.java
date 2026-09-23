@@ -35,7 +35,7 @@ class ExportSourceExecutionTest {
         var senderJdbc = new JdbcTemplate(sourceData);
         var senderTx = new TransactionTemplate(new DataSourceTransactionManager(sourceData));
         senderJdbc.execute(DurableOutbox.SCHEMA);
-        var clock = Clock.systemUTC();
+        var clock = Clock.fixed(java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS),java.time.ZoneOffset.UTC);
         var mapper = new ObjectMapper().findAndRegisterModules();
         var protocol = new AccountExportProtocol(mapper);
         var snapshots = new ExportSnapshotStore(jdbc, tx, mapper, clock, "community");
@@ -78,7 +78,7 @@ class ExportSourceExecutionTest {
                     AccountExportProtocol.key(request.jobId()), protocol.encode(request)));
             long started = System.nanoTime();
             dispatcher.drain();
-            senderJdbc.update("UPDATE durable_outbox SET available_at=CURRENT_TIMESTAMP");
+            senderJdbc.update("UPDATE durable_outbox SET available_at=?",java.sql.Timestamp.from(clock.instant()));
             dispatcher.drain();
             assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(3));
             assertThat(calls).hasValue(1);
@@ -90,7 +90,7 @@ class ExportSourceExecutionTest {
             blocked.set(false);
             long retryDeadline=System.nanoTime()+Duration.ofSeconds(5).toNanos();
             do {
-                senderJdbc.update("UPDATE durable_outbox SET available_at=CURRENT_TIMESTAMP");
+                senderJdbc.update("UPDATE durable_outbox SET available_at=?",java.sql.Timestamp.from(clock.instant()));
                 dispatcher.drain();
                 if("DELIVERED".equals(senderJdbc.queryForObject("SELECT status FROM durable_outbox",String.class))) break;
                 Thread.sleep(10);

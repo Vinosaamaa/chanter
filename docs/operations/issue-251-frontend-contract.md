@@ -23,13 +23,13 @@ States and truthful copy:
 - CANCELLING / CANCELLED: release pending / preparation cancelled.
 - ERASING: account access is closed; source cleanup remains in progress.
 - WAITING_FOR_REPLICA: source dispositions are recorded, but durable external recovery authority is still pending.
-- COMPLETE: all required source dispositions and external authority acknowledgement are present. PRESERVED means the fixed restricted moderation records were retained; it does not mean every record was erased.
+- COMPLETE: all required source dispositions and external authority acknowledgement are present. PRESERVED means permitted recovery, accounting, shared-course or restricted moderation records remain; it does not mean every record was erased. Minimal terminal/replay identities remain even for a source marked COMPLETE. A source disposition alone cannot complete the overall job.
 
 Use one in-flight action, cancellation on unmount/account change, explicit refresh and stale-response fencing. Show ownership, irreversible confirmation and retention wording before confirm. After confirm, clear ordinary authenticated account state but keep a receipt view reachable without the signed-in route guard. No automatic success message on 202 or sign-out. HTTP 409 asks the user to refresh the current job; 429 is bounded admission, not an invitation to create many IDs. The UI must not invent a retention deadline, legal contact, policy approval or completion date.
 
 ## Export
 
-Reuse `account-data-api.ts` and AccountDataPage. Existing authenticated `/api/v1/auth/account/exports` supports POST `{requestId}`, GET list, GET `/{id}` and DELETE `/{id}`. Job states BUILDING, READY, CANCELLED, EXPIRED and `cleanupPending` remain distinct. A READY export expires after 24 hours. Only actual recent login permits creation.
+Reuse `account-data-api.ts` and AccountDataPage. Existing authenticated `/api/v1/auth/account/exports` supports POST `{requestId}`, GET list, GET `/{id}` and DELETE `/{id}`. Job states BUILDING, READY, CANCELLED, EXPIRED and `cleanupPending` remain distinct. Export availability expires 24 hours after its request, not 24 hours after it becomes READY. Only actual recent login permits creation.
 
 Download uses authenticated, CSRF-protected `POST /{id}/download-authorization`, then a same-origin native anchor navigation to `GET /{id}/download`. The one-use HttpOnly cookie expires in at most 60 seconds and is tied to the live account/session/job. Do not use a JavaScript Blob or URL token. A cancelled/partial download needs new authorization; an anchor click cannot prove completion. The backend checks current source access throughout streaming and omits the successful ZIP ending on failure.
 

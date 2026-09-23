@@ -1,6 +1,7 @@
 CREATE TABLE data_export_lock (id INT PRIMARY KEY);
 ALTER TABLE course_resources ADD COLUMN deletion_event_id UUID;
 ALTER TABLE course_resources ADD COLUMN deletion_reconciled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE course_resources ALTER COLUMN uploaded_by_user_id DROP NOT NULL;
 INSERT INTO data_export_lock VALUES (1);
 CREATE TABLE data_export_account_tombstones (account_id UUID PRIMARY KEY, deleted_at TIMESTAMP WITH TIME ZONE NOT NULL);
 CREATE TABLE data_export_snapshots (
@@ -121,3 +122,4 @@ CREATE TABLE lifecycle_erased_content (
         CREATE INDEX lifecycle_content_notification_event ON lifecycle_erased_content(notification_event_id);
         CREATE INDEX lifecycle_content_pending ON lifecycle_erased_content(target_kind,target_id,search_event_id,source_kind,source_id)
         ;
+CREATE INDEX lifecycle_resource_account_reverse ON lifecycle_erased_content(source_kind,source_id,target_id);

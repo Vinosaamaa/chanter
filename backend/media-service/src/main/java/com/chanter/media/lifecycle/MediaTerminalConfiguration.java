@@ -37,7 +37,7 @@ public class MediaTerminalConfiguration {
                 outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore mediaTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,ResourceLifecycle resources,ErasedContentDelivery content,
+            ExportSnapshotStore snapshots,ResourceLifecycle resources,ErasedContentDelivery content,MediaResourceRetention retention,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
@@ -61,8 +61,7 @@ public class MediaTerminalConfiguration {
             }
             resources.queueTerminalDeletion(entry,ready,recovery ? "lifecycle_recovery_scope_ids" : "lifecycle_scope_import_ids");
             // No provider calls occur here. A restored empty scratch directory is never object-erasure evidence.
-            // Physical object deletion, downstream receipts and metadata disposition remain required.
-            return TerminalReapplyStore.Cleanup.PENDING;
+            return retention.disposition(entry,ready,recovery ? "lifecycle_recovery_scope_ids" : "lifecycle_scope_import_ids");
         });
     }
 }
