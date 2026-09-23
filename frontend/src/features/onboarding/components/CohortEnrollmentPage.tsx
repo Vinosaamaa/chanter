@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
+import type { ShellCourse } from '../../shell/types'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '../../../components/ui/button'
@@ -8,6 +9,7 @@ import { courseChannelPath } from '../../shell/shell-routes'
 
 import { useCohortEnrollments, useCohortInvite } from '../hooks/use-cohort-enrollments'
 import { useCohortEnrollment } from '../hooks/use-cohort-enrollment'
+import './cohort-enrollment.css'
 
 const pageSize = 8
 
@@ -23,34 +25,9 @@ function formatLearnerLabel(userId: string): string {
 
 export function CohortEnrollmentPage() {
   const { serverId, courseId } = useParams()
-  const queryClient = useQueryClient()
+  const location = useLocation()
   const navigationQuery = useStudyServerNavigationQuery(serverId)
   const course = navigationQuery.data?.courses.find((item) => item.id === courseId)
-  const [selectedCohortId, setSelectedCohortId] = useState('')
-  const cohort =
-    course?.cohorts.find((item) => item.id === selectedCohortId) ?? course?.cohorts[0]
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [page, setPage] = useState(1)
-  const enrollment = useCohortEnrollment(cohort?.id ?? '')
-  const inviteQuery = useCohortInvite(cohort?.id)
-  const enrollmentsQuery = useCohortEnrollments(cohort?.id, {
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
-    search: debouncedSearch || undefined,
-  })
-  const [copyMessage, setCopyMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300)
-    return () => window.clearTimeout(timer)
-  }, [search])
-
-  const totalCount = enrollmentsQuery.data?.totalCount ?? 0
-  const pageRows = enrollmentsQuery.data?.enrollments ?? []
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const currentPage = Math.min(page, totalPages)
-
   if (!serverId || !courseId) {
     return null
   }
@@ -65,19 +42,52 @@ export function CohortEnrollmentPage() {
 
   if (navigationQuery.isError) {
     return (
-      <section className="flex flex-1 items-center justify-center p-6 text-sm text-red-300">
-        Could not load enrollment for this Study Server.
+      <section className="enrollment-error flex flex-1 flex-col items-center justify-center gap-3 p-6 text-sm" role="alert">
+        <p>Could not load enrollment for this Study Server.</p>
+        <Button type="button" variant="secondary" onClick={() => void navigationQuery.refetch()} disabled={navigationQuery.isFetching}>Retry enrollment</Button>
       </section>
     )
   }
 
-  if (!course || !cohort) {
+  if (!course || course.cohorts.length === 0) {
     return (
       <section className="flex flex-1 items-center justify-center p-6 text-sm text-app-muted">
         Course not found on this Study Server.
       </section>
     )
   }
+
+
+  if (!course.capabilities.canManagePeople) return <Navigate to={`/app/servers/${serverId}/courses/${courseId}/people${location.search}`} replace />
+  const requestedCohort = new URLSearchParams(location.search).get('cohort')
+  const cohort = course.cohorts.find(item => item.id === requestedCohort) ?? course.cohorts[0]
+  return <ManagerEnrollment key={`${course.id}:${cohort.id}`} serverId={serverId} course={course} cohort={cohort} />
+}
+
+function ManagerEnrollment({ serverId, course, cohort }: { serverId: string; course: ShellCourse; cohort: ShellCourse['cohorts'][number] }) {
+  const queryClient = useQueryClient()
+  const [, setSearchParams] = useSearchParams()
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const enrollment = useCohortEnrollment(cohort.id)
+  const inviteQuery = useCohortInvite(cohort.id)
+  const enrollmentsQuery = useCohortEnrollments(cohort.id, {
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    search: debouncedSearch || undefined,
+  })
+  const [copyMessage, setCopyMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const totalCount = enrollmentsQuery.data?.totalCount ?? 0
+  const pageRows = enrollmentsQuery.data?.enrollments ?? []
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  if (enrollmentsQuery.isSuccess && page > totalPages) setPage(totalPages)
 
   const inviteUrl =
     inviteQuery.data != null
@@ -98,14 +108,14 @@ export function CohortEnrollmentPage() {
 
   const onEnroll = async () => {
     const enrolled = await enrollment.enroll()
-    if (enrolled && cohort) {
+    if (enrolled) {
       await queryClient.invalidateQueries({ queryKey: ['cohort-enrollments', cohort.id] })
     }
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-app-bg">
-      <header className="border-b border-app-border px-6 py-5">
+    <section className="enrollment-page flex min-w-0 flex-1 flex-col overflow-y-auto bg-app-bg">
+      <header className="break-words border-b border-app-border px-4 py-5 sm:px-6">
         <p className="text-xs text-app-muted">
           <Link to={`/app/servers/${serverId}/home`} className="hover:text-app-text">
             Study Server home
@@ -122,7 +132,12 @@ export function CohortEnrollmentPage() {
             <select
               value={cohort.id}
               onChange={(event) => {
-                setSelectedCohortId(event.target.value)
+                const cohortId = event.target.value
+                setSearchParams(current => {
+                  const next = new URLSearchParams(current)
+                  next.set('cohort', cohortId)
+                  return next
+                })
                 enrollment.reset()
                 setPage(1)
                 setCopyMessage(null)
@@ -141,8 +156,8 @@ export function CohortEnrollmentPage() {
         )}
       </header>
 
-      <div className="grid flex-1 gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
+      <div className="grid w-full gap-6 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_320px]" style={{ maxWidth: 1440 }}>
+        <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-app-text">Learners ({totalCount})</h2>
             <label className="flex w-full max-w-xs flex-col gap-1 text-xs text-app-muted">
@@ -159,44 +174,44 @@ export function CohortEnrollmentPage() {
             </label>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-app-border bg-app-surface">
+          <div className="max-w-full overflow-x-auto rounded-xl border border-app-border bg-app-surface">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-app-border bg-app-elevated text-xs uppercase tracking-wide text-app-muted">
+              <caption className="sr-only">Enrolled learners</caption>
+              <thead className="border-b border-app-border bg-app-elevated text-xs text-app-muted">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Learner</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Assigned TA</th>
-                  <th className="px-4 py-3 font-medium">Enrolled</th>
+                  <th className="px-2 py-3 sm:px-4 font-medium">Learner</th>
+                  <th className="px-2 py-3 sm:px-4 font-medium">Status</th>
+                  <th className="px-2 py-3 sm:px-4 font-medium">Enrolled</th>
                 </tr>
               </thead>
               <tbody>
                 {enrollmentsQuery.isLoading ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-app-muted">
+                    <td colSpan={3} className="px-4 py-6 text-app-muted">
                       Loading learners…
                     </td>
                   </tr>
                 ) : enrollmentsQuery.isError ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-red-300">
-                      Could not load enrollments.
+                    <td colSpan={3} className="enrollment-error px-4 py-6" role="alert">
+                      <p>Could not load enrollments.</p>
+                      <Button type="button" variant="secondary" onClick={() => void enrollmentsQuery.refetch()} disabled={enrollmentsQuery.isFetching}>Retry learner list</Button>
                     </td>
                   </tr>
                 ) : pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-app-muted">
+                    <td colSpan={3} className="px-4 py-6 text-app-muted">
                       No learners enrolled yet. Use the invite link or enroll manually.
                     </td>
                   </tr>
                 ) : (
                   pageRows.map((row) => (
                     <tr key={row.learnerUserId} className="border-t border-app-border/70">
-                      <td className="px-4 py-3 font-medium text-app-text">
+                      <td className="px-2 py-3 sm:px-4 font-medium text-app-text">
                         {formatLearnerLabel(row.learnerUserId)}
                       </td>
-                      <td className="px-4 py-3 text-emerald-300">Enrolled</td>
-                      <td className="px-4 py-3 text-app-muted">Unassigned</td>
-                      <td className="px-4 py-3 text-app-muted">
+                      <td className="enrollment-success px-2 py-3 sm:px-4">Enrolled</td>
+                      <td className="px-2 py-3 sm:px-4 text-app-muted">
                         {new Date(row.enrolledAt).toLocaleDateString()}
                       </td>
                     </tr>
@@ -209,14 +224,14 @@ export function CohortEnrollmentPage() {
           {totalCount > pageSize ? (
             <div className="flex items-center justify-between text-xs text-app-muted">
               <span>
-                {(currentPage - 1) * pageSize + 1}–
-                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                {(page - 1) * pageSize + 1}–
+                {Math.min(page * pageSize, totalCount)} of {totalCount}
               </span>
               <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={currentPage <= 1}
+                  disabled={page <= 1}
                   onClick={() => setPage((value) => value - 1)}
                 >
                   Previous
@@ -224,7 +239,7 @@ export function CohortEnrollmentPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={currentPage >= totalPages}
+                  disabled={page >= totalPages}
                   onClick={() => setPage((value) => value + 1)}
                 >
                   Next
@@ -234,7 +249,7 @@ export function CohortEnrollmentPage() {
           ) : null}
 
           <form
-            className="rounded-xl border border-app-border bg-app-surface p-5"
+            className="rounded-xl border border-app-border bg-app-surface p-4"
             onSubmit={(event) => {
               event.preventDefault()
               void onEnroll()
@@ -256,12 +271,12 @@ export function CohortEnrollmentPage() {
               />
             </label>
             {enrollment.error ? (
-              <p role="alert" className="mt-3 text-sm text-red-300">
+              <p role="alert" className="enrollment-error mt-3 text-sm">
                 {enrollment.error}
               </p>
             ) : null}
             {enrollment.successMessage ? (
-              <p role="status" className="mt-3 text-sm text-emerald-200">
+              <p role="status" className="enrollment-success mt-3 text-sm">
                 {enrollment.successMessage}
               </p>
             ) : null}
@@ -271,8 +286,8 @@ export function CohortEnrollmentPage() {
           </form>
         </div>
 
-        <aside className="space-y-4">
-          <article className="rounded-xl border border-app-border bg-app-surface p-5">
+        <aside className="min-w-0 space-y-4">
+          <article className="rounded-xl border border-app-border bg-app-surface p-4">
             <h2 className="text-sm font-semibold text-app-text">Invite link</h2>
             <p className="mt-1 text-xs text-app-muted">
               Share this link so learners can sign in and join this cohort.
@@ -280,14 +295,14 @@ export function CohortEnrollmentPage() {
             {inviteQuery.isLoading ? (
               <p className="mt-3 text-xs text-app-muted">Loading invite link…</p>
             ) : inviteQuery.isError || !inviteUrl ? (
-              <p className="mt-3 text-xs text-red-300">Could not load invite link.</p>
+              <div role="alert" className="enrollment-error mt-3 text-xs"><p>Could not load invite link.</p><Button type="button" variant="secondary" onClick={() => void inviteQuery.refetch()} disabled={inviteQuery.isFetching}>Retry invite link</Button></div>
             ) : (
               <>
                 <p className="mt-3 break-all rounded-lg border border-app-border bg-app-bg px-3 py-2 text-xs text-app-text">
                   {inviteUrl}
                 </p>
                 {copyMessage ? (
-                  <p role="status" className="mt-2 text-xs text-emerald-200">
+                  <p role="status" className="mt-2 text-xs">
                     {copyMessage}
                   </p>
                 ) : null}
@@ -303,24 +318,24 @@ export function CohortEnrollmentPage() {
             )}
           </article>
 
-          <article className="rounded-xl border border-app-border bg-app-surface p-5">
+          <article className="rounded-xl border border-app-border bg-app-surface p-4">
             <h2 className="text-sm font-semibold text-app-text">Course channels access</h2>
             <p className="mt-1 text-xs text-app-muted">
               Enrolled learners can access these course channels.
             </p>
-            <ul className="mt-4 space-y-2 text-sm">
+            <ul className="enrollment-channels mt-4 space-y-2 text-sm">
               {course.channels.map((channel) => (
                 <li
                   key={channel.id}
-                  className="flex items-center justify-between rounded-lg border border-app-border/70 px-3 py-2"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-app-border/70 px-3 py-2"
                 >
-                  <span className="text-app-text">
+                  <span className="enrollment-channel-name min-w-0 text-app-text">
                     {channel.kind === 'VOICE' ? '>' : '#'}
                     {channel.name}
                   </span>
                   <Link
                     to={courseChannelPath(serverId, channel.id)}
-                    className="text-xs text-app-accent hover:underline"
+                    className="shrink-0 text-xs text-app-accent hover:underline"
                   >
                     Preview
                   </Link>
@@ -330,8 +345,7 @@ export function CohortEnrollmentPage() {
           </article>
 
           <p className="text-xs text-app-muted">
-            TA assignment UI is shown for layout parity; assigning TAs requires a follow-up backend
-            slice.
+            <Link to={`/app/servers/${serverId}/courses/${course.id}/people?cohort=${cohort.id}`}>Manage teaching assistant assignments in People</Link>
           </p>
         </aside>
       </div>

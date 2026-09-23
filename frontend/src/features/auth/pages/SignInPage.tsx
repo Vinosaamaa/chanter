@@ -15,7 +15,7 @@ import {
 import { isHttpOrHttpsUrl } from '../is-http-or-https-url'
 import { authenticateBrowserSession, signOutBrowserSession } from '../browser-session'
 import { useAuthStore } from '../../../stores/auth-store'
-import { readCohortInviteParams } from '../../onboarding/cohort-invite'
+import { readCohortInviteParams, rememberCohortInviteFromSearch } from '../../onboarding/cohort-invite'
 import { V2Brand } from '../../v2-shell/components/V2Brand'
 
 type AuthMode = 'sign-in' | 'register'
@@ -44,6 +44,10 @@ export function SignInPage() {
 
   const defaultRedirect = inviteFromUrl ? '/app/welcome' : '/app/home'
   const redirectTo = (location.state as { from?: string } | null)?.from ?? defaultRedirect
+
+  useEffect(() => {
+    if (!accessToken) rememberCohortInviteFromSearch(location.search)
+  }, [accessToken, location.search])
 
   useEffect(() => {
     void fetchOauthProviders()
@@ -206,6 +210,7 @@ export function SignInPage() {
             ) : null}
             {error ? <p role="alert" className="v2-auth-error">{error}</p> : null}
             {info ? <p role="status" className="v2-auth-info">{info}</p> : null}
+            {info && inviteFromUrl ? <p className="v2-auth-info">After verifying your email, return to this tab to finish joining your cohort.</p> : null}
             {mode === 'register' ? <HumanVerificationControl key={verificationAttempt} action="register" onChange={setVerification} /> : null}
             <button type="submit" disabled={isSubmitting || (mode === 'register' && !verification)}>{isSubmitting ? 'Working…' : mode === 'register' ? 'Create account' : 'Sign in'}</button>
           </form>

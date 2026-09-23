@@ -14,7 +14,8 @@ for (const width of [320, 390, 1280]) {
     await page.route('**/api/v1/auth/forgot-password', route => route.fulfill({ status: 202,
       json: { message: 'If the account exists, a reset link is on its way.' },
     }))
-    await page.goto('/sign-in')
+    await page.goto('/sign-in?cohort=fixture-cohort&invite=fixture-invite')
+    await page.getByRole('tab', { name: 'Sign in', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeEnabled()
     await page.getByRole('tab', { name: 'Create account' }).click()
     await page.getByLabel('Full name').fill('Sam Lee')
@@ -30,6 +31,9 @@ for (const width of [320, 390, 1280]) {
     await page.getByRole('button', { name: 'Create account', exact: true }).click()
     expect((await signupRequest).headers()['x-chanter-verification-method']).toBe('email')
     await expect(page.getByText('Check your email for a verification link.')).toBeVisible()
+    await expect(page.getByText('After verifying your email, return to this tab to finish joining your cohort.', { exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-auth-invitation-continuation-${width}.png`), fullPage: true })
     await page.getByRole('link', { name: 'Forgot password?' }).click()
     await expect(page.getByRole('heading', { name: 'Forgot password', exact: true })).toBeVisible()
     await page.getByLabel('Email', { exact: true }).fill('learner@example.test')

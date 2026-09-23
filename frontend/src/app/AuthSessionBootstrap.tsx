@@ -7,12 +7,16 @@ import { useAuthStore } from '../stores/auth-store'
 export function AuthSessionBootstrap({ children }: { children: ReactNode }) {
   const status = useAuthStore((state) => state.status)
   const { pathname } = useLocation()
+  const deletionReceipt = pathname.startsWith('/account-deletion/')
 
   useEffect(() => {
     const stop = synchronizeBrowserSession()
-    if (useAuthStore.getState().status === 'restoring') void restoreBrowserSession()
     return stop
   }, [])
+  useEffect(() => {
+    // A receipt has independent read-only authority and must survive account revocation.
+    if (!deletionReceipt && useAuthStore.getState().status === 'restoring') void restoreBrowserSession()
+  }, [deletionReceipt])
 
   if (pathname !== '/sign-in' && pathname !== '/app' && !pathname.startsWith('/app/')) return children
 

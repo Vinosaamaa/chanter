@@ -1,0 +1,6 @@
+.enrollment-page a { display: inline-flex; align-items: center; min-height: 44px; max-width: 100%; }
+.enrollment-channel-name { overflow-wrap: anywhere; }
+.v2-app-shell .enrollment-page :is(input, select) { min-height: 44px; font-size: 16px; }
+.v2-app-shell :is(.enrollment-page, .enrollment-error) button { min-height: 44px; }
+.enrollment-success { color: #197451; }
+.enrollment-error { color: #B42332; }

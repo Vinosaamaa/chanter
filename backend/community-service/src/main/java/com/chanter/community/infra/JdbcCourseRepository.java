@@ -454,6 +454,7 @@ public class JdbcCourseRepository implements CourseRepository {
     @Override
     @Transactional
     public void enrollLearner(UUID cohortId, UUID learnerUserId, UUID enrolledByUserId, Instant enrolledAt) {
+        boolean postgres = usePostgresUpsert();
         try {
             jdbcClient.sql("""
                             INSERT INTO cohort_enrollments (
@@ -463,14 +464,15 @@ public class JdbcCourseRepository implements CourseRepository {
                                 enrolled_at
                             )
                             VALUES (:cohortId, :learnerUserId, :enrolledByUserId, :enrolledAt)
-                            """)
+                            """ + (postgres ? " ON CONFLICT (cohort_id, learner_user_id) DO NOTHING" : ""))
                     .param("cohortId", cohortId)
                     .param("learnerUserId", learnerUserId)
                     .param("enrolledByUserId", enrolledByUserId)
                     .param("enrolledAt", OffsetDateTime.ofInstant(enrolledAt, ZoneOffset.UTC))
                     .update();
         } catch (DuplicateKeyException ignored) {
-            // Re-enrolling the same learner is idempotent for this vertical slice.
+            if (postgres) throw ignored;
+            // H2 permits the following update; PostgreSQL must avoid aborting the transaction.
         }
         jdbcClient.sql("""
                         UPDATE cohort_invitations

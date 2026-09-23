@@ -10,13 +10,6 @@ import { useThemeStore } from '../../../stores/theme-store'
 
 const topNavItems = [
   { id: 'friends', label: 'Friends', to: '/app/friends', icon: '👥', matchPrefix: true },
-  {
-    id: 'dashboard',
-    label: 'Instructor Dashboard',
-    to: '/app/instructor-dashboard',
-    icon: '📊',
-    matchPrefix: false,
-  },
 ] as const
 
 export function AppTopBar() {
@@ -75,9 +68,6 @@ export function AppTopBar() {
           <span className="hidden sm:inline">Search</span>
           <kbd className="hidden rounded border border-app-border px-1.5 py-0.5 text-[10px] sm:inline">⌘K</kbd>
         </button>
-        <HeaderIconButton label="Help (coming soon)" className="opacity-60" disabled>
-          ?
-        </HeaderIconButton>
         <div className="hidden items-center gap-2 sm:flex">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-app-accent text-xs font-semibold text-white">
             {(user?.displayName ?? user?.email ?? '?').slice(0, 1).toUpperCase()}

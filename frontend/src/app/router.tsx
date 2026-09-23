@@ -18,6 +18,7 @@ export function createAppRouter() {
       lazy: async () => ({ Component: (await import('../features/auth/pages/ForgotPasswordPage')).ForgotPasswordPage }),
     },
     { path: '/appeal', lazy: async () => ({ Component: (await import('../features/moderation/AppealPage')).AppealPage }) },
+    { path: '/account-deletion/:jobId', lazy: async () => ({ Component: (await import('../features/account-data/AccountDeletionPage')).AccountDeletionReceiptPage }) },
     { path: '/operator', element: <ProtectedRoute><Outlet /></ProtectedRoute>, children: [{ index: true, lazy: async () => ({ Component: (await import('../features/moderation/OperatorPage')).OperatorPage }) }] },
     {
       path: '/reset-password',
@@ -79,8 +80,15 @@ export function createAppRouter() {
               lazy: async () => ({ Component: (await import('../features/v2-shell/pages/CalendarPage')).CalendarPage }),
             },
             { path: 'teaching', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/TeachingPage')).TeachingPage }) },
+            { path: 'picker', lazy: async () => ({ Component: (await import('../features/shell/components/StudyServerPickerPage')).StudyServerPickerPage }) },
+            { path: 'servers/:serverId/home', lazy: async () => ({ Component: (await import('../features/onboarding/components/StudyServerHomePage')).StudyServerHomePage }) },
+            { path: 'servers/:serverId/courses/:courseId/enrollment', lazy: async () => ({ Component: (await import('../features/onboarding/components/CohortEnrollmentPage')).CohortEnrollmentPage }) },
+            { path: 'instructor-dashboard', lazy: async () => ({ Component: (await import('../features/instructor-dashboard/components/InstructorDashboardPage')).InstructorDashboardPage }) },
             { path: 'settings/billing', element: <Navigate to="/app/settings/usage" replace /> },
             { path: 'settings/usage', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/UsageSettingsPage')).UsageSettingsPage }) },
+            { path: 'account-data', lazy: async () => ({ Component: (await import('../features/account-data/AccountDataPage')).AccountDataPage }) },
+            { path: 'account-data/delete', lazy: async () => ({ Component: (await import('../features/account-data/AccountDeletionPage')).AccountDeletionPage }) },
+            { path: 'deletions/:jobId', lazy: async () => ({ Component: (await import('../features/account-data/SourceDeletionPage')).SourceDeletionPage }) },
             { path: 'friends', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/FriendsPage')).FriendsPage }) },
             { path: 'safety', lazy: async () => ({ Component: (await import('../features/moderation/SafetyPage')).SafetyPage }) },
             {
@@ -113,22 +121,6 @@ export function createAppRouter() {
         {
           lazy: async () => ({ Component: (await import('../features/shell/layouts/AppShellLayout')).AppShellLayout }),
           children: [
-            {
-              path: 'picker',
-              lazy: async () => ({ Component: (await import('../features/shell/components/StudyServerPickerPage')).StudyServerPickerPage }),
-            },
-            {
-              path: 'instructor-dashboard',
-              lazy: async () => ({ Component: (await import('../features/instructor-dashboard/components/InstructorDashboardPage')).InstructorDashboardPage }),
-            },
-            {
-              path: 'servers/:serverId/home',
-              lazy: async () => ({ Component: (await import('../features/onboarding/components/StudyServerHomePage')).StudyServerHomePage }),
-            },
-            {
-              path: 'servers/:serverId/courses/:courseId/enrollment',
-              lazy: async () => ({ Component: (await import('../features/onboarding/components/CohortEnrollmentPage')).CohortEnrollmentPage }),
-            },
             {
               path: 'servers/:serverId',
               lazy: async () => ({ Component: (await import('../features/shell/pages/AppServerRedirectPage')).AppServerRedirectPage }),

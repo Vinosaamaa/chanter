@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -68,6 +68,14 @@ function questionsForFilter(
 }
 
 export function CourseQuestionsPage() {
+  const { serverId, course, selectedCohort, courseCapabilities } = useV2CourseWorkspace()
+  const account = useAuthStore(state => state.user?.id)
+  const generation = useAuthStore(state => state.generation)
+  const channel = course.channels.find(entry => entry.name.toLowerCase() === 'questions')?.id
+  return <CourseQuestionsContent key={`${account}:${generation}:${serverId}:${course.id}:${channel}:${selectedCohort?.id}:${courseCapabilities.canManageQuestions}`} />
+}
+
+function CourseQuestionsContent() {
   const { serverId, course, courseCapabilities, selectedCohort } = useV2CourseWorkspace()
   const userId = useAuthStore((state) => state.user?.id ?? null)
   const sessionGeneration = useAuthStore((state) => state.generation)
@@ -84,17 +92,37 @@ export function CourseQuestionsPage() {
   const queue = useTaQueuePanel(courseCapabilities.canManageTaQueue ? selectedCohort?.id : undefined)
   const [filter, setFilter] = useState<QuestionFilter>('open')
   const [draft, setDraft] = useState('')
-  const [readingOpen, setReadingOpen] = useState(false)
+  const [readingView, setReadingView] = useState<{ compose: boolean } | null>(null)
+  const readingOpen = readingView !== null
   const selectedRowRef = useRef<HTMLButtonElement | null>(null)
+  const listHeading = useRef<HTMLHeadingElement>(null)
+  const conversation = useRef<HTMLElement>(null)
+  const composer = useRef<HTMLInputElement>(null)
+  const wasReadingOpen = useRef(false)
   const draftVersionRef = useRef(0)
+  const [draftQuestion, setDraftQuestion] = useState<string | null>(null)
   const selected = questions.selectedQuestion
+  const draftMatchesQuestion = !manageQuestions || !draft || (selected != null && draftQuestion === selected.id)
+  useEffect(() => {
+    if (readingView) {
+      if (readingView.compose) composer.current?.focus()
+      else conversation.current?.focus()
+    } else if (wasReadingOpen.current) {
+      const previous = selectedRowRef.current
+      if (previous?.isConnected) previous.focus()
+      else listHeading.current?.focus()
+    }
+    wasReadingOpen.current = readingOpen
+  }, [readingOpen, readingView])
 
   const updateDraft = (value: string) => {
+    setDraftQuestion(manageQuestions ? selected?.id ?? null : null)
     draftVersionRef.current += 1
     setDraft(value)
   }
 
   const clearDraft = () => {
+    setDraftQuestion(null)
     draftVersionRef.current += 1
     setDraft('')
   }
@@ -135,7 +163,7 @@ export function CourseQuestionsPage() {
 
   const submitComposer = (event: FormEvent) => {
     event.preventDefault()
-    if (!selected && manageQuestions) return
+    if (manageQuestions && (!selected || !draftMatchesQuestion)) return
     const submittedDraftVersion = draftVersionRef.current
     const action = manageQuestions && selected
       ? questions.postReply(selected.id, draft)
@@ -153,7 +181,7 @@ export function CourseQuestionsPage() {
     <div className={`questions-layout ${manageQuestions ? 'owner-view' : ''}${readingOpen ? ' question-reading-open' : ''}`}>
       <aside className="questions-list-pane">
         <div className="question-list-heading">
-          <h2>Questions</h2>
+          <h2 ref={listHeading} tabIndex={-1}>Questions</h2>
           <button type="button" aria-label="Refresh questions" onClick={() => void questions.refresh()}>
             <RefreshCw />
           </button>
@@ -170,7 +198,7 @@ export function CourseQuestionsPage() {
             </button>
           ))}
         </div>
-        {!manageQuestions ? <button type="button" className="mobile-ask-question" onClick={() => { clearDraft(); questions.selectSupportQuestion(null); setReadingOpen(true) }}><Plus size={16} /> Ask a question</button> : null}
+        {!manageQuestions ? <button type="button" className="mobile-ask-question" onClick={event => { selectedRowRef.current = event.currentTarget; clearDraft(); questions.selectSupportQuestion(null); setReadingView({ compose: true }) }}><Plus size={16} /> Ask a question</button> : null}
         <div className="question-thread-list">
           {questions.isLoadingHistory ? <p className="question-empty-state">Loading questions…</p> : null}
           {!questions.isLoadingHistory && filteredQuestions.length === 0 ? (
@@ -185,8 +213,8 @@ export function CourseQuestionsPage() {
                 key={question.id}
                 onClick={(event) => {
                   selectedRowRef.current = event.currentTarget
-                  setReadingOpen(true)
-                  clearDraft()
+                  setReadingView({ compose: false })
+                  if (draftQuestion !== question.id) clearDraft()
                   questions.selectSupportQuestion(question.id)
                 }}
               >
@@ -202,8 +230,8 @@ export function CourseQuestionsPage() {
         </div>
       </aside>
 
-      <section className="question-detail-pane">
-        <button type="button" className="mobile-back" aria-label="Back to questions" onClick={() => { setReadingOpen(false); requestAnimationFrame(() => selectedRowRef.current?.focus()) }}><ArrowLeft /> Questions</button>
+      <section className="question-detail-pane" aria-label="Question conversation" tabIndex={-1} ref={conversation}>
+        <button type="button" className="mobile-back" aria-label="Back to questions" onClick={() => setReadingView(null)}><ArrowLeft /> Questions</button>
         {manageQuestions ? <h2 className="question-pane-label">Thread</h2> : null}
         {!selected ? (
           <div className="question-detail-empty">
@@ -370,11 +398,14 @@ export function CourseQuestionsPage() {
 
         {questions.error ? <p className="inline-error" role="alert">{questions.error}</p> : null}
         {questions.taQueueSuccess ? <p className="inline-success">{questions.taQueueSuccess}</p> : null}
-        {(!manageQuestions || selected) ? (
+        {!draftMatchesQuestion ? <p role="status">Your reply is kept for its original question. It cannot be sent to another question.</p> : null}
+        {(!manageQuestions || selected || draft) ? (
           <form className="question-composer" onSubmit={submitComposer}>
             <input
+              ref={composer}
               aria-label={manageQuestions ? 'Reply to this question' : 'Ask a support question'}
               value={draft}
+              readOnly={!draftMatchesQuestion}
               onChange={(event) => updateDraft(event.target.value)}
               placeholder={manageQuestions ? 'Reply to this question…' : 'Ask a support question…'}
             />
@@ -382,7 +413,7 @@ export function CourseQuestionsPage() {
               type="submit"
               className="send-button"
               aria-label={manageQuestions ? 'Send reply' : 'Send question'}
-              disabled={!draft.trim() || questions.isPosting || questions.isPostingReply}
+              disabled={!draft.trim() || !draftMatchesQuestion || questions.isPosting || questions.isPostingReply}
             >
               <Send />
             </button>

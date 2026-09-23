@@ -1,15 +1,19 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router-dom'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router-dom'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { CourseResource, CourseResourceFilter } from '../../../resources/course-resource-types'
 import type { StudyAssistantInstallPreview } from '../../../study-assistant/study-assistant-types'
 import { CourseResourcesPage } from './CourseResourcesPage'
+import { useAuthStore } from '../../../../stores/auth-store'
 
 const mocks = vi.hoisted(() => ({
+  courseId: 'course-1',
+  canManageCourse: true,
   fetchPresence: vi.fn(),
+  deleteResource: vi.fn(),
   resources: {
     resources: [] as CourseResource[],
     filteredResources: [] as CourseResource[],
@@ -46,10 +50,7 @@ const mocks = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('../../../../stores/auth-store', () => ({
-  useAuthStore: (selector: (state: { user: { id: string } }) => unknown) =>
-    selector({ user: { id: 'owner-1' } }),
-}))
+vi.mock('../../../resources/course-resources-api', () => ({ deleteCourseResource: mocks.deleteResource }))
 
 vi.mock('../../../questions/questions-api', () => ({
   fetchStudyAssistantPresence: mocks.fetchPresence,
@@ -71,8 +72,8 @@ vi.mock('../../../study-assistant/hooks/use-study-assistant-install', () => ({
 vi.mock('../../layouts/v2-course-workspace-context', () => ({
   useV2CourseWorkspace: () => ({
     serverId: 'server-1',
-    course: { id: 'course-1', title: 'Algorithms' },
-    courseCapabilities: { canUploadResources: true },
+    course: { id: mocks.courseId, title: 'Algorithms' },
+    courseCapabilities: { canUploadResources: mocks.canManageCourse },
   }),
 }))
 
@@ -81,6 +82,11 @@ describe('CourseResourcesPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.courseId = 'course-1'
+    mocks.canManageCourse = true
+    useAuthStore.getState().setSession({ accessToken: 'owner-token', expiresInSeconds: 900, user: { id: 'owner-1', email: 'owner@example.test', displayName: 'Owner' } })
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function (this: HTMLDialogElement) { this.open = true } })
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function (this: HTMLDialogElement) { this.open = false } })
     window.history.replaceState({}, '', '/')
     mocks.resources.resources = []
     mocks.resources.filteredResources = []
@@ -112,6 +118,63 @@ describe('CourseResourcesPage', () => {
     expect(screen.getByText('No resources uploaded yet.')).toBeInTheDocument()
     expect(screen.queryByText(/Lecture 1/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Week 1/)).not.toBeInTheDocument()
+  })
+
+  it('requires confirmation and opens pending file-deletion progress', async () => {
+    const resource = courseResource()
+    mocks.resources.resources = [resource]; mocks.resources.filteredResources = [resource]
+    const jobId = 'b633c892-6762-40ec-a945-b042957a052b'
+    mocks.deleteResource.mockResolvedValue({ jobId, targetId: resource.id, state: 'PENDING' })
+    renderPage()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Delete Recursion notes' }))
+    expect(mocks.deleteResource).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Delete course file' }))
+    await waitFor(() => expect(screen.getByTestId('current-path')).toHaveTextContent(`/app/deletions/${jobId}`))
+    expect(mocks.deleteResource).toHaveBeenCalledWith(resource.id, expect.any(AbortSignal))
+    expect(screen.queryByText('Deletion completed')).not.toBeInTheDocument()
+  })
+
+  it.each(['course', 'account'] as const)('discards a deletion dialog across a %s change and return', async change => {
+    const resource = courseResource()
+    mocks.resources.resources = [resource]; mocks.resources.filteredResources = [resource]
+    const view = renderPage()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Delete Recursion notes' }))
+    expect(screen.getByRole('dialog')).toBeVisible()
+    if (change === 'course') mocks.courseId = 'course-2'
+    else {
+      mocks.resources.isLoading = true
+      await act(async () => useAuthStore.getState().setSession({ accessToken: 'other', expiresInSeconds: 900, user: { id: 'other', email: 'other@example.test', displayName: 'Other' } }))
+    }
+    view.rerenderPage()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    mocks.courseId = 'course-1'; mocks.resources.isLoading = false
+    view.rerenderPage()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mocks.deleteResource).not.toHaveBeenCalled()
+  })
+
+  it('does not expose file deletion to a learner', () => {
+    const resource = courseResource()
+    mocks.resources.resources = [resource]; mocks.resources.filteredResources = [resource]
+    mocks.resources.canUpload = false
+    renderPage()
+    expect(screen.queryByRole('button', { name: 'Delete Recursion notes' })).not.toBeInTheDocument()
+  })
+
+  it.each(['course', 'source'] as const)('discards the deletion dialog after %s permission is revoked and restored', async scope => {
+    const resource = courseResource()
+    mocks.resources.resources = [resource]; mocks.resources.filteredResources = [resource]
+    const view = renderPage()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Delete Recursion notes' }))
+    if (scope === 'course') mocks.canManageCourse = false
+    else mocks.resources.canUpload = false
+    view.rerenderPage()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    mocks.canManageCourse = true; mocks.resources.canUpload = true
+    view.rerenderPage()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mocks.deleteResource).not.toHaveBeenCalled()
   })
 
   it('searches, filters, previews, and downloads durable resources', async () => {
@@ -336,12 +399,17 @@ function renderPage() {
     defaultOptions: { queries: { retry: false } },
   })
 
-  return render(
+  const tree = () => (
     <MemoryRouter><QueryClientProvider client={queryClient}>
       <CourseResourcesPage />
-    </QueryClientProvider></MemoryRouter>,
+      <CurrentPath />
+    </QueryClientProvider></MemoryRouter>
   )
+  const view = render(tree())
+  return { ...view, rerenderPage: () => view.rerender(tree()) }
 }
+
+function CurrentPath() { return <output data-testid="current-path">{useLocation().pathname}</output> }
 
 function courseResource(overrides: Partial<CourseResource> = {}): CourseResource {
   return {

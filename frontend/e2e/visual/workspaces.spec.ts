@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test, type WebSocketRoute } from '@playwright/test'
 import { VISUAL_NOW } from './workspace-fixtures'
 
 // A synthetic socket supplies connection acknowledgements for layout-only screenshots.
@@ -17,6 +17,268 @@ test.beforeEach(async ({ page }) => {
 // Layout evidence uses explicit synthetic responses; authenticated backend journeys run separately.
 const course = '/app/servers/visual-study/courses/visual-course-0'
 const community = '/app/servers/visual-study/community'
+
+for (const viewport of [{ width: 320, height: 740 }, { width: 844, height: 390 }, { width: 1280, height: 900 }]) {
+  test(`fixture UI enrollment preserves owner actions at ${viewport.width} @enrollment`, async ({ page }, testInfo) => {
+    let enrolled = false
+    const submissions: unknown[] = []
+    await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('Fixture clipboard permission denied') } } }))
+    await page.route('**/api/v1/study-servers/visual-study/navigation', async route => {
+      const response = await route.fetch()
+      const data = await response.json()
+      data.courses[0].capabilities = { ...data.courses[0].capabilities, canManagePeople: true }
+      data.courses[0].channels.push({ id: 'visual-long-channel', name: 'x'.repeat(80), kind: 'TEXT' })
+      await route.fulfill({ response, json: data })
+    })
+    await page.route('**/api/v1/cohorts/visual-cohort/invite', route => route.fulfill({ json: { cohortId: 'visual-cohort', inviteCode: 'synthetic-enrollment-invitation' } }))
+    await page.route('**/api/v1/cohorts/visual-cohort/enrollments**', async route => {
+      if (route.request().method() === 'POST') {
+        submissions.push(route.request().postDataJSON())
+        if (submissions.length === 1) return route.fulfill({ status: 503, json: { message: 'Enrollment temporarily unavailable' } })
+        enrolled = true
+        return route.fulfill({ status: 201, json: {} })
+      }
+      await route.fulfill({ json: { enrollments: [{ learnerUserId: 'visual-enrolled-learner', enrolledAt: VISUAL_NOW }, ...(enrolled ? [{ learnerUserId: 'visual-new-learner', enrolledAt: VISUAL_NOW }] : [])], totalCount: enrolled ? 2 : 1, limit: 8, offset: 0 } })
+    })
+    await page.setViewportSize(viewport)
+    await page.goto(`${course}/enrollment?visual=staff`)
+    await expect(page.locator('.v2-app-shell')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Learners (1)', exact: true })).toBeVisible()
+    await expect(page.getByRole('table', { name: 'Enrolled learners' })).toBeVisible()
+    const email = page.getByRole('textbox', { name: 'Learner email', exact: true })
+    await email.fill('new-learner@example.test')
+    expect(await email.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+    expect(await email.evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16)
+    await page.getByRole('button', { name: 'Enroll learner', exact: true }).click()
+    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Learners (1)', exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-enrollment-error-${viewport.width}.png`) })
+    await page.getByRole('button', { name: 'Enroll learner', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Learners (2)', exact: true })).toBeVisible()
+    await expect(page.getByRole('status')).toContainText('Learner enrolled.')
+    expect(submissions).toEqual([{ email: 'new-learner@example.test' }, { email: 'new-learner@example.test' }])
+    await page.getByRole('button', { name: 'Copy invite link', exact: true }).click()
+    await expect(page.getByText('Unable to copy invite link.', { exact: true })).toBeVisible()
+    await expect(page.getByText(/\/sign-in\?cohort=visual-cohort&invite=synthetic-enrollment-invitation/)).toBeVisible()
+    const longChannel = page.locator('.enrollment-channels li').filter({ hasText: 'x'.repeat(80) })
+    await expect(longChannel.getByRole('link', { name: 'Preview' })).toHaveAttribute('href', '/app/servers/visual-study/course-channels/visual-long-channel')
+    expect(await longChannel.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-enrollment-invite-${viewport.width}.png`) })
+    if (viewport.width === 1280) {
+      const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze()
+      expect(violations.map(({ id, nodes }) => ({ id, targets: nodes.map(node => node.target) }))).toEqual([])
+    }
+  })
+}
+
+for (const width of [390, 1280]) {
+  test(`fixture UI removes erased answer and reply after refresh at ${width} @questions`, async ({ page }, testInfo) => {
+    let removed = false
+    await page.route('**/assistant-answer', route => route.fulfill(removed
+      ? { status: 404, json: { message: 'No saved answer' } }
+      : { json: {
+        id: 'visual-erased-answer', supportQuestionId: 'visual-question',
+        answerBody: 'An answer from the removed source.', createdAt: VISUAL_NOW,
+        supportQuestionStatus: 'AI_ANSWERED', handoffRecommended: false,
+        sources: [{ resourceId: 'visual-erased-resource', resourceTitle: 'Removed field notes', excerpt: 'Private excerpt from the removed source.' }],
+      } }))
+    await page.route('**/replies', route => route.fulfill({ json: { replies: removed ? [] : [{
+      id: 'visual-erased-reply', supportQuestionId: 'visual-question', authorUserId: 'visual-peer',
+      body: 'Reply from the removed account.', createdAt: VISUAL_NOW,
+    }] } }))
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto(`${course}/questions`)
+    if (width === 390) await page.locator('.question-thread-list > button').first().click()
+    await expect(page.getByText('An answer from the removed source.', { exact: true })).toBeVisible()
+    await expect(page.getByText('Private excerpt from the removed source.', { exact: true })).toBeVisible()
+    await expect(page.getByText('Reply from the removed account.', { exact: true })).toBeVisible()
+    removed = true
+    if (width === 390) await page.getByRole('button', { name: 'Back to questions', exact: true }).click()
+    await page.getByRole('button', { name: 'Refresh questions', exact: true }).click()
+    if (width === 390) await page.locator('.question-thread-list > button').first().click()
+    await expect(page.getByText('An answer from the removed source.', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Private excerpt from the removed source.', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Reply from the removed account.', { exact: true })).toHaveCount(0)
+    await expect(page.locator('.question-message').first()).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-question-erased-content-${width}.png`) })
+  })
+}
+
+test('fixture UI phone Questions keeps a new draft through late history', async ({ page }, testInfo) => {
+  let release!: () => void
+  const ready = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/support-questions', async route => {
+    const response = await route.fetch()
+    await ready
+    await route.fulfill({ response })
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${course}/questions`)
+  await expect(page.getByText('Loading questions…')).toBeVisible()
+  await page.getByRole('button', { name: 'Ask a question', exact: true }).click()
+  const composer = page.getByRole('textbox', { name: 'Ask a support question' })
+  await composer.fill('My new question must stay here')
+  release()
+  await expect(page.getByText('Loading questions…')).toHaveCount(0)
+  await expect(composer).toHaveValue('My new question must stay here')
+  await expect(composer).toBeFocused()
+  await expect(page.getByRole('region', { name: 'Question conversation' }).locator('.question-message')).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-question-late-history-390.png') })
+})
+
+test('fixture UI Questions keeps a staff draft when its question disappears @questions', async ({ page }, testInfo) => {
+  await page.route('**/api/v1/study-servers/visual-study/navigation', async route => {
+    const response = await route.fetch()
+    const data = await response.json()
+    data.courses = data.courses.map((entry: { capabilities: object }) => ({ ...entry, capabilities: { ...entry.capabilities, canManageQuestions: true } }))
+    await route.fulfill({ response, json: data })
+  })
+  let omitted = false
+  await page.route('**/support-questions', async route => {
+    const response = await route.fetch()
+    const data = await response.json()
+    await route.fulfill({ response, json: omitted ? { supportQuestions: data.supportQuestions.map((entry: object) => ({ ...entry, id: 'visual-other-question', body: 'Another learner question' })) } : data })
+  })
+  let replies = 0
+  await page.route('**/replies', route => {
+    if (route.request().method() === 'POST') replies += 1
+    return route.continue()
+  })
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto(`${course}/questions?visual=staff`)
+  const composer = page.getByRole('textbox', { name: 'Reply to this question' })
+  await composer.fill('This reply belongs to the original question')
+  omitted = true
+  await page.getByRole('button', { name: 'Refresh questions' }).click()
+  await expect(page.getByRole('button', { name: /Another learner question/ })).toBeVisible()
+  await expect(composer).toHaveValue('This reply belongs to the original question')
+  await expect(composer).toHaveAttribute('readonly', '')
+  await expect(page.getByRole('button', { name: 'Send reply' })).toBeDisabled()
+  await composer.focus()
+  await composer.press('Enter')
+  expect(replies).toBe(0)
+  await expect(page.getByText('Your reply is kept for its original question. It cannot be sent to another question.')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-question-retained-draft-1280.png') })
+  omitted = false
+  await page.getByRole('button', { name: 'Refresh questions' }).click()
+  await expect(composer).not.toHaveAttribute('readonly', '')
+  await expect(composer).toHaveValue('This reply belongs to the original question')
+  await expect(page.getByRole('button', { name: 'Send reply' })).toBeEnabled()
+})
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1280, height: 900 }]) {
+  test(`fixture UI server home retains owner course actions at ${viewport.width} @serverhome`, async ({ page }, testInfo) => {
+    let created: { title: string; cohortName: string; enrollmentPolicy: string } | undefined
+    const submissions: unknown[] = []
+    await page.route('**/api/v1/study-servers/visual-study/courses', async route => {
+      expect(route.request().method()).toBe('POST')
+      created = route.request().postDataJSON()
+      submissions.push(created)
+      await route.fulfill({ status: 201, json: { id: 'visual-created-course' } })
+    })
+    await page.route('**/api/v1/study-servers/visual-study/navigation', async route => {
+      const response = await route.fetch()
+      const data = await response.json()
+      // Owners can manage cohorts without being enrolled as learners.
+      data.courses = data.courses.map((entry: { capabilities: object }) => ({ ...entry, capabilities: { ...entry.capabilities, enrolled: false } }))
+      if (created) data.courses.push({ id: 'visual-created-course', title: created.title, channels: [], cohorts: [{ id: 'visual-created-cohort', name: created.cohortName }] })
+      await route.fulfill({ response, json: data })
+    })
+    await page.setViewportSize(viewport)
+    await page.goto('/app/servers/visual-study/home?visual=staff')
+    await expect(page.locator('.v2-app-shell')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Open Learning Collective' })).toBeVisible()
+    const firstCourse = page.locator('article').filter({ has: page.getByRole('heading', { name: 'CS 101 — Foundations of computer science' }) })
+    await expect(firstCourse.getByRole('link', { name: 'Open #general' })).toHaveAttribute('href', '/app/servers/visual-study/course-channels/visual-general')
+    await expect(firstCourse.getByRole('link', { name: 'Manage enrollment' })).toHaveAttribute('href', '/app/servers/visual-study/courses/visual-course-0/enrollment')
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-server-home-${viewport.width}.png`) })
+    const title = page.getByRole('textbox', { name: 'Course title' })
+    const cohort = page.getByRole('textbox', { name: 'Cohort name' })
+    const policy = page.getByRole('combobox', { name: 'Who can join' })
+    await expect(policy).toHaveValue('INVITE_ONLY')
+    const enrollmentPolicy = viewport.width === 844 ? 'OPEN' : 'INVITE_ONLY'
+    await policy.selectOption(enrollmentPolicy)
+    await title.fill('Practical field observation')
+    await cohort.fill('Weekend field group')
+    for (const input of [title, cohort, policy]) {
+      expect(await input.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+      expect(await input.evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16)
+    }
+    await page.getByRole('button', { name: 'Create course', exact: true }).scrollIntoViewIfNeeded()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-server-home-create-${viewport.width}.png`) })
+    await page.getByRole('button', { name: 'Create course', exact: true }).click()
+    await expect(page.getByRole('status')).toHaveText('Created Practical field observation (Weekend field group).')
+    await expect(page.getByRole('heading', { name: 'Practical field observation', exact: true })).toBeVisible()
+    expect(submissions).toEqual([{ title: 'Practical field observation', cohortName: 'Weekend field group', enrollmentPolicy }])
+    await expect(title).toHaveValue('')
+    await expect(cohort).toHaveValue('')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+    if (viewport.width === 1280) {
+      const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze()
+      expect(violations.map(({ id, nodes }) => ({ id, targets: nodes.map(node => node.target) }))).toEqual([])
+    }
+  })
+}
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }, { width: 844, height: 390 }]) {
+  test(`fixture UI community dialogs support keyboard navigation at ${viewport.width} @dialogs`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport)
+    await page.goto(`${community}/events?visual=staff`)
+    const event = page.getByRole('button', { name: 'Community study circle: making difficult ideas clear' })
+    await event.focus()
+    await page.keyboard.press('Enter')
+    const detail = page.getByRole('dialog', { name: 'Community study circle: making difficult ideas clear' })
+    await expect(detail.getByRole('button', { name: 'Close event details' })).toBeFocused()
+    const headingBox = await detail.getByRole('heading', { name: 'Community study circle: making difficult ideas clear', exact: true }).boundingBox()
+    const dismissBox = await detail.getByRole('button', { name: 'Close event details' }).boundingBox()
+    expect(headingBox).not.toBeNull()
+    expect(dismissBox).not.toBeNull()
+    expect(headingBox!.x + headingBox!.width).toBeLessThanOrEqual(dismissBox!.x)
+    await event.evaluate(element => element.focus())
+    await expect(event).not.toBeFocused()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-event-details-${viewport.width}.png`) })
+    const close = detail.locator('footer').getByRole('button', { name: 'Close', exact: true })
+    await close.scrollIntoViewIfNeeded()
+    await expect(close).toBeInViewport()
+    await close.click()
+    await expect(detail).toBeHidden()
+    await expect(event).toBeFocused()
+    for (const [button, name] of [['Create event', 'Create event'], ['Invite people', 'Invite people']]) {
+      const opener = page.locator(button === 'Create event' ? '.community-event-toolbar' : '.community-hub-chrome').getByRole('button', { name: button, exact: true })
+      await opener.click()
+      const dialog = page.getByRole('dialog', { name, exact: true })
+      await expect(dialog).toBeVisible()
+      expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
+      await opener.evaluate(element => element.focus())
+      await expect(opener).not.toBeFocused()
+      await page.screenshot({ path: testInfo.outputPath(`fixture-ui-${button.replaceAll(' ', '-')}-${viewport.width}.png`) })
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+      await expect(opener).toBeFocused()
+    }
+    await page.goto(`${community}/announcements?visual=staff`)
+    const publish = page.getByRole('button', { name: 'Publish', exact: true })
+    await publish.click()
+    const announcement = page.getByRole('dialog', { name: 'Publish announcement' })
+    await expect(announcement.getByRole('textbox', { name: 'Title', exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-announcement-editor-${viewport.width}.png`) })
+    await page.keyboard.press('Escape')
+    await expect(announcement).toBeHidden()
+    await expect(publish).toBeFocused()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+  })
+}
+
+test('fixture UI legacy teaching bookmark preserves Study Server and actions', async ({ page }) => {
+  await page.goto('/app/instructor-dashboard?serverId=visual-study&visual=staff')
+  await expect(page).toHaveURL(/\/app\/teaching\?serverId=visual-study&visual=staff/)
+  await expect(page.getByRole('button', { name: 'Refresh teaching' })).toBeVisible()
+  await expect(page.getByText('Low-confidence handoffs', { exact: true })).toBeVisible()
+  await expect(page.getByText('Office Hours waitlist', { exact: true })).toBeVisible()
+})
+
 const routes = [
   ['course-overview', `${course}/overview`],
   ['course-chat', `${course}/chat`],
@@ -59,7 +321,7 @@ for (const width of [360, 390, 768, 1280, 1920, 3840]) {
       await page.evaluate(() => document.fonts.ready)
       if (name === 'course-questions' && width <= 390) await page.locator('.question-thread-list > button').first().click()
       if (name === 'inbox' && width <= 390) await page.locator('.inbox-thread-list button').first().click()
-      await page.screenshot({ path: testInfo.outputPath(`fixture-ui-${name}-${width}.png`) })
+      await page.screenshot({ path: testInfo.outputPath(`fixture-ui-${name}-${width}.png`), fullPage: name === 'privacy' })
       if (name === 'course-chat' || name === 'community-lounge') await expect(page.locator('.chat-composer')).toBeInViewport()
       expect(pageErrors).toEqual([])
       expect(apiFailures, 'Each route must load its intended fixture instead of an accidental error state').toEqual([])
@@ -149,38 +411,134 @@ test('fixture UI scrolls a long device session list in phone landscape', async (
 test('fixture UI phone Friends stays on the list after Back and reload', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/friends?friend=visual-peer')
+  await expect(page.getByRole('heading', { name: 'Alexandra Montgomery-Williams' })).toBeFocused()
   await page.getByRole('button', { name: 'Back to friends' }).click()
+  await expect(page.locator('.friends-list-pane').getByRole('button', { name: /Alexandra Montgomery-Williams/ })).toBeFocused()
   await expect(page).toHaveURL(/\/app\/friends$/)
   await page.reload()
   await expect(page.locator('.friends-list-pane')).toBeVisible()
   await expect(page.locator('.dm-pane')).toBeHidden()
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-friends-back-reload-390.png') })
   await page.locator('.friends-list-pane').getByRole('button', { name: /Alexandra Montgomery-Williams/ }).click()
+  await expect(page.getByRole('heading', { name: 'Alexandra Montgomery-Williams' })).toBeFocused()
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-friends-conversation-focus-390.png') })
   await expect(page).toHaveURL(/friend=visual-peer$/)
   await page.reload()
   await expect(page.locator('.dm-pane')).toBeVisible()
   await expect(page.locator('.friends-list-pane')).toBeHidden()
 })
 
+test('fixture UI phone Friends dialog contains focus and restores Add friend', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/app/friends')
+  const opener = page.getByRole('button', { name: 'Add friend', exact: true })
+  await opener.click()
+  const dialog = page.getByRole('dialog', { name: 'Add a friend' })
+  await expect(page.getByRole('textbox', { name: 'Search co-members' })).toBeFocused()
+  await opener.evaluate(element => element.focus())
+  await expect(opener).not.toBeFocused()
+  for (let index = 0; index < 8; index++) {
+    await page.keyboard.press('Tab')
+    // Native dialogs keep the document behind them inert; browsers may still
+    // move focus to their own chrome, reported here as document.body.
+    expect(await dialog.evaluate(element => document.activeElement === document.body || element.contains(document.activeElement))).toBe(true)
+  }
+  await page.screenshot({ path: testInfo.outputPath('fixture-ui-friend-dialog-390.png') })
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(opener).toBeFocused()
+})
+
 test('fixture UI phone Inbox marks a notification done and returns to the list', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/inbox')
   await page.locator('.inbox-thread-list button').first().click()
+  await expect(page.getByRole('heading', { name: 'A fresh starting point for this week' })).toBeFocused()
   const saved = page.waitForResponse(response => response.url().endsWith('/visual-notification/done') && response.request().method() === 'POST')
   await page.getByRole('button', { name: 'Mark done', exact: true }).click()
   expect((await saved).status()).toBe(200)
   await expect(page.locator('.inbox-thread-pane')).toBeVisible()
   await expect(page.locator('.inbox-thread-list')).not.toContainText('A fresh starting point for this week')
+  await expect(page.locator('.inbox-thread-list').getByRole('button', { name: /Alexandra mentioned you/ })).toBeFocused()
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-inbox-completed-390.png') })
 })
+
+test('fixture UI phone Inbox restores its heading when the last notification is completed', async ({ page }) => {
+  await page.route(/\/api\/v1\/me\/notifications(?:\?.*)?$/, async route => {
+    const response = await route.fetch()
+    const data = await response.json() as { notifications: Array<{ id: string }> }
+    await route.fulfill({ response, json: { ...data, notifications: data.notifications.filter(item => item.id === 'visual-notification') } })
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/app/inbox')
+  await page.locator('.inbox-thread-list button').click()
+  await page.getByRole('button', { name: 'Mark done', exact: true }).click()
+  await expect(page.getByText('No open notifications.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Inbox', exact: true })).toBeFocused()
+})
+
+test('fixture UI phone Inbox reports failed completion and permits retry', async ({ page }) => {
+  let attempts = 0
+  await page.route('**/api/v1/me/notifications/visual-notification/done', route => {
+    attempts += 1
+    return attempts === 1 ? route.fulfill({ status: 503, json: { message: 'Synthetic temporary failure' } }) : route.continue()
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/app/inbox')
+  await page.locator('.inbox-thread-list button').first().click()
+  await page.getByRole('button', { name: 'Mark done', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Could not mark this notification done')
+  await expect(page.getByRole('heading', { name: 'A fresh starting point for this week' })).toBeVisible()
+  await page.getByRole('button', { name: 'Mark done', exact: true }).click()
+  await expect(page.locator('.inbox-thread-pane')).toBeVisible()
+  await expect(page.locator('.inbox-thread-list')).not.toContainText('A fresh starting point for this week')
+  expect(attempts).toBe(2)
+})
+
+for (const width of [390, 1280]) {
+  test(`fixture UI phone Friends incoming call uses an inert modal at ${width}`, async ({ page }, testInfo) => {
+    const sockets: WebSocketRoute[] = []
+    const declined: string[] = []
+    await page.routeWebSocket('**/api/v1/realtime/ws', socket => {
+      sockets.push(socket)
+      socket.onMessage(message => {
+        const frame = JSON.parse(String(message))
+        if (frame.type === 'call_decline') declined.push(frame.callId)
+      })
+    })
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto('/app/friends?friend=visual-peer')
+    const previous = page.getByRole('button', { name: 'Start voice call with Alexandra Montgomery-Williams' })
+    await expect(previous).toBeVisible()
+    await expect(previous).toBeEnabled()
+    await previous.focus()
+    await expect(previous).toBeFocused()
+    await expect.poll(() => sockets.length).toBeGreaterThan(0)
+    for (const socket of sockets) socket.send(JSON.stringify({ type: 'call_ringing', callId: 'visual-call', callerUserId: 'visual-peer', calleeUserId: 'visual-learner', direction: 'incoming' }))
+    const dialog = page.getByRole('dialog', { name: 'Voice call with Alexandra Montgomery-Williams' })
+    await expect(dialog.getByRole('button', { name: 'Accept voice call' })).toBeFocused()
+    await previous.evaluate(element => element.focus())
+    await expect(previous).not.toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-incoming-call-${width}.png`) })
+    await dialog.getByRole('button', { name: 'Decline voice call' }).click()
+    await expect(dialog).toBeHidden()
+    // The actual ended phase keeps its launch button disabled briefly.
+    await expect(page.getByRole('heading', { name: 'Alexandra Montgomery-Williams' })).toBeFocused()
+    expect(declined).toEqual(['visual-call'])
+  })
+}
 
 test('fixture UI phone Questions returns from its reading pane', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto(`${course}/questions`)
   await page.locator('.question-thread-list > button').first().click()
   await expect(page.locator('.question-detail-pane')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Question conversation' })).toBeFocused()
   await expect(page.locator('.questions-list-pane')).toBeHidden()
   await page.getByRole('button', { name: 'Back to questions' }).click()
+  await expect(page.locator('.question-thread-list > button').first()).toBeFocused()
   await expect(page.locator('.questions-list-pane')).toBeVisible()
   await expect(page.locator('.question-thread-list > button').first()).toBeFocused()
   await page.screenshot({ path: testInfo.outputPath('fixture-ui-question-list-390.png') })

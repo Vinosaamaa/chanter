@@ -1,0 +1,208 @@
+---
+schemaVersion: 1
+id: architecture-review-product-interaction
+revision: 1
+type: architecture-review
+status: proposed
+title: Integrated product navigation and browser acceptance
+repository: chanter
+capabilityIds: ["production-deployment"]
+createdAt: 2026-09-22
+reconstructed: false
+confidence: high
+unknowns: ["Final lifecycle and recovery union", "Hosted cross-browser and visual acceptance", "Manual assistive technology and production performance"]
+modules: ["frontend-friends", "frontend-inbox", "frontend-account-data", "product-browser-tests"]
+interfaces: ["keyboard-list-detail-navigation", "hosted-product-browser-gate", "account-lifecycle-request-and-receipt"]
+seams: ["visible-pane-to-keyboard-focus", "fixture-to-real-service-evidence", "revoked-session-to-read-only-receipt"]
+adapters: ["playwright"]
+relatedRecords: []
+decisions: []
+incidents: []
+features: []
+capabilities: ["Accessible list-detail navigation", "Cross-browser signed-in journeys"]
+amends: []
+supersedes: []
+learningRefs: []
+sources: [{"label":"Integrated product interaction review", "url":"https://github.com/Vinosaamaa/chanter/issues/339", "kind":"issue"}]
+verification: {"state":"verified", "evidenceRefs":["frontend/src/features/v2-shell/pages/FriendsPage.test.tsx", "frontend/src/features/v2-shell/pages/InboxPage.test.tsx"]}
+visibility: public-safe
+publicationEligibility: eligible
+issue: 339
+pr: 340
+release: null
+run: null
+---
+# Integrated product navigation and browser acceptance
+
+Verification records the cited evidence. Publication eligibility permits publishing
+this proposed review; it does not approve integration, release or deployment. Those
+gates remain open in the unknowns and acceptance notes below.
+
+Friends and Inbox hid the list on phones while keyboard focus remained on its hidden row. Return navigation left focus on the hidden Back control. Focus now follows the visible reading heading and returns to the selected row, with a heading fallback when the last item disappears. The native Add friend dialog provides an inert background, platform focus handling and Escape cancellation, replacing duplicated document-level key handling. Existing role, relationship and notification services remain authoritative.
+
+The real signed-in browser gate previously installed Chromium alone. Firefox and WebKit now run the same product tests against the actual hosted service stack, one worker at a time. Synthetic screenshots remain separate layout evidence. Authentication traces, screenshots and video remain disabled in real account tests. Nothing in this change configures a provider, relaxes authorization or declares public launch.
+
+Design follows learning-desk-v3 and the repository's pinned frontend-design skill. Existing core, initial-route and prior capability budgets remain unchanged. New account export/deletion entries have separate explicit caps; shared code remains in core. Focus behavior has red-to-green component regressions; final screenshot, hosted, review and combined-release acceptance remain open.
+
+Teaching resolves bookmarked Study Server selection against accessible communities, retaining Refresh, dashboard metrics and lifetime free-beta usage while its legacy route becomes a query-preserving alias. Enrollment resolves bookmarked cohorts only after manager authorization. Community event titles are keyboard controls; repeated editor/details forms use native modality, scroll on short screens and restore focus. Event edits preserve the original audience identifiers, correcting a request that always sent HUB. These changes have focused red-to-green regressions.
+
+The first expanded real-browser run exposed a plain-HTTP origin incompatible with
+WebKit Secure-cookie persistence. The hosted stack now uses a trusted ephemeral
+HTTPS origin. Real registration and recovery pass across all three engines;
+production certificate and cookie checks remain intact. Navigation cancellation
+classification retains only the pending requests known before navigation started,
+including across redirects. Ambiguous ownership remains a failure.
+
+The real announcement journey exposed delivery after the mounted Inbox's initial
+fetch. A foreground OPEN list now refreshes every 15 seconds through the existing
+authorized query. User-scoped cache keys and mutation invalidation remain intact;
+completed lists do not poll. A focused regression establishes the delayed-fetch
+case. The service journey checks owner publication and member read/completion
+persistence, but does not force delivery timing. Current-head browser and final
+accepted lifecycle/recovery union checks remain required.
+
+The account-data contract comes from #251. Export uses the native browser download
+manager after a short-lived HttpOnly authorization grant. Deletion separates
+preparation and typed irreversible confirmation. A public, cookie-only status
+route remains reachable after ordinary authentication is revoked. Uncertain
+confirmation reads that same receipt; missing authority never implies deletion
+completion. Request controllers are keyed by account, auth generation and job,
+and abort on unmount. Sign-in preserves the explicit opaque job URL. Independent
+review findings have focused regressions; actual erasure and recovery proof stay
+with #251/#342 and cannot be inferred from intercepted browser fixtures.
+
+Study Server and course-file deletion now preserve accepted asynchronous request
+IDs in a requester-bound progress route. Native confirmation explains irreversible
+access closure, while missing progress, retained records and pending recovery remain
+distinct. Resource page state remounts on account/session/course changes to discard
+stale confirmations. The source status JavaScript has an 8,000 raw / 3,000 gzip cap;
+it shares existing deletion CSS, and dialog dependencies stay within core limits.
+The prior account receipt checkpoint passed all 308 hosted responsive cases, full
+application checks and both native release architectures. Source progress fixtures
+and final real-service union acceptance are still outstanding.
+
+The Study Server picker now mounts the existing responsive shell, correcting
+legacy-shell modal styling exposed by hosted screenshots. A manually gated hosted
+dependency preview combines this UI with an exact #251 backend tree and requires
+identical infrastructure. It proves a narrower real account journey without
+publishing or replacing final union acceptance. Archive validation is bounded and
+checks its central directory, CRCs and seven-source coverage; receipt assertions
+cannot print credential values. The preview remains excluded from ordinary checks
+until the lifecycle backend is accepted.
+
+The account dependency preview subsequently passed native ZIP export and the real
+account deletion/receipt journey in all three engines. Its broader WebKit usage test
+needed one retry because Teaching had not finished its schedule lookup; explicit
+pending/error UI now supplies a readiness boundary without weakening browser health.
+All 326 responsive fixtures and both native release architectures passed at the
+published preview head, with ten deletion screenshots inspected. Final accepted
+union and provider evidence remain separate.
+
+Server-home now shares the responsive shell while retaining arbitrary cohort
+creation and non-enrolled-owner management links. A catalog redirect was rejected
+because it removed those actions. Receipt status requires renewed cookie authority
+before showing cached completion, and permission loss discards pending source
+confirmation. Focused regressions reproduced the stale cases before correction;
+independent review found no blocker in the resulting diff.
+
+The server-home browser regression exposed the inherited input font overriding a
+layered utility. A scoped rule repairs it without changing the shell-wide cascade.
+The next actual source case verifies real scanned bytes, access closure, original-job
+retry, and requester progress/reload with separate actors. It waits for registration
+through the real API before browser navigation and explicitly excludes dialog timing.
+This preserves strict browser-health checks and cannot hide the known post-canonical
+server retry defect. No mocked response or manual source relay establishes success.
+
+After the Teaching readiness correction, the actual account dependency preview
+passed all 48 browser journeys without retries. The source preview now requires
+the corrected post-canonical retry backend checkpoint and identical infrastructure;
+its real-service result remains pending independently of component/browser fixtures.
+
+The pinned source case passed on its first attempt in all three real browser engines;
+one separate registration case retried on an interrupted font load. Intentional
+sign-in navigation now waits for the prior document's font readiness, preserving
+strict health checks. The published head also passed 335 responsive cases and full CI.
+
+Review then exposed a wrong-target reply draft when history replaced a missing
+selected question. Selection initializes only once per session/channel; explicit
+selection survives refresh. Staff drafts retain their question binding and submission
+rejects any mismatch synchronously, even if form submission bypasses the disabled
+button. Removed questions preserve read-only text, and private context changes remount
+the page. Pane focus follows explicit user intent. Six new regressions and independent
+review support the correction; current-head hosted and final union gates remain.
+
+The completed 8914546 dependency preview passed all 51 real-service journeys without
+retries. It remains proof of the pinned source/API and browser integration, not
+completed erasure or the final accepted union. The current route/control inventory
+separates actual service evidence, synthetic fixtures and manual/provider gaps.
+A further owner-setup browser case exercises the actual wizard, course/cohort form
+and enrollment form; it must prove visible results and learner access through the
+real owning API before that gap is marked accepted.
+
+The real owner setup case passed on its first attempt across all three engines at
+2904c3f9. The updated inventory records its scope as server/course creation and
+manual enrollment, preserving open invite-copy/join and other wizard-control gates.
+The nullable enrolling-actor field aligns with #251 attribution removal while the
+other learner's enrollment remains intact; it does not change frontend authority.
+
+Refresh now retracts previously displayed AI answers/citations and replies when the
+owning endpoint confirms their absence. Independent reads prevent a sibling failure
+from hiding known erasure. Per-load write protection preserves only later successful
+local changes against an older response, while fresh snapshots remain authoritative.
+Six failing regressions now pass; all 403 frontend tests, lint and unchanged budgets
+pass. Independent review found no blocker. Six synthetic phone/desktop browser cases
+are discovered across three engines and await hosted execution; actual source
+retraction and the final accepted union remain separately required.
+
+The invitation review found lost context through verification and an OAuth callback
+that bypassed joining. Pre-auth tab-local retention and a shared authenticated
+continuation fix those paths. One promise per continuation attempt also prevents
+effect replay from navigating before the join finishes. Three focused regressions
+failed first and pass after correction; independent review found no blocker. The
+expanded real owner journey covers displayed-link joining and new invited-user
+registration/verification, with hosted acceptance still required. The design records
+same-tab ownership and the separate provider/clipboard limitations.
+
+At 34ba3c90, 347 hosted fixtures and both native releases passed. Fifteen relevant
+screenshots were reviewed across three engines. The follow-up handles actual reload
+by retaining invitation intent until settlement and conditionally clearing only its
+own intent. Repeated PostgreSQL enrollment avoids an aborted uniqueness-conflict
+transaction. The preview composes only that exact owning diff over its pinned source,
+with changed-path and patch checks. All 414 frontend tests, lint, production budgets
+and three local H2 enrollment smoke cases pass; actual repeated PostgreSQL joining
+still requires hosted execution.
+
+Privacy/retention wording now follows #251's tested disposition, with no invented
+contact or configured provider. The public page remains explicitly pre-release.
+Expanded privacy content has a separate 4,500 raw/2,000 gzip lazy-entry cap; this
+adds bounded deferred content while preserving existing core/initial numerical caps
+and counting shared imports in core. Final operator terms, source union and public
+deployment remain unverified.
+
+Confirmation now disables automatic unauthorized-response refresh/retry while
+retaining account-change and abort guards. This preserves the exact cookie-bound
+receipt when expired-session recovery would otherwise discard its job navigation.
+Two real-client/router regressions failed before correction and now pass for
+prepared and committed outcomes. Nine malformed saved-invitation regressions and
+one confirmation-retry regression also pass after failing first. The existing
+hosted owner journey's captured legacy header supplies its explicit sign-out
+selector; response, cookie and navigation assertions stay intact. All 66 focused
+account/invite/client cases and lint pass; current hosted and final union acceptance
+remain separate.
+
+Enrollment management joins the responsive shell under its existing authentication
+and manager checks. Its already resolved cohort is passed directly to the keyed
+controller, preserving switching and fallback without duplicate selection. Explicit
+read retries, long-name wrapping and accessible input/action sizes address the
+remaining management-page gap. Forty-one onboarding tests and unchanged production
+budgets pass; nine new three-engine fixtures await hosted execution. The owning
+design is docs/architecture/enrollment-management.md.
+
+At cce67ae2 the 356 hosted responsive cases pass, including all nine enrollment
+cases. Representative phone, landscape and desktop captures were inspected.
+Actual joining exposed the distinction between OPEN membership and INVITE_ONLY
+access. The owner form now makes that choice explicit, with invitation access as
+its default, while the API retains omitted-field compatibility. Three new failing
+UI/API regressions pass after correction. The independent backend prerequisite
+is #346 / PR347; actual authorization and repeat joining remain a composed-release
+gate. Existing cohort policies and membership rules are unchanged.

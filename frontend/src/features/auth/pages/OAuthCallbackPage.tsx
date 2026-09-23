@@ -25,7 +25,7 @@ export function OAuthCallbackPage() {
     void exchange.current.request
       .then(() => {
         if (cancelled) return
-        navigate('/app/home', { replace: true })
+        navigate('/sign-in', { replace: true })
       })
       .catch((caught: unknown) => {
         if (cancelled) return

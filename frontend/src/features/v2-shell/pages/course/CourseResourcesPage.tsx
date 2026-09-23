@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   Check,
@@ -9,6 +10,7 @@ import {
   LoaderCircle,
   Search,
   Sparkles,
+  Trash2,
   X,
 } from 'lucide-react'
 
@@ -32,6 +34,8 @@ import {
 } from '../../../study-assistant/hooks/use-study-assistant-install'
 import { useV2CourseWorkspace } from '../../layouts/v2-course-workspace-context'
 import { ReportLink } from '../../../moderation/ReportLink'
+import { SourceDeletionDialog } from '../../../account-data/SourceDeletionDialog'
+import { deleteCourseResource } from '../../../resources/course-resources-api'
 
 const filters: { id: CourseResourceFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -43,6 +47,15 @@ const filters: { id: CourseResourceFilter; label: string }[] = [
 const MAX_RESOURCE_FILE_BYTES = 10 * 1024 * 1024
 
 export function CourseResourcesPage() {
+  const { course, serverId } = useV2CourseWorkspace()
+  const account = useAuthStore(state => state.user?.id)
+  const generation = useAuthStore(state => state.generation)
+  return <CourseResourcesContent key={`${account}:${generation}:${serverId}:${course.id}`} />
+}
+
+function CourseResourcesContent() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { course, serverId, courseCapabilities } = useV2CourseWorkspace()
   const userId = useAuthStore((state) => state.user?.id)
   const resources = useCourseResourcesChannel(course.id)
@@ -56,7 +69,9 @@ export function CourseResourcesPage() {
     enabled: Boolean(serverId && userId && courseCapabilities.canUploadResources),
   })
   const [uploadOpen, setUploadOpen] = useState(false)
-  const canManageResources = courseCapabilities.canUploadResources && resources.canUpload
+  const [pendingDelete, setPendingDelete] = useState<CourseResource | null>(null)
+  const canManageResources = courseCapabilities.canUploadResources && resources.canUpload && !resources.isLoading
+  if (pendingDelete && !canManageResources) setPendingDelete(null)
   const selectedResourceId = new URLSearchParams(window.location.search).get('resource')
 
   let assistantControl = null
@@ -175,6 +190,7 @@ export function CourseResourcesPage() {
                   canManage={canManageResources}
                   isRetrying={resources.retryingResourceId === resource.id}
                   onRetry={() => void resources.retryIngestion(resource)}
+                  onDelete={() => setPendingDelete(resource)}
                 />
               ))}
             </div>
@@ -195,6 +211,18 @@ export function CourseResourcesPage() {
         ) : null}
       </div>
 
+      {pendingDelete?.courseId === course.id && canManageResources ? <SourceDeletionDialog
+        kind="RESOURCE"
+        targetId={pendingDelete.id}
+        targetName={pendingDelete.title}
+        submit={signal => deleteCourseResource(pendingDelete.id, signal)}
+        onClose={() => setPendingDelete(null)}
+        onAccepted={request => {
+          setPendingDelete(null)
+          void queryClient.invalidateQueries({ queryKey: ['study-server-navigation', userId, serverId] })
+          void navigate(`/app/deletions/${request.jobId}`)
+        }}
+      /> : null}
       {uploadOpen ? (
         <UploadResourceDialog
           isUploading={resources.isUploading}
@@ -392,6 +420,7 @@ function LiveResourceRow({
   canManage,
   isRetrying,
   onRetry,
+  onDelete,
 }: {
   resource: CourseResource
   highlighted: boolean
@@ -401,6 +430,7 @@ function LiveResourceRow({
   canManage: boolean
   isRetrying: boolean
   onRetry: () => void
+  onDelete: () => void
 }) {
   const kind = resourceFileKind(resource)
   const readiness = resourceReadiness(resource)
@@ -447,6 +477,7 @@ function LiveResourceRow({
         </button> : null}
       </span>
       <span className="resource-row-actions">
+        {canManage ? <button type="button" onClick={onDelete} aria-label={`Delete ${resource.title}`} title="Delete course file"><Trash2 /></button> : null}
         {isPdfResource(resource) ? (
           <button
             type="button"

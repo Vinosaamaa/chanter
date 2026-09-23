@@ -34,12 +34,15 @@ describe('shell-api', () => {
   })
 
   it('deleteStudyServer sends DELETE for the server id', async () => {
-    mockedApiFetch.mockResolvedValue(undefined)
+    const accepted = { jobId: 'b633c892-6762-40ec-a945-b042957a052b', targetId: 'server-9', state: 'PENDING' }
+    mockedApiFetch.mockResolvedValue(accepted)
 
-    await deleteStudyServer('server-9')
+    const result = await deleteStudyServer('server-9')
+    expect(result).toEqual(accepted)
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/api/v1/study-servers/server-9', {
       method: 'DELETE',
+      signal: undefined,
     })
   })
 })

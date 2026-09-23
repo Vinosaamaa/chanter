@@ -36,16 +36,35 @@ export function storePendingCohortInvite(invite: PendingCohortInvite): void {
   }
 }
 
-function consumePendingCohortInvite(): PendingCohortInvite | null {
+function readPendingCohortInvite(): PendingCohortInvite | null {
   try {
     const raw = sessionStorage.getItem(PENDING_COHORT_INVITE_KEY)
-    if (raw) {
-      sessionStorage.removeItem(PENDING_COHORT_INVITE_KEY)
-      return JSON.parse(raw) as PendingCohortInvite
+    if (!raw) return null
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object' && 'cohortId' in parsed && 'inviteCode' in parsed
+        && typeof parsed.cohortId === 'string' && parsed.cohortId.trim()
+        && typeof parsed.inviteCode === 'string' && parsed.inviteCode.trim()) {
+        return { cohortId: parsed.cohortId.trim(), inviteCode: parsed.inviteCode.trim() }
+      }
+    } catch {
+      // A corrupt saved value must not keep intercepting future sign-ins.
     }
+    sessionStorage.removeItem(PENDING_COHORT_INVITE_KEY)
     return null
   } catch {
     return null
+  }
+}
+
+function clearPendingCohortInvite(expected: PendingCohortInvite): void {
+  try {
+    const current = readPendingCohortInvite()
+    if (current?.cohortId === expected.cohortId && current.inviteCode === expected.inviteCode) {
+      sessionStorage.removeItem(PENDING_COHORT_INVITE_KEY)
+    }
+  } catch {
+    // A later explicit visit can retry the idempotent join if storage is unavailable.
   }
 }
 
@@ -53,24 +72,23 @@ function isTransientJoinError(error: unknown): boolean {
   if (!(error instanceof ApiError)) {
     return true
   }
-  return error.status >= 500
+  return error.status >= 500 || [401, 408, 409, 429].includes(error.status)
 }
 
 export async function completePendingCohortJoin(
   joinCohort: (cohortId: string, inviteCode: string) => Promise<void>,
 ): Promise<CohortJoinResult> {
-  const pending = consumePendingCohortInvite()
+  const pending = readPendingCohortInvite()
   if (!pending) {
     return 'none'
   }
 
   try {
     await joinCohort(pending.cohortId, pending.inviteCode)
+    clearPendingCohortInvite(pending)
     return 'success'
   } catch (error) {
-    if (isTransientJoinError(error)) {
-      storePendingCohortInvite(pending)
-    }
+    if (!isTransientJoinError(error)) clearPendingCohortInvite(pending)
     return 'failed'
   }
 }

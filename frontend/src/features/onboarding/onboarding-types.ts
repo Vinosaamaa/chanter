@@ -28,7 +28,8 @@ export type CreatedCourse = {
 
 export type CohortEnrollmentRecord = {
   learnerUserId: string
-  enrolledByUserId: string
+  // Actor attribution is removed when that account is deleted; enrollment survives.
+  enrolledByUserId: string | null
   enrolledAt: string
 }
 

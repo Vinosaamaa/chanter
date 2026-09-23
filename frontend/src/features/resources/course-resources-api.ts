@@ -1,4 +1,5 @@
 import { ApiError, apiFetch, apiFetchBlob } from '../../lib/api-client'
+import type { SourceDeletionAccepted } from '../account-data/source-deletion-api'
 
 import type {
   CourseResource,
@@ -36,6 +37,10 @@ export async function downloadCourseResourceContent(resourceId: string): Promise
 
 export async function retryCourseResourceIngestion(resourceId: string): Promise<CourseResource> {
   return apiFetch<CourseResource>(`/api/v1/course-resources/${resourceId}/retry-ingestion`, { method: 'POST' })
+}
+
+export function deleteCourseResource(resourceId: string, signal?: AbortSignal): Promise<SourceDeletionAccepted> {
+  return apiFetch<SourceDeletionAccepted>(`/api/v1/course-resources/${resourceId}`, { method: 'DELETE', signal })
 }
 
 export function resourceAccessDeniedMessage(error: unknown): string {

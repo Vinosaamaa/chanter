@@ -5,7 +5,7 @@ import {
   type Request,
   type TestInfo,
 } from '@playwright/test'
-import { isExpectedRequestAbort } from './browser-health.mjs'
+import { isExpectedRequestAbort, navigationAbortTracker } from './browser-health.mjs'
 
 type BrowserFailure = {
   kind: 'console' | 'page' | 'request' | 'response'
@@ -24,6 +24,20 @@ export const test = base.extend<{ browserHealth: void }>({
   browserHealth: [async ({ page }, use, testInfo) => {
     const failures: BrowserFailure[] = []
     const responseStatuses = new WeakMap<Request, number>()
+    const navigation = navigationAbortTracker()
+    const failedRequests: Request[] = []
+    page.on('request', request => {
+      navigation.started(request, request.isNavigationRequest() && request.frame() === page.mainFrame(), request.redirectedFrom())
+    })
+    page.on('requestfinished', request => navigation.finished(request))
+    page.on('framenavigated', frame => {
+      const request = navigation.candidate() as Request | undefined
+      if (frame !== page.mainFrame() || !request) return
+      const destination = new URL(frame.url())
+      destination.hash = ''
+      const status = responseStatuses.get(request)
+      if (destination.href === request.url() && status !== undefined && status >= 200 && status < 300) navigation.committed(request)
+    })
 
     page.on('console', (message) => {
       if (message.type() === 'error') {
@@ -34,12 +48,8 @@ export const test = base.extend<{ browserHealth: void }>({
       failures.push({ kind: 'page', detail: error.stack ?? error.message })
     })
     page.on('requestfailed', (request) => {
-      if (!isExpectedRequestAbort(request.isNavigationRequest(), request.failure()?.errorText ?? '', responseStatuses.get(request))) {
-        failures.push({
-          kind: 'request',
-          detail: `${request.method()} ${new URL(request.url()).pathname} (${request.failure()?.errorText ?? 'unknown failure'})`,
-        })
-      }
+      navigation.failed(request)
+      failedRequests.push(request)
     })
     page.on('response', (response) => {
       // Chromium can report ERR_ABORTED after a successfully received bodyless
@@ -60,6 +70,14 @@ export const test = base.extend<{ browserHealth: void }>({
     })
 
     await use()
+    for (const request of failedRequests) {
+      if (!isExpectedRequestAbort(request.isNavigationRequest(), request.failure()?.errorText ?? '', responseStatuses.get(request), navigation.wasReplaced(request))) {
+        failures.push({
+          kind: 'request',
+          detail: `${request.method()} ${new URL(request.url()).pathname} (${request.failure()?.errorText ?? 'unknown failure'})`,
+        })
+      }
+    }
     await attachFailures(testInfo, failures)
     expect(failures, 'critical browser journey emitted runtime or network failures').toEqual([])
   }, { auto: true }],

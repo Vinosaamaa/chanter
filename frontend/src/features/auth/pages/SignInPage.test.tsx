@@ -8,7 +8,7 @@ import { SignInPage } from './SignInPage'
 import * as authApi from '../auth-api'
 
 describe('SignInPage public destinations', () => {
-  afterEach(() => { cleanup(); vi.restoreAllMocks() })
+  afterEach(() => { cleanup(); sessionStorage.clear(); vi.restoreAllMocks() })
 
   beforeEach(() => {
     useAuthStore.setState({ accessToken: null, user: null })
@@ -28,6 +28,15 @@ describe('SignInPage public destinations', () => {
     expect(screen.queryByRole('link', { name: 'Continue with Google' })).not.toBeInTheDocument()
     expect(screen.queryByText(/CHANTER_OAUTH/)).not.toBeInTheDocument()
     expect(screen.queryByText('3 new')).not.toBeInTheDocument()
+  })
+
+  it('retains an invitation before authentication and through a bare sign-in return', () => {
+    const first = render(<MemoryRouter initialEntries={['/sign-in?cohort=cohort-one&invite=invite-one']}><SignInPage /></MemoryRouter>)
+    const expected = JSON.stringify({ cohortId: 'cohort-one', inviteCode: 'invite-one' })
+    expect(sessionStorage.getItem('chanter:pending-cohort-invite')).toBe(expected)
+    first.unmount()
+    render(<MemoryRouter initialEntries={['/sign-in']}><SignInPage /></MemoryRouter>)
+    expect(sessionStorage.getItem('chanter:pending-cohort-invite')).toBe(expected)
   })
 
   it('renders a configured Google provider as a navigation link', async () => {

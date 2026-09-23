@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
     sendMessage: vi.fn().mockResolvedValue(true),
     isSending: false,
     callState: { phase: 'idle', callId: null, peerUserId: null, reason: null },
-    callError: null,
+    callError: null as string | null,
     isMuted: false,
     startCall: vi.fn(),
     acceptCall: vi.fn(),
@@ -106,9 +106,13 @@ describe('FriendsPage', () => {
   })
 
   beforeEach(() => {
+    mocks.hub.callError = null
     vi.clearAllMocks()
     mocks.preferredFriendId = null
     mocks.hub.selectedFriendId = 'friend-alex'
+    mocks.hub.callState.phase = 'idle'
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value() { this.setAttribute('open', '') } })
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value() { this.removeAttribute('open') } })
   })
 
   it('renders real friend profiles, exact DM context, and no demo fallback', () => {
@@ -129,8 +133,10 @@ describe('FriendsPage', () => {
     await user.click(within(screen.getByRole('complementary')).getByRole('button', { name: /Alex Chen/i }))
     expect(mocks.preferredFriendId).toBe('friend-alex')
     expect(view.container.querySelector('.friends-page')).toHaveClass('conversation-open')
+    expect(screen.getByRole('heading', { name: 'Alex Chen' })).toHaveFocus()
     await user.click(screen.getByRole('button', { name: 'Back to friends' }))
     expect(view.container.querySelector('.friends-page')).not.toHaveClass('conversation-open')
+    expect(within(screen.getByRole('complementary')).getByRole('button', { name: /Alex Chen/i })).toHaveFocus()
   })
 
   it('keeps the friend list available when a deep link has no active friend', () => {
@@ -162,14 +168,14 @@ describe('FriendsPage', () => {
     expect(mocks.relationships.sendRequest).toHaveBeenCalledWith('candidate-priya')
   })
 
-  it('opens the add-friend dialog on its search and closes it with Escape', async () => {
+  it('opens the add-friend dialog on its search and closes it on native cancellation', async () => {
     const user = userEvent.setup()
     renderPage()
 
     await user.click(screen.getByRole('button', { name: 'Add friend' }))
 
     expect(screen.getByRole('textbox', { name: 'Search co-members' })).toHaveFocus()
-    await user.keyboard('{Escape}')
+    fireEvent(screen.getByRole('dialog', { name: 'Add a friend' }), new Event('cancel', { cancelable: true }))
     expect(screen.queryByRole('dialog', { name: 'Add a friend' })).not.toBeInTheDocument()
   })
 
@@ -211,6 +217,43 @@ describe('FriendsPage', () => {
     renderPage('/app/friends?friend=friend-alex')
 
     expect(mocks.preferredFriendId).toBe('friend-alex')
+  })
+
+  it('moves focus into an incoming call and restores the prior control when the call ends', () => {
+    const view = renderPage()
+    const opener = screen.getByRole('button', { name: 'Start voice call with Alex Chen' })
+    opener.focus()
+    mocks.hub.callState.phase = 'incoming_ringing'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'Accept voice call' })).toHaveFocus()
+    mocks.hub.callState.phase = 'idle'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    expect(opener).toHaveFocus()
+  })
+
+  it.each(['Friend is busy on another call', 'Unable to join call audio'])('keeps call failure visible after the modal closes: %s', (message) => {
+    mocks.hub.callError = message
+    mocks.hub.callState.phase = 'ended'
+    const view = renderPage()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(message)
+    mocks.hub.callState.phase = 'idle'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    expect(screen.getByRole('alert')).toHaveTextContent(message)
+  })
+
+  it('returns to the visible heading while the ended call still disables its launch button', async () => {
+    const user = userEvent.setup()
+    const view = renderPage()
+    await user.click(within(screen.getByRole('complementary')).getByRole('button', { name: /Alex Chen/i }))
+    const opener = screen.getByRole('button', { name: 'Start voice call with Alex Chen' })
+    opener.focus()
+    mocks.hub.callState.phase = 'incoming_ringing'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    mocks.hub.callState.phase = 'ended'
+    view.rerender(<MemoryRouter><FriendsPage /></MemoryRouter>)
+    expect(opener).toBeDisabled()
+    expect(screen.getByRole('heading', { name: 'Alex Chen' })).toHaveFocus()
   })
 })
 

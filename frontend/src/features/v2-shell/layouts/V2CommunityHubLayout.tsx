@@ -14,6 +14,7 @@ import { useStudyServerNavigationQuery } from '../../shell/hooks/use-shell-queri
 import { V2Avatar } from '../components/V2Avatar'
 import { ReportLink } from '../../moderation/ReportLink'
 import { WorkspaceTabStrip } from '../components/WorkspaceTabStrip'
+import { WorkspaceDialog } from '../components/WorkspaceDialog'
 import { v2CommunityPath, type V2CommunityTab } from '../v2-routes'
 import type { V2CommunityContext } from './v2-community-context'
 
@@ -148,7 +149,7 @@ export function V2CommunityHubLayout() {
         <Outlet context={context} />
       </div>
       {inviteOpen ? (
-        <div className="v2-modal-backdrop" role="presentation">
+        <WorkspaceDialog label="Invite people" onClose={() => setInviteOpen(false)}>
           <form className="create-event-modal" onSubmit={submitInvite}>
             <button
               type="button"
@@ -188,7 +189,7 @@ export function V2CommunityHubLayout() {
               </button>
             </footer>
           </form>
-        </div>
+        </WorkspaceDialog>
       ) : null}
     </section>
   )

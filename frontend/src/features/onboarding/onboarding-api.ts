@@ -33,6 +33,7 @@ export type CreateCourseInput = {
   title: string
   description?: string
   cohortName?: string
+  enrollmentPolicy?: 'OPEN' | 'INVITE_ONLY' | 'OPENING_SOON' | 'CLOSED'
 }
 
 export async function createCourse(
@@ -45,6 +46,7 @@ export async function createCourse(
       title: input.title,
       description: input.description,
       cohortName: input.cohortName,
+      enrollmentPolicy: input.enrollmentPolicy,
     }),
   })
 }

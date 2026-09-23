@@ -161,8 +161,8 @@ jobs:
       - name: Install deterministic frontend dependencies
         run: npm ci
         working-directory: frontend
-      - name: Install Playwright Chromium and system dependencies
-        run: npx playwright install --with-deps chromium
+      - name: Install Chromium, Firefox and WebKit with system dependencies
+        run: npx playwright install --with-deps chromium firefox webkit
         working-directory: frontend
       - name: Ensure product-stack process tooling
         run: command -v lsof >/dev/null || sudo apt-get install --yes lsof
@@ -175,6 +175,7 @@ jobs:
         env:
           CI: 'true'
           KEEP_STACK: '1'
+          PLAYWRIGHT_BASE_URL: https://127.0.0.1:9420
       - name: Verify moderation, published audio removal, and emailed appeal
         run: bash scripts/product/moderation-browser.sh run
         env:

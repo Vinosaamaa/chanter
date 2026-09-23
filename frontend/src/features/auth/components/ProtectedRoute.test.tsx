@@ -13,6 +13,16 @@ describe('ProtectedRoute account transitions', () => {
     useAuthStore.getState().clearSession()
   })
 
+  it('preserves a deletion request when signing in from its receipt', async () => {
+    useAuthStore.getState().clearSession()
+    const destination = '/app/account-data/delete?job=b633c892-6762-40ec-a945-b042957a052b#status'
+    render(<MemoryRouter initialEntries={[destination]}><Routes>
+      <Route path="/app/*" element={<ProtectedRoute><p>Private account data</p></ProtectedRoute>} />
+      <Route path="/sign-in" element={<SignInLocationProbe />} />
+    </Routes></MemoryRouter>)
+    expect(await screen.findByTestId('sign-in-state')).toHaveTextContent(JSON.stringify({ from: destination }))
+  })
+
   it('does not preserve the previous account route when an active session ends', async () => {
     const user = userEvent.setup()
     useAuthStore.getState().setSession(sessionFor('owner'))

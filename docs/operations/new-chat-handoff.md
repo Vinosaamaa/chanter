@@ -1,4 +1,4 @@
-# New-chat handoff (2026-08-09)
+# New-chat handoff (2026-09-22)
 
 **@ this file in a fresh agent chat**, then paste the prompt below.
 
@@ -6,26 +6,38 @@ Canonical long-form context: [`HANDOFF.md`](../../HANDOFF.md) · workflow: [`age
 
 ## Status
 
-UI v2, local operationalization, launch-preparation code through #104, Codebase Hardening #180, and product-readiness slices #238–#241 are merged on `main`. Chanter is a **strong local beta, not publicly launched**: production providers/operations remain incomplete, and `chanter.app` was parked at the 2026-08-09 audit. Active program: [#107](https://github.com/Vinosaamaa/chanter/issues/107), with #242 next and #243–#255 following in dependency order.
+Chanter has a modern responsive UI and substantial tested product code, but is
+**not publicly launched**. Account security, deployment packaging, private storage,
+durable events, ingestion, retrieval, AI adapters, moderation, native companion,
+monitoring and recovery infrastructure are merged. Current implementation is
+deletion/export #251, integrated product interaction #339 and full source/object
+recovery #342. Provider configuration and final public proof remain under #255.
+Read [launch-execution-status.md](launch-execution-status.md) for current acceptance
+and remaining gates. Historical DNS observations are not current provider evidence.
 
 ## Paste this into the new chat
 
 ```text
 @docs/operations/new-chat-handoff.md
 
-Read that handoff, then HANDOFF.md, CONTEXT.md, docs/operations/agent-workflow.md,
-docs/operations/product-readiness-audit-2026-08-09.md, and
-docs/issues/product-readiness-issue-breakdown.md.
+Read that handoff, docs/operations/launch-execution-status.md, HANDOFF.md, CONTEXT.md,
+docs/operations/agent-workflow.md and the owning open issue/PR. Inspect current Git
+branches and worktrees before choosing work; preserve existing changes.
 
 You are continuing Chanter's Product Readiness and Public Production Launch epic #107.
 Do not call the product publicly launched until #255 verifies the real deployment.
 
-Work the first unmerged, unblocked issue in #238-#255 dependency order.
+Continue the existing issue work in dependency order. Use Astra high at normal
+speed for all workers. The first public release must use free resources, with
+paid upgrades and recharge disabled. AI provider/model choice stays configurable;
+subscription access must use provider-supported integrations.
 Use one issue -> one branch -> one PR, TDD, local/browser gates, CI, CodeAnt
 (maximum three remediation rounds), gated agent merge, then pull main and continue.
 Never push directly to main.
 
-Current expected start: #242 transactional email and durable secure browser sessions.
+Current expected work: #251 and #342 implementation, then #339 final integrated
+acceptance. Inspect live issue and PR state before continuing; implementation
+acceptance and actual deployment/provider acceptance are different gates.
 
 Local browser stack when needed:
 make product-supervise -> make product-health -> make product-demo-seed
@@ -45,5 +57,6 @@ Epic: https://github.com/Vinosaamaa/chanter/issues/107
 - Issue order: [`product-readiness-issue-breakdown.md`](../issues/product-readiness-issue-breakdown.md)
 - `chanter.app`: parked at audit time; no verified public Chanter environment.
 - Cloudflare: no repository/public zone usage verified; account-level usage requires authenticated account access.
-- Completed launch slices: #238 audit/program, #239 membership authorization, #240 session isolation, and #241 trustworthy release gates.
-- Next launch slice: #242 transactional email and durable secure browser sessions.
+- Current implementation/provider distinctions: [launch-execution-status.md](launch-execution-status.md).
+- Modern UI direction: [learning-desk-v3.md](../product-design/learning-desk-v3.md), using the pinned `.agents/skills/frontend-design/SKILL.md`.
+- Reusable engineering-record authoring: [pull-request-history.md](../engineering/pull-request-history.md).

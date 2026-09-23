@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { signOutBrowserSession } from '../browser-session'
 
-export function useSignOut() {
+export function useSignOut(returnTo?: string) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -12,12 +12,13 @@ export function useSignOut() {
     await queryClient.cancelQueries()
     queryClient.clear()
     const signOut = signOutBrowserSession()
-    navigate('/sign-in', { replace: true, state: null })
+    const state = returnTo ? { from: returnTo } : null
+    navigate('/sign-in', { replace: true, state })
 
     try {
       await signOut
     } catch {
-      navigate('/sign-in', { replace: true, state: { logoutFailed: true } })
+      navigate('/sign-in', { replace: true, state: { ...state, logoutFailed: true } })
     }
-  }, [navigate, queryClient])
+  }, [navigate, queryClient, returnTo])
 }

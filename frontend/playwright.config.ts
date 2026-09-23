@@ -26,6 +26,11 @@ export default defineConfig({
       name: 'chromium-1280',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 720 } },
     },
+    ...(['firefox', 'webkit'] as const).map(browserName => ({
+      name: `${browserName}-product`,
+      use: { browserName, viewport: { width: 1280, height: 720 } },
+      grep: /@product/,
+    })),
     {
       name: 'chromium-1920',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1920, height: 1080 } },

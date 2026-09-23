@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { WorkspaceDialog } from '../../components/WorkspaceDialog'
 
 import {
   archiveCommunityAnnouncement,
@@ -274,7 +275,7 @@ function AnnouncementEditorModal({
   const [title, setTitle] = useState(initial?.title ?? '')
   const [body, setBody] = useState(initial?.body ?? '')
   return (
-    <div className="v2-modal-backdrop" role="presentation">
+    <WorkspaceDialog label={initial ? 'Edit announcement' : 'Publish announcement'} onClose={onClose}>
       <form
         className="create-event-modal"
         onSubmit={(event) => {
@@ -303,7 +304,7 @@ function AnnouncementEditorModal({
           </button>
         </footer>
       </form>
-    </div>
+    </WorkspaceDialog>
   )
 }
 
@@ -372,10 +373,8 @@ export function CommunityLoungePage() {
   )
 }
 
-const MEMBER_FILTERS: { label: string; value: StudyServerMemberFilter | 'DISABLED' }[] = [
+const MEMBER_FILTERS: { label: string; value: StudyServerMemberFilter }[] = [
   { label: 'All', value: 'ALL' },
-  { label: 'Active', value: 'DISABLED' },
-  { label: 'Online', value: 'DISABLED' },
   { label: 'Staff', value: 'STAFF' },
   { label: 'Learners', value: 'LEARNERS' },
 ]
@@ -429,17 +428,9 @@ export function CommunityMembersPage() {
           <button
             type="button"
             key={item.label}
-            className={
-              item.value !== 'DISABLED' && filter === item.value ? 'active' : undefined
-            }
-            disabled={item.value === 'DISABLED'}
-            title={
-              item.value === 'DISABLED'
-                ? 'Presence filters are not available yet'
-                : undefined
-            }
+            className={filter === item.value ? 'active' : undefined}
+            aria-pressed={filter === item.value}
             onClick={() => {
-              if (item.value === 'DISABLED') return
               setFilter(item.value)
               setPage(0)
             }}

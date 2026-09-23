@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -145,11 +145,25 @@ describe('CourseQuestionsPage', () => {
     const user = userEvent.setup()
     render(<CourseQuestionsPage />)
     const question = screen.getByRole('button', { name: /Why does the recursive call stop/ })
-    await user.click(question)
-    expect(question.closest('.questions-layout')).toHaveClass('question-reading-open')
-    await user.click(screen.getByRole('button', { name: 'Back to questions' }))
-    expect(question.closest('.questions-layout')).not.toHaveClass('question-reading-open')
-  })
+      await user.click(question)
+      expect(question.closest('.questions-layout')).toHaveClass('question-reading-open')
+      expect(screen.getByRole('region', { name: 'Question conversation' })).toHaveFocus()
+      await user.click(screen.getByRole('button', { name: 'Back to questions' }))
+      expect(question.closest('.questions-layout')).not.toHaveClass('question-reading-open')
+      expect(question).toHaveFocus()
+    })
+
+    it('opens the learner composer and returns focus to Ask a question', async () => {
+      mocks.workspace.courseCapabilities.canManageQuestions = false
+      mocks.questions.selectedQuestion = null
+      const user = userEvent.setup()
+      render(<CourseQuestionsPage />)
+      const ask = screen.getByRole('button', { name: 'Ask a question' })
+      await user.click(ask)
+      expect(screen.getByRole('textbox', { name: 'Ask a support question' })).toHaveFocus()
+      await user.click(screen.getByRole('button', { name: 'Back to questions' }))
+      expect(ask).toHaveFocus()
+    })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -240,6 +254,48 @@ describe('CourseQuestionsPage', () => {
     await act(async () => resolveReply?.(true))
 
     expect(composer).toHaveValue('A new draft')
+  })
+
+  it('never submits a retained staff draft to an asynchronously selected question', async () => {
+    mocks.questions.postReply.mockResolvedValue(true)
+    const original = mocks.questions.selectedQuestion!
+    const user = userEvent.setup()
+    const view = render(<CourseQuestionsPage />)
+    await user.click(screen.getByRole('button', { name: /Why does the recursive call stop/ }))
+    const composer = screen.getByRole('textbox', { name: 'Reply to this question' })
+    await user.type(composer, 'Reply intended only for question one')
+    mocks.questions.selectedQuestion = { ...original, id: 'question-2', body: 'A different question' }
+    mocks.questions.selectedSupportQuestionId = 'question-2'
+    view.rerender(<CourseQuestionsPage />)
+    expect(composer).toHaveValue('Reply intended only for question one')
+    fireEvent.submit(composer.closest('form')!)
+    expect(mocks.questions.postReply).not.toHaveBeenCalled()
+    expect(composer).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Send reply' })).toBeDisabled()
+    mocks.questions.selectedQuestion = original
+    mocks.questions.selectedSupportQuestionId = original.id
+    view.rerender(<CourseQuestionsPage />)
+    await user.click(screen.getByRole('button', { name: 'Send reply' }))
+    expect(mocks.questions.postReply).toHaveBeenCalledWith(original.id, 'Reply intended only for question one')
+  })
+
+  it('keeps a staff draft visible but cannot submit while its question is unavailable', async () => {
+    const view = render(<CourseQuestionsPage />)
+    const composer = screen.getByRole('textbox', { name: 'Reply to this question' })
+    await userEvent.setup().type(composer, 'Keep this unsent reply')
+    mocks.questions.selectedQuestion = null
+    view.rerender(<CourseQuestionsPage />)
+    expect(screen.getByRole('textbox', { name: 'Reply to this question' })).toHaveValue('Keep this unsent reply')
+    fireEvent.submit(composer.closest('form')!)
+    expect(mocks.questions.postReply).not.toHaveBeenCalled()
+  })
+
+  it('does not carry a private reply draft into another session', async () => {
+    render(<CourseQuestionsPage />)
+    await userEvent.setup().type(screen.getByRole('textbox', { name: 'Reply to this question' }), 'Private unsent reply')
+    act(() => useAuthStore.setState(state => ({ generation: state.generation + 1 })))
+    expect(screen.getByRole('textbox', { name: 'Reply to this question' })).toHaveValue('')
+    expect(mocks.questions.postReply).not.toHaveBeenCalled()
   })
 
   it('does not offer learner handoff controls to teaching staff', () => {

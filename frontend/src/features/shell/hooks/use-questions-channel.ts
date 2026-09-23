@@ -87,6 +87,7 @@ export function useQuestionsChannel({
   cohortId,
 }: QuestionsChannelContext): UseQuestionsChannelResult {
   const userId = useAuthStore((state) => state.user?.id ?? null)
+  const sessionGeneration = useAuthStore((state) => state.generation)
   const [supportQuestions, setSupportQuestions] = useState<SupportQuestionSummary[]>([])
   const [answersByQuestionId, setAnswersByQuestionId] = useState<Record<string, AssistantAnswer>>({})
   const [repliesByQuestionId, setRepliesByQuestionId] = useState<Record<string, SupportQuestionReply[]>>({})
@@ -109,8 +110,12 @@ export function useQuestionsChannel({
   const [addingToQueueQuestionId, setAddingToQueueQuestionId] = useState<string | null>(null)
   const [taQueueSuccess, setTaQueueSuccess] = useState<string | null>(null)
   const [selectedSupportQuestionId, setSelectedSupportQuestionId] = useState<string | null>(null)
+  const selectionContext = useRef<string | null>(null)
+  const activeThreadLoad = useRef<{
+    questionId: string; answerUpdated: boolean; postedReplies: SupportQuestionReply[]
+  } | null>(null)
   const postAttemptRef = useRef<{ body: string; key: string } | null>(null)
-  const contextKey = channelId && userId ? `${channelId}:${userId}` : null
+  const contextKey = channelId && userId ? `${channelId}:${userId}:${sessionGeneration}` : null
   const requestKey = contextKey ? `${contextKey}:${reloadToken}` : null
   const hasActiveData = contextKey !== null && loadedContextKey === contextKey
 
@@ -129,12 +134,10 @@ export function useQuestionsChannel({
         if (cancelled) return
         setError(null)
         setSupportQuestions(response.supportQuestions)
-        setSelectedSupportQuestionId((current) => {
-          if (current && response.supportQuestions.some((question) => question.id === current)) {
-            return current
-          }
-          return response.supportQuestions.at(-1)?.id ?? null
-        })
+        if (selectionContext.current !== contextKey) {
+          selectionContext.current = contextKey
+          setSelectedSupportQuestionId(response.supportQuestions.at(-1)?.id ?? null)
+        }
         setLoadedContextKey(contextKey)
       })
       .catch((caught) => {
@@ -162,36 +165,40 @@ export function useQuestionsChannel({
     if (!requestKey || !selectedQuestion) return
 
     let cancelled = false
+    const load = { questionId: selectedQuestion.id, answerUpdated: false, postedReplies: [] as SupportQuestionReply[] }
+    activeThreadLoad.current = load
+    const reportFailure = (caught: unknown) => {
+      if (!cancelled) setError(caught instanceof Error ? caught.message : 'Unable to load the question thread')
+    }
     const answerRequest = fetchAssistantAnswer(channelId, selectedQuestion.id).catch((caught) => {
       if (caught instanceof ApiError && caught.status === 404) return null
       throw caught
     })
 
     void Promise.all([
-      answerRequest,
-      listSupportQuestionReplies(channelId, selectedQuestion.id),
-    ])
-      .then(([answer, replyList]) => {
+      answerRequest.then((answer) => {
+        if (cancelled || load.answerUpdated) return
+        setAnswersByQuestionId((current) => {
+          const next = { ...current }
+          if (answer) next[selectedQuestion.id] = answer
+          else delete next[selectedQuestion.id]
+          return next
+        })
+      }).catch(reportFailure),
+      listSupportQuestionReplies(channelId, selectedQuestion.id).then((replyList) => {
         if (cancelled) return
-        if (answer) {
-          setAnswersByQuestionId((current) => ({ ...current, [selectedQuestion.id]: answer }))
-        }
         setRepliesByQuestionId((current) => ({
           ...current,
-          [selectedQuestion.id]: mergeReplies(
-            replyList.replies,
-            current[selectedQuestion.id] ?? [],
-          ),
+          [selectedQuestion.id]: mergeReplies(replyList.replies, load.postedReplies),
         }))
-      })
-      .catch((caught) => {
-        if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : 'Unable to load the question thread')
-        }
-      })
+      }).catch(reportFailure),
+    ]).then(() => {
+      if (activeThreadLoad.current === load) activeThreadLoad.current = null
+    })
 
     return () => {
       cancelled = true
+      if (activeThreadLoad.current === load) activeThreadLoad.current = null
     }
   }, [channelId, requestKey, selectedQuestion])
 
@@ -262,6 +269,7 @@ export function useQuestionsChannel({
     setTaQueueSuccess(null)
     try {
       const created = await postSupportQuestion(channelId, trimmed, idempotencyKey)
+      selectionContext.current = contextKey
       postAttemptRef.current = null
       setSupportQuestions((current) => [...current, created])
       setSelectedSupportQuestionId(created.id)
@@ -272,7 +280,7 @@ export function useQuestionsChannel({
     } finally {
       setIsPosting(false)
     }
-  }, [channelId, userId])
+  }, [channelId, contextKey, userId])
 
   const invokeAssistant = useCallback(async (supportQuestionId: string, selection?: AssistantAnswerSelection, native?: { pairing: NativePairing; model: string }) => {
     if (!contextKey) return
@@ -295,6 +303,7 @@ export function useQuestionsChannel({
     setStreamPhase('streaming')
     setError(null)
     setTaQueueSuccess(null)
+    selectionContext.current = contextKey
     setSelectedSupportQuestionId(supportQuestionId)
     try {
       const handlers: import('../../questions/questions-api').StreamAssistantHandlers = {
@@ -305,6 +314,7 @@ export function useQuestionsChannel({
         },
         onComplete: (answer) => {
           if (!ownsRequest()) return
+          if (activeThreadLoad.current?.questionId === supportQuestionId) activeThreadLoad.current.answerUpdated = true
           setAnswersByQuestionId((current) => ({ ...current, [supportQuestionId]: answer }))
           setSupportQuestions((current) => current.map((question) =>
             question.id === supportQuestionId
@@ -340,6 +350,7 @@ export function useQuestionsChannel({
     setError(null)
     try {
       const updated = await markAssistantAnswerHelpful(channelId, supportQuestionId)
+      if (activeThreadLoad.current?.questionId === supportQuestionId) activeThreadLoad.current.answerUpdated = true
       setAnswersByQuestionId((current) => ({ ...current, [supportQuestionId]: updated }))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to mark answer helpful')
@@ -349,6 +360,7 @@ export function useQuestionsChannel({
   }, [channelId])
 
   const selectSupportQuestion = useCallback((supportQuestionId: string | null) => {
+    selectionContext.current = contextKey
     if (supportQuestionId !== selectedSupportQuestionId) {
       streamAbortRef.current?.abort()
       streamAbortRef.current = null
@@ -359,7 +371,7 @@ export function useQuestionsChannel({
       setError(null)
     }
     setSelectedSupportQuestionId(supportQuestionId)
-  }, [selectedSupportQuestionId])
+  }, [contextKey, selectedSupportQuestionId])
 
   const addToTaQueue = useCallback(async (supportQuestionId: string) => {
     const answer = answersByQuestionId[supportQuestionId]
@@ -384,6 +396,7 @@ export function useQuestionsChannel({
     setError(null)
     try {
       const created = await postSupportQuestionReply(channelId, supportQuestionId, trimmed)
+      if (activeThreadLoad.current?.questionId === supportQuestionId) activeThreadLoad.current.postedReplies.push(created)
       setRepliesByQuestionId((current) => ({
         ...current,
         [supportQuestionId]: [...(current[supportQuestionId] ?? []), created],

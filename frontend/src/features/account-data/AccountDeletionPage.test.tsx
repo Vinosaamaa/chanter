@@ -1,0 +1,218 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createMemoryRouter, Link, MemoryRouter, Route, RouterProvider, Routes } from 'react-router-dom'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { ApiError, configureApiAuth } from '../../lib/api-client'
+import { useAuthStore } from '../../stores/auth-store'
+import type { DeletionJob } from './account-deletion-api'
+import { AccountDeletionPage, AccountDeletionReceiptPage } from './AccountDeletionPage'
+import { ProtectedRoute } from '../auth/components/ProtectedRoute'
+
+const api = vi.hoisted(() => ({ prepareDeletion: vi.fn(), getDeletion: vi.fn(), cancelDeletion: vi.fn(), confirmDeletion: vi.fn(), getDeletionReceipt: vi.fn() }))
+vi.mock('./account-deletion-api', async importOriginal => ({ ...await importOriginal<typeof import('./account-deletion-api')>(), ...api }))
+const id = 'b633c892-6762-40ec-a945-b042957a052b'
+const otherId = 'b633c892-6762-40ec-a945-b042957a052c'
+const prepared: DeletionJob = { id, state: 'PREPARED', createdAt: new Date().toISOString(), preparationExpiresAt: new Date(Date.now() + 240_000).toISOString(), replicationPending: false, preparationError: null,
+  parts: ['auth', 'community', 'message', 'media', 'agent', 'search', 'notification'].map(source => ({ source, state: 'PENDING', errorCode: null })) }
+function session(account = 'owner') { useAuthStore.getState().setSession({ accessToken: `${account}-token`, expiresInSeconds: 900, user: { id: account, email: `${account}@example.test`, displayName: account } }) }
+function open(path = '/app/account-data/delete') {
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><MemoryRouter initialEntries={[path]}><Routes>
+    <Route path="/app/account-data/delete" element={<><Link to={`/app/account-data/delete?job=${otherId}`}>Another request</Link><AccountDeletionPage /></>} />
+    <Route path="/account-deletion/:jobId" element={<AccountDeletionReceiptPage />} />
+  </Routes></MemoryRouter></QueryClientProvider>)
+}
+beforeEach(() => { vi.resetAllMocks(); localStorage.clear(); session(); api.getDeletion.mockResolvedValue(prepared); api.prepareDeletion.mockImplementation(async (requestId: string) => ({ ...prepared, id: requestId, state: 'PREPARING' })) })
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+
+it('preparation never claims deletion and an uncertain request reuses its UUID', async () => {
+  api.prepareDeletion.mockRejectedValueOnce(new Error('connection lost'))
+  api.getDeletion.mockRejectedValue(new ApiError('missing', 404))
+  const user = userEvent.setup(); open()
+  await user.click(screen.getByRole('button', { name: 'Prepare deletion' }))
+  await screen.findByText(/could not verify preparation/i)
+  await user.click(await screen.findByRole('button', { name: 'Retry preparation' }))
+  expect(await screen.findByText('Checking ownership')).toBeVisible()
+  expect(api.prepareDeletion.mock.calls[0][0]).toBe(api.prepareDeletion.mock.calls[1][0])
+  expect(useAuthStore.getState().user?.id).toBe('owner')
+  expect(api.confirmDeletion).not.toHaveBeenCalled()
+})
+
+it('requires explicit confirmation then keeps receipt access after clearing the account', async () => {
+  api.confirmDeletion.mockResolvedValue({ ...prepared, state: 'ERASING' })
+  api.getDeletionReceipt.mockResolvedValue({ ...prepared, state: 'ERASING' })
+  const user = userEvent.setup(); open(`/app/account-data/delete?job=${id}`)
+  const confirm = await screen.findByRole('button', { name: 'Permanently delete my account' })
+  expect(confirm).toBeDisabled()
+  await user.type(screen.getByLabelText('Type DELETE MY ACCOUNT to confirm'), 'DELETE MY ACCOUNT')
+  await user.click(confirm)
+  expect(await screen.findByRole('heading', { name: 'Deletion status' })).toBeVisible()
+  expect(await screen.findByText('Cleanup in progress')).toBeVisible()
+  expect(useAuthStore.getState().user).toBeNull()
+  expect(localStorage.getItem('chanter-session-change')).toMatch(/^signed-out:/)
+  expect(api.getDeletionReceipt).toHaveBeenCalledWith(id, expect.any(AbortSignal))
+  expect(screen.queryByText('Deletion completed')).not.toBeInTheDocument()
+})
+
+it.each([new TypeError('network lost'), new ApiError('unreadable accepted response', 202)])('checks the same receipt after an uncertain confirmation without creating another job: %s', async failure => {
+  api.confirmDeletion.mockRejectedValue(failure)
+  api.getDeletionReceipt.mockResolvedValue({ ...prepared, state: 'WAITING_FOR_REPLICA', replicationPending: true })
+  const user = userEvent.setup(); open(`/app/account-data/delete?job=${id}`)
+  await user.type(await screen.findByLabelText('Type DELETE MY ACCOUNT to confirm'), 'DELETE MY ACCOUNT')
+  await user.click(screen.getByRole('button', { name: 'Permanently delete my account' }))
+  expect(await screen.findByText('Recovery acknowledgement pending')).toBeVisible()
+  expect(api.prepareDeletion).not.toHaveBeenCalled()
+  expect(api.confirmDeletion).toHaveBeenCalledTimes(1)
+})
+
+it('ignores an old account preparation response and aborts it after an account switch', async () => {
+  let resolve!: (job: DeletionJob) => void
+  api.prepareDeletion.mockReturnValue(new Promise<DeletionJob>(done => { resolve = done }))
+  const user = userEvent.setup(); open()
+  await user.click(screen.getByRole('button', { name: 'Prepare deletion' }))
+  const signal = api.prepareDeletion.mock.calls[0][1] as AbortSignal
+  await act(async () => session('other'))
+  await act(async () => resolve(prepared))
+  expect(signal.aborted).toBe(true)
+  expect(screen.queryByText('Ready to confirm')).not.toBeInTheDocument()
+  expect(api.getDeletion).not.toHaveBeenCalled()
+})
+
+it('never treats a missing receipt as completion and provides an explicit refresh', async () => {
+  useAuthStore.getState().clearSession()
+  api.getDeletionReceipt.mockRejectedValueOnce(new ApiError('gone', 404)).mockResolvedValue({ ...prepared, state: 'COMPLETE', parts: prepared.parts.map(part => ({ ...part, state: 'PRESERVED' })) })
+  const user = userEvent.setup(); open(`/account-deletion/${id}`)
+  expect(await screen.findByRole('alert')).toHaveTextContent('Receipt unavailable')
+  expect(screen.queryByText('Deletion completed')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Refresh status' }))
+  expect(await screen.findByText('Deletion completed')).toBeVisible()
+  expect(screen.getByText(/Some recovery, accounting, shared-course and moderation records may remain/)).toBeVisible()
+  expect(api.getDeletion).not.toHaveBeenCalled()
+})
+
+it('revalidates a cached completed receipt before showing its status', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: Infinity } } })
+  client.setQueryData(['account-deletion-receipt', id], { ...prepared, state: 'COMPLETE' })
+  let reject!: (reason: unknown) => void
+  api.getDeletionReceipt.mockReturnValue(new Promise((_resolve, fail) => { reject = fail }))
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[`/account-deletion/${id}`]}><Routes>
+    <Route path="/account-deletion/:jobId" element={<AccountDeletionReceiptPage />} />
+  </Routes></MemoryRouter></QueryClientProvider>)
+  expect(screen.queryByText('Deletion completed')).not.toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('Loading receipt')
+  await act(async () => reject(new ApiError('expired', 404)))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Receipt unavailable')
+  expect(screen.queryByText('Deletion completed')).not.toBeInTheDocument()
+})
+
+it('does not allow confirmation while cancellation is in flight', async () => {
+  api.cancelDeletion.mockReturnValue(new Promise(() => {}))
+  const user = userEvent.setup(); open(`/app/account-data/delete?job=${id}`)
+  await user.type(await screen.findByLabelText('Type DELETE MY ACCOUNT to confirm'), 'DELETE MY ACCOUNT')
+  await user.click(screen.getByRole('button', { name: 'Cancel preparation' }))
+  expect(screen.getByRole('button', { name: 'Permanently delete my account' })).toBeDisabled()
+  expect(api.confirmDeletion).not.toHaveBeenCalled()
+})
+
+it('ignores an old confirmation after navigating to another request and retries the new UUID', async () => {
+  let resolve!: (job: DeletionJob) => void
+  api.confirmDeletion.mockReturnValue(new Promise<DeletionJob>(done => { resolve = done }))
+  api.getDeletion.mockImplementation(async (request: string) => {
+    if (request === otherId) throw new ApiError('missing', 404)
+    return prepared
+  })
+  const user = userEvent.setup(); open(`/app/account-data/delete?job=${id}`)
+  await user.type(await screen.findByLabelText('Type DELETE MY ACCOUNT to confirm'), 'DELETE MY ACCOUNT')
+  await user.click(screen.getByRole('button', { name: 'Permanently delete my account' }))
+  const signal = api.confirmDeletion.mock.calls[0][1] as AbortSignal
+  await user.click(screen.getByRole('link', { name: 'Another request' }))
+  await act(async () => resolve({ ...prepared, state: 'ERASING' }))
+  expect(signal.aborted).toBe(true)
+  expect(useAuthStore.getState().user?.id).toBe('owner')
+  expect(api.getDeletionReceipt).not.toHaveBeenCalled()
+  await user.click(await screen.findByRole('button', { name: 'Retry preparation' }))
+  expect(api.prepareDeletion).toHaveBeenCalledWith(otherId, expect.any(AbortSignal))
+})
+
+it('disables irreversible confirmation for an expired preparation', async () => {
+  api.getDeletion.mockResolvedValue({ ...prepared, preparationExpiresAt: new Date(Date.now() - 1000).toISOString() })
+  open(`/app/account-data/delete?job=${id}`)
+  expect(await screen.findByRole('button', { name: 'Permanently delete my account' })).toBeDisabled()
+  expect(screen.getByLabelText('Type DELETE MY ACCOUNT to confirm')).toBeDisabled()
+  expect(api.confirmDeletion).not.toHaveBeenCalled()
+})
+
+it('does not label a cached receipt current after its authority expires', async () => {
+  api.getDeletionReceipt.mockResolvedValueOnce({ ...prepared, state: 'COMPLETE' }).mockRejectedValue(new ApiError('expired cookie', 404))
+  const user = userEvent.setup(); open(`/account-deletion/${id}`)
+  expect(await screen.findByText('Deletion completed')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Refresh status' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Receipt unavailable')
+  expect(screen.queryByRole('region', { name: 'Current deletion status' })).not.toBeInTheDocument()
+})
+
+it.each([false, true])('commits the lazy receipt route and only closes its original session, account changed: %s', async accountChanged => {
+  let release!: () => void
+  const waiting = new Promise<void>(resolve => { release = resolve })
+  api.confirmDeletion.mockResolvedValue({ ...prepared, state: 'ERASING' })
+  api.getDeletionReceipt.mockResolvedValue({ ...prepared, state: 'ERASING' })
+  const router = createMemoryRouter([
+    { path: '/app/account-data/delete', element: <ProtectedRoute><AccountDeletionPage /></ProtectedRoute> },
+    { path: '/account-deletion/:jobId', lazy: async () => { await waiting; return { Component: AccountDeletionReceiptPage } } },
+    { path: '/sign-in', element: <h1>Sign in</h1> },
+  ], { initialEntries: [`/app/account-data/delete?job=${id}`] })
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><RouterProvider router={router} /></QueryClientProvider>)
+  const user = userEvent.setup()
+  await user.type(await screen.findByLabelText('Type DELETE MY ACCOUNT to confirm'), 'DELETE MY ACCOUNT')
+  await user.click(screen.getByRole('button', { name: 'Permanently delete my account' }))
+  if (accountChanged) await act(async () => session('other'))
+  await act(async () => release())
+  expect(await screen.findByRole('heading', { name: 'Deletion status' })).toBeVisible()
+  expect(await screen.findByText('Cleanup in progress')).toBeVisible()
+  expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument()
+  expect(useAuthStore.getState().user?.id ?? null).toBe(accountChanged ? 'other' : null)
+  router.dispose()
+})
+
+it('does not close a new document session from persisted receipt navigation state', async () => {
+  api.getDeletionReceipt.mockResolvedValue({ ...prepared, state: 'ERASING' })
+  const state = { closeSessionGeneration: useAuthStore.getState().generation, receiptHandoff: 'a-previous-document' }
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
+    <MemoryRouter initialEntries={[{ pathname: `/account-deletion/${id}`, state }]}><Routes>
+      <Route path="/account-deletion/:jobId" element={<AccountDeletionReceiptPage />} />
+    </Routes></MemoryRouter>
+  </QueryClientProvider>)
+  expect(await screen.findByText('Cleanup in progress')).toBeVisible()
+  expect(useAuthStore.getState().user?.id).toBe('owner')
+  expect(localStorage.getItem('chanter-session-change')).toBeNull()
+})
+
+it.each(['PREPARED', 'ERASING'] as const)('preserves the exact receipt after a real confirmation 401 with %s outcome', async state => {
+  const actual = await vi.importActual<typeof import('./account-deletion-api')>('./account-deletion-api')
+  api.confirmDeletion.mockImplementation(actual.confirmDeletion)
+  api.getDeletionReceipt.mockResolvedValue({ ...prepared, state })
+  const refresh = vi.fn(async () => { useAuthStore.getState().clearSession(); return false })
+  configureApiAuth({ getAccessToken: () => useAuthStore.getState().accessToken,
+    getSessionGeneration: () => useAuthStore.getState().generation, refreshSession: refresh })
+  const fetchMock = vi.fn(async () => new Response('', { status: 401 }))
+  vi.stubGlobal('fetch', fetchMock)
+  const router = createMemoryRouter([
+    { path: '/app/account-data/delete', element: <ProtectedRoute><AccountDeletionPage /></ProtectedRoute> },
+    { path: '/account-deletion/:jobId', element: <AccountDeletionReceiptPage /> },
+    { path: '/sign-in', element: <h1>Sign in</h1> },
+  ], { initialEntries: [`/app/account-data/delete?job=${id}`] })
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><RouterProvider router={router} /></QueryClientProvider>)
+  try {
+    const user = userEvent.setup()
+    await user.type(await screen.findByLabelText('Type DELETE MY ACCOUNT to confirm'), 'DELETE MY ACCOUNT')
+    await user.click(screen.getByRole('button', { name: 'Permanently delete my account' }))
+    expect(await screen.findByRole('heading', { name: 'Deletion status' })).toBeVisible()
+    expect(await screen.findByText(state === 'PREPARED' ? 'Ready to confirm' : 'Cleanup in progress')).toBeVisible()
+    expect(router.state.location.pathname).toBe(`/account-deletion/${id}`)
+    expect(router.state.location.search).toBe('?uncertain=1')
+    expect(useAuthStore.getState().user).toBeNull()
+    expect(refresh).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    if (state === 'PREPARED') expect(screen.getByRole('link', { name: 'Sign in to manage preparation' })).toHaveAttribute('href', `/app/account-data/delete?job=${id}`)
+  } finally { router.dispose() }
+})

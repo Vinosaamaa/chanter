@@ -16,8 +16,8 @@ type V2TopBarProps = {
 export function V2TopBar({ onOpenMenu }: V2TopBarProps) {
   const { pathname, search: locationSearch } = useLocation()
   const primary = resolveV2PrimaryNav(pathname)
-  const pageTitle = pathname.startsWith('/app/settings') ? 'Settings' : primary ? primary[0].toUpperCase() + primary.slice(1) : 'Home'
-  const communityServerId = pathname.match(/^\/app\/servers\/([^/]+)\/community\//)?.[1]
+  const pageTitle = pathname === '/app/picker' ? 'Study Servers' : pathname.startsWith('/app/deletions/') ? 'Deletion status' : pathname.startsWith('/app/account-data') ? 'Account data' : pathname.startsWith('/app/settings') ? 'Settings' : primary ? primary[0].toUpperCase() + primary.slice(1) : 'Home'
+  const communityServerId = pathname.match(/^\/app\/servers\/([^/]+)\/(?:community\/|home$)/)?.[1]
   const courseRoute = resolveCourseRoute(pathname)
   const search = resolveV2SearchConfig(pathname)
   const { openSearch } = useGlobalSearch()

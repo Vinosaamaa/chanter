@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AssistantStreamError, type StreamAssistantHandlers } from '../../questions/questions-api'
 import { useAuthStore } from '../../../stores/auth-store'
+import { ApiError } from '../../../lib/api-client'
 import { useQuestionsChannel } from './use-questions-channel'
 
 const mocks = vi.hoisted(() => ({
@@ -55,7 +56,59 @@ describe('useQuestionsChannel', () => {
     mocks.fetchPublicProfiles.mockImplementation((userIds: string[]) => Promise.resolve({
       profiles: userIds.map((userId) => ({ userId, displayName: userId })),
     }))
-    mocks.fetchAssistantAnswer.mockRejectedValue(new Error('not found'))
+    mocks.fetchAssistantAnswer.mockRejectedValue(new ApiError('not found', 404))
+  })
+
+  const savedAnswer = {
+    id: 'answer-retained', supportQuestionId: 'question-1', answerBody: 'Removed source quotation',
+    supportQuestionStatus: 'AI_ANSWERED', handoffRecommended: false, sources: [],
+    createdAt: '2026-07-14T20:01:00.000Z', helpfulMarked: false, helpfulCount: 0,
+  }
+  const savedReply = {
+    id: 'reply-retained', supportQuestionId: 'question-1', authorUserId: 'instructor-1',
+    body: 'Removed author reply', createdAt: '2026-07-14T20:02:00.000Z',
+  }
+
+  it.each([false, true])('removes a cached answer after authoritative 404, even when replies fail: %s', async (repliesFail) => {
+    mocks.fetchAssistantAnswer.mockResolvedValue(savedAnswer)
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    await waitFor(() => expect(result.current.selectedAnswer?.id).toBe(savedAnswer.id))
+    mocks.fetchAssistantAnswer.mockRejectedValue(new ApiError('not found', 404))
+    if (repliesFail) mocks.listSupportQuestionReplies.mockRejectedValue(new ApiError('Unavailable', 500))
+    await act(() => result.current.refresh())
+    await waitFor(() => expect(result.current.selectedAnswer).toBeNull())
+    expect(result.current.timeline.some(entry => entry.kind === 'ai-answer')).toBe(false)
+    if (repliesFail) expect(result.current.error).toBe('Unavailable')
+  })
+
+  it.each([false, true])('removes a cached reply absent from the current list, even when the answer fails: %s', async (answerFails) => {
+    mocks.listSupportQuestionReplies.mockResolvedValue({ replies: [savedReply] })
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    await waitFor(() => expect(result.current.selectedReplies).toHaveLength(1))
+    mocks.listSupportQuestionReplies.mockResolvedValue({ replies: [] })
+    if (answerFails) mocks.fetchAssistantAnswer.mockRejectedValue(new ApiError('Unavailable', 500))
+    await act(() => result.current.refresh())
+    await waitFor(() => expect(result.current.selectedReplies).toEqual([]))
+    if (answerFails) expect(result.current.error).toBe('Unavailable')
+  })
+
+  it.each([false, true])('preserves a later helpful result against an older read, then accepts current deletion: %s', async (missing) => {
+    mocks.fetchAssistantAnswer.mockResolvedValue(savedAnswer)
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    await waitFor(() => expect(result.current.selectedAnswer?.id).toBe(savedAnswer.id))
+    let finish!: () => void
+    mocks.fetchAssistantAnswer.mockImplementationOnce(() => new Promise((resolve, reject) => {
+      finish = () => missing ? reject(new ApiError('not found', 404)) : resolve(savedAnswer)
+    }))
+    await act(() => result.current.refresh())
+    await waitFor(() => expect(mocks.fetchAssistantAnswer).toHaveBeenCalledTimes(2))
+    mocks.markAssistantAnswerHelpful.mockResolvedValue({ ...savedAnswer, helpfulMarked: true, helpfulCount: 1 })
+    await act(() => result.current.markHelpful('question-1'))
+    await act(async () => finish())
+    expect(result.current.selectedAnswer?.helpfulMarked).toBe(true)
+    mocks.fetchAssistantAnswer.mockRejectedValue(new ApiError('not found', 404))
+    await act(() => result.current.refresh())
+    await waitFor(() => expect(result.current.selectedAnswer).toBeNull())
   })
 
   it('reloads a persisted assistant answer after the question is resolved', async () => {
@@ -94,11 +147,45 @@ describe('useQuestionsChannel', () => {
     })
   })
 
+  it('preserves explicit new-question intent when initial history arrives', async () => {
+    const history = await mocks.listSupportQuestions()
+    let finish!: (value: typeof history) => void
+    mocks.listSupportQuestions.mockReturnValue(new Promise(resolve => { finish = resolve }))
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    act(() => result.current.selectSupportQuestion(null))
+    await act(async () => finish(history))
+    expect(result.current.supportQuestions).toHaveLength(1)
+    expect(result.current.selectedSupportQuestionId).toBeNull()
+    expect(result.current.selectedQuestion).toBeNull()
+  })
+
+  it('does not redirect an existing selection when refresh omits its question', async () => {
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+    const original = result.current.selectedQuestion!
+    mocks.listSupportQuestions.mockResolvedValue({ supportQuestions: [{ ...original, id: 'question-2' }] })
+    await act(async () => result.current.refresh())
+    await waitFor(() => expect(result.current.supportQuestions[0]?.id).toBe('question-2'))
+    expect(result.current.selectedQuestion).toBeNull()
+    expect(result.current.selectedSupportQuestionId).toBe('question-1')
+    mocks.listSupportQuestions.mockResolvedValue({ supportQuestions: [original] })
+    await act(async () => result.current.refresh())
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+  })
+
+  it('initializes selection again for a new session generation', async () => {
+    const { result } = renderHook(() => useQuestionsChannel({ channelId: 'questions-1', cohortId: 'cohort-1' }))
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+    act(() => result.current.selectSupportQuestion(null))
+    act(() => useAuthStore.setState(state => ({ generation: state.generation + 1 })))
+    await waitFor(() => expect(result.current.selectedQuestion?.id).toBe('question-1'))
+  })
+
   it('streams tokens then stores the complete answer', async () => {
     mocks.streamAssistantAnswer.mockImplementation(async (_channelId, _questionId, handlers) => {
       handlers.onToken('Hello ')
       handlers.onToken('world')
-      handlers.onComplete({
+      const answer = {
         id: 'answer-stream',
         supportQuestionId: 'question-1',
         channelId: 'questions-1',
@@ -119,7 +206,9 @@ describe('useQuestionsChannel', () => {
         },
         helpfulMarked: false,
         helpfulCount: 0,
-      })
+      }
+      mocks.fetchAssistantAnswer.mockResolvedValue(answer)
+      handlers.onComplete(answer)
     })
 
     const { result } = renderHook(() => useQuestionsChannel({
@@ -257,17 +346,12 @@ describe('useQuestionsChannel', () => {
   })
 
   it('keeps a newly posted reply when an older thread request completes later', async () => {
+    const createdReply = { ...savedReply, id: 'reply-new' }
     let resolveReplyList: ((value: { replies: never[] }) => void) | undefined
-    mocks.listSupportQuestionReplies.mockReturnValue(new Promise((resolve) => {
-      resolveReplyList = resolve
-    }))
-    mocks.postSupportQuestionReply.mockResolvedValue({
-      id: 'reply-new',
-      supportQuestionId: 'question-1',
-      authorUserId: 'instructor-1',
-      body: 'A durable staff reply.',
-      createdAt: '2026-07-14T20:02:00.000Z',
-    })
+    mocks.listSupportQuestionReplies
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveReplyList = resolve }))
+      .mockResolvedValue({ replies: [createdReply] })
+    mocks.postSupportQuestionReply.mockResolvedValue(createdReply)
 
     const { result } = renderHook(() => useQuestionsChannel({
       channelId: 'questions-1',
@@ -288,5 +372,8 @@ describe('useQuestionsChannel', () => {
 
     expect(result.current.selectedReplies).toHaveLength(1)
     expect(result.current.selectedReplies[0]?.id).toBe('reply-new')
+    mocks.listSupportQuestionReplies.mockResolvedValue({ replies: [] })
+    await act(() => result.current.refresh())
+    await waitFor(() => expect(result.current.selectedReplies).toEqual([]))
   })
 })

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Ban,
@@ -37,6 +37,11 @@ export function FriendsPage() {
   const [draft, setDraft] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [conversationOpen, setConversationOpen] = useState(Boolean(searchParams.get('friend')))
+  const listPaneRef = useRef<HTMLElement>(null)
+  const listHeadingRef = useRef<HTMLHeadingElement>(null)
+  const conversationHeadingRef = useRef<HTMLHeadingElement>(null)
+  const wasConversationOpen = useRef(false)
+  const lastPageFocus = useRef<HTMLElement | null>(null)
   const friendRows = useMemo(
     () =>
       hub.friends.map((friend) => ({
@@ -48,9 +53,23 @@ export function FriendsPage() {
     [hub.friends, hub.presenceByFriendId, relationships.profilesById],
   )
   const active = friendRows.find((friend) => friend.id === hub.selectedFriendId) ?? null
+  useEffect(() => {
+    const showingConversation = conversationOpen && Boolean(active?.id)
+    if (showingConversation) {
+      conversationHeadingRef.current?.focus()
+    } else if (wasConversationOpen.current) {
+      const selectedFriend = listPaneRef.current?.querySelector<HTMLButtonElement>('button[aria-current="true"]')
+      const target = selectedFriend ?? listHeadingRef.current
+      target?.focus()
+    }
+    wasConversationOpen.current = showingConversation
+  }, [conversationOpen, active?.id])
   const callFriendName = hub.callState.peerUserId
     ? relationships.profilesById[hub.callState.peerUserId]?.displayName ?? 'Friend'
     : active?.name ?? 'Friend'
+  const closedCallError = (hub.callState.phase === 'idle' || hub.callState.phase === 'ended') && hub.callError
+    ? <p className="inline-error" role="alert">{hub.callError}</p>
+    : null
 
   const submitMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -82,10 +101,12 @@ export function FriendsPage() {
   }
 
   return (
-    <div className={`friends-page${conversationOpen && active ? ' conversation-open' : ''}`}>
-      <aside className="friends-list-pane">
+    <div className={`friends-page${conversationOpen && active ? ' conversation-open' : ''}`} onFocusCapture={event => {
+      if (!event.target.closest('dialog')) lastPageFocus.current = event.target
+    }}>
+      <aside className="friends-list-pane" ref={listPaneRef}>
         <header>
-          <h1>Friends</h1>
+          <h1 ref={listHeadingRef} tabIndex={-1}>Friends</h1>
           <button type="button" onClick={() => setShowAdd(true)}>
             Add friend <Plus />
           </button>
@@ -106,6 +127,8 @@ export function FriendsPage() {
             Pending requests <b>{relationships.incoming.length}</b>
           </button>
         </nav>
+
+        {!conversationOpen || !active ? closedCallError : null}
 
         {tab === 'friends' ? (
           <FriendList
@@ -132,7 +155,7 @@ export function FriendsPage() {
                 online={active.online}
               />
               <div>
-                <h2>{active.name}</h2>
+                <h2 ref={conversationHeadingRef} tabIndex={-1}>{active.name}</h2>
                 <ReportLink type="USER" id={active.id} label="Report account" />
                 <p className={active.online ? undefined : 'offline'}>
                   {active.online ? 'Online' : 'Offline'}
@@ -158,6 +181,8 @@ export function FriendsPage() {
                 {hub.error}
               </p>
             ) : null}
+
+            {conversationOpen ? closedCallError : null}
 
             <div className="dm-message-list">
               <span className="today-divider">Conversation</span>
@@ -217,8 +242,8 @@ export function FriendsPage() {
       {showAdd ? (
         <AddFriendModal relationships={relationships} onClose={() => setShowAdd(false)} />
       ) : null}
-      {hub.callState.phase !== 'idle' ? (
-        <CallModal hub={hub} friendName={callFriendName} />
+      {hub.callState.phase !== 'idle' && hub.callState.phase !== 'ended' ? (
+        <CallModal hub={hub} friendName={callFriendName} lastPageFocus={lastPageFocus} fallbackFocus={conversationOpen && active ? conversationHeadingRef : listHeadingRef} />
       ) : null}
     </div>
   )
@@ -272,7 +297,7 @@ function FriendList({
         />
       ))}
       <h2>
-        All friends <b>{friends.length}</b>
+        Offline <b>{offline.length}</b>
       </h2>
       {offline.map((friend) => (
         <FriendButton
@@ -439,7 +464,7 @@ function AddFriendModal({
   onClose: () => void
 }) {
   const [search, setSearch] = useState('')
-  const dialogRef = useRef<HTMLElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const normalizedSearch = search.trim().toLowerCase()
   const entries = relationships.directoryEntries.filter(
@@ -450,46 +475,25 @@ function AddFriendModal({
   )
 
   useEffect(() => {
+    const dialog = dialogRef.current
+    dialog?.showModal()
     searchRef.current?.focus()
+    return () => dialog?.close()
+  }, [])
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-        return
-      }
-      if (event.key !== 'Tab') return
-
-      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      )
-      if (!focusable?.length) return
-
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  const close = () => {
+    dialogRef.current?.close()
+    onClose()
+  }
 
   return (
-    <div className="v2-modal-backdrop" role="presentation">
-      <section
+      <dialog
         ref={dialogRef}
         className="add-friend-modal"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="add-friend-title"
+        onCancel={close}
       >
-        <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
+        <button type="button" className="modal-close" onClick={close} aria-label="Close">
           <X />
         </button>
         <UserPlus />
@@ -542,22 +546,36 @@ function AddFriendModal({
             {relationships.actionError}
           </p>
         ) : null}
-      </section>
-    </div>
+      </dialog>
   )
 }
 
 type FriendsHook = ReturnType<typeof useFriendsHub>
 
-function CallModal({ hub, friendName }: { hub: FriendsHook; friendName: string }) {
+function CallModal({ hub, friendName, lastPageFocus, fallbackFocus }: { hub: FriendsHook; friendName: string; lastPageFocus: RefObject<HTMLElement | null>; fallbackFocus: RefObject<HTMLElement | null> }) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    // An incoming call disables its launch button before this effect runs.
+    // Retain the last focused page control when the browser moves focus to body.
+    const previous = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement : lastPageFocus.current
+    const fallback = fallbackFocus.current
+    const dialog = dialogRef.current
+    dialog?.showModal()
+    dialog?.querySelector<HTMLButtonElement>('button')?.focus()
+    return () => {
+      dialog?.close()
+      if (previous?.isConnected && !previous.matches(':disabled')) previous.focus()
+      else if (fallback?.isConnected) fallback.focus()
+    }
+  }, [lastPageFocus, fallbackFocus])
   const incoming = hub.callState.phase === 'incoming_ringing'
   const inCall = hub.callState.phase === 'in_call'
   return (
-    <div className="v2-modal-backdrop">
-      <section
+      <dialog
+        ref={dialogRef}
         className="dm-call-modal"
-        role="dialog"
-        aria-modal="true"
+        onCancel={event => event.preventDefault()}
         aria-label={`Voice call with ${friendName}`}
       >
         <V2Avatar name={friendName} tone="blue" size="lg" online />
@@ -605,8 +623,7 @@ function CallModal({ hub, friendName }: { hub: FriendsHook; friendName: string }
             <Phone />
           </button>
         </div>
-      </section>
-    </div>
+      </dialog>
   )
 }
 
