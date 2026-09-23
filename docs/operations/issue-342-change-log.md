@@ -51,6 +51,14 @@ changed archive refusal on existing snapshot reads and restore writes.
 Full affected common/media verification then passed with zero failures/errors;
 native-only checks remain scheduled in hosted verification.
 
+The next full review found an omitted backend field in restore authorization.
+The regression first accepted a changed backend under an old snapshot. References
+now capture and hash backend identity, and the source row and actual adapter must
+both match before reserving a restore. Changed-backend and wrong-adapter tests
+pass, followed by full affected common/media verification. The private Java fixture
+still compiles against the resulting media classpath. This unreleased V6 change
+does not enable recovery or establish physical deletion completion.
+
 The next disabled metadata slice adds one bounded, temporary source-owned
 inventory snapshot and private fence/capture/page/discard routes. Exact applied
 authority, beyond-prefix targets, unknown mutations/source writes, leases,

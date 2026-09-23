@@ -55,7 +55,7 @@ authority. Discard removes only this projection and never clears outstanding
 operations or the physical maintenance fence.
 
 Reference fields are ordinal, resource ID, source course ID, CURRENT/MIGRATION
-kind, immutable key, byte size, SHA-256, source resource state, `sourceRetained`,
+kind, storage backend, immutable key, byte size, SHA-256, source resource state, `sourceRetained`,
 `terminal` and `providerVersionId`. Provider version remains null. `sourceRetained`
 copies the source byte reservation; it does not claim that a provider object
 exists. `terminal` includes direct account/resource/server fences and verified
@@ -72,6 +72,9 @@ The internal adapter maintenance PUT path keeps the same global fence active.
 Source authorization verifies snapshot, backup identity, applied prefix, namespace
 and the exact current resource tuple under terminal-before-budget locks, then
 validates size and SHA-256, then commits one physical mutation before dispatch.
+The captured backend is included in the reference digest and must match both the
+current source row and the configured adapter. A backend change requires a new
+qualified inventory; an old snapshot cannot authorize a different backend.
 Terminal, absent, rejected or changed references cannot authorize a write. The
 adapter supplies a private copy of at most 10 MiB and uses local CREATE_NEW or
 S3 If-None-Match. Uncertain completion keeps the operation outstanding. This path

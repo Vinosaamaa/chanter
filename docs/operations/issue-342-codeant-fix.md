@@ -7,6 +7,29 @@ remove those dependencies.
 
 ## Findings
 
+The full review at `1e38bdbf` raised four further observations:
+
+- `4078153166`, backend identity: confirmed and fixed. The behavioral regression
+  first permitted restoration after the source backend changed. Inventory now
+  captures and hashes the backend, and restoration requires agreement between
+  that snapshot, the current source row and the configured adapter before any
+  mutation is reserved. Changed-backend and wrong-adapter regressions pass.
+- `4078153175`, derived scope replacement: the current source importer rejects a
+  different basis or digest for an existing READY scope. Recovery has no supported
+  reset that clears those tables while retaining inventory. The qualification
+  check binds the immutable scope to this restore ID and original archive digest.
+  A future owning reset would also have to discard inventory; none is introduced
+  here. Independent read-only source review confirmed this boundary.
+- `4078153182`, duplicate READY kinds: the owning V5 scope header primary key is
+  `(study_server_id,scope_kind)`, with a COURSE/CHANNEL kind constraint. Two rows
+  for one kind cannot satisfy the required two kinds in that schema. Synthetic
+  schema tests do not replace the pending actual source migration proof.
+- `4078153188`, local DELETE I/O failure: FINISHED reports synchronous invocation
+  completion, not successful erasure. The adapter still throws typed DeleteFailure;
+  the worker cannot finish deletion or release its byte reservation on that path.
+  A maintenance physical-closure receipt must likewise require successful deletion,
+  not merely a settled invocation. That separate closure path remains unfinished.
+
 - `4077774875`, local partial object: confirmed and fixed. A real failed copy
   regression first left a created object behind. The adapter now removes only
   its own successfully created file after closing the write stream. Failed cleanup

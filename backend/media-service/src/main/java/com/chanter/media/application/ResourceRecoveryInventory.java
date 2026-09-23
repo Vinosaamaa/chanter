@@ -36,7 +36,7 @@ public class ResourceRecoveryInventory {
     }
     public record Snapshot(int schemaVersion, UUID inventoryId, UUID databaseBackupId, Authority authority,
                            String namespaceSha256, Instant capturedAt, int referenceCount, String referenceDigest) { }
-    public record Reference(int ordinal, UUID resourceId, UUID courseId, String referenceKind, String key, long byteSize,
+    public record Reference(int ordinal, UUID resourceId, UUID courseId, String referenceKind, String storageBackend, String key, long byteSize,
                             String sha256, String resourceState, boolean sourceRetained, boolean terminal,
                             String providerVersionId) { }
     public record Page(int schemaVersion, Snapshot snapshot, int after, List<Reference> references, Integer nextAfter) { }
@@ -55,7 +55,8 @@ public class ResourceRecoveryInventory {
         tx = new TransactionTemplate(transactions); tx.setTimeout(30);
     }
 
-    public RestoreMutation beginRestore(RestoreRequest request, byte[] content) {
+    public RestoreMutation beginRestore(String backend, RestoreRequest request, byte[] content) {
+        if(!"local".equals(backend) && !"s3".equals(backend)) throw new IllegalArgumentException("Unsupported recovery backend");
         if (content==null || content.length<1 || content.length>10*1024*1024) throw new IllegalArgumentException("Invalid recovery byte length");
         java.util.Objects.requireNonNull(request); requireIdentity(request.inventoryId()); requireIdentity(request.databaseBackupId());
         java.util.Objects.requireNonNull(request.authority());
@@ -71,12 +72,13 @@ public class ResourceRecoveryInventory {
                     (rs,n) -> reference(rs),request.inventoryId(),request.ordinal());
             if (references.size()!=1) throw new IllegalStateException("Restore reference is missing");
             Reference reference=references.getFirst();
+            if(!backend.equals(reference.storageBackend())) throw new IllegalStateException("Restore adapter does not match source backend");
             if (reference.terminal() || !reference.sourceRetained()
                     || !java.util.Set.of("AVAILABLE","QUARANTINED","SCAN_FAILED").contains(reference.resourceState()))
                 throw new IllegalStateException("Inventory reference is not restorable");
             if (jdbc.queryForObject("SELECT COUNT(*) FROM course_resources WHERE id=? AND course_id=? AND sha256=? AND byte_size=?"
-                            + " AND state=? AND byte_reservation=TRUE AND " + (reference.referenceKind().equals("CURRENT") ? "storage_key=?" : "migration_key=?"),
-                    Integer.class,reference.resourceId(),reference.courseId(),reference.sha256(),reference.byteSize(),reference.resourceState(),reference.key())!=1)
+                            + " AND state=? AND storage_backend=? AND byte_reservation=TRUE AND " + (reference.referenceKind().equals("CURRENT") ? "storage_key=?" : "migration_key=?"),
+                    Integer.class,reference.resourceId(),reference.courseId(),reference.sha256(),reference.byteSize(),reference.resourceState(),reference.storageBackend(),reference.key())!=1)
                 throw new IllegalStateException("Restore source reference changed");
             // Validate the adapter's bounded private copy before committing an operation that needs settlement.
             try { PrivateResourceStorage.verifyRecoveryBytes(reference,content); }
@@ -122,11 +124,13 @@ public class ResourceRecoveryInventory {
                     int position = ++ordinal[0];
                     if (position > MAX_REFERENCES) throw new IllegalStateException("Inventory reference capacity exceeded");
                     String state = rs.getString("state"); boolean retained = rs.getBoolean("byte_reservation"), deleted = rs.getBoolean("terminal");
+                    String backend=rs.getString("storage_backend");
+                    if(!"local".equals(backend) && !"s3".equals(backend)) throw new IllegalStateException("Inventory storage backend is unsupported");
                     if (!java.util.Set.of("AVAILABLE","QUARANTINED","SCAN_FAILED","REJECTED","DELETE_PENDING","DELETED").contains(state))
                         throw new IllegalStateException("Inventory resource state is unsupported");
-                    digest[0] = hash(digest[0] + "\n" + resource + "\n" + kind + "\n" + referenceKey + "\n"
+                    digest[0] = hash(digest[0] + "\n" + resource + "\n" + kind + "\n" + backend + "\n" + referenceKey + "\n"
                             + bytes + "\n" + checksum + "\n" + state + "\n" + retained + "\n" + deleted + "\n");
-                    pending.add(new Object[]{inventory, position, resource, course, kind, referenceKey, bytes, checksum, state, retained, deleted});
+                    pending.add(new Object[]{inventory, position, resource, course, kind, backend, referenceKey, bytes, checksum, state, retained, deleted});
                     if (pending.size() == 256) flush(pending);
                 }
             });
@@ -220,7 +224,7 @@ public class ResourceRecoveryInventory {
                 + " AND t.event_id=h.event_id AND t.digest=h.terminal_digest WHERE h.ready=TRUE AND s.scope_kind='COURSE' AND s.scope_id=r.course_id)";
     }
     private void flush(ArrayList<Object[]> rows) {
-        if (!rows.isEmpty()) { jdbc.batchUpdate("INSERT INTO media_recovery_inventory_references VALUES(?,?,?,?,?,?,?,?,?,?,?)", rows); rows.clear(); }
+        if (!rows.isEmpty()) { jdbc.batchUpdate("INSERT INTO media_recovery_inventory_references VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", rows); rows.clear(); }
     }
     private Snapshot saved() {
         return jdbc.query("SELECT * FROM media_recovery_inventory WHERE id=1", (rs,n) -> new Snapshot(1,
@@ -232,7 +236,7 @@ public class ResourceRecoveryInventory {
     private int count(String sql) { return jdbc.queryForObject(sql,Integer.class); }
     private static Reference reference(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new Reference(rs.getInt("ordinal"),rs.getObject("resource_id",UUID.class),rs.getObject("course_id",UUID.class),rs.getString("reference_kind"),
-                rs.getString("object_key"),rs.getLong("byte_size"),rs.getString("sha256"),rs.getString("resource_state"),
+                rs.getString("storage_backend"),rs.getString("object_key"),rs.getLong("byte_size"),rs.getString("sha256"),rs.getString("resource_state"),
                 rs.getBoolean("source_retained"),rs.getBoolean("terminal"),null);
     }
     private static void validateReference(String key, UUID course, UUID resource, long size, String digest) {

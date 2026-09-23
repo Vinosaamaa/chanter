@@ -85,7 +85,7 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
         if (recovery==null) throw new IOException("Private object recovery is not enabled");
         byte[] bytes=PrivateResourceStorage.boundedRecoveryBytes(content);
         ResourceRecoveryInventory.RestoreMutation restore;
-        try { restore=recovery.beginRestore(request,bytes); }
+        try { restore=recovery.beginRestore(backend(),request,bytes); }
         catch(RuntimeException blocked) { throw new PutFailure(WriteOutcome.NOT_STARTED,blocked); }
         write(restore.reference().key(),null,bytes,restore.reference().sha256(),restore.mutationId(),true);
     }

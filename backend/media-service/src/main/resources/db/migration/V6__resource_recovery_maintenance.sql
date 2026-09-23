@@ -24,6 +24,7 @@ CREATE TABLE media_recovery_inventory (
 CREATE TABLE media_recovery_inventory_references (
     inventory_id UUID NOT NULL REFERENCES media_recovery_inventory(inventory_id), ordinal INT NOT NULL,
     resource_id UUID NOT NULL, course_id UUID NOT NULL, reference_kind VARCHAR(16) NOT NULL,
+    storage_backend VARCHAR(16) NOT NULL CHECK(storage_backend IN ('local','s3')),
     object_key VARCHAR(150) NOT NULL, byte_size BIGINT NOT NULL, sha256 VARCHAR(64) NOT NULL,
     resource_state VARCHAR(32) NOT NULL, source_retained BOOLEAN NOT NULL, terminal BOOLEAN NOT NULL,
     PRIMARY KEY(inventory_id,ordinal), UNIQUE(inventory_id,object_key)
