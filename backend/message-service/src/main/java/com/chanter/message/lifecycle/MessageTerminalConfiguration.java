@@ -48,6 +48,11 @@ public class MessageTerminalConfiguration {
                 messages="SELECT id FROM channel_messages WHERE sender_user_id=?";
                 faqs="SELECT id FROM approved_faqs WHERE approved_by_user_id=?";
                 retain(jdbc,entry,"QUESTION_PREVIEW","SELECT support_question_id FROM support_question_replies WHERE author_user_id=?");
+                jdbc.update("""
+                    UPDATE support_questions SET status='UNANSWERED' WHERE status='HUMAN_ANSWERED'
+                      AND EXISTS(SELECT 1 FROM support_question_replies r WHERE r.support_question_id=support_questions.id AND r.author_user_id=?)
+                      AND NOT EXISTS(SELECT 1 FROM support_question_replies r WHERE r.support_question_id=support_questions.id AND r.author_user_id<>?)
+                    """,entry.targetId(),entry.targetId());
                 jdbc.update("DELETE FROM support_question_replies WHERE author_user_id=?",entry.targetId());
                 jdbc.update("DELETE FROM direct_messages WHERE sender_user_id=? OR recipient_user_id=?",entry.targetId(),entry.targetId());
                 jdbc.update("DELETE FROM friend_requests WHERE sender_user_id=? OR recipient_user_id=?",entry.targetId(),entry.targetId());
@@ -79,7 +84,10 @@ public class MessageTerminalConfiguration {
             jdbc.update("DELETE FROM ta_queue_items WHERE support_question_id IN ("+retained+")",entry.targetKind(),entry.targetId(),"QUESTION");
             jdbc.update("DELETE FROM support_questions WHERE id IN ("+retained+")",entry.targetKind(),entry.targetId(),"QUESTION");
             jdbc.update("DELETE FROM channel_messages WHERE id IN ("+retained+")",entry.targetKind(),entry.targetId(),"MESSAGE");
-            if(entry.targetKind().equals("ACCOUNT")) content.start(entry);
+            if(entry.targetKind().equals("ACCOUNT")) {
+                content.start(entry);
+                return content.complete(entry) ? TerminalReapplyStore.Cleanup.COMPLETE : TerminalReapplyStore.Cleanup.PENDING;
+            }
             // Existing durable payload copies and downstream deletion receipts still require reconciliation.
             return TerminalReapplyStore.Cleanup.PENDING;
         });

@@ -38,6 +38,51 @@ class MessageTerminalRecoveryTest {
     @Autowired JdbcSocialMessagingRepository social;
     @Autowired org.springframework.test.web.servlet.MockMvc mvc;
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
+    @Autowired ErasedContentDelivery content;
+
+    @Test void emptyAccountCompletesOnlyAfterBothFinalsAndRollsBackIfCoordinatorReceiptFails() throws Exception {
+        var entry=entry("ACCOUNT",UUID.randomUUID());apply(entry);
+        new TransactionTemplate(transactions).executeWithoutResult(tx -> terminal.trackDelivery(UUID.randomUUID(),entry));
+        var commands=jdbc.query("SELECT id,revision,aggregate_key,payload FROM durable_outbox WHERE kind=? AND aggregate_key=? ORDER BY revision",
+                (rs,n)->new DurableEvent(rs.getObject(1,UUID.class),1,"message",rs.getLong(2),ErasedContent.FINAL,rs.getString(3),rs.getString(4)),
+                ErasedContent.FINAL,"ACCOUNT_CONTENT_FINAL:"+entry.eventId()+":message");
+        assertThat(commands).hasSize(2);assertThat(cleanup(entry)).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        var acknowledgements=new ArrayList<DurableEvent>();
+        for(int n=0;n<2;n++) {
+            var command=commands.get(n);var completion=mapper.readValue(command.payload(),ErasedContent.Completion.class);
+            assertThat(completion.contentCount()).isZero();assertThat(completion.batchCount()).isZero();
+            acknowledgements.add(new DurableEvent(UUID.randomUUID(),1,n==0?"search":"notification",command.revision(),ErasedContent.COMPLETE,
+                    command.aggregateKey(),mapper.writeValueAsString(new ErasedContent.FinalReceipt(command.id(),completion))));
+        }
+        content.accept(acknowledgements.getFirst());assertThat(cleanup(entry)).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        jdbc.execute("ALTER TABLE durable_outbox ADD CONSTRAINT reject_message_completion CHECK(kind<>'ACCOUNT_DELETE_RECEIPT')");
+        try { assertThatThrownBy(() -> content.accept(acknowledgements.getLast())).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class); }
+        finally {jdbc.execute("ALTER TABLE durable_outbox DROP CONSTRAINT reject_message_completion");}
+        assertThat(cleanup(entry)).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_final WHERE account_id=? AND ack=TRUE",Integer.class,entry.targetId())).isEqualTo(1);
+        content.accept(acknowledgements.getLast());content.accept(acknowledgements.getLast());
+        assertThat(cleanup(entry)).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind=? AND aggregate_key=?",Integer.class,
+                AccountDeletionProtocol.RECEIPT,AccountDeletionProtocol.key("ACCOUNT",entry.targetId()))).isEqualTo(1);
+    }
+
+    @Test void removingOnlyHumanReplyResetsOpenStatusButPreservesLaterRepliesClosedStatesAndIndependentFaq() {
+        UUID user=UUID.randomUUID(),peer=UUID.randomUUID(),course=UUID.randomUUID();
+        var empty=question(peer,UUID.randomUUID());var later=question(peer,UUID.randomUUID());var closed=question(peer,UUID.randomUUID());
+        for(var question:List.of(empty,later,closed)) {
+            replies.save(new SupportQuestionReply(UUID.randomUUID(),question.id(),user,"deleted reply",Instant.now()));
+            jdbc.update("UPDATE support_questions SET status='HUMAN_ANSWERED' WHERE id=?",question.id());
+        }
+        jdbc.update("UPDATE support_questions SET status='RESOLVED' WHERE id=?",closed.id());
+        replies.save(new SupportQuestionReply(UUID.randomUUID(),later.id(),peer,"later independent reply",Instant.now()));
+        var faq=faqs.save(new ApprovedFaq(UUID.randomUUID(),course,"instructor question","independently authored answer",peer,Instant.now(),Instant.now()),List.of(empty.id()));
+        var entry=entry("ACCOUNT",user);apply(entry);apply(entry);
+        assertThat(jdbc.queryForObject("SELECT status FROM support_questions WHERE id=?",String.class,empty.id())).isEqualTo("UNANSWERED");
+        assertThat(jdbc.queryForObject("SELECT status FROM support_questions WHERE id=?",String.class,later.id())).isEqualTo("HUMAN_ANSWERED");
+        assertThat(jdbc.queryForObject("SELECT status FROM support_questions WHERE id=?",String.class,closed.id())).isEqualTo("RESOLVED");
+        assertThat(replies.findBySupportQuestionId(later.id())).singleElement().satisfies(reply -> assertThat(reply.body()).isEqualTo("later independent reply"));
+        assertThat(faqs.findByIdAndCourseId(faq.id(),course)).isPresent();
+    }
 
     @Test void accountErasesAuthoredCopiesAtomicallyAndAcknowledgesLateAnswerWithoutNotification() throws Exception {
         UUID user=UUID.randomUUID(),peer=UUID.randomUUID(),channel=UUID.randomUUID(),course=UUID.randomUUID();

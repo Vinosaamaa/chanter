@@ -298,7 +298,7 @@ class NotificationTerminalRecoveryTest {
             delivery.start(entry);
         });
         // Another author replies after closure but before the old author's advance is delivered.
-        tx.executeWithoutResult(s -> new NotificationEventWriter(outbox,mapper).append(java.util.Map.of("userId",recipient,"kind","SUPPORT_QUESTION_ANSWERED",
+        tx.executeWithoutResult(s -> new NotificationEventWriter(outbox,mapper,source).append(java.util.Map.of("userId",recipient,"kind","SUPPORT_QUESTION_ANSWERED",
                 "title","Later human answer","bodyPreview","later private body","href","/app/inbox","sourceType","SUPPORT_QUESTION","sourceId",question)));
         var advance=source.queryForObject("SELECT * FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_ADVANCE'",(rs,n)->
                 new DurableEvent(rs.getObject("id",UUID.class),1,"message",rs.getLong("revision"),rs.getString("kind"),rs.getString("aggregate_key"),rs.getString("payload")));

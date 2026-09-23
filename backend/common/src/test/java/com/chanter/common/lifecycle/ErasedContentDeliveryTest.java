@@ -13,6 +13,49 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 class ErasedContentDeliveryTest {
     private final ObjectMapper mapper=new ObjectMapper().findAndRegisterModules();
+    @Test void recipientTerminalErasesPendingAndClaimedPayloadsAndRejectsLaterSourceCopiesAtomically() {
+        var source=new Node("message");var entry=entry();UUID question=UUID.randomUUID(),other=UUID.randomUUID();
+        var writer=new NotificationEventWriter(source.outbox,mapper,source.jdbc);
+        source.tx.executeWithoutResult(s -> {
+            writer.append(questionUpdate(entry.targetId(),question));
+            writer.append(questionUpdate(entry.targetId(),UUID.randomUUID()));
+            writer.append(questionUpdate(other,question));
+        });
+        var claimed=source.outbox.claim().orElseThrow();
+        source.tx.executeWithoutResult(s -> {
+            source.terminal.applyTerminal(entry);source.delivery.start(entry);s.setRollbackOnly();
+        });
+        assertThat(source.jdbc.queryForObject("SELECT status FROM durable_outbox WHERE id=?",String.class,claimed.event().id())).isEqualTo("SENDING");
+        assertThat(source.jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE id=?",String.class,claimed.event().id())).isNotEqualTo("{}");
+        source.tx.executeWithoutResult(s -> {source.terminal.applyTerminal(entry);source.delivery.start(entry);});
+        var advance=source.events(ErasedContentDelivery.ADVANCE,null).getFirst();
+        source.tx.executeWithoutResult(s -> {source.delivery.accept(advance);s.setRollbackOnly();});
+        assertThat(source.jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE id=?",String.class,claimed.event().id())).isNotEqualTo("{}");
+        source.delivery.accept(advance);
+        source.outbox.failed(claimed,"LATE_FAILURE");source.outbox.delivered(claimed);
+        source.tx.executeWithoutResult(s -> writer.append(questionUpdate(entry.targetId(),UUID.randomUUID())));
+        assertThat(source.events("NOTIFICATION",null)).hasSize(3);
+        assertThat(source.jdbc.queryForList("SELECT payload FROM durable_outbox WHERE aggregate_key LIKE ?",String.class,
+                "NOTIFICATION:"+entry.targetId()+":%")).containsExactly("{}","{}");
+        assertThat(source.jdbc.queryForList("SELECT status FROM durable_outbox WHERE aggregate_key LIKE ?",String.class,
+                "NOTIFICATION:"+entry.targetId()+":%")).containsExactly("ERASED","ERASED");
+        assertThat(source.jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE aggregate_key LIKE ?",String.class,
+                "NOTIFICATION:"+other+":%")).contains("Question update");
+    }
+    @Test void recipientPayloadRetirementUsesBoundedExistingAdvanceBeforeZeroContentFinal() {
+        var source=new Node("community");var entry=entry();
+        source.tx.executeWithoutResult(s -> {
+            for(int n=0;n<257;n++) source.outbox.append("notification","NOTIFICATION","NOTIFICATION:"+entry.targetId()+":ANNOUNCEMENT:"+UUID.randomUUID()+":CREATED","{\"body\":\"private\"}");
+            source.terminal.applyTerminal(entry);source.delivery.start(entry);
+        });
+        assertThat(source.events(ErasedContent.FINAL,null)).isEmpty();
+        source.delivery.accept(source.events(ErasedContentDelivery.ADVANCE,null).getFirst());
+        assertThat(source.jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE status='ERASED'",Integer.class)).isEqualTo(256);
+        assertThat(source.events(ErasedContent.FINAL,null)).isEmpty();
+        source.delivery.accept(source.events(ErasedContentDelivery.ADVANCE,null).getLast());
+        assertThat(source.jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE status='ERASED'",Integer.class)).isEqualTo(257);
+        assertThat(source.events(ErasedContent.FINAL,null)).hasSize(2);
+    }
     @Test void explicitFinalsBindAllContentProducersAndBothRecipientsIncludingEmptySources() throws Exception {
         var community=new Node("community");var message=new Node("message");var search=new Node("search");var notification=new Node("notification");
         var media=new Node("media");var agent=new Node("agent");
@@ -145,7 +188,7 @@ class ErasedContentDeliveryTest {
         var claimed=source.outbox.claim().orElseThrow();
         assertThat(claimed.event().payload()).contains("private body");
         var later=questionUpdate(UUID.randomUUID(),question);
-        source.tx.executeWithoutResult(s -> new NotificationEventWriter(source.outbox,mapper).append(later));
+        source.tx.executeWithoutResult(s -> new NotificationEventWriter(source.outbox,mapper,source.jdbc).append(later));
         var lateEvent=source.events("NOTIFICATION",null).getLast();
         assertThat(later.get("bodyPreview")).isEqualTo("private body");
         source.delivery.accept(source.events(ErasedContentDelivery.ADVANCE,null).getFirst());

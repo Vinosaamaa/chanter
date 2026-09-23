@@ -34,8 +34,8 @@ public class OutboxConfiguration {
         scheduler.setThreadNamePrefix("durable-events-");
         return scheduler;
     }
-    @Bean NotificationEventWriter notificationEventWriter(DurableOutbox outbox, ObjectMapper mapper) {
-        return new NotificationEventWriter(outbox, mapper);
+    @Bean NotificationEventWriter notificationEventWriter(DurableOutbox outbox, ObjectMapper mapper,JdbcTemplate jdbc) {
+        return new NotificationEventWriter(outbox, mapper,jdbc);
     }
     @Bean SearchEventWriter searchEventWriter(DurableOutbox outbox, ObjectMapper mapper) {
         return new SearchEventWriter(outbox, mapper);

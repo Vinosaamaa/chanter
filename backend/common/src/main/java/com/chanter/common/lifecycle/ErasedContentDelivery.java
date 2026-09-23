@@ -45,7 +45,7 @@ public final class ErasedContentDelivery {
         if(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_dispatch WHERE account_id=?",Integer.class,entry.targetId())==0)
             jdbc.update("INSERT INTO lifecycle_content_dispatch(account_id,payload_cutoff) SELECT ?,COALESCE(MAX(revision),0) FROM durable_outbox",entry.targetId());
         UUID pending=jdbc.queryForObject("SELECT advance_event_id FROM lifecycle_content_dispatch WHERE account_id=?",UUID.class,entry.targetId());
-        if(pending==null && Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM lifecycle_erased_content WHERE target_kind='ACCOUNT' AND target_id=? AND search_event_id IS NULL)",Boolean.class,entry.targetId()))) {
+        if(pending==null && (recipientPayloads(entry) || Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM lifecycle_erased_content WHERE target_kind='ACCOUNT' AND target_id=? AND search_event_id IS NULL)",Boolean.class,entry.targetId())))) {
             UUID event=append(source,ADVANCE,advanceKey(entry),entry);
             jdbc.update("UPDATE lifecycle_content_dispatch SET advance_event_id=? WHERE account_id=?",event,entry.targetId());
         }
@@ -65,7 +65,11 @@ public final class ErasedContentDelivery {
         return !outstanding(entry) && jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_final WHERE account_id=? AND terminal_digest=? AND ack=TRUE",Integer.class,entry.targetId(),entry.digest())==2;
     }
     private boolean outstanding(TerminalJournal.Entry entry) {
-        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM lifecycle_erased_content WHERE target_kind='ACCOUNT' AND target_id=? AND (search_event_id IS NULL OR notification_event_id IS NULL OR search_ack=FALSE OR notification_ack=FALSE))",Boolean.class,entry.targetId()));
+        return recipientPayloads(entry) || Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM lifecycle_erased_content WHERE target_kind='ACCOUNT' AND target_id=? AND (search_event_id IS NULL OR notification_event_id IS NULL OR search_ack=FALSE OR notification_ack=FALSE))",Boolean.class,entry.targetId()));
+    }
+    private boolean recipientPayloads(TerminalJournal.Entry entry) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM durable_outbox WHERE destination='notification' AND kind='NOTIFICATION' AND aggregate_key LIKE ? AND payload<>'{}')",
+                Boolean.class,"NOTIFICATION:"+entry.targetId()+":%"));
     }
     public void accept(DurableEvent event) {
         requireSource();event.validate();
@@ -76,6 +80,11 @@ public final class ErasedContentDelivery {
                 lock(entry);
                 UUID expected=jdbc.queryForObject("SELECT advance_event_id FROM lifecycle_content_dispatch WHERE account_id=?",UUID.class,entry.targetId());
                 if(!event.id().equals(expected)) throw invalid();
+                jdbc.update("""
+                    UPDATE durable_outbox SET status='ERASED',payload='{}',lease_token=NULL,lease_until=NULL,last_error=NULL
+                    WHERE id IN (SELECT id FROM durable_outbox WHERE destination='notification' AND kind='NOTIFICATION'
+                      AND aggregate_key LIKE ? AND payload<>'{}' ORDER BY revision LIMIT 256)
+                    ""","NOTIFICATION:"+entry.targetId()+":%");
                 var refs=jdbc.query("""
                     SELECT source_kind,source_id FROM lifecycle_erased_content
                     WHERE target_kind='ACCOUNT' AND target_id=? AND search_event_id IS NULL

@@ -8,8 +8,16 @@ import java.util.UUID;
 public final class NotificationEventWriter {
     private final DurableOutbox outbox;
     private final ObjectMapper mapper;
-    public NotificationEventWriter(DurableOutbox outbox, ObjectMapper mapper) { this.outbox = outbox; this.mapper = mapper; }
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    public NotificationEventWriter(DurableOutbox outbox, ObjectMapper mapper,org.springframework.jdbc.core.JdbcTemplate jdbc) {
+        this.outbox = outbox; this.mapper = mapper;this.jdbc=jdbc;
+    }
     public void append(Map<String, Object> notification) {
+        if(!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Notification payload requires source transaction");
+        if(!(notification.get("userId") instanceof UUID user)) throw new IllegalArgumentException("Notification recipient required");
+        jdbc.queryForObject("SELECT id FROM lifecycle_reapply_head WHERE id=1 FOR UPDATE",Integer.class);
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_terminal_targets WHERE target_kind='ACCOUNT' AND target_id=?",Integer.class,user)>0) return;
         notification=neutralQuestionUpdate(notification);
         try {
             String key = aggregateKey((UUID) notification.get("userId"), (String) notification.get("sourceType"),
