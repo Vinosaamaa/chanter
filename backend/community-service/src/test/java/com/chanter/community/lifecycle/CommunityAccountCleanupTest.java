@@ -30,6 +30,35 @@ class CommunityAccountCleanupTest {
     @Autowired com.chanter.community.infra.TestAuthUserDirectoryClient directory;
     @Autowired ErasedContentDelivery content;
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
+    @Autowired org.springframework.context.ConfigurableApplicationContext context;
+
+    @Test void hostedHistoricalFixtureVerifiesImmutableParentAndDoesNotAllocateTerminalAuthority() throws Exception {
+        var source=java.nio.file.Path.of("../../scripts/deploy/fixtures/CanonicalLifecycleFixture.java").toAbsolutePath().normalize();
+        var output=java.nio.file.Path.of("target/canonical-community-fixture-test").toAbsolutePath();java.nio.file.Files.createDirectories(output);
+        var compiler=javax.tools.ToolProvider.getSystemJavaCompiler();
+        try(var files=compiler.getStandardFileManager(null,null,null)) {
+            assertThat(compiler.getTask(null,files,null,List.of("-classpath",System.getProperty("java.class.path"),"-d",output.toString()),null,
+                    files.getJavaFileObjects(source)).call()).isTrue();
+        }
+        try(var loader=new java.net.URLClassLoader(new java.net.URL[]{output.toUri().toURL()},getClass().getClassLoader())) {
+            var type=loader.loadClass("CanonicalLifecycleFixture");var constructor=type.getDeclaredConstructor(org.springframework.context.ConfigurableApplicationContext.class);
+            constructor.setAccessible(true);var fixture=constructor.newInstance(context);
+            var execute=type.getDeclaredMethod("execute",com.fasterxml.jackson.databind.JsonNode.class);execute.setAccessible(true);
+            UUID owner=UUID.randomUUID();
+            var seeded=mapper.valueToTree(execute.invoke(fixture,mapper.valueToTree(Map.of("action","community-seed","ownerId",owner))));
+            UUID server=UUID.fromString(seeded.get("serverId").asText()),course=UUID.fromString(seeded.get("courseId").asText());
+            var wrong=Map.of("action","community-history-remove-course","ownerId",owner,"serverId",UUID.randomUUID(),"courseId",course);
+            assertThatThrownBy(() -> execute.invoke(fixture,mapper.valueToTree(wrong))).hasRootCauseMessage("Historical fixture parent mismatch");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM courses WHERE id=?",Integer.class,course)).isEqualTo(1);
+            var removed=mapper.valueToTree(execute.invoke(fixture,mapper.valueToTree(Map.of("action","community-history-remove-course","ownerId",owner,"serverId",server,"courseId",course))));
+            assertThat(removed.get("historicalFixtureOnly").asBoolean()).isTrue();assertThat(removed.get("channelIds").size()).isEqualTo(seeded.get("channels").size());
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM courses WHERE id=?",Integer.class,course)).isZero();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_terminal_targets WHERE target_id=?",Integer.class,server)).isZero();
+            var deletion=mapper.valueToTree(execute.invoke(fixture,mapper.valueToTree(Map.of("action","server-delete","ownerId",owner,"serverId",server))));
+            assertThat(deletion.get("jobId")).isNotNull();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_terminal_targets WHERE target_id=?",Integer.class,server)).isZero();
+        }
+    }
 
     @Test void retainedCourseDispositionWaitsForBothFinalsAndRemovesOnlyDeletedEnrollmentActor() throws Exception {
         UUID author=UUID.randomUUID(),successor=UUID.randomUUID(),learner=UUID.randomUUID();

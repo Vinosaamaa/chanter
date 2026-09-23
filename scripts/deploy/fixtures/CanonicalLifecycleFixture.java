@@ -82,6 +82,29 @@ public final class CanonicalLifecycleFixture {
                 requireSource("community"); fields(request,"action","serverId","ownerId");
                 yield invoke(bean("com.chanter.community.application.StudyServerService"),"deleteStudyServer",id(request,"serverId"),id(request,"ownerId"));
             }
+            case "community-history-remove-course" -> {
+                requireSource("community"); fields(request,"action","serverId","courseId","ownerId");
+                UUID server=id(request,"serverId"),course=id(request,"courseId"),owner=id(request,"ownerId");
+                var tx=new org.springframework.transaction.support.TransactionTemplate(context.getBean(org.springframework.transaction.PlatformTransactionManager.class));
+                tx.setTimeout(30);
+                yield tx.execute(status -> {
+                    var terminal=context.getBean(TerminalReapplyStore.class);
+                    terminal.requireWritable("ACCOUNT",owner);terminal.requireWritable("STUDY_SERVER",server);
+                    context.getBean(SourceDeletionRequests.class).requireOpen(server);
+                    var matched=jdbc.query("""
+                        SELECT c.id FROM courses c JOIN study_servers s ON s.id=c.study_server_id
+                        WHERE c.id=? AND s.id=? AND c.instructor_user_id=? AND s.owner_user_id=?
+                          AND c.title='Synthetic lifecycle course' AND s.name='Synthetic lifecycle server'
+                        FOR UPDATE
+                        """,(rs,n)->rs.getObject(1,UUID.class),course,server,owner,owner);
+                    if(matched.size()!=1) throw new IllegalArgumentException("Historical fixture parent mismatch");
+                    var channels=jdbc.query("SELECT id FROM course_channels WHERE course_id=? ORDER BY id LIMIT 65",(rs,n)->rs.getObject(1,UUID.class),course);
+                    if(channels.isEmpty() || channels.size()>64) throw new IllegalArgumentException("Historical fixture channel bound");
+                    if(jdbc.update("DELETE FROM courses WHERE id=? AND study_server_id=?",course,server)!=1)
+                        throw new IllegalStateException("Historical fixture course changed");
+                    return Map.of("serverId",server,"courseId",course,"channelIds",channels,"historicalFixtureOnly",true);
+                });
+            }
             case "media-seed" -> {
                 requireSource("media"); fields(request,"action","resourceId","courseId","serverId","ownerId");
                 UUID resource=id(request,"resourceId");
