@@ -44,6 +44,47 @@ public final class ResourceRecoveryFixture {
                     yield inventories.page(UUID.fromString(text(request,"inventoryId")),
                             decode(mapper,request.get("authority"),ResourceRecoveryInventory.Authority.class),number(request,"after"),number(request,"limit"));
                 }
+                case "discard" -> {
+                    fields(request,"action","inventoryId");UUID inventory=UUID.fromString(text(request,"inventoryId"));
+                    inventories.discard(inventory);yield mutations.receipt(inventory);
+                }
+                case "reapply" -> {
+                    fields(request,"action","page");
+                    // Fixed owning #251 controller contract, absent from the pre-union baseline.
+                    Class<?> controller=Class.forName("com.chanter.common.lifecycle.SourceTerminalRecoveryController");
+                    var response=(org.springframework.http.ResponseEntity<?>)controller.getMethod("reapply",String.class,String.class)
+                            .invoke(context.getBean(controller),context.getEnvironment().getRequiredProperty("chanter.internal-service-token"),mapper.writeValueAsString(request.get("page")));
+                    yield response.getBody();
+                }
+                case "delete" -> {
+                    fields(request,"action","request");
+                    var deletion=decode(mapper,request.get("request"),ResourceRecoveryInventory.RestoreRequest.class);
+                    storage.deleteForRecovery(deletion);
+                    if(!inventories.beginDelete(storage.backend(),deletion).alreadyClosed()) throw new IllegalStateException("Physical closure is absent");
+                    yield Map.of("physicallyClosed",true,"outstandingMutations",mutations.receipt(deletion.inventoryId()).unsettledMutations(),"publicCutoverAllowed",false);
+                }
+                case "finish-delete" -> {
+                    fields(request,"action","request","resourceId");
+                    var deletion=decode(mapper,request.get("request"),ResourceRecoveryInventory.RestoreRequest.class);
+                    UUID resource=UUID.fromString(text(request,"resourceId"));
+                    var tx=new org.springframework.transaction.support.TransactionTemplate(context.getBean(org.springframework.transaction.PlatformTransactionManager.class));
+                    tx.setTimeout(30);
+                    tx.executeWithoutResult(status -> {
+                        var proof=inventories.requireClosedDeletionLocked(deletion.inventoryId(),deletion.databaseBackupId(),deletion.authority(),resource);
+                        try {
+                            Class<?> tuple=Class.forName("com.chanter.media.application.ResourceLifecycle$MaintenanceDeletion");
+                            Object value=tuple.getConstructor(UUID.class,String.class,String.class,String.class,long.class,String.class)
+                                    .newInstance(proof.resourceId(),proof.storageBackend(),proof.currentKey(),proof.migrationKey(),proof.byteSize(),proof.sha256());
+                            var lifecycle=context.getBean(com.chanter.media.application.ResourceLifecycle.class);
+                            lifecycle.getClass().getMethod("finishVerifiedMaintenanceDelete",tuple).invoke(lifecycle,value);
+                        } catch(ReflectiveOperationException unavailable) { throw new IllegalStateException("Owning source completion failed",unavailable); }
+                    });
+                    var jdbc=context.getBean(org.springframework.jdbc.core.JdbcTemplate.class);
+                    Map<String,Object> completed=new LinkedHashMap<>(jdbc.queryForObject("SELECT state,byte_reservation FROM course_resources WHERE id=?",
+                            (rs,n) -> Map.<String,Object>of("state",rs.getString(1),"sourceRetained",rs.getBoolean(2),"publicCutoverAllowed",false),resource));
+                    completed.put("reservedBytes",jdbc.queryForObject("SELECT reserved_bytes FROM media_storage_budget WHERE id=1",Long.class));
+                    yield completed;
+                }
                 case "expect-refusal" -> {
                     fields(request,"action","request","base64","reason");
                     var restore=decode(mapper,request.get("request"),ResourceRecoveryInventory.RestoreRequest.class);

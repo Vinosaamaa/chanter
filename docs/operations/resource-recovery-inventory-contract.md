@@ -97,11 +97,17 @@ refuses Enabled or Suspended versioning: a versionless request cannot erase
 retained historical versions. The provider must implement the bucket-versioning
 contract, and external configuration/writer fencing remains independently required.
 The loopback tests establish adapter behavior only, not a real provider policy.
+The provider assumptions follow the documented S3
+[versioning response](https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetBucketVersioning.html)
+and [delete behavior](https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html).
+A delete response carrying a version ID or delete marker also retains uncertainty.
 
 Source metadata/quota completion still requires the accepted #251 owning
 `finishVerifiedMaintenanceDelete` hook in the same source transaction after all
-retained keys have exact closure receipts. That final union is not implemented by
-this independent adapter checkpoint. No HTTP deletion endpoint, new retry queue,
+retained keys have exact closure receipts. `requireClosedDeletionLocked` rejects
+calls outside that transaction and rechecks every current/distinct migration key
+before returning the exact owning tuple. The hosted preview invokes the actual
+source hook in that transaction; its new runtime proof is pending. No HTTP deletion endpoint, new retry queue,
 caller-supplied absence flag or fabricated worker lease is introduced.
 
 The current tests establish query, transaction and disabled-API contracts using

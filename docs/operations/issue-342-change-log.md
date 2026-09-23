@@ -13,6 +13,16 @@ zero failures/errors. These tests do not prove external provider or original-wri
 closure. The owning #251 quota/completion hook and full restored-source orchestration
 remain separate integration work; recovery stays OFF.
 
+The next source-completion boundary requires the caller's existing transaction,
+locks the exact prefix/fence, and refuses completion until every retained current
+and migration key has a durable receipt. Its missing-key regression failed before
+implementation, then passed. Full affected verification passes. The hosted preview
+now pins source `ca45ffad` and calls its real MANDATORY completion hook in that
+transaction, checking DELETED, released source reservation and unchanged zero
+budget on repeat. Its new native result remains pending. The fixture's fixed
+reflection selects only that unavailable-before-union source type; it accepts no
+caller-selected class, method, route or credentials.
+
 The first slice adds media V6 and an owning storage-mutation store. New physical
 operations and maintenance fencing serialize on the existing storage-budget row.
 Outstanding operations survive service recreation, unknown deletes block

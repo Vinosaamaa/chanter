@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 
 assert.equal(process.env.GITHUB_ACTIONS, 'true');
 assert.equal(process.env.CHANTER_SOURCE_RECOVERY_PREVIEW, 'true');
-const source = '5a6e92e07b68ab7073e0ed5df48ecd028c29d3b6';
+const source = 'ca45ffad50aa1a422c5f6691c414ffd140b9fe46';
 const frontend = '435a40b2d40a39512973dd3be139e7f1bc7042d2';
 const git = args => execFileSync('git', args, { encoding: 'utf8', timeout: 60_000 }).trim();
 const own = git(['rev-parse', 'HEAD']);

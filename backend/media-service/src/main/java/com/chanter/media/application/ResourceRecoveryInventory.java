@@ -43,6 +43,30 @@ public class ResourceRecoveryInventory {
     public record RestoreRequest(UUID inventoryId, UUID databaseBackupId, Authority authority, int ordinal) { }
     public record RestoreMutation(UUID mutationId, Reference reference) { }
     public record DeleteMutation(UUID mutationId, Reference reference, boolean alreadyClosed) { }
+    public record VerifiedDeletion(UUID resourceId,String storageBackend,String currentKey,String migrationKey,long byteSize,String sha256) { }
+
+    public VerifiedDeletion requireClosedDeletionLocked(UUID inventory,UUID databaseBackup,Authority authority,UUID resource) {
+        if(!TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Physical completion requires its owning source transaction");
+        requireIdentity(inventory);requireIdentity(databaseBackup);requireIdentity(resource);java.util.Objects.requireNonNull(authority);
+        String namespace=qualify(inventory,authority);
+        var references=jdbc.query("SELECT * FROM media_recovery_inventory_references WHERE inventory_id=? AND resource_id=? ORDER BY ordinal LIMIT 3",
+                (rs,n) -> reference(rs),inventory,resource);
+        if(references.isEmpty() || references.size()>2) throw new IllegalStateException("Deletion source reference changed");
+        for(var reference:references) {
+            deletionReference(new RestoreRequest(inventory,databaseBackup,authority,reference.ordinal()),namespace);
+            if(!Boolean.TRUE.equals(jdbc.queryForObject("SELECT physical_closed_at IS NOT NULL FROM media_recovery_inventory_references WHERE inventory_id=? AND ordinal=?",
+                    Boolean.class,inventory,reference.ordinal())))
+                throw new IllegalStateException("Resource physical closure is incomplete");
+        }
+        var current=jdbc.queryForObject("SELECT id,storage_backend,storage_key,migration_key,byte_size,sha256 FROM course_resources WHERE id=? FOR UPDATE",
+                (rs,n) -> new VerifiedDeletion(rs.getObject(1,UUID.class),rs.getString(2),rs.getString(3),rs.getString(4),rs.getLong(5),rs.getString(6)),resource);
+        var expected=new java.util.HashSet<String>();expected.add(current.currentKey());
+        if(current.migrationKey()!=null) expected.add(current.migrationKey());
+        if(!expected.equals(references.stream().map(Reference::key).collect(java.util.stream.Collectors.toSet())))
+            throw new IllegalStateException("Deletion source reference changed");
+        return current;
+    }
 
     public DeleteMutation beginDelete(String backend, RestoreRequest request) {
         requireDeleteRequest(request); requireOutsideTransaction();

@@ -3,7 +3,7 @@
 The release workflow has an explicit `source_recovery_preview` dispatch input,
 restricted to the #342 branch. It does not publish an image or release. Its
 disposable runner merges exact source checkpoint
-`5a6e92e07b68ab7073e0ed5df48ecd028c29d3b6` with the dispatched recovery SHA.
+`ca45ffad50aa1a422c5f6691c414ffd140b9fe46` with the dispatched recovery SHA.
 The source branch's earlier frontend exceeds the unchanged JavaScript budget.
 The preview uses the complete owning #339 frontend tree at
 `435a40b2d40a39512973dd3be139e7f1bc7042d2`, after checking its infrastructure
@@ -33,6 +33,15 @@ refusals; a failed container or helper is not a successful refusal receipt.
 Separate real account,
 resource and server deletion operations must produce the canonical journal.
 Both current server scope chains are verified using the accepted protocol.
+
+The next phase replays the real account/resource prefix through media's owning
+controller, captures terminal references under the retained fence, and deletes
+the original fixture bytes through the actual adapter. The source completion
+transaction requires every retained reference's durable closure, then invokes
+#251's MANDATORY hook. A repeated completion must leave quota released once.
+This new phase remains unproven until its exact hosted preview passes. It uses
+the existing source database and does not claim a restored-database drill or
+complete cleanup of the separately retained encrypted backup.
 
 Events for message, agent, notification and search are retained as pending private fixture
 evidence. The preview never counts them as complete. All helper inputs stay on

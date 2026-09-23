@@ -139,7 +139,9 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
         try {
             lifecycle.countRequest(true);
             started = true;
-            client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
+            var response=client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
+            if(request!=null && (Boolean.TRUE.equals(response.deleteMarker()) || response.versionId()!=null))
+                throw new IllegalStateException("Remote deletion did not establish versionless erasure");
         } catch (S3Exception response) {
             if(response.statusCode()==404) { deleted(mutation,request); return; }
             boolean finished = complete(mutation, definitiveRejection(response));

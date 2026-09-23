@@ -188,6 +188,28 @@ class ResourceRecoveryInventoryTest {
         assertThat(mutations.receipt(inventory).inventoryId()).isEqualTo(inventory);
     }
 
+    @Test void sourceCompletionRequiresAllRetainedKeysInsideTheOwningTransaction() {
+        UUID resource=resource();String migration=key(resource);
+        jdbc.update("UPDATE course_resources SET state='DELETE_PENDING',migration_key=? WHERE id=?",migration,resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var first=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        var second=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,2);
+        var sourceTx=new org.springframework.transaction.support.TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()));
+        var firstDelete=inventories.beginDelete("s3",first);inventories.completeDelete(first,firstDelete.mutationId());
+        assertThatThrownBy(() -> sourceTx.execute(status -> inventories.requireClosedDeletionLocked(inventory,backup,authority,resource)))
+                .hasMessageContaining("physical closure is incomplete");
+        var secondDelete=inventories.beginDelete("s3",second);inventories.completeDelete(second,secondDelete.mutationId());
+        var proof=sourceTx.execute(status -> inventories.requireClosedDeletionLocked(inventory,backup,authority,resource));
+        assertThat(proof.resourceId()).isEqualTo(resource);assertThat(proof.storageBackend()).isEqualTo("s3");
+        assertThat(proof.migrationKey()).isEqualTo(migration);
+        assertThatThrownBy(() -> inventories.requireClosedDeletionLocked(inventory,backup,authority,resource))
+                .hasMessageContaining("owning source transaction");
+        jdbc.update("UPDATE course_resources SET migration_key=? WHERE id=?",key(resource),resource);
+        assertThatThrownBy(() -> sourceTx.execute(status -> inventories.requireClosedDeletionLocked(inventory,backup,authority,resource)))
+                .hasMessageContaining("source reference changed");
+    }
+
     @Test void rejectedOrUnknownDeletionNeverCreatesPhysicalClosure() {
         UUID resource=resource();
         jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);
@@ -383,6 +405,31 @@ class ResourceRecoveryInventoryTest {
             storage.deleteForRecovery(request);
             assertThat(inventories.beginDelete("s3",request).alreadyClosed()).isTrue();
             assertThat(deletes.get()).isEqualTo(1);
+        } finally {storage.close();server.stop(0);}
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"x-amz-delete-marker","x-amz-version-id"})
+    void remoteVersionEvidenceRetainsUncertaintyAfterSuccessfulStatus(String header) throws Exception {
+        UUID resource=resource();jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/",exchange -> {
+            if(exchange.getRequestMethod().equals("GET")) {
+                byte[] xml="<VersioningConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"/>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200,xml.length);try(var body=exchange.getResponseBody()){body.write(xml);}
+            } else {exchange.getResponseHeaders().add(header,header.equals("x-amz-delete-marker") ? "true" : "fixture-version");exchange.sendResponseHeaders(204,-1);exchange.close();}
+        });server.start();
+        var storage=new com.chanter.media.infra.S3PrivateResourceStorage(org.mockito.Mockito.mock(ResourceLifecycle.class),mutations,
+                "http://127.0.0.1:"+server.getAddress().getPort(),"us-east-1","fixture-bucket","fixture-key","fixture-secret",true);
+        try {
+            storage.recoveryInventory(inventories);
+            assertThatThrownBy(() -> storage.deleteForRecovery(request)).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                    failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.UNKNOWN));
+            assertThat(mutations.receipt(inventory).unsettledMutations()).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_recovery_inventory_references WHERE physical_closed_at IS NOT NULL",Integer.class)).isZero();
         } finally {storage.close();server.stop(0);}
     }
 

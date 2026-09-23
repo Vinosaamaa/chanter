@@ -204,6 +204,28 @@ try {
   call('auth', { action: 'account-prepare', alias: deletedAlias, jobId }); relay();
   call('auth', { action: 'account-confirm', alias: deletedAlias, jobId }); relay();
   call('media', { action: 'resource-delete', resourceId: available.resourceId, ownerId: owner.accountId }); relay();
+  const resourcePrefix = call('auth', { action: 'journal', afterRevision: 0 }); validatePage(resourcePrefix, GENESIS);
+  assert.ok(sameWatermark(resourcePrefix.next, resourcePrefix.through));
+  assert.equal(resourcePrefix.entries.length, 2);
+  compose(['stop', ...sources.map(source => `${source}-service`)]);
+  const applied = objectCall({ action: 'reapply', page: resourcePrefix });
+  assert.equal(applied.source, 'media'); assert.equal(applied.schemaVersion, 1);
+  assert.ok(sameWatermark(applied.authority, resourcePrefix.through));
+  assert.equal(objectCall({ action: 'discard', inventoryId }).inventoryId, inventoryId);
+  const terminalInventory = objectCall({ action: 'capture', inventoryId, databaseBackupId, authority: resourcePrefix.through });
+  assert.equal(terminalInventory.referenceCount, 1);
+  const terminalPage = objectCall({ action: 'page', inventoryId, authority: resourcePrefix.through, after: 0, limit: 16 });
+  assert.equal(terminalPage.references.length, 1); assert.equal(terminalPage.references[0].terminal, true);
+  assert.equal(terminalPage.references[0].resourceId, available.resourceId);
+  const terminalRequest = { inventoryId, databaseBackupId, authority: resourcePrefix.through, ordinal: terminalPage.references[0].ordinal };
+  assert.deepEqual(objectCall({ action: 'delete', request: terminalRequest }),
+    { physicallyClosed: true, outstandingMutations: 0, publicCutoverAllowed: false });
+  assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId: available.resourceId }),
+    { state: 'DELETED', sourceRetained: false, reservedBytes: 0, publicCutoverAllowed: false });
+  // A second completion must preserve the same quota result without inventing a worker lease.
+  assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId: available.resourceId }),
+    { state: 'DELETED', sourceRetained: false, reservedBytes: 0, publicCutoverAllowed: false });
+  compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', ...sources.map(source => `${source}-service`)]);
   call('community', { action: 'server-delete', serverId: graph.serverId, ownerId: owner.accountId }); relay();
   assert.deepEqual(objectCall({ action: 'expect-refusal', request, reason: 'STALE_SOURCE', base64: decrypted.toString('base64') }, destinationFile),
     { refused: 'STALE_SOURCE', publicCutoverAllowed: false });
@@ -226,8 +248,8 @@ try {
   // Private fixture evidence stays on this disposable host; ordinary source completion is still pending.
   fs.writeFileSync(path.join(root, 'canonical-source.json'), JSON.stringify({ schemaVersion: 1, preview,
     page, scopes, resource: available, inventory, archived, byteReadbackVerified: true, objectRoundtripVerified: true,
-    databaseBackupVerified: false, deferred, publicCutoverAllowed: false }), { mode: 0o600 });
-  console.log('Real canonical allocation, fenced source inventory and encrypted object roundtrip passed; restored-database recovery remains pending.');
+    physicalDeletionVerified: true, databaseBackupVerified: false, deferred, publicCutoverAllowed: false }), { mode: 0o600 });
+  console.log('Real canonical allocation, encrypted object roundtrip and source-owned physical deletion passed; restored-database recovery remains pending.');
 } finally {
   const failures = [];
   try { original(['stop', 'auth-service', 'community-service', 'media-service']); } catch { failures.push('source stop'); }
