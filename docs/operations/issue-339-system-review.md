@@ -101,3 +101,11 @@ their account/session/channel/question before submission. It must preserve the t
 without silently reassigning it. This is required interaction correctness, not another
 general cosmetic remediation round. Learner explicit-new-question selection must also
 survive pending history, and asynchronous data changes must not steal composer focus.
+
+At 8914546, all 341 hosted responsive fixtures passed. The six new Questions
+screenshots were reviewed across all three engines with no clipping, hidden actions
+or unreadable retained drafts. Static review supports layout only; fixture assertions
+separately prove focus and submission behavior. Both current and legacy hook callers
+remount on channel changes, and the shared API client rejects responses after session
+generation changes. The later late-post disclosure suggestion did not reproduce at
+those production boundaries. Final integrated and public acceptance remain open.

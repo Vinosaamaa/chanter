@@ -122,3 +122,20 @@ can add requests. The source 204/202 dependency, deeper doc consolidation, tempo
 workflow extraction, browser cache/sharding and other prior non-blocking suggestions
 retain their documented dispositions. No health-error allowance or test-coverage
 reduction is introduced.
+
+## Review at 8914546
+
+Full CodeAnt review completed. Comment 4078228071 describes late post completion
+entering a changed channel or session. Independent review checked both production
+callers: the V2 page remounts the entire hook for account, generation and workspace
+changes; legacy channel parents also remount by channel. Post responses additionally
+pass the API client's session-generation check after body parsing. An old channel
+promise therefore updates its unmounted hook, and an old session response cannot
+return question data. No production disclosure was reproduced. Additional hook-level
+protection is deferred beyond the completed general remediation loop.
+
+All 341 hosted responsive fixtures passed at this head. The six new Questions
+screenshots were inspected across Chromium, Firefox and WebKit: phone drafts and
+focus remain visible above navigation; desktop retained text, explanation and
+disabled action remain readable. Interaction assertions separately verify focus,
+read-only state and blocked wrong-target submission.

@@ -10,6 +10,9 @@ Review current route controls against their owning API, then exercise real roles
 
 ## Implementation plan
 
+The [current route/control inventory](issue-339-route-control-inventory.md) maps
+visible behavior to its evidence and remaining integration/provider/manual gates.
+
 1. Inventory current controls and existing browser coverage. Reproduce concrete defects with focused behavior tests before implementation.
 2. Fix owning components without enlarging initial asset budgets or changing authorization.
 3. Extend hosted real signed-in coverage to Firefox and WebKit as well as Chromium. Preserve anonymous/public coverage and private authenticated artifact boundaries.
@@ -258,3 +261,18 @@ while session/course/channel/cohort changes isolate it. Focus follows explicit p
 opening. Four pre-fix failures and six total added component/hook cases verify the
 correction; all 397 frontend tests, lint and unchanged build budgets pass. New hosted
 late-history and missing-question regressions still require execution.
+
+## Real-service and control acceptance checkpoint
+
+At 8914546, full application CI and all 341 responsive fixtures passed. The pinned
+account/source preview passed all 51 real-service journeys on their first attempt
+across Chromium, Firefox and WebKit. This includes actual scanned bytes, stable
+source deletion retry, requester isolation and progress reload. It does not establish
+completed erasure. All six new Questions screenshots passed visual inspection.
+
+The refreshed route inventory makes unverified real mutations explicit. A new
+browser journey now drives the actual server wizard, arbitrary course/cohort form
+and owner enrollment form, then checks that the learner has enrolled navigation and
+the refreshed visible learner count is one. It uses fresh synthetic verified users,
+no interception and no credential artifacts. Hosted execution of this new journey
+is required before its result can be accepted.

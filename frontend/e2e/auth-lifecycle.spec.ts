@@ -125,6 +125,59 @@ test.describe('Verified account and recovery @product', () => {
     await signIn(page, email, password)
   })
 
+  test('owner creates a Study Server and cohort, then enrolls a learner through visible controls', async ({ page, request }) => {
+    test.setTimeout(120_000)
+    const owner = await sourceTestActor(request, 'setup-owner')
+    const learner = await sourceTestActor(request, 'setup-learner')
+    await signIn(page, owner.email, owner.password)
+    await page.goto(new URL('/app/onboarding/create-study-server', appUrl).toString())
+    await expect(page.getByRole('heading', { level: 1, name: 'Create Study Server' })).toBeVisible()
+    await page.getByRole('button', { name: /Personal small group/ }).click()
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    const serverName = `Field learning ${randomUUID()}`
+    await page.getByLabel('Study Server name', { exact: true }).fill(serverName)
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Invite your team' })).toBeVisible()
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    const creation = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/study-servers'
+      && response.request().method() === 'POST')
+    await page.getByRole('button', { name: 'Create Study Server', exact: true }).click()
+    const created = await creation
+    expect(created.status()).toBe(201)
+    const server = await created.json() as { id: string }
+    await expect(page).toHaveURL(new RegExp(`/app/servers/${server.id}/community/announcements$`))
+    await expect(page.getByText('No published announcements yet.', { exact: true })).toBeVisible()
+    await page.goto(new URL(`/app/servers/${server.id}/home`, appUrl).toString())
+    await expect(page.getByRole('heading', { level: 1, name: serverName })).toBeVisible()
+    await page.getByRole('textbox', { name: 'Course title', exact: true }).fill('Practical field observation')
+    await page.getByRole('textbox', { name: 'Cohort name', exact: true }).fill('Weekend field group')
+    const courseCreation = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/study-servers/${server.id}/courses`
+      && response.request().method() === 'POST')
+    await page.getByRole('button', { name: 'Create course', exact: true }).click()
+    const courseResponse = await courseCreation
+    expect(courseResponse.status()).toBe(201)
+    const course = await courseResponse.json() as { id: string; cohort: { id: string } }
+    await expect(page.getByRole('status')).toHaveText('Created Practical field observation (Weekend field group).')
+    const courseCard = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Practical field observation', exact: true }) })
+    await expect(courseCard.getByText('Weekend field group', { exact: true })).toBeVisible()
+    await courseCard.getByRole('link', { name: 'Manage enrollment', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Enroll learner manually', exact: true })).toBeVisible()
+    await expect(page.getByText('Loading invite link…', { exact: true })).toHaveCount(0)
+    await page.getByRole('textbox', { name: 'Learner email', exact: true }).fill(learner.email)
+    const enrollment = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/cohorts/${course.cohort.id}/enrollments`
+      && response.request().method() === 'POST')
+    await page.getByRole('button', { name: 'Enroll learner', exact: true }).click()
+    expect((await enrollment).status()).toBe(201)
+    await expect(page.getByRole('status')).toContainText('Learner enrolled.')
+    await expect.poll(async () => {
+      const navigation = await request.get(new URL(`/api/v1/study-servers/${server.id}/navigation`, appUrl).toString(), { headers: learner.headers })
+      expect(navigation.status()).toBe(200)
+      const data = await navigation.json() as { courses: { id: string; capabilities: { enrolled: boolean } }[] }
+      return data.courses.some(entry => entry.id === course.id && entry.capabilities.enrolled)
+    }).toBe(true)
+    await expect(page.getByRole('heading', { name: 'Learners (1)', exact: true })).toBeVisible()
+  })
+
   test('register, verify, restore, rotate and sign out through real services', async ({ page, context, request }) => {
     const email = `auth-e2e-${randomUUID()}@example.com`
     const password = `Chanter-${randomUUID()}`

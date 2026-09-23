@@ -126,3 +126,11 @@ rejects any mismatch synchronously, even if form submission bypasses the disable
 button. Removed questions preserve read-only text, and private context changes remount
 the page. Pane focus follows explicit user intent. Six new regressions and independent
 review support the correction; current-head hosted and final union gates remain.
+
+The completed 8914546 dependency preview passed all 51 real-service journeys without
+retries. It remains proof of the pinned source/API and browser integration, not
+completed erasure or the final accepted union. The current route/control inventory
+separates actual service evidence, synthetic fixtures and manual/provider gaps.
+A further owner-setup browser case exercises the actual wizard, course/cohort form
+and enrollment form; it must prove visible results and learner access through the
+real owning API before that gap is marked accepted.
