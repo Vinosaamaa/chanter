@@ -27,7 +27,7 @@ public final class AuthTerminalRecovery {
     }
 
     public TerminalReapplyStore.Receipt reapply(TerminalJournal.Page page) {
-        return journal.restore(page, () -> participant.reapply(page));
+        return journal.restore(page, () -> { lockOperatorAuthority(); return participant.reapply(page); });
     }
     public TerminalReapplyStore.Receipt receipt() { return participant.receipt(); }
 
@@ -37,6 +37,7 @@ public final class AuthTerminalRecovery {
             throw new IllegalStateException("Normal terminal application requires its canonical transaction");
         if(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_terminal_journal WHERE revision=? AND event_id=? AND digest=?",
                 Integer.class,entry.revision(),entry.eventId(),entry.digest())!=1) throw new IllegalArgumentException("Unknown canonical terminal entry");
+        lockOperatorAuthority();
         participant.applyTerminal(entry);
         return participant.cleanup(entry);
     }
@@ -51,12 +52,28 @@ public final class AuthTerminalRecovery {
         sessions.revokeAllForUser(entry.targetId(), entry.deletedAt());
         exports.cancelAccount(entry.targetId());
         jdbc.update("DELETE FROM lifecycle_export_downloads WHERE account_id=?", entry.targetId());
-        jdbc.update("UPDATE auth_email_tokens SET used_at=? WHERE user_id=? AND used_at IS NULL", Timestamp.from(entry.deletedAt()), entry.targetId());
+        jdbc.update("DELETE FROM auth_email_tokens WHERE user_id=?", entry.targetId());
         jdbc.update("""
             UPDATE auth_email_outbox SET recipient=NULL,subject=NULL,body_text=NULL,status='EXPIRED',completed_at=?
             WHERE status='PENDING' AND recipient IN (SELECT email FROM auth_users WHERE id=?)
             """, Timestamp.from(entry.deletedAt()), entry.targetId());
-        return TerminalReapplyStore.Cleanup.PENDING;
+        jdbc.update("DELETE FROM auth_refresh_tokens WHERE user_id=?",entry.targetId());
+        jdbc.update("DELETE FROM auth_sessions WHERE user_id=?",entry.targetId());
+        jdbc.update("DELETE FROM auth_oauth_accounts WHERE user_id=?",entry.targetId());
+        jdbc.update("DELETE FROM moderation_appeal_tokens WHERE user_id=?",entry.targetId());
+        jdbc.update("DELETE FROM platform_step_up WHERE user_id=?",entry.targetId());
+        jdbc.update("""
+            UPDATE platform_operators SET revoked_at=?,factor_ciphertext=NULL,factor_confirmed=FALSE,
+                last_factor_counter=-1,factor_attempts=0,factor_window_started=NULL WHERE user_id=?
+            """,Timestamp.from(entry.deletedAt()),entry.targetId());
+        jdbc.update("UPDATE auth_users SET email=?,password_hash='!deleted',display_name='Deleted account',email_verified=FALSE WHERE id=?",
+                "deleted:"+entry.targetId(),entry.targetId());
+        // UUID tombstone and existing restricted moderation records remain; no credential/profile payload does.
+        return TerminalReapplyStore.Cleanup.PRESERVED;
+    }
+
+    void lockOperatorAuthority() {
+        jdbc.queryForObject("SELECT id FROM platform_operator_lock WHERE id=1 FOR UPDATE",Integer.class);
     }
 
     private void invalidateAll(Instant now) {

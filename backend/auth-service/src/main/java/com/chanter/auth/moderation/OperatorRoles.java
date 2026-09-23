@@ -81,6 +81,7 @@ public class OperatorRoles {
     }
 
     private void requireEligible(UUID user) {
+        if(!users.lockActive(user)) throw new ResponseStatusException(HttpStatus.GONE,"Account is unavailable");
         restrictions.requireActiveAccount(user);
         var account = users.findById(user).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
         if (!account.emailVerified() || account.passwordHash() == null || account.passwordHash().isBlank())

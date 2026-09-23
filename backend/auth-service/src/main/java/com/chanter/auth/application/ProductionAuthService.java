@@ -58,6 +58,7 @@ public class ProductionAuthService {
 
     @Transactional
     public void sendEmailVerification(AuthUser user) {
+        if (!authUserRepository.lockActive(user.id())) return;
         EmailToken token = createToken(user.id(), PURPOSE_EMAIL_VERIFY);
         String link = publicBaseUrl + "/verify-email?token=" + token.raw();
         emailSender.send(
@@ -76,6 +77,7 @@ public class ProductionAuthService {
      */
     @Transactional
     public void notifyExistingAccountRegisterAttempt(AuthUser user) {
+        if (!authUserRepository.lockActive(user.id())) return;
         emailSender.send(
                 user.email(),
                 "Chanter account signup attempt",
@@ -100,6 +102,7 @@ public class ProductionAuthService {
         if (user == null) {
             return;
         }
+        if (!authUserRepository.lockActive(user.id())) return;
         emailTokenRepository.invalidateActiveForUser(user.id(), PURPOSE_PASSWORD_RESET, Instant.now());
         EmailToken token = createToken(user.id(), PURPOSE_PASSWORD_RESET);
         String link = publicBaseUrl + "/reset-password?token=" + token.raw();

@@ -30,6 +30,7 @@ class ProductionAuthEmailTest {
         }).when(tokens).save(any(), any(), any(), any(), any());
         var user = new AuthUser(UUID.randomUUID(), "learner@example.test", "hash", "Learner", false, Instant.now());
         when(users.findByEmail(user.email())).thenReturn(Optional.of(user));
+        when(users.lockActive(user.id())).thenReturn(true);
         var auth = new ProductionAuthService(users, tokens, mock(RefreshTokenRepository.class), email,
                 mock(PasswordEncoder.class), Duration.ofHours(2), "https://learning.chanter.test/");
 

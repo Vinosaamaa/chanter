@@ -30,6 +30,8 @@ public class OperatorAccess {
     }
 
     public Operator requireRole(String authorization) {
+        // Shared with terminal account cleanup: operator authority precedes any account row lock.
+        jdbc.queryForObject("SELECT id FROM platform_operator_lock WHERE id=1 FOR UPDATE",Integer.class);
         UUID user = tokens.parseUserId(authorization);
         Operator operator = jdbc.query("SELECT role FROM platform_operators WHERE user_id=? AND revoked_at IS NULL FOR UPDATE",
                 (rs, row) -> new Operator(user, Role.valueOf(rs.getString(1))), user).stream().findFirst()

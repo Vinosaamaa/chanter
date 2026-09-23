@@ -69,6 +69,7 @@ public final class AccountDeletionJobs {
     }
     public Job confirm(String authorization,UUID id) {
         return journal.withAuthority(() -> {
+            auth.lockOperatorAuthority();
             UUID account=access.require(authorization,true); lock(); Header job=require(id,account);
             if(!"PREPARED".equals(job.state()) || !job.expiresAt().isAfter(clock.instant())) throw rejected("DELETION_NOT_PREPARED");
             var entry=journal.append("ACCOUNT",account);

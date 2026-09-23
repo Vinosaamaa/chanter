@@ -16,6 +16,9 @@ import org.springframework.web.server.ResponseStatusException;
 class ModerationAppealsTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ModerationAppeals appeals;
+    @Autowired com.chanter.auth.lifecycle.TerminalJournalStore journal;
+    @Autowired com.chanter.auth.lifecycle.AuthTerminalRecovery recovery;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transactions;
     @org.springframework.test.context.bean.override.mockito.MockitoBean OperatorAccess operators;
 
     @Test void concurrentValidLinksCannotCreateTwoPendingAppeals() throws Exception {
@@ -89,6 +92,23 @@ class ModerationAppealsTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_appeals WHERE restriction_id=?",Integer.class,owner.restriction())).isZero();
         appeals.request(owner.email(),owner.restriction());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_appeal_tokens WHERE token_hash=?",Integer.class,OperatorAccess.hash(token))).isZero();
+    }
+
+    @Test void terminalAccountErasesAppealCredentialsButPreservesExistingCaseAndStopsLaterEmail() {
+        Fixture owner=fixture(true); UUID operator=fixture(true).user();
+        jdbc.update("INSERT INTO platform_operators(user_id,role,granted_at) VALUES(?,'ADMIN',CURRENT_TIMESTAMP)",operator);
+        when(operators.requireStepUp("operator","verified")).thenReturn(new OperatorAccess.Operator(operator,OperatorAccess.Role.ADMIN));
+        appeals.request(owner.email(),owner.restriction()); String token=sentToken(owner.email());
+        appeals.submit(token,"Existing preserved appeal",UUID.randomUUID());
+        UUID appeal=jdbc.queryForObject("SELECT id FROM moderation_appeals WHERE restriction_id=?",UUID.class,owner.restriction());
+        new org.springframework.transaction.support.TransactionTemplate(transactions).executeWithoutResult(status ->
+                recovery.applyCommitted(journal.append("ACCOUNT",owner.user())));
+        appeals.request(owner.email(),owner.restriction());
+        assertThatThrownBy(() -> appeals.submit(token,"Late submission",UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
+        appeals.resolve("operator","verified",appeal,"UPHELD","Review completed",owner.restriction().toString(),UUID.randomUUID());
+        assertThat(jdbc.queryForObject("SELECT body FROM moderation_appeals WHERE id=?",String.class,appeal)).isEqualTo("Existing preserved appeal");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM moderation_appeal_tokens WHERE user_id=?",Integer.class,owner.user())).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM auth_email_outbox WHERE recipient IN (?,?)",Integer.class,owner.email(),"deleted:"+owner.user())).isZero();
     }
 
     private String sentToken(String recipient) {

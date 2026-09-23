@@ -27,12 +27,13 @@ class JdbcAuthEmailTokenRepositoryTest {
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V1__auth_users.sql"),
                 new ClassPathResource("db/migration/V2__production_auth.sql")).execute(datasource);
         var jdbc = new JdbcTemplate(datasource);
+        jdbc.execute("CREATE TABLE lifecycle_terminal_journal(target_kind VARCHAR(32),target_id UUID)");
         var repository = new JdbcAuthEmailTokenRepository(jdbc);
         var transactions = new TransactionTemplate(new DataSourceTransactionManager(datasource));
         UUID userId = UUID.randomUUID();
         jdbc.update("INSERT INTO auth_users(id, email, password_hash, display_name) VALUES (?, ?, ?, ?)",
                 userId, "learner@example.test", "unused", "Learner");
-        repository.save(UUID.randomUUID(), userId, "test-token-hash", purpose, Instant.now().plusSeconds(3600));
+        transactions.executeWithoutResult(status -> repository.save(UUID.randomUUID(), userId, "test-token-hash", purpose, Instant.now().plusSeconds(3600)));
         var firstSelected = new CountDownLatch(1);
         var releaseFirst = new CountDownLatch(1);
         try (var executor = Executors.newFixedThreadPool(2)) {

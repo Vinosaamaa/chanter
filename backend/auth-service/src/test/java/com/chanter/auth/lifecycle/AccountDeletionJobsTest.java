@@ -55,7 +55,7 @@ class AccountDeletionJobsTest {
             var event=receipt(id,user.user().id(),source,"COMPLETE",2,entry); jobs.accept(event); jobs.accept(event);
         }
         journal.acknowledge(new TerminalJournal.Checkpoint(entry.revision(),entry.digest(),UUID.randomUUID()));
-        assertThat(jobs.receipt(id,prepared.handle()).state()).isEqualTo("ERASING"); // Auth identity cleanup is still pending.
+        assertThat(jobs.receipt(id,prepared.handle()).state()).isEqualTo("COMPLETE");
         assertThat(jobs.receipt(id,prepared.handle()).replicationPending()).isFalse();
         var cookie=new Cookie(AccountDeletionJobs.COOKIE,prepared.handle());
         mvc.perform(get(AccountDeletionJobs.path(id)).cookie(cookie)).andExpect(status().isOk());
