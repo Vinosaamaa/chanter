@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { ResourceObjectArchive, resourceBackupEnvironment, MAX_RESOURCE_BYTES } from './resource-object-backup.mjs';
+import { captureResourceInventory } from './resource-recovery-client.mjs';
 
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const courseId = '11111111-1111-4111-8111-111111111111';
@@ -173,7 +174,17 @@ test('actual restic encrypts binary objects and refuses substituted bytes and th
     const reference = archive.capture(entry(bytes), maintenance, bytes);
     assert.deepEqual(archive.readVerified(reference, entry(bytes), maintenance.storageNamespaceSha256), bytes);
     const source = sourceInventory(bytes);
-    const inventory = archive.publishInventory(source.snapshot, maintenance, source.readPage, () => reference);
+    let reads=0;
+    const client={
+      fence:id=>({inventoryId:id,storageNamespaceSha256:maintenance.storageNamespaceSha256,unsettledMutations:0}),
+      capture:request=>{assert.equal(request.databaseBackupId,source.snapshot.databaseBackupId);return source.snapshot;},
+      page:request=>source.readPage(request.after,request.limit),
+      read:request=>{assert.equal(request.ordinal,1);reads++;return bytes;},
+    };
+    assert.throws(()=>captureResourceInventory(client,archive,{databaseBackupId:source.snapshot.databaseBackupId,
+      maintenance:{...maintenance,writers:'UNKNOWN'}}));assert.equal(reads,0);
+    const inventory=captureResourceInventory(client,archive,{databaseBackupId:source.snapshot.databaseBackupId,maintenance});
+    assert.equal(reads,1);
     const restored = [];
     assert.equal(archive.verifyInventory(inventory, source.snapshot, (row, object) => restored.push({ row, object })).referenceCount, 2);
     assert.equal(restored[0].row.resourceState, 'QUARANTINED'); assert.equal(restored[1].object, null);

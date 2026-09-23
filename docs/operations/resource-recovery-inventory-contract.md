@@ -78,7 +78,7 @@ qualified inventory; an old snapshot cannot authorize a different backend.
 Terminal, absent, rejected or changed references cannot authorize a write. The
 adapter supplies a private copy of at most 10 MiB and uses local CREATE_NEW or
 S3 If-None-Match. Uncertain completion keeps the operation outstanding. This path
-has no HTTP endpoint yet, does not release maintenance, and does not itself
+is exposed only through the disabled private adapter below, does not release maintenance, and does not itself
 establish encrypted archive provenance or an externally quiescent writer.
 
 The internal maintenance DELETE path uses that same active fence and exact
@@ -115,8 +115,8 @@ Source metadata/quota completion still requires the accepted #251 owning
 retained keys have exact closure receipts. `requireClosedDeletionLocked` rejects
 calls outside that transaction and rechecks every current/distinct migration key
 before returning the exact owning tuple. The hosted preview invokes the actual
-source hook in that transaction; its new runtime proof is pending. No HTTP deletion endpoint, new retry queue,
-caller-supplied absence flag or fabricated worker lease is introduced.
+source hook in that transaction; its new runtime proof is pending. The private
+adapter cannot add an absence flag, fabricate a worker lease or release maintenance.
 
 The current tests establish query, transaction and disabled-API contracts using
 explicit synthetic rows. They do not establish the real canonical #251 replay.
@@ -124,3 +124,53 @@ Private spool disposition, original-writer and provider closure, exact encrypted
 object capture/read-back, database linkage, create-only restoration and full
 native PostgreSQL/source effects remain required before activation. An empty
 recovery tmpfs proves none of those conditions.
+
+## Disabled production object adapter
+
+This #342 checkpoint remains in this worktree and PR #343. It adds the actual
+private transport needed by the existing encrypted object/manifest operator,
+using the pinned #251 source tuple and completion contract. Both existing recovery
+flags are required. Every route uses the owning internal token, no-store responses
+and fixed paths under `/api/v1/internal/resource-recovery/objects`.
+
+`read`, `put` and `delete` select only the existing RestoreRequest fields:
+inventoryId, databaseBackupId, authority and ordinal. No caller supplies a key,
+backend, URL or filesystem path. READ resolves a currently restorable reference
+under the terminal/budget transaction, reads at most 10 MiB outside that transaction,
+verifies exact size/SHA-256, then resolves and compares the same reference again
+before returning bytes. Terminal, changed, unknown-writer or wrong-namespace state
+refuses disclosure. This private backup authority includes retained QUARANTINED
+and SCAN_FAILED bytes, without making either state publicly available.
+
+PUT sends a four-byte big-endian metadata length, strict UTF-8 JSON metadata of
+at most 4 KiB, then at most 10 MiB of raw bytes. The existing source authorization
+and create-only adapter validate bytes before reserving the physical mutation.
+DELETE sends strict JSON and uses the existing per-reference closure accounting.
+Neither operation exposes maintenance release. Every success receipt repeats the
+exact request and operation; helper execution success alone is insufficient.
+
+The fixed localhost helper takes operation names only. Metadata/bytes stay on
+bounded stdin/stdout, the token stays in the owning service environment, redirects
+and proxy routing remain disabled, and errors never include body/key/token values.
+The host adapter verifies receipts and enters returned bytes directly into the
+existing encrypted object archive. The enclosing restore operator must validate
+the full manifest before calling PUT; the transport alone is not archive authority.
+
+Final source quota/metadata completion requires a source-supplied implementation
+of the narrow completion binding. It runs the real #251 MANDATORY hook in the
+same transaction as `requireClosedDeletionLocked`; no binding means refusal.
+The `/finish-delete` body contains only inventoryId, databaseBackupId, authority
+and resourceId. The source resolves every current/distinct migration reference.
+The binding is not a new authority store or caller-supplied physical proof.
+Before accepted #251 integration, tests can prove this transaction boundary but
+cannot claim production completion. These adapters establish neither external
+writer quiescence nor retained-provider-version erasure, and capability stays OFF.
+
+Focused tests cover denied/changed source reads, corrupt and oversized bytes,
+strict authenticated framing, the absent completion binding and owning transaction
+rollback. The fixed helper transfers the full 10 MiB bound with a 64 MiB heap;
+metadata-only calls retain 32 MiB. No service container limit is increased. The
+capture adapter feeds actual source pages and raw reads into the existing restic
+manifest flow, whose real local encrypted roundtrip passes. Source HTTP integration,
+combined container memory and the actual #251 completion binding still require
+native dependency proof. No operator command or capability is activated here.

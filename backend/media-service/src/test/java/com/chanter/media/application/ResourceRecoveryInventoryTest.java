@@ -70,6 +70,60 @@ class ResourceRecoveryInventoryTest {
     }
     private String key(UUID resource) { return "resources/v1/"+course+"/"+resource+"/"+UUID.randomUUID(); }
 
+    @Test void readReferenceUsesTheSameLiveAuthorityAsRestorationWithoutReservingAMutation() {
+        UUID resource=resource(); inventories.capture(inventory,backup,authority);
+        var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        assertThat(inventories.readReference("s3",request).resourceId()).isEqualTo(resource);
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+        assertThatThrownBy(() -> inventories.readReference("local",request)).hasMessageContaining("backend");
+        jdbc.update("UPDATE course_resources SET state='REJECTED' WHERE id=?",resource);
+        assertThatThrownBy(() -> inventories.readReference("s3",request)).hasMessageContaining("changed");
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+    }
+    @Test void sourceChangeDuringUnlockedByteReadPreventsDisclosure() throws Exception {
+        UUID resource=resource();byte[] bytes="fixture".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String sha=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        jdbc.update("UPDATE course_resources SET sha256=? WHERE id=?",sha,resource);
+        inventories.capture(inventory,backup,authority);
+        var storage=org.mockito.Mockito.mock(PrivateResourceStorage.class);org.mockito.Mockito.when(storage.backend()).thenReturn("s3");
+        org.mockito.Mockito.when(storage.open(org.mockito.ArgumentMatchers.anyString())).thenAnswer(invocation -> {
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            return new java.io.ByteArrayInputStream(bytes) {
+                @Override public void close() {jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);}
+            };
+        });
+        var objects=objects(storage,null);
+        assertThatThrownBy(() -> objects.read(new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1)))
+                .hasMessageContaining("changed");
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+    }
+    @Test void sourceCompletionBindingSharesTheOwningClosureTransactionAndRollsBack() {
+        UUID resource=resource();jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,1,UUID.randomUUID(),authority.digest());
+        inventories.capture(inventory,backup,authority);
+        var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        var deletion=inventories.beginDelete("s3",request);inventories.completeDelete(request,deletion.mutationId());
+        var finish=new ResourceRecoveryObjects.FinishRequest(inventory,backup,authority,resource);
+        var objects=objects(org.mockito.Mockito.mock(PrivateResourceStorage.class),proof -> {
+            assertThat(proof.resourceId()).isEqualTo(resource);
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            jdbc.update("UPDATE course_resources SET byte_reservation=FALSE WHERE id=?",resource);
+            throw new IllegalStateException("synthetic owning transaction failure");
+        });
+        assertThatThrownBy(() -> objects.finish(finish)).hasMessageContaining("synthetic owning transaction failure");
+        assertThat(jdbc.queryForObject("SELECT byte_reservation FROM course_resources WHERE id=?",Boolean.class,resource)).isTrue();
+        var successful=objects(org.mockito.Mockito.mock(PrivateResourceStorage.class),proof ->
+                jdbc.update("UPDATE course_resources SET byte_reservation=FALSE,state='DELETED' WHERE id=?",proof.resourceId()));
+        assertThat(successful.finish(finish).sourceAccountingCommitted()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT byte_reservation FROM course_resources WHERE id=?",Boolean.class,resource)).isFalse();
+    }
+    private ResourceRecoveryObjects objects(PrivateResourceStorage storage,ResourceRecoveryObjects.Completion completion) {
+        var beans=new org.springframework.beans.factory.support.DefaultListableBeanFactory();
+        if(completion!=null)beans.registerSingleton("sourceCompletion",completion);
+        return new ResourceRecoveryObjects(inventories,storage,beans.getBeanProvider(ResourceRecoveryObjects.Completion.class),
+                new DataSourceTransactionManager(jdbc.getDataSource()));
+    }
+
     @Test void sourceSnapshotIncludesDistinctRetainedReferencesWithoutInventingProviderVersions() {
         UUID resource = resource();
         jdbc.update("UPDATE course_resources SET migration_key=? WHERE id=?",key(resource),resource);

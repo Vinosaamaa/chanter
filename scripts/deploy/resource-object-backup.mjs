@@ -45,7 +45,7 @@ export function resourceBackupEnvironment(settings, environment) {
     RESTIC_REPOSITORY: `s3:${new URL(settings.CHANTER_BACKUP_S3_ENDPOINT).origin}/${settings.CHANTER_BACKUP_S3_BUCKET}/resource-objects/${environment}` };
 }
 
-/** Byte evidence only. The future owning adapter must prove current inventory and writer fencing before using this leaf. */
+/** Byte evidence only. The owning adapter must prove current inventory and writer fencing before using this leaf. */
 export class ResourceObjectArchive {
   #tool; #execute;
   constructor({ bundleDir, environment, env, kind = 'remote', execute = execFileSync }) {

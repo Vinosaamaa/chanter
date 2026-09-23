@@ -98,6 +98,16 @@ public class ResourceRecoveryInventory {
                 throw new IllegalStateException("Physical deletion accounting changed");
         });
     }
+    public void requireClosedReference(String backend,RestoreRequest request) {
+        validateReferenceRequest(backend,request);
+        tx.executeWithoutResult(status -> {
+            Reference reference=deletionReference(request,qualify(request.inventoryId(),request.authority()));
+            if(!backend.equals(reference.storageBackend()) || !Boolean.TRUE.equals(jdbc.queryForObject(
+                    "SELECT physical_closed_at IS NOT NULL FROM media_recovery_inventory_references WHERE inventory_id=? AND ordinal=?",
+                    Boolean.class,request.inventoryId(),request.ordinal())))
+                throw new IllegalStateException("Recovery deletion closure is absent");
+        });
+    }
     private static void requireDeleteRequest(RestoreRequest request) {
         java.util.Objects.requireNonNull(request); requireIdentity(request.inventoryId()); requireIdentity(request.databaseBackupId());
         java.util.Objects.requireNonNull(request.authority());
@@ -134,13 +144,30 @@ public class ResourceRecoveryInventory {
     }
 
     public RestoreMutation beginRestore(String backend, RestoreRequest request, byte[] content) {
-        if(!"local".equals(backend) && !"s3".equals(backend)) throw new IllegalArgumentException("Unsupported recovery backend");
         if (content==null || content.length<1 || content.length>10*1024*1024) throw new IllegalArgumentException("Invalid recovery byte length");
+        validateReferenceRequest(backend,request);
+        return tx.execute(status -> {
+            Reference reference=restorableLocked(backend,request);
+            // Validate the adapter's bounded private copy before committing an operation that needs settlement.
+            try { PrivateResourceStorage.verifyRecoveryBytes(reference,content); }
+            catch (java.io.IOException invalid) { throw new IllegalArgumentException("Invalid recovery bytes",invalid); }
+            return new RestoreMutation(mutations.beginRecoveryPutLocked(request.inventoryId(),reference.key()),reference);
+        });
+    }
+
+    /** Read-only source authority, used both before and after bounded provider I/O. */
+    public Reference readReference(String backend,RestoreRequest request) {
+        validateReferenceRequest(backend,request);
+        return tx.execute(status -> restorableLocked(backend,request));
+    }
+    private static void validateReferenceRequest(String backend,RestoreRequest request) {
+        if(!"local".equals(backend) && !"s3".equals(backend)) throw new IllegalArgumentException("Unsupported recovery backend");
         java.util.Objects.requireNonNull(request); requireIdentity(request.inventoryId()); requireIdentity(request.databaseBackupId());
         java.util.Objects.requireNonNull(request.authority());
         if (request.ordinal()<1 || request.ordinal()>MAX_REFERENCES) throw new IllegalArgumentException("Invalid restore reference");
         requireOutsideTransaction();
-        return tx.execute(status -> {
+    }
+    private Reference restorableLocked(String backend,RestoreRequest request) {
             String namespace=qualify(request.inventoryId(),request.authority());
             Snapshot snapshot=saved();
             if (snapshot==null || !snapshot.inventoryId().equals(request.inventoryId()) || !snapshot.databaseBackupId().equals(request.databaseBackupId())
@@ -158,11 +185,7 @@ public class ResourceRecoveryInventory {
                             + " AND state=? AND storage_backend=? AND byte_reservation=TRUE AND " + (reference.referenceKind().equals("CURRENT") ? "storage_key=?" : "migration_key=?"),
                     Integer.class,reference.resourceId(),reference.courseId(),reference.sha256(),reference.byteSize(),reference.resourceState(),reference.storageBackend(),reference.key())!=1)
                 throw new IllegalStateException("Restore source reference changed");
-            // Validate the adapter's bounded private copy before committing an operation that needs settlement.
-            try { PrivateResourceStorage.verifyRecoveryBytes(reference,content); }
-            catch (java.io.IOException invalid) { throw new IllegalArgumentException("Invalid recovery bytes",invalid); }
-            return new RestoreMutation(mutations.beginRecoveryPutLocked(request.inventoryId(),reference.key()),reference);
-        });
+            return reference;
     }
 
     public Snapshot capture(UUID inventory, UUID databaseBackup, Authority authority) {
