@@ -81,6 +81,12 @@ object roundtrip. This is the bounded local-volume proof described above. It doe
 not cover later backend-guard/deletion changes, a restored database, external S3
 closure or the four deferred participants.
 
+The later exact `912a067b` preview with source `ca45ffad` passed both architectures
+in `35808150204`. Both completed logs confirm source-owned physical deletion.
+The actual persisted per-key closure, same-transaction source completion hook and
+repeated once-only quota release were exercised. This result still excluded an
+older database and all-seven delivery, which belong to the next fixture.
+
 The next fixture uses the tested source helper at `6c3e7561`. It takes a real full
 pgBackRest backup with the source inventory and backup identities in its
 annotations, paired with encrypted configuration. A separate fixture bundle
@@ -109,9 +115,22 @@ same owned data volume. The unchanged operator then verifies the exact container
 mounts and private network. Cleanup checks the exact disposable ownership labels
 and attempts all owned removals. No public listener or cutover is enabled.
 
-This is still not complete #342 acceptance. An object restore against the replayed
-database, post-backup graph cases, external provider and original-writer closure,
-and source spool disposition remain required. Capability and public cutover stay
-OFF. Earlier local object evidence remains separate from new restored-database
-receipts. `objectRestoreVerified=false` prevents the older-database phase from
-claiming that combined proof or external object-version retention.
+The following unverified extension keeps a second live resource in the actual
+backup. After authority replay it checks the restored historical course and
+channel IDs in all six dependent/current scope stores, with the original archived
+scope still empty. It then recaptures the source inventory at the current prefix
+and restores only the live resource from its verified encrypted object into a
+fresh ownership-labeled local volume. Terminal restoration must fail before any
+mutation is reserved. Actual per-key closure and the owning completion hook
+release only the deleted resource's reservation, preserving the live resource's
+bytes and quota. The media receipt is re-read through the real owning controller
+after object accounting. Ordinary source processes remain stopped; the bounded
+fixture helpers retain recovery mode and private networking.
+
+This is still not complete #342 acceptance. Post-backup graph cases, external
+provider and original-writer closure, and source spool disposition remain
+required. Capability and public cutover stay OFF. Earlier local object evidence
+remains separate from new restored-database receipts. Only a successful combined
+run can record `objectRestoreVerified=true`; it still records
+`externalProviderClosureVerified=false` and does not establish provider-version
+retention or complete source cleanup.

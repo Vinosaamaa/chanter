@@ -144,6 +144,12 @@ try {
   assert.equal(actualBytes.toString('base64'), readback.base64);
   assert.equal(actualBytes.length, available.byteSize);
   assert.equal(crypto.createHash('sha256').update(actualBytes).digest('hex'), available.sha256);
+  const liveUpload = call('media', { action: 'media-upload', courseId: liveGraph.courseId,
+    ownerId: owner.accountId, requestId: crypto.randomUUID() });
+  assert.equal(liveUpload.state, 'QUARANTINED'); assert.equal(liveUpload.storageWriteSettled, true);
+  const liveResource = call('media', { action: 'media-work-once', resourceId: liveUpload.resourceId });
+  assert.equal(liveResource.state, 'AVAILABLE'); assert.equal(liveResource.storageWriteSettled, true);
+  assert.equal(liveResource.byteSize, actualBytes.length); assert.equal(liveResource.sha256, available.sha256);
   // Own the entire local object namespace before qualifying bytes. This says nothing about an external provider.
   compose(['stop', ...sources.map(source => `${source}-service`)]);
   const mediaContainer = compose(['ps', '--all', '--quiet', 'media-service']).trim();
@@ -166,10 +172,12 @@ try {
   const fence = objectCall({ action: 'fence', inventoryId });
   assert.equal(fence.unsettledMutations, 0); assert.match(fence.storageNamespaceSha256, /^[a-f0-9]{64}$/);
   const inventory = objectCall({ action: 'capture', inventoryId, databaseBackupId, authority: GENESIS });
-  assert.equal(inventory.referenceCount, 1);
+  assert.equal(inventory.referenceCount, 2);
   const inventoryPage = objectCall({ action: 'page', inventoryId, authority: GENESIS, after: 0, limit: 16 });
-  assert.equal(inventoryPage.nextAfter, null); assert.equal(inventoryPage.references.length, 1);
-  const reference = inventoryPage.references[0];
+  assert.equal(inventoryPage.nextAfter, null); assert.equal(inventoryPage.references.length, 2);
+  const reference = inventoryPage.references.find(value => value.resourceId === available.resourceId);
+  const liveReference = inventoryPage.references.find(value => value.resourceId === liveResource.resourceId);
+  assert.ok(reference && liveReference);
   assert.equal(reference.resourceId, available.resourceId); assert.equal(reference.resourceState, 'AVAILABLE');
   assert.equal(reference.terminal, false); assert.equal(reference.sourceRetained, true);
   const request = { inventoryId, databaseBackupId, authority: GENESIS, ordinal: reference.ordinal };
@@ -187,6 +195,14 @@ try {
     authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 }, actualBytes);
   const decrypted = archive.readVerified(archived, object, fence.storageNamespaceSha256);
   assert.deepEqual(decrypted, actualBytes);
+  const liveRequest = { inventoryId, databaseBackupId, authority: GENESIS, ordinal: liveReference.ordinal };
+  assert.deepEqual(Buffer.from(objectCall({ action: 'read', request: liveRequest }).base64, 'base64'), actualBytes);
+  const liveObject = { resourceId: liveReference.resourceId, courseId: liveReference.courseId, key: liveReference.key,
+    byteSize: liveReference.byteSize, sha256: liveReference.sha256, providerVersionId: liveReference.providerVersionId,
+    disposition: 'EXTANT', storageWriteSettled: true };
+  const liveArchived = archive.capture(liveObject, { inventoryId, storageNamespaceSha256: fence.storageNamespaceSha256,
+    authority: GENESIS, writers: 'QUIESCENT', unsettledWrites: 0 }, actualBytes);
+  assert.deepEqual(archive.readVerified(liveArchived, liveObject, fence.storageNamespaceSha256), actualBytes);
   databaseDrill = await sourceDatabaseCheckpoint({ bundle, state, root, release, postgres, project,
     composeFile, sourceCompose, inventoryId, databaseBackupId, resourceId: available.resourceId,
     courseId: graph.courseId, nativeRequestId: pendingNative.requestId, liveGraph, liveOwnerId: owner.accountId });
@@ -227,18 +243,19 @@ try {
   assert.ok(sameWatermark(applied.authority, resourcePrefix.through));
   assert.equal(objectCall({ action: 'discard', inventoryId }).inventoryId, inventoryId);
   const terminalInventory = objectCall({ action: 'capture', inventoryId, databaseBackupId, authority: resourcePrefix.through });
-  assert.equal(terminalInventory.referenceCount, 1);
+  assert.equal(terminalInventory.referenceCount, 2);
   const terminalPage = objectCall({ action: 'page', inventoryId, authority: resourcePrefix.through, after: 0, limit: 16 });
-  assert.equal(terminalPage.references.length, 1); assert.equal(terminalPage.references[0].terminal, true);
-  assert.equal(terminalPage.references[0].resourceId, available.resourceId);
-  const terminalRequest = { inventoryId, databaseBackupId, authority: resourcePrefix.through, ordinal: terminalPage.references[0].ordinal };
+  assert.equal(terminalPage.references.length, 2);
+  const terminalReference = terminalPage.references.find(value => value.resourceId === available.resourceId);
+  assert.equal(terminalReference.terminal, true);
+  const terminalRequest = { inventoryId, databaseBackupId, authority: resourcePrefix.through, ordinal: terminalReference.ordinal };
   assert.deepEqual(objectCall({ action: 'delete', request: terminalRequest }),
     { physicallyClosed: true, outstandingMutations: 0, publicCutoverAllowed: false });
   assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId: available.resourceId }),
-    { state: 'DELETED', sourceRetained: false, reservedBytes: 0, publicCutoverAllowed: false });
-  // A second completion must preserve the same quota result without inventing a worker lease.
+    { state: 'DELETED', sourceRetained: false, reservedBytes: liveResource.byteSize, publicCutoverAllowed: false });
+  // A second completion preserves the live resource's reservation without inventing a worker lease.
   assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId: available.resourceId }),
-    { state: 'DELETED', sourceRetained: false, reservedBytes: 0, publicCutoverAllowed: false });
+    { state: 'DELETED', sourceRetained: false, reservedBytes: liveResource.byteSize, publicCutoverAllowed: false });
   compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', ...sources.map(source => `${source}-service`)]);
   const historical = call('community', { action: 'community-history-remove-course', serverId: graph.serverId,
     courseId: graph.courseId, ownerId: owner.accountId });
@@ -268,13 +285,15 @@ try {
   assert.equal(deferred.length, 0, 'Every owning lifecycle command must reach its actual participant');
   const journalReplica = await databaseDrill.archiveCurrent(page.through);
   compose(['stop', ...sources.map(source => `${source}-service`)]);
-  const recoveredAuthority = await databaseDrill.recover(page.through, historical);
+  const recoveredAuthority = await databaseDrill.recover(page.through, historical, {
+    archive, liveArchived, liveObject, archivedNamespace: fence.storageNamespaceSha256, actualBytes,
+  });
   // Committed delivery is not complete source cleanup or a receipt for replay on a restored database.
   fs.writeFileSync(path.join(root, 'canonical-source.json'), JSON.stringify({ schemaVersion: 1, preview,
     page, scopes, resource: available, inventory, archived, byteReadbackVerified: true, objectRoundtripVerified: true,
     physicalDeletionVerified: true, databaseBackupVerified: true, journalReplica, recoveredAuthority, historical,
     deferred, publicCutoverAllowed: false }), { mode: 0o600 });
-  console.log('Real older-database restore, current journal replay and historical scope reconciliation passed; full object recovery and external writer closure remain pending.');
+  console.log('Real older-database restore, current authority, historical scope and private object reconstruction passed; external provider and original-writer closure remain pending.');
 } finally {
   const failures = [];
   try { databaseDrill?.cleanup(); } catch { failures.push('restored database cleanup'); }

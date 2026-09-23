@@ -76,13 +76,17 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       return execute(file, translated, options);
     } }), kind: 'fixture' });
   let restored = null;
+  let objectVolume = null;
   return {
     async archiveCurrent(authority) {
       const replica = await replicateJournal(normalClient('auth'), journal, normalClient('community'));
       assert.ok(sameWatermark(replica.authority, authority));
       return replica;
     },
-    async recover(authority, historical) {
+    async recover(authority, historical, objects) {
+      nonzeroUuid(historical.serverId);
+      assert.ok(Array.isArray(historical.channelIds) && historical.channelIds.length > 0 && historical.channelIds.length <= 64);
+      for (const id of historical.channelIds) nonzeroUuid(id);
       // No original application process may still write the source fixture database or objects.
       for (const row of docker(['ps', '--filter', `label=com.docker.compose.project=${project}`, '--format', '{{.ID}}']).trim().split('\n').filter(Boolean)) {
         const service = docker(['inspect', '--format', '{{index .Config.Labels "com.docker.compose.service"}}', row]).trim();
@@ -162,8 +166,62 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.equal(sql(database, 'chanter_community', `SELECT count(*) FROM courses WHERE id='${courseId}'`), '0');
       assert.equal(sql(database, 'chanter_community', `SELECT count(*) FROM courses WHERE id='${liveGraph.courseId}' AND study_server_id='${liveGraph.serverId}'`), '1');
       assert.equal(historical.courseId, courseId); assert.equal(historical.historicalFixtureOnly, true);
+      for (const source of ['community', 'message', 'media', 'agent', 'notification', 'search']) {
+        assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_scope_imports WHERE study_server_id='${historical.serverId}' AND total_count=0 AND ready=TRUE`), '2');
+        assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_recovery_scope_ids WHERE study_server_id='${historical.serverId}' AND scope_kind='COURSE' AND scope_id='${courseId}'`), '1');
+        assert.equal(sql(database, `chanter_${source}`, `SELECT count(*) FROM lifecycle_recovery_scope_ids WHERE study_server_id='${historical.serverId}' AND scope_kind='CHANNEL' AND scope_id IN (${historical.channelIds.map(id => `'${id}'`).join(',')})`), String(historical.channelIds.length));
+      }
+      // Object reconstruction is a separate, stopped-source phase on this same restored database.
+      // It preserves the exact private network and uses a fresh owned local namespace, never an external S3 claim.
+      objectVolume = `${restored.container}-objects`;
+      assert.ok(!docker(['volume', 'ls', '--format', '{{.Name}}']).split('\n').includes(objectVolume));
+      docker(['volume', 'create', '--label', `chanter.recovery=${restored.container}`, objectVolume]);
+      const objectCompose = structuredClone(recovered);
+      objectCompose.volumes.fixture_objects = { external: true, name: objectVolume };
+      const media = objectCompose.services['media-service'];
+      media.tmpfs = media.tmpfs.filter(value => !value.startsWith('/app/resources:'));
+      media.volumes = ['fixture_objects:/app/resources', `${root}:/opt/canonical-fixture:ro`];
+      const objectFile = path.join(attempt, 'object-compose.json'); write(objectFile, objectCompose);
+      const objectCall = request => JSON.parse(execute('docker', ['compose', '--project-name', recovered.name, '-f', objectFile,
+        'run', '--rm', '--no-deps', '-T', '-e', 'CHANTER_SOURCE_RECOVERY_PREVIEW=true', '--entrypoint', 'java', 'media-service',
+        '-cp', '/opt/canonical-fixture:/app/classes:/app/lib/*', 'ResourceRecoveryFixture'], { input: JSON.stringify(request) }));
+      const fence = objectCall({ action: 'fence', inventoryId });
+      assert.equal(fence.unsettledMutations, 0); assert.equal(fence.storageNamespaceSha256, objects.archivedNamespace);
+      objectCall({ action: 'discard', inventoryId });
+      const restoredInventory = objectCall({ action: 'capture', inventoryId, databaseBackupId, authority });
+      assert.equal(restoredInventory.referenceCount, 2);
+      const references = objectCall({ action: 'page', inventoryId, authority, after: 0, limit: 16 });
+      assert.equal(references.nextAfter, null); assert.equal(references.references.length, 2);
+      const live = references.references.find(value => value.resourceId === objects.liveObject.resourceId);
+      const terminal = references.references.find(value => value.resourceId === resourceId);
+      assert.equal(live.terminal, false); assert.equal(live.resourceState, 'AVAILABLE');
+      assert.equal(terminal.terminal, true); assert.equal(terminal.resourceState, 'DELETE_PENDING');
+      for (const field of ['resourceId', 'courseId', 'key', 'byteSize', 'sha256', 'providerVersionId'])
+        assert.equal(live[field], objects.liveObject[field]);
+      const bytes = objects.archive.readVerified(objects.liveArchived, objects.liveObject, fence.storageNamespaceSha256);
+      assert.deepEqual(bytes, objects.actualBytes);
+      const restoreRequest = { inventoryId, databaseBackupId, authority, ordinal: live.ordinal };
+      const terminalRequest = { inventoryId, databaseBackupId, authority, ordinal: terminal.ordinal };
+      assert.deepEqual(objectCall({ action: 'expect-refusal', request: terminalRequest, reason: 'STALE_SOURCE', base64: bytes.toString('base64') }),
+        { refused: 'STALE_SOURCE', publicCutoverAllowed: false });
+      assert.equal(objectCall({ action: 'fence', inventoryId }).unsettledMutations, 0);
+      const restoredBytes = objectCall({ action: 'restore', request: restoreRequest, base64: bytes.toString('base64') });
+      assert.deepEqual(Buffer.from(restoredBytes.base64, 'base64'), bytes);
+      assert.equal(restoredBytes.resourceId, live.resourceId); assert.equal(restoredBytes.sha256, live.sha256);
+      assert.deepEqual(objectCall({ action: 'delete', request: terminalRequest }),
+        { physicallyClosed: true, outstandingMutations: 0, publicCutoverAllowed: false });
+      const completed = { state: 'DELETED', sourceRetained: false, reservedBytes: live.byteSize, publicCutoverAllowed: false };
+      assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId }), completed);
+      assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId }), completed);
+      assert.deepEqual(Buffer.from(objectCall({ action: 'read', request: restoreRequest }).base64, 'base64'), bytes);
+      const mediaReceipt = objectCall({ action: 'receipt' });
+      assert.equal(mediaReceipt.source, 'media'); assert.equal(mediaReceipt.schemaVersion, 1);
+      assert.ok(sameWatermark(mediaReceipt.authority, authority));
+      assert.equal(docker(['ps', '--filter', `volume=${objectVolume}`, '--format', '{{.ID}}']).trim(), '');
       return { ...result, databaseBackupVerified: true, restoredSessionsInvalidated: true,
-        restoredPendingNativeInvalidated: true, historicalCourseReconciled: true, objectRestoreVerified: false };
+        restoredPendingNativeInvalidated: true, historicalCourseReconciled: true, objectRestoreVerified: true,
+        mediaReceiptAfterObjectClosure: mediaReceipt, terminalObjectRestorationRefused: true,
+        externalProviderClosureVerified: false };
     },
     cleanup() {
       // Exact CI-owned identities only. All removals are attempted; no production cleanup path is changed.
@@ -182,6 +240,10 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       } catch { failures.push('network'); }
       try { assert.equal(docker(['volume', 'inspect', '--format', '{{index .Labels "chanter.recovery"}}', restored.volume]).trim(), id);
         docker(['volume', 'rm', restored.volume]); } catch { failures.push('volume'); }
+      if (objectVolume) try {
+        assert.equal(docker(['volume', 'inspect', '--format', '{{index .Labels "chanter.recovery"}}', objectVolume]).trim(), id);
+        docker(['volume', 'rm', objectVolume]);
+      } catch { failures.push('object volume'); }
       assert.deepEqual(failures, [], 'Owned database fixture cleanup failed');
     },
   };

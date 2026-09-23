@@ -56,6 +56,13 @@ public final class ResourceRecoveryFixture {
                             .invoke(context.getBean(controller),context.getEnvironment().getRequiredProperty("chanter.internal-service-token"),mapper.writeValueAsString(request.get("page")));
                     yield response.getBody();
                 }
+                case "receipt" -> {
+                    fields(request,"action");
+                    Class<?> controller=Class.forName("com.chanter.common.lifecycle.SourceTerminalRecoveryController");
+                    var response=(org.springframework.http.ResponseEntity<?>)controller.getMethod("receipt",String.class)
+                            .invoke(context.getBean(controller),context.getEnvironment().getRequiredProperty("chanter.internal-service-token"));
+                    yield response.getBody();
+                }
                 case "delete" -> {
                     fields(request,"action","request");
                     var deletion=decode(mapper,request.get("request"),ResourceRecoveryInventory.RestoreRequest.class);
