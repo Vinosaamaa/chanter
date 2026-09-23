@@ -5,12 +5,17 @@ import { execFileSync } from 'node:child_process';
 
 assert.equal(process.env.GITHUB_ACTIONS, 'true');
 assert.equal(process.env.CHANTER_SOURCE_RECOVERY_PREVIEW, 'true');
-const source = 'ecb80253601539fc6ea0be31aded3c9d5d0da65d';
+const source = '5a6e92e07b68ab7073e0ed5df48ecd028c29d3b6';
+const frontend = '435a40b2d40a39512973dd3be139e7f1bc7042d2';
 const git = args => execFileSync('git', args, { encoding: 'utf8', timeout: 60_000 }).trim();
 const own = git(['rev-parse', 'HEAD']);
 assert.equal(own, process.env.GITHUB_SHA);
 assert.match(own, /^[a-f0-9]{40}$/);
 assert.equal(git(['status', '--porcelain']), '');
+git(['fetch', '--no-tags', 'origin', frontend]);
+assert.equal(git(['rev-parse', 'FETCH_HEAD']), frontend);
+assert.equal(git(['diff', '--name-only', own, frontend, '--', 'infra', 'scripts/deploy/release.mjs']), '',
+  'UI preview must preserve the exact deployment infrastructure');
 git(['fetch', '--no-tags', 'origin', source]);
 assert.equal(git(['rev-parse', 'FETCH_HEAD']), source);
 const prefix = 'backend/media-service/src/';
@@ -53,10 +58,13 @@ replace('public boolean beginMigrationWrite(UUID id,UUID lease) {',
 fs.writeFileSync(lifecycle, code);
 git(['add', '--', ...conflicts, lifecycle]);
 assert.equal(git(['diff', '--name-only', '--diff-filter=U']), '');
+// Use the complete owning lazy-route UI tree, never just its budget checker.
+git(['restore', '--source', frontend, '--staged', '--worktree', '--', 'frontend']);
+assert.equal(git(['diff', '--cached', '--name-only', frontend, '--', 'frontend']), '');
 git(['-c', 'user.name=Chanter hosted recovery fixture', '-c', 'user.email=fixture@example.test',
-  'commit', '--no-verify', '-m', `Disposable recovery preview ${own} + ${source}`]);
+  'commit', '--no-verify', '-m', `Disposable recovery preview ${own} + ${source} + UI ${frontend}`]);
 fs.mkdirSync('.cache', { recursive: true });
 fs.writeFileSync('.cache/source-recovery-preview.json', JSON.stringify({
-  schemaVersion: 1, source, recovery: own, preview: git(['rev-parse', 'HEAD']), accepted: false, publicCutoverAllowed: false,
+  schemaVersion: 1, source, recovery: own, frontend, preview: git(['rev-parse', 'HEAD']), accepted: false, publicCutoverAllowed: false,
 }) + '\n');
-console.log(`Disposable source preview ${source} + recovery ${own}; not accepted and capability remains OFF.`);
+console.log(`Disposable source preview ${source} + recovery ${own} + UI ${frontend}; not accepted and capability remains OFF.`);

@@ -41,6 +41,16 @@ preview completes. It records an unverified database-backup identity explicitly
 and cannot enable recovery. The ordinary CI and native media query/restart checks
 remain separate from this dependency preview.
 
+An additional source-contract review found that READY historical scope alone did
+not bind inventory to the current restored instance. The regression reproduced
+successful capture with another restore's scope basis. Qualification now compares
+the stored derived basis with the verified runtime restore identity and current
+archive digest, preserving terminal-before-budget locks and bounded streaming.
+The eighteen focused inventory/API checks pass, including absent identity and
+changed archive refusal on existing snapshot reads and restore writes.
+Full affected common/media verification then passed with zero failures/errors;
+native-only checks remain scheduled in hosted verification.
+
 The next disabled metadata slice adds one bounded, temporary source-owned
 inventory snapshot and private fence/capture/page/discard routes. Exact applied
 authority, beyond-prefix targets, unknown mutations/source writes, leases,

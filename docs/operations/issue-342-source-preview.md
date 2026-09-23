@@ -3,9 +3,13 @@
 The release workflow has an explicit `source_recovery_preview` dispatch input,
 restricted to the #342 branch. It does not publish an image or release. Its
 disposable runner merges exact source checkpoint
-`ecb80253601539fc6ea0be31aded3c9d5d0da65d` with the dispatched recovery SHA.
-The receipt records both inputs and the temporary combined commit. Neither input
-is accepted by this operation. Main and local worktrees are untouched.
+`5a6e92e07b68ab7073e0ed5df48ecd028c29d3b6` with the dispatched recovery SHA.
+The source branch's earlier frontend exceeds the unchanged JavaScript budget.
+The preview uses the complete owning #339 frontend tree at
+`435a40b2d40a39512973dd3be139e7f1bc7042d2`, after checking its infrastructure
+equals the recovery input. No individual budget file is substituted. The receipt
+records all three input SHAs and the temporary combined commit. No input is
+accepted by this operation. Main and local worktrees are untouched.
 
 Five known adapter/interface/test conflicts are checked as an exact set. #342's
 physical-operation accounting retains #251's typed outcomes. The source's extra
@@ -50,6 +54,13 @@ It also adds source content-delivery commands using the same bounded event relay
 the deferred recipients still cannot count as complete. The second preview
 stopped before packaging. No source/object runtime result
 is inferred from either failed preview.
+
+The subsequent preview found a shared agent-test database selecting another
+answer's event on ARM64. AMD64 passed backend verification, then failed the
+pre-339 frontend budget. Source `5a6e92e0` isolates the context and asserts the
+exact claimed event; its full common/agent suite passed. The complete owning UI
+tree above supplies the routing change without increasing the budget. These
+failures still provide no object runtime proof.
 
 This first preview is not the complete #342 acceptance drill. Restored-only and
 post-backup graph cases, all seven applied source receipts, invalidation, a

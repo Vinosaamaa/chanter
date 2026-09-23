@@ -26,6 +26,7 @@ public class ResourceRecoveryInventory {
     private final TransactionTemplate tx;
     private final Clock clock;
     private final boolean recovery;
+    private final UUID restoreId;
     private final StorageMutationStore mutations;
     public record Authority(long revision, String digest) {
         public Authority {
@@ -43,8 +44,14 @@ public class ResourceRecoveryInventory {
     public record RestoreMutation(UUID mutationId, Reference reference) { }
 
     public ResourceRecoveryInventory(JdbcTemplate jdbc, PlatformTransactionManager transactions, Clock clock, StorageMutationStore mutations,
-            @Value("${chanter.recovery-mode:false}") boolean recovery) {
+            @Value("${chanter.recovery-mode:false}") boolean recovery,
+            @Value("${chanter.recovery-restore-id:}") String restoredInstance) {
         this.jdbc = jdbc; this.clock = clock; this.recovery = recovery; this.mutations = mutations;
+        restoreId=restoredInstance.isBlank() ? null : UUID.fromString(restoredInstance);
+        if(restoreId!=null) {
+            requireIdentity(restoreId);
+            if(!restoreId.toString().equals(restoredInstance)) throw new IllegalArgumentException("Invalid restored instance identity");
+        }
         tx = new TransactionTemplate(transactions); tx.setTimeout(30);
     }
 
@@ -175,8 +182,30 @@ public class ResourceRecoveryInventory {
         if (count("SELECT COUNT(*) FROM course_resources WHERE storage_write_settled=FALSE OR lease_id IS NOT NULL OR lease_until IS NOT NULL OR state IN ('STAGING','SCANNING','LEGACY') OR storage_backend NOT IN ('local','s3')") != 0)
             throw new IllegalStateException("Inventory has unresolved source writes, leases or legacy references");
         requireScopes("lifecycle_scope_imports");
-        if (recovery) requireScopes("lifecycle_recovery_scopes");
+        if (recovery) {
+            requireScopes("lifecycle_recovery_scopes");
+            requireDerivedScopeBinding();
+        }
         return namespace;
+    }
+    private void requireDerivedScopeBinding() {
+        if(count("SELECT COUNT(*) FROM lifecycle_terminal_targets WHERE target_kind='STUDY_SERVER'")>MAX_REFERENCES)
+            throw new IllegalStateException("Inventory terminal scope capacity exceeded");
+        jdbc.query(connection -> {
+            var query=connection.prepareStatement("SELECT t.digest,c.scope_kind,c.scope_digest,r.basis_digest"
+                    + " FROM lifecycle_terminal_targets t JOIN lifecycle_scope_imports c ON c.study_server_id=t.target_id"
+                    + " AND c.revision=t.revision AND c.event_id=t.event_id AND c.terminal_digest=t.digest"
+                    + " JOIN lifecycle_recovery_scopes r ON r.study_server_id=c.study_server_id AND r.scope_kind=c.scope_kind"
+                    + " AND r.revision=t.revision AND r.event_id=t.event_id AND r.terminal_digest=t.digest"
+                    + " WHERE t.target_kind='STUDY_SERVER' AND c.ready=TRUE AND r.ready=TRUE");
+            query.setFetchSize(256); return query;
+        },(org.springframework.jdbc.core.RowCallbackHandler) row -> {
+            String original=row.getString(3);
+            if(restoreId==null || original==null || !original.matches("[a-f0-9]{64}")
+                    || !hash("deleted-study-server-recovery-scope\n1\n"+restoreId+"\n"+row.getString(1)+"\n"
+                        +row.getString(2)+"\n"+original+"\n").equals(row.getString(4)))
+                throw new IllegalStateException("Inventory historical scope belongs to another restored instance or archive");
+        });
     }
     private void requireScopes(String table) {
         if (count("SELECT COUNT(*) FROM lifecycle_terminal_targets t WHERE t.target_kind='STUDY_SERVER' AND"

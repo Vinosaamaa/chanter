@@ -23,6 +23,7 @@ class ResourceRecoveryInventoryTest {
     private String nativeSchema;
     private boolean nativeSchemaCreated;
     private final UUID inventory = UUID.randomUUID(), backup = UUID.randomUUID(), course = UUID.randomUUID();
+    private final UUID restoreId = UUID.randomUUID();
     private final ResourceRecoveryInventory.Authority authority = new ResourceRecoveryInventory.Authority(1,"a".repeat(64));
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-22T00:00:00Z"),ZoneOffset.UTC);
     @BeforeEach void schema() {
@@ -47,13 +48,13 @@ class ResourceRecoveryInventoryTest {
         jdbc.execute("CREATE TABLE lifecycle_terminal_targets(target_kind VARCHAR(16),target_id UUID,revision BIGINT,event_id UUID,digest VARCHAR(64))");
         jdbc.execute("CREATE TABLE lifecycle_source_requests(target_id UUID)");
         for (String prefix : java.util.List.of("lifecycle_scope_import","lifecycle_recovery_scope")) {
-            jdbc.execute("CREATE TABLE "+prefix+"s(study_server_id UUID,scope_kind VARCHAR(8),revision BIGINT,event_id UUID,terminal_digest VARCHAR(64),ready BOOLEAN)");
+            jdbc.execute("CREATE TABLE "+prefix+"s(study_server_id UUID,scope_kind VARCHAR(8),revision BIGINT,event_id UUID,terminal_digest VARCHAR(64),ready BOOLEAN,scope_digest VARCHAR(64),basis_digest VARCHAR(64))");
             jdbc.execute("CREATE TABLE "+prefix+"_ids(study_server_id UUID,scope_kind VARCHAR(8),scope_id UUID)");
         }
         jdbc.execute("CREATE TABLE course_resources(id UUID PRIMARY KEY,course_id UUID,uploaded_by_user_id UUID,study_server_id UUID,storage_key VARCHAR(150),migration_key VARCHAR(150),byte_size BIGINT,sha256 VARCHAR(64),state VARCHAR(32),storage_backend VARCHAR(16),byte_reservation BOOLEAN,storage_write_settled BOOLEAN,lease_id UUID,lease_until TIMESTAMP WITH TIME ZONE)");
         var transactions = new DataSourceTransactionManager(source);
         mutations = new StorageMutationStore(jdbc,transactions,clock);
-        inventories = new ResourceRecoveryInventory(jdbc,transactions,clock,mutations,true);
+        inventories = new ResourceRecoveryInventory(jdbc,transactions,clock,mutations,true,restoreId.toString());
         mutations.fence(inventory);
     }
     @AfterEach void removeOnlyOwnedNativeFixtureSchema() {
@@ -101,7 +102,34 @@ class ResourceRecoveryInventoryTest {
     }
     private void scopes(String prefix,UUID server,UUID event) {
         for (String kind : java.util.List.of("COURSE","CHANNEL"))
-            jdbc.update("INSERT INTO "+prefix+"s VALUES(?,?,1,?,?,TRUE)",server,kind,event,authority.digest());
+            jdbc.update("INSERT INTO "+prefix+"s VALUES(?,?,1,?,?,TRUE,?,?)",server,kind,event,authority.digest(),"e".repeat(64),basis(restoreId,kind,"e".repeat(64)));
+    }
+    private String basis(UUID restored,String kind,String original) {
+        try { return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest(("deleted-study-server-recovery-scope\n1\n"+restored+"\n"+authority.digest()+"\n"+kind+"\n"+original+"\n").getBytes(java.nio.charset.StandardCharsets.UTF_8))); }
+        catch(java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+    }
+
+    @Test void copiedDerivedScopeFromAnotherRestoredInstanceCannotQualifyInventory() {
+        resource(); UUID server=UUID.randomUUID(),event=UUID.randomUUID();
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('STUDY_SERVER',?,?,?,?)",server,1,event,authority.digest());
+        scopes("lifecycle_scope_import",server,event); scopes("lifecycle_recovery_scope",server,event);
+        jdbc.update("UPDATE lifecycle_recovery_scopes SET basis_digest=? WHERE scope_kind='COURSE'",basis(UUID.randomUUID(),"COURSE","e".repeat(64)));
+        assertRefused("restored instance");
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+    }
+    @Test void savedSnapshotStillRequiresCurrentArchiveAndVerifiedRuntimeIdentity() {
+        resource(); UUID server=UUID.randomUUID(),event=UUID.randomUUID();
+        jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('STUDY_SERVER',?,?,?,?)",server,1,event,authority.digest());
+        scopes("lifecycle_scope_import",server,event); scopes("lifecycle_recovery_scope",server,event);
+        inventories.capture(inventory,backup,authority);
+        var noIdentity=new ResourceRecoveryInventory(jdbc,new DataSourceTransactionManager(jdbc.getDataSource()),clock,mutations,true,"");
+        assertThatThrownBy(() -> noIdentity.page(inventory,authority,0,256)).hasMessageContaining("restored instance");
+        jdbc.update("UPDATE lifecycle_scope_imports SET scope_digest=? WHERE scope_kind='COURSE'","f".repeat(64));
+        assertThatThrownBy(() -> inventories.page(inventory,authority,0,256)).hasMessageContaining("archive");
+        assertThatThrownBy(() -> inventories.beginRestore(new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1),new byte[]{1}))
+                .hasMessageContaining("archive");
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
     }
 
     @Test void unsettledLeaseLegacyAndUncommittedDeletionAllRefuseBeforeSnapshotWrites() {

@@ -60,6 +60,25 @@ file into a private child directory would change relative environment and bind
 paths; those existing paths are resolved against the original compose directory.
 No credential values are read into the generated compose definition.
 
+Full review completed at `b519bb27` and verified the missing-volume and typed S3
+settlement fixes. Its remaining V5 observation is the same source-union gate.
+The HTTP 429 suggestion conflates a finished invocation with a successful write:
+an explicit rejection still throws `PutFailure` or `DeleteFailure`, and callers
+cannot report success. FINISHED means that invocation returned a definitive
+rejection; it does not claim the object exists or was erased. Transport failure,
+408, 5xx and unconfirmed settlement retain UNKNOWN. Real provider closure remains
+unproven. The merge-catch suggestion affects diagnostics only: missing MERGE_HEAD
+or an unexpected conflict set aborts before committing or building.
+
+The seventeen custom suggestions add no confirmed correctness defect. Retain the
+private bounded byte copy and the second live source qualification around actual
+read-back; neither can be replaced by cached snapshot identity. Raw command stderr
+may contain private response content and is intentionally excluded. The hosted
+fixture is already confined to its explicit non-publishing preview; no persistent
+transport, artifact-sharing workflow or replacement retry framework is added.
+The existing source anchors reject changed inputs. Prior dispositions cover the
+remaining helper extraction and document layout suggestions.
+
 Additional preview suggestions are dispositioned as follows: retain independent
 native architecture builds rather than add artifact transfer; preserve canonical
 text UUID ordering and the early capacity bound; retain bounded private byte

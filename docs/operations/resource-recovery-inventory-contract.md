@@ -33,6 +33,11 @@ storage namespace, unsettled physical mutations, unsettled source writes, any
 remaining worker lease and legacy references. Every deleted Study Server requires
 matching READY current and restore-derived COURSE and CHANNEL scope in recovery
 mode. Resource rows with no Study Server ID still match through their course.
+For every terminal server, the derived basis must also match the current verified
+`chanter.recovery-restore-id` and each original archived scope digest. Missing
+runtime identity, copied scope from an earlier restore or changed archive content
+refuses capture, paging and maintenance PUT. This repeats the owning #251 basis
+contract using a bounded streamed check under the same locks.
 
 The source request's `event_id` identifies the request outbox event. It is not the
 canonical journal event ID. The permanent target comes from #251's validated
