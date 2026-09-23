@@ -98,3 +98,24 @@ CREATE TABLE lifecycle_terminal_delivery (
     target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,job_id UUID NOT NULL,reported_state VARCHAR(16) NOT NULL,
     PRIMARY KEY(target_kind,target_id)
 );
+
+CREATE TABLE lifecycle_erased_content (
+    target_kind VARCHAR(16) NOT NULL,target_id UUID NOT NULL,revision BIGINT NOT NULL,event_id UUID NOT NULL,
+    terminal_digest VARCHAR(64) NOT NULL,source_kind VARCHAR(24) NOT NULL,source_id UUID NOT NULL,
+    PRIMARY KEY(target_kind,target_id,source_kind,source_id)
+);
+        ALTER TABLE lifecycle_erased_content ADD COLUMN search_event_id UUID;
+        ALTER TABLE lifecycle_erased_content ADD COLUMN notification_event_id UUID;
+        ALTER TABLE lifecycle_erased_content ADD COLUMN search_ack BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE lifecycle_erased_content ADD COLUMN notification_ack BOOLEAN NOT NULL DEFAULT FALSE;
+        CREATE TABLE lifecycle_content_dispatch (account_id UUID PRIMARY KEY,advance_event_id UUID,payload_cutoff BIGINT NOT NULL);
+        CREATE TABLE lifecycle_content_redactions (event_id UUID PRIMARY KEY);
+        CREATE TABLE lifecycle_content_final (
+            account_id UUID NOT NULL,destination VARCHAR(16) NOT NULL,terminal_digest VARCHAR(64) NOT NULL,
+            event_id UUID NOT NULL UNIQUE,content_count BIGINT NOT NULL,batch_count BIGINT NOT NULL,ack BOOLEAN NOT NULL DEFAULT FALSE,
+            PRIMARY KEY(account_id,destination)
+        );
+        CREATE INDEX lifecycle_content_search_event ON lifecycle_erased_content(search_event_id);
+        CREATE INDEX lifecycle_content_notification_event ON lifecycle_erased_content(notification_event_id);
+        CREATE INDEX lifecycle_content_pending ON lifecycle_erased_content(target_kind,target_id,search_event_id,source_kind,source_id)
+        ;

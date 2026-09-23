@@ -37,12 +37,20 @@ public class MediaTerminalConfiguration {
                 outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore mediaTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,ResourceLifecycle resources,
+            ExportSnapshotStore snapshots,ResourceLifecycle resources,ErasedContentDelivery content,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
         return new TerminalReapplyStore(jdbc,tx,"media",entry -> {
-            if(entry.targetKind().equals("ACCOUNT")) snapshots.cancelAccount(entry.targetId());
+            if(entry.targetKind().equals("ACCOUNT")) {
+                snapshots.cancelAccount(entry.targetId());
+                jdbc.update("""
+                    INSERT INTO lifecycle_erased_content(target_kind,target_id,revision,event_id,terminal_digest,source_kind,source_id)
+                    SELECT 'ACCOUNT',?,?,?,?,'RESOURCE',r.id FROM course_resources r WHERE r.uploaded_by_user_id=?
+                      AND NOT EXISTS(SELECT 1 FROM lifecycle_erased_content old WHERE old.target_kind='ACCOUNT' AND old.target_id=? AND old.source_kind='RESOURCE' AND old.source_id=r.id)
+                    """,entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),entry.targetId(),entry.targetId());
+                content.start(entry);
+            }
             // Files may appear in any currently retained authorized source export.
             snapshots.invalidateRetained();
             boolean ready=false;

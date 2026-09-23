@@ -56,13 +56,19 @@ class NotificationTerminalRecoveryTest {
         var community=new com.chanter.common.lifecycle.ErasedContent.Completion(entry,"community",0,0);
         var first=new DurableEvent(UUID.randomUUID(),1,"community",100,com.chanter.common.lifecycle.ErasedContent.FINAL,community.key(),mapper.writeValueAsString(community));
         postLifecycle(first).andExpect(status().isNoContent());
+        for(String source:List.of("media","agent")) {
+            assertThat(jdbc.queryForObject("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_id=?",String.class,entry.targetId())).isEqualTo("PENDING");
+            var completion=new com.chanter.common.lifecycle.ErasedContent.Completion(entry,source,0,0);
+            postLifecycle(new DurableEvent(UUID.randomUUID(),1,source,100,com.chanter.common.lifecycle.ErasedContent.FINAL,completion.key(),mapper.writeValueAsString(completion)))
+                    .andExpect(status().isNoContent());
+        }
         var message=new com.chanter.common.lifecycle.ErasedContent.Completion(entry,"message",0,0);
         var last=new DurableEvent(UUID.randomUUID(),1,"message",100,com.chanter.common.lifecycle.ErasedContent.FINAL,message.key(),mapper.writeValueAsString(message));
         jdbc.execute("ALTER TABLE durable_outbox ADD CONSTRAINT reject_completion CHECK(kind<>'ACCOUNT_DELETE_RECEIPT' OR aggregate_key<>'"+com.chanter.common.lifecycle.AccountDeletionProtocol.key("ACCOUNT",entry.targetId())+"' OR payload NOT LIKE '%COMPLETE%')");
         try { assertThatThrownBy(() -> postLifecycle(last)).hasRootCauseInstanceOf(org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException.class); }
         finally { jdbc.execute("ALTER TABLE durable_outbox DROP CONSTRAINT reject_completion"); }
         assertThat(jdbc.queryForObject("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_id=?",String.class,entry.targetId())).isEqualTo("PENDING");
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_received_final WHERE account_id=?",Integer.class,entry.targetId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_received_final WHERE account_id=?",Integer.class,entry.targetId())).isEqualTo(3);
         postLifecycle(last).andExpect(status().isNoContent());postLifecycle(last).andExpect(status().isNoContent());
         assertThat(jdbc.queryForObject("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_id=?",String.class,entry.targetId())).isEqualTo("COMPLETE");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='ACCOUNT_DELETE_RECEIPT' AND aggregate_key=? AND payload LIKE '%COMPLETE%'",Integer.class,

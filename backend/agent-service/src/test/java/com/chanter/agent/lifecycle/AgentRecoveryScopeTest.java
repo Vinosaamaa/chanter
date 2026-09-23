@@ -29,7 +29,8 @@ class AgentRecoveryScopeTest {
         var config=new AgentTerminalConfiguration();
         var retractions=new AnswerRetractions(jdbc,new com.chanter.common.events.DurableOutbox(jdbc,tx,"agent",java.time.Clock.systemUTC()),mapper,
                 factory.getBeanProvider(TerminalReapplyStore.class));
-        var terminal=config.agentTerminalStore(jdbc,manager,snapshots,chunks,mapper,retractions,true,factory.getBeanProvider(RecoveryScopeStore.class));
+        var content=new ErasedContentDelivery("agent",jdbc,tx,new com.chanter.common.events.DurableOutbox(jdbc,tx,"agent",java.time.Clock.systemUTC()),mapper,factory.getBeanProvider(TerminalReapplyStore.class));
+        var terminal=config.agentTerminalStore(jdbc,manager,snapshots,chunks,mapper,retractions,content,true,factory.getBeanProvider(RecoveryScopeStore.class));
         factory.registerSingleton("terminal",terminal);
         var current=config.agentDeletedScopeStore(jdbc,manager,terminal);
         UUID restore=UUID.randomUUID(),operation=UUID.randomUUID();

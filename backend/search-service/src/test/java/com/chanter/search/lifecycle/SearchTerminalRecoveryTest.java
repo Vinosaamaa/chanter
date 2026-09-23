@@ -50,6 +50,27 @@ class SearchTerminalRecoveryTest {
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     com.chanter.search.application.SearchSourceClient sources;
 
+    @Test void communityAndMessageFinalsCannotCompleteAnAccountWithUnreconciledMediaCopies() throws Exception {
+        UUID server=UUID.randomUUID(),resource=UUID.randomUUID();var original=resource(server,resource);index.apply(original);
+        var page=nextPage("ACCOUNT",UUID.randomUUID());terminal.reapply(page);var entry=page.entries().getFirst();
+        for(String source:List.of("community","message","agent")) {
+            var complete=new com.chanter.common.lifecycle.ErasedContent.Completion(entry,source,0,0);
+            lifecycle(new DurableEvent(UUID.randomUUID(),1,source,10,com.chanter.common.lifecycle.ErasedContent.FINAL,complete.key(),mapper.writeValueAsString(complete)));
+        }
+        assertThat(count(resource)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_id=?",String.class,entry.targetId())).isEqualTo("PENDING");
+        var batch=new com.chanter.common.lifecycle.ErasedContent.Batch(entry,List.of(new com.chanter.common.lifecycle.ErasedContent.Ref("RESOURCE",resource)));
+        lifecycle(new DurableEvent(UUID.randomUUID(),1,"media",11,com.chanter.common.lifecycle.ErasedContent.ERASE,batch.key(UUID.randomUUID()),mapper.writeValueAsString(batch)));
+        assertThat(count(resource)).isZero();index.apply(original);assertThat(count(resource)).isZero();
+        var complete=new com.chanter.common.lifecycle.ErasedContent.Completion(entry,"media",1,1);
+        lifecycle(new DurableEvent(UUID.randomUUID(),1,"media",12,com.chanter.common.lifecycle.ErasedContent.FINAL,complete.key(),mapper.writeValueAsString(complete)));
+        assertThat(jdbc.queryForObject("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_id=?",String.class,entry.targetId())).isEqualTo("COMPLETE");
+    }
+    private void lifecycle(DurableEvent event) throws Exception {
+        http.perform(post("/api/v1/internal/lifecycle/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(event))).andExpect(status().isNoContent());
+    }
+
     @Test void resourceReapplyErasesOnlyItsPayloadAndFencesDurableAndLegacyReplacement() throws Exception {
         UUID server=UUID.randomUUID(), resource=UUID.randomUUID(), other=UUID.randomUUID();
         var change=resource(server,resource);

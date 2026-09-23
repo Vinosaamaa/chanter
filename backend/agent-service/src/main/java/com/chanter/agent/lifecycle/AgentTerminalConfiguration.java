@@ -33,7 +33,7 @@ public class AgentTerminalConfiguration {
                 outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore agentTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,AnswerRetractions retractions,
+            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,AnswerRetractions retractions,ErasedContentDelivery content,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
@@ -42,6 +42,12 @@ public class AgentTerminalConfiguration {
             if(entry.targetKind().equals("ACCOUNT")) {
                 snapshots.cancelAccount(target);
                 retractions.account(target);
+                jdbc.update("""
+                    INSERT INTO lifecycle_erased_content(target_kind,target_id,revision,event_id,terminal_digest,source_kind,source_id)
+                    SELECT 'ACCOUNT',?,?,?,?,'STUDY_ASSISTANT_ANSWER',a.answer_id FROM lifecycle_answer_retractions a WHERE a.author_id=?
+                      AND NOT EXISTS(SELECT 1 FROM lifecycle_erased_content old WHERE old.target_kind='ACCOUNT' AND old.target_id=? AND old.source_kind='STUDY_ASSISTANT_ANSWER' AND old.source_id=a.answer_id)
+                    """,target,entry.revision(),entry.eventId(),entry.digest(),target,target);
+                content.start(entry);
                 jdbc.update("DELETE FROM study_assistant_answer_helpful WHERE user_id=?",target);
                 jdbc.update("UPDATE native_companion_requests SET evidence_json=NULL,outcome=CASE WHEN outcome IN ('ISSUED','ACCEPTING') THEN 'REJECTED' ELSE outcome END WHERE user_id=?",target);
                 // Usage and shared installation attribution require their documented retention disposition.

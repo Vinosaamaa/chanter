@@ -184,6 +184,6 @@ public final class ErasedContentDelivery {
         } catch(com.fasterxml.jackson.core.JsonProcessingException failure) { throw invalid(); }
     }
     private static String advanceKey(TerminalJournal.Entry entry) { return "ACCOUNT_CONTENT_ADVANCE:"+entry.eventId(); }
-    private void requireSource() { if(!Set.of("community","message").contains(source)) throw invalid(); }
+    private void requireSource() { if(!ErasedContent.OWNERS.contains(source)) throw invalid(); }
     private static IllegalArgumentException invalid() { return new IllegalArgumentException("Invalid erased content source delivery"); }
 }

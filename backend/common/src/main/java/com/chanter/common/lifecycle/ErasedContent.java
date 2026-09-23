@@ -7,9 +7,11 @@ public final class ErasedContent {
     public static final String ERASE="ACCOUNT_CONTENT_ERASE", RECEIPT="ACCOUNT_CONTENT_ERASED";
     public static final String FINAL="ACCOUNT_CONTENT_FINAL", COMPLETE="ACCOUNT_CONTENT_COMPLETE";
     public static final int PAGE_SIZE=256;
+    public static final Set<String> OWNERS=Set.of("community","message","media","agent");
     private static final Map<String,Set<String>> KINDS=Map.of(
             "community",Set.of("ANNOUNCEMENT","EVENT","OFFICE_HOURS"),
-            "message",Set.of("MESSAGE","QUESTION","QUESTION_PREVIEW","FAQ"));
+            "message",Set.of("MESSAGE","QUESTION","QUESTION_PREVIEW","FAQ"),
+            "media",Set.of("RESOURCE"),"agent",Set.of("STUDY_ASSISTANT_ANSWER"));
     private ErasedContent() { }
     public record Ref(String kind,UUID id) {
         public String orderKey() { return kind+":"+id; }

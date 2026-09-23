@@ -13,10 +13,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 class ErasedContentDeliveryTest {
     private final ObjectMapper mapper=new ObjectMapper().findAndRegisterModules();
-    @Test void explicitFinalsBindBothProducersAndBothRecipientsIncludingAnEmptySource() throws Exception {
+    @Test void explicitFinalsBindAllContentProducersAndBothRecipientsIncludingEmptySources() throws Exception {
         var community=new Node("community");var message=new Node("message");var search=new Node("search");var notification=new Node("notification");
+        var media=new Node("media");var agent=new Node("agent");
         var entry=entry();
-        for(var node:List.of(community,message,search,notification)) node.tx.executeWithoutResult(s -> node.terminal.applyTerminal(entry));
+        for(var node:List.of(community,message,media,agent,search,notification)) node.tx.executeWithoutResult(s -> node.terminal.applyTerminal(entry));
+        for(var node:List.of(media,agent)) node.tx.executeWithoutResult(s -> node.delivery.start(entry));
         community.tx.executeWithoutResult(s -> {
             community.jdbc.update("INSERT INTO lifecycle_erased_content(target_kind,target_id,revision,event_id,terminal_digest,source_kind,source_id) VALUES ('ACCOUNT',?,?,?,?,?,?)",
                     entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),"ANNOUNCEMENT",UUID.randomUUID());
@@ -48,17 +50,24 @@ class ErasedContentDeliveryTest {
             finally { recipient.jdbc.execute("ALTER TABLE durable_outbox DROP CONSTRAINT reject_final"); }
             assertThat(recipient.receiver.complete(entry)).isFalse();
             recipient.receiver.accept(empty);recipient.receiver.accept(empty);
-            assertThat(recipient.receiver.complete(entry)).isTrue();
-            TerminalReapplyStore.Cleanup state=recipient.tx.execute(s -> recipient.terminal.cleanup(entry));
-            assertThat(state).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
+            assertThat(recipient.receiver.complete(entry)).isFalse();
             var ack=recipient.events(ErasedContent.COMPLETE,"lifecycle-message").getFirst();
             var receipt=mapper.readValue(ack.payload(),ErasedContent.FinalReceipt.class);
             var forged=new DurableEvent(UUID.randomUUID(),1,recipient.name,ack.revision()+100,ack.kind(),ack.aggregateKey(),
                     mapper.writeValueAsString(new ErasedContent.FinalReceipt(UUID.randomUUID(),receipt.completion())));
             assertThatThrownBy(() -> message.delivery.accept(forged)).isInstanceOf(IllegalArgumentException.class);
             message.delivery.accept(ack);message.delivery.accept(ack);
+            for(var producer:List.of(media,agent)) {
+                assertThat(recipient.receiver.complete(entry)).isFalse();
+                recipient.receiver.accept(producer.events(ErasedContent.FINAL,"lifecycle-"+recipient.name).getFirst());
+                producer.delivery.accept(recipient.events(ErasedContent.COMPLETE,"lifecycle-"+producer.name).getFirst());
+            }
+            assertThat(recipient.receiver.complete(entry)).isTrue();
+            TerminalReapplyStore.Cleanup state=recipient.tx.execute(s -> recipient.terminal.cleanup(entry));
+            assertThat(state).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
         }
         assertThat(community.delivery.complete(entry)).isTrue();assertThat(message.delivery.complete(entry)).isTrue();
+        assertThat(media.delivery.complete(entry)).isTrue();assertThat(agent.delivery.complete(entry)).isTrue();
         var another=entry();
         assertThat(search.receiver.complete(another)).isFalse();
         assertThat(message.delivery.complete(another)).isFalse();

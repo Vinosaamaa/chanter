@@ -67,6 +67,9 @@ class MediaTerminalRecoveryTest {
         assertThat(resources.terminalScope(resource)).isFalse();
         apply(entry); apply(entry);
         assertThat(resources.find(resource.id()).orElseThrow().state()).isEqualTo("DELETE_PENDING");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_erased_content WHERE target_kind='ACCOUNT' AND target_id=? AND source_kind='RESOURCE' AND source_id=?",Integer.class,
+                resource.uploadedByUserId(),resource.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_ADVANCE' AND aggregate_key=?",Integer.class,"ACCOUNT_CONTENT_ADVANCE:"+entry.eventId())).isEqualTo(1);
         assertThat(resources.terminalScope(resource)).isTrue();
         assertThat(resources.claim(false)).isEmpty();
         assertThat(resources.courseUsage(resource.courseId()).reservedBytes()).isEqualTo(10);

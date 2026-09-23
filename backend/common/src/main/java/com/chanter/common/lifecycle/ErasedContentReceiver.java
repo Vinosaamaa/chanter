@@ -74,7 +74,7 @@ public final class ErasedContentReceiver {
         });
     }
     public boolean complete(TerminalJournal.Entry entry) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_received_final WHERE account_id=? AND terminal_digest=? AND owner IN ('community','message')",Integer.class,entry.targetId(),entry.digest())==2;
+        return jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_received_final WHERE account_id=? AND terminal_digest=? AND owner IN ('community','message','media','agent')",Integer.class,entry.targetId(),entry.digest())==ErasedContent.OWNERS.size();
     }
     private void finish(DurableEvent event) {
         final ErasedContent.Completion completion;

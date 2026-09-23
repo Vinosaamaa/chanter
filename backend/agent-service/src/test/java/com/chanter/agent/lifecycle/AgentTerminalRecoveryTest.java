@@ -40,6 +40,19 @@ class AgentTerminalRecoveryTest {
     @Autowired AccountDeletionProtocol protocol;
     private final Model model=new Model("Fixture","ollama","fixture",null,null,64,16,Duration.ofSeconds(3),Set.of(),null);
 
+    @Test void accountRetainsExactAnswerNotificationIdentityUntilItsDownstreamContentReceipts() {
+        UUID server=UUID.randomUUID(),user=UUID.randomUUID();install(server,user);
+        var answer=new StudyAssistantAnswer(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),server,user,"private question","private answer",AnswerConfidence.HIGH,false,List.of(),Instant.now());
+        answers.saveAnswer(answer,InvocationType.GROUNDED_ANSWER);
+        var entry=entry("ACCOUNT",user);apply(entry);apply(entry);
+        assertThat(answers.findBySupportQuestionId(answer.supportQuestionId())).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_erased_content WHERE target_kind='ACCOUNT' AND target_id=? AND source_kind='STUDY_ASSISTANT_ANSWER' AND source_id=?",
+                Integer.class,user,answer.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_ADVANCE' AND aggregate_key=?",Integer.class,"ACCOUNT_CONTENT_ADVANCE:"+entry.eventId())).isEqualTo(1);
+        TerminalReapplyStore.Cleanup state=new TransactionTemplate(transactions).execute(s -> terminal.cleanup(entry));
+        assertThat(state).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+    }
+
     @Test void statusRepairRemembersTheAnswerAfterDeliveredPayloadErasure() {
         UUID server=UUID.randomUUID(),user=UUID.randomUUID(); install(server,user);
         var answer=new StudyAssistantAnswer(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),server,user,"question","answer",AnswerConfidence.HIGH,false,List.of(),Instant.now());
@@ -62,6 +75,8 @@ class AgentTerminalRecoveryTest {
         var claimOutbox=new com.chanter.common.events.DurableOutbox(jdbc,new TransactionTemplate(transactions),"agent",Clock.fixed(available.plusSeconds(1),ZoneOffset.UTC));
         UUID acceptedEvent=jdbc.queryForObject("SELECT id FROM durable_outbox WHERE aggregate_key=? AND kind='ACCEPTED_ANSWER'",UUID.class,"ACCEPTED_ANSWER:"+question);
         var claimed=claimOutbox.claim().orElseThrow();
+        for(int preceding=0;!claimed.event().id().equals(acceptedEvent) && preceding<64;preceding++)
+            claimed=claimOutbox.claim().orElseThrow();
         assertThat(claimed.event().id()).isEqualTo(acceptedEvent);
         assertThat(claimed.event().kind()).isEqualTo(com.chanter.common.events.AcceptedAnswerStatus.KIND);
         UUID reservation=ledger.reserve(server,question,user,"fixture",model);
