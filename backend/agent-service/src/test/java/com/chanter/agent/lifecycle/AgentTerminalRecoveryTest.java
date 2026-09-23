@@ -38,7 +38,38 @@ class AgentTerminalRecoveryTest {
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
     @Autowired AccountDeletionParticipant participant;
     @Autowired AccountDeletionProtocol protocol;
+    @Autowired org.springframework.context.ConfigurableApplicationContext context;
+    @Autowired com.chanter.agent.infra.TestSupportQuestionChannelAccessClient channelAccess;
+    @Autowired com.chanter.agent.infra.TestStudyAssistantGrantCandidatesClient grantCandidates;
     private final Model model=new Model("Fixture","ollama","fixture",null,null,64,16,Duration.ofSeconds(3),Set.of(),null);
+
+    @Test void hostedPendingNativeFixtureUsesCurrentChannelScopeAndOwningStoresWithoutCredentials() throws Exception {
+        var source=java.nio.file.Path.of("../../scripts/deploy/fixtures/CanonicalLifecycleFixture.java").toAbsolutePath().normalize();
+        var output=java.nio.file.Path.of("target/canonical-agent-fixture-test").toAbsolutePath();java.nio.file.Files.createDirectories(output);
+        var compiler=javax.tools.ToolProvider.getSystemJavaCompiler();
+        try(var files=compiler.getStandardFileManager(null,null,null)) {
+            assertThat(compiler.getTask(null,files,null,List.of("-classpath",System.getProperty("java.class.path"),"-d",output.toString()),null,
+                    files.getJavaFileObjects(source)).call()).isTrue();
+        }
+        try(var loader=new java.net.URLClassLoader(new java.net.URL[]{output.toUri().toURL()},getClass().getClassLoader())) {
+            var type=loader.loadClass("CanonicalLifecycleFixture");var constructor=type.getDeclaredConstructor(org.springframework.context.ConfigurableApplicationContext.class);
+            constructor.setAccessible(true);var fixture=constructor.newInstance(context);
+            var execute=type.getDeclaredMethod("execute",com.fasterxml.jackson.databind.JsonNode.class);execute.setAccessible(true);
+            UUID owner=UUID.randomUUID(),server=UUID.randomUUID(),course=UUID.randomUUID(),channel=UUID.randomUUID();
+            var request=mapper.valueToTree(Map.of("action","agent-native-seed","serverId",server,"channelId",channel,"ownerId",owner));
+            assertThatThrownBy(() -> execute.invoke(fixture,request)).hasRootCauseInstanceOf(ResponseStatusException.class);
+            channelAccess.grantInstructorView(channel,owner,course,server,"Fixture");
+            grantCandidates.registerGrantCandidates(server,owner,new StudyAssistantGrantCandidatesClient.GrantCandidates(server,List.of(),List.of()));
+            var result=mapper.valueToTree(execute.invoke(fixture,request));
+            assertThat(result.get("outcome").asText()).isEqualTo("ISSUED");assertThat(result.get("syntheticPendingOnly").asBoolean()).isTrue();
+            assertThat(result.toString()).doesNotContain("session","installation","Token","evidence","question");
+            UUID id=UUID.fromString(result.get("requestId").asText());
+            assertThat(jdbc.queryForObject("SELECT reserved_tokens FROM ai_generation_usage WHERE id=?",Long.class,id)).isEqualTo(80);
+            assertThat(jdbc.queryForObject("SELECT provider FROM ai_generation_usage WHERE id=?",String.class,id)).isEqualTo("codex-native");
+            assertThat(jdbc.queryForObject("SELECT measured FROM ai_generation_usage WHERE id=?",Boolean.class,id)).isFalse();
+            assertThat(jdbc.queryForObject("SELECT evidence_json FROM native_companion_requests WHERE id=?",String.class,id)).contains("Synthetic pending fixture");
+        }
+    }
 
     @Test void accountRetainsExactAnswerNotificationIdentityUntilItsDownstreamContentReceipts() {
         UUID server=UUID.randomUUID(),user=UUID.randomUUID();install(server,user);

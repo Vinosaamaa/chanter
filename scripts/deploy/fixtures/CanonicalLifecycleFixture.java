@@ -153,6 +153,30 @@ public final class CanonicalLifecycleFixture {
                 requireSource("media"); fields(request,"action","resourceId","ownerId");
                 yield invoke(bean("com.chanter.media.application.CourseResourceService"),"deleteCourseResource",id(request,"resourceId"),id(request,"ownerId"));
             }
+            case "agent-native-seed" -> {
+                requireSource("agent"); fields(request,"action","serverId","channelId","ownerId");
+                UUID server=id(request,"serverId"),channel=id(request,"channelId"),owner=id(request,"ownerId");
+                Object access=invoke(bean("com.chanter.agent.application.SupportQuestionChannelAccessClient"),"requireAccess",channel,owner);
+                if(!server.equals(invoke(access,"studyServerId")) || !Boolean.TRUE.equals(invoke(access,"canViewUnansweredSupportQuestions")))
+                    throw new IllegalArgumentException("Native fixture requires current matching Instructor scope");
+                UUID course=(UUID)invoke(access,"courseId");
+                Object installs=bean("com.chanter.agent.application.StudyAssistantRepository");
+                if(((Optional<?>)invoke(installs,"findInstallByStudyServerId",server)).isEmpty())
+                    invoke(bean("com.chanter.agent.application.StudyAssistantService"),"install",server,owner,List.of());
+                Object model=mapper.treeToValue(mapper.valueToTree(Map.of("label","Synthetic native request","provider","codex-native","model","fixture-native",
+                        "maxInputTokens",64,"maxOutputTokens",16,"timeout","PT3S","allowedCourseIds",List.of())),
+                        Class.forName("com.chanter.agent.config.LlmProperties$Model"));
+                UUID question=UUID.randomUUID();
+                UUID reservation=(UUID)invoke(bean("com.chanter.agent.application.AiGenerationLedger"),"reserve",server,question,owner,"fixture-native",model);
+                String evidence=mapper.writeValueAsString(Map.of("studyServerId",server,"courseId",course,"question","Synthetic pending fixture","citations",List.of()));
+                var row=mapper.createObjectNode();row.put("id",reservation.toString());row.put("channel",channel.toString());row.put("question",question.toString());
+                row.put("user",owner.toString());row.put("session",UUID.randomUUID().toString());row.put("installation",UUID.randomUUID().toString());
+                row.put("model","fixture-native");row.put("evidenceJson",evidence);row.put("promptHash","a".repeat(64));row.put("evidenceHash","b".repeat(64));
+                row.put("acceptUntil",Instant.now().plusSeconds(120).toString());
+                invoke(bean("com.chanter.agent.infra.NativeRequestRepository"),"issue",mapper.treeToValue(row,Class.forName("com.chanter.agent.infra.NativeRequestRepository$Request")));
+                yield Map.of("requestId",reservation,"outcome",jdbc.queryForObject("SELECT outcome FROM native_companion_requests WHERE id=?",String.class,reservation),
+                        "syntheticPendingOnly",true);
+            }
             case "events" -> {
                 fields(request,"action","afterRevision"); long after=number(request,"afterRevision");
                 yield jdbc.query("SELECT id,revision,kind,aggregate_key,payload,destination FROM durable_outbox WHERE revision>? AND destination LIKE 'lifecycle-%' ORDER BY revision LIMIT 64",
