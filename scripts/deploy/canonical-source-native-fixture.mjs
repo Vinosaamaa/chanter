@@ -103,8 +103,8 @@ try {
           const event = row.event; nonzeroUuid(event.id);
           assert.equal(event.producer, source); assert.equal(event.schemaVersion, 1);
           assert.ok(Number.isSafeInteger(event.revision) && event.revision > cursors.get(source));
-          assert.match(row.destination, /^lifecycle-(auth|community|message|media|agent|notification|search)$/);
-          const target = row.destination.slice('lifecycle-'.length);
+          assert.match(row.destination, /^(?:lifecycle-(?:auth|community|message|media|agent|notification|search)|agent|media|message|search|notification)$/);
+          const target = row.destination.startsWith('lifecycle-') ? row.destination.slice('lifecycle-'.length) : row.destination;
           if (sources.includes(target)) {
             const result = call(target, { action: 'deliver', event });
             assert.deepEqual(result, { eventId: event.id, committed: true }); delivered++;

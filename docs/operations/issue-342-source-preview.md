@@ -3,7 +3,7 @@
 The release workflow has an explicit `source_recovery_preview` dispatch input,
 restricted to the #342 branch. It does not publish an image or release. Its
 disposable runner merges exact source checkpoint
-`6c3e7561991fba27d804494828fab8c0c53cbc16` with the dispatched recovery SHA.
+`b9145ed2f292d9ca5870fbe0a58639c188bc20ec` with the dispatched recovery SHA.
 The source branch's earlier frontend exceeds the unchanged JavaScript budget.
 The preview uses the complete owning #339 frontend tree at
 `435a40b2d40a39512973dd3be139e7f1bc7042d2`, after checking its infrastructure
@@ -87,7 +87,10 @@ The actual persisted per-key closure, same-transaction source completion hook an
 repeated once-only quota release were exercised. This result still excluded an
 older database and all-seven delivery, which belong to the next fixture.
 
-The next fixture uses the tested source helper at `6c3e7561`. It takes a real full
+The next fixture uses the tested source helper at `b9145ed2`. Its fixed transport
+also delivers ordinary resource, answer, search and notification events through
+the real owning controllers, including exact resource deletion acknowledgements.
+It takes a real full
 pgBackRest backup with the source inventory and backup identities in its
 annotations, paired with encrypted configuration. A separate fixture bundle
 contains the recovery protocol marker; the production manifest remains unchanged.
