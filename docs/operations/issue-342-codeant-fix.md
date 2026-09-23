@@ -266,3 +266,20 @@ and restored-inventory maps now include reference kind, so CURRENT and MIGRATION
 cannot overwrite or substitute one another. The current native fixture creates
 CURRENT references only; it does not claim a migrated-object end-to-end proof.
 The production capture adapter already resolves each source ordinal separately.
+
+Comment 4078927820 questions a terminal change after a completed physical PUT but
+before the response's authority recheck. That recheck correctly refuses success.
+The maintenance fence prevents new reserve/claim/migration tuple writes, while
+terminal closure remains allowed. Terminal source cleanup retains current and
+migration keys, size and checksum, including after attribution removal. A settled
+PUT therefore remains addressable through its source tuple and byte reservation;
+settled means the invocation finished, not that the current resource is authorized.
+
+A new owning database/real local adapter regression changes the terminal prefix
+immediately after the file write completes. It verifies refused PUT/read, retained
+exact bytes/key/reservation, and no unresolved invocation. Only discarding the old
+snapshot and capturing the new applied prefix permits definitive DELETE. Physical
+closure still leaves accounting reserved for the real source hook. All 49 focused
+inventory/object/controller checks pass. This test uses explicit synthetic source
+rows; the actual source write/metadata rules remain the separately reviewed #251
+contract. No speculative compensating DELETE bypasses current authority.

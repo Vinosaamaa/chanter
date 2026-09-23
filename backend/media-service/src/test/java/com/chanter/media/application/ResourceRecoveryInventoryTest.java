@@ -117,6 +117,42 @@ class ResourceRecoveryInventoryTest {
         assertThat(successful.finish(finish).sourceAccountingCommitted()).isTrue();
         assertThat(jdbc.queryForObject("SELECT byte_reservation FROM course_resources WHERE id=?",Boolean.class,resource)).isFalse();
     }
+    @Test void terminalChangeAfterFinishedPutKeepsBytesAddressableUntilCurrentAuthorityDeletesThem(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path root) throws Exception {
+        UUID resource=resource();byte[] bytes="fixture".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String sha=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        jdbc.update("UPDATE course_resources SET storage_backend='local',sha256=? WHERE id=?",sha,resource);
+        String retainedKey=jdbc.queryForObject("SELECT storage_key FROM course_resources WHERE id=?",String.class,resource);
+        inventories.capture(inventory,backup,authority);
+        var current=new ResourceRecoveryInventory.Authority(2,"d".repeat(64));
+        var storage=new com.chanter.media.infra.LocalPrivateResourceStorage(root.toString(),mutations) {
+            @Override public void putForRecovery(ResourceRecoveryInventory.RestoreRequest request,byte[] content) throws java.io.IOException {
+                super.putForRecovery(request,content);
+                new org.springframework.transaction.support.TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()))
+                        .executeWithoutResult(status -> {
+                            jdbc.update("UPDATE lifecycle_reapply_head SET revision=?,digest=? WHERE id=1",current.revision(),current.digest());
+                            jdbc.update("INSERT INTO lifecycle_terminal_targets VALUES('RESOURCE',?,?,?,?)",resource,2,UUID.randomUUID(),current.digest());
+                            jdbc.update("UPDATE course_resources SET state='DELETE_PENDING' WHERE id=?",resource);
+                        });
+            }
+        };
+        storage.recoveryInventory(inventories);var objects=objects(storage,null);
+        var stale=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
+        assertThatThrownBy(() -> objects.put(stale,bytes)).hasMessageContaining("exact applied");
+        assertThat(java.nio.file.Files.readAllBytes(root.resolve(retainedKey))).isEqualTo(bytes);
+        assertThat(jdbc.queryForObject("SELECT storage_key FROM course_resources WHERE id=?",String.class,resource)).isEqualTo(retainedKey);
+        assertThat(jdbc.queryForObject("SELECT byte_reservation FROM course_resources WHERE id=?",Boolean.class,resource)).isTrue();
+        assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
+        assertThatThrownBy(() -> objects.read(stale)).hasMessageContaining("exact applied");
+        inventories.discard(inventory);inventories.capture(inventory,backup,current);
+        assertThat(inventories.page(inventory,current,0,1).references().getFirst().terminal()).isTrue();
+        var deletion=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,current,1);
+        objects.delete(deletion);
+        assertThat(java.nio.file.Files.exists(root.resolve(retainedKey))).isFalse();
+        inventories.requireClosedReference("local",deletion);
+        // Physical closure does not itself release source accounting.
+        assertThat(jdbc.queryForObject("SELECT byte_reservation FROM course_resources WHERE id=?",Boolean.class,resource)).isTrue();
+    }
     private ResourceRecoveryObjects objects(PrivateResourceStorage storage,ResourceRecoveryObjects.Completion completion) {
         var beans=new org.springframework.beans.factory.support.DefaultListableBeanFactory();
         if(completion!=null)beans.registerSingleton("sourceCompletion",completion);
