@@ -157,3 +157,15 @@ local writes settling after that load began. Later reads can remove those writes
 Independent diff review found no blocker, and all 403 frontend tests, lint and build
 budgets pass. New hosted phone/desktop fixture execution remains pending. This
 privacy/correctness blocker does not reopen the three general remediation rounds.
+
+4078486867 concerns verified/publication-eligible engineering metadata while launch
+gates remain open. This record is explicitly proposed, has no release, and retains
+its unknowns. Verification references recorded component evidence; public eligibility
+permits publishing that evidence, not approving deployment. The record now makes
+that scope explicit. Do not change recorded verification to not-recorded or mark the
+architecture accepted before final integration.
+
+A separate confirmed onboarding blocker lost cohort invitations through email
+verification and skipped them after OAuth. Three red/green regressions and independent
+review support the bounded continuation fix described in invitation-continuation.md.
+Real hosted registration/join and provider execution remain distinct acceptance gates.

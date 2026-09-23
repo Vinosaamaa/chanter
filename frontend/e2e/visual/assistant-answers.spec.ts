@@ -26,22 +26,25 @@ const answer = {
 }
 
 async function prepare(page: Page) {
+  let saved: typeof answer | null = null
   await page.clock.setFixedTime(new Date(VISUAL_NOW))
   await page.route('**/api/v1/course-channels/*/support-questions', route => route.fulfill({ json: { supportQuestions: [question] } }))
   await page.route('**/assistant-models', route => route.fulfill({ json: catalog }))
-  await page.route('**/assistant-answer', route => route.fulfill({ json: null }))
+  await page.route('**/assistant-answer', route => route.fulfill({ json: saved }))
   await page.goto(routePath)
   await page.locator('.question-thread-list > button').first().click()
   await expect(page.getByRole('combobox', { name: 'Answer source' })).toBeVisible()
+  return (completed: typeof answer) => { saved = completed }
 }
 
 for (const size of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }, { width: 844, height: 390 }]) {
   test(`fixture UI AI answer options and saved audit at ${size.width}`, async ({ page }, info) => {
     await page.setViewportSize(size)
-    await prepare(page)
+    const saveAnswer = await prepare(page)
     const requests: string[] = []
     await page.route('**/assistant-answer/stream?*', route => {
       requests.push(new URL(route.request().url()).search)
+      saveAnswer(answer)
       return route.fulfill({ contentType: 'text/event-stream', body: `event: status\ndata: retrieving\n\nevent: complete\ndata: ${JSON.stringify(answer)}\n\n` })
     })
     await page.getByRole('button', { name: 'Find source quotations' }).scrollIntoViewIfNeeded()
@@ -63,13 +66,14 @@ for (const size of [{ width: 390, height: 844 }, { width: 768, height: 900 }, { 
 for (const terminal of ['eof', 'error'] as const) {
   test(`fixture UI phone AI ${terminal} discards draft and recovers with approved sources`, async ({ page }, info) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await prepare(page)
+    const saveAnswer = await prepare(page)
     const selections: string[] = []
     await page.route('**/assistant-answer/stream?*', route => {
       const params = new URL(route.request().url()).searchParams
       selections.push(params.get('modelId') ?? '')
       const sourceOnly = params.get('modelId') === 'source-only' && params.get('answerMode') === 'source-only'
       const complete = { ...answer, audit: { ...answer.audit, llmUsed: false, llmProvider: 'none', llmModel: 'none' } }
+      if (sourceOnly) saveAnswer(complete)
       const failure = terminal === 'error' ? `event: error\ndata: ${JSON.stringify({ code: 'GENERATION_ALREADY_ATTEMPTED', status: 409, message: 'A previous generation may have reached the provider. Use Source only or ask your Instructor / TA.' })}\n\n` : ''
       return route.fulfill({ contentType: 'text/event-stream', body: sourceOnly ? `event: complete\ndata: ${JSON.stringify(complete)}\n\n` : `event: status\ndata: retrieving\n\nevent: token\ndata: UNSAVED PARTIAL DRAFT\n\n${failure}` })
     })

@@ -73,3 +73,10 @@ buttons.
 Removed inert Help/member-presence controls have no launch dependency. Paid billing
 is outside this free beta. All remaining provider, manual and real-mutation gates
 above must be resolved or explicitly scoped before #255 public cutover.
+
+The next owner journey extends coverage to wizard Close/Back, joining with the
+displayed enrollment invitation and new-account invitation continuation through
+same-tab email verification. Three focused regressions first reproduced lost
+pre-auth invitation state, skipped OAuth continuation and premature effect-replay
+navigation. Those are fixed; real hosted acceptance is pending. This extension
+does not establish clipboard access, independent-tab transfer or actual OAuth login.

@@ -125,19 +125,27 @@ test.describe('Verified account and recovery @product', () => {
     await signIn(page, email, password)
   })
 
-  test('owner creates a Study Server and cohort, then enrolls a learner through visible controls', async ({ page, request }) => {
-    test.setTimeout(120_000)
+  test('owner creates a Study Server and cohort, then learners enroll manually and join by invite', async ({ page, request }) => {
+    test.setTimeout(180_000)
     const owner = await sourceTestActor(request, 'setup-owner')
     const learner = await sourceTestActor(request, 'setup-learner')
+    const inviteLearner = await sourceTestActor(request, 'invite-learner')
     await signIn(page, owner.email, owner.password)
     await page.goto(new URL('/app/onboarding/create-study-server', appUrl).toString())
     await expect(page.getByRole('heading', { level: 1, name: 'Create Study Server' })).toBeVisible()
+    await page.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page).toHaveURL(/\/app\/home$/)
+    await page.getByRole('link', { name: 'Join a Course', exact: true }).click()
+    await page.getByRole('link', { name: 'Create a Study Server', exact: true }).click()
     await page.getByRole('button', { name: /Personal small group/ }).click()
     await page.getByRole('button', { name: 'Continue', exact: true }).click()
     const serverName = `Field learning ${randomUUID()}`
     await page.getByLabel('Study Server name', { exact: true }).fill(serverName)
     await page.getByRole('button', { name: 'Continue', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Invite your team' })).toBeVisible()
+    await page.getByRole('button', { name: 'Back', exact: true }).click()
+    await expect(page.getByLabel('Study Server name', { exact: true })).toHaveValue(serverName)
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
     await page.getByRole('button', { name: 'Continue', exact: true }).click()
     const creation = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/study-servers'
       && response.request().method() === 'POST')
@@ -176,6 +184,50 @@ test.describe('Verified account and recovery @product', () => {
       return data.courses.some(entry => entry.id === course.id && entry.capabilities.enrolled)
     }).toBe(true)
     await expect(page.getByRole('heading', { name: 'Learners (1)', exact: true })).toBeVisible()
+    const invitePanel = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Invite link', exact: true }) })
+    const inviteText = await invitePanel.locator('p').filter({ hasText: /\/sign-in\?cohort=/ }).textContent()
+    expect(Boolean(inviteText?.trim())).toBe(true)
+    const invite = new URL(inviteText!.trim())
+    expect(invite.origin === new URL(appUrl).origin && invite.searchParams.get('cohort') === course.cohort.id).toBe(true)
+    await signOut(page)
+    await signIn(page, inviteLearner.email, inviteLearner.password)
+    await page.getByRole('link', { name: 'Join a Course', exact: true }).click()
+    await page.getByLabel('Cohort invite link', { exact: true }).fill(invite.toString())
+    const joining = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/cohorts/${course.cohort.id}/join`
+      && response.request().method() === 'POST')
+    await page.getByRole('button', { name: 'Join cohort', exact: true }).click()
+    expect((await joining).status()).toBe(204)
+    await expect(page).toHaveURL(/\/app\/home$/)
+    await expect(page.getByRole('heading', { name: 'Practical field observation', exact: true })).toBeVisible()
+    await expect.poll(async () => {
+      const navigation = await request.get(new URL(`/api/v1/study-servers/${server.id}/navigation`, appUrl).toString(), { headers: inviteLearner.headers })
+      expect(navigation.status()).toBe(200)
+      const data = await navigation.json() as { courses: { id: string; capabilities: { enrolled: boolean } }[] }
+      return data.courses.some(entry => entry.id === course.id && entry.capabilities.enrolled)
+    }).toBe(true)
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Practical field observation', exact: true })).toBeVisible()
+    await signOut(page)
+    await page.goto(invite.toString())
+    const registeringEmail = `invited-registration-${randomUUID()}@example.com`
+    const registeringPassword = `Chanter-${randomUUID()}`
+    await page.getByLabel('Full name', { exact: true }).fill('Invited field learner')
+    await page.getByLabel('Email', { exact: true }).fill(registeringEmail)
+    await page.getByLabel('Password', { exact: true }).fill(registeringPassword)
+    const registration = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/auth/register'
+      && response.request().method() === 'POST')
+    await page.getByRole('button', { name: 'Create account', exact: true }).click()
+    expect((await registration).status()).toBe(202)
+    await expect(page.getByText('After verifying your email, return to this tab to finish joining your cohort.', { exact: true })).toBeVisible()
+    await page.goto(await deliveredLink(request, registeringEmail, 'Verify your Chanter email', '/verify-email'))
+    await expect(page.getByRole('status')).toContainText(/verified/i)
+    const continuedJoin = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/cohorts/${course.cohort.id}/join`
+      && response.request().method() === 'POST')
+    await signIn(page, registeringEmail, registeringPassword)
+    expect((await continuedJoin).status()).toBe(204)
+    await expect(page.getByRole('heading', { name: 'Practical field observation', exact: true })).toBeVisible()
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Practical field observation', exact: true })).toBeVisible()
   })
 
   test('register, verify, restore, rotate and sign out through real services', async ({ page, context, request }) => {

@@ -119,3 +119,11 @@ an uncertain read. Independent review found no blocker; six red/green regression
 and the full 403 frontend tests pass. Phone/desktop fixture execution and final
 accepted-source integration are still required. This is a blocking deletion behavior
 fix beyond the completed general review loop.
+
+Invitation continuation remains scoped to the originating browser tab. It carries
+only the existing cohort invitation, consumes it through the authorized join endpoint
+and makes no new enrollment authority. OAuth uses the same authenticated continuation
+after its existing exchange. Shared attempt ownership prevents effect replay from
+advancing early. Independent review found no blocker in the correction or the real
+registration/join scenario. Cross-tab verification instructions explicitly direct
+the learner back to the original tab; provider and clipboard proof remain open.

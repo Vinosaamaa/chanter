@@ -296,3 +296,19 @@ Six red regressions now pass, and the full 403-test frontend suite, lint and unc
 production budgets pass. Independent review found no blocker. Six phone/desktop
 fixture cases are discovered across all three engines; hosted execution is pending.
 The preceding e8957365 full CI, visual checks and both native releases passed.
+
+At a9d6ff4f, full application CI passed. The visual run passed 332 cases and found
+two fixture defects: completed streams did not persist their synthetic GET answer,
+and phone Back used the wrong accessible name. Both fixture corrections preserve
+the production behavior and original assertions. The three successful desktop
+erasure screenshots were inspected and remain readable with removed content absent.
+
+Invitations now survive same-tab email verification, and OAuth reaches the shared
+authenticated join continuation. Per-attempt promise ownership prevents effect
+replay from redirecting before joining completes. Three regressions failed before
+the fix; all 406 frontend tests, lint and unchanged build budgets pass afterward.
+The full suite passed with two workers after unrelated timeout failures under local
+contention. Independent review found no blocker. The expanded real owner journey
+adds wizard Close/Back, displayed invitation joining and new invited-user registration
+through real email verification. Hosted execution remains pending. The design is
+docs/architecture/invitation-continuation.md; clipboard and provider proof are separate.

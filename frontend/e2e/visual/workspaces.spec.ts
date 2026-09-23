@@ -40,7 +40,7 @@ for (const width of [390, 1280]) {
     await expect(page.getByText('Private excerpt from the removed source.', { exact: true })).toBeVisible()
     await expect(page.getByText('Reply from the removed account.', { exact: true })).toBeVisible()
     removed = true
-    if (width === 390) await page.getByRole('button', { name: 'Questions', exact: true }).click()
+    if (width === 390) await page.getByRole('button', { name: 'Back to questions', exact: true }).click()
     await page.getByRole('button', { name: 'Refresh questions', exact: true }).click()
     if (width === 390) await page.locator('.question-thread-list > button').first().click()
     await expect(page.getByText('An answer from the removed source.', { exact: true })).toHaveCount(0)

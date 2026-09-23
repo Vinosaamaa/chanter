@@ -34,6 +34,10 @@ run: null
 ---
 # Integrated product navigation and browser acceptance
 
+Verification records the cited evidence. Publication eligibility permits publishing
+this proposed review; it does not approve integration, release or deployment. Those
+gates remain open in the unknowns and acceptance notes below.
+
 Friends and Inbox hid the list on phones while keyboard focus remained on its hidden row. Return navigation left focus on the hidden Back control. Focus now follows the visible reading heading and returns to the selected row, with a heading fallback when the last item disappears. The native Add friend dialog provides an inert background, platform focus handling and Escape cancellation, replacing duplicated document-level key handling. Existing role, relationship and notification services remain authoritative.
 
 The real signed-in browser gate previously installed Chromium alone. Firefox and WebKit now run the same product tests against the actual hosted service stack, one worker at a time. Synthetic screenshots remain separate layout evidence. Authentication traces, screenshots and video remain disabled in real account tests. Nothing in this change configures a provider, relaxes authorization or declares public launch.
@@ -149,3 +153,12 @@ Six failing regressions now pass; all 403 frontend tests, lint and unchanged bud
 pass. Independent review found no blocker. Six synthetic phone/desktop browser cases
 are discovered across three engines and await hosted execution; actual source
 retraction and the final accepted union remain separately required.
+
+The invitation review found lost context through verification and an OAuth callback
+that bypassed joining. Pre-auth tab-local retention and a shared authenticated
+continuation fix those paths. One promise per continuation attempt also prevents
+effect replay from navigating before the join finishes. Three focused regressions
+failed first and pass after correction; independent review found no blocker. The
+expanded real owner journey covers displayed-link joining and new invited-user
+registration/verification, with hosted acceptance still required. The design records
+same-tab ownership and the separate provider/clipboard limitations.

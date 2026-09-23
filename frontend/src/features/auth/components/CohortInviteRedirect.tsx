@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
@@ -15,14 +15,16 @@ type InviteRedirectStatus = 'joining' | 'failed' | 'ready'
 export function CohortInviteRedirect({ to, search = '' }: CohortInviteRedirectProps) {
   const [status, setStatus] = useState<InviteRedirectStatus>('joining')
   const [retryKey, setRetryKey] = useState(0)
-
-  useLayoutEffect(() => {
-    rememberCohortInviteFromSearch(search)
-  }, [search])
+  const attempt = useRef<{ key: string; request: ReturnType<typeof completePendingCohortJoin> } | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    void completePendingCohortJoin(joinCohort).then((result) => {
+    const key = JSON.stringify([search, retryKey])
+    if (attempt.current?.key !== key) {
+      rememberCohortInviteFromSearch(search)
+      attempt.current = { key, request: completePendingCohortJoin(joinCohort) }
+    }
+    void attempt.current.request.then((result) => {
       if (cancelled) {
         return
       }

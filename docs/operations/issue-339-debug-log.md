@@ -114,3 +114,19 @@ The existing reply race fixture now uses distinct old/new GET responses, and the
 stream fixture represents a persisted completed answer on its subsequent GET. All
 16 hook cases and the full 403 frontend tests pass; no browser-health exception was
 introduced. Hosted fixture and final source integration proof remain separate.
+
+The first hosted refresh fixture checkpoint passed 332 cases and failed 15. Twelve
+saved-answer cases kept returning null from GET after their synthetic stream reported
+a persisted answer; authoritative refresh correctly removed it. The fixture now
+persists completed answers for later GET, including source-only recovery. Three phone
+cases used visible Back text instead of its accessible name, Back to questions.
+Those selectors now match the production control. Assertions and health rules stay
+unchanged; renewed hosted execution is required.
+
+Invitation review found that verification returned to bare sign-in before invitation
+storage ever ran, and OAuth bypassed the join continuation. A third failing regression
+showed StrictMode replay consuming an empty slot and navigating before a pending join
+finished. Pre-auth tab-local retention, shared per-attempt promise ownership and the
+common authenticated continuation fix all three focused cases. The first broader
+suite hit five unrelated timing failures while local workers were busy; a bounded
+two-worker rerun retains the original assertions and timeouts.
