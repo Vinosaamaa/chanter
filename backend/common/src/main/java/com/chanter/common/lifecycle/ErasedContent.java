@@ -5,6 +5,7 @@ import java.util.*;
 /** Exact owning content identities, never a public deletion request or new terminal authority. */
 public final class ErasedContent {
     public static final String ERASE="ACCOUNT_CONTENT_ERASE", RECEIPT="ACCOUNT_CONTENT_ERASED";
+    public static final String FINAL="ACCOUNT_CONTENT_FINAL", COMPLETE="ACCOUNT_CONTENT_COMPLETE";
     public static final int PAGE_SIZE=256;
     private static final Map<String,Set<String>> KINDS=Map.of(
             "community",Set.of("ANNOUNCEMENT","EVENT","OFFICE_HOURS"),
@@ -39,6 +40,25 @@ public final class ErasedContent {
     }
     public record Receipt(String owner,UUID commandId,Batch batch) {
         public void validate() { if(commandId==null || batch==null) throw invalid(); batch.validate(owner); }
+    }
+    public record Completion(TerminalJournal.Entry entry,String owner,long contentCount,long batchCount) {
+        public void validate() {
+            if(entry==null || owner==null || !KINDS.containsKey(owner) || contentCount<0 || batchCount<0
+                    || batchCount>contentCount || (batchCount==0)!=(contentCount==0)
+                    || (batchCount>0 && (contentCount-1)/PAGE_SIZE>=batchCount)) throw invalid();
+            entry.validate();if(!entry.targetKind().equals("ACCOUNT")) throw invalid();
+        }
+        public String key() { return "ACCOUNT_CONTENT_FINAL:"+entry.eventId()+":"+owner; }
+    }
+    public record FinalReceipt(UUID commandId,Completion completion) {
+        public void validate() { if(commandId==null || completion==null) throw invalid();completion.validate(); }
+    }
+    public static String digest(Batch batch) {
+        var text=new StringBuilder(batch.entry().digest()).append('\n');
+        for(var ref:batch.refs()) text.append(ref.orderKey()).append('\n');
+        try { return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest(text.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8))); }
+        catch(java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
     private static IllegalArgumentException invalid() { return new IllegalArgumentException("Invalid erased content command"); }
 }

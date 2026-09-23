@@ -95,3 +95,13 @@ CREATE TABLE lifecycle_erased_content_fences (
     PRIMARY KEY(owner,source_kind,source_id)
 );
 CREATE INDEX lifecycle_erased_content_reverse ON lifecycle_erased_content_fences(source_kind,source_id);
+
+CREATE TABLE lifecycle_content_commands (
+    command_id UUID PRIMARY KEY,owner VARCHAR(16) NOT NULL,account_id UUID NOT NULL,
+    terminal_digest VARCHAR(64) NOT NULL,content_count INTEGER NOT NULL,payload_digest VARCHAR(64) NOT NULL
+);
+CREATE INDEX lifecycle_content_commands_account ON lifecycle_content_commands(account_id,owner,terminal_digest);
+CREATE TABLE lifecycle_content_received_final (
+    account_id UUID NOT NULL,owner VARCHAR(16) NOT NULL,terminal_digest VARCHAR(64) NOT NULL,
+    content_count BIGINT NOT NULL,batch_count BIGINT NOT NULL,PRIMARY KEY(account_id,owner)
+);

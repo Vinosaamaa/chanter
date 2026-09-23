@@ -43,6 +43,7 @@ public class NotificationTerminalConfiguration {
                 new com.chanter.common.events.DurableConsumer(jdbc,new TransactionTemplate(transactions)),outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore notificationTerminalStore(JdbcTemplate jdbc, PlatformTransactionManager transactions, ExportSnapshotStore snapshots,
+            com.chanter.common.lifecycle.ErasedContentReceiver content,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<com.chanter.common.lifecycle.RecoveryScopeStore> historical) {
         var tx = new TransactionTemplate(transactions);
@@ -52,8 +53,7 @@ public class NotificationTerminalConfiguration {
                 case "ACCOUNT" -> {
                     snapshots.cancelAccount(entry.targetId());
                     jdbc.update("DELETE FROM notifications WHERE user_id=?",entry.targetId());
-                    // Authored previews in other inboxes need owning source-ID reconciliation too.
-                    return TerminalReapplyStore.Cleanup.PENDING;
+                    return content.complete(entry) ? TerminalReapplyStore.Cleanup.COMPLETE : TerminalReapplyStore.Cleanup.PENDING;
                 }
                 case "STUDY_SERVER" -> {
                     jdbc.update("DELETE FROM notifications WHERE study_server_id=?",entry.targetId());

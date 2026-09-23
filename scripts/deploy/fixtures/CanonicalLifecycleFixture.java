@@ -19,7 +19,8 @@ public final class CanonicalLifecycleFixture {
     private CanonicalLifecycleFixture(ConfigurableApplicationContext context) {
         this.context=context; mapper=context.getBean(ObjectMapper.class); jdbc=context.getBean(JdbcTemplate.class);
         source=context.getEnvironment().getRequiredProperty("spring.application.name").replace("-service","");
-        if(!Set.of("auth","community","media").contains(source)) throw new IllegalStateException("Canonical fixture source must be auth, community or media");
+        if(!Set.of("auth","community","media","message","agent","search","notification").contains(source))
+            throw new IllegalStateException("Canonical fixture requires an owning lifecycle source");
     }
     public static void main(String[] args) throws Exception {
         if(args.length!=0 || !"true".equals(System.getenv("CHANTER_CANONICAL_LIFECYCLE_FIXTURE")))
@@ -144,7 +145,7 @@ public final class CanonicalLifecycleFixture {
                         invoke(bean(receipt.targetKind().equals("ACCOUNT") ? "com.chanter.auth.lifecycle.AccountDeletionJobs" : "com.chanter.auth.lifecycle.SourceDeletionJobs"),"accept",event);
                     }
                 } else if(ErasedContentDelivery.command(event.kind())) context.getBean(ErasedContentDelivery.class).accept(event);
-                else if(ErasedContent.ERASE.equals(event.kind())) context.getBean(ErasedContentReceiver.class).accept(event);
+                else if(ErasedContent.ERASE.equals(event.kind()) || ErasedContent.FINAL.equals(event.kind())) context.getBean(ErasedContentReceiver.class).accept(event);
                 else if(DeletedScopeDelivery.command(event.kind())) context.getBean(DeletedScopeDelivery.class).accept(event);
                 else context.getBean(AccountDeletionParticipant.class).accept(event);
                 yield Map.of("eventId",event.id(),"committed",true);

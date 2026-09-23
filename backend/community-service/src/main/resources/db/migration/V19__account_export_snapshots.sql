@@ -138,3 +138,9 @@ CREATE TABLE lifecycle_content_redactions (event_id UUID PRIMARY KEY);
 CREATE INDEX lifecycle_content_search_event ON lifecycle_erased_content(search_event_id);
 CREATE INDEX lifecycle_content_notification_event ON lifecycle_erased_content(notification_event_id);
 CREATE INDEX lifecycle_content_pending ON lifecycle_erased_content(target_kind,target_id,search_event_id,source_kind,source_id);
+
+CREATE TABLE lifecycle_content_final (
+    account_id UUID NOT NULL,destination VARCHAR(16) NOT NULL,terminal_digest VARCHAR(64) NOT NULL,
+    event_id UUID NOT NULL UNIQUE,content_count BIGINT NOT NULL,batch_count BIGINT NOT NULL,ack BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY(account_id,destination)
+);

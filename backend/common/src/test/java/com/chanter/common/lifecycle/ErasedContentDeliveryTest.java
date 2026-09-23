@@ -13,6 +13,56 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 class ErasedContentDeliveryTest {
     private final ObjectMapper mapper=new ObjectMapper().findAndRegisterModules();
+    @Test void explicitFinalsBindBothProducersAndBothRecipientsIncludingAnEmptySource() throws Exception {
+        var community=new Node("community");var message=new Node("message");var search=new Node("search");var notification=new Node("notification");
+        var entry=entry();
+        for(var node:List.of(community,message,search,notification)) node.tx.executeWithoutResult(s -> node.terminal.applyTerminal(entry));
+        community.tx.executeWithoutResult(s -> {
+            community.jdbc.update("INSERT INTO lifecycle_erased_content(target_kind,target_id,revision,event_id,terminal_digest,source_kind,source_id) VALUES ('ACCOUNT',?,?,?,?,?,?)",
+                    entry.targetId(),entry.revision(),entry.eventId(),entry.digest(),"ANNOUNCEMENT",UUID.randomUUID());
+            community.delivery.start(entry);
+        });
+        message.tx.executeWithoutResult(s -> message.delivery.start(entry));
+        assertThat(community.events(ErasedContent.FINAL,null)).isEmpty();
+        assertThat(message.events(ErasedContent.FINAL,null)).hasSize(2);
+        assertThat(mapper.readValue(message.events(ErasedContent.FINAL,null).getFirst().payload(),ErasedContent.Completion.class).contentCount()).isZero();
+        community.delivery.accept(community.events(ErasedContentDelivery.ADVANCE,null).getFirst());
+        for(var recipient:List.of(search,notification)) {
+            var erase=community.events(ErasedContent.ERASE,"lifecycle-"+recipient.name).getFirst();
+            // A forged early final cannot replace the missing batch effects.
+            var premature=new ErasedContent.Completion(entry,"community",1,1);
+            assertThatThrownBy(() -> recipient.receiver.accept(new DurableEvent(UUID.randomUUID(),1,"community",erase.revision()+100,
+                    ErasedContent.FINAL,premature.key(),mapper.writeValueAsString(premature)))).isInstanceOf(IllegalArgumentException.class);
+            recipient.receiver.accept(erase);recipient.receiver.accept(erase);
+            community.delivery.accept(recipient.events(ErasedContent.RECEIPT,null).getFirst());
+        }
+        assertThat(community.events(ErasedContent.FINAL,null)).hasSize(2);
+        for(var recipient:List.of(search,notification)) {
+            var finalEvent=community.events(ErasedContent.FINAL,"lifecycle-"+recipient.name).getFirst();
+            recipient.receiver.accept(finalEvent);recipient.receiver.accept(finalEvent);
+            assertThat(recipient.receiver.complete(entry)).isFalse();
+            community.delivery.accept(recipient.events(ErasedContent.COMPLETE,"lifecycle-community").getFirst());
+            var empty=message.events(ErasedContent.FINAL,"lifecycle-"+recipient.name).getFirst();
+            recipient.jdbc.execute("ALTER TABLE durable_outbox ADD CONSTRAINT reject_final CHECK(kind<>'ACCOUNT_CONTENT_COMPLETE' OR destination<>'lifecycle-message')");
+            try { assertThatThrownBy(() -> recipient.receiver.accept(empty)).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class); }
+            finally { recipient.jdbc.execute("ALTER TABLE durable_outbox DROP CONSTRAINT reject_final"); }
+            assertThat(recipient.receiver.complete(entry)).isFalse();
+            recipient.receiver.accept(empty);recipient.receiver.accept(empty);
+            assertThat(recipient.receiver.complete(entry)).isTrue();
+            TerminalReapplyStore.Cleanup state=recipient.tx.execute(s -> recipient.terminal.cleanup(entry));
+            assertThat(state).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
+            var ack=recipient.events(ErasedContent.COMPLETE,"lifecycle-message").getFirst();
+            var receipt=mapper.readValue(ack.payload(),ErasedContent.FinalReceipt.class);
+            var forged=new DurableEvent(UUID.randomUUID(),1,recipient.name,ack.revision()+100,ack.kind(),ack.aggregateKey(),
+                    mapper.writeValueAsString(new ErasedContent.FinalReceipt(UUID.randomUUID(),receipt.completion())));
+            assertThatThrownBy(() -> message.delivery.accept(forged)).isInstanceOf(IllegalArgumentException.class);
+            message.delivery.accept(ack);message.delivery.accept(ack);
+        }
+        assertThat(community.delivery.complete(entry)).isTrue();assertThat(message.delivery.complete(entry)).isTrue();
+        var another=entry();
+        assertThat(search.receiver.complete(another)).isFalse();
+        assertThat(message.delivery.complete(another)).isFalse();
+    }
     @Test void boundedSourceBatchesPurgeClaimedPayloadsAndBindBothReceiptsToExactOriginalCommands() throws Exception {
         var source=new Node("community");var search=new Node("search");var notification=new Node("notification");
         var entry=entry();
@@ -119,12 +169,16 @@ class ErasedContentDeliveryTest {
             jdbc.execute(DurableOutbox.SCHEMA);jdbc.execute(DurableConsumer.SCHEMA);jdbc.execute(TerminalReapplyStore.SCHEMA);jdbc.execute(ErasedContentReceiver.SCHEMA);
             jdbc.execute("CREATE TABLE lifecycle_erased_content(target_kind VARCHAR(16),target_id UUID,revision BIGINT,event_id UUID,terminal_digest VARCHAR(64),source_kind VARCHAR(24),source_id UUID,PRIMARY KEY(target_kind,target_id,source_kind,source_id))");
             jdbc.execute(ErasedContentDelivery.SCHEMA);
-            terminal=new TerminalReapplyStore(jdbc,tx,name,e -> TerminalReapplyStore.Cleanup.PENDING);
+            terminal=new TerminalReapplyStore(jdbc,tx,name,this::cleanup);
             var factory=new DefaultListableBeanFactory();factory.registerSingleton("terminal",terminal);
             factory.registerSingleton("erase",(ErasedContentReceiver.Erase)ref -> { });
             outbox=new DurableOutbox(jdbc,tx,name,Clock.systemUTC());
             delivery=new ErasedContentDelivery(name,jdbc,tx,outbox,mapper,factory.getBeanProvider(TerminalReapplyStore.class));
             receiver=new ErasedContentReceiver(name,jdbc,tx,outbox,mapper,factory.getBeanProvider(TerminalReapplyStore.class),factory.getBeanProvider(ErasedContentReceiver.Erase.class));
+        }
+        private TerminalReapplyStore.Cleanup cleanup(TerminalJournal.Entry entry) {
+            return Set.of("search","notification").contains(name) && receiver.complete(entry)
+                    ? TerminalReapplyStore.Cleanup.COMPLETE : TerminalReapplyStore.Cleanup.PENDING;
         }
         List<DurableEvent> events(String kind,String destination) {
             return jdbc.query("SELECT * FROM durable_outbox WHERE kind=?"+(destination==null ? "" : " AND destination=?")+" ORDER BY revision",

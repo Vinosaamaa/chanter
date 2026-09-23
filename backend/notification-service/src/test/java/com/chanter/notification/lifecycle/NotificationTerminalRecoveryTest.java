@@ -45,6 +45,35 @@ class NotificationTerminalRecoveryTest {
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     com.chanter.notification.application.NotificationVisibility visibility;
 
+    @Test void emptyProducerFinalsAndReportedCompletionCommitAtomicallyThroughThePrivateRoute() throws Exception {
+        var page=nextPage("ACCOUNT",UUID.randomUUID(),Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
+        var entry=page.entries().getFirst();UUID job=UUID.randomUUID();
+        terminal.reapply(page);
+        var command=new DurableEvent(UUID.randomUUID(),1,"auth",entry.revision(),com.chanter.common.lifecycle.AccountDeletionProtocol.TERMINAL,
+                com.chanter.common.lifecycle.AccountDeletionProtocol.key("ACCOUNT",entry.targetId()),
+                deletionProtocol.encode(new com.chanter.common.lifecycle.AccountDeletionProtocol.Terminal(job,entry)));
+        postLifecycle(command).andExpect(status().isNoContent());
+        var community=new com.chanter.common.lifecycle.ErasedContent.Completion(entry,"community",0,0);
+        var first=new DurableEvent(UUID.randomUUID(),1,"community",100,com.chanter.common.lifecycle.ErasedContent.FINAL,community.key(),mapper.writeValueAsString(community));
+        postLifecycle(first).andExpect(status().isNoContent());
+        var message=new com.chanter.common.lifecycle.ErasedContent.Completion(entry,"message",0,0);
+        var last=new DurableEvent(UUID.randomUUID(),1,"message",100,com.chanter.common.lifecycle.ErasedContent.FINAL,message.key(),mapper.writeValueAsString(message));
+        jdbc.execute("ALTER TABLE durable_outbox ADD CONSTRAINT reject_completion CHECK(kind<>'ACCOUNT_DELETE_RECEIPT' OR aggregate_key<>'"+com.chanter.common.lifecycle.AccountDeletionProtocol.key("ACCOUNT",entry.targetId())+"' OR payload NOT LIKE '%COMPLETE%')");
+        try { assertThatThrownBy(() -> postLifecycle(last)).hasRootCauseInstanceOf(org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException.class); }
+        finally { jdbc.execute("ALTER TABLE durable_outbox DROP CONSTRAINT reject_completion"); }
+        assertThat(jdbc.queryForObject("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_id=?",String.class,entry.targetId())).isEqualTo("PENDING");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_received_final WHERE account_id=?",Integer.class,entry.targetId())).isEqualTo(1);
+        postLifecycle(last).andExpect(status().isNoContent());postLifecycle(last).andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT cleanup_state FROM lifecycle_terminal_targets WHERE target_id=?",String.class,entry.targetId())).isEqualTo("COMPLETE");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='ACCOUNT_DELETE_RECEIPT' AND aggregate_key=? AND payload LIKE '%COMPLETE%'",Integer.class,
+                com.chanter.common.lifecycle.AccountDeletionProtocol.key("ACCOUNT",entry.targetId()))).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_COMPLETE' AND aggregate_key=?",Integer.class,last.aggregateKey())).isEqualTo(1);
+    }
+    private org.springframework.test.web.servlet.ResultActions postLifecycle(DurableEvent event) throws Exception {
+        return http.perform(post("/api/v1/internal/lifecycle/events").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(event)));
+    }
+
     @Test void actualNotificationsExportsAndPermanentFenceCommitTogetherAndDelayedEventsCannotRestoreThem() throws Exception {
         UUID owner=UUID.randomUUID(), other=UUID.randomUUID(), server=UUID.randomUUID(), resource=UUID.randomUUID();
         var own=create(owner,server,resource);
@@ -184,7 +213,7 @@ class NotificationTerminalRecoveryTest {
                 com.chanter.common.lifecycle.AccountDeletionProtocol.TERMINAL,key,deletionProtocol.encode(command));
         byte[] body=mapper.writeValueAsBytes(event);
         var before=terminal.receipt().authority();
-        jdbc.execute("ALTER TABLE durable_outbox ADD CONSTRAINT test_reject_deletion_receipt CHECK(kind<>'ACCOUNT_DELETE_RECEIPT')");
+        jdbc.execute("ALTER TABLE durable_outbox ADD CONSTRAINT test_reject_deletion_receipt CHECK(kind<>'ACCOUNT_DELETE_RECEIPT' OR aggregate_key<>'"+key+"')");
         try {
             assertThatThrownBy(() -> http.perform(post("/api/v1/internal/lifecycle/events")
                     .header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN).contentType(MediaType.APPLICATION_JSON).content(body)))

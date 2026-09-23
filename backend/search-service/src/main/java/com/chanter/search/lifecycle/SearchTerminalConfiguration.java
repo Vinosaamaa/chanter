@@ -46,7 +46,7 @@ public class SearchTerminalConfiguration {
     }
 
     @Bean TerminalReapplyStore searchTerminalStore(JdbcTemplate jdbc, PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,
+            ExportSnapshotStore snapshots,com.chanter.common.lifecycle.ErasedContentReceiver content,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<com.chanter.common.lifecycle.RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions);
@@ -55,8 +55,7 @@ public class SearchTerminalConfiguration {
             switch(entry.targetKind()) {
                 case "ACCOUNT" -> {
                     snapshots.cancelAccount(entry.targetId());
-                    // Canonical sources still own authored content identity.
-                    return TerminalReapplyStore.Cleanup.PENDING;
+                    return content.complete(entry) ? TerminalReapplyStore.Cleanup.COMPLETE : TerminalReapplyStore.Cleanup.PENDING;
                 }
                 case "STUDY_SERVER" -> {
                     jdbc.update("DELETE FROM search_index_entries WHERE study_server_id=?",entry.targetId());

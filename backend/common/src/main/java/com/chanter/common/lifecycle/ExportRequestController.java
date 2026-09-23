@@ -35,7 +35,7 @@ public final class ExportRequestController {
         access.require(token);
         try {
             var event = protocol.event(body);
-            if(ErasedContent.ERASE.equals(event.kind())) {
+            if(ErasedContent.ERASE.equals(event.kind()) || ErasedContent.FINAL.equals(event.kind())) {
                 execution.deliver(event,() -> content.accept(event));
             } else if(ErasedContentDelivery.command(event.kind())) {
                 execution.deliver(event,() -> contentDelivery.accept(event));

@@ -26,7 +26,9 @@ class NotificationRecoveryScopeTest {
         var snapshots=new ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"notification");
         var factory=new org.springframework.beans.factory.support.DefaultListableBeanFactory();
         var config=new NotificationTerminalConfiguration();
-        var terminal=config.notificationTerminalStore(jdbc,manager,snapshots,true,factory.getBeanProvider(RecoveryScopeStore.class));
+        var content=new ErasedContentReceiver("notification",jdbc,tx,new com.chanter.common.events.DurableOutbox(jdbc,tx,"notification",java.time.Clock.systemUTC()),mapper,
+                factory.getBeanProvider(TerminalReapplyStore.class),factory.getBeanProvider(ErasedContentReceiver.Erase.class));
+        var terminal=config.notificationTerminalStore(jdbc,manager,snapshots,content,true,factory.getBeanProvider(RecoveryScopeStore.class));
         var current=config.notificationDeletedScopeStore(jdbc,manager,terminal);
         UUID restore=UUID.randomUUID(),operation=UUID.randomUUID();
         var historical=config.notificationRecoveryScopeStore(jdbc,manager,current,terminal,true,restore.toString());

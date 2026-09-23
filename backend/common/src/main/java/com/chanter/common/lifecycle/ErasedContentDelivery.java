@@ -18,6 +18,11 @@ public final class ErasedContentDelivery {
         ALTER TABLE lifecycle_erased_content ADD COLUMN notification_ack BOOLEAN NOT NULL DEFAULT FALSE;
         CREATE TABLE lifecycle_content_dispatch (account_id UUID PRIMARY KEY,advance_event_id UUID,payload_cutoff BIGINT NOT NULL);
         CREATE TABLE lifecycle_content_redactions (event_id UUID PRIMARY KEY);
+        CREATE TABLE lifecycle_content_final (
+            account_id UUID NOT NULL,destination VARCHAR(16) NOT NULL,terminal_digest VARCHAR(64) NOT NULL,
+            event_id UUID NOT NULL UNIQUE,content_count BIGINT NOT NULL,batch_count BIGINT NOT NULL,ack BOOLEAN NOT NULL DEFAULT FALSE,
+            PRIMARY KEY(account_id,destination)
+        );
         CREATE INDEX lifecycle_content_search_event ON lifecycle_erased_content(search_event_id);
         CREATE INDEX lifecycle_content_notification_event ON lifecycle_erased_content(notification_event_id);
         CREATE INDEX lifecycle_content_pending ON lifecycle_erased_content(target_kind,target_id,search_event_id,source_kind,source_id)
@@ -32,7 +37,7 @@ public final class ErasedContentDelivery {
             ObjectProvider<TerminalReapplyStore> terminal) {
         this.source=source;this.jdbc=jdbc;this.consumer=new DurableConsumer(jdbc,tx);this.outbox=outbox;this.mapper=mapper;this.terminal=terminal;
     }
-    public static boolean command(String kind) { return ADVANCE.equals(kind) || ErasedContent.RECEIPT.equals(kind); }
+    public static boolean command(String kind) { return ADVANCE.equals(kind) || ErasedContent.RECEIPT.equals(kind) || ErasedContent.COMPLETE.equals(kind); }
     /** Called after owning erasure, with terminal authority already locked in its source transaction. */
     public void start(TerminalJournal.Entry entry) {
         requireSource();entry.validate();
@@ -44,6 +49,23 @@ public final class ErasedContentDelivery {
             UUID event=append(source,ADVANCE,advanceKey(entry),entry);
             jdbc.update("UPDATE lifecycle_content_dispatch SET advance_event_id=? WHERE account_id=?",event,entry.targetId());
         }
+        if(!outstanding(entry) && jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_final WHERE account_id=?",Integer.class,entry.targetId())==0) {
+            long count=jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_erased_content WHERE target_kind='ACCOUNT' AND target_id=?",Long.class,entry.targetId());
+            long batches=jdbc.queryForObject("SELECT COUNT(DISTINCT search_event_id) FROM lifecycle_erased_content WHERE target_kind='ACCOUNT' AND target_id=?",Long.class,entry.targetId());
+            var completion=new ErasedContent.Completion(entry,source,count,batches);completion.validate();
+            for(String destination:List.of("search","notification")) {
+                UUID id=append(destination,ErasedContent.FINAL,completion.key(),completion);
+                jdbc.update("INSERT INTO lifecycle_content_final(account_id,destination,terminal_digest,event_id,content_count,batch_count) VALUES (?,?,?,?,?,?)",
+                        entry.targetId(),destination,entry.digest(),id,count,batches);
+            }
+        }
+    }
+    public boolean complete(TerminalJournal.Entry entry) {
+        requireSource();
+        return !outstanding(entry) && jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_content_final WHERE account_id=? AND terminal_digest=? AND ack=TRUE",Integer.class,entry.targetId(),entry.digest())==2;
+    }
+    private boolean outstanding(TerminalJournal.Entry entry) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM lifecycle_erased_content WHERE target_kind='ACCOUNT' AND target_id=? AND (search_event_id IS NULL OR notification_event_id IS NULL OR search_ack=FALSE OR notification_ack=FALSE))",Boolean.class,entry.targetId()));
     }
     public void accept(DurableEvent event) {
         requireSource();event.validate();
@@ -92,7 +114,18 @@ public final class ErasedContentDelivery {
                         receipt.commandId(),ErasedContent.ERASE,"lifecycle-"+event.producer());
                 if(!expected.equals(receipt.batch().refs()) || keys.size()!=1 || !keys.getFirst().equals(event.aggregateKey())) throw invalid();
                 jdbc.update("UPDATE lifecycle_erased_content SET "+ack+"=TRUE WHERE target_kind='ACCOUNT' AND target_id=? AND "+column+"=?",receipt.batch().entry().targetId(),receipt.commandId());
+                start(receipt.batch().entry());
                 terminal.getObject().reconcile(receipt.batch().entry());
+            });
+        } else if(ErasedContent.COMPLETE.equals(event.kind())) {
+            var receipt=read(event,ErasedContent.FinalReceipt.class);receipt.validate();var completion=receipt.completion();
+            if(!source.equals(completion.owner()) || !Set.of("search","notification").contains(event.producer()) || !completion.key().equals(event.aggregateKey())) throw invalid();
+            consumer.apply(event,false,() -> {
+                lock(completion.entry());
+                int changed=jdbc.update("UPDATE lifecycle_content_final SET ack=TRUE WHERE account_id=? AND destination=? AND terminal_digest=? AND event_id=? AND content_count=? AND batch_count=?",
+                        completion.entry().targetId(),event.producer(),completion.entry().digest(),receipt.commandId(),completion.contentCount(),completion.batchCount());
+                if(changed!=1) throw invalid();
+                terminal.getObject().reconcile(completion.entry());
             });
         } else throw invalid();
     }

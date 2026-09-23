@@ -29,7 +29,9 @@ class SearchRecoveryScopeTest {
         var snapshots=new ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"search");
         var factory=new org.springframework.beans.factory.support.DefaultListableBeanFactory();
         var config=new SearchTerminalConfiguration();
-        var terminal=config.searchTerminalStore(jdbc,manager,snapshots,recovery,factory.getBeanProvider(RecoveryScopeStore.class));
+        var content=new ErasedContentReceiver("search",jdbc,tx,new com.chanter.common.events.DurableOutbox(jdbc,tx,"search",java.time.Clock.systemUTC()),mapper,
+                factory.getBeanProvider(TerminalReapplyStore.class),factory.getBeanProvider(ErasedContentReceiver.Erase.class));
+        var terminal=config.searchTerminalStore(jdbc,manager,snapshots,content,recovery,factory.getBeanProvider(RecoveryScopeStore.class));
         var current=config.searchDeletedScopeStore(jdbc,manager,terminal);
         UUID restore=UUID.randomUUID(),operation=UUID.randomUUID();
         var historical=config.searchRecoveryScopeStore(jdbc,manager,current,terminal,recovery,recovery ? restore.toString() : "");
