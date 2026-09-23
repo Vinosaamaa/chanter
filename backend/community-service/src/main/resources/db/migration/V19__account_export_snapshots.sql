@@ -129,6 +129,7 @@ CREATE TABLE lifecycle_retained_courses (
     account_id UUID NOT NULL,course_id UUID NOT NULL,successor_id UUID NOT NULL,
     PRIMARY KEY(account_id,course_id)
 );
+ALTER TABLE cohort_enrollments ALTER COLUMN enrolled_by_user_id DROP NOT NULL;
 ALTER TABLE lifecycle_erased_content ADD COLUMN search_event_id UUID;
 ALTER TABLE lifecycle_erased_content ADD COLUMN notification_event_id UUID;
 ALTER TABLE lifecycle_erased_content ADD COLUMN search_ack BOOLEAN NOT NULL DEFAULT FALSE;

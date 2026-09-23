@@ -49,8 +49,7 @@ public class CommunityTerminalConfiguration {
                     snapshots.invalidateRetained();
                     accounts.erase(entry);
                     content.start(entry);
-                    // Restored pre-transfer ownership, durable payloads and downstream copies still need disposition.
-                    return TerminalReapplyStore.Cleanup.PENDING;
+                    return content.complete(entry) ? accounts.disposition(entry.targetId()) : TerminalReapplyStore.Cleanup.PENDING;
                 }
                 case "STUDY_SERVER" -> {
                     if(!scopes.capture(entry)) return TerminalReapplyStore.Cleanup.PENDING;

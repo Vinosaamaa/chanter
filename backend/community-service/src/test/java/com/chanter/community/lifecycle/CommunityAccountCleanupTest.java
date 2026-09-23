@@ -28,6 +28,42 @@ class CommunityAccountCleanupTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactions;
     @Autowired com.chanter.community.infra.TestAuthUserDirectoryClient directory;
+    @Autowired ErasedContentDelivery content;
+    @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
+
+    @Test void retainedCourseDispositionWaitsForBothFinalsAndRemovesOnlyDeletedEnrollmentActor() throws Exception {
+        UUID author=UUID.randomUUID(),successor=UUID.randomUUID(),learner=UUID.randomUUID();
+        var server=servers.createStudyServer("Shared",null,StudyServerType.PERSONAL,List.of(),author);
+        var course=courses.createCourse(server.id(),author,"Shared course",null,"Cohort");
+        UUID cohort=course.cohort().orElseThrow().id();
+        courses.enrollLearner(cohort,author,learner);
+        jdbc.update("UPDATE study_servers SET owner_user_id=? WHERE id=?",successor,server.id());
+        var entry=entry(author);apply(entry);
+        assertThat(jdbc.queryForObject("SELECT enrolled_by_user_id FROM cohort_enrollments WHERE cohort_id=? AND learner_user_id=?",UUID.class,cohort,learner)).isNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cohort_enrollments WHERE cohort_id=? AND learner_user_id=?",Integer.class,cohort,learner)).isEqualTo(1);
+        var tx=new TransactionTemplate(transactions);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        acknowledgeFinals(entry);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PRESERVED);
+        assertThat(jdbc.queryForObject("SELECT title FROM courses WHERE id=?",String.class,course.id())).isEqualTo("Shared course");
+        assertThat(jdbc.queryForObject("SELECT instructor_user_id FROM courses WHERE id=?",UUID.class,course.id())).isEqualTo(successor);
+        var empty=entry(UUID.randomUUID());apply(empty);acknowledgeFinals(empty);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(empty))).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
+    }
+
+    private void acknowledgeFinals(TerminalJournal.Entry entry) throws Exception {
+        var commands=jdbc.query("SELECT id,revision,destination,aggregate_key,payload FROM durable_outbox WHERE kind=? AND aggregate_key=? ORDER BY revision",
+                (rs,n)->new com.chanter.common.events.DurableEvent(rs.getObject(1,UUID.class),1,rs.getString(3).substring("lifecycle-".length()),
+                        rs.getLong(2),ErasedContent.FINAL,rs.getString(4),rs.getString(5)),
+                ErasedContent.FINAL,"ACCOUNT_CONTENT_FINAL:"+entry.eventId()+":community");
+        assertThat(commands).hasSize(2);
+        for(var command:commands) {
+            var completion=mapper.readValue(command.payload(),ErasedContent.Completion.class);
+            var receipt=new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,command.producer(),command.revision(),ErasedContent.COMPLETE,
+                    command.aggregateKey(),mapper.writeValueAsString(new ErasedContent.FinalReceipt(command.id(),completion)));
+            content.accept(receipt);content.accept(receipt);
+        }
+    }
 
     @Test void personalPayloadsEraseAtomicallyWhileSharedCourseMovesToItsActualOwner() {
         UUID author=UUID.randomUUID(),successor=UUID.randomUUID();

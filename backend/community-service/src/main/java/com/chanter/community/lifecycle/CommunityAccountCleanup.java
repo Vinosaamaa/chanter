@@ -28,6 +28,7 @@ public final class CommunityAccountCleanup {
         jdbc.update("DELETE FROM study_server_invitations WHERE invited_user_id=? OR invited_by_user_id=?",account,account);
         jdbc.update("DELETE FROM cohort_invitations WHERE invited_user_id=? OR invited_by_user_id=?",account,account);
         jdbc.update("DELETE FROM cohort_enrollments WHERE learner_user_id=?",account);
+        jdbc.update("UPDATE cohort_enrollments SET enrolled_by_user_id=NULL WHERE enrolled_by_user_id=?",account);
         jdbc.update("UPDATE cohort_enrollments SET assigned_ta_user_id=NULL WHERE assigned_ta_user_id=?",account);
         jdbc.update("DELETE FROM cohort_roles WHERE user_id=?",account);
         // A shared course remains under its current server owner. Never infer a post-backup ownership transfer.
@@ -50,6 +51,15 @@ public final class CommunityAccountCleanup {
             """,account);
         jdbc.update("DELETE FROM course_roles WHERE user_id=? AND course_id NOT IN (SELECT id FROM courses WHERE instructor_user_id=?)",account,account);
         jdbc.update("DELETE FROM study_server_roles WHERE user_id=? AND study_server_id NOT IN (SELECT id FROM study_servers WHERE owner_user_id=?)",account,account);
+    }
+
+    public com.chanter.common.lifecycle.TerminalReapplyStore.Cleanup disposition(UUID account) {
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM study_servers WHERE owner_user_id=?",Long.class,account)>0
+                || jdbc.queryForObject("SELECT COUNT(*) FROM courses WHERE instructor_user_id=?",Long.class,account)>0)
+            return com.chanter.common.lifecycle.TerminalReapplyStore.Cleanup.PENDING;
+        return jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_retained_courses WHERE account_id=?",Long.class,account)>0
+                ? com.chanter.common.lifecycle.TerminalReapplyStore.Cleanup.PRESERVED
+                : com.chanter.common.lifecycle.TerminalReapplyStore.Cleanup.COMPLETE;
     }
 
     private void retain(TerminalJournal.Entry entry,String kind,String query) {

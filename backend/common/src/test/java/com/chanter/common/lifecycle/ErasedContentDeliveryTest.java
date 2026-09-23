@@ -224,7 +224,7 @@ class ErasedContentDeliveryTest {
             terminal=new TerminalReapplyStore(jdbc,tx,name,this::cleanup);
             var factory=new DefaultListableBeanFactory();factory.registerSingleton("terminal",terminal);
             factory.registerSingleton("erase",(ErasedContentReceiver.Erase)ref -> { });
-            outbox=new DurableOutbox(jdbc,tx,name,Clock.systemUTC());
+            outbox=new DurableOutbox(jdbc,tx,name,Clock.fixed(Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS),ZoneOffset.UTC));
             delivery=new ErasedContentDelivery(name,jdbc,tx,outbox,mapper,factory.getBeanProvider(TerminalReapplyStore.class));
             receiver=new ErasedContentReceiver(name,jdbc,tx,outbox,mapper,factory.getBeanProvider(TerminalReapplyStore.class),factory.getBeanProvider(ErasedContentReceiver.Erase.class));
         }
