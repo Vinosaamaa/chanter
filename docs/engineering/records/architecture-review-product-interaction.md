@@ -85,3 +85,18 @@ publishing or replacing final union acceptance. Archive validation is bounded an
 checks its central directory, CRCs and seven-source coverage; receipt assertions
 cannot print credential values. The preview remains excluded from ordinary checks
 until the lifecycle backend is accepted.
+
+The account dependency preview subsequently passed native ZIP export and the real
+account deletion/receipt journey in all three engines. Its broader WebKit usage test
+needed one retry because Teaching had not finished its schedule lookup; explicit
+pending/error UI now supplies a readiness boundary without weakening browser health.
+All 326 responsive fixtures and both native release architectures passed at the
+published preview head, with ten deletion screenshots inspected. Final accepted
+union and provider evidence remain separate.
+
+Server-home now shares the responsive shell while retaining arbitrary cohort
+creation and non-enrolled-owner management links. A catalog redirect was rejected
+because it removed those actions. Receipt status requires renewed cookie authority
+before showing cached completion, and permission loss discards pending source
+confirmation. Focused regressions reproduced the stale cases before correction;
+independent review found no blocker in the resulting diff.

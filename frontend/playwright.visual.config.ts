@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test'
 
-const crossBrowserScenarios = /@accountdata|@dialogs|@usage|AI |Home (populated|empty) at (390|1280)\b|course-chat at 390|course-overview at 1280|phone Questions|phone Inbox|phone Friends|phone landscape|sign-in at 390|auth verification alternative at (320|390|1280)|clipped course tabs|mobile marketing menu/
+const crossBrowserScenarios = /@accountdata|@dialogs|@usage|@serverhome|AI |Home (populated|empty) at (390|1280)\b|course-chat at 390|course-overview at 1280|phone Questions|phone Inbox|phone Friends|phone landscape|sign-in at 390|auth verification alternative at (320|390|1280)|clipped course tabs|mobile marketing menu/
 
 export default defineConfig({
   testDir: './e2e/visual',

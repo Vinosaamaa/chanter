@@ -11,6 +11,7 @@ import { useAuthStore } from '../../../../stores/auth-store'
 
 const mocks = vi.hoisted(() => ({
   courseId: 'course-1',
+  canManageCourse: true,
   fetchPresence: vi.fn(),
   deleteResource: vi.fn(),
   resources: {
@@ -72,7 +73,7 @@ vi.mock('../../layouts/v2-course-workspace-context', () => ({
   useV2CourseWorkspace: () => ({
     serverId: 'server-1',
     course: { id: mocks.courseId, title: 'Algorithms' },
-    courseCapabilities: { canUploadResources: true },
+    courseCapabilities: { canUploadResources: mocks.canManageCourse },
   }),
 }))
 
@@ -82,6 +83,7 @@ describe('CourseResourcesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.courseId = 'course-1'
+    mocks.canManageCourse = true
     useAuthStore.getState().setSession({ accessToken: 'owner-token', expiresInSeconds: 900, user: { id: 'owner-1', email: 'owner@example.test', displayName: 'Owner' } })
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function (this: HTMLDialogElement) { this.open = true } })
     Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function (this: HTMLDialogElement) { this.open = false } })
@@ -158,6 +160,21 @@ describe('CourseResourcesPage', () => {
     mocks.resources.canUpload = false
     renderPage()
     expect(screen.queryByRole('button', { name: 'Delete Recursion notes' })).not.toBeInTheDocument()
+  })
+
+  it.each(['course', 'source'] as const)('discards the deletion dialog after %s permission is revoked and restored', async scope => {
+    const resource = courseResource()
+    mocks.resources.resources = [resource]; mocks.resources.filteredResources = [resource]
+    const view = renderPage()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Delete Recursion notes' }))
+    if (scope === 'course') mocks.canManageCourse = false
+    else mocks.resources.canUpload = false
+    view.rerenderPage()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    mocks.canManageCourse = true; mocks.resources.canUpload = true
+    view.rerenderPage()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mocks.deleteResource).not.toHaveBeenCalled()
   })
 
   it('searches, filters, previews, and downloads durable resources', async () => {

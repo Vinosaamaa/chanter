@@ -205,3 +205,22 @@ this UI, without changing exact-head checks or publishing. Its actual browser
 journey validates ZIP integrity and seven-source coverage, cancellation, irreversible
 confirmation, revoked refresh and cookie-only receipt reload. It remains gated
 until final backend integration, and does not require cleanup to be complete.
+
+At 75005073, the real account dependency preview passed the new export/deletion
+journey in Chromium, Firefox and WebKit on their first attempts. An existing WebKit
+usage case retried after leaving Teaching during its schedule request. Teaching now
+shows pending and failed schedule lookups explicitly, and the usage journey waits
+for schedule readiness before leaving. Strict browser-health checks are unchanged.
+The same published head passed all 326 responsive cases, application checks and
+both native release architectures. Ten deletion screenshots were inspected across
+engines and screen sizes without a concrete visual defect.
+
+The existing server-home bookmark now uses the responsive shell, with its original
+arbitrary course/cohort creation, channel links and owner enrollment actions intact.
+Inputs meet the 44px touch target and 16px type minimum. New three-engine phone,
+landscape and desktop fixtures cover creation and non-enrolled-owner links.
+Receipt revalidation and revoked-permission dialog state corrections have red/green
+regressions. These changes still require current-head hosted visual verification.
+All 391 frontend tests, lint and the production build passed locally; the existing
+core and deferred-route budgets passed unchanged. Independent review found no
+blocking regression. Local browser servers remain unused; visual execution is hosted.

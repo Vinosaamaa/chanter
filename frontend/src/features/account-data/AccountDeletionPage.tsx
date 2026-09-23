@@ -171,14 +171,15 @@ export function AccountDeletionReceiptPage() {
     void navigate(location.pathname + location.search, { replace: true, state: null })
   }, [client, closeGeneration, handoff, location.pathname, location.search, navigate])
   const valid = validDeletionId(jobId)
-  const query = useQuery({ queryKey: ['account-deletion-receipt', jobId], queryFn: ({ signal }) => getDeletionReceipt(jobId, signal), enabled: valid, retry: false, refetchOnWindowFocus: false })
-  const job = !query.isError && query.data?.id === jobId ? query.data : undefined
+  const query = useQuery({ queryKey: ['account-deletion-receipt', jobId], queryFn: ({ signal }) => getDeletionReceipt(jobId, signal), enabled: valid, retry: false, refetchOnMount: 'always', refetchOnWindowFocus: false })
+  const loading = query.isPending || query.isFetching
+  const job = !loading && query.isFetchedAfterMount && !query.isError && query.data?.id === jobId ? query.data : undefined
   return <main className="deletion-page deletion-receipt">
     <Link to="/">Chanter</Link><h1>Deletion status</h1>
     <p>This page can only read the status of this request. Keep its address to return in this browser; its receipt cookie expires after seven days.</p>
     {params.has('uncertain') ? <p role="status">The confirmation response was interrupted. Check this receipt; an interrupted response does not establish whether confirmation succeeded.</p> : null}
-    {valid && query.isPending ? <p role="status">Loading receipt…</p> : null}
-    {!valid || query.isError || (query.isSuccess && !job) ? <p role="alert">Receipt unavailable. It may have expired, or this browser may not have its receipt cookie. This does not establish whether deletion completed.</p> : null}
+    {valid && loading ? <p role="status">Loading receipt…</p> : null}
+    {!valid || (!loading && (query.isError || (query.isSuccess && !job))) ? <p role="alert">Receipt unavailable. It may have expired, or this browser may not have its receipt cookie. This does not establish whether deletion completed.</p> : null}
     {job ? <DeletionStatus job={job} /> : null}
     {valid ? <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()}>Refresh status</button> : null}
     {job && !irreversible(job.state) && job.state !== 'CANCELLED' ? <p><Link to={`/app/account-data/delete?job=${jobId}`}>Sign in to manage preparation</Link></p> : null}

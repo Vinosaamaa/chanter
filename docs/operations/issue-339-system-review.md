@@ -66,3 +66,19 @@ the preview input also excludes the main release-package job. Its native downloa
 check reads a bounded archive in memory and validates ending, CRCs and seven-source
 manifest coverage without printing data. Credential assertions project only safe
 flags or booleans. Final accepted-union verification remains separate.
+
+The actual account dependency preview passed its three-engine lifecycle journey.
+Its broader WebKit usage case retried after leaving Teaching while a cohort's
+Office Hours request was still pending. Teaching must distinguish pending schedule
+lookup from an authoritative empty schedule; the usage journey must wait for that
+visible state before navigating away. Browser-health failure classification stays
+strict. The existing server-home page also retains unique owner course/cohort and
+enrollment actions, so moving it into the responsive shell must preserve those
+actions rather than replacing it with a non-equivalent catalog redirect.
+
+Receipt authority is checked again on every mount even if the query cache is fresh;
+cached completion is hidden during the request and after a failed response. Losing
+either course or source management permission discards the selected file before a
+later permission restoration. Three regressions reproduced these gaps before their
+fixes. Server-home keeps its original API and owner actions under the existing v3
+tokens and responsive shell; no catalog or enrollment authorization is broadened.

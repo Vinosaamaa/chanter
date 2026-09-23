@@ -81,6 +81,7 @@ function TeachingContent() {
   }>({ key: '', sessions: [], error: null })
   const officeHours = officeHoursState.key === officeHoursKey ? officeHoursState.sessions : []
   const officeHoursError = officeHoursState.key === officeHoursKey ? officeHoursState.error : null
+  const officeHoursLoading = courses.length > 0 && officeHoursState.key !== officeHoursKey
 
   useEffect(() => {
     if (courses.length === 0) return
@@ -203,8 +204,10 @@ function TeachingContent() {
               <span className="blue"><CalendarDays /></span>
               <div>
                 <p>{nextOfficeHours?.session.status === 'LIVE' ? 'Office hours live' : 'Next Office Hours'}</p>
-                <strong>{nextOfficeHours ? formatSessionTime(nextOfficeHours.session.startsAt) : 'Not scheduled'}</strong>
-                <small>{nextOfficeHours?.course.title ?? 'Choose a course to schedule'}</small>
+                <strong role={officeHoursLoading ? 'status' : undefined} aria-label={officeHoursLoading ? 'Loading Office Hours' : undefined}>
+                  {officeHoursLoading ? 'Loading…' : nextOfficeHours ? formatSessionTime(nextOfficeHours.session.startsAt) : officeHoursError ? 'Unavailable' : 'Not scheduled'}
+                </strong>
+                <small>{nextOfficeHours?.course.title ?? (officeHoursLoading ? 'Checking your schedule' : officeHoursError ? 'Refresh to try again' : 'Choose a course to schedule')}</small>
               </div>
               <button
                 type="button"

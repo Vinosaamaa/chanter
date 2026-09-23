@@ -71,6 +71,7 @@ function CourseResourcesContent() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<CourseResource | null>(null)
   const canManageResources = courseCapabilities.canUploadResources && resources.canUpload && !resources.isLoading
+  if (pendingDelete && !canManageResources) setPendingDelete(null)
   const selectedResourceId = new URLSearchParams(window.location.search).get('resource')
 
   let assistantControl = null

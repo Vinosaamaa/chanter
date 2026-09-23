@@ -60,3 +60,39 @@ there is no accepted realtime invalidation contract to replace it. Existing
 disposable-stack cleanup and strict browser-failure classification remain intact.
 Teaching resets errors at request start; dialogs in this slice open through visible
 controls. No reproduced stale error or deep-link dialog justifies a further change.
+
+## Full review at 75005073 and third remediation round
+
+The full review completed after a bare review command. Earlier conversational
+feedback was not counted as the review gate. Prior Teaching bookmark, Inbox hook
+ordering and separate moderation HTTP observations retain their dispositions above.
+
+- 4078011724: reproduced. Restoring either course or source management permission
+  could reopen a previously selected file's deletion dialog. Clear that selection
+  when aggregate management capability is lost, before rendering children. Both
+  permission-revoked/restored regressions failed before the fix and pass afterward.
+- 4078012057: reproduced. A cached completed receipt could render before the current
+  cookie was checked. Always revalidate on mount and show status only after a
+  successful post-mount response; hide status during refresh. The regression seeds
+  a fresh infinite-lifetime cache, delays the request, then rejects expired receipt
+  authority. It fails before the fix and passes afterward.
+
+Independent read-only review found no blocker in the corrections, Teaching schedule
+readiness or the lossless server-home shell migration. Current-head hosted gates
+and final accepted lifecycle/recovery union remain required.
+
+The five additional code suggestions are accounted for: source DELETE 204/202
+mismatches (1–3) are the explicit #251 dependency and block merging this UI before
+that backend contract is accepted. They are not suppressed or treated as compatible
+with main. Teaching errors reset at request start (4); dialog opening in these
+journeys is through visible controls (5), as previously reviewed.
+
+Custom suggestions 1, 6–9, 12–19 repeat the earlier bounded-test, foreground Inbox,
+disposable-stack and full-engine coverage decisions. Keep the manual preview's exact
+branch gate (2): it is temporary dependency evidence, not a general release facility.
+Documentation consolidation (3–5), polling helper extraction (11), and browser tag
+cleanup (20) are non-blocking follow-through. The new server-home group has an
+explicit shared tag and discovery covers all three engines. Keep the small bounded
+in-memory archive check (10); it avoids a retained file containing account data and
+rejects oversized input before concatenation. None of these suggestions justifies
+reducing coverage or broadening the preview's publishing authority.

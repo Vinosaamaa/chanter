@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
@@ -90,6 +90,18 @@ describe('TeachingPage', () => {
         createdAt: '2026-07-13T20:00:00.000Z',
       }],
     })
+  })
+
+  it('does not claim an empty schedule while Office Hours is pending or unavailable', async () => {
+    let reject!: (error: Error) => void
+    mocks.listOfficeHoursSessions.mockReturnValue(new Promise((_, failed) => { reject = failed }))
+    render(<MemoryRouter><TeachingPage /></MemoryRouter>)
+    expect(screen.getByRole('status', { name: 'Loading Office Hours' })).toBeVisible()
+    expect(screen.queryByText('Not scheduled')).not.toBeInTheDocument()
+    await act(async () => reject(new Error('Schedule unavailable')))
+    expect(screen.queryByRole('status', { name: 'Loading Office Hours' })).not.toBeInTheDocument()
+    expect(screen.getByText('Unavailable', { exact: true })).toBeVisible()
+    expect(screen.queryByText('Not scheduled')).not.toBeInTheDocument()
   })
 
   it('renders real course metrics and deep-links to the exact question and Office Hours contexts', async () => {

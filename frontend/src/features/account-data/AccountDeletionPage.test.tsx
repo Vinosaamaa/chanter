@@ -90,6 +90,21 @@ it('never treats a missing receipt as completion and provides an explicit refres
   expect(api.getDeletion).not.toHaveBeenCalled()
 })
 
+it('revalidates a cached completed receipt before showing its status', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: Infinity } } })
+  client.setQueryData(['account-deletion-receipt', id], { ...prepared, state: 'COMPLETE' })
+  let reject!: (reason: unknown) => void
+  api.getDeletionReceipt.mockReturnValue(new Promise((_resolve, fail) => { reject = fail }))
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[`/account-deletion/${id}`]}><Routes>
+    <Route path="/account-deletion/:jobId" element={<AccountDeletionReceiptPage />} />
+  </Routes></MemoryRouter></QueryClientProvider>)
+  expect(screen.queryByText('Deletion completed')).not.toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('Loading receipt')
+  await act(async () => reject(new ApiError('expired', 404)))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Receipt unavailable')
+  expect(screen.queryByText('Deletion completed')).not.toBeInTheDocument()
+})
+
 it('does not allow confirmation while cancellation is in flight', async () => {
   api.cancelDeletion.mockReturnValue(new Promise(() => {}))
   const user = userEvent.setup(); open(`/app/account-data/delete?job=${id}`)

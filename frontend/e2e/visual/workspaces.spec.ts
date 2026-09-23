@@ -18,6 +18,56 @@ test.beforeEach(async ({ page }) => {
 const course = '/app/servers/visual-study/courses/visual-course-0'
 const community = '/app/servers/visual-study/community'
 
+for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1280, height: 900 }]) {
+  test(`fixture UI server home retains owner course actions at ${viewport.width} @serverhome`, async ({ page }, testInfo) => {
+    let created: { title: string; cohortName: string } | undefined
+    const submissions: unknown[] = []
+    await page.route('**/api/v1/study-servers/visual-study/courses', async route => {
+      expect(route.request().method()).toBe('POST')
+      created = route.request().postDataJSON()
+      submissions.push(created)
+      await route.fulfill({ status: 201, json: { id: 'visual-created-course' } })
+    })
+    await page.route('**/api/v1/study-servers/visual-study/navigation', async route => {
+      const response = await route.fetch()
+      const data = await response.json()
+      // Owners can manage cohorts without being enrolled as learners.
+      data.courses = data.courses.map((entry: { capabilities: object }) => ({ ...entry, capabilities: { ...entry.capabilities, enrolled: false } }))
+      if (created) data.courses.push({ id: 'visual-created-course', title: created.title, channels: [], cohorts: [{ id: 'visual-created-cohort', name: created.cohortName }] })
+      await route.fulfill({ response, json: data })
+    })
+    await page.setViewportSize(viewport)
+    await page.goto('/app/servers/visual-study/home?visual=staff')
+    await expect(page.locator('.v2-app-shell')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Open Learning Collective' })).toBeVisible()
+    const firstCourse = page.locator('article').filter({ has: page.getByRole('heading', { name: 'CS 101 — Foundations of computer science' }) })
+    await expect(firstCourse.getByRole('link', { name: 'Open #general' })).toHaveAttribute('href', '/app/servers/visual-study/course-channels/visual-general')
+    await expect(firstCourse.getByRole('link', { name: 'Manage enrollment' })).toHaveAttribute('href', '/app/servers/visual-study/courses/visual-course-0/enrollment')
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-server-home-${viewport.width}.png`) })
+    const title = page.getByRole('textbox', { name: 'Course title' })
+    const cohort = page.getByRole('textbox', { name: 'Cohort name' })
+    await title.fill('Practical field observation')
+    await cohort.fill('Weekend field group')
+    for (const input of [title, cohort]) {
+      expect(await input.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+      expect(await input.evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16)
+    }
+    await page.getByRole('button', { name: 'Create course', exact: true }).scrollIntoViewIfNeeded()
+    await page.screenshot({ path: testInfo.outputPath(`fixture-ui-server-home-create-${viewport.width}.png`) })
+    await page.getByRole('button', { name: 'Create course', exact: true }).click()
+    await expect(page.getByRole('status')).toHaveText('Created Practical field observation (Weekend field group).')
+    await expect(page.getByRole('heading', { name: 'Practical field observation', exact: true })).toBeVisible()
+    expect(submissions).toEqual([{ title: 'Practical field observation', cohortName: 'Weekend field group' }])
+    await expect(title).toHaveValue('')
+    await expect(cohort).toHaveValue('')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+    if (viewport.width === 1280) {
+      const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze()
+      expect(violations.map(({ id, nodes }) => ({ id, targets: nodes.map(node => node.target) }))).toEqual([])
+    }
+  })
+}
+
 for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }, { width: 844, height: 390 }]) {
   test(`fixture UI community dialogs support keyboard navigation at ${viewport.width} @dialogs`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport)
