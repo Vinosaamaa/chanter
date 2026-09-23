@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import com.chanter.common.auth.AuthHeaders;
 
 /** Fixed private routes inside the owning container. Credentials and bodies never enter argv or diagnostics. */
 public final class Lifecycle {
@@ -107,7 +108,7 @@ public final class Lifecycle {
                 throw new IllegalArgumentException();
             byte[] body = prepared.body();
             var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:8080" + operation.path()))
-                    .timeout(Duration.ofSeconds(15)).header("X-Internal-Service-Token", token)
+                    .timeout(Duration.ofSeconds(15)).header(AuthHeaders.INTERNAL_SERVICE_TOKEN, token)
                     .header("Content-Type", "application/json").header("Accept", "application/json")
                     .header("Cache-Control", "no-store")
                     .method(operation.method(), body.length == 0 ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofByteArray(body))

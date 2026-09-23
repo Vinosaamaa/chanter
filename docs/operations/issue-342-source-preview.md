@@ -184,3 +184,14 @@ pgBackRest backup annotation and verifies the full manifest before restoring
 objects. This new linkage has not yet run on the hosted architectures. The
 operational source adapter and independently protected backup-reference retention
 remain required; the fixture does not establish provider closure or freshness.
+
+The next frozen preview at `f957d20d` completed real canonical generation and
+explicit delivery but failed at the first private auth checkpoint request on both
+architectures. It did not reach isolated database restoration. The packaged
+Lifecycle helper used the wrong internal header name. It now compiles against the
+owning `AuthHeaders.INTERNAL_SERVICE_TOKEN` constant, and an actual bounded HTTP
+test failed before that correction and passes afterward. The fixture also calls
+the same packaged checkpoint helper immediately after source startup, before
+synthetic setup or backup. The disposable UI union permits only these two reviewed
+helper/build files to differ from the pinned UI infrastructure; it still restores
+only the complete frontend tree. A fresh native run is required.

@@ -13,7 +13,7 @@ COPY ${MODEL_ASSET_SOURCE}/ model-source/
 RUN jar -xf input.jar && mkdir -p app/helpers && \
     mv BOOT-INF/classes app/classes && mv BOOT-INF/lib app/lib && \
     sed -n 's/^Start-Class: //p' META-INF/MANIFEST.MF | tr -d '\r' > app/main-class && \
-    test -s app/main-class && javac -d app/helpers helpers/Probe.java helpers/Lifecycle.java helpers/RecoveryIsolation.java && \
+    test -s app/main-class && javac -cp 'app/lib/*' -d app/helpers helpers/Probe.java helpers/Lifecycle.java helpers/RecoveryIsolation.java && \
     if find app/lib -name 'flyway-core-*.jar' | grep -q .; then javac -cp 'app/lib/*' -d app/helpers helpers/Migrate.java helpers/RecoverySchema.java; fi && \
     if [ "$MODULE" = agent-service ]; then test -s model-source/model.onnx && test -s model-source/tokenizer.json && \
       mkdir -p app/models/minilm && cp model-source/model.onnx model-source/tokenizer.json app/models/minilm/; fi

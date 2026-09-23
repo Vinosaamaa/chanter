@@ -14,8 +14,9 @@ assert.match(own, /^[a-f0-9]{40}$/);
 assert.equal(git(['status', '--porcelain']), '');
 git(['fetch', '--no-tags', 'origin', frontend]);
 assert.equal(git(['rev-parse', 'FETCH_HEAD']), frontend);
-assert.equal(git(['diff', '--name-only', own, frontend, '--', 'infra', 'scripts/deploy/release.mjs']), '',
-  'UI preview must preserve the exact deployment infrastructure');
+assert.deepEqual(git(['diff', '--name-only', own, frontend, '--', 'infra', 'scripts/deploy/release.mjs']).split('\n'),
+  ['infra/production/java/Dockerfile', 'infra/production/java/Lifecycle.java'],
+  'Only the reviewed owning-header helper correction may differ from the pinned UI infrastructure');
 git(['fetch', '--no-tags', 'origin', source]);
 assert.equal(git(['rev-parse', 'FETCH_HEAD']), source);
 const prefix = 'backend/media-service/src/';

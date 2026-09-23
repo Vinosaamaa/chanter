@@ -9,6 +9,7 @@ import { ScopeVerifier, SCOPE_KINDS } from './deleted-scope.mjs';
 import { modules } from './release.mjs';
 import { ResourceObjectArchive } from './resource-object-backup.mjs';
 import { sourceDatabaseCheckpoint } from './source-database-native-fixture.mjs';
+import { lifecycleClient } from './terminal-journal-client.mjs';
 
 assert.equal(process.env.GITHUB_ACTIONS, 'true');
 assert.equal(process.env.CHANTER_SOURCE_RECOVERY_PREVIEW, 'true');
@@ -80,6 +81,15 @@ try {
   fs.writeFileSync(composeFile, JSON.stringify(definition), { mode: 0o600 });
   // The real auth/community processes answer the owning permission clients used by the helper.
   compose(['up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'auth-service', 'community-service', 'media-service']);
+  const preflightProject = `chanter-recovery-${crypto.randomUUID().replaceAll('-', '')}`;
+  const preflight = lifecycleClient({ source: 'auth', environment: 'staging', composeFile, project: preflightProject,
+    execute: (file, args, options) => {
+      assert.equal(file, 'docker'); assert.equal(args[2], preflightProject); assert.equal(args[4], composeFile);
+      const translated = [...args]; translated[2] = project;
+      return execFileSync(file, translated, options);
+    } });
+  // Exercise the exact packaged private HTTP transport before any synthetic source setup or backup.
+  assert.equal(await preflight.checkpoint(), null);
   const call = (source, request) => {
     assert.ok(sources.includes(source));
     const input = JSON.stringify(request); assert.ok(Buffer.byteLength(input) <= 64 * 1024);
