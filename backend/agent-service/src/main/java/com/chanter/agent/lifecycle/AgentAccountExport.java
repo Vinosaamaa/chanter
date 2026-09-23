@@ -37,7 +37,7 @@ public class AgentAccountExport implements AccountExportProjection, ExportSnapsh
                 u.reserved_tokens,u.input_tokens,u.output_tokens,u.cache_read_tokens,u.cache_write_tokens,u.reasoning_tokens,u.measured,u.outcome,
                 u.latency_ms,u.estimated_cost_usd,u.price_version,u.created_at,u.settled_at,
                 CASE WHEN u.measured THEN 'MEASURED' ELSE 'UNKNOWN' END AS token_usage_status,
-                CASE WHEN n.id IS NOT NULL THEN 'CLIENT_REPORTED' ELSE 'SERVER_RECORDED_ATTEMPT' END AS execution_record
+                CASE WHEN n.id IS NOT NULL OR u.provider='codex-native' THEN 'CLIENT_REPORTED' ELSE 'SERVER_RECORDED_ATTEMPT' END AS execution_record
             FROM ai_generation_usage u LEFT JOIN native_companion_requests n ON n.id=u.id
             WHERE u.learner_user_id=? ORDER BY u.created_at,u.id
             """, account);

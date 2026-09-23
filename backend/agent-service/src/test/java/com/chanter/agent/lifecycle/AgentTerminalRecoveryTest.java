@@ -38,10 +38,57 @@ class AgentTerminalRecoveryTest {
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
     @Autowired AccountDeletionParticipant participant;
     @Autowired AccountDeletionProtocol protocol;
+    @Autowired ErasedContentDelivery content;
     @Autowired org.springframework.context.ConfigurableApplicationContext context;
     @Autowired com.chanter.agent.infra.TestSupportQuestionChannelAccessClient channelAccess;
     @Autowired com.chanter.agent.infra.TestStudyAssistantGrantCandidatesClient grantCandidates;
     private final Model model=new Model("Fixture","ollama","fixture",null,null,64,16,Duration.ofSeconds(3),Set.of(),null);
+
+    @Test void accountAttributionErasurePreservesUnknownClaimsWithoutLateRefundAndWaitsForFinals() throws Exception {
+        UUID server=UUID.randomUUID(),user=UUID.randomUUID(),question=UUID.randomUUID(),channel=UUID.randomUUID(),course=UUID.randomUUID();install(server,user);
+        var nativeModel=new Model("Native fixture","codex-native","fixture",null,null,64,16,Duration.ofSeconds(3),Set.of(),null);
+        UUID reservation=ledger.reserve(server,question,user,"native-fixture",nativeModel);
+        ledger.settle(reservation,LlmUsage.UNKNOWN,"UNKNOWN",0,"fixture","provider-record",nativeModel,true);
+        var evidence=mapper.writeValueAsString(Map.of("studyServerId",server,"courseId",course,"question","private pending question","citations",List.of()));
+        var request=new NativeRequestRepository.Request(reservation,channel,question,user,UUID.randomUUID(),UUID.randomUUID(),"fixture",evidence,"a".repeat(64),"b".repeat(64),Instant.now().plusSeconds(120));
+        nativeRequests.issue(request);var entry=entry("ACCOUNT",user);var tx=new TransactionTemplate(transactions);
+        tx.executeWithoutResult(s -> {terminal.applyTerminal(entry);s.setRollbackOnly();});
+        assertThat(jdbc.queryForObject("SELECT learner_user_id FROM ai_generation_usage WHERE id=?",UUID.class,reservation)).isEqualTo(user);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM native_companion_requests WHERE id=?",Integer.class,reservation)).isEqualTo(1);
+        apply(entry);apply(entry);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM native_companion_requests WHERE id=?",Integer.class,reservation)).isZero();
+        assertThat(jdbc.queryForObject("SELECT learner_user_id FROM ai_generation_usage WHERE id=?",UUID.class,reservation)).isNull();
+        assertThat(jdbc.queryForObject("SELECT provider_request_id FROM ai_generation_usage WHERE id=?",String.class,reservation)).isNull();
+        assertThat(jdbc.queryForObject("SELECT installed_by_user_id FROM study_assistant_installs WHERE study_server_id=?",UUID.class,server)).isNull();
+        ledger.settle(reservation,new LlmUsage(0,0,0,0,0),"CANCELLED",0,"fixture","late-provider-record",nativeModel,false);
+        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(80);assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT outcome FROM ai_generation_usage WHERE id=?",String.class,reservation)).isEqualTo("UNKNOWN");
+        assertThat(jdbc.queryForObject("SELECT provider_request_id FROM ai_generation_usage WHERE id=?",String.class,reservation)).isNull();
+        assertThatThrownBy(() -> nativeRequests.claim(reservation,channel,question,user,request.session(),request.installation())).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> ledger.reserve(server,question,UUID.randomUUID(),"fixture",model)).isInstanceOf(AiGenerationLedger.AttemptConflict.class);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        acknowledgeEmptyFinals(entry);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PRESERVED);
+        var empty=entry("ACCOUNT",UUID.randomUUID());apply(empty);acknowledgeEmptyFinals(empty);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(empty))).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
+    }
+
+    private void acknowledgeEmptyFinals(TerminalJournal.Entry entry) throws Exception {
+        acknowledgeFinals(entry,0);
+    }
+    private void acknowledgeFinals(TerminalJournal.Entry entry,int count) throws Exception {
+        var commands=jdbc.query("SELECT id,revision,destination,aggregate_key,payload FROM durable_outbox WHERE kind=? AND aggregate_key=? ORDER BY revision",
+                (rs,n)->new com.chanter.common.events.DurableEvent(rs.getObject(1,UUID.class),1,rs.getString(3).substring("lifecycle-".length()),
+                        rs.getLong(2),ErasedContent.FINAL,rs.getString(4),rs.getString(5)),
+                ErasedContent.FINAL,"ACCOUNT_CONTENT_FINAL:"+entry.eventId()+":agent");
+        assertThat(commands).hasSize(2);
+        for(var command:commands) {
+            var completion=mapper.readValue(command.payload(),ErasedContent.Completion.class);assertThat(completion.contentCount()).isEqualTo(count);
+            var receipt=new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,command.producer(),command.revision(),ErasedContent.COMPLETE,
+                    command.aggregateKey(),mapper.writeValueAsString(new ErasedContent.FinalReceipt(command.id(),completion)));
+            content.accept(receipt);content.accept(receipt);
+        }
+    }
 
     @Test void hostedPendingNativeFixtureUsesCurrentChannelScopeAndOwningStoresWithoutCredentials() throws Exception {
         var source=java.nio.file.Path.of("../../scripts/deploy/fixtures/CanonicalLifecycleFixture.java").toAbsolutePath().normalize();
@@ -71,7 +118,7 @@ class AgentTerminalRecoveryTest {
         }
     }
 
-    @Test void accountRetainsExactAnswerNotificationIdentityUntilItsDownstreamContentReceipts() {
+    @Test void accountRetainsExactAnswerNotificationIdentityUntilItsDownstreamContentReceipts() throws Exception {
         UUID server=UUID.randomUUID(),user=UUID.randomUUID();install(server,user);
         var answer=new StudyAssistantAnswer(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID(),server,user,"private question","private answer",AnswerConfidence.HIGH,false,List.of(),Instant.now());
         answers.saveAnswer(answer,InvocationType.GROUNDED_ANSWER);
@@ -82,6 +129,43 @@ class AgentTerminalRecoveryTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_ADVANCE' AND aggregate_key=?",Integer.class,"ACCOUNT_CONTENT_ADVANCE:"+entry.eventId())).isEqualTo(1);
         TerminalReapplyStore.Cleanup state=new TransactionTemplate(transactions).execute(s -> terminal.cleanup(entry));
         assertThat(state).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        var advance=jdbc.queryForObject("SELECT id,revision,payload FROM durable_outbox WHERE kind='ACCOUNT_CONTENT_ADVANCE' AND aggregate_key=?",
+                (rs,n)->new com.chanter.common.events.DurableEvent(rs.getObject(1,UUID.class),1,"agent",rs.getLong(2),ErasedContentDelivery.ADVANCE,"ACCOUNT_CONTENT_ADVANCE:"+entry.eventId(),rs.getString(3)),
+                "ACCOUNT_CONTENT_ADVANCE:"+entry.eventId());content.accept(advance);
+        var erasures=jdbc.query("SELECT id,revision,destination,aggregate_key,payload FROM durable_outbox WHERE kind=? AND aggregate_key LIKE ?",
+                (rs,n)->new com.chanter.common.events.DurableEvent(rs.getObject(1,UUID.class),1,rs.getString(3).substring("lifecycle-".length()),rs.getLong(2),ErasedContent.ERASE,rs.getString(4),rs.getString(5)),
+                ErasedContent.ERASE,"ACCOUNT_CONTENT:"+entry.eventId()+":%");assertThat(erasures).hasSize(2);
+        for(var command:erasures) content.accept(new com.chanter.common.events.DurableEvent(UUID.randomUUID(),1,command.producer(),command.revision(),ErasedContent.RECEIPT,command.aggregateKey(),
+                mapper.writeValueAsString(new ErasedContent.Receipt("agent",command.id(),mapper.readValue(command.payload(),ErasedContent.Batch.class)))));
+        acknowledgeFinals(entry,1);
+        var tx=new TransactionTemplate(transactions);
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        tx.executeWithoutResult(s -> retractions.acknowledge(new com.chanter.common.events.AnswerReconciliation(
+                new com.chanter.common.events.AnswerRetraction(answer.id(),answer.supportQuestionId(),answer.channelId(),user),"COMPLETE")));
+        assertThat(tx.<TerminalReapplyStore.Cleanup>execute(s -> terminal.cleanup(entry))).isEqualTo(TerminalReapplyStore.Cleanup.PRESERVED);
+    }
+
+    @Test void lateSettlementWaitsForAttributionErasureAndCannotRestoreProviderMetadata() throws Exception {
+        UUID server=UUID.randomUUID(),user=UUID.randomUUID();install(server,user);
+        UUID reservation=ledger.reserve(server,UUID.randomUUID(),user,"fixture",model);var entry=entry("ACCOUNT",user);
+        var erased=new CountDownLatch(1);var release=new CountDownLatch(1);var attempting=new CountDownLatch(1);
+        try(var pool=Executors.newVirtualThreadPerTaskExecutor()) {
+            var deletion=pool.submit(() -> new TransactionTemplate(transactions).executeWithoutResult(tx -> {
+                terminal.applyTerminal(entry);erased.countDown();
+                try {if(!release.await(5,TimeUnit.SECONDS)) throw new IllegalStateException("Fixture release missing");}
+                catch(InterruptedException failure) {Thread.currentThread().interrupt();throw new IllegalStateException(failure);}
+            }));
+            try {
+                assertThat(erased.await(5,TimeUnit.SECONDS)).isTrue();
+                var settlement=pool.submit(() -> {attempting.countDown();ledger.settle(reservation,new LlmUsage(0,0,0,0,0),"CANCELLED",0,"fixture","late-request",model,false);});
+                assertThat(attempting.await(5,TimeUnit.SECONDS)).isTrue();
+                assertThatThrownBy(() -> settlement.get(150,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                release.countDown();deletion.get(5,TimeUnit.SECONDS);settlement.get(5,TimeUnit.SECONDS);
+            } finally {release.countDown();}
+        }
+        assertThat(jdbc.queryForObject("SELECT provider_request_id FROM ai_generation_usage WHERE id=?",String.class,reservation)).isNull();
+        assertThat(ledger.summary(server).accountedTokens()).isEqualTo(80);
+        assertThat(ledger.summary(server).unknownUsageCount()).isEqualTo(1);
     }
 
     @Test void statusRepairRemembersTheAnswerAfterDeliveredPayloadErasure() {
@@ -184,9 +268,10 @@ class AgentTerminalRecoveryTest {
             var late=pool.submit(() -> { starting.countDown(); return ledger.reserve(server,UUID.randomUUID(),user,"fixture",model); });
             await(starting);
             var settling=pool.submit(() -> ledger.settle(reservation,LlmUsage.UNKNOWN,"CANCELLED",0,"fixture",null,model,true));
-            settling.get(5,TimeUnit.SECONDS);
+            assertThatThrownBy(() -> settling.get(100,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
             assertThatThrownBy(() -> late.get(100,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
             release.countDown(); deletion.get(5,TimeUnit.SECONDS);
+            settling.get(5,TimeUnit.SECONDS);
             assertThatThrownBy(() -> late.get(5,TimeUnit.SECONDS)).hasCauseInstanceOf(ResponseStatusException.class);
         } finally { release.countDown(); }
         assertThat(ledger.summary(server).requestCount()).isEqualTo(1);

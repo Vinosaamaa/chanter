@@ -158,7 +158,7 @@ public final class CanonicalLifecycleFixture {
                 UUID server=id(request,"serverId"),channel=id(request,"channelId"),owner=id(request,"ownerId");
                 Object access=invoke(bean("com.chanter.agent.application.SupportQuestionChannelAccessClient"),"requireAccess",channel,owner);
                 if(!server.equals(invoke(access,"studyServerId")) || !Boolean.TRUE.equals(invoke(access,"canViewUnansweredSupportQuestions")))
-                    throw new IllegalArgumentException("Native fixture requires current matching Instructor scope");
+                    throw new IllegalArgumentException("Native fixture requires current matching staff scope");
                 UUID course=(UUID)invoke(access,"courseId");
                 Object installs=bean("com.chanter.agent.application.StudyAssistantRepository");
                 if(((Optional<?>)invoke(installs,"findInstallByStudyServerId",server)).isEmpty())

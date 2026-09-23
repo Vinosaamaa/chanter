@@ -33,7 +33,7 @@ public class AgentTerminalConfiguration {
                 outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore agentTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,AnswerRetractions retractions,ErasedContentDelivery content,
+            ExportSnapshotStore snapshots,ResourceChunkRepository chunks,com.fasterxml.jackson.databind.ObjectMapper mapper,AnswerRetractions retractions,ErasedContentDelivery content,AgentAccountRetention retention,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
@@ -49,9 +49,8 @@ public class AgentTerminalConfiguration {
                     """,target,entry.revision(),entry.eventId(),entry.digest(),target,target);
                 content.start(entry);
                 jdbc.update("DELETE FROM study_assistant_answer_helpful WHERE user_id=?",target);
-                jdbc.update("UPDATE native_companion_requests SET evidence_json=NULL,outcome=CASE WHEN outcome IN ('ISSUED','ACCEPTING') THEN 'REJECTED' ELSE outcome END WHERE user_id=?",target);
-                // Usage and shared installation attribution require their documented retention disposition.
-                return TerminalReapplyStore.Cleanup.PENDING;
+                retention.erase(target);
+                return content.complete(entry) && !retractions.accountPending(target) ? retention.disposition(target) : TerminalReapplyStore.Cleanup.PENDING;
             }
             // At most 16 retained source snapshots; cancel them before removing their canonical content.
             snapshots.invalidateRetained();

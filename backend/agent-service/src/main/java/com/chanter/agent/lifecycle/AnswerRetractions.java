@@ -47,6 +47,9 @@ public final class AnswerRetractions {
         return jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_answer_retractions a JOIN lifecycle_answer_retraction_resources r ON r.answer_id=a.answer_id WHERE r.resource_id=? AND a.receipt_state<>'COMPLETE'",
                 Integer.class,target)>0;
     }
+    public boolean accountPending(UUID account) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_answer_retractions WHERE author_id=? AND receipt_state<>'COMPLETE'",Long.class,account)>0;
+    }
     public void acknowledge(AnswerReconciliation receipt) {
         jdbc.queryForObject("SELECT id FROM lifecycle_reapply_head WHERE id=1 FOR UPDATE",Integer.class);
         var answer=receipt.answer();
@@ -57,6 +60,7 @@ public final class AnswerRetractions {
         jdbc.update("UPDATE lifecycle_answer_retractions SET receipt_state=? WHERE answer_id=?",receipt.state(),answer.answerId());
         for(UUID resource:jdbc.query("SELECT resource_id FROM lifecycle_answer_retraction_resources WHERE answer_id=? ORDER BY resource_id",
                 (rs,n)->rs.getObject(1,UUID.class),answer.answerId())) terminal.getObject().reconcile("RESOURCE",resource);
+        terminal.getObject().reconcile("ACCOUNT",answer.authorId());
     }
     private record Saved(AnswerRetraction answer,UUID server) { }
 }

@@ -116,3 +116,10 @@ CREATE TABLE lifecycle_erased_content (
         CREATE INDEX lifecycle_content_notification_event ON lifecycle_erased_content(notification_event_id);
         CREATE INDEX lifecycle_content_pending ON lifecycle_erased_content(target_kind,target_id,search_event_id,source_kind,source_id)
         ;
+ALTER TABLE ai_generation_usage ALTER COLUMN learner_user_id DROP NOT NULL;
+ALTER TABLE study_assistant_installs ALTER COLUMN installed_by_user_id DROP NOT NULL;
+CREATE INDEX lifecycle_usage_account ON ai_generation_usage(learner_user_id);
+CREATE INDEX lifecycle_install_account ON study_assistant_installs(installed_by_user_id);
+CREATE TABLE lifecycle_agent_account_retention (
+    account_id UUID PRIMARY KEY,usage_claims BIGINT NOT NULL,shared_installs BIGINT NOT NULL
+);
