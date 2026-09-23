@@ -9,7 +9,7 @@ import {
   Sparkles,
   UsersRound,
 } from 'lucide-react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 
 import type { TeachingCourseSummary } from '../../instructor-dashboard/instructor-dashboard-types'
 import { useInstructorDashboardPage } from '../../instructor-dashboard/hooks/use-instructor-dashboard-page'
@@ -56,13 +56,18 @@ export function TeachingPage() {
       </section>
     )
   }
-  if (!access.showTeachingNav) return <Navigate to="/app/home" replace />
+  if (!access.showTeachingNav && !access.isError) return <Navigate to="/app/home" replace />
   return <TeachingContent />
 }
 
 function TeachingContent() {
-  const [selectedServerId, setSelectedServerId] = useState<string | null>(null)
-  const selectServer = useCallback((id: string) => setSelectedServerId(id), [])
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedServerId = searchParams.get('serverId')
+  const selectServer = useCallback((id: string) => setSearchParams(current => {
+    const next = new URLSearchParams(current)
+    next.set('serverId', id)
+    return next
+  }, { replace: true }), [setSearchParams])
   const page = useInstructorDashboardPage(selectedServerId, selectServer)
   const navigate = useNavigate()
   const dashboard = page.dashboard
@@ -76,6 +81,7 @@ function TeachingContent() {
   }>({ key: '', sessions: [], error: null })
   const officeHours = officeHoursState.key === officeHoursKey ? officeHoursState.sessions : []
   const officeHoursError = officeHoursState.key === officeHoursKey ? officeHoursState.error : null
+  const officeHoursLoading = courses.length > 0 && officeHoursState.key !== officeHoursKey
 
   useEffect(() => {
     if (courses.length === 0) return
@@ -155,14 +161,16 @@ function TeachingContent() {
             </select>
           </label>
         ) : null}
+        <button type="button" className="v2-outline-button" aria-label="Refresh teaching" disabled={page.isLoading || (!serverId && !page.error)} onClick={() => void page.refresh()}>Refresh</button>
       </header>
 
       {page.isLoading ? <p className="teaching-state" role="status">Loading dashboard...</p> : null}
-      {page.error ? <p className="inline-error">{page.error}</p> : null}
+      {page.error ? <p className="inline-error" role="alert">{page.error}</p> : null}
       {officeHoursError ? <p className="inline-error">{officeHoursError}</p> : null}
 
       {dashboard ? (
         <>
+          {dashboard.quotaExhausted ? <p role="status">Assistant run limit reached. Course Resources and instructor support remain available.</p> : null}
           <div className="teaching-metrics">
             <article>
               <span className="purple"><CircleHelp /></span>
@@ -196,8 +204,10 @@ function TeachingContent() {
               <span className="blue"><CalendarDays /></span>
               <div>
                 <p>{nextOfficeHours?.session.status === 'LIVE' ? 'Office hours live' : 'Next Office Hours'}</p>
-                <strong>{nextOfficeHours ? formatSessionTime(nextOfficeHours.session.startsAt) : 'Not scheduled'}</strong>
-                <small>{nextOfficeHours?.course.title ?? 'Choose a course to schedule'}</small>
+                <strong role={officeHoursLoading ? 'status' : undefined} aria-label={officeHoursLoading ? 'Loading Office Hours' : undefined}>
+                  {officeHoursLoading ? 'Loading…' : nextOfficeHours ? formatSessionTime(nextOfficeHours.session.startsAt) : officeHoursError ? 'Unavailable' : 'Not scheduled'}
+                </strong>
+                <small>{nextOfficeHours?.course.title ?? (officeHoursLoading ? 'Checking your schedule' : officeHoursError ? 'Refresh to try again' : 'Choose a course to schedule')}</small>
               </div>
               <button
                 type="button"
@@ -214,6 +224,17 @@ function TeachingContent() {
               </button>
             </article>
           </div>
+
+          <dl className="teaching-operational-summary">
+            {[
+              ['TA queue', dashboard.openTaQueueItems],
+              ['Low-confidence handoffs', dashboard.lowConfidenceHandoffs],
+              ['Approved FAQs', dashboard.approvedFaqCount],
+              ['Live Office Hours', dashboard.liveOfficeHoursSessions],
+              ['Scheduled Office Hours', dashboard.scheduledOfficeHoursSessions],
+              ['Office Hours waitlist', dashboard.officeHoursWaitlistEntries],
+            ].map(([label, count]) => <div key={label}><dt>{label}</dt><dd>{count}</dd></div>)}
+          </dl>
 
           <div className="teaching-grid">
             <article>
@@ -265,10 +286,10 @@ function TeachingContent() {
             <span><Sparkles /></span>
             <div>
               <h2>AI Study Assistant usage</h2>
-              <p><b>{dashboard.planTier} plan</b>{used} / {limit} AI queries</p>
-              <small>{dashboard.remainingAiInvocations} queries remaining this period</small>
+              <p><b>Free beta</b>{used} / {limit} assistant runs</p>
+              <small>{dashboard.remainingAiInvocations} runs remaining of the lifetime limit</small>
             </div>
-            <div className="teaching-usage-bar" role="progressbar" aria-label="AI query quota used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={limit > 0 ? percent : undefined} aria-valuetext={limit > 0 ? `${used} of ${limit} queries` : 'Quota unavailable'}>
+            <div className="teaching-usage-bar" role="progressbar" aria-label="Assistant run quota used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={limit > 0 ? percent : undefined} aria-valuetext={limit > 0 ? `${used} of ${limit} runs` : 'Quota unavailable'}>
               <i style={{ width: `${percent}%` }} />
             </div>
             <strong>{percent}%</strong>

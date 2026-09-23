@@ -61,12 +61,17 @@ function accessErrorMessage(caught: unknown): string {
 }
 
 export function useInstructorDashboardPage(
-  selectedServerId: string | null,
+  requestedServerId: string | null,
   onSelectServerId: (serverId: string) => void,
 ): UseInstructorDashboardPageResult {
   const userId = useAuthStore((state) => state.user?.id ?? null)
-  const serversQuery = useAccessibleStudyServersQuery()
+  // The shell already owns initial loading. Mounting this child after an error
+  // must not restart that query and make the shell unmount us again.
+  const serversQuery = useAccessibleStudyServersQuery({ refetchOnMount: false, retryOnMount: false })
+  const { isError: serversUnavailable, refetch: refetchServers } = serversQuery
   const servers = serversQuery.data ?? []
+  const selectedServerId = serversQuery.isLoading || serversQuery.isError ? null
+    : (servers.find(server => server.id === requestedServerId) ?? servers[0])?.id ?? null
   const [dashboard, setDashboard] = useState<InstructorDashboard | null>(null)
   const [isOwner, setIsOwner] = useState(false)
   const [loadedKey, setLoadedKey] = useState<string | null>(null)
@@ -79,10 +84,8 @@ export function useInstructorDashboardPage(
     serversQuery.isLoading || (requestKey !== null && loadedKey !== requestKey)
 
   useEffect(() => {
-    if (!serversQuery.isLoading && serversQuery.data && serversQuery.data.length > 0 && !selectedServerId) {
-      onSelectServerId(serversQuery.data[0].id)
-    }
-  }, [onSelectServerId, selectedServerId, serversQuery.data, serversQuery.isLoading])
+    if (selectedServerId && selectedServerId !== requestedServerId) onSelectServerId(selectedServerId)
+  }, [onSelectServerId, selectedServerId, requestedServerId])
 
   useEffect(() => {
     if (!selectedServerId || !userId || requestKey === null) {
@@ -130,18 +133,23 @@ export function useInstructorDashboardPage(
   }, [requestKey, selectedServerId, userId])
 
   const refresh = useCallback(async () => {
+    if (serversUnavailable) {
+      await refetchServers()
+      return
+    }
     setReloadToken((current) => current + 1)
-  }, [])
+  }, [serversUnavailable, refetchServers])
 
   return {
     servers,
     selectedServerId,
     setSelectedServerId: onSelectServerId,
-    dashboard,
-    isOwner,
+    dashboard: requestKey !== null && loadedKey === requestKey ? dashboard : null,
+    isOwner: requestKey !== null && loadedKey === requestKey && isOwner,
     isLoading,
-    accessDenied,
-    error,
+    accessDenied: requestKey !== null && loadedKey === requestKey && accessDenied,
+    error: serversQuery.isError ? accessErrorMessage(serversQuery.error)
+      : requestKey !== null && loadedKey === requestKey ? error : null,
     refresh,
   }
 }
