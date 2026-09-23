@@ -216,15 +216,19 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       assert.equal(fence.unsettledMutations, 0); assert.equal(fence.storageNamespaceSha256, objects.archivedNamespace);
       objectCall({ action: 'discard', inventoryId });
       const restoredInventory = objectCall({ action: 'capture', inventoryId, databaseBackupId, authority });
-      assert.equal(restoredInventory.referenceCount, 2);
+      assert.equal(restoredInventory.referenceCount, 3);
       const references = objectCall({ action: 'page', inventoryId, authority, after: 0, limit: 16 });
-      assert.equal(references.nextAfter, null); assert.equal(references.references.length, 2);
+      assert.equal(references.nextAfter, null); assert.equal(references.references.length, 3);
       const live = references.references.find(value => value.resourceId === objects.liveObject.resourceId);
       const terminal = references.references.find(value => value.resourceId === resourceId);
+      const quarantined = references.references.find(value => value.resourceId === objects.quarantineObject.resourceId);
       assert.equal(live.terminal, false); assert.equal(live.resourceState, 'AVAILABLE');
+      assert.equal(quarantined.terminal, false); assert.equal(quarantined.resourceState, 'QUARANTINED');
       assert.equal(terminal.terminal, true); assert.equal(terminal.resourceState, 'DELETE_PENDING');
       for (const field of ['resourceId', 'courseId', 'key', 'byteSize', 'sha256', 'providerVersionId'])
         assert.equal(live[field], objects.liveObject[field]);
+      for (const field of ['resourceId', 'courseId', 'key', 'byteSize', 'sha256', 'providerVersionId'])
+        assert.equal(quarantined[field], objects.quarantineObject[field]);
       const bytes = objects.archive.readVerified(objects.liveArchived, objects.liveObject, fence.storageNamespaceSha256);
       assert.deepEqual(bytes, objects.actualBytes);
       const restoreRequest = { inventoryId, databaseBackupId, authority, ordinal: live.ordinal };
@@ -235,12 +239,18 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       const restoredBytes = objectCall({ action: 'restore', request: restoreRequest, base64: bytes.toString('base64') });
       assert.deepEqual(Buffer.from(restoredBytes.base64, 'base64'), bytes);
       assert.equal(restoredBytes.resourceId, live.resourceId); assert.equal(restoredBytes.sha256, live.sha256);
+      const quarantineBytes = objects.archive.readVerified(objects.quarantineArchived, objects.quarantineObject, fence.storageNamespaceSha256);
+      assert.deepEqual(quarantineBytes, objects.actualBytes);
+      const quarantineRequest = { inventoryId, databaseBackupId, authority, ordinal: quarantined.ordinal };
+      assert.deepEqual(Buffer.from(objectCall({ action: 'restore', request: quarantineRequest, base64: quarantineBytes.toString('base64') }).base64, 'base64'), quarantineBytes);
+      assert.equal(sql(database, 'chanter_media', `SELECT state FROM course_resources WHERE id='${quarantined.resourceId}'`), 'QUARANTINED');
       assert.deepEqual(objectCall({ action: 'delete', request: terminalRequest }),
         { physicallyClosed: true, outstandingMutations: 0, publicCutoverAllowed: false });
-      const completed = { state: 'DELETED', sourceRetained: false, reservedBytes: live.byteSize, publicCutoverAllowed: false };
+      const completed = { state: 'DELETED', sourceRetained: false, reservedBytes: live.byteSize + quarantined.byteSize, publicCutoverAllowed: false };
       assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId }), completed);
       assert.deepEqual(objectCall({ action: 'finish-delete', request: terminalRequest, resourceId }), completed);
       assert.deepEqual(Buffer.from(objectCall({ action: 'read', request: restoreRequest }).base64, 'base64'), bytes);
+      assert.deepEqual(Buffer.from(objectCall({ action: 'read', request: quarantineRequest }).base64, 'base64'), quarantineBytes);
       const mediaReceipt = objectCall({ action: 'receipt' });
       assert.equal(mediaReceipt.source, 'media'); assert.equal(mediaReceipt.schemaVersion, 1);
       assert.ok(sameWatermark(mediaReceipt.authority, authority));
@@ -248,6 +258,7 @@ export async function sourceDatabaseCheckpoint({ bundle, state, root, release, p
       return { ...result, databaseBackupVerified: true, restoredSessionsInvalidated: true,
         restoredPendingNativeInvalidated: true, historicalCourseReconciled: true, objectRestoreVerified: true,
         postBackupServerReconciled: true,
+        quarantineStatePreserved: true,
         interruptedParticipantRetryVerified: true,
         mediaReceiptAfterObjectClosure: mediaReceipt, terminalObjectRestorationRefused: true,
         externalProviderClosureVerified: false };

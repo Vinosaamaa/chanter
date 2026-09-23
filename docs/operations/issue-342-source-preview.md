@@ -118,15 +118,17 @@ same owned data volume. The unchanged operator then verifies the exact container
 mounts and private network. Cleanup checks the exact disposable ownership labels
 and attempts all owned removals. No public listener or cutover is enabled.
 
-The following unverified extension keeps a second live resource in the actual
-backup. After authority replay it checks the restored historical course and
+The following unverified extension keeps a second live resource and a third
+settled QUARANTINED upload in the actual backup. After authority replay it checks the restored historical course and
 channel IDs in all six dependent/current scope stores, with the original archived
 scope still empty. It then recaptures the source inventory at the current prefix
-and restores only the live resource from its verified encrypted object into a
-fresh ownership-labeled local volume. Terminal restoration must fail before any
+and restores only those two nonterminal resources from their verified encrypted
+objects into a fresh ownership-labeled local volume. The quarantined resource
+must remain QUARANTINED; the operator byte path never makes it publicly available.
+Terminal restoration must fail before any
 mutation is reserved. Actual per-key closure and the owning completion hook
-release only the deleted resource's reservation, preserving the live resource's
-bytes and quota. The media receipt is re-read through the real owning controller
+release only the deleted resource's reservation, preserving both retained
+resources' bytes and quota. The media receipt is re-read through the real owning controller
 after object accounting. Ordinary source processes remain stopped; the bounded
 fixture helpers retain recovery mode and private networking.
 
