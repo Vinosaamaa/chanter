@@ -43,7 +43,7 @@ jobs:
       - name: Verify fixed private lifecycle transport
         run: |
           mkdir -p .cache/lifecycle-helper
-          javac -d .cache/lifecycle-helper infra/production/java/Lifecycle.java scripts/deploy/fixtures/LifecycleContractTest.java scripts/deploy/fixtures/LifecycleHttpFixture.java
+          javac -d .cache/lifecycle-helper backend/common/src/main/java/com/chanter/common/auth/AuthHeaders.java infra/production/java/Lifecycle.java scripts/deploy/fixtures/LifecycleContractTest.java scripts/deploy/fixtures/LifecycleHttpFixture.java
           java -cp .cache/lifecycle-helper LifecycleContractTest
           java -cp .cache/lifecycle-helper LifecycleHttpFixture
       - name: Validate recovery configuration

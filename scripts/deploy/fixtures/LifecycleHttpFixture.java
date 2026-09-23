@@ -1,4 +1,5 @@
 import com.sun.net.httpserver.HttpServer;
+import com.chanter.common.auth.AuthHeaders;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -16,7 +17,7 @@ public final class LifecycleHttpFixture {
         server.setExecutor(executor);
         server.createContext("/api/v1/internal/lifecycle/journal/reapply/receipt", exchange -> {
             try (exchange) {
-                if (!"fixture-private-token".equals(exchange.getRequestHeaders().getFirst("X-Internal-Service-Token"))) {
+                if (!"fixture-private-token".equals(exchange.getRequestHeaders().getFirst(AuthHeaders.INTERNAL_SERVICE_TOKEN))) {
                     exchange.sendResponseHeaders(403, -1); return;
                 }
                 if (mode.get().equals("redirect")) {
@@ -39,7 +40,7 @@ public final class LifecycleHttpFixture {
             try (exchange) {
                 String body = new String(exchange.getRequestBody().readNBytes(32769), StandardCharsets.UTF_8);
                 boolean read = expectedPath.get().endsWith("/scope");
-                boolean valid = "fixture-private-token".equals(exchange.getRequestHeaders().getFirst("X-Internal-Service-Token"))
+                boolean valid = "fixture-private-token".equals(exchange.getRequestHeaders().getFirst(AuthHeaders.INTERNAL_SERVICE_TOKEN))
                         && exchange.getRequestURI().getPath().equals(expectedPath.get())
                         && exchange.getRequestMethod().equals(read ? "GET" : "POST")
                         && body.equals(read ? "" : privateBody);
