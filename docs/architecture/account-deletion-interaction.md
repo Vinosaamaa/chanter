@@ -56,8 +56,8 @@ are forbidden from the initial public, sign-in and Home dependency graphs.
 Independent review identified and corrected cross-job late responses, unreadable
 successful confirmation responses and stale receipt data after cookie expiry.
 Focused account/auth regressions, lint, production build and budget checks pass.
-Cross-browser responsive fixtures are authored but remain unverified until hosted
-execution and screenshot inspection. Actual export/deletion acceptance requires
+The corrected account transition passes hosted cross-browser responsive checks;
+phone, landscape and desktop screenshots have been inspected. Actual export/deletion acceptance requires
 the accepted #251 backend and #342 recovery union, not intercepted fixture APIs.
 
 The first hosted confirmation cases exposed the real router's lazy-loading race.
@@ -69,3 +69,34 @@ normally when required. This also preserves another account that signed in while
 the public route was loading. Full data-router regressions cover both outcomes.
 The nonce rejects history state surviving reload even if another account reuses
 the same numeric auth generation. It carries no credentials or account identity.
+
+## Study Server and course-file progress
+
+The tested #251 contract at 6f7a70ee now supports requester-bound source progress.
+This extends the same #339 issue, worktree and PR. Existing server DELETE and new
+resource DELETE controls retain the returned job UUID after HTTP 202. Their owning
+services close access immediately; cleanup and recovery acknowledgement remain
+pending. An authenticated `/app/deletions/:jobId` route reads auth's source-deletion
+endpoint independently of the removed graph. Only the original requester may read
+it. A 404 can mean the durable request has not reached auth yet; refresh must not
+replace the job or claim completion. No deadline is promised.
+
+Keep server deletion behind owner authorization and resource deletion behind both
+workspace and source management capabilities. Use a native confirmation dialog
+with clear irreversible wording, cancel/focus behavior and visible busy state.
+Ignore responses after account, course or dialog identity changes; reuse the same
+target after uncertain submission. Route to progress after an accepted response,
+invalidate the server/resource list and retain a return link to the surviving
+picker or course list. Progress needs explicit refresh, unavailable and preserved
+record states, mobile/landscape keyboard evidence and actual-service union proof.
+Use the existing blue/ink/white settings typography and 44-pixel actions; add no
+decorative metrics or simulated progress percentage.
+
+The source status entry has a separate 8,000 raw / 3,000 gzip JavaScript cap and
+shares the existing capped deletion stylesheet. Confirmation code and styles stay
+in the unchanged core budget. The dialog reuses the existing padded modal surface
+inside native modality. Resource page state remounts on account, session generation,
+server or course change, preventing an old confirmation from reopening after return.
+Two parent-context regressions reproduced this defect before the correction.
+Source deletion browser fixtures remain synthetic, with actual requester/retry and
+cleanup proof required from the combined #251/#342 backend.

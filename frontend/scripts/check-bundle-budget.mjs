@@ -16,7 +16,7 @@ export const productionBundleBudget = Object.freeze({
     entries: ['src/features/account-data/AccountDataPage.tsx'],
   }, {
     name: 'Account deletion', rawBytes: 3_500, gzipBytes: 1_200,
-    entries: ['src/features/account-data/AccountDeletionPage.tsx'],
+    entries: ['src/features/account-data/AccountDeletionPage.tsx', 'src/features/account-data/SourceDeletionPage.tsx'],
   }],
   deferredJs: [{
     name: 'Moderation', rawBytes: 60_000, gzipBytes: 20_000,
@@ -30,6 +30,9 @@ export const productionBundleBudget = Object.freeze({
   }, {
     name: 'Account deletion', rawBytes: 14_000, gzipBytes: 5_000,
     entries: ['src/features/account-data/AccountDeletionPage.tsx'],
+  }, {
+    name: 'Source deletion', rawBytes: 8_000, gzipBytes: 3_000,
+    entries: ['src/features/account-data/SourceDeletionPage.tsx'],
   }],
   initialJsGzipBytes: 120_000,
   deferredChunkGzipBytes: 130_000,

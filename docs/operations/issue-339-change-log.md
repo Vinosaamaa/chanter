@@ -184,4 +184,15 @@ receipt reload; the existing cross-tab marker closes local access. Real data-rou
 regressions cover the transition and an account switch, and stale history state
 cannot sign out another document's session. Export/confirmation screenshots at
 phone, desktop and landscape were independently inspected with no visual blocker.
-The fixed transition and reload still require hosted confirmation.
+The fixed transition and reload passed hosted confirmation at a1964d26. All 308
+responsive fixture cases, full application checks and both native release
+architectures passed. This is pre-union evidence, not public deployment.
+
+Study Server and course-file deletion now require native confirmation and retain
+the accepted request's progress URL. Missing initial progress supports refresh;
+pending recovery and retained records remain explicit. Resource controls require
+both workspace and source management capabilities. Account/course changes discard
+old confirmations. Independent review corrected the dialog surface and the test's
+incorrect CSRF expectation for bearer-authorized source routes. Full frontend tests
+passed 385 cases before the added context regressions; current source browser
+execution and actual backend acceptance remain required.

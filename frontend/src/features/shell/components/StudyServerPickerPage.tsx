@@ -3,64 +3,32 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { cn } from '../../../lib/cn'
-import { formatUserFacingApiError, isUnauthorizedApiError } from '../../../lib/format-api-error'
-import { useAuthStore } from '../../../stores/auth-store'
 import { deleteStudyServer } from '../shell-api'
 import { useAccessibleStudyServersQuery } from '../hooks/use-shell-queries'
 import type { StudyServerSummary } from '../types'
 
-import { DeleteStudyServerDialog } from './DeleteStudyServerDialog'
+import { SourceDeletionDialog } from '../../account-data/SourceDeletionDialog'
 import { StudyServerIcon } from './StudyServerIcon'
 import { studyServerIconStyle } from '../study-server-icon-style'
 
 export function StudyServerPickerPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const clearSession = useAuthStore((state) => state.clearSession)
   const serversQuery = useAccessibleStudyServersQuery()
   const [pendingDelete, setPendingDelete] = useState<StudyServerSummary | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-
-  const onConfirmDelete = async () => {
-    if (!pendingDelete) {
-      return
-    }
-
-    setIsDeleting(true)
-    setDeleteError(null)
-
-    try {
-      await deleteStudyServer(pendingDelete.id)
-      await queryClient.invalidateQueries({ queryKey: ['study-servers'] })
-      setPendingDelete(null)
-    } catch (caught) {
-      if (isUnauthorizedApiError(caught)) {
-        clearSession()
-        navigate('/sign-in', { replace: true, state: { from: '/app' } })
-        return
-      }
-      setDeleteError(formatUserFacingApiError(caught, 'Unable to delete Study Server.'))
-    } finally {
-      setIsDeleting(false)
-    }
-  }
 
   return (
     <section className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-app-bg">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-app-border px-6 py-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-accent">
-            Study Server
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold text-app-text">Your Study Servers</h1>
+          <h1 className="text-2xl font-semibold text-app-text">Your Study Servers</h1>
           <p className="mt-1 max-w-2xl text-sm text-app-muted">
             Select a Study Server to continue studying and collaborating with your community.
           </p>
         </div>
         <Link
           to="/app/onboarding/create-study-server"
-          className="inline-flex items-center justify-center rounded-md bg-app-accent px-4 py-2 text-sm font-medium text-white hover:bg-app-accent-hover"
+          className="v2-primary-button min-h-11"
         >
           + Create Study Server
         </Link>
@@ -99,7 +67,6 @@ export function StudyServerPickerPage() {
                 key={server.id}
                 server={server}
                 onDelete={() => {
-                  setDeleteError(null)
                   setPendingDelete(server)
                 }}
               />
@@ -109,12 +76,17 @@ export function StudyServerPickerPage() {
       </div>
 
       {pendingDelete ? (
-        <DeleteStudyServerDialog
-          serverName={pendingDelete.name}
-          deleteError={deleteError}
-          isDeleting={isDeleting}
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={onConfirmDelete}
+        <SourceDeletionDialog
+          kind="STUDY_SERVER"
+          targetId={pendingDelete.id}
+          targetName={pendingDelete.name}
+          submit={signal => deleteStudyServer(pendingDelete.id, signal)}
+          onClose={() => setPendingDelete(null)}
+          onAccepted={request => {
+            setPendingDelete(null)
+            void queryClient.invalidateQueries({ queryKey: ['study-servers'] })
+            void navigate(`/app/deletions/${request.jobId}`)
+          }}
         />
       ) : null}
     </section>
@@ -163,7 +135,7 @@ function StudyServerCard({
         <div className="mt-5 flex flex-wrap gap-2">
           <Link
             to={`/app/servers/${server.id}/home`}
-            className="rounded-lg bg-app-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+            className="v2-primary-button min-h-11"
           >
             Open Study Server
           </Link>
@@ -171,7 +143,7 @@ function StudyServerCard({
             <button
               type="button"
               onClick={onDelete}
-              className="rounded-lg border border-red-500/40 px-3 py-1.5 text-sm text-red-200 hover:bg-red-500/10"
+              className="v2-outline-button min-h-11"
             >
               Delete
             </button>

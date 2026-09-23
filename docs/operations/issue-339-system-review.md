@@ -49,3 +49,12 @@ its own status fetch. Startup never refreshes a revoked session on this receipt
 route. The existing cross-tab sign-out marker propagates local access closure.
 Hosted confirmation failures reproduced with the actual data router; independent
 account-change and reload regressions guard the correction.
+
+Source deletion progress is requester-bound authenticated data, separate from the
+cookie-only account receipt. A new job may initially return 404 while its durable
+request reaches auth. The UI retains the same job and never infers completion from
+absence. Restricted records and recovery acknowledgement remain visible. Confirmations
+bind to the opening account/generation/target; course navigation discards pending
+resource modal state. Same-target retry depends on the backend returning the original
+request after terminal access closure. Review identified that dependency in media;
+#251 must prove it before integrated acceptance. Browser fixtures cannot establish it.

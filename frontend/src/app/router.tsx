@@ -85,6 +85,7 @@ export function createAppRouter() {
             { path: 'settings/usage', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/UsageSettingsPage')).UsageSettingsPage }) },
             { path: 'account-data', lazy: async () => ({ Component: (await import('../features/account-data/AccountDataPage')).AccountDataPage }) },
             { path: 'account-data/delete', lazy: async () => ({ Component: (await import('../features/account-data/AccountDeletionPage')).AccountDeletionPage }) },
+            { path: 'deletions/:jobId', lazy: async () => ({ Component: (await import('../features/account-data/SourceDeletionPage')).SourceDeletionPage }) },
             { path: 'friends', lazy: async () => ({ Component: (await import('../features/v2-shell/pages/FriendsPage')).FriendsPage }) },
             { path: 'safety', lazy: async () => ({ Component: (await import('../features/moderation/SafetyPage')).SafetyPage }) },
             {

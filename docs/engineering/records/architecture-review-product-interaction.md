@@ -66,3 +66,13 @@ completion. Request controllers are keyed by account, auth generation and job,
 and abort on unmount. Sign-in preserves the explicit opaque job URL. Independent
 review findings have focused regressions; actual erasure and recovery proof stay
 with #251/#342 and cannot be inferred from intercepted browser fixtures.
+
+Study Server and course-file deletion now preserve accepted asynchronous request
+IDs in a requester-bound progress route. Native confirmation explains irreversible
+access closure, while missing progress, retained records and pending recovery remain
+distinct. Resource page state remounts on account/session/course changes to discard
+stale confirmations. The source status JavaScript has an 8,000 raw / 3,000 gzip cap;
+it shares existing deletion CSS, and dialog dependencies stay within core limits.
+The prior account receipt checkpoint passed all 308 hosted responsive cases, full
+application checks and both native release architectures. Source progress fixtures
+and final real-service union acceptance are still outstanding.

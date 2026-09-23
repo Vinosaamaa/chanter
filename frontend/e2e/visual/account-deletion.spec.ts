@@ -25,7 +25,7 @@ for (const viewport of [{ width: 320, height: 780 }, { width: 390, height: 844 }
       }
       if (request.url().endsWith('/receipt')) {
         expect(request.headers().authorization).toBeUndefined()
-        return route.fulfill({ json: { ...prepared, state: 'WAITING_FOR_REPLICA', replicationPending: true } })
+        return route.fulfill({ json: { ...prepared, state: 'WAITING_FOR_REPLICA', replicationPending: true, parts: prepared.parts.map(part => ({ ...part, state: 'COMPLETE' })) } })
       }
       return route.fulfill({ json: prepared })
     })

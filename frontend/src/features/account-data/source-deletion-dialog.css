@@ -1,0 +1,17 @@
+.source-deletion-dialog button {
+  min-height: 44px;
+}
+
+.source-deletion-confirm {
+  background: #b42332;
+  border-color: #b42332;
+  color: #fff;
+}
+
+.source-deletion-dialog button:disabled {
+  opacity: .55;
+}
+
+.source-deletion-dialog [role=alert] {
+  color: #b42332;
+}

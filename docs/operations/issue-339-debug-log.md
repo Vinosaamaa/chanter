@@ -77,4 +77,12 @@ only the originating auth generation, removes private queries and preserves its
 own in-flight status request. A different account cannot be signed out by the old
 transition. Public receipt startup also skips ordinary session restoration, and
 completion publishes the existing credential-free cross-tab sign-out marker.
-Hosted confirmation and reload remain required after these corrections.
+Hosted confirmation and reload passed at a1964d26 across all three engines.
+
+Source deletion review found that conditionally hiding the resource dialog retained
+its pending target. Returning to a course, or finishing a different account's load,
+reopened the old confirmation. Two parent-level regressions reproduced it. Keying
+the resource page's local state by account, auth generation, server and course
+discards old modal state and aborts the old dialog's request. The confirmation also
+needed the existing padded modal surface inside its transparent native container.
+Its browser fixture now checks the actual bearer contract for source DELETE routes.
