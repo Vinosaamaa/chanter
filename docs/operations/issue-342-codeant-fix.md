@@ -214,3 +214,26 @@ values and any version ID remain UNKNOWN. All 52 focused adapter, mutation and
 inventory tests pass after the correction. Fresh native checks remain required;
 neither this fixture nor the local regression establishes external provider
 retention or writer closure.
+
+Full review at `5a66ea84` completed on September 23 at 03:26 UTC. Comment
+4078776283 correctly identifies a provider query before recovery DELETE authority
+validation. The adapter now validates and reserves the exact source reference
+first, then queries versioning. A refusal settles only the unstarted invocation;
+an already closed reference makes no provider call. The invalid-backup regression
+failed before this change and passes with all 52 focused checks afterward.
+
+Comment 4078776281 concerns ordinary PUT reading its private upload spool twice.
+Both production callers use a unique UploadValidator-owned temporary file and
+retain its lifetime until the synchronous adapter returns. Neither caller mutates
+or shares that file with another writer. Content-MD5 protects the submitted bytes,
+and the later worker checks the expected SHA-256 before availability. Recovery PUT
+already uses a bounded private byte copy. No new path permitting concurrent spool
+replacement was found; this does not claim protection against a compromised host.
+
+The native media jobs at `5a66ea84` passed the actual adapter/scanner and all 37
+inventory checks on PostgreSQL on both architectures, including the 513-reference
+streaming/batch regression. That disposes comment 4078647995 against the actual
+database. Both then rejected an outdated restart-test call that tried to release
+maintenance while UNKNOWN remained. The test now requires release refusal,
+preserved maintenance identity, and blocked PUT/DELETE; it never fabricates
+settlement. Fresh restart proof remains required.

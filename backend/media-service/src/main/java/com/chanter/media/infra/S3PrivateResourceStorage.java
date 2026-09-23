@@ -122,9 +122,6 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
     }
     @Override public void deleteForRecovery(ResourceRecoveryInventory.RestoreRequest request) throws IOException {
         if(recovery==null) throw new IOException("Private object recovery is not enabled");
-        // A versionless DELETE cannot establish erasure when retained object versions may exist.
-        try { requireVersionless(); }
-        catch(Exception unavailable) { throw new DeleteFailure(WriteOutcome.NOT_STARTED,null); }
         ResourceRecoveryInventory.DeleteMutation deletion;
         try { deletion=recovery.beginDelete(backend(),request); }
         catch(RuntimeException blocked) { throw new DeleteFailure(WriteOutcome.NOT_STARTED,blocked); }
@@ -133,7 +130,8 @@ public class S3PrivateResourceStorage implements PrivateResourceStorage {
     private void remove(String key,java.util.UUID mutation,ResourceRecoveryInventory.RestoreRequest request) throws IOException {
         boolean started = false;
         try {
-            if(request==null) requireVersionless();
+            // Source authority is established before either metered provider request.
+            requireVersionless();
             lifecycle.countRequest(true);
             started = true;
             var response=client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());

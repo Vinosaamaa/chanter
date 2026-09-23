@@ -39,9 +39,10 @@ class PostgresStorageMutationRestartTest {
                 assertThat(store.receipt(INVENTORY).unsettledMutations()).isEqualTo(1);
                 assertThat(jdbc.queryForObject("SELECT outcome FROM media_storage_mutations WHERE object_key=?",String.class,KEY)).isEqualTo("UNKNOWN");
                 owned=true;
-                store.release(INVENTORY);
-                assertThatThrownBy(() -> store.begin(KEY,StorageMutationStore.Operation.DELETE)).hasMessageContaining("unsettled");
-                assertThatThrownBy(() -> store.begin(KEY,StorageMutationStore.Operation.PUT)).hasMessageContaining("unsettled");
+                assertThatThrownBy(() -> store.release(INVENTORY)).hasMessageContaining("unsettled");
+                assertThat(store.receipt(INVENTORY).unsettledMutations()).isEqualTo(1);
+                assertThatThrownBy(() -> store.begin(KEY,StorageMutationStore.Operation.DELETE)).hasMessageContaining("maintenance");
+                assertThatThrownBy(() -> store.begin(KEY,StorageMutationStore.Operation.PUT)).hasMessageContaining("maintenance");
                 assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media_storage_mutations",Integer.class)).isEqualTo(1);
             } finally { if(owned) admin.execute("DROP SCHEMA "+SCHEMA+" CASCADE"); }
         }

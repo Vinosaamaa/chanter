@@ -440,9 +440,11 @@ class ResourceRecoveryInventoryTest {
         inventories.capture(inventory,backup,authority);
         var request=new ResourceRecoveryInventory.RestoreRequest(inventory,backup,authority,1);
         var versioning=new java.util.concurrent.atomic.AtomicReference<>("Enabled");var deletes=new java.util.concurrent.atomic.AtomicInteger();
+        var queries=new java.util.concurrent.atomic.AtomicInteger();
         var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
         server.createContext("/",exchange -> {
             if(exchange.getRequestMethod().equals("GET") && "versioning".equals(exchange.getRequestURI().getQuery())) {
+                queries.incrementAndGet();
                 String status=versioning.get();
                 byte[] xml=("<VersioningConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">"
                         +(status.isEmpty() ? "" : "<Status>"+status+"</Status>")+"</VersioningConfiguration>").getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -453,6 +455,11 @@ class ResourceRecoveryInventoryTest {
                 "http://127.0.0.1:"+server.getAddress().getPort(),"us-east-1","fixture-bucket","fixture-key","fixture-secret",true);
         try {
             storage.recoveryInventory(inventories);
+            assertThatThrownBy(() -> storage.deleteForRecovery(new ResourceRecoveryInventory.RestoreRequest(inventory,UUID.randomUUID(),authority,1)))
+                    .isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
+                            failure -> assertThat(failure.outcome()).isEqualTo(PrivateResourceStorage.WriteOutcome.NOT_STARTED));
+            assertThat(queries.get()).isZero();
+            assertThat(mutations.receipt(inventory).unsettledMutations()).isZero();
             for(String status:java.util.List.of("Enabled","Suspended")) {
                 versioning.set(status);
                 assertThatThrownBy(() -> storage.deleteForRecovery(request)).isInstanceOfSatisfying(PrivateResourceStorage.DeleteFailure.class,
@@ -462,6 +469,9 @@ class ResourceRecoveryInventoryTest {
             assertThat(deletes.get()).isZero();versioning.set("");
             storage.deleteForRecovery(request);
             assertThat(inventories.beginDelete("s3",request).alreadyClosed()).isTrue();
+            assertThat(deletes.get()).isEqualTo(1);
+            storage.deleteForRecovery(request);
+            assertThat(queries.get()).isEqualTo(3);
             assertThat(deletes.get()).isEqualTo(1);
         } finally {storage.close();server.stop(0);}
     }
