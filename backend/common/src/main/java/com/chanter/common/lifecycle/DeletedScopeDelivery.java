@@ -33,6 +33,12 @@ public final class DeletedScopeDelivery {
         this.pages=pages; this.imports=imports; this.terminal=terminal; this.recovery=recovery;
     }
     public static boolean command(String kind) { return Set.of(ADVANCE,IMPORT,READY).contains(kind); }
+    public boolean complete(TerminalJournal.Entry entry) {
+        entry.validate();
+        if(!source.equals("community") || !entry.targetKind().equals("STUDY_SERVER")) throw invalid();
+        return recovery || jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_scope_delivery WHERE study_server_id=? AND terminal_digest=?",Integer.class,
+                entry.targetId(),entry.digest())==2*DESTINATIONS.size();
+    }
     public void start(TerminalJournal.Entry entry) {
         if(recovery) return;
         if(!source.equals("community") || !entry.targetKind().equals("STUDY_SERVER")) throw invalid();

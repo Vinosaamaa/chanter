@@ -39,6 +39,7 @@ class MessageTerminalRecoveryTest {
     @Autowired org.springframework.test.web.servlet.MockMvc mvc;
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
     @Autowired ErasedContentDelivery content;
+    @Autowired DurableOutbox outbox;
 
     @Test void emptyAccountCompletesOnlyAfterBothFinalsAndRollsBackIfCoordinatorReceiptFails() throws Exception {
         var entry=entry("ACCOUNT",UUID.randomUUID());apply(entry);
@@ -120,11 +121,13 @@ class MessageTerminalRecoveryTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM durable_outbox WHERE aggregate_key LIKE ?",Integer.class,"%"+question.id()+"%")).isZero();
         assertThat(cleanup(entry)).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
     }
-    @Test void restoredHistoricalScopeErasesLegacyRowsOnlyAfterBothVerifiedKindsAndRollsBackFinalPage() {
+    @Test void restoredHistoricalScopeErasesLegacyRowsOnlyAfterBothVerifiedKindsAndRollsBackFinalPage() throws Exception {
         UUID server=UUID.randomUUID(),course=UUID.randomUUID(),oldChannel=UUID.randomUUID();
         var question=question(UUID.randomUUID(),oldChannel);
         var unrelated=question(UUID.randomUUID(),UUID.randomUUID());
         var faq=faqs.save(new ApprovedFaq(UUID.randomUUID(),course,"historical","answer",UUID.randomUUID(),Instant.now(),Instant.now()),List.of(question.id()));
+        String payload=mapper.writeValueAsString(new SearchChange("FAQ",faq.id(),null,course,null,null,null,"private historical title","private historical body",null,false));
+        UUID copy=new TransactionTemplate(transactions).execute(s -> outbox.append("search","FAQ","FAQ:"+faq.id(),payload));
         var entry=entry("STUDY_SERVER",server); apply(entry);
         current.accept(new DeletedScope.Import(entry,page(entry,"COURSE",List.of(),entry.digest())));
         current.accept(new DeletedScope.Import(entry,page(entry,"CHANNEL",List.of(),entry.digest())));
@@ -136,14 +139,16 @@ class MessageTerminalRecoveryTest {
                 page(entry,"CHANNEL",List.of(oldChannel),historical.basis(entry,"CHANNEL")));
         new TransactionTemplate(transactions).executeWithoutResult(tx -> { historical.accept(last); tx.setRollbackOnly(); });
         assertThat(questions.findByIdAndChannelId(oldChannel,question.id())).isPresent();
+        assertThat(jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE id=?",String.class,copy)).isEqualTo(payload);
         historical.accept(last); historical.accept(last);
         assertThat(questions.findByIdAndChannelId(oldChannel,question.id())).isEmpty();
         assertThat(faqs.findByIdAndCourseId(faq.id(),course)).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE id=?",String.class,copy)).isEqualTo("{}");
         assertThat(questions.findByIdAndChannelId(unrelated.channelId(),unrelated.id())).isPresent();
         assertThatThrownBy(() -> question(UUID.randomUUID(),oldChannel)).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> faqs.save(new ApprovedFaq(UUID.randomUUID(),course,"late","answer",UUID.randomUUID(),Instant.now(),Instant.now()),List.of()))
                 .isInstanceOf(ResponseStatusException.class);
-        assertThat(cleanup(entry)).isEqualTo(TerminalReapplyStore.Cleanup.PENDING);
+        assertThat(cleanup(entry)).isEqualTo(TerminalReapplyStore.Cleanup.COMPLETE);
     }
     @Test void concurrentAccountDeletionPrecedesPairCreationAndLateMessageWrite() throws Exception {
         UUID user=UUID.randomUUID(),peer=UUID.randomUUID(); var entry=entry("ACCOUNT",user);

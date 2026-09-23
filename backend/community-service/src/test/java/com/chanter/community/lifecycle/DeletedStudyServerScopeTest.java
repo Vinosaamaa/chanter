@@ -42,7 +42,7 @@ class DeletedStudyServerScopeTest {
         var snapshots=new com.chanter.common.lifecycle.ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"community");
         var ownership=new CommunityOwnershipFence(jdbc);
         var config=new CommunityTerminalConfiguration();
-        terminal=config.communityTerminalStore(jdbc,transactions,snapshots,ownership,scopes,recoveryDelivery(),new CommunityAccountCleanup(jdbc),contentDelivery());
+        terminal=config.communityTerminalStore(jdbc,transactions,snapshots,ownership,scopes,recoveryDelivery(false),new CommunityAccountCleanup(jdbc),contentDelivery(),mapper);
         protocol=new com.chanter.common.lifecycle.AccountDeletionProtocol(mapper);
         participant=config.communityDeletionParticipant(jdbc,transactions,
                 new com.chanter.common.events.DurableOutbox(jdbc,tx,"community",java.time.Clock.systemUTC()),protocol,terminal,ownership);
@@ -54,6 +54,12 @@ class DeletedStudyServerScopeTest {
     @Test void scopeAndTerminalAuthorityRollBackWithTheActualGraphAndReplayRetainsTheOriginalIds() throws Exception {
         UUID server=UUID.randomUUID(),course=UUID.randomUUID(),channel=UUID.randomUUID(),courseChannel=UUID.randomUUID();
         seed(server,course,channel,courseChannel);
+        UUID office=UUID.randomUUID();
+        jdbc.update("UPDATE study_server_channels SET kind='VOICE' WHERE id=?",channel);
+        jdbc.update("INSERT INTO office_hours_sessions(id,cohort_id,voice_channel_id,scheduled_by_user_id,starts_at,ends_at,status,created_at) SELECT ?,id,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+INTERVAL '1' HOUR,'SCHEDULED',CURRENT_TIMESTAMP FROM cohorts WHERE course_id=?",office,channel,UUID.randomUUID(),course);
+        var sourceOutbox=new com.chanter.common.events.DurableOutbox(jdbc,tx,"community",java.time.Clock.systemUTC());
+        String privateCopy=mapper.writeValueAsString(new com.chanter.common.events.SearchChange("ANNOUNCEMENT",UUID.randomUUID(),server,null,null,null,null,"private title","private body",null,false));
+        UUID copy=tx.execute(s -> sourceOutbox.append("search","ANNOUNCEMENT","ANNOUNCEMENT:"+UUID.randomUUID(),privateCopy));
         var page=page(server); var entry=page.entries().getFirst();
         tx.executeWithoutResult(status -> {
             terminal.reapply(page);
@@ -62,11 +68,15 @@ class DeletedStudyServerScopeTest {
             status.setRollbackOnly();
         });
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM courses WHERE id=?",Integer.class,course)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM office_hours_sessions WHERE id=?",Integer.class,office)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE id=?",String.class,copy)).isEqualTo(privateCopy);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_deleted_server_scopes",Integer.class)).isZero();
         http.perform(post("/api/v1/internal/lifecycle/journal/reapply").header(AuthHeaders.INTERNAL_SERVICE_TOKEN,TOKEN)
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(page)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.pendingTargets").value(1));
         terminal.reapply(page);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM office_hours_sessions WHERE id=?",Integer.class,office)).isZero();
+        assertThat(jdbc.queryForObject("SELECT payload FROM durable_outbox WHERE id=?",String.class,copy)).isEqualTo("{}");
         assertThatThrownBy(() -> tx.executeWithoutResult(status -> servers.save(server(server,UUID.randomUUID()))))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
         assertThat(read(entry,"COURSE",new UUID(0,0),256).ids()).containsExactly(course);
@@ -154,7 +164,7 @@ class DeletedStudyServerScopeTest {
         assertThat(read(entry,"COURSE",new UUID(0,0),256)).isEqualTo(coursePage);
         assertThat(read(entry,"CHANNEL",new UUID(0,0),256)).isEqualTo(channelPage);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lifecycle_deleted_server_scopes",Integer.class)).isZero();
-        assertThat(terminal.receipt().pendingTargets()).isEqualTo(1); // Graph scope readiness is not all downstream cleanup.
+        assertThat(terminal.receipt().pendingTargets()).isZero(); // Local source completion does not substitute for other recovery receipts.
     }
 
     @Test void restoredOlderGraphCannotBecomeCurrentScopeAndFinalImportReconcilesAnAlreadyAppliedPrefix() throws Exception {
@@ -250,7 +260,7 @@ class DeletedStudyServerScopeTest {
     private void useRecoveryMode() {
         scopes=new DeletedStudyServerScope(jdbc,tx,true,UUID.fromString("33333333-3333-4333-8333-333333333333"),() -> terminal);
         var snapshots=new com.chanter.common.lifecycle.ExportSnapshotStore(jdbc,tx,mapper,java.time.Clock.systemUTC(),"community");
-        terminal=new CommunityTerminalConfiguration().communityTerminalStore(jdbc,tx.getTransactionManager(),snapshots,new CommunityOwnershipFence(jdbc),scopes,recoveryDelivery(),new CommunityAccountCleanup(jdbc),contentDelivery());
+        terminal=new CommunityTerminalConfiguration().communityTerminalStore(jdbc,tx.getTransactionManager(),snapshots,new CommunityOwnershipFence(jdbc),scopes,recoveryDelivery(true),new CommunityAccountCleanup(jdbc),contentDelivery(),mapper);
         http=MockMvcBuilders.standaloneSetup(new DeletedStudyServerScopeController(scopes,mapper,TOKEN),
                 new com.chanter.common.lifecycle.SourceTerminalRecoveryController(terminal,mapper,TOKEN)).build();
     }
@@ -290,13 +300,13 @@ class DeletedStudyServerScopeTest {
         var head=new TerminalJournal.Watermark(revision,digest);
         return new TerminalJournal.Page(2,before,head,List.of(entry),head);
     }
-    private com.chanter.common.lifecycle.DeletedScopeDelivery recoveryDelivery() {
+    private com.chanter.common.lifecycle.DeletedScopeDelivery recoveryDelivery(boolean recovery) {
         // These source-scope tests replay recovery authority. Ordinary outbox paging has separate real-store coverage.
         var beans=new org.springframework.beans.factory.support.DefaultListableBeanFactory();
         return new com.chanter.common.lifecycle.DeletedScopeDelivery("community",jdbc,tx,
                 new com.chanter.common.events.DurableOutbox(jdbc,tx,"community",java.time.Clock.systemUTC()),mapper,
                 beans.getBeanProvider(com.chanter.common.lifecycle.DeletedScopeDelivery.Source.class),
-                beans.getBeanProvider(com.chanter.common.lifecycle.DeletedScopeStore.class),beans.getBeanProvider(TerminalReapplyStore.class),true);
+                beans.getBeanProvider(com.chanter.common.lifecycle.DeletedScopeStore.class),beans.getBeanProvider(TerminalReapplyStore.class),recovery);
     }
     private com.chanter.common.lifecycle.ErasedContentDelivery contentDelivery() {
         var beans=new org.springframework.beans.factory.support.DefaultListableBeanFactory();

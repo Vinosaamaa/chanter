@@ -124,6 +124,12 @@ public class DeletedStudyServerScope {
     }
 
     /** Called inside the terminal source transaction, before graph erasure and its receipt. */
+    String payloadScopeTable(TerminalJournal.Entry entry) {
+        if(!capture(entry)) throw unavailable();
+        return recovery ? "lifecycle_recovery_scope_ids" : imports.ready(entry,"COURSE") && imports.ready(entry,"CHANNEL")
+                ? "lifecycle_scope_import_ids" : "lifecycle_deleted_server_scope_ids";
+    }
+
     public boolean capture(TerminalJournal.Entry entry) {
         entry.validate();
         if(!"STUDY_SERVER".equals(entry.targetKind()) || !TransactionSynchronizationManager.isActualTransactionActive())

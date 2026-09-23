@@ -53,7 +53,15 @@ class DeletedScopeDeliveryTest {
         message.delivery.accept(emptyPage);
         var emptyReady=message.events(DeletedScopeDelivery.READY,"lifecycle-community").stream().filter(e -> e.payload().contains("CHANNEL")).findFirst().orElseThrow();
         community.delivery.accept(emptyReady);
-        assertThat(community.jdbc.queryForObject("SELECT total_count FROM lifecycle_scope_delivery WHERE scope_kind='CHANNEL'",Long.class)).isZero();
+        assertThat(community.delivery.complete(entry)).isFalse();
+        for(String destination:DeletedScopeDelivery.DESTINATIONS) {
+            if(destination.equals("message")) continue;
+            var recipient=new Source(destination);recipient.tx.executeWithoutResult(s -> recipient.terminal.applyTerminal(entry));
+            for(var page:community.events(DeletedScopeDelivery.IMPORT,"lifecycle-"+destination)) recipient.delivery.accept(page);
+            for(var receipt:recipient.events(DeletedScopeDelivery.READY,"lifecycle-community")) community.delivery.accept(receipt);
+        }
+        assertThat(community.delivery.complete(entry)).isTrue();
+        assertThat(community.jdbc.queryForObject("SELECT SUM(total_count) FROM lifecycle_scope_delivery WHERE scope_kind='CHANNEL'",Long.class)).isZero();
         var spoof=new DurableEvent(UUID.randomUUID(),1,"media",100,first.kind(),first.aggregateKey(),first.payload());
         assertThatThrownBy(() -> community.delivery.accept(spoof)).hasMessageContaining("Invalid scope delivery");
     }

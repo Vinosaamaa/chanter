@@ -32,16 +32,18 @@ public class MessageTerminalConfiguration {
                 outbox,protocol,terminal,null);
     }
     @Bean TerminalReapplyStore messageTerminalStore(JdbcTemplate jdbc,PlatformTransactionManager transactions,
-            ExportSnapshotStore snapshots,ErasedContentDelivery content,
+            ExportSnapshotStore snapshots,ErasedContentDelivery content,com.fasterxml.jackson.databind.ObjectMapper mapper,
             @org.springframework.beans.factory.annotation.Value("${chanter.recovery-mode:false}") boolean recovery,
             org.springframework.beans.factory.ObjectProvider<RecoveryScopeStore> historical) {
         var tx=new TransactionTemplate(transactions); tx.setTimeout(30);
+        var payloads=new ServerPayloadCleanup(jdbc,mapper);
         return new TerminalReapplyStore(jdbc,tx,"message",entry -> {
             if(entry.targetKind().equals("RESOURCE")) return TerminalReapplyStore.Cleanup.COMPLETE;
             snapshots.invalidateRetained();
             String questions;
             String messages;
             String faqs;
+            String serverScope=null;
             if(entry.targetKind().equals("ACCOUNT")) {
                 snapshots.cancelAccount(entry.targetId());
                 questions="SELECT id FROM support_questions WHERE sender_user_id=?";
@@ -67,6 +69,7 @@ public class MessageTerminalConfiguration {
                 if(recovery && (!historical.getObject().ready(entry,"COURSE") || !historical.getObject().ready(entry,"CHANNEL")))
                     return TerminalReapplyStore.Cleanup.PENDING;
                 String table=recovery ? "lifecycle_recovery_scope_ids" : "lifecycle_scope_import_ids";
+                serverScope=table;
                 String channels="SELECT scope_id FROM "+table+" WHERE study_server_id=? AND scope_kind='CHANNEL'";
                 questions="SELECT id FROM support_questions WHERE channel_id IN ("+channels+")";
                 messages="SELECT id FROM channel_messages WHERE channel_id IN ("+channels+")";
@@ -88,8 +91,8 @@ public class MessageTerminalConfiguration {
                 content.start(entry);
                 return content.complete(entry) ? TerminalReapplyStore.Cleanup.COMPLETE : TerminalReapplyStore.Cleanup.PENDING;
             }
-            // Existing durable payload copies and downstream deletion receipts still require reconciliation.
-            return TerminalReapplyStore.Cleanup.PENDING;
+            payloads.erase(entry,serverScope);
+            return TerminalReapplyStore.Cleanup.COMPLETE;
         });
     }
     private static void retain(JdbcTemplate jdbc,TerminalJournal.Entry entry,String kind,String source) {
