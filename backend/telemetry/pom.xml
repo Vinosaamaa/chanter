@@ -13,7 +13,7 @@
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId><scope>test</scope></dependency>
         <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-extension-autoconfigure-spi</artifactId><version>1.65.0</version><scope>provided</scope></dependency>
         <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-trace</artifactId><version>1.65.0</version><scope>provided</scope></dependency>
-        <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-metrics</artifactId><version>1.65.0</version><scope>provided</scope></dependency>
+        <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-metrics</artifactId><version>1.66.0</version><scope>provided</scope></dependency>
         <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk-testing</artifactId><version>1.65.0</version><scope>test</scope></dependency>
         <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>
         <dependency><groupId>io.opentelemetry.proto</groupId><artifactId>opentelemetry-proto</artifactId><version>1.11.0-alpha</version><scope>test</scope></dependency>
