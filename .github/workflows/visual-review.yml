@@ -31,7 +31,7 @@ jobs:
         working-directory: frontend
       - name: Retain synthetic UI screenshots only
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: fixture-ui-review
           path: frontend/test-results/visual-review/**/fixture-ui-*.png
